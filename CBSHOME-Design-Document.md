@@ -1,6 +1,6 @@
 # cbshome — Дизайн-документ (Конституция)
 
-**Версия:** 1.4
+**Версия:** 1.5
 **Дата:** 27 марта 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -108,7 +108,7 @@ cbshome -- платформа для четырёх аудиторий, объе
 |--------|------------|------|
 | SumSub | KYC верификация (220+ стран) | MVP |
 | Telegram Bot API | Уведомления (aiogram), Telegram mini-app | MVP |
-| SendGrid (или аналог) | Transactional email | MVP |
+| EMAP (primary) + Mailgun (fallback) | Transactional email + email verification | MVP |
 | Moonpay / Transak | Fiat on-ramp EUR -> USDT | Розетка (Phase 2) |
 | DocuSign | Формальная e-signature | Розетка (Phase 2) |
 
@@ -559,7 +559,7 @@ cbshome/                           -- GitHub: aivis-one/cbshome
 8. Создание management script -> symlink `/usr/local/bin/cbshome`
 9. Cron для ежедневного backup
 
-После установки заказчик заполняет `.env` (SumSub API key, blockchain nodes, wallet addresses, SendGrid key) и получает рабочий стек.
+После установки заказчик заполняет `.env` (SumSub API key, blockchain nodes, wallet addresses, Mailgun API key) и получает рабочий стек.
 
 **Разработка и тестирование ведётся на VPS, идентичном проду.** Нет понятия "локальная разработка". Все изменения -- через `cbshome update` (git pull + rebuild + migrate + restart).
 
@@ -687,4 +687,4 @@ Phase 2 -- формальная e-signature контрактов. MVP: checkbox 
 
 ---
 
-*Version 1.4 | 2026-03-27 | aivis-one/cbshome*
+*Version 1.5 | 2026-03-27 | aivis-one/cbshome*
