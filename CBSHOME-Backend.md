@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 0.1 (draft)
-**Дата:** 28 марта 2026
+**Версия:** 0.2
+**Дата:** 1 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -378,7 +378,7 @@ POST /api/v1/auth/telegram  -> AuthResponse {user, session_token}
   - `PATCH /api/v1/users/me`
 - [ ] `tests/test_users.py` — 10 тестов
 
-**Ограничения аватаринга (из Legacy п.5):**
+**Ограничения аватаринга:**
 - [ ] `app/modules/auth/avatar_guard.py` — `require_not_avatar` decorator
 - [ ] Список запрещённых операций в config:
 ```yaml
@@ -673,15 +673,22 @@ if source_ledger == "active" and target_ledger == "passive":
 
 ---
 
-### Sprint 6.1: Purchase Processor
+### Sprint 6.1: Distribution Engine (processors/)
 
-**Цель:** Изолированный процессор покупок.
+**Цель:** Самостоятельный модуль распределения денег. Не принадлежит ни Purchase, ни Agent —
+владеет логикой того, как деньги распределяются в момент любой транзакции покупки.
+В этом спринте закладывается фундамент и реализуются первые два процессора (Purchase, Gift).
+ReferralProcessor и VolumeProcessor добавляются в Sprints 7.2 и 7.3 в ту же папку.
+
+**Архитектурный принцип:** `processors/` получает `PurchaseContext`, возвращает список
+`Transaction` с инвариантом `SUM(entries) = 0`. Не знает про HTTP, роутеры, сессии.
+Не коммитит. Атомарная запись — ответственность `execute_purchase()` в `purchases/service.py`.
 
 **Задачи:**
 - [ ] `app/modules/processors/base.py` — `ProcessorProtocol`, `PurchaseContext`, `Transaction`, `LedgerEntry`
 - [ ] `app/modules/processors/purchase.py` — `PurchaseProcessor`
 - [ ] `app/modules/processors/gift.py` — `GiftProcessor`
-- [ ] `app/modules/processors/registry.py` — `ProcessorRegistry`
+- [ ] `app/modules/processors/registry.py` — `ProcessorRegistry` (расширяется в Phase 7)
 - [ ] `app/modules/purchases/models.py` — `Purchase`
 - [ ] `app/modules/purchases/service.py` — `execute_purchase()` (валидация SUM=0, атомарная запись)
 - [ ] `POST /api/v1/products/{id}/purchase` — инстант-покупка
@@ -693,7 +700,8 @@ for transaction in transactions:
     assert sum(e.amount_cents for e in transaction.entries) == 0
 ```
 
-**Критерий готовности:** Инвестор покупает продукт. purchase_processor распределяет средства. gift_processor создаёт бонусные акции.
+**Критерий готовности:** Инвестор покупает продукт. PurchaseProcessor распределяет средства.
+GiftProcessor создаёт бонусные акции. ProcessorRegistry готов к регистрации новых процессоров.
 
 ---
 
@@ -779,14 +787,15 @@ for transaction in transactions:
 **Задачи:**
 - [ ] `app/modules/referrals/models.py` — `ReferralLink`, `ReferralAttribution`
 - [ ] `app/modules/referrals/service.py` — `create_link()`, `resolve_attribution()`, `get_agent_chain()`
-- [ ] `app/modules/processors/referral.py` — `ReferralProcessor`
+- [ ] `app/modules/processors/referral.py` — `ReferralProcessor` (расширение Distribution Engine из Sprint 6.1)
+- [ ] Зарегистрировать `ReferralProcessor` в `ProcessorRegistry`
 - [ ] STOP-механика: 4-е звено цепочки становится корневым
 - [ ] `POST /api/v1/referrals/links` — создать реферальную ссылку (только agent)
 - [ ] `GET /api/v1/referrals/links/me` — мои ссылки
 - [ ] `GET /api/v1/referrals/stats/me` — статистика по ссылкам
 - [ ] `tests/test_referrals.py` — 15 тестов (включая STOP-механику)
 
-**Критерий готовности:** Агент создаёт реферальные ссылки. При покупке по ссылке — комиссии L1/L2/L3 начисляются через referral_processor.
+**Критерий готовности:** Агент создаёт реферальные ссылки. При покупке по ссылке — комиссии L1/L2/L3 начисляются через ReferralProcessor.
 
 ---
 
@@ -796,7 +805,8 @@ for transaction in transactions:
 
 **Задачи:**
 - [ ] `app/modules/commissions/models.py` — `LeaderboardSnapshot`, `VolumePayout`
-- [ ] `app/modules/processors/volume.py` — `VolumeProcessor`
+- [ ] `app/modules/processors/volume.py` — `VolumeProcessor` (расширение Distribution Engine из Sprint 6.1)
+- [ ] Зарегистрировать `VolumeProcessor` в `ProcessorRegistry`
 - [ ] `leaderboard_worker` — обновление каждые 60 минут (asyncio.Task)
 - [ ] `GET /api/v1/agent/leaderboard` — топ агентов (только agent)
 - [ ] `GET /api/v1/agent/commissions/me` — история комиссий
@@ -824,7 +834,7 @@ for transaction in transactions:
 - [ ] Cron очистка: удалять `expires_at < now() AND is_read=true`
 - [ ] `tests/test_notifications.py` — 15 тестов
 
-**Типы уведомлений (из Legacy п.9):**
+**Типы уведомлений:**
 system, transaction, commission, news, installment
 
 **Критерий готовности:** Уведомления создаются и обрабатываются процессором.
@@ -960,4 +970,4 @@ system, transaction, commission, news, installment
 
 ---
 
-*Version 0.1 (draft) | 2026-03-28 | cbshome Backend TZ*
+*Version 0.2 | 2026-04-01 | cbshome Backend TZ*
