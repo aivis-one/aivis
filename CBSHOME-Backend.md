@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 0.2
+**Версия:** 0.3
 **Дата:** 1 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -99,7 +99,7 @@ backend/app/core/
 - [ ] `app/core/database.py` — AsyncEngine + AsyncSession + `get_db_session()` + `get_db_reader()` + `Base`
 - [ ] `app/core/redis.py` — async Redis client + lifecycle
 - [ ] `app/core/logging.py` — structlog (JSON в prod, Console в dev)
-- [ ] `app/core/middleware.py` — `TraceIdMiddleware` (X-Trace-ID в каждый запрос/ответ)
+- [ ] `app/core/middleware.py` — `TraceIdMiddleware` (X-Trace-ID + ip_address + user_agent + avatar_session_id в contextvars)
 - [ ] CORS middleware (origins из config)
 - [ ] `GET /` — версия API
 - [ ] `GET /health` — DB (SELECT 1) + Redis (PING), всегда 200
@@ -135,10 +135,12 @@ GET /ready   -> {"status": "ok", "db": "ok", "redis": "ok"}    (200 or 503)
 User:
     id: UUID
     role: enum        -- investor | agent | company | staff | platform
-    is_system: bool   -- default False (только для Platform)
+    -- Системный пользователь идентифицируется по role=platform,
+    -- отдельного поля is_system нет
     is_active: bool   -- default True
     onboarding_step: enum  -- registered | email_verified | profile_complete | kyc_done | role_selected
     kyc_status: enum  -- not_started | submitted | approved | rejected
+    -- kyc_status -- денормализованный кэш KYCApplication.status для hot path
     credentials: JSONB  -- {email: {...}, telegram: {...}, onboarding: {...}}
     profile: JSONB      -- {first_name, last_name, country, phone, ...}
     language: str       -- "en" (default)
@@ -147,7 +149,7 @@ User:
 
 - [ ] `app/modules/ledgers/models.py` — `ActiveLedger`, `PassiveLedger`:
 ```python
-LedgerEntry:  -- базовые поля для обоих леджеров
+LedgerEntry:  -- базовые поля для обоих леджеров; иммутабельно, нет updated_at
     id: UUID
     user_id: UUID     -- FK users.id
     amount_cents: int -- отрицательные для списаний
@@ -155,7 +157,7 @@ LedgerEntry:  -- базовые поля для обоих леджеров
     frozen_until: datetime | None
     origin_payment_id: UUID | None  -- FK payments.id (circular, deferrable)
     reason: str       -- из LedgerReason
-    created_at: datetime  -- иммутабельно, нет updated_at
+    created_at: datetime
 ```
 
 - [ ] `app/modules/staff/models.py` — `StaffProfile`, `AvatarSession`:
@@ -179,7 +181,7 @@ AvatarSession:
 
 - [ ] `app/core/audit.py` — `AuditLog`:
 ```python
-AuditLog:  -- иммутабельно, наследует Base напрямую
+AuditLog:  -- иммутабельно, наследует Base напрямую, нет updated_at
     id: UUID
     created_at: datetime  -- server_default
     event: str            -- indexed
@@ -199,7 +201,7 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
 - [ ] `migrations/env.py` — импорты всех моделей для autogenerate
 
 **Seed системного пользователя Platform:**
-- [ ] `scripts/seed_platform.py` — создание Platform user (`is_system=True`, `role=platform`)
+- [ ] `scripts/seed_platform.py` — создание Platform user (`role=platform`)
 - [ ] Запускается автоматически при первом деплое
 
 **Критерий готовности:** `alembic upgrade head` применяется без ошибок. Platform user создан в БД.
@@ -260,7 +262,7 @@ cbshome version             -- git info + versions
 
 **Задачи:**
 - [ ] `app/core/logging.py` — фильтрация по LOG_LEVEL (`make_filtering_bound_logger`), идемпотентность `setup_logging()`
-- [ ] `TraceIdMiddleware` — pure ASGI, X-Trace-ID + ip_address + user_agent в contextvars
+- [ ] `TraceIdMiddleware` — pure ASGI; кладёт в contextvars: `trace_id`, `ip_address`, `user_agent`, `avatar_session_id` (если присутствует в сессии); structlog подхватывает автоматически — каждое лог-сообщение в avatar режиме помечается без изменений в бизнес-логике
 - [ ] Trace_id guard: входящий X-Trace-ID > 36 символов -> генерируем новый uuid4
 - [ ] `app/core/audit.py` — `record_audit()` читает trace_id/ip/user_agent из contextvars, не коммитит (P-01)
 - [ ] `tests/test_audit.py` — 4 теста
@@ -290,7 +292,7 @@ cbshome version             -- git info + versions
 | `staff.avatar_started` | Phase 3 |
 | `staff.avatar_ended` | Phase 3 |
 
-**Критерий готовности:** LOG_LEVEL=WARNING фильтрует debug/info. trace_id в каждом лог-сообщении. Аудит пишется в БД.
+**Критерий готовности:** LOG_LEVEL=WARNING фильтрует debug/info. trace_id и avatar_session_id (при наличии) в каждом лог-сообщении. Аудит пишется в БД.
 
 ---
 
@@ -315,6 +317,7 @@ cbshome version             -- git info + versions
 - [ ] TTL: `SESSION_TTL_DAYS` из config
 - [ ] Лимит: `MAX_CONCURRENT_SESSIONS` (5) — при превышении закрываем самую старую
 - [ ] `app/modules/auth/dependencies.py` — `get_current_user`, `get_optional_user`, `get_current_staff`
+- [ ] Блокировка логина для `role=platform` в `get_current_user`
 - [ ] `tests/test_auth_email.py` — 12 тестов
 
 **Endpoints:**
@@ -342,7 +345,7 @@ POST /api/v1/auth/logout-all      -> 204
 }
 ```
 
-**Критерий готовности:** Юзер может зарегистрироваться и войти через email.
+**Критерий готовности:** Юзер может зарегистрироваться и войти через email. `role=platform` логин заблокирован.
 
 ---
 
@@ -410,12 +413,13 @@ avatar_mode:
 **Задачи:**
 - [ ] `app/modules/kyc/models.py` — `KYCApplication` (stub)
 - [ ] `app/modules/kyc/service.py` — `submit_kyc()`, `get_kyc_status()`
+- [ ] При изменении статуса KYCApplication — синхронизировать `User.kyc_status` (денормализованный кэш)
 - [ ] `POST /api/v1/kyc/submit` — создаёт KYCApplication, статус -> submitted
 - [ ] `GET /api/v1/kyc/status` — текущий статус
 - [ ] `POST /api/v1/kyc/webhook` — заглушка (SumSub webhook handler, всегда approved в dev)
 - [ ] `tests/test_kyc.py` — 5 тестов
 
-**Критерий готовности:** Юзер может подать KYC заявку, статус обновляется через webhook-заглушку.
+**Критерий готовности:** Юзер может подать KYC заявку, статус обновляется через webhook-заглушку. `User.kyc_status` синхронизирован.
 
 ---
 
@@ -498,7 +502,7 @@ staff_permissions:
 - [ ] `app/modules/staff/avatar_service.py` — `start_avatar()`, `end_avatar()`
 - [ ] `POST /api/v1/staff/avatar/start` — создание AvatarSession, дочерняя JWT/сессия
 - [ ] `POST /api/v1/staff/avatar/end` — завершение AvatarSession
-- [ ] JWT/сессия содержит `avatar_session_id`
+- [ ] JWT/сессия содержит `avatar_session_id`; `start_avatar()` пишет `avatar_session_id` в Redis-сессию так, чтобы `TraceIdMiddleware` читал его в contextvars на каждом запросе
 - [ ] Все мутирующие операции в avatar режиме: `performed_by=staff_id`, `on_behalf_of=target_user_id` в audit_log
 - [ ] `require_not_avatar` применяется к запрещённым операциям
 - [ ] `tests/test_avatar.py` — 10 тестов
@@ -510,7 +514,7 @@ POST /api/v1/staff/avatar/end     -> 204
 GET  /api/v1/staff/avatar/active  -> AvatarSession | null
 ```
 
-**Критерий готовности:** Staff входит под юзером, все операции логируются. Запрещённые операции блокируются.
+**Критерий готовности:** Staff входит под юзером. `avatar_session_id` присутствует в каждом structlog-сообщении в режиме аватара. Все операции логируются в audit_log. Запрещённые операции блокируются.
 
 ---
 
@@ -520,7 +524,7 @@ GET  /api/v1/staff/avatar/active  -> AvatarSession | null
 
 **Задачи:**
 - [ ] `GET /api/v1/staff/dashboard/stats` — базовая статистика платформы
-- [ ] `GET /api/v1/staff/users` — список юзеров (пагинация, фильтры)
+- [ ] `GET /api/v1/staff/users` — список юзеров (пагинация, фильтры; `role=platform` исключён)
 - [ ] `GET /api/v1/staff/users/{id}` — детали юзера
 - [ ] `PATCH /api/v1/staff/users/{id}/block` — блокировка (is_active=false + завершить все сессии)
 - [ ] `GET /api/v1/staff/kyc/queue` — очередь KYC заявок
@@ -528,7 +532,7 @@ GET  /api/v1/staff/avatar/active  -> AvatarSession | null
 - [ ] `POST /api/v1/staff/kyc/{id}/reject` — отклонить KYC
 - [ ] `tests/test_staff_admin.py` — 12 тестов
 
-**Критерий готовности:** Staff видит и управляет пользователями.
+**Критерий готовности:** Staff видит и управляет пользователями. Platform user не появляется в списках.
 
 ---
 
@@ -558,7 +562,11 @@ CompanyProfile:
     id, user_id  -- FK users.id (Company как User с role=company)
     name, description
     price_per_unit_cents: int
-    distribution_config: JSONB  -- {company_percent, l1_percent, l2_percent, l3_percent}
+    distribution_config: JSONB
+    -- Структура: {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
+    -- agent_levels: произвольное число уровней, может быть [] (нет агентов)
+    -- Остаток до 1.0 автоматически идёт Platform, не хранится
+    -- Инвариант: company_pct + SUM(agent_levels) <= 1.0
     status: enum  -- active | hidden | archived
     created_at, updated_at
 
@@ -569,7 +577,7 @@ CompanyPriceHistory:
     changed_by: UUID  -- staff_id
 ```
 
-**Критерий готовности:** Компании создаются, цена обновляется каскадно.
+**Критерий готовности:** Компании создаются, цена обновляется каскадно. `distribution_config` валидируется при сохранении.
 
 ---
 
@@ -579,7 +587,8 @@ CompanyPriceHistory:
 
 **Задачи:**
 - [ ] `app/modules/products/models.py` — `Product`, `ProductInstallment`
-- [ ] `app/modules/products/service.py` — CRUD + `PurchaseConfigValidator`
+- [ ] `app/modules/products/service.py` — CRUD + `PurchaseConfigValidator`:
+  - Валидация `distribution_config`: `company_pct + SUM(agent_levels) <= 1.0`
 - [ ] Staff endpoints:
   - `POST /api/v1/staff/products` — создать продукт
   - `PATCH /api/v1/staff/products/{id}` — редактировать
@@ -599,7 +608,7 @@ SUM(units_schedule_percent) == 100
 len(schedule_cents) == len(units_schedule_percent) == duration_months
 ```
 
-**Критерий готовности:** Витрина работает. Продукты создаются с вариантами рассрочки.
+**Критерий готовности:** Витрина работает. Продукты создаются с вариантами рассрочки. `distribution_config` валидируется.
 
 ---
 
@@ -831,11 +840,47 @@ GiftProcessor создаёт бонусные акции. ProcessorRegistry го
 - [ ] `app/modules/notifications/processor.py` — трёхстадийный pipeline (resolve -> deliver -> rollup)
 - [ ] `app/modules/notifications/formatters.py` — `ChannelFormatter` Protocol + `StubFormatter`
 - [ ] Background worker в lifespan
-- [ ] Cron очистка: удалять `expires_at < now() AND is_read=true`
+- [ ] Cron очистка: удалять `expiry_at < now()` у доставленных
 - [ ] `tests/test_notifications.py` — 15 тестов
 
-**Типы уведомлений:**
-system, transaction, commission, news, installment
+**Модели:**
+```python
+Notification:  -- channel-agnostic, одна запись на событие
+    id: UUID
+    type: str          -- indexed; system | transaction | commission | news | installment
+    title: str
+    body: str
+    target_type: str   -- user | role | all
+    target_value: str  -- user:<uuid> | role:agent | *
+    action_data: JSONB | None  -- {"action": "open_purchase", "params": {"id": "uuid"}}
+    priority: int      -- default 5 (1=highest)
+    scheduled_at: datetime
+    expiry_at: datetime | None
+    status: enum       -- pending | processing | sent | failed | expired
+    created_at: datetime
+
+NotificationDelivery:  -- одна запись на получателя на канал
+    id: UUID
+    notification_id: UUID  -- FK notifications.id CASCADE
+    user_id: UUID          -- FK users.id CASCADE; конкретный получатель
+    channel: enum          -- telegram | email | push | in_app
+    channel_options: JSONB | None
+    -- telegram:  {parse_mode, disable_preview, silent}
+    -- email:     {subject_override}
+    -- push:      {icon, ttl}
+    status: enum       -- pending | sent | failed
+    sent_at: datetime | None
+    attempts: int      -- default 0
+    error_message: str | None
+    created_at: datetime
+```
+
+**Архитектура pipeline:**
+```
+resolve:  Notification -> N NotificationDelivery (по target_type/target_value)
+deliver:  NotificationDelivery -> ChannelFormatter -> внешний сервис
+rollup:   NotificationDelivery statuses -> Notification.status
+```
 
 **Критерий готовности:** Уведомления создаются и обрабатываются процессором.
 
@@ -850,7 +895,7 @@ system, transaction, commission, news, installment
 - [ ] `app/modules/notifications/template_engine.py` — SafeDict, YAML loading, language fallback
 - [ ] `app/modules/notifications/formatters.py` — `TelegramFormatter` (aiogram, send-only), `EmailFormatter` (EMAP + Mailgun fallback)
 - [ ] Lazy init: real token -> real formatter, fake -> StubFormatter
-- [ ] Permanent failure handling (bot blocked -> immediate failed)
+- [ ] Permanent failure handling (bot blocked -> immediate failed, attempts не растут)
 - [ ] `POST /api/v1/staff/notifications/templates/reload` — Staff reload templates
 - [ ] `tests/test_notification_delivery.py` — 12 тестов
 
@@ -863,13 +908,13 @@ system, transaction, commission, news, installment
 **Цель:** API для управления уведомлениями на фронте.
 
 **Задачи:**
-- [ ] `GET /api/v1/notifications` — список (пагинация 20, фильтры по типу)
-- [ ] `GET /api/v1/notifications/unread-count` — badge counter
-- [ ] `POST /api/v1/notifications/{id}/read` — отметить прочитанным
-- [ ] `POST /api/v1/notifications/read-all` — отметить все
+- [ ] `GET /api/v1/notifications` — список доставок текущего юзера (пагинация 20, фильтры по type/channel)
+- [ ] `GET /api/v1/notifications/unread-count` — badge counter (deliveries где status=sent AND не прочитано)
+- [ ] `POST /api/v1/notifications/{delivery_id}/read` — отметить delivery прочитанной
+- [ ] `POST /api/v1/notifications/read-all` — отметить все delivery текущего юзера прочитанными
 - [ ] `tests/test_notification_endpoints.py` — 8 тестов
 
-**Критерий готовности:** Фронт может читать и управлять уведомлениями.
+**Критерий готовности:** Фронт работает с `NotificationDelivery`, а не с `Notification` напрямую.
 
 ---
 
@@ -970,4 +1015,4 @@ system, transaction, commission, news, installment
 
 ---
 
-*Version 0.2 | 2026-04-01 | cbshome Backend TZ*
+*Version 0.3 | 2026-04-01 | cbshome Backend TZ*
