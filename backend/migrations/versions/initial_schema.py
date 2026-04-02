@@ -57,7 +57,7 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column(
             "role",
-            sa.Enum("investor", "agent", "company", "staff", "platform", name="user_role"),
+            sa.Enum("investor", "agent", "company", "staff", "platform", name="user_role", create_type=False),
             nullable=False,
         ),
         sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
@@ -67,13 +67,14 @@ def upgrade() -> None:
                 "registered", "email_verified", "profile_complete",
                 "kyc_done", "role_selected",
                 name="onboarding_step",
+                create_type=False,
             ),
             server_default="registered",
             nullable=False,
         ),
         sa.Column(
             "kyc_status",
-            sa.Enum("not_started", "submitted", "approved", "rejected", name="kyc_status"),
+            sa.Enum("not_started", "submitted", "approved", "rejected", name="kyc_status", create_type=False),
             server_default="not_started",
             nullable=False,
         ),
@@ -101,7 +102,7 @@ def upgrade() -> None:
         sa.Column("amount_cents", sa.Integer(), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("frozen", "confirmed", "reversed", name="ledger_status"),
+            sa.Enum("frozen", "confirmed", "reversed", name="ledger_status", create_type=False),
             nullable=False,
         ),
         sa.Column("frozen_until", sa.DateTime(timezone=True), nullable=True),
@@ -134,7 +135,7 @@ def upgrade() -> None:
         sa.Column("amount_cents", sa.Integer(), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("frozen", "confirmed", "reversed", name="ledger_status"),
+            sa.Enum("frozen", "confirmed", "reversed", name="ledger_status", create_type=False),
             nullable=False,
         ),
         sa.Column("frozen_until", sa.DateTime(timezone=True), nullable=True),
@@ -188,7 +189,7 @@ def upgrade() -> None:
         sa.Column("target_user_id", sa.UUID(), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("active", "ended", name="avatar_session_status"),
+            sa.Enum("active", "ended", name="avatar_session_status", create_type=False),
             server_default="active",
             nullable=False,
         ),
