@@ -7,6 +7,9 @@
 #   GET /health  -> DB + Redis connectivity (always 200)
 #   GET /ready   -> Readiness probe (503 if degraded)
 #
+# ROUTERS:
+#   auth_router  -> /api/v1/auth/* (Sprint 1.1+)
+#
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis
 #   shutdown: close_redis   -> dispose_engine
@@ -31,6 +34,7 @@ from app.core.exceptions import CBSError
 from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
+from app.modules.auth.router import router as auth_router
 
 logger = structlog.get_logger()
 
@@ -86,6 +90,13 @@ app.add_middleware(
 )
 
 app.add_middleware(TraceIdMiddleware)
+
+
+# ---------------------------------------------------------------------------
+# Routers
+# ---------------------------------------------------------------------------
+
+app.include_router(auth_router)
 
 
 # ---------------------------------------------------------------------------
