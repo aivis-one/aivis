@@ -15,7 +15,7 @@
 # =============================================================================
 
 from httpx import AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
@@ -73,8 +73,6 @@ async def cleanup_test_users(
     Uses ORM delete (no raw SQL).
     """
     # Find user IDs by email prefix in credentials JSONB.
-    from sqlalchemy import select
-
     stmt = select(User.id).where(
         User.credentials["email"]["email"].as_string().startswith(email_prefix)
     )
@@ -84,9 +82,11 @@ async def cleanup_test_users(
     if not user_ids:
         return
 
-    # Delete audit logs referencing these users.
+    # Delete audit logs referencing these users (actor_id or target_id).
     await session.execute(
-        delete(AuditLog).where(AuditLog.actor_id.in_(user_ids))
+        delete(AuditLog).where(
+            AuditLog.actor_id.in_(user_ids) | AuditLog.target_id.in_(user_ids)
+        )
     )
 
     # Delete users.

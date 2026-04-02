@@ -25,6 +25,12 @@
 # ATOMIC OPERATIONS:
 #   Session creation uses MULTI/EXEC pipeline (SET + ZADD + GC + EXPIRE).
 #   Logout-all uses Lua script (ZRANGE + DEL in one atomic step).
+#
+# KNOWN LIMITATION:
+#   Redis session is created before DB commit in the router. If commit
+#   fails, an orphan session key remains in Redis until TTL expires
+#   (30 days). The next request with that token will get 401 (user not
+#   found in DB). Acceptable for MVP -- same pattern as VELO.
 # =============================================================================
 
 import json
@@ -91,7 +97,8 @@ async def register_email(
     Creates a User with role=investor, stores hashed password and
     email verification token in credentials JSONB.
 
-    Does NOT commit -- caller (router via get_db_session) manages transaction.
+    Does NOT commit or rollback -- caller (get_db_session) manages
+    the transaction lifecycle (P-01).
 
     Raises:
         ConflictError: If email is already registered.
@@ -99,7 +106,6 @@ async def register_email(
     email_lower = email.strip().lower()
     password_hashed = hash_password(password)
     email_token = secrets.token_urlsafe(32)
-    now = datetime.now(UTC)
 
     user = User(
         role=UserRole.INVESTOR,
@@ -112,7 +118,7 @@ async def register_email(
             },
             "onboarding": {
                 "email_token": email_token,
-                "email_token_expires_at": None,  # set when email sending is implemented (Phase 8)
+                "email_token_expires_at": None,
                 "email_verification_attempts": 0,
             },
         },
@@ -120,10 +126,11 @@ async def register_email(
 
     session.add(user)
 
+    # IntegrityError from ix_users_email unique index means duplicate.
+    # No rollback here -- get_db_session handles rollback on exception (P-01).
     try:
         await session.flush()
     except IntegrityError:
-        await session.rollback()
         raise ConflictError("Email is already registered")
 
     await record_audit(
@@ -155,6 +162,9 @@ async def login_email(
     Lookup uses the functional JSONB index ix_users_email.
     Does NOT create a session -- caller handles that.
 
+    Timing-safe: if email is not found, a dummy argon2 hash is computed
+    to prevent email enumeration via response time side-channel.
+
     Raises:
         UnauthorizedError: If email not found or password mismatch.
         ForbiddenError: If user account is deactivated.
@@ -169,6 +179,10 @@ async def login_email(
     user = result.scalar_one_or_none()
 
     if user is None:
+        # Constant-time: prevent email enumeration via timing side-channel.
+        # Without this, "email not found" returns instantly (~0ms) while
+        # "wrong password" takes ~100-300ms (argon2 verify).
+        _ph.hash("dummy-password-timing-safe")
         raise UnauthorizedError("Invalid email or password")
 
     # Verify password.
@@ -348,9 +362,6 @@ async def delete_all_sessions(user_id: UUID) -> int:
     index_key = f"{_USER_SESSIONS_PREFIX}{user_id}"
     session_prefix = _SESSION_PREFIX
 
-    # Lua script: atomically read all tokens and delete index + sessions.
-    # KEYS[1] = index_key (the ZSET)
-    # ARGV[1] = session key prefix
     lua_script = """
 local index_key = KEYS[1]
 local session_prefix = ARGV[1]

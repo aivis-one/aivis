@@ -17,7 +17,8 @@
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
-#   automatically after yield. Routers call flush() to get IDs.
+#   automatically after yield. Routers call flush() only when needed
+#   to obtain generated IDs before the response.
 # =============================================================================
 
 import structlog
@@ -39,6 +40,7 @@ from app.modules.auth.service import (
     register_email,
 )
 from app.modules.users.models import User
+from app.modules.users.schemas import UserResponse
 
 logger = structlog.get_logger()
 
@@ -58,17 +60,15 @@ async def auth_email_register(
 
     Flow:
       1. Create User (role=investor, credentials with hashed password)
-      2. Flush to get user.id (commit deferred to get_db_session)
+      2. Flush happens inside register_email() to catch IntegrityError
       3. Create Redis session
       4. Return AuthResponse
     """
     user = await register_email(body.email, body.password, session)
-    await session.flush()
-
     token = await create_session(user, auth_method="email")
 
     return AuthResponse(
-        user=user,  # type: ignore[arg-type]
+        user=UserResponse.model_validate(user),
         session_token=token,
     )
 
@@ -85,18 +85,16 @@ async def auth_email_login(
 
     Flow:
       1. Lookup user by email (JSONB functional index)
-      2. Verify argon2 hash
+      2. Verify argon2 hash (timing-safe)
       3. Guard: platform user, deactivated account
       4. Create Redis session (enforces MAX_CONCURRENT_SESSIONS)
       5. Return AuthResponse
     """
     user = await login_email(body.email, body.password, session)
-    await session.flush()
-
     token = await create_session(user, auth_method="email")
 
     return AuthResponse(
-        user=user,  # type: ignore[arg-type]
+        user=UserResponse.model_validate(user),
         session_token=token,
     )
 

@@ -12,13 +12,20 @@
 #   hashes and auth tokens. Profile is exposed as-is (JSONB dict).
 #
 # UserUpdate is defined here for Sprint 1.3 (PATCH /users/me).
+#
+# NULL HANDLING IN UserUpdate:
+#   All fields are Optional with default=None. "Not sent" vs "explicit null"
+#   is distinguished by exclude_unset in the service layer:
+#     - Field not in request body -> not in model_dump(exclude_unset=True)
+#     - Field set to null in JSON -> present with value None
+#   Service layer rejects explicit null for NOT NULL DB columns (language).
 # =============================================================================
 
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class UserResponse(BaseModel):
@@ -48,20 +55,10 @@ class UserUpdate(BaseModel):
     (exclude_unset in service layer).
 
     profile: merged with existing JSONB via set_jsonb().
-    language: direct assignment, NOT NULL in DB.
+    language: direct assignment. NOT NULL in DB -- explicit null
+    is rejected in service layer, not here (avoids conflict with
+    Pydantic default=None for "not sent" semantics).
     """
 
     profile: dict[str, Any] | None = Field(default=None)
     language: str | None = Field(default=None, min_length=1, max_length=10)
-
-    @field_validator("language", mode="before")
-    @classmethod
-    def reject_null_language(cls, v: str | None) -> str | None:
-        """Reject explicit null for NOT NULL DB column.
-
-        language has server_default='en' but cannot be set to NULL.
-        Sending null would cause IntegrityError.
-        """
-        if v is None:
-            raise ValueError("language cannot be set to null")
-        return v

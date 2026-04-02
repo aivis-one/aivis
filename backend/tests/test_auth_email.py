@@ -6,18 +6,19 @@
 #   1-4:   Registration (success, duplicate, weak password, invalid email)
 #   5-9:   Login (success, wrong password, non-existent, blocked, platform)
 #   10-12: Logout, logout invalid token, logout-all
+#   13:    Session limit eviction (MAX_CONCURRENT_SESSIONS)
 #
 # Email prefix: "s11_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
-from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.modules.users.models import User, UserRole
 from tests.helpers import auth_headers, cleanup_test_users, login_user, register_user
 
@@ -195,13 +196,11 @@ async def test_logout_success(client: AsyncClient) -> None:
     assert resp.status_code == 204
 
     # Token should be invalid now.
-    resp = await client.get(
-        "/api/v1/users/me",
+    resp = await client.post(
+        "/api/v1/auth/logout",
         headers=auth_headers(token),
     )
-    # 401 or 404 (users/me not registered yet in Sprint 1.1,
-    # but auth dependency will reject with 401).
-    assert resp.status_code in (401, 404)
+    assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -243,3 +242,37 @@ async def test_logout_all(client: AsyncClient) -> None:
     )
     assert resp1.status_code == 401
     assert resp2.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Session limit
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_session_limit_evicts_oldest(client: AsyncClient) -> None:
+    """Creating more sessions than MAX_CONCURRENT_SESSIONS evicts oldest.
+
+    Register creates session #1. Then login MAX times to fill up + overflow.
+    The first token (from register) should be evicted.
+    """
+    email = f"{EMAIL_PREFIX}limit@example.com"
+    password = "testpass123"
+    max_sessions = settings.max_concurrent_sessions  # default 5
+
+    # Session #1 from register.
+    data = await register_user(client, email=email, password=password)
+    first_token = data["session_token"]
+
+    # Sessions #2 .. #(max + 1) from login.
+    # After this loop, we have max+1 sessions created total,
+    # so the oldest (first_token) should have been evicted.
+    for _ in range(max_sessions):
+        await login_user(client, email=email, password=password)
+
+    # First token should be evicted -- request with it fails.
+    resp = await client.post(
+        "/api/v1/auth/logout",
+        headers=auth_headers(first_token),
+    )
+    assert resp.status_code == 401

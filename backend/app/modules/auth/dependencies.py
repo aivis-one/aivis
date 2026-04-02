@@ -70,7 +70,7 @@ async def _load_user_from_request(
     """Shared auth logic: token -> Redis -> DB.
 
     Raises UnauthorizedError or ForbiddenError on failure.
-    Used by both get_current_user and get_current_user_write.
+    Used by get_current_user, get_current_user_write, and get_optional_user.
     """
     token = _extract_token(request)
     if not token:
@@ -146,29 +146,9 @@ async def get_optional_user(
 
     Usage: user: User | None = Depends(get_optional_user)
     """
-    token = _extract_token(request)
-    if not token:
+    if not _extract_token(request):
         return None
-
-    session_data = await get_session(token)
-    if not session_data:
-        raise UnauthorizedError("Invalid or expired session")
-
-    user_id = _parse_user_id(session_data)
-    stmt = select(User).where(User.id == user_id)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if not user:
-        raise UnauthorizedError("Invalid or expired session")
-
-    if user.role == UserRole.PLATFORM:
-        raise UnauthorizedError("Invalid or expired session")
-
-    if not user.is_active:
-        raise ForbiddenError("Account is deactivated")
-
-    return user
+    return await _load_user_from_request(request, session)
 
 
 async def get_current_staff(
