@@ -17,37 +17,41 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def create_enum_if_not_exists(name: str, values: list) -> None:
+    """Create a PostgreSQL enum type only if it does not already exist."""
+    values_sql = ", ".join(f"'{v}'" for v in values)
+    op.execute(f"""
+        DO $$ BEGIN
+            CREATE TYPE {name} AS ENUM ({values_sql});
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
+    """)
+
+
 def upgrade() -> None:
     """Create all Sprint 0.3 tables in a single transaction."""
 
-    # -- Enums --
-    user_role = postgresql.ENUM(
-        "investor", "agent", "company", "staff", "platform",
-        name="user_role",
+    # -- Enums (idempotent via DO blocks) --
+    create_enum_if_not_exists(
+        "user_role",
+        ["investor", "agent", "company", "staff", "platform"],
     )
-    onboarding_step = postgresql.ENUM(
-        "registered", "email_verified", "profile_complete",
-        "kyc_done", "role_selected",
-        name="onboarding_step",
+    create_enum_if_not_exists(
+        "onboarding_step",
+        ["registered", "email_verified", "profile_complete", "kyc_done", "role_selected"],
     )
-    kyc_status = postgresql.ENUM(
-        "not_started", "submitted", "approved", "rejected",
-        name="kyc_status",
+    create_enum_if_not_exists(
+        "kyc_status",
+        ["not_started", "submitted", "approved", "rejected"],
     )
-    ledger_status = postgresql.ENUM(
-        "frozen", "confirmed", "reversed",
-        name="ledger_status",
+    create_enum_if_not_exists(
+        "ledger_status",
+        ["frozen", "confirmed", "reversed"],
     )
-    avatar_session_status = postgresql.ENUM(
-        "active", "ended",
-        name="avatar_session_status",
+    create_enum_if_not_exists(
+        "avatar_session_status",
+        ["active", "ended"],
     )
-
-    user_role.create(op.get_bind(), checkfirst=True)
-    onboarding_step.create(op.get_bind(), checkfirst=True)
-    kyc_status.create(op.get_bind(), checkfirst=True)
-    ledger_status.create(op.get_bind(), checkfirst=True)
-    avatar_session_status.create(op.get_bind(), checkfirst=True)
 
     # -------------------------------------------------------------------------
     # users
@@ -55,41 +59,27 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column(
-            "role",
-            sa.Enum("investor", "agent", "company", "staff", "platform", name="user_role", create_type=False),
-            nullable=False,
-        ),
+        sa.Column("role", sa.String(20), nullable=False),
         sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
-        sa.Column(
-            "onboarding_step",
-            sa.Enum(
-                "registered", "email_verified", "profile_complete",
-                "kyc_done", "role_selected",
-                name="onboarding_step",
-                create_type=False,
-            ),
-            server_default="registered",
-            nullable=False,
-        ),
-        sa.Column(
-            "kyc_status",
-            sa.Enum("not_started", "submitted", "approved", "rejected", name="kyc_status", create_type=False),
-            server_default="not_started",
-            nullable=False,
-        ),
+        sa.Column("onboarding_step", sa.String(30), server_default="registered", nullable=False),
+        sa.Column("kyc_status", sa.String(20), server_default="not_started", nullable=False),
         sa.Column("credentials", postgresql.JSONB(), server_default="{}", nullable=False),
         sa.Column("profile", postgresql.JSONB(), server_default="{}", nullable=False),
         sa.Column("language", sa.String(10), server_default="en", nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
+    # Apply enum constraints via CHECK after table creation -- avoids type conflicts.
+    op.execute("""
+        ALTER TABLE users
+            ADD CONSTRAINT ck_users_role
+                CHECK (role IN ('investor', 'agent', 'company', 'staff', 'platform')),
+            ADD CONSTRAINT ck_users_onboarding_step
+                CHECK (onboarding_step IN ('registered', 'email_verified', 'profile_complete', 'kyc_done', 'role_selected')),
+            ADD CONSTRAINT ck_users_kyc_status
+                CHECK (kyc_status IN ('not_started', 'submitted', 'approved', 'rejected'))
+    """)
     op.create_index("ix_users_role", "users", ["role"])
 
     # -------------------------------------------------------------------------
@@ -100,30 +90,22 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("user_id", sa.UUID(), nullable=False),
         sa.Column("amount_cents", sa.Integer(), nullable=False),
-        sa.Column(
-            "status",
-            sa.Enum("frozen", "confirmed", "reversed", name="ledger_status", create_type=False),
-            nullable=False,
-        ),
+        sa.Column("status", sa.String(20), nullable=False),
         sa.Column("frozen_until", sa.DateTime(timezone=True), nullable=True),
         sa.Column("origin_payment_id", sa.UUID(), nullable=True),
         sa.Column("reason", sa.String(500), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.execute("""
+        ALTER TABLE active_ledger
+            ADD CONSTRAINT ck_active_ledger_status
+                CHECK (status IN ('frozen', 'confirmed', 'reversed'))
+    """)
     op.create_index("ix_active_ledger_user_id", "active_ledger", ["user_id"])
     op.create_index("ix_active_ledger_status", "active_ledger", ["status"])
-    op.create_index(
-        "ix_active_ledger_user_status",
-        "active_ledger",
-        ["user_id", "status"],
-    )
+    op.create_index("ix_active_ledger_user_status", "active_ledger", ["user_id", "status"])
 
     # -------------------------------------------------------------------------
     # passive_ledger
@@ -133,30 +115,22 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("user_id", sa.UUID(), nullable=False),
         sa.Column("amount_cents", sa.Integer(), nullable=False),
-        sa.Column(
-            "status",
-            sa.Enum("frozen", "confirmed", "reversed", name="ledger_status", create_type=False),
-            nullable=False,
-        ),
+        sa.Column("status", sa.String(20), nullable=False),
         sa.Column("frozen_until", sa.DateTime(timezone=True), nullable=True),
         sa.Column("origin_payment_id", sa.UUID(), nullable=True),
         sa.Column("reason", sa.String(500), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.execute("""
+        ALTER TABLE passive_ledger
+            ADD CONSTRAINT ck_passive_ledger_status
+                CHECK (status IN ('frozen', 'confirmed', 'reversed'))
+    """)
     op.create_index("ix_passive_ledger_user_id", "passive_ledger", ["user_id"])
     op.create_index("ix_passive_ledger_status", "passive_ledger", ["status"])
-    op.create_index(
-        "ix_passive_ledger_user_status",
-        "passive_ledger",
-        ["user_id", "status"],
-    )
+    op.create_index("ix_passive_ledger_user_status", "passive_ledger", ["user_id", "status"])
 
     # -------------------------------------------------------------------------
     # staff_profiles
@@ -167,12 +141,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.UUID(), nullable=False),
         sa.Column("permissions", postgresql.JSONB(), server_default="{}", nullable=False),
         sa.Column("is_active", sa.Boolean(), server_default="true", nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", name="uq_staff_profiles_user_id"),
@@ -187,24 +156,19 @@ def upgrade() -> None:
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("staff_id", sa.UUID(), nullable=False),
         sa.Column("target_user_id", sa.UUID(), nullable=False),
-        sa.Column(
-            "status",
-            sa.Enum("active", "ended", name="avatar_session_status", create_type=False),
-            server_default="active",
-            nullable=False,
-        ),
+        sa.Column("status", sa.String(10), server_default="active", nullable=False),
         sa.Column("ip_address", sa.String(45), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["staff_id"], ["users.id"], ondelete="RESTRICT"),
         sa.ForeignKeyConstraint(["target_user_id"], ["users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.execute("""
+        ALTER TABLE avatar_sessions
+            ADD CONSTRAINT ck_avatar_sessions_status
+                CHECK (status IN ('active', 'ended'))
+    """)
     op.create_index("ix_avatar_sessions_staff_id", "avatar_sessions", ["staff_id"])
     op.create_index("ix_avatar_sessions_target_user_id", "avatar_sessions", ["target_user_id"])
 
@@ -214,12 +178,7 @@ def upgrade() -> None:
     op.create_table(
         "audit_log",
         sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("event", sa.String(100), nullable=False),
         sa.Column("actor_id", sa.UUID(), nullable=True),
         sa.Column("actor_type", sa.String(20), nullable=False),
