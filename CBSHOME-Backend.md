@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 0.3
+**Версия:** 0.7
 **Дата:** 1 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -542,25 +542,34 @@ GET  /api/v1/staff/avatar/active  -> AvatarSession | null
 
 ### Sprint 4.1: Companies
 
-**Цель:** Профили компаний.
+**Цель:** Профили компаний с медиа-материалами и дорожной картой.
 
 **Задачи:**
-- [ ] `app/modules/companies/models.py` — `CompanyProfile`, `CompanyPriceHistory`
+- [ ] `app/modules/companies/models.py` — `CompanyProfile`, `CompanyPriceHistory`, `CompanyRoadmapItem`
 - [ ] `app/modules/companies/service.py` — CRUD + `update_price()` (каскадное обновление Product)
-- [ ] Staff endpoints:
+- [ ] Staff endpoints (компания):
   - `POST /api/v1/staff/companies` — создать компанию
-  - `PATCH /api/v1/staff/companies/{id}` — редактировать
+  - `PATCH /api/v1/staff/companies/{id}` — редактировать профиль и медиа
   - `PATCH /api/v1/staff/companies/{id}/price` — изменить цену акции (каскад + история)
+- [ ] Staff endpoints (дорожная карта):
+  - `POST /api/v1/staff/companies/{id}/roadmap` — добавить этап
+  - `PATCH /api/v1/staff/companies/{id}/roadmap/{item_id}` — редактировать этап
+  - `DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}` — удалить этап
+  - `PATCH /api/v1/staff/companies/{id}/roadmap/reorder` — изменить порядок (список id)
 - [ ] Public endpoints:
   - `GET /api/v1/companies` — список активных компаний
-  - `GET /api/v1/companies/{id}` — детали компании
-- [ ] `tests/test_companies.py` — 8 тестов
+  - `GET /api/v1/companies/{id}` — детали компании с дорожной картой
+- [ ] `tests/test_companies.py` — 10 тестов
 
-**Модель:**
+**Модели:**
 ```python
 CompanyProfile:
     id, user_id  -- FK users.id (Company как User с role=company)
     name, description
+    logo_url: str | None
+    cover_url: str | None
+    promo_video_url: str | None
+    presentation_url: str | None
     price_per_unit_cents: int
     distribution_config: JSONB
     -- Структура: {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
@@ -575,40 +584,84 @@ CompanyPriceHistory:
     price_per_unit_cents: int
     changed_at: datetime
     changed_by: UUID  -- staff_id
+
+CompanyRoadmapItem:
+    id, company_id  -- FK company_profiles.id
+    title: str
+    description: str | None
+    target_date: date | None
+    status: enum    -- planned | in_progress | completed
+    order: int      -- для сортировки
+    created_at, updated_at
 ```
 
-**Критерий готовности:** Компании создаются, цена обновляется каскадно. `distribution_config` валидируется при сохранении.
+**Критерий готовности:** Компании создаются с медиа-полями. Цена обновляется каскадно. `distribution_config` валидируется. Дорожная карта управляется Staff и отображается публично.
 
 ---
 
 ### Sprint 4.2: Products
 
-**Цель:** Продукты компаний с вариантами рассрочки.
+**Цель:** Продукты компаний с произвольным числом планов рассрочки.
 
 **Задачи:**
 - [ ] `app/modules/products/models.py` — `Product`, `ProductInstallment`
 - [ ] `app/modules/products/service.py` — CRUD + `PurchaseConfigValidator`:
   - Валидация `distribution_config`: `company_pct + SUM(agent_levels) <= 1.0`
+  - Валидация `plan_config`: см. ниже
 - [ ] Staff endpoints:
   - `POST /api/v1/staff/products` — создать продукт
   - `PATCH /api/v1/staff/products/{id}` — редактировать
   - `PATCH /api/v1/staff/products/{id}/status` — изменить статус
-  - `POST /api/v1/staff/products/{id}/installments` — добавить вариант рассрочки
-  - `DELETE /api/v1/staff/products/{id}/installments/{inst_id}` — удалить вариант
+  - `POST /api/v1/staff/products/{id}/installments` — добавить план рассрочки
+  - `PATCH /api/v1/staff/products/{id}/installments/{inst_id}` — редактировать план
+  - `DELETE /api/v1/staff/products/{id}/installments/{inst_id}` — удалить план
 - [ ] Public endpoints (витрина):
-  - `GET /api/v1/products` — список активных продуктов с вариантами
+  - `GET /api/v1/products` — список активных продуктов с планами рассрочки
   - `GET /api/v1/products/{id}` — детали продукта
 - [ ] Redis кэш social proof (`sold_units` по продукту): TTL = `SOCIAL_PROOF_CACHE_TTL`
 - [ ] `tests/test_products.py` — 12 тестов
 
-**Валидация ProductInstallment при создании:**
-```
-SUM(schedule_cents) == product.units * company.price_per_unit_cents
-SUM(units_schedule_percent) == 100
-len(schedule_cents) == len(units_schedule_percent) == duration_months
+**Модель `ProductInstallment`:**
+```python
+ProductInstallment:
+    id: UUID
+    product_id: UUID  -- FK products.id
+    name: str         -- "6-месячный план", "Годовой VIP", etc.
+    plan_config: JSONB
+    created_at
 ```
 
-**Критерий готовности:** Витрина работает. Продукты создаются с вариантами рассрочки. `distribution_config` валидируется.
+**Структура `plan_config`:**
+```json
+{
+  "tranches": [
+    {"amount_cents": 16500, "units_percent": 10},
+    {"amount_cents": 16500, "units_percent": 10},
+    {"amount_cents": 16500, "units_percent": 10},
+    {"amount_cents": 16500, "units_percent": 10},
+    {"amount_cents": 16500, "units_percent": 10},
+    {"amount_cents": 17500, "units_percent": 50}
+  ],
+  "bonus_units": 100,
+  "agent_bonus_units": 50
+}
+```
+
+**Семантика траншей:**
+- `tranches[0]` — немедленный платёж (day 0, при создании плана)
+- `tranches[1..N]` — ежемесячно по february rule
+- Количество траншей не ограничено сверху
+
+**Валидация `plan_config` при сохранении (`PurchaseConfigValidator`):**
+```python
+assert len(tranches) >= 2
+assert all(t["amount_cents"] > 0 for t in tranches)
+assert all(t["units_percent"] > 0 for t in tranches)
+assert sum(t["amount_cents"] for t in tranches) == product.units * company.price_per_unit_cents
+assert sum(t["units_percent"] for t in tranches) == 100
+```
+
+**Критерий готовности:** Витрина работает. Один продукт может иметь произвольное число планов рассрочки. `plan_config` и `distribution_config` валидируются при сохранении.
 
 ---
 
@@ -641,25 +694,86 @@ if source_ledger == "active" and target_ledger == "passive":
 
 ---
 
-### Sprint 5.2: Crypto Deposits
+### Sprint 5.2: Payment Module (закрытый модуль)
 
-**Цель:** Пополнение active_ledger через крипту.
+**Цель:** Приём входящих платежей инвесторов. Модуль изолирован — внутренняя сложность
+(проверки, фоллбэки провайдеров, retry-логика) скрыта за публичным интерфейсом.
+Остальные модули взаимодействуют только через `PaymentServiceProtocol`, не напрямую с моделями.
+
+**Архитектурный принцип:**
+`payments/` — закрытый модуль. Публичная граница — `PaymentServiceProtocol`.
+Таблица `crypto_addresses` — внутренняя, не видна снаружи.
+Внутренняя логика (провайдеры, webhook-парсинг, retry) не регламентируется ТЗ —
+это зона ответственности разработчика модуля.
+
+**Публичный интерфейс (`app/modules/payments/interface.py`):**
+```python
+class PaymentServiceProtocol(Protocol):
+    async def get_or_create_deposit_address(
+        self, user_id: UUID, network: str
+    ) -> DepositAddress: ...
+
+    async def get_payment(
+        self, payment_id: UUID
+    ) -> Payment: ...
+```
+
+**Модели:**
+```python
+Payment:  -- входящие платежи инвесторов только
+    id: UUID
+    user_id: UUID          -- FK users.id
+    payment_type: enum     -- crypto | bank (розетка)
+    amount_cents: int      -- в USD cents; конвертация на входе
+    status: enum           -- created | frozen | confirmed | reversed | failed
+    provider_data: JSONB   -- схема зависит от payment_type (валидируется в сервисе)
+    created_at: datetime
+    updated_at: datetime
+
+-- Структура provider_data для crypto:
+-- {
+--   "network": "TRC20",
+--   "to_address": "TXxx...",    -- наш кошелёк (из crypto_addresses)
+--   "from_address": "TYyy...",  -- кошелёк инвестора (из webhook)
+--   "tx_hash": "abc123...",     -- из webhook
+--   "confirmed_block": 12345678,
+--   "amount_crypto": "100.50",
+--   "exchange_rate": "1.00"
+-- }
+--
+-- Структура provider_data для bank (розетка):
+-- {
+--   "bank_name": "...", "iban": "...", "swift": "...",
+--   "bank_reference": "...", "sender_name": "...",
+--   "receipt_url": "...", "sender_email": "..."
+-- }
+
+CryptoAddress:  -- внутренняя таблица модуля payments/
+    id: UUID
+    user_id: UUID   -- FK users.id
+    network: str    -- TRC20 | ERC20 | BEP20 | PoS
+    address: str    -- наш кошелёк для этого юзера и сети
+    created_at: datetime
+    -- UNIQUE (user_id, network)
+```
 
 **Задачи:**
-- [ ] `app/modules/payments/models.py` — `Payment` (полная модель из State Machines)
-- [ ] `app/modules/payments/crypto.py` — `get_or_create_crypto_address()`, `process_crypto_deposit()`
+- [ ] `app/modules/payments/interface.py` — `PaymentServiceProtocol`, `DepositAddress`
+- [ ] `app/modules/payments/models.py` — `Payment`, `CryptoAddress`
+- [ ] `app/modules/payments/service.py` — реализация `PaymentServiceProtocol`
 - [ ] `app/modules/payments/router.py`:
   - `GET /api/v1/payments/crypto-address/{network}` — получить/создать адрес
+  - `GET /api/v1/payments/history` — история платежей инвестора
 - [ ] `app/modules/payments/webhook_router.py`:
   - `POST /api/v1/payments/crypto/webhook` — blockchain webhook
-- [ ] Webhook: Payment `created -> frozen`, запись в active_ledger
+- [ ] Webhook: Payment `created -> frozen`, дополнение `provider_data` через `set_jsonb()`, запись в active_ledger
 - [ ] `frozen_until = created_at + FREEZING_HOURS_CRYPTO`
 - [ ] `payment_confirmation_worker` — daemon (asyncio.Task в lifespan)
 - [ ] `tests/test_crypto_deposits.py` — 10 тестов
 
 **Networks:** TRC20, ERC20, BEP20, PoS (из config)
 
-**Критерий готовности:** Инвестор получает крипто-адрес. Webhook создаёт Payment и запись в active_ledger.
+**Критерий готовности:** Инвестор получает крипто-адрес. Webhook создаёт Payment и запись в active_ledger. Внешняя граница модуля (`PaymentServiceProtocol`) работает корректно.
 
 ---
 
@@ -692,15 +806,36 @@ ReferralProcessor и VolumeProcessor добавляются в Sprints 7.2 и 7.
 **Архитектурный принцип:** `processors/` получает `PurchaseContext`, возвращает список
 `Transaction` с инвариантом `SUM(entries) = 0`. Не знает про HTTP, роутеры, сессии.
 Не коммитит. Атомарная запись — ответственность `execute_purchase()` в `purchases/service.py`.
+При рассрочке `PurchaseContext` получает данные конкретного транша из снапшота `plan_config`,
+а не из `ProductInstallment` напрямую — изменение плана не влияет на активные рассрочки.
+
+`PurchaseContext` содержит `referral_link_id: UUID | None`. Если `None` — покупка органическая,
+`ReferralProcessor` не вызывается, Platform получает полный остаток по `distribution_config`.
+`None` — валидное состояние, не ошибка.
 
 **Задачи:**
 - [ ] `app/modules/processors/base.py` — `ProcessorProtocol`, `PurchaseContext`, `Transaction`, `LedgerEntry`
 - [ ] `app/modules/processors/purchase.py` — `PurchaseProcessor`
 - [ ] `app/modules/processors/gift.py` — `GiftProcessor`
 - [ ] `app/modules/processors/registry.py` — `ProcessorRegistry` (расширяется в Phase 7)
-- [ ] `app/modules/purchases/models.py` — `Purchase`
+- [ ] `app/modules/purchases/models.py` — `Purchase`:
+```python
+Purchase:
+    id: UUID
+    investor_id: UUID        -- FK users.id
+    product_id: UUID         -- FK products.id
+    company_id: UUID         -- FK company_profiles.id (денормализовано)
+    legal_basis: enum        -- sale | gift | installment_tranche
+    units: int
+    paid_cents: int          -- 0 для gift
+    price_per_unit_cents: int -- снапшот цены на момент покупки
+    document_id: UUID        -- NOT NULL, PDF генерируется по запросу
+    status: enum             -- active | reversed
+    created_at: datetime
+    -- agent_id отсутствует: реферальная информация только в ReferralAttribution
+```
 - [ ] `app/modules/purchases/service.py` — `execute_purchase()` (валидация SUM=0, атомарная запись)
-- [ ] `POST /api/v1/products/{id}/purchase` — инстант-покупка
+- [ ] `POST /api/v1/products/{id}/purchase` — инстант-покупка (body: `{product_installment_id?}`, `{referral_link_id?}`)
 - [ ] `tests/test_purchase_processor.py` — 15 тестов (включая invariant SUM=0)
 
 **Инвариант перед записью в БД:**
@@ -711,6 +846,7 @@ for transaction in transactions:
 
 **Критерий готовности:** Инвестор покупает продукт. PurchaseProcessor распределяет средства.
 GiftProcessor создаёт бонусные акции. ProcessorRegistry готов к регистрации новых процессоров.
+`Purchase` не содержит `agent_id` — реферальная цепочка только в `ReferralAttribution`.
 
 ---
 
@@ -723,12 +859,40 @@ GiftProcessor создаёт бонусные акции. ProcessorRegistry го
 - [ ] `app/modules/installments/service.py` — `create_plan()`, `pay_tranche()`, `complete_plan()`, `default_plan()`
 - [ ] `app/modules/installments/scheduler.py` — `calculate_due_date()` (february rule)
 - [ ] `installment_payment_worker` — daemon (asyncio.Task в lifespan)
-- [ ] `POST /api/v1/products/{id}/installment` — создать план
+- [ ] `POST /api/v1/products/{id}/installment` — создать план (body: `{product_installment_id}`)
 - [ ] `GET /api/v1/installments/me` — мои планы
 - [ ] `GET /api/v1/installments/{id}` — детали плана
 - [ ] `tests/test_installments.py` — 20 тестов (включая february rule, default, completion)
 
-**Критерий готовности:** Инвестор создаёт план рассрочки. Daemon платит транши. Дефолт через 7 дней просрочки. Бонусы при закрытии.
+**Модель `InstallmentPlan`:**
+```python
+InstallmentPlan:
+    id: UUID
+    investor_id: UUID
+    product_id: UUID
+    product_installment_id: UUID
+    plan_config_snapshot: JSONB  -- копия plan_config на момент создания плана;
+                                 -- изменение ProductInstallment не влияет на активные планы
+    total_price_cents: int       -- денормализовано из снапшота для быстрых проверок
+    status: enum                 -- active | completed | defaulted | cancelled
+    created_at, completed_at, defaulted_at
+```
+
+**Логика `create_plan()`:**
+```
+1. Загрузить ProductInstallment -> скопировать plan_config в plan_config_snapshot
+2. Валидировать снапшот (PurchaseConfigValidator)
+3. Создать InstallmentPlan (с referral_link_id: UUID | None из запроса)
+4. Развернуть tranches из снапшота в записи InstallmentTranche:
+   - tranches[0]: due_date = today, status = scheduled (daemon оплатит сразу)
+   - tranches[1]: due_date = calculate_due_date(today, 1)
+   - tranches[N]: due_date = calculate_due_date(today, N)
+5. Daemon в ту же итерацию оплачивает tranches[0];
+   referral_link_id передаётся в PurchaseContext каждого транша —
+   если None, ReferralProcessor не вызывается
+```
+
+**Критерий готовности:** Инвестор выбирает план по `product_installment_id`. Снапшот фиксируется. Транши разворачиваются из снапшота. Daemon платит транши. Дефолт через 7 дней просрочки. Бонусы из снапшота при закрытии.
 
 ---
 
@@ -802,9 +966,37 @@ GiftProcessor создаёт бонусные акции. ProcessorRegistry го
 - [ ] `POST /api/v1/referrals/links` — создать реферальную ссылку (только agent)
 - [ ] `GET /api/v1/referrals/links/me` — мои ссылки
 - [ ] `GET /api/v1/referrals/stats/me` — статистика по ссылкам
-- [ ] `tests/test_referrals.py` — 15 тестов (включая STOP-механику)
+- [ ] `tests/test_referrals.py` — 15 тестов (включая STOP-механику, органические покупки)
 
-**Критерий готовности:** Агент создаёт реферальные ссылки. При покупке по ссылке — комиссии L1/L2/L3 начисляются через ReferralProcessor.
+**Модели:**
+```python
+ReferralLink:
+    id: UUID
+    agent_id: UUID   -- FK users.id (role=agent)
+    code: str        -- unique
+    created_at: datetime
+
+ReferralAttribution:
+    id: UUID
+    purchase_id: UUID             -- FK purchases.id
+    referral_link_id: UUID | None -- FK referral_links.id; NULL = органический трафик
+    created_at: datetime
+    -- Создаётся для КАЖДОЙ покупки, включая органические (referral_link_id=NULL)
+    -- Это обеспечивает полный аудит: каждая покупка имеет attribution-запись
+```
+
+**Логика `resolve_attribution(referral_link_id)`:**
+```
+if referral_link_id is None:
+    -> вернуть пустую цепочку агентов
+    -> ReferralProcessor не вызывается
+    -> Platform получает полный остаток по distribution_config
+else:
+    -> загрузить ReferralLink -> get_agent_chain() -> вернуть L1/L2/L3
+    -> ReferralProcessor начисляет комиссии по цепочке
+```
+
+**Критерий готовности:** Агент создаёт реферальные ссылки. При покупке по ссылке — комиссии L1/L2/L3 начисляются через ReferralProcessor. Органические покупки (без ссылки) корректно обрабатываются: Platform получает полный остаток, `ReferralAttribution` создаётся с `referral_link_id=NULL`.
 
 ---
 
@@ -918,25 +1110,74 @@ rollup:   NotificationDelivery statuses -> Notification.status
 
 ---
 
-## PHASE 9: News + Extras
+## PHASE 9: Posts + Extras
 
 ---
 
-### Sprint 9.1: News + Events
+### Sprint 9.1: Posts + Events
 
-**Цель:** Модуль новостей и событий.
+**Цель:** Единый модуль контента для платформы и компаний.
+
+**Архитектурный принцип:** Платформенные новости и посты блога компаний — это одна и та же
+сущность `Post` с разным `owner_type`. Единый модуль `posts/`, единый рендер на фронте,
+единая лента с фильтрацией по владельцу. Staff создаёт посты как от имени платформы,
+так и от имени конкретной компании.
 
 **Задачи:**
-- [ ] `app/modules/news/models.py` — `News`, `Event`, `NewsRead`
-- [ ] `app/modules/news/service.py` — CRUD + баннерная логика
-- [ ] Public: `GET /api/v1/news`, `GET /api/v1/news/{id}`
-- [ ] Public: `GET /api/v1/events`, `GET /api/v1/events/upcoming` (ближайшие 30 дней)
-- [ ] `POST /api/v1/news/{id}/dismiss` — закрыть баннер
-- [ ] Staff CRUD: `POST/PUT/DELETE /api/v1/staff/news`
-- [ ] Staff CRUD: `POST/PUT/DELETE /api/v1/staff/events`
-- [ ] `tests/test_news.py` — 10 тестов
+- [ ] `app/modules/posts/models.py` — `Post`, `PostDismiss`, `Event`
+- [ ] `app/modules/posts/service.py` — CRUD + баннерная логика + dismiss
+- [ ] Public endpoints:
+  - `GET /api/v1/posts` — лента постов (фильтры: `owner_type`, `company_id`, `tag`)
+  - `GET /api/v1/posts/{id}` — детали поста
+  - `GET /api/v1/events` — список событий
+  - `GET /api/v1/events/upcoming` — ближайшие 30 дней
+  - `POST /api/v1/posts/{id}/dismiss` — закрыть баннер
+- [ ] Staff endpoints:
+  - `POST /api/v1/staff/posts` — создать пост (платформа или от имени компании)
+  - `PUT /api/v1/staff/posts/{id}` — редактировать
+  - `DELETE /api/v1/staff/posts/{id}` — удалить
+  - `POST /api/v1/staff/events` — создать событие
+  - `PUT /api/v1/staff/events/{id}` — редактировать
+  - `DELETE /api/v1/staff/events/{id}` — удалить
+- [ ] `tests/test_posts.py` — 12 тестов
 
-**Критерий готовности:** Staff создаёт новости. Инвесторы видят новостную ленту и баннеры.
+**Модели:**
+```python
+Post:
+    id: UUID
+    owner_type: enum  -- platform | company
+    owner_id: UUID | None  -- NULL если platform, company_profiles.id если company
+    title: str
+    body: str         -- markdown или HTML
+    cover_url: str | None
+    tags: JSONB       -- ["investment", "growth"] -- массив строк
+    is_banner: bool   -- показывать как баннер на главной
+    is_published: bool
+    published_at: datetime | None
+    created_by: UUID  -- staff_id
+    created_at, updated_at
+
+PostDismiss:          -- факт закрытия баннера конкретным юзером
+    id: UUID
+    post_id: UUID     -- FK posts.id CASCADE
+    user_id: UUID     -- FK users.id CASCADE
+    dismissed_at: datetime
+
+Event:
+    id: UUID
+    title: str
+    description: str | None
+    cover_url: str | None
+    starts_at: datetime
+    ends_at: datetime | None
+    location: str | None
+    url: str | None   -- ссылка на регистрацию или трансляцию
+    is_published: bool
+    created_by: UUID  -- staff_id
+    created_at, updated_at
+```
+
+**Критерий готовности:** Staff создаёт посты платформы и постит от имени компаний. Инвесторы видят единую ленту с фильтрацией. Баннеры закрываются и не показываются повторно.
 
 ---
 
@@ -1015,4 +1256,4 @@ rollup:   NotificationDelivery statuses -> Notification.status
 
 ---
 
-*Version 0.3 | 2026-04-01 | cbshome Backend TZ*
+*Version 0.7 | 2026-04-01 | cbshome Backend TZ*

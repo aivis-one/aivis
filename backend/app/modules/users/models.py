@@ -1,0 +1,144 @@
+# =============================================================================
+# CBSHOME Backend -- User Model
+# =============================================================================
+#
+# Central user entity. Every person and system actor is a single User row.
+# Role determines permissions -- no separate tables per role.
+#
+# ROLES:
+#   investor  -- default role, can browse and purchase products
+#   agent     -- can create referral links, earn commissions
+#   company   -- has CompanyProfile, lists products
+#   staff     -- platform operator (admin/support), has StaffProfile
+#   platform  -- system user (is_system equivalent), never logs in,
+#               receives all incoming payments, distributes via saga
+#
+# PLATFORM USER:
+#   Identified by role=platform. No is_system field needed -- role is
+#   the single source of truth. Created once by seed_platform.py.
+#   Blocked from login in get_current_user() dependency.
+#
+# JSONB COLUMNS:
+#   credentials -- auth data: {email: {...}, telegram: {...}, onboarding: {...}}
+#   profile     -- personal data: {first_name, last_name, country, phone, ...}
+#   Both columns use JSONBMixin.set_jsonb() for safe mutation.
+#
+# KYC STATUS:
+#   kyc_status is a denormalized cache of KYCApplication.status.
+#   Kept in sync by kyc/service.py on every status change.
+#   Used by get_current_user() for fast purchase eligibility checks
+#   without a JOIN on kyc_applications.
+# =============================================================================
+
+import enum
+from datetime import datetime
+from uuid import UUID
+
+from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.database import Base
+from app.core.mixins import JSONBMixin, TimestampMixin, UUIDMixin
+
+
+class UserRole(enum.StrEnum):
+    """User roles in the platform."""
+
+    INVESTOR = "investor"
+    AGENT = "agent"
+    COMPANY = "company"
+    STAFF = "staff"
+    PLATFORM = "platform"
+
+
+class OnboardingStep(enum.StrEnum):
+    """Onboarding funnel position. Moves forward only."""
+
+    REGISTERED = "registered"
+    EMAIL_VERIFIED = "email_verified"
+    PROFILE_COMPLETE = "profile_complete"
+    KYC_DONE = "kyc_done"
+    ROLE_SELECTED = "role_selected"
+
+
+class KYCStatus(enum.StrEnum):
+    """KYC verification status. Denormalized cache from KYCApplication."""
+
+    NOT_STARTED = "not_started"
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
+    """Platform user -- investor, agent, company, staff, or platform system."""
+
+    __tablename__ = "users"
+
+    # -- Role --
+    role: Mapped[str] = mapped_column(
+        SAEnum(UserRole, name="user_role", create_type=True),
+        nullable=False,
+        index=True,
+    )
+
+    # -- Status --
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        nullable=False,
+    )
+
+    # -- Onboarding --
+    onboarding_step: Mapped[str] = mapped_column(
+        SAEnum(OnboardingStep, name="onboarding_step", create_type=True),
+        default=OnboardingStep.REGISTERED,
+        server_default=OnboardingStep.REGISTERED.value,
+        nullable=False,
+    )
+
+    # -- KYC (denormalized cache of KYCApplication.status) --
+    kyc_status: Mapped[str] = mapped_column(
+        SAEnum(KYCStatus, name="kyc_status", create_type=True),
+        default=KYCStatus.NOT_STARTED,
+        server_default=KYCStatus.NOT_STARTED.value,
+        nullable=False,
+    )
+
+    # -- Auth credentials (JSONB sandbox) --
+    # Schema: {
+    #   "email": {"email": str, "password_hash": str, "verified": bool, "verified_at": str|null},
+    #   "telegram": {"id": int, "username": str|null, "photo_url": str|null, "language_code": str|null},
+    #   "onboarding": {"email_token": str|null, "email_token_expires_at": str|null, "email_verification_attempts": int}
+    # }
+    # Use set_jsonb("credentials", value) for mutations. Never assign directly.
+    credentials: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
+        default=dict,
+        server_default="{}",
+        nullable=False,
+    )
+
+    # -- Personal profile (JSONB sandbox) --
+    # Schema: {first_name, last_name, country, phone, avatar_url, ...}
+    # Use set_jsonb("profile", value) for mutations.
+    profile: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
+        default=dict,
+        server_default="{}",
+        nullable=False,
+    )
+
+    # -- Locale --
+    language: Mapped[str] = mapped_column(
+        String(10),
+        default="en",
+        server_default="en",
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<User id={self.id} role={self.role} active={self.is_active}>"
