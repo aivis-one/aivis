@@ -7,8 +7,7 @@
 #
 # IMMUTABLE:
 #   Entries are never updated or deleted. No updated_at.
-#   Inherits Base directly (not UUIDMixin/TimestampMixin) to keep
-#   the model minimal and prevent accidental mixin timestamp conflicts.
+#   Inherits Base directly (not UUIDMixin/TimestampMixin).
 #
 # AVATAR CONTEXT:
 #   performed_by -- staff_id when operating in avatar mode
@@ -23,23 +22,15 @@
 #   Caller manages the transaction. AuditLog entry is flushed alongside
 #   the business operation in the same atomic transaction.
 #
-# USAGE:
-#   from app.core.audit import record_audit
-#   await record_audit(
-#       session=session,
-#       event="user.registered",
-#       actor_id=user.id,
-#       actor_type="user",
-#       target_type="user",
-#       target_id=user.id,
-#       data={"role": "investor"},
-#   )
+# USER AGENT:
+#   Truncated to 500 chars to prevent DoS via oversized headers.
 # =============================================================================
 
 from datetime import datetime
 from uuid import UUID, uuid4
 
 import structlog
+import structlog.contextvars
 from sqlalchemy import DateTime, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,37 +40,32 @@ from app.core.database import Base
 
 logger = structlog.get_logger()
 
+# Max length for user_agent to prevent DoS via oversized headers.
+_USER_AGENT_MAX_LEN = 500
+
 
 class AuditLog(Base):
-    """Immutable audit trail entry.
-
-    Inherits Base directly -- no UUIDMixin/TimestampMixin to keep
-    the model clean and avoid accidental updated_at.
-    """
+    """Immutable audit trail entry."""
 
     __tablename__ = "audit_log"
 
-    # -- Primary key (app-side uuid4 for consistency) --
     id: Mapped[UUID] = mapped_column(
         primary_key=True,
         default=uuid4,
     )
 
-    # -- Timestamp (immutable, server-side) --
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
 
-    # -- Event (indexed for filtering) --
     event: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
         index=True,
     )
 
-    # -- Actor (who performed the action) --
     actor_id: Mapped[UUID | None] = mapped_column(nullable=True)
     actor_type: Mapped[str] = mapped_column(
         String(20),
@@ -87,21 +73,13 @@ class AuditLog(Base):
         # "user" | "staff" | "system"
     )
 
-    # -- Avatar context (NULL for normal operations) --
-    performed_by: Mapped[UUID | None] = mapped_column(
-        nullable=True,
-        # staff_id when operating in avatar mode
-    )
-    on_behalf_of: Mapped[UUID | None] = mapped_column(
-        nullable=True,
-        # target_user_id when operating in avatar mode
-    )
+    # Avatar context (NULL for normal operations).
+    performed_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    on_behalf_of: Mapped[UUID | None] = mapped_column(nullable=True)
 
-    # -- Target (what was acted upon) --
     target_type: Mapped[str] = mapped_column(String(50), nullable=False)
     target_id: Mapped[UUID] = mapped_column(nullable=False)
 
-    # -- Event data (arbitrary context) --
     data: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
         JSONB,
         default=dict,
@@ -109,13 +87,10 @@ class AuditLog(Base):
         nullable=False,
     )
 
-    # -- Request context --
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
-    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
-    trace_id: Mapped[str | None] = mapped_column(
-        String(36),  # UUID max length
-        nullable=True,
-    )
+    # user_agent: truncated to _USER_AGENT_MAX_LEN to prevent disk exhaustion.
+    user_agent: Mapped[str | None] = mapped_column(String(_USER_AGENT_MAX_LEN), nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     __table_args__ = (
         Index("ix_audit_log_event_created", "event", "created_at"),
@@ -149,10 +124,10 @@ async def record_audit(
 
     Args:
         session: Active DB session. Caller manages commit.
-        event: Event name, e.g. "user.registered", "payment.deposit_created".
+        event: Event name, e.g. "user.registered".
         actor_id: UUID of the actor (user/staff/None for system).
         actor_type: "user" | "staff" | "system".
-        target_type: Entity type, e.g. "user", "payment", "purchase".
+        target_type: Entity type, e.g. "user", "payment".
         target_id: UUID of the affected entity.
         data: Additional event context (serializable dict).
         performed_by: Staff UUID when in avatar mode.
@@ -161,13 +136,16 @@ async def record_audit(
     Returns:
         The created AuditLog entry (flushed, not committed).
     """
-    import structlog.contextvars as ctx
-
     # Read request context from structlog contextvars (set by TraceIdMiddleware).
-    bound = ctx.get_contextvars()
+    bound = structlog.contextvars.get_contextvars()
     trace_id = bound.get("trace_id")
     ip_address = bound.get("ip_address")
-    user_agent = bound.get("user_agent")
+    raw_user_agent = bound.get("user_agent")
+
+    # Truncate user_agent to prevent disk exhaustion via oversized headers.
+    user_agent: str | None = None
+    if raw_user_agent:
+        user_agent = str(raw_user_agent)[:_USER_AGENT_MAX_LEN]
 
     entry = AuditLog(
         event=event,

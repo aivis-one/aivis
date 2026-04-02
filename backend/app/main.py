@@ -15,7 +15,6 @@
 #   CORSMiddleware -> TraceIdMiddleware
 # =============================================================================
 
-import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -26,7 +25,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from starlette.requests import Request
 
-from app.core.config import settings
+from app.core.config import APP_VERSION, settings
 from app.core.database import dispose_engine, get_engine
 from app.core.exceptions import CBSError
 from app.core.logging import setup_logging
@@ -43,18 +42,17 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown."""
-    # -- Startup --
     setup_logging()
     await init_redis()
     logger.info(
         "app_started",
         env=settings.app_env,
         log_level=settings.log_level,
+        version=APP_VERSION,
     )
 
     yield
 
-    # -- Shutdown --
     await close_redis()
     await dispose_engine()
     logger.info("app_stopped")
@@ -67,7 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="CBSHOME API",
     description="Investment platform",
-    version="0.1.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -84,13 +82,9 @@ app.add_middleware(
     allow_origins=_cors_origins,
     allow_credentials=not _allow_all,
     allow_methods=["*"],
-    # List headers explicitly -- Fetch spec forbids allow_headers=["*"]
-    # with allow_credentials=True.
     allow_headers=["Authorization", "Content-Type", "X-Trace-ID"],
 )
 
-# TraceIdMiddleware must be added AFTER CORSMiddleware.
-# Starlette applies middleware in LIFO order, so TraceId becomes outermost.
 app.add_middleware(TraceIdMiddleware)
 
 
@@ -142,72 +136,57 @@ async def global_exception_handler(
 
 
 # ---------------------------------------------------------------------------
+# Health Checks (shared logic -- DRY)
+# ---------------------------------------------------------------------------
+
+async def _check_components() -> tuple[dict[str, str], bool]:
+    """Check DB and Redis connectivity. Returns (result_dict, is_degraded)."""
+    result: dict[str, str] = {"status": "ok", "db": "ok", "redis": "ok"}
+    degraded = False
+
+    try:
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        result["db"] = "error"
+        degraded = True
+
+    try:
+        redis = get_redis()
+        await redis.ping()
+    except Exception:
+        result["redis"] = "error"
+        degraded = True
+
+    if degraded:
+        result["status"] = "degraded"
+
+    return result, degraded
+
+
+# ---------------------------------------------------------------------------
 # System Endpoints
 # ---------------------------------------------------------------------------
 
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint -- API info."""
-    return {"name": "CBSHOME API", "version": "0.1.0"}
+    return {"name": "CBSHOME API", "version": APP_VERSION}
 
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    """Health check -- always returns 200.
-
-    Reports individual component status without failing the probe.
-    Used by Docker healthcheck and monitoring.
-    """
-    result: dict[str, str] = {"status": "ok", "db": "ok", "redis": "ok"}
-
-    # Check DB.
-    try:
-        engine = get_engine()
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-    except Exception:
-        result["db"] = "error"
-        result["status"] = "degraded"
-
-    # Check Redis.
-    try:
-        redis = get_redis()
-        await redis.ping()
-    except Exception:
-        result["redis"] = "error"
-        result["status"] = "degraded"
-
+    """Health check -- always returns 200."""
+    result, _ = await _check_components()
     return result
 
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe -- returns 503 if any component is degraded.
-
-    Used by Docker depends_on condition and load balancers to know
-    when the app is ready to receive traffic.
-    """
-    result: dict[str, str] = {"status": "ok", "db": "ok", "redis": "ok"}
-    degraded = False
-
-    # Check DB.
-    try:
-        engine = get_engine()
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-    except Exception:
-        result["db"] = "error"
-        result["status"] = "degraded"
-        degraded = True
-
-    # Check Redis.
-    try:
-        redis = get_redis()
-        await redis.ping()
-    except Exception:
-        result["redis"] = "error"
-        result["status"] = "degraded"
-        degraded = True
-
-    status_code = 503 if degraded else 200
-    return JSONResponse(status_code=status_code, content=result)
+    """Readiness probe -- returns 503 if any component is degraded."""
+    result, degraded = await _check_components()
+    return JSONResponse(
+        status_code=503 if degraded else 200,
+        content=result,
+    )

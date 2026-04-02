@@ -2,20 +2,19 @@
 # CBSHOME Backend -- Application Configuration
 # =============================================================================
 #
-# All settings are loaded from environment variables (or .env file).
+# APP_VERSION: single source of truth for API version.
+#   Used in FastAPI app init and GET / response.
+#
+# All settings loaded from environment variables (or .env file).
 # Pydantic-settings validates types and applies defaults automatically.
-#
-# ENVIRONMENTS:
-#   development -- safe defaults, relaxed validation
-#   production  -- strict validation, required secrets
-#
-# USAGE:
-#   from app.core.config import settings
-#   settings.database_url
 # =============================================================================
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Single source of truth for API version.
+# Import as: from app.core.config import APP_VERSION, settings
+APP_VERSION = "0.1.0"
 
 
 class Settings(BaseSettings):
@@ -50,20 +49,19 @@ class Settings(BaseSettings):
     mailgun_domain: str = ""
 
     # -- Crypto payments --
-    # Comma-separated list of supported networks.
     crypto_networks: str = "TRC20,ERC20,BEP20,PoS"
     freezing_hours_crypto: int = 1
-    freezing_hours_bank: int = 72 * 14   # 14-day cooling-off for fiat
+    freezing_hours_bank: int = 72 * 14
 
     # -- Installments --
     installment_default_days: int = 7
-    installment_worker_hour: int = 3     # UTC hour to run daily daemon
+    installment_worker_hour: int = 3
 
     # -- Agent --
     agent_application_cooldown_days: int = 30
 
     # -- Social proof cache --
-    social_proof_cache_ttl: int = 300    # seconds
+    social_proof_cache_ttl: int = 300
 
     # -- Notifications --
     notification_max_delivery_attempts: int = 3
@@ -79,9 +77,7 @@ class Settings(BaseSettings):
                     "postgresql+asyncpg://cbshome:cbshome@localhost:5432/cbshome"
                 )
             else:
-                raise ValueError(
-                    "DATABASE_URL is required in production."
-                )
+                raise ValueError("DATABASE_URL is required in production.")
 
         if not self.secret_key:
             if is_dev:
@@ -103,9 +99,7 @@ class Settings(BaseSettings):
             raise ValueError("log_level DEBUG is not allowed in production.")
 
         if not is_dev and self.cors_origins == "*":
-            raise ValueError(
-                "CORS_ORIGINS must not be '*' in production."
-            )
+            raise ValueError("CORS_ORIGINS must not be '*' in production.")
 
         return self
 

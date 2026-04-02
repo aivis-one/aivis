@@ -15,10 +15,10 @@
 # NO updated_at:
 #   created_at is the only timestamp. Entries are immutable records.
 #
-# CIRCULAR FK (origin_payment_id):
-#   payments.id -> payments table (created in Sprint 5.2).
-#   Declared as deferrable to avoid circular dependency at migration time.
-#   Initially set to NULL for all Sprint 0.3 entries.
+# AMOUNT:
+#   BigInteger (64-bit) to support platform-level balances.
+#   Integer (32-bit) max is ~$21.4M -- insufficient for an investment platform.
+#   BigInteger max is ~$92 trillion -- no practical limit.
 #
 # AML MATRIX:
 #   Active -> Passive route is forbidden.
@@ -35,7 +35,7 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, Index, Integer, String, func
+from sqlalchemy import BigInteger, DateTime, Index, String, func
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -56,60 +56,43 @@ class ActiveLedger(UUIDMixin, Base):
 
     Funded by: crypto deposits, bank transfers (fiat, Phase 2).
     Spent on:  product purchases only.
-    Cannot be withdrawn directly -- funds must go through purchases.
 
     Immutable: no updated_at, entries never deleted.
     """
 
     __tablename__ = "active_ledger"
 
-    # -- Owner --
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
 
-    # -- Amount --
-    # Positive = credit (deposit), negative = debit (purchase).
-    # Integer cents (USD). No floats.
+    # BigInteger: supports up to ~$92 trillion. Integer max is ~$21.4M.
     amount_cents: Mapped[int] = mapped_column(
-        Integer,
+        BigInteger,
         nullable=False,
     )
 
-    # -- Status --
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
         index=True,
     )
 
-    # -- Freeze window --
-    # Not null while payment is awaiting confirmation.
-    # Daemon transitions frozen -> confirmed when frozen_until <= now().
     frozen_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    # -- Payment link (circular FK, deferrable) --
-    # Links back to payments.id. Circular because Payment also references
-    # ledger entries. Deferrable allows both tables to exist independently.
-    # NULL until Sprint 5.2 when payments module is created.
-    origin_payment_id: Mapped[UUID | None] = mapped_column(
-        # ForeignKey added in Sprint 5.2 migration when payments table exists.
-        # Declared as plain UUID here to avoid circular dependency.
-        nullable=True,
-    )
+    # Circular FK to payments.id -- added in Sprint 5.2 migration.
+    origin_payment_id: Mapped[UUID | None] = mapped_column(nullable=True)
 
-    # -- Reason (canonical LedgerReason string) --
     reason: Mapped[str] = mapped_column(
         String(500),
         nullable=False,
     )
 
-    # -- Immutable timestamp --
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -130,55 +113,44 @@ class ActiveLedger(UUIDMixin, Base):
 class PassiveLedger(UUIDMixin, Base):
     """Passive ledger -- system money (commissions, revenue, bonuses).
 
-    Funded by: distribution saga (company revenue, agent commissions,
-               referral bonuses, volume bonuses).
-    Withdrawn: to external wallets (crypto/fiat) via Withdrawal requests.
-    Only confirmed balance can be withdrawn.
+    Funded by: distribution saga.
+    Withdrawn: to external wallets via Withdrawal requests.
 
     Immutable: no updated_at, entries never deleted.
     """
 
     __tablename__ = "passive_ledger"
 
-    # -- Owner --
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
 
-    # -- Amount --
+    # BigInteger: see ActiveLedger note.
     amount_cents: Mapped[int] = mapped_column(
-        Integer,
+        BigInteger,
         nullable=False,
     )
 
-    # -- Status --
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
         index=True,
     )
 
-    # -- Freeze window --
-    # Used for cooling-off period (14-day EU fiat chargeback protection).
     frozen_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    # -- Payment link (see ActiveLedger note) --
-    origin_payment_id: Mapped[UUID | None] = mapped_column(
-        nullable=True,
-    )
+    origin_payment_id: Mapped[UUID | None] = mapped_column(nullable=True)
 
-    # -- Reason --
     reason: Mapped[str] = mapped_column(
         String(500),
         nullable=False,
     )
 
-    # -- Immutable timestamp --
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
