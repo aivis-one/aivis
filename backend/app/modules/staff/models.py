@@ -26,7 +26,6 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
-from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -119,7 +118,7 @@ class AvatarSession(UUIDMixin, Base):
 
     # -- Status --
     status: Mapped[str] = mapped_column(
-        SAEnum(AvatarSessionStatus, name="avatar_session_status", create_type=True),
+        String(10),
         default=AvatarSessionStatus.ACTIVE,
         server_default=AvatarSessionStatus.ACTIVE.value,
         nullable=False,

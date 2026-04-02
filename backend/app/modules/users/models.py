@@ -35,7 +35,6 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, String, func
-from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -78,8 +77,10 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     __tablename__ = "users"
 
     # -- Role --
+    # Stored as String to match migration (CHECK constraint enforces valid values).
+    # Python-side validation uses UserRole enum.
     role: Mapped[str] = mapped_column(
-        SAEnum(UserRole, name="user_role", create_type=True),
+        String(20),
         nullable=False,
         index=True,
     )
@@ -94,7 +95,7 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
 
     # -- Onboarding --
     onboarding_step: Mapped[str] = mapped_column(
-        SAEnum(OnboardingStep, name="onboarding_step", create_type=True),
+        String(30),
         default=OnboardingStep.REGISTERED,
         server_default=OnboardingStep.REGISTERED.value,
         nullable=False,
@@ -102,7 +103,7 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
 
     # -- KYC (denormalized cache of KYCApplication.status) --
     kyc_status: Mapped[str] = mapped_column(
-        SAEnum(KYCStatus, name="kyc_status", create_type=True),
+        String(20),
         default=KYCStatus.NOT_STARTED,
         server_default=KYCStatus.NOT_STARTED.value,
         nullable=False,

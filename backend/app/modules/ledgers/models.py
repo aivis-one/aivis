@@ -36,7 +36,6 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, Index, Integer, String, func
-from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -81,7 +80,7 @@ class ActiveLedger(UUIDMixin, Base):
 
     # -- Status --
     status: Mapped[str] = mapped_column(
-        SAEnum(LedgerStatus, name="ledger_status", create_type=True),
+        String(20),
         nullable=False,
         index=True,
     )
@@ -156,8 +155,7 @@ class PassiveLedger(UUIDMixin, Base):
 
     # -- Status --
     status: Mapped[str] = mapped_column(
-        SAEnum(LedgerStatus, name="ledger_status", create_type=False),
-        # create_type=False: enum already created by ActiveLedger
+        String(20),
         nullable=False,
         index=True,
     )
