@@ -8,9 +8,15 @@
 #
 # BINDS TO STRUCTLOG CONTEXTVARS (available in every log line):
 #   trace_id          -- UUID, from X-Trace-ID header or auto-generated
-#   ip_address        -- client IP (X-Forwarded-For or REMOTE_ADDR)
-#   user_agent        -- User-Agent header
+#   ip_address        -- real client IP from X-Real-IP (set by Nginx)
+#   user_agent        -- User-Agent header (truncated to 500 chars)
 #   avatar_session_id -- set in Sprint 3.2 when avatar mode is active
+#
+# IP ADDRESS STRATEGY:
+#   Nginx sets X-Real-IP to $remote_addr (the actual connecting IP).
+#   This cannot be spoofed by the client -- Nginx always overwrites it.
+#   X-Forwarded-For is NOT used because clients can inject fake IPs
+#   as the first element, polluting audit logs.
 #
 # TRACE ID RULES:
 #   - From X-Trace-ID header if: len <= 36 AND matches safe char set
@@ -32,6 +38,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 # Safe characters: UUIDs, "svc.req.123", "my-trace-42".
 # Rejects injection vectors: spaces, newlines, unicode, quotes, slashes.
 _TRACE_ID_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+
+# Max length to store in structlog context (mirrors AuditLog.user_agent).
+_USER_AGENT_MAX_LEN = 500
 
 logger = structlog.get_logger()
 
@@ -66,17 +75,19 @@ class TraceIdMiddleware:
             trace_id = str(uuid4())
 
         # --- ip_address ---
-        # Prefer X-Forwarded-For (set by Nginx proxy_set_header).
-        # Fall back to REMOTE_ADDR from ASGI scope.
-        forwarded_for = headers.get(b"x-forwarded-for", b"").decode("latin-1", errors="replace")
-        if forwarded_for:
-            ip_address = forwarded_for.split(",")[0].strip()
+        # Use X-Real-IP set by Nginx ($remote_addr) -- cannot be spoofed by client.
+        # Nginx config: proxy_set_header X-Real-IP $remote_addr;
+        # Fallback to REMOTE_ADDR from ASGI scope for non-proxied requests (tests).
+        real_ip = headers.get(b"x-real-ip", b"").decode("latin-1", errors="replace").strip()
+        if real_ip:
+            ip_address = real_ip
         else:
             client = scope.get("client")
             ip_address = client[0] if client else "unknown"
 
-        # --- user_agent ---
-        user_agent = headers.get(b"user-agent", b"").decode("latin-1", errors="replace")
+        # --- user_agent (truncated to match AuditLog column length) ---
+        raw_ua = headers.get(b"user-agent", b"").decode("latin-1", errors="replace")
+        user_agent = raw_ua[:_USER_AGENT_MAX_LEN] if raw_ua else ""
 
         # --- Bind all to structlog contextvars ---
         # These appear automatically in every log line for this request.
@@ -88,14 +99,9 @@ class TraceIdMiddleware:
         )
 
         # --- avatar_session_id (Sprint 3.2) ---
-        # TraceIdMiddleware will read avatar_session_id from the Redis session
-        # and bind it here so every log line in avatar mode is annotated.
-        # Implementation added in Sprint 3.2 when auth session parsing is available.
-        # Example:
-        #   if avatar_session_id := _extract_avatar_session_id(headers):
-        #       structlog.contextvars.bind_contextvars(
-        #           avatar_session_id=avatar_session_id
-        #       )
+        # TraceIdMiddleware reads avatar_session_id from Redis session
+        # and binds it so every log line in avatar mode is annotated automatically.
+        # Implemented in Sprint 3.2 when auth session parsing is available.
 
         # --- Inject X-Trace-ID into response headers ---
         async def send_with_trace(message: dict) -> None:  # type: ignore[type-arg]
