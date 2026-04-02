@@ -1,0 +1,42 @@
+# =============================================================================
+# CBSHOME -- Repository .gitignore
+# =============================================================================
+
+# -- Secrets --
+.env
+*.pem
+*.key
+
+# -- Python --
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# -- Tool caches --
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# -- Node / Frontend --
+node_modules/
+dist/
+.vite/
+*.local
+
+# -- IDE --
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# -- OS --
+.DS_Store
+Thumbs.db
