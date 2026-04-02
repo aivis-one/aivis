@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 0.7
+**Версия:** 0.8
 **Дата:** 1 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -33,14 +33,14 @@
 
 ---
 
-### Sprint 0.1: Репозиторий + структура проекта
+### ✅ Sprint 0.1: Репозиторий + структура проекта
 
 **Цель:** Базовая структура репозитория, готовая к разработке на VPS.
 
 **Задачи:**
-- [ ] GitHub репозиторий `aivis-one/cbshome`
-- [ ] `.gitignore` (PyCharm, VS Code, .env, __pycache__)
-- [ ] Структура папок:
+- [x] GitHub репозиторий `aivis-one/cbshome`
+- [x] `.gitignore` (PyCharm, VS Code, .env, __pycache__)
+- [x] Структура папок:
 ```
 cbshome/
 ├── backend/
@@ -55,23 +55,23 @@ cbshome/
 │   ├── Dockerfile
 │   └── pyproject.toml
 ├── frontend/
-├── notifications/
-│   └── templates/
+├── backend/
+│   └── app/modules/notifications/templates/  -- Sprint 8.2
 ├── diagrams/
 ├── docker-compose.yml
 ├── scripts/
 │   └── install_cbshome.sh
 └── CBSHOME-Design-Document.md
 ```
-- [ ] `pyproject.toml` — зависимости, ruff, mypy, pytest конфиг
-- [ ] `app/core/config.py` — pydantic-settings, загрузка из .env
-- [ ] `app/core/exceptions.py` — `CBSError -> NotFound / Forbidden / Conflict / BadRequest / Unauthorized`
-- [ ] `app/core/mixins.py` — `UUIDMixin`, `TimestampMixin`, `JSONBMixin` (с `set_jsonb` + `flag_modified`)
-- [ ] `app/core/constants.py` — `LedgerReason` (все канонические reasons из Financial System Codex)
-- [ ] `tests/conftest.py` — async client fixture
-- [ ] `tests/test_root.py` — базовый тест
-- [ ] `.env.example`
-- [ ] `README.md` — только VPS инструкции
+- [x] `pyproject.toml` — зависимости, ruff, mypy, pytest конфиг
+- [x] `app/core/config.py` — pydantic-settings, загрузка из .env
+- [x] `app/core/exceptions.py` — `CBSError -> NotFound / Forbidden / Conflict / BadRequest / Unauthorized`
+- [x] `app/core/mixins.py` — `UUIDMixin`, `TimestampMixin`, `JSONBMixin` (с `set_jsonb` + `flag_modified`)
+- [x] `app/core/constants.py` — `LedgerReason` (все канонические reasons из Financial System Codex)
+- [x] `tests/conftest.py` — async client fixture
+- [x] `tests/test_root.py` — базовый тест
+- [x] `.env.example`
+- [x] `README.md` — только VPS инструкции
 
 **Результат:**
 ```
@@ -86,26 +86,26 @@ backend/app/core/
 
 ---
 
-### Sprint 0.2: Docker + FastAPI скелет
+### ✅ Sprint 0.2: Docker + FastAPI скелет
 
 **Цель:** Работающее приложение в Docker с health checks.
 
 **Задачи:**
-- [ ] `docker-compose.yml` — app + postgres:16 + redis:7-alpine
-- [ ] Postgres/Redis без published портов (только Docker internal network)
-- [ ] App на `127.0.0.1:8000`
-- [ ] `Dockerfile` — multi-stage, dev зависимости всегда устанавливаются (тесты в контейнере)
-- [ ] `.dockerignore`
-- [ ] `app/core/database.py` — AsyncEngine + AsyncSession + `get_db_session()` + `get_db_reader()` + `Base`
-- [ ] `app/core/redis.py` — async Redis client + lifecycle
-- [ ] `app/core/logging.py` — structlog (JSON в prod, Console в dev)
-- [ ] `app/core/middleware.py` — `TraceIdMiddleware` (X-Trace-ID + ip_address + user_agent + avatar_session_id в contextvars)
-- [ ] CORS middleware (origins из config)
-- [ ] `GET /` — версия API
-- [ ] `GET /health` — DB (SELECT 1) + Redis (PING), всегда 200
-- [ ] `GET /ready` — 503 если деградация
-- [ ] Lifespan: startup (structlog + Redis) -> shutdown (Redis close + engine dispose)
-- [ ] `tests/test_health.py` — 3 теста (all ok, db down, redis down)
+- [x] `docker-compose.yml` — app + postgres:16 + redis:7-alpine
+- [x] Postgres/Redis без published портов (только Docker internal network)
+- [x] App на `127.0.0.1:8000`
+- [x] `Dockerfile` — multi-stage, dev зависимости всегда устанавливаются (тесты в контейнере)
+- [x] `.dockerignore`
+- [x] `app/core/database.py` — AsyncEngine + AsyncSession + `get_db_session()` + `get_db_reader()` + `Base`
+- [x] `app/core/redis.py` — async Redis client + lifecycle
+- [x] `app/core/logging.py` — structlog (JSON в prod, Console в dev)
+- [x] `app/core/middleware.py` — `TraceIdMiddleware` (X-Trace-ID + ip_address + user_agent + avatar_session_id в contextvars)
+- [x] CORS middleware (origins из config)
+- [x] `GET /` — версия API
+- [x] `GET /health` — DB (SELECT 1) + Redis (PING), всегда 200
+- [x] `GET /ready` — 503 если деградация
+- [x] Lifespan: startup (structlog + Redis) -> shutdown (Redis close + engine dispose)
+- [x] `tests/test_health.py` — 7 тестов (all ok, db down, redis down, /ready 503, trace-id echo)
 
 **Endpoints:**
 ```
@@ -118,19 +118,19 @@ GET /ready   -> {"status": "ok", "db": "ok", "redis": "ok"}    (200 or 503)
 
 ---
 
-### Sprint 0.3: Alembic + Core Models
+### ✅ Sprint 0.3: Alembic + Core Models
 
 **Цель:** Схема БД для всего фундамента платформы. Это самый важный спринт Phase 0.
 
 **Задачи:**
 
 **Alembic:**
-- [ ] `alembic.ini` — URL из config, не хардкод
-- [ ] `migrations/env.py` — async runner
+- [x] `alembic.ini` — URL из config, не хардкод
+- [x] `migrations/env.py` — async runner
 
 **Модели (все в одной миграции `initial_schema`):**
 
-- [ ] `app/modules/users/models.py` — `User`:
+- [x] `app/modules/users/models.py` — `User`:
 ```python
 User:
     id: UUID
@@ -147,12 +147,12 @@ User:
     created_at, updated_at
 ```
 
-- [ ] `app/modules/ledgers/models.py` — `ActiveLedger`, `PassiveLedger`:
+- [x] `app/modules/ledgers/models.py` — `ActiveLedger`, `PassiveLedger`:
 ```python
 LedgerEntry:  -- базовые поля для обоих леджеров; иммутабельно, нет updated_at
     id: UUID
     user_id: UUID     -- FK users.id
-    amount_cents: int -- отрицательные для списаний
+    amount_cents: int -- BigInteger (64-bit); поддерживает платформенные суммы до ~$92 трлн
     status: enum      -- frozen | confirmed | reversed
     frozen_until: datetime | None
     origin_payment_id: UUID | None  -- FK payments.id (circular, deferrable)
@@ -160,7 +160,7 @@ LedgerEntry:  -- базовые поля для обоих леджеров; и�
     created_at: datetime
 ```
 
-- [ ] `app/modules/staff/models.py` — `StaffProfile`, `AvatarSession`:
+- [x] `app/modules/staff/models.py` — `StaffProfile`, `AvatarSession`:
 ```python
 StaffProfile:
     id: UUID
@@ -179,7 +179,7 @@ AvatarSession:
     ended_at: datetime | None
 ```
 
-- [ ] `app/core/audit.py` — `AuditLog`:
+- [x] `app/core/audit.py` — `AuditLog`:
 ```python
 AuditLog:  -- иммутабельно, наследует Base напрямую, нет updated_at
     id: UUID
@@ -193,79 +193,90 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
     target_id: UUID
     data: JSONB
     ip_address: str | None
-    user_agent: str | None
+    user_agent: str | None  -- String(500), усечение в record_audit()
     trace_id: str | None  -- String(36)
 ```
 
-- [ ] Миграция `initial_schema` — все таблицы разом
-- [ ] `migrations/env.py` — импорты всех моделей для autogenerate
+- [x] Миграция `initial_schema` — все таблицы разом
+- [x] `migrations/env.py` — импорты всех моделей для autogenerate
 
 **Seed системного пользователя Platform:**
-- [ ] `scripts/seed_platform.py` — создание Platform user (`role=platform`)
-- [ ] Запускается автоматически при первом деплое
+- [x] `scripts/seed_platform.py` — создание Platform user (`role=platform`)
+- [x] Запускается автоматически при первом деплое
 
 **Критерий готовности:** `alembic upgrade head` применяется без ошибок. Platform user создан в БД.
 
 ---
 
-### Sprint 0.4: VPS + install_cbshome.sh
+### ✅ Sprint 0.4: VPS + install_cbshome.sh
 
 **Цель:** Приложение работает на сервере с HTTPS. Главный артефакт поставки.
 
 **Задачи:**
 
 **install_cbshome.sh:**
-- [ ] Preflight: OS (Ubuntu 22.04+), RAM (>= 2GB), disk (>= 10GB), DNS
-- [ ] Fix locale (en_US.UTF-8)
-- [ ] System deps: Docker, Nginx, Certbot, UFW, git, curl, dnsutils
-- [ ] UFW: только 22/80/443
-- [ ] Deploy user `cbshome` (non-root, в docker group)
-- [ ] SSH deploy key -> GitHub (`aivis-one/cbshome`) -> clone repo
-- [ ] Генерация `.env` с рандомными паролями (openssl rand)
-- [ ] Интерактивный ввод секретов:
+- [x] Preflight: OS (Ubuntu 22.04+), RAM (>= 2GB), disk (>= 10GB), DNS
+- [x] Fix locale (en_US.UTF-8)
+- [x] System deps: Docker, Nginx, Certbot, UFW, git, curl, dnsutils
+- [x] UFW: только 22/80/443
+- [x] Deploy user `cbshome` (non-root, в docker group)
+- [x] SSH deploy key -> GitHub (`aivis-one/cbshome`) -> clone repo
+- [x] Генерация `.env` с рандомными паролями (openssl rand)
+- [x] Интерактивный ввод секретов:
   - `SUMSUB_API_KEY` (placeholder, можно пропустить)
   - `SUMSUB_SECRET_KEY` (placeholder)
   - `TELEGRAM_BOT_TOKEN`
   - `EMAP_API_KEY` (placeholder)
   - `MAILGUN_API_KEY` (placeholder)
-- [ ] Nginx reverse proxy: `api.cbshome.org` -> `127.0.0.1:8000`, `cbshome.org` -> `127.0.0.1:3000`
-- [ ] SSL (Let's Encrypt, оба домена) + auto-renewal cron
-- [ ] `docker compose up` -> healthcheck poll -> migrations -> seed Platform user
-- [ ] Management script -> symlink `/usr/local/bin/cbshome`
-- [ ] Backup cron (4 AM, ротация 7 дней)
-- [ ] Проверка previous installation (предложить удалить)
+- [x] Nginx reverse proxy: `api.cbshome.org` -> `127.0.0.1:8000`, `cbshome.org` -> `127.0.0.1:3000`
+- [x] SSL (Let's Encrypt, оба домена) + auto-renewal cron
+- [x] `docker compose up` -> healthcheck poll -> migrations -> seed Platform user
+- [x] Management script -> symlink `/usr/local/bin/cbshome`
+- [x] Backup cron (4 AM, ротация 7 дней)
+- [x] Проверка previous installation (предложить удалить)
 
 **Management script (`cbshome`):**
 ```
-cbshome status              -- Docker ps + health + external access
-cbshome logs [app|db|redis] -- Docker logs -f
-cbshome test                -- pytest внутри контейнера
-cbshome lint                -- ruff внутри контейнера
-cbshome update              -- git pull + build + migrate + seed + test + restart
-cbshome restart [app]       -- restart all or just app
-cbshome backup              -- pg_dump + .env -> tar.gz
-cbshome db connect          -- psql в контейнер
-cbshome db migrate          -- alembic upgrade head
-cbshome seed                -- python scripts/seed.py
-cbshome seed --reset        -- clean + re-seed
-cbshome ssl renew           -- certbot renew
-cbshome version             -- git info + versions
+cbshome status                    -- Docker ps + uptime + memory + disk + health + external access
+cbshome logs [app|db|redis|all]   -- Docker logs -f
+cbshome test [backend|all]        -- pytest внутри контейнера
+cbshome lint                      -- ruff + mypy внутри контейнера
+cbshome update                    -- git fetch -> diff -> pull -> build --no-cache -> down -> up -> migrate -> seed -> test
+cbshome restart [service]         -- restart all or specific service
+cbshome backup                    -- pg_dump + .env -> tar.gz (7-day rotation)
+cbshome db connect                -- psql в контейнер
+cbshome db dump                   -- SQL dump в файл
+cbshome db restore <file>         -- восстановление из dump с подтверждением
+cbshome db migrate                -- alembic upgrade head
+cbshome seed                      -- python scripts/seed_platform.py
+cbshome seed --reset              -- clean + re-seed
+cbshome ssl renew                 -- certbot renew + nginx reload
+cbshome ssl status                -- certbot certificates info
+cbshome nginx reload              -- nginx -t + systemctl reload
+cbshome version                   -- git log + runtime versions + image list
 ```
+
+**Особенности реализации:**
+- `cbshome update` выходит с `exit 0` если Already up to date (нет новых коммитов)
+- `cbshome update` не делает `git reset --hard` при ошибке — выводит инструкцию для ручного разрешения
+- `.env` генерируется атомарно через temp file + mv (пароли генерируются один раз до heredoc)
+- Docker build всегда `--no-cache` (и при install, и при update)
+- Nginx: `X-Real-IP $remote_addr` прокидывается в app для достоверного IP в audit log
 
 **Критерий готовности:** `curl https://api.cbshome.org/health` -> `{"status":"ok"}`.
 
 ---
 
-### Sprint 0.5: Logging + Audit Service
+### ✅ Sprint 0.5: Logging + Audit Service
 
 **Цель:** Production-quality логирование и аудит финансовых операций.
 
 **Задачи:**
-- [ ] `app/core/logging.py` — фильтрация по LOG_LEVEL (`make_filtering_bound_logger`), идемпотентность `setup_logging()`
-- [ ] `TraceIdMiddleware` — pure ASGI; кладёт в contextvars: `trace_id`, `ip_address`, `user_agent`, `avatar_session_id` (если присутствует в сессии); structlog подхватывает автоматически — каждое лог-сообщение в avatar режиме помечается без изменений в бизнес-логике
-- [ ] Trace_id guard: входящий X-Trace-ID > 36 символов -> генерируем новый uuid4
-- [ ] `app/core/audit.py` — `record_audit()` читает trace_id/ip/user_agent из contextvars, не коммитит (P-01)
-- [ ] `tests/test_audit.py` — 4 теста
+- [x] `app/core/logging.py` — фильтрация по LOG_LEVEL (`make_filtering_bound_logger`), идемпотентность `setup_logging()`
+- [x] `TraceIdMiddleware` — pure ASGI; кладёт в contextvars: `trace_id`, `ip_address`, `user_agent`, `avatar_session_id` (если присутствует в сессии); structlog подхватывает автоматически — каждое лог-сообщение в avatar режиме помечается без изменений в бизнес-логике
+- [x] Trace_id guard: входящий X-Trace-ID > 36 символов -> генерируем новый uuid4
+- [x] `app/core/audit.py` — `record_audit()` читает trace_id/ip/user_agent из contextvars, не коммитит (P-01)
+- [x] `tests/test_audit.py` — 4 теста
 
 **Обязательные события аудита (определяем сейчас, используем в следующих фазах):**
 
@@ -1249,6 +1260,12 @@ Event:
 | TD-008 | Все роутеры | Rate limiting (slowapi) | Before Prod | ⬜ |
 | TD-009 | `transactions/` | Экспорт в CSV/XLSX | Phase 2 | ⬜ |
 | TD-010 | `certificates/` | PDF генерация сертификатов | Phase 2 | ⬜ |
+| TD-011 | `app/core/database.py` | Lazy singleton race condition при concurrent startup — теоретический, asyncio single-threaded, но задокументировать | Backlog | ⬜ |
+| TD-012 | `audit_log` | Партиционирование по `created_at` (range partitioning) для long-term performance | Before Prod | ⬜ |
+| TD-013 | `app/modules/ledgers/models.py` | LedgerMixin: вынести общие поля ActiveLedger/PassiveLedger в `_LedgerBase` (Abstract) | Backlog | ⬜ |
+| TD-014 | `app/core/constants.py` | LedgerReason: заменить `: str` аннотации на `Final[str]` из `typing` | Backlog | ⬜ |
+| TD-015 | `app/core/mixins.py` | JSONBMixin.set_jsonb(): уточнить type hint `value: dict` -> `value: dict[str, Any]` | Backlog | ⬜ |
+| TD-016 | `tests/` | Добавить тесты: модели (User, Ledger, Staff), middleware (TraceId), config validation, seed_platform.py идемпотентность | Sprint 1+ | ⬜ |
 
 ---
 
@@ -1256,4 +1273,4 @@ Event:
 
 ---
 
-*Version 0.7 | 2026-04-01 | cbshome Backend TZ*
+*Version 0.8 | 2026-04-02 | cbshome Backend TZ*
