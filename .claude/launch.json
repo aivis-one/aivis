@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "auth-flow",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "mocups/auth-flow", "-l", "3100", "--no-clipboard"],
+      "port": 3100
+    }
+  ]
+}

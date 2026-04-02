@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME Auth Flow — Live Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ========== RESET ========== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--shell-bg); overflow: hidden; }
+
+    /* ========== SHELL THEME ========== */
+    :root {
+      --shell-bg: #0f172a;
+      --shell-surface: #1e293b;
+      --shell-border: #334155;
+      --shell-text: #ffffff;
+      --shell-text-dim: rgba(255,255,255,0.5);
+      --shell-accent: #3b82f6;
+      --shell-accent-glow: rgba(59,130,246,0.3);
+      --frame-bg: #374151;
+      --frame-radius-phone: 44px;
+      --frame-radius-tablet: 24px;
+      --frame-radius-desktop: 12px;
+      --frame-padding: 12px;
+      --screen-radius-phone: 38px;
+      --screen-radius-tablet: 16px;
+      --screen-radius-desktop: 8px;
+    }
+
+    /* ========== CBS HOME DESIGN TOKENS ========== */
+    :root {
+      --primary: #1A6B6A;
+      --primary-dark: #0E3D42;
+      --primary-light: #2A9B9A;
+      --accent: #E8651A;
+      --accent-dark: #D45A16;
+      --bg: #FFFFFF;
+      --bg-subtle: #F5F5F5;
+      --bg-elevated: #EEFAFA;
+      --text: #1A1A1A;
+      --text-secondary: #525252;
+      --text-tertiary: #A3A3A3;
+      --border: #D4D4D4;
+      --success: #22c55e;
+      --success-dim: rgba(34,197,94,0.15);
+      --warning: #f59e0b;
+      --warning-dim: rgba(245,158,11,0.15);
+      --danger: #ef4444;
+      --danger-dim: rgba(239,68,68,0.1);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      --shadow-focus: 0 0 0 3px rgba(26,107,106,0.3);
+      --shadow-accent-focus: 0 0 0 3px rgba(232,101,26,0.4);
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 24px;
+    }
+
+    /* ========== TOOLBAR ========== */
+    .preview-toolbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 48px;
+      background: var(--shell-surface); border-bottom: 1px solid var(--shell-border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; z-index: 1000;
+    }
+    .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 12px; min-width: 200px; }
+    .toolbar-right { justify-content: flex-end; }
+    .toolbar-center { display: flex; justify-content: center; }
+    .project-info { display: flex; align-items: center; gap: 10px; }
+    .project-name { font-size: 14px; font-weight: 600; color: var(--shell-text); }
+    .project-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: var(--shell-accent); color: white; }
+    .device-switcher { display: flex; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 4px; }
+    .device-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 8px; background: transparent; color: var(--shell-text-dim); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .device-btn:hover { background: rgba(255,255,255,0.05); color: var(--shell-text); }
+    .device-btn.active { background: var(--shell-accent); color: white; box-shadow: 0 2px 8px var(--shell-accent-glow); }
+    .device-size { font-size: 11px; opacity: 0.6; font-family: monospace; }
+    .zoom-control { display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 4px; }
+    .zoom-btn { width: 28px; height: 28px; border: none; border-radius: 6px; background: transparent; color: var(--shell-text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; }
+    .zoom-btn:hover { background: rgba(255,255,255,0.1); color: var(--shell-text); }
+    .zoom-value { width: 50px; text-align: center; font-size: 12px; font-family: monospace; color: var(--shell-text); }
+    .map-btn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: none; border-radius: 8px; background: rgba(59,130,246,0.2); color: var(--shell-accent); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .map-btn:hover { background: var(--shell-accent); color: white; }
+
+    /* ========== MOBILE TOOLBAR ========== */
+    @media (max-width: 768px) {
+      .device-label { display: none; }
+      .project-info { display: none; }
+    }
+    @media (max-width: 480px) {
+      .preview-toolbar { padding: 0 8px; gap: 4px; }
+      .toolbar-left, .toolbar-right { min-width: auto; gap: 4px; }
+      .device-switcher { padding: 2px; border-radius: 8px; }
+      .device-btn { padding: 6px 8px; font-size: 14px; }
+      .device-btn .device-size { display: none; }
+      .zoom-control { padding: 2px; }
+      .zoom-btn { width: 24px; height: 24px; font-size: 14px; }
+      .zoom-value { display: none; }
+      .map-btn { padding: 6px 8px !important; font-size: 14px !important; }
+      .map-btn .map-label { display: none; }
+    }
+
+    /* ========== FRAME ========== */
+    .preview-container {
+      position: fixed; top: 48px; left: 0; right: 0; bottom: 0;
+      display: flex; align-items: flex-start; justify-content: center;
+      background: var(--shell-bg); padding: 20px; overflow: auto;
+    }
+    .device-frame {
+      background: var(--frame-bg); position: relative;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex; flex-direction: column; flex-shrink: 0; margin: auto;
+    }
+    .device-frame.phone {
+      width: calc(390px + var(--frame-padding) * 2);
+      height: calc(844px + var(--frame-padding) * 2 + 40px);
+      border-radius: var(--frame-radius-phone);
+      padding: var(--frame-padding); padding-top: 28px; padding-bottom: 20px;
+    }
+    .device-frame.phone .device-screen { border-radius: var(--screen-radius-phone); width: 390px; height: 844px; }
+    .device-frame.tablet {
+      width: calc(820px + var(--frame-padding) * 2);
+      height: calc(600px + var(--frame-padding) * 2);
+      border-radius: var(--frame-radius-tablet); padding: var(--frame-padding);
+    }
+    .device-frame.tablet .device-screen { border-radius: var(--screen-radius-tablet); width: 820px; height: 600px; }
+    .device-frame.tablet .device-notch, .device-frame.tablet .device-home-indicator { display: none; }
+    .device-frame.desktop {
+      width: calc(1280px + var(--frame-padding) * 2);
+      height: calc(800px + var(--frame-padding) * 2);
+      border-radius: var(--frame-radius-desktop); padding: var(--frame-padding);
+    }
+    .device-frame.desktop .device-screen { border-radius: var(--screen-radius-desktop); width: 1280px; height: 800px; }
+    .device-frame.desktop .device-notch, .device-frame.desktop .device-home-indicator { display: none; }
+    .device-screen {
+      background: #fff; overflow-y: auto; overflow-x: hidden;
+      flex: 1; display: flex; flex-direction: column;
+      scroll-behavior: auto; min-height: 0; position: relative;
+    }
+    .device-notch {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 28px; background: #000; border-radius: 14px; z-index: 10;
+    }
+    .device-home-indicator {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      width: 134px; height: 5px; background: rgba(255,255,255,0.3); border-radius: 3px;
+    }
+
+    /* ========== FLEX CHAIN ========== */
+    .mockup-content { min-height: 100%; height: 100%; display: flex; flex-direction: column; flex: 1; }
+    .screen { display: none; flex-direction: column; min-height: 100%; }
+    .screen.active { display: flex; flex: 1; }
+    .main { flex: 1; }
+
+    /* ========== CLICKABILITY FIX ========== */
+    .card[onclick] *, .role-card[onclick] *, .stat-card[onclick] *, .list-item[onclick] *, .metric-row[onclick] *, .doc-item[onclick] * { pointer-events: none; }
+    button, input, select, textarea, .checkbox, .doc-checkbox { pointer-events: auto; }
+
+    /* ========== MOCKUP HEADER ========== */
+    .auth-header {
+      position: sticky; top: 0; z-index: 100; background: var(--bg);
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .auth-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .auth-logo-icon {
+      width: 36px; height: 36px; background: var(--accent); color: white;
+      border-radius: var(--radius-sm); display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 18px;
+    }
+    .auth-logo-text { font-size: 16px; font-weight: 700; color: var(--primary-dark); letter-spacing: 0.5px; }
+
+    /* ========== PROGRESS STEPS ========== */
+    .progress-bar {
+      display: flex; align-items: center; gap: 4px; padding: 12px 20px;
+      background: var(--bg-subtle);
+    }
+    .progress-step {
+      flex: 1; height: 4px; border-radius: 2px; background: var(--border);
+      transition: background 0.3s;
+    }
+    .progress-step.done { background: var(--primary); }
+    .progress-step.active { background: var(--accent); }
+
+    /* ========== AUTH CONTENT ========== */
+    .auth-content {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 32px 24px; overflow-y: auto;
+    }
+    .auth-title { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 8px; text-align: center; }
+    .auth-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; text-align: center; line-height: 1.5; }
+    .auth-form { width: 100%; max-width: 360px; }
+
+    /* ========== FORM ELEMENTS ========== */
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .form-input {
+      width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+      border-radius: var(--radius-md); font-size: 15px; font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s; background: var(--bg);
+      color: var(--text);
+    }
+    .form-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
+    .form-input::placeholder { color: var(--text-tertiary); }
+    .form-input.error { border-color: var(--danger); animation: shake 0.3s ease; }
+    .form-select {
+      width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+      border-radius: var(--radius-md); font-size: 15px; font-family: inherit;
+      background: var(--bg); color: var(--text); cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23525252' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 16px center;
+      padding-right: 40px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-select:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
+    .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+    .form-error { font-size: 12px; color: var(--danger); margin-top: 4px; display: none; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
+    /* ========== BUTTONS ========== */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 14px 28px; border-radius: var(--radius-md);
+      font-weight: 600; font-size: 15px; cursor: pointer; border: none;
+      transition: all 0.2s; font-family: inherit; width: 100%;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-dark); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232,101,26,0.3); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { background: var(--border); color: var(--text-tertiary); cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: var(--bg); color: var(--primary); border: 2px solid var(--primary); }
+    .btn-secondary:hover { background: var(--primary); color: white; transform: translateY(-2px); }
+    .btn-secondary:active { transform: scale(0.98); }
+    .btn-outline { background: transparent; color: var(--text-secondary); border: 2px solid var(--border); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-telegram { background: #2AABEE; color: white; }
+    .btn-telegram:hover { background: #229ED9; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(42,171,238,0.3); }
+    .btn-link { background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 500; cursor: pointer; padding: 8px; font-family: inherit; text-decoration: none; }
+    .btn-link:hover { color: var(--primary-dark); text-decoration: underline; }
+
+    /* ========== DIVIDER ========== */
+    .divider { display: flex; align-items: center; gap: 16px; margin: 24px 0; width: 100%; max-width: 360px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .divider span { font-size: 13px; color: var(--text-tertiary); white-space: nowrap; }
+
+    /* ========== ROLE CARDS ========== */
+    .role-cards { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 400px; }
+    .role-card {
+      background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius-lg);
+      padding: 20px; cursor: pointer; transition: all 0.2s; position: relative;
+    }
+    .role-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
+    .role-card.selected { border-color: var(--accent); background: rgba(232,101,26,0.04); box-shadow: var(--shadow-accent-focus); }
+    .role-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .role-card-icon { font-size: 28px; }
+    .role-card-title { font-size: 18px; font-weight: 700; color: var(--text); }
+    .role-card-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+    .role-card-features { display: flex; flex-wrap: wrap; gap: 6px; }
+    .role-feature {
+      font-size: 11px; font-weight: 500; padding: 4px 10px;
+      border-radius: var(--radius-sm); background: var(--bg-elevated);
+      color: var(--primary);
+    }
+    .role-card.selected .role-feature { background: rgba(232,101,26,0.1); color: var(--accent); }
+    .role-card-check {
+      position: absolute; top: 16px; right: 16px; width: 24px; height: 24px;
+      border-radius: 50%; border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; font-size: 14px; color: white;
+    }
+    .role-card.selected .role-card-check { background: var(--accent); border-color: var(--accent); }
+
+    /* ========== EMAIL VERIFY ========== */
+    .verify-icon { font-size: 64px; margin-bottom: 24px; }
+    .code-inputs { display: flex; gap: 12px; margin-bottom: 24px; }
+    .code-input {
+      width: 52px; height: 60px; text-align: center; font-size: 24px; font-weight: 700;
+      border: 2px solid var(--border); border-radius: var(--radius-md); font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .code-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
+
+    /* ========== KYC STATUS ========== */
+    .kyc-status-card {
+      width: 100%; max-width: 360px; border-radius: var(--radius-lg);
+      padding: 32px 24px; text-align: center; margin-bottom: 24px;
+    }
+    .kyc-status-card.pending { background: var(--warning-dim); border: 1px solid rgba(245,158,11,0.3); }
+    .kyc-status-card.approved { background: var(--success-dim); border: 1px solid rgba(34,197,94,0.3); }
+    .kyc-status-card.rejected { background: var(--danger-dim); border: 1px solid rgba(239,68,68,0.3); }
+    .kyc-icon { font-size: 48px; margin-bottom: 16px; }
+    .kyc-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .kyc-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* ========== DOCUMENTS ========== */
+    .doc-list { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+    .doc-item {
+      display: flex; align-items: flex-start; gap: 14px; padding: 16px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .doc-item:hover { border-color: var(--primary-light); background: var(--bg-elevated); }
+    .doc-checkbox {
+      width: 22px; height: 22px; min-width: 22px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); display: flex; align-items: center;
+      justify-content: center; transition: all 0.2s; margin-top: 2px;
+      cursor: pointer; font-size: 13px; color: white;
+    }
+    .doc-checkbox.checked { background: var(--primary); border-color: var(--primary); }
+    .doc-info { flex: 1; }
+    .doc-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .doc-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+    .doc-required { font-size: 11px; color: var(--danger); font-weight: 500; margin-top: 4px; }
+
+    /* ========== PASSWORD TOGGLE ========== */
+    .input-wrapper { position: relative; }
+    .input-wrapper .form-input { padding-right: 48px; }
+    .toggle-password {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 18px;
+      color: var(--text-tertiary); padding: 4px;
+    }
+
+    /* ========== CHECKBOX INLINE ========== */
+    .checkbox-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
+    .checkbox-row .checkbox {
+      width: 20px; height: 20px; min-width: 20px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; display: flex;
+      align-items: center; justify-content: center; transition: all 0.2s;
+      font-size: 12px; color: white; margin-top: 2px;
+    }
+    .checkbox-row .checkbox.checked { background: var(--primary); border-color: var(--primary); }
+    .checkbox-row label { font-size: 13px; color: var(--text-secondary); line-height: 1.4; cursor: pointer; }
+    .checkbox-row label a { color: var(--primary); text-decoration: none; }
+    .checkbox-row label a:hover { text-decoration: underline; }
+
+    /* ========== RESPONSIVE GRID INSIDE MOCKUP ========== */
+    .device-frame.desktop .role-cards { flex-direction: row; max-width: 800px; }
+    .device-frame.desktop .role-card { flex: 1; }
+    .device-frame.tablet .role-cards { flex-direction: row; flex-wrap: wrap; max-width: 600px; }
+    .device-frame.tablet .role-card { flex: 1; min-width: 250px; }
+    .device-frame.desktop .auth-content { padding: 48px 40px; }
+    .device-frame.tablet .auth-content { padding: 40px 32px; }
+
+    /* ========== TOAST ========== */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      color: white; padding: 12px 24px; border-radius: 8px;
+      font-size: 14px; font-weight: 500; font-family: 'Montserrat', sans-serif;
+      opacity: 0; transition: all 0.3s ease; z-index: 2000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      display: flex; align-items: center; gap: 8px;
+      max-width: 90vw; text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ========== NAVIGATION MAP ========== */
+    .nav-map-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8); display: none; align-items: center;
+      justify-content: center; z-index: 2000; padding: 20px;
+    }
+    .nav-map-overlay.active { display: flex; }
+    .nav-map {
+      background: var(--shell-surface); border: 1px solid var(--shell-border);
+      border-radius: 16px; width: 100%; max-width: 600px; max-height: 90vh;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .nav-map-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--shell-border);
+    }
+    .nav-map-title { font-size: 18px; font-weight: 600; color: var(--shell-text); }
+    .nav-map-close {
+      width: 32px; height: 32px; border: none; border-radius: 8px;
+      background: rgba(255,255,255,0.1); color: var(--shell-text);
+      font-size: 18px; cursor: pointer; transition: all 0.2s;
+    }
+    .nav-map-close:hover { background: #EF4444; }
+    .nav-map-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .nav-map-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .nav-map-stat { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px; text-align: center; }
+    .nav-map-stat-value { font-size: 24px; font-weight: 700; color: var(--shell-accent); }
+    .nav-map-stat-label { font-size: 11px; color: var(--shell-text-dim); }
+    .nav-map-legend { display: flex; gap: 16px; margin-bottom: 16px; padding: 8px 12px; background: rgba(0,0,0,0.2); border-radius: 6px; }
+    .nav-map-legend-item { font-size: 12px; color: var(--shell-text-dim); display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status-dot.green { background: #22C55E; }
+    .status-dot.yellow { background: #F59E0B; }
+    .status-dot.red { background: #EF4444; }
+    .legend-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+    .legend-dot.green { background: #22C55E; }
+    .legend-dot.yellow { background: #F59E0B; }
+    .legend-dot.red { background: #EF4444; }
+    .nav-map-item .status-dot { margin-left: 8px; }
+    .nav-map-tree { display: flex; flex-direction: column; gap: 4px; }
+    .nav-map-level { padding-left: calc(var(--level, 0) * 16px); }
+    .nav-map-level[data-level="1"] { --level: 1; }
+    .nav-map-level[data-level="2"] { --level: 2; }
+    .nav-map-level[data-level="3"] { --level: 3; }
+    .nav-map-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    .nav-map-item:hover { background: rgba(59,130,246,0.2); }
+    .nav-map-item-icon { font-size: 14px; }
+    .nav-map-item-name { flex: 1; font-size: 13px; color: var(--shell-text); }
+    .nav-map-item.screen-item:hover { background: rgba(34,197,94,0.15); }
+    .nav-map-item.endpoint-item { opacity: 0.7; }
+    .nav-map-item.endpoint-item:hover { opacity: 1; background: rgba(239,68,68,0.15); }
+    .level-badge {
+      font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      background: rgba(255,255,255,0.1); color: var(--shell-text-dim); margin-left: auto;
+    }
+    .level-badge.hub { background: rgba(59,130,246,0.3); color: #60A5FA; }
+    .level-badge.end { background: rgba(239,68,68,0.2); color: #F87171; }
+    .nav-map-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--shell-border); }
+    .nav-map-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .nav-map-section-title {
+      font-size: 11px; font-weight: 600; color: var(--shell-text-dim);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+      padding: 8px 12px; cursor: pointer; display: flex; align-items: center;
+      justify-content: space-between; border-radius: 6px; transition: all 0.2s;
+    }
+    .nav-map-section-title:hover { background: rgba(255,255,255,0.05); color: var(--shell-text); }
+    .nav-map-section-title .section-info { display: flex; align-items: center; gap: 8px; }
+    .nav-map-section-title .section-count { font-size: 10px; color: var(--shell-accent); font-weight: 700; }
+    .nav-map-section-title .section-arrow { font-size: 10px; transition: transform 0.2s; }
+    .nav-map-section.collapsed .section-arrow { transform: rotate(-90deg); }
+    .nav-map-section-content { display: flex; flex-direction: column; gap: 4px; overflow: hidden; transition: all 0.2s; }
+    .nav-map-section.collapsed .nav-map-section-content { display: none; }
+
+    /* ========== SCREEN TRANSITION ========== */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .screen.active { animation: fadeIn 0.25s ease forwards; }
+  </style>
+</head>
+<body>
+
+  <!-- ========== TOOLBAR ========== -->
+  <div class="preview-toolbar">
+    <div class="toolbar-left">
+      <div class="project-info">
+        <span class="project-name">CBS HOME Auth v1</span>
+        <span class="project-badge">LIVE</span>
+      </div>
+    </div>
+    <div class="toolbar-center">
+      <div class="device-switcher">
+        <button class="device-btn active" data-device="phone">
+          📱 <span class="device-label">Phone</span>
+          <span class="device-size">390</span>
+        </button>
+        <button class="device-btn" data-device="tablet">
+          📱 <span class="device-label">Tablet</span>
+          <span class="device-size">820</span>
+        </button>
+        <button class="device-btn" data-device="desktop">
+          🖥️ <span class="device-label">Desktop</span>
+          <span class="device-size">1280</span>
+        </button>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button class="map-btn" onclick="openNavMap()">
+        📍 <span class="map-label">Map</span>
+      </button>
+      <div class="zoom-control">
+        <button class="zoom-btn" data-zoom="-10">−</button>
+        <span class="zoom-value">100%</span>
+        <button class="zoom-btn" data-zoom="+10">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DEVICE FRAME ========== -->
+  <div class="preview-container">
+    <div class="device-frame phone" id="deviceFrame">
+      <div class="device-notch"></div>
+      <div class="device-screen" id="deviceScreen">
+        <div class="mockup-content">
+
+          <!-- ===== SCREEN 1: LOGIN ===== -->
+          <div class="screen active" id="screen-login">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <div style="margin-bottom:24px; text-align:center;">
+                <div style="font-size:48px; margin-bottom:8px;">🔐</div>
+              </div>
+              <h1 class="auth-title">Вход в аккаунт</h1>
+              <p class="auth-subtitle">Войдите в CBS HOME для управления инвестициями</p>
+              <div class="auth-form">
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <input type="email" class="form-input" placeholder="name@example.com" value="sergej.seider@cbshome.org">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Пароль</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Введите пароль" value="••••••••">
+                    <button class="toggle-password" type="button">👁</button>
+                  </div>
+                </div>
+                <div style="text-align:right; margin-bottom:20px;">
+                  <button class="btn-link" type="button" onclick="showToast('📌 Восстановление пароля — финальная точка')">Забыли пароль?</button>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleLogin()">Войти</button>
+
+                <div class="divider"><span>или</span></div>
+
+                <button class="btn btn-telegram" type="button" onclick="showToast('📌 Telegram WebApp — внешний сервис')">
+                  ✈️ Войти через Telegram
+                </button>
+
+                <div style="text-align:center; margin-top:24px;">
+                  <span style="font-size:14px; color:var(--text-secondary);">Нет аккаунта? </span>
+                  <button class="btn-link" type="button" onclick="navigateTo('screen-register')">Создать аккаунт</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 2: REGISTER ===== -->
+          <div class="screen" id="screen-register">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+              <button class="btn-link" type="button" onclick="navigateTo('screen-login')">← Назад</button>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step active"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Создать аккаунт</h1>
+              <p class="auth-subtitle">Присоединяйтесь к инвестиционной платформе CBS HOME</p>
+              <div class="auth-form">
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <input type="email" class="form-input" placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Пароль</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Минимум 8 символов">
+                    <button class="toggle-password" type="button">👁</button>
+                  </div>
+                  <div class="form-hint">Минимум 8 символов, буквы и цифры</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Подтверждение пароля</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Повторите пароль">
+                    <button class="toggle-password" type="button">👁</button>
+                  </div>
+                </div>
+                <div class="checkbox-row">
+                  <div class="checkbox" onclick="toggleCheckbox(this)"></div>
+                  <label onclick="toggleCheckbox(this.previousElementSibling)">Я принимаю <a href="#" onclick="event.stopPropagation(); showToast('📌 Условия использования — финальная точка')">условия использования</a> и <a href="#" onclick="event.stopPropagation(); showToast('📌 Политика конфиденциальности — финальная точка')">политику конфиденциальности</a></label>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleRegister()">Создать аккаунт</button>
+
+                <div style="text-align:center; margin-top:24px;">
+                  <span style="font-size:14px; color:var(--text-secondary);">Уже есть аккаунт? </span>
+                  <button class="btn-link" type="button" onclick="navigateTo('screen-login')">Войти</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 3: EMAIL VERIFICATION ===== -->
+          <div class="screen" id="screen-verify">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <div class="verify-icon">📧</div>
+              <h1 class="auth-title">Проверьте почту</h1>
+              <p class="auth-subtitle">Мы отправили код подтверждения на<br><strong style="color:var(--text)">sergej.seider@cbshome.org</strong></p>
+              <div class="code-inputs">
+                <input class="code-input" type="text" maxlength="1" value="4">
+                <input class="code-input" type="text" maxlength="1" value="7">
+                <input class="code-input" type="text" maxlength="1" value="2">
+                <input class="code-input" type="text" maxlength="1" value="9">
+                <input class="code-input" type="text" maxlength="1">
+                <input class="code-input" type="text" maxlength="1">
+              </div>
+              <div class="auth-form">
+                <button class="btn btn-primary" type="button" onclick="handleVerify()">Подтвердить</button>
+                <div style="text-align:center; margin-top:20px;">
+                  <span style="font-size:14px; color:var(--text-secondary);">Не получили код? </span>
+                  <button class="btn-link" type="button" onclick="showToast('Код отправлен повторно', 'info')">Отправить повторно</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 4: PROFILE SETUP ===== -->
+          <div class="screen" id="screen-profile">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Данные профиля</h1>
+              <p class="auth-subtitle">Заполните информацию для вашего аккаунта</p>
+              <div class="auth-form">
+                <div style="display:flex; gap:12px;">
+                  <div class="form-group" style="flex:1;">
+                    <label class="form-label">Имя</label>
+                    <input type="text" class="form-input" placeholder="Sergej" value="Sergej">
+                  </div>
+                  <div class="form-group" style="flex:1;">
+                    <label class="form-label">Фамилия</label>
+                    <input type="text" class="form-input" placeholder="Seider" value="Seider">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Телефон</label>
+                  <input type="tel" class="form-input" placeholder="+49 XXX XXXXXXXX" value="+49 172 5551234">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Страна</label>
+                  <select class="form-select">
+                    <option value="de" selected>Deutschland</option>
+                    <option value="ch">Schweiz</option>
+                    <option value="at">Österreich</option>
+                    <option value="ru">Россия</option>
+                    <option value="other">Другая</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Язык интерфейса</label>
+                  <select class="form-select">
+                    <option value="de" selected>Deutsch</option>
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                    <option value="ar">العربية</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleProfile()">Продолжить</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 5: ROLE SELECTION ===== -->
+          <div class="screen" id="screen-role">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Выберите роль</h1>
+              <p class="auth-subtitle">Как вы планируете использовать платформу?</p>
+              <div class="role-cards" id="roleCards">
+                <div class="role-card" onclick="selectRole(this, 'Инвестор')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon">📊</span>
+                    <span class="role-card-title">Инвестор</span>
+                  </div>
+                  <div class="role-card-desc">Покупайте продукты, управляйте портфелем и отслеживайте инвестиции</div>
+                  <div class="role-card-features">
+                    <span class="role-feature">Портфель</span>
+                    <span class="role-feature">Рассрочки</span>
+                    <span class="role-feature">Баланс</span>
+                    <span class="role-feature">Документы</span>
+                  </div>
+                </div>
+                <div class="role-card" onclick="selectRole(this, 'Агент')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon">🤝</span>
+                    <span class="role-card-title">Агент</span>
+                  </div>
+                  <div class="role-card-desc">Все возможности инвестора плюс реферальная программа и комиссии</div>
+                  <div class="role-card-features">
+                    <span class="role-feature">Реферальные ссылки</span>
+                    <span class="role-feature">Комиссии L1/L2/L3</span>
+                    <span class="role-feature">Лидерборд</span>
+                    <span class="role-feature">Сертификация</span>
+                  </div>
+                </div>
+                <div class="role-card" onclick="selectRole(this, 'Компания')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon">🏢</span>
+                    <span class="role-card-title">Компания</span>
+                  </div>
+                  <div class="role-card-desc">Размещайте продукты, управляйте продажами и получайте выручку</div>
+                  <div class="role-card-features">
+                    <span class="role-feature">Продукты</span>
+                    <span class="role-feature">Аналитика</span>
+                    <span class="role-feature">Выручка</span>
+                    <span class="role-feature">Документы</span>
+                  </div>
+                </div>
+              </div>
+              <div style="width:100%; max-width:400px; margin-top:24px;">
+                <button class="btn btn-primary" id="roleSubmitBtn" type="button" disabled onclick="handleRoleSelect()">Выберите роль</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 6: KYC STATUS ===== -->
+          <div class="screen" id="screen-kyc">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Верификация личности</h1>
+              <p class="auth-subtitle">Для работы на платформе необходимо пройти KYC-верификацию</p>
+
+              <div class="kyc-status-card approved">
+                <div class="kyc-icon">✅</div>
+                <div class="kyc-title" style="color:var(--success);">Верификация пройдена</div>
+                <div class="kyc-text">Ваша личность подтверждена. Вы можете продолжить настройку аккаунта.</div>
+              </div>
+
+              <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:12px;">
+                <button class="btn btn-primary" type="button" onclick="navigateTo('screen-docs')">Продолжить</button>
+                <button class="btn btn-outline" type="button" onclick="showToast('📌 SumSub — внешний сервис верификации')">
+                  🔄 Пройти заново
+                </button>
+              </div>
+
+              <div style="margin-top:32px; width:100%; max-width:360px; padding:16px; background:var(--bg-subtle); border-radius:var(--radius-md);">
+                <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--text);">Статусы верификации:</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--warning);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);">Ожидание — документы на проверке</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--success);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);">Одобрено — верификация пройдена</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--danger);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);">Отклонено — требуется повторная подача</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 7: DOCUMENT SIGNING ===== -->
+          <div class="screen" id="screen-docs">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Подписание документов</h1>
+              <p class="auth-subtitle">Ознакомьтесь и подпишите обязательные документы для начала работы</p>
+
+              <div class="doc-list" id="docList">
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title">Пользовательское соглашение cbshome.org</div>
+                    <div class="doc-desc">Основные условия использования платформы, права и обязанности сторон</div>
+                    <div class="doc-required">Обязательный документ</div>
+                  </div>
+                </div>
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title">Политика конфиденциальности</div>
+                    <div class="doc-desc">Порядок обработки, хранения и защиты персональных данных в соответствии с GDPR</div>
+                    <div class="doc-required">Обязательный документ</div>
+                  </div>
+                </div>
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title">Согласие на обработку персональных данных</div>
+                    <div class="doc-desc">Явное согласие на обработку ваших данных для предоставления услуг платформы</div>
+                    <div class="doc-required">Обязательный документ</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="width:100%; max-width:400px;">
+                <button class="btn btn-primary" id="signBtn" type="button" disabled onclick="handleSign()">Подписать документы</button>
+                <div style="text-align:center; margin-top:16px;">
+                  <span style="font-size:12px; color:var(--text-tertiary);">Нажимая «Подписать», вы соглашаетесь с условиями всех перечисленных документов</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="device-home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ========== NAVIGATION MAP ========== -->
+  <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
+    <div class="nav-map" onclick="event.stopPropagation()">
+      <div class="nav-map-header">
+        <div class="nav-map-title">📍 Navigation Map</div>
+        <button class="nav-map-close" onclick="closeNavMap()">×</button>
+      </div>
+      <div class="nav-map-body">
+        <div class="nav-map-stats">
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">7</div>
+            <div class="nav-map-stat-label">экранов</div>
+          </div>
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">2</div>
+            <div class="nav-map-stat-label">полных путей</div>
+          </div>
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">4</div>
+            <div class="nav-map-stat-label">финальных точек</div>
+          </div>
+        </div>
+
+        <div class="nav-map-legend">
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> Экран</div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> Тупик</div>
+        </div>
+
+        <div class="nav-map-tree">
+          <!-- Auth Section -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info">🔐 АУТЕНТИФИКАЦИЯ <span class="section-count">(4)</span></span>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-login')">
+                  <span class="nav-map-item-icon">🔑</span>
+                  <span class="nav-map-item-name">Login</span>
+                  <span class="level-badge hub">ENTRY</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-register')">
+                  <span class="nav-map-item-icon">📝</span>
+                  <span class="nav-map-item-name">↳ Register</span>
+                  <span class="level-badge">L1</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="2">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-verify')">
+                  <span class="nav-map-item-icon">📧</span>
+                  <span class="nav-map-item-name">↳ Email Verification</span>
+                  <span class="level-badge">L2</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Telegram WebApp', 'screen-login')">
+                  <span class="nav-map-item-icon">✈️</span>
+                  <span class="nav-map-item-name">↳ Telegram Login</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Восстановление пароля', 'screen-login')">
+                  <span class="nav-map-item-icon">🔓</span>
+                  <span class="nav-map-item-name">↳ Forgot Password</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Onboarding Section -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info">👤 ОНБОРДИНГ <span class="section-count">(6)</span></span>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-profile')">
+                  <span class="nav-map-item-icon">👤</span>
+                  <span class="nav-map-item-name">Profile Setup</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-role')">
+                  <span class="nav-map-item-icon">🎯</span>
+                  <span class="nav-map-item-name">Role Selection</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-kyc')">
+                  <span class="nav-map-item-icon">🛡️</span>
+                  <span class="nav-map-item-name">KYC Verification</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('SumSub Verification', 'screen-kyc')">
+                  <span class="nav-map-item-icon">🔍</span>
+                  <span class="nav-map-item-name">↳ SumSub External</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')">
+                  <span class="nav-map-item-icon">📄</span>
+                  <span class="nav-map-item-name">Document Signing</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Onboarding Complete — переход в кабинет', 'screen-docs')">
+                  <span class="nav-map-item-icon">🏁</span>
+                  <span class="nav-map-item-name">↳ Onboarding Complete</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========== DEVICE PREVIEW CONTROLLER ========== */
+    const DevicePreview = {
+      devices: {
+        phone:   { width: 390,  height: 844,  label: 'Phone' },
+        tablet:  { width: 820,  height: 600,  label: 'Tablet' },
+        desktop: { width: 1280, height: 800,  label: 'Desktop' }
+      },
+      currentDevice: 'phone',
+      currentZoom: 100,
+      frame: null,
+      screen: null,
+
+      init() {
+        this.frame = document.getElementById('deviceFrame');
+        this.screen = document.getElementById('deviceScreen');
+        document.querySelectorAll('[data-device]').forEach(btn => {
+          btn.addEventListener('click', () => this.setDevice(btn.dataset.device));
+        });
+        document.querySelectorAll('[data-zoom]').forEach(btn => {
+          btn.addEventListener('click', () => this.changeZoom(parseInt(btn.dataset.zoom)));
+        });
+        document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+        this.setDevice('phone');
+      },
+
+      setDevice(type) {
+        if (!this.devices[type]) return;
+        this.currentDevice = type;
+        this.frame.className = 'device-frame ' + type;
+        document.querySelectorAll('[data-device]').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.device === type);
+        });
+        const resetScroll = () => {
+          this.screen.scrollTop = 0;
+          this.screen.scrollTo({ top: 0, behavior: 'instant' });
+        };
+        resetScroll();
+        requestAnimationFrame(resetScroll);
+        setTimeout(resetScroll, 100);
+        setTimeout(resetScroll, 400);
+      },
+
+      changeZoom(delta) {
+        this.currentZoom = Math.min(150, Math.max(50, this.currentZoom + delta));
+        this.frame.style.transform = `scale(${this.currentZoom / 100})`;
+        this.frame.style.transformOrigin = 'center top';
+        const zoomEl = document.querySelector('.zoom-value');
+        if (zoomEl) zoomEl.textContent = this.currentZoom + '%';
+      },
+
+      handleKeyboard(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        switch(e.key) {
+          case '1': this.setDevice('phone'); break;
+          case '2': this.setDevice('tablet'); break;
+          case '3': this.setDevice('desktop'); break;
+          case '+': case '=': this.changeZoom(10); break;
+          case '-': this.changeZoom(-10); break;
+          case '0': this.currentZoom = 100; this.changeZoom(0); break;
+          case 'm': case 'M': openNavMap(); break;
+        }
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => DevicePreview.init());
+
+    /* ========== NAVIGATION ========== */
+    function navigateTo(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      const screen = document.getElementById('deviceScreen');
+      screen.scrollTop = 0;
+      screen.scrollTo(0, 0);
+      requestAnimationFrame(() => screen.scrollTop = 0);
+    }
+
+    /* ========== TOAST ========== */
+    function showToast(message, type = 'info') {
+      const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+      const colors = { success: '#22c55e', error: '#ef4444', warning: '#f59e0b', info: '#1A6B6A' };
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<span>${icons[type] || 'ℹ'}</span>${message}`;
+      toast.style.background = colors[type] || colors.info;
+      document.body.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    /* ========== NAVIGATION MAP ========== */
+    function openNavMap() { document.getElementById('navMapOverlay').classList.add('active'); }
+    function closeNavMap() { document.getElementById('navMapOverlay').classList.remove('active'); }
+    function closeNavMapOnOverlay(e) { if (e.target.id === 'navMapOverlay') closeNavMap(); }
+    function navMapGo(screenId) { closeNavMap(); navigateTo(screenId); showToast('→ ' + screenId.replace('screen-', '')); }
+    function navMapEndpoint(name, parentScreen) {
+      closeNavMap();
+      if (parentScreen) navigateTo(parentScreen);
+      setTimeout(() => showToast('📌 ' + name + ' — финальная точка'), 300);
+    }
+    function toggleSection(titleEl) { titleEl.parentElement.classList.toggle('collapsed'); }
+
+    /* ========== AUTH HANDLERS ========== */
+    function handleLogin() {
+      showToast('Вход выполнен', 'success');
+      setTimeout(() => navigateTo('screen-role'), 800);
+    }
+
+    function handleRegister() {
+      showToast('Аккаунт создан', 'success');
+      setTimeout(() => navigateTo('screen-verify'), 800);
+    }
+
+    function handleVerify() {
+      showToast('Email подтверждён', 'success');
+      setTimeout(() => navigateTo('screen-profile'), 800);
+    }
+
+    function handleProfile() {
+      showToast('Профиль сохранён', 'success');
+      setTimeout(() => navigateTo('screen-role'), 800);
+    }
+
+    let selectedRole = null;
+    function selectRole(card, roleName) {
+      document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedRole = roleName;
+      const btn = document.getElementById('roleSubmitBtn');
+      btn.disabled = false;
+      btn.textContent = 'Продолжить как ' + roleName;
+    }
+
+    function handleRoleSelect() {
+      if (!selectedRole) return;
+      showToast('Роль выбрана: ' + selectedRole, 'success');
+      setTimeout(() => navigateTo('screen-kyc'), 800);
+    }
+
+    /* ========== DOCUMENT SIGNING ========== */
+    function toggleDoc(item) {
+      const checkbox = item.querySelector('.doc-checkbox');
+      checkbox.classList.toggle('checked');
+      checkbox.innerHTML = checkbox.classList.contains('checked') ? '✓' : '';
+      updateSignBtn();
+    }
+
+    function updateSignBtn() {
+      const allChecked = document.querySelectorAll('.doc-checkbox');
+      const checkedCount = document.querySelectorAll('.doc-checkbox.checked').length;
+      const btn = document.getElementById('signBtn');
+      btn.disabled = checkedCount < allChecked.length;
+      btn.textContent = checkedCount === allChecked.length ? 'Подписать документы' : `Отмечено ${checkedCount} из ${allChecked.length}`;
+    }
+
+    function handleSign() {
+      showToast('Документы подписаны', 'success');
+      setTimeout(() => showToast('📌 Onboarding завершён — переход в кабинет'), 1500);
+    }
+
+    /* ========== CHECKBOX ========== */
+    function toggleCheckbox(el) {
+      el.classList.toggle('checked');
+      el.innerHTML = el.classList.contains('checked') ? '✓' : '';
+    }
+  </script>
+</body>
+</html>
