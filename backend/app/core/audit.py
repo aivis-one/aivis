@@ -165,7 +165,7 @@ async def record_audit(
 
     logger.info(
         "audit_recorded",
-        event=event,
+        audit_event=event,
         actor_id=str(actor_id) if actor_id else None,
         target_type=target_type,
         target_id=str(target_id),

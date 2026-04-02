@@ -590,24 +590,62 @@ cmd_lint() {
 
 cmd_update() {
     cd_compose
+
+    # Fix git safe directory (required for git 2.35+ when repo owner differs).
+    git config --global --add safe.directory "$COMPOSE_DIR" 2>/dev/null || true
+
     echo -e "${CYAN}=== Pulling latest code ===${NC}"
+    CURRENT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" \
-        git pull origin main
+        git pull origin main || {
+            echo -e "${RED}✗ git pull failed. Trying reset to origin/main...${NC}"
+            GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" \
+                git fetch origin main
+            git reset --hard origin/main
+        }
+    NEW=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    echo "Commit: $CURRENT -> $NEW"
 
     echo -e "${CYAN}=== Building ===${NC}"
-    docker compose build
+    docker compose build app
+
+    echo -e "${CYAN}=== Restarting ===${NC}"
+    docker compose down
+    docker compose up -d
+
+    echo -e "${CYAN}=== Waiting for app ===${NC}"
+    for i in $(seq 1 18); do
+        if curl -sf "http://127.0.0.1:8000/ready" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ App is healthy${NC}"
+            break
+        fi
+        if [ "$i" = "18" ]; then
+            echo -e "${RED}✗ App did not respond within 90s${NC}"
+            docker compose logs --tail=30 app
+            exit 1
+        fi
+        echo -n "."
+        sleep 5
+    done
+    echo ""
 
     echo -e "${CYAN}=== Running migrations ===${NC}"
-    docker compose exec -T app python -m alembic upgrade head
+    docker compose exec -T app python -m alembic upgrade head || {
+        echo -e "${RED}✗ Migration failed!${NC}"
+        exit 1
+    }
+    echo -e "${GREEN}✓ Migrations applied${NC}"
 
     echo -e "${CYAN}=== Seeding Platform user ===${NC}"
     docker compose exec -T app python scripts/seed_platform.py
 
     echo -e "${CYAN}=== Running tests ===${NC}"
-    docker compose exec -T app python -m pytest tests/ -v --tb=short
-
-    echo -e "${CYAN}=== Restarting ===${NC}"
-    docker compose up -d
+    if docker compose exec -T app python -m pytest tests/ -v --tb=short; then
+        echo -e "${GREEN}✓ All tests passed${NC}"
+    else
+        echo -e "${RED}✗ Tests failed -- app is running but code may be broken${NC}"
+        exit 1
+    fi
 
     echo -e "${GREEN}✓ Update complete${NC}"
 }
