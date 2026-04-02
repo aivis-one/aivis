@@ -485,8 +485,11 @@ certbot --nginx \
     --redirect || warn "SSL setup failed. Run manually: certbot --nginx"
 
 # Auto-renewal cron
-(crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && systemctl reload nginx") \
-    | sort -u | crontab -
+RENEWAL_JOB="0 3 * * * certbot renew --quiet && systemctl reload nginx"
+CURRENT_CRON=$(crontab -l 2>/dev/null || true)
+if ! echo "$CURRENT_CRON" | grep -qF "$RENEWAL_JOB"; then
+    (echo "$CURRENT_CRON"; echo "$RENEWAL_JOB") | crontab - || true
+fi
 success "SSL auto-renewal cron set (3 AM daily)"
 
 # ==============================================================================
@@ -496,7 +499,9 @@ success "SSL auto-renewal cron set (3 AM daily)"
 section "Docker Stack"
 
 cd "$INSTALL_BASE/repo"
-docker compose up -d --build
+log "Building Docker images (this may take a few minutes)..."
+docker compose build 2>&1 || { error "Docker build failed. Check output above."; }
+docker compose up -d 2>&1 || { error "Docker compose up failed. Check output above."; }
 log "Waiting for app to be healthy..."
 
 HEALTH_URL="http://127.0.0.1:${APP_PORT}/ready"
