@@ -3,14 +3,16 @@
 # =============================================================================
 #
 # Tests cover:
-#   1: Staff creates document -> 201, status=draft
-#   2: Non-staff creates document -> 403
-#   3: Status flow: draft -> active -> archived
-#   4: Delete draft document -> 204
-#   5: Delete active document -> 400
-#   6: List documents by role (investor sees own package)
-#   7: Sign active document -> 201
-#   8: Sign same document again -> 409
+#   1:  Staff creates document -> 201, status=draft
+#   2:  Non-staff creates document -> 403
+#   3:  Status flow: draft -> active -> archived (+ invalid transition)
+#   4:  Delete draft document -> 204
+#   5:  Delete active document -> 400
+#   6:  List documents by role (investor sees own package)
+#   7:  Sign active document -> 201
+#   8:  Sign same document again -> 409
+#   9:  Update document title and content_url
+#   10: Sign archived document -> 400
 #
 # Email prefix: "s22_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -135,7 +137,7 @@ async def test_create_document_non_staff(client: AsyncClient) -> None:
 async def test_update_document_status_flow(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Status transitions: draft -> active -> archived."""
+    """Status transitions: draft -> active -> archived + invalid."""
     token = await _staff_token(client, db_session)
 
     # Create draft.
@@ -305,3 +307,72 @@ async def test_sign_document_duplicate(
         headers=auth_headers(inv_token),
     )
     assert resp2.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# Additional tests (review v10 feedback)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_update_document_title_and_url(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Update document title and content_url."""
+    token = await _staff_token(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/staff/documents",
+        json={
+            "type": "company_agreement",
+            "title": "Old Title",
+            "content_url": "https://docs.example.com/old",
+        },
+        headers=auth_headers(token),
+    )
+    doc_id = resp.json()["id"]
+
+    resp2 = await client.patch(
+        f"/api/v1/staff/documents/{doc_id}",
+        json={
+            "title": "New Title",
+            "content_url": "https://docs.example.com/new",
+        },
+        headers=auth_headers(token),
+    )
+    assert resp2.status_code == 200
+    body = resp2.json()
+    assert body["title"] == "New Title"
+    assert body["content_url"] == "https://docs.example.com/new"
+
+
+@pytest.mark.asyncio
+async def test_sign_archived_document_fails(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Sign an archived document -> 400."""
+    staff_token = await _staff_token(client, db_session)
+
+    # Create and activate document.
+    doc = await _create_active_document(
+        client, staff_token, "investment_agreement"
+    )
+
+    # Archive it: active -> archived.
+    await client.patch(
+        f"/api/v1/staff/documents/{doc['id']}",
+        json={"status": "archived"},
+        headers=auth_headers(staff_token),
+    )
+
+    # Investor tries to sign archived doc.
+    inv_data = await register_user(
+        client, email=f"{EMAIL_PREFIX}arch@example.com"
+    )
+    inv_token = inv_data["session_token"]
+
+    resp = await client.post(
+        f"/api/v1/documents/{doc['id']}/sign",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 400

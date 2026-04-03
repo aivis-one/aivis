@@ -20,12 +20,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
 from app.modules.kyc.schemas import KYCStatusResponse
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
+
+# Valid statuses accepted from webhook.
+_VALID_WEBHOOK_STATUSES = {
+    KYCApplicationStatus.APPROVED,
+    KYCApplicationStatus.REJECTED,
+}
 
 
 async def submit_kyc(
@@ -121,8 +127,17 @@ async def process_webhook(
     will happen in the router before calling this function.
 
     Raises:
+        BadRequestError: If new_status is not approved or rejected.
         NotFoundError: If user or pending application not found.
     """
+    # Guard: validate status even though schema already checks.
+    # Protects against internal callers bypassing schema validation.
+    if new_status not in _VALID_WEBHOOK_STATUSES:
+        raise BadRequestError(
+            f"Invalid KYC status: {new_status}. "
+            f"Valid: {', '.join(sorted(_VALID_WEBHOOK_STATUSES))}"
+        )
+
     # Load user.
     stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)

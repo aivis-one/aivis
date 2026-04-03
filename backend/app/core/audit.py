@@ -23,7 +23,8 @@
 #   the business operation in the same atomic transaction.
 #
 # USER AGENT:
-#   Truncated to 500 chars to prevent DoS via oversized headers.
+#   Truncated to USER_AGENT_MAX_LEN chars to prevent DoS via oversized
+#   headers. Constant shared with middleware.py via core/constants.py.
 # =============================================================================
 
 from datetime import datetime
@@ -36,12 +37,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.constants import USER_AGENT_MAX_LEN
 from app.core.database import Base
 
 logger = structlog.get_logger()
-
-# Max length for user_agent to prevent DoS via oversized headers.
-_USER_AGENT_MAX_LEN = 500
 
 
 class AuditLog(Base):
@@ -88,8 +87,10 @@ class AuditLog(Base):
     )
 
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
-    # user_agent: truncated to _USER_AGENT_MAX_LEN to prevent disk exhaustion.
-    user_agent: Mapped[str | None] = mapped_column(String(_USER_AGENT_MAX_LEN), nullable=True)
+    # user_agent: truncated to USER_AGENT_MAX_LEN to prevent disk exhaustion.
+    user_agent: Mapped[str | None] = mapped_column(
+        String(USER_AGENT_MAX_LEN), nullable=True
+    )
     trace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     __table_args__ = (
@@ -145,7 +146,7 @@ async def record_audit(
     # Truncate user_agent to prevent disk exhaustion via oversized headers.
     user_agent: str | None = None
     if raw_user_agent:
-        user_agent = str(raw_user_agent)[:_USER_AGENT_MAX_LEN]
+        user_agent = str(raw_user_agent)[:USER_AGENT_MAX_LEN]
 
     entry = AuditLog(
         event=event,

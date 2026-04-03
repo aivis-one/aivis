@@ -30,6 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import USER_AGENT_MAX_LEN
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.documents.constants import (
     ROLE_REQUIRED_DOCUMENT_TYPES,
@@ -48,9 +49,6 @@ from app.modules.documents.schemas import (
 )
 
 logger = structlog.get_logger()
-
-# Max length for user_agent (mirrors audit.py).
-_USER_AGENT_MAX_LEN = 500
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +196,25 @@ async def delete_document(
 # ---------------------------------------------------------------------------
 
 
+def _build_document_response(
+    document: Document,
+    is_signed: bool,
+) -> DocumentResponse:
+    """Build DocumentResponse with is_signed set at construction time."""
+    return DocumentResponse(
+        id=document.id,
+        type=document.type,
+        version=document.version,
+        title=document.title,
+        content_url=document.content_url,
+        status=document.status,
+        created_by=document.created_by,
+        created_at=document.created_at,
+        updated_at=document.updated_at,
+        is_signed=is_signed,
+    )
+
+
 async def list_documents_for_role(
     role: str,
     user_id: UUID,
@@ -239,14 +256,10 @@ async def list_documents_for_role(
     signing_result = await session.execute(signing_stmt)
     signed_doc_ids = {row[0] for row in signing_result.all()}
 
-    # Build response with is_signed flag.
-    responses = []
-    for doc in documents:
-        resp = DocumentResponse.model_validate(doc)
-        resp.is_signed = doc.id in signed_doc_ids
-        responses.append(resp)
-
-    return responses
+    return [
+        _build_document_response(doc, doc.id in signed_doc_ids)
+        for doc in documents
+    ]
 
 
 async def get_document(
@@ -277,9 +290,7 @@ async def get_document(
     signing_result = await session.execute(signing_stmt)
     signing = signing_result.scalar_one_or_none()
 
-    resp = DocumentResponse.model_validate(document)
-    resp.is_signed = signing is not None
-    return resp
+    return _build_document_response(document, signing is not None)
 
 
 async def sign_document(
@@ -308,7 +319,7 @@ async def sign_document(
         raise BadRequestError("Only active documents can be signed")
 
     # Truncate user_agent to prevent DoS.
-    truncated_ua = user_agent[:_USER_AGENT_MAX_LEN] if user_agent else ""
+    truncated_ua = user_agent[:USER_AGENT_MAX_LEN] if user_agent else ""
 
     signing = DocumentSigning(
         user_id=user_id,

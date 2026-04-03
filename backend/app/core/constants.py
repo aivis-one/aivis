@@ -1,9 +1,16 @@
 # =============================================================================
-# CBSHOME Backend -- Canonical LedgerReason Constants
+# CBSHOME Backend -- Canonical Constants
 # =============================================================================
 #
-# All ledger entry `reason` strings must come from this registry.
-# Format: "{operation}:{details}"
+# SHARED CONSTANTS:
+#   USER_AGENT_MAX_LEN -- max user_agent length stored in DB (AuditLog,
+#                         DocumentSigning) and truncated in middleware.
+#                         Prevents disk exhaustion via oversized headers.
+#                         TD-020: consolidated from middleware.py + audit.py.
+#
+# LEDGER REASONS:
+#   All ledger entry `reason` strings must come from this registry.
+#   Format: "{operation}:{details}"
 #
 # RULES:
 #   - reason.split(":")[0]  ->  operation type (for semaphore filtering)
@@ -11,11 +18,15 @@
 #   - Semaphores filter by prefix, e.g. "deposit:", "commission:"
 #
 # USAGE:
-#   from app.core.constants import LedgerReason
+#   from app.core.constants import LedgerReason, USER_AGENT_MAX_LEN
 #   reason = LedgerReason.DEPOSIT_CRYPTO.format(tx_hash=tx_hash)
 #
 # SOURCE OF TRUTH: CBSHOME-Financial-System.md section 6
 # =============================================================================
+
+# Max length for user_agent strings stored in DB and structlog context.
+# Used in: TraceIdMiddleware, record_audit(), DocumentSigning.
+USER_AGENT_MAX_LEN: int = 500
 
 
 class LedgerReason:

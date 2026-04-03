@@ -8,12 +8,16 @@
 # DocumentCreateRequest: staff creates a new document
 # DocumentUpdateRequest: staff updates document (partial, exclude_unset)
 # DocumentSigningResponse: returned after user signs a document
+#
+# CONTENT_URL VALIDATION:
+#   Only https:// URLs are accepted to prevent XSS (javascript:) and
+#   LFI (file://) attacks when frontend renders the URL.
 # =============================================================================
 
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentResponse(BaseModel):
@@ -44,6 +48,14 @@ class DocumentCreateRequest(BaseModel):
     content_url: str = Field(..., min_length=1, max_length=2000)
     version: int = Field(default=1, ge=1)
 
+    @field_validator("content_url")
+    @classmethod
+    def validate_content_url(cls, v: str) -> str:
+        """Ensure content_url uses https:// scheme."""
+        if not v.startswith("https://"):
+            raise ValueError("content_url must start with https://")
+        return v
+
 
 class DocumentUpdateRequest(BaseModel):
     """Staff updates a document (partial update).
@@ -55,6 +67,14 @@ class DocumentUpdateRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     content_url: str | None = Field(default=None, min_length=1, max_length=2000)
     status: str | None = Field(default=None)
+
+    @field_validator("content_url")
+    @classmethod
+    def validate_content_url(cls, v: str | None) -> str | None:
+        """Ensure content_url uses https:// scheme (when provided)."""
+        if v is not None and not v.startswith("https://"):
+            raise ValueError("content_url must start with https://")
+        return v
 
 
 class DocumentSigningResponse(BaseModel):

@@ -8,22 +8,31 @@
 #   3: GET /kyc/status -> current status + application info
 #   4: Webhook approved -> application + User.kyc_status updated
 #   5: Rejected -> resubmit -> approved (history: 2 applications)
+#   6: Webhook with non-existent user_id -> 404
+#   7: Webhook with invalid status -> 422
 #
 # Email prefix: "s21_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.modules.kyc.models import KYCApplication
 from app.modules.users.models import User
 from tests.helpers import auth_headers, cleanup_test_users, register_user
 
 EMAIL_PREFIX = "s21_"
+
+
+def webhook_headers() -> dict[str, str]:
+    """Build headers with webhook secret for KYC webhook calls."""
+    return {"X-Webhook-Secret": settings.kyc_webhook_secret}
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +55,6 @@ async def test_submit_kyc_success(
     """Submit KYC -> 201, status=submitted, User.kyc_status synced."""
     data = await register_user(client, email=f"{EMAIL_PREFIX}ok@example.com")
     token = data["session_token"]
-    user_id = data["user"]["id"]
 
     resp = await client.post(
         "/api/v1/kyc/submit",
@@ -146,6 +154,7 @@ async def test_webhook_approved(
     resp = await client.post(
         "/api/v1/kyc/webhook",
         json={"user_id": user_id, "status": "approved"},
+        headers=webhook_headers(),
     )
     assert resp.status_code == 200
 
@@ -174,6 +183,7 @@ async def test_webhook_rejected_then_resubmit(
     await client.post(
         "/api/v1/kyc/webhook",
         json={"user_id": user_id, "status": "rejected"},
+        headers=webhook_headers(),
     )
 
     # Verify rejected.
@@ -194,6 +204,7 @@ async def test_webhook_rejected_then_resubmit(
     await client.post(
         "/api/v1/kyc/webhook",
         json={"user_id": user_id, "status": "approved"},
+        headers=webhook_headers(),
     )
 
     resp_final = await client.get(
@@ -203,8 +214,6 @@ async def test_webhook_rejected_then_resubmit(
     assert resp_final.json()["kyc_status"] == "approved"
 
     # Verify history: 2 KYCApplication rows.
-    from app.modules.kyc.models import KYCApplication
-
     await db_session.rollback()  # Clear any stale state.
     stmt = (
         select(KYCApplication)
@@ -216,3 +225,29 @@ async def test_webhook_rejected_then_resubmit(
     assert len(apps) == 2
     assert apps[0].status == "rejected"
     assert apps[1].status == "approved"
+
+
+@pytest.mark.asyncio
+async def test_webhook_nonexistent_user(client: AsyncClient) -> None:
+    """Webhook with non-existent user_id -> 404."""
+    resp = await client.post(
+        "/api/v1/kyc/webhook",
+        json={"user_id": str(uuid4()), "status": "approved"},
+        headers=webhook_headers(),
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_webhook_invalid_status(client: AsyncClient) -> None:
+    """Webhook with invalid status (not approved/rejected) -> 422."""
+    data = await register_user(client, email=f"{EMAIL_PREFIX}inv@example.com")
+    user_id = data["user"]["id"]
+
+    resp = await client.post(
+        "/api/v1/kyc/webhook",
+        json={"user_id": user_id, "status": "bogus"},
+        headers=webhook_headers(),
+    )
+    # Pydantic schema regex rejects "bogus" -> 422.
+    assert resp.status_code == 422

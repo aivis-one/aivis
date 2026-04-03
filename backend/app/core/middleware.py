@@ -9,7 +9,7 @@
 # BINDS TO STRUCTLOG CONTEXTVARS (available in every log line):
 #   trace_id          -- UUID, from X-Trace-ID header or auto-generated
 #   ip_address        -- real client IP from X-Real-IP (set by Nginx)
-#   user_agent        -- User-Agent header (truncated to 500 chars)
+#   user_agent        -- User-Agent header (truncated to USER_AGENT_MAX_LEN)
 #   avatar_session_id -- set in Sprint 3.2 when avatar mode is active
 #
 # IP ADDRESS STRATEGY:
@@ -35,12 +35,11 @@ from uuid import uuid4
 import structlog
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from app.core.constants import USER_AGENT_MAX_LEN
+
 # Safe characters: UUIDs, "svc.req.123", "my-trace-42".
 # Rejects injection vectors: spaces, newlines, unicode, quotes, slashes.
 _TRACE_ID_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
-
-# Max length to store in structlog context (mirrors AuditLog.user_agent).
-_USER_AGENT_MAX_LEN = 500
 
 logger = structlog.get_logger()
 
@@ -87,7 +86,7 @@ class TraceIdMiddleware:
 
         # --- user_agent (truncated to match AuditLog column length) ---
         raw_ua = headers.get(b"user-agent", b"").decode("latin-1", errors="replace")
-        user_agent = raw_ua[:_USER_AGENT_MAX_LEN] if raw_ua else ""
+        user_agent = raw_ua[:USER_AGENT_MAX_LEN] if raw_ua else ""
 
         # --- Bind all to structlog contextvars ---
         # These appear automatically in every log line for this request.

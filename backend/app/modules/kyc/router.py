@@ -5,7 +5,7 @@
 # ENDPOINTS:
 #   POST /api/v1/kyc/submit   -- Submit KYC application (auth required)
 #   GET  /api/v1/kyc/status   -- Get current KYC status (auth required)
-#   POST /api/v1/kyc/webhook  -- SumSub webhook handler (stub, no auth)
+#   POST /api/v1/kyc/webhook  -- SumSub webhook handler (stub, secret required)
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -15,13 +15,20 @@
 #   GET /status uses get_current_user (read session) + get_db_reader.
 #   FastAPI caches Depends within a request, so both share the same
 #   read-only session instance.
+#
+# WEBHOOK SECURITY:
+#   Stub webhook requires X-Webhook-Secret header matching
+#   settings.kyc_webhook_secret. In production, this will be replaced
+#   with SumSub HMAC signature validation.
 # =============================================================================
 
 import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db_reader, get_db_session
+from app.core.exceptions import UnauthorizedError
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.kyc.schemas import (
     KYCStatusResponse,
@@ -76,16 +83,24 @@ async def kyc_status(
 )
 async def kyc_webhook(
     body: KYCWebhookRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> dict[str, str]:
     """SumSub webhook handler (stub).
 
-    In production, this endpoint will validate the SumSub webhook
-    signature before processing. Current stub accepts any valid
-    payload and updates the KYC status.
-
-    No authentication required -- webhooks come from external provider.
+    Requires X-Webhook-Secret header matching settings.kyc_webhook_secret.
+    In production, this will be replaced with SumSub HMAC signature
+    validation. No user authentication -- webhooks come from external provider.
     """
+    # Minimal protection until SumSub integration.
+    webhook_secret = request.headers.get("X-Webhook-Secret", "")
+    if webhook_secret != settings.kyc_webhook_secret:
+        logger.warning(
+            "kyc_webhook_unauthorized",
+            user_id=str(body.user_id),
+        )
+        raise UnauthorizedError("Invalid webhook secret")
+
     await process_webhook(
         user_id=str(body.user_id),
         new_status=body.status,

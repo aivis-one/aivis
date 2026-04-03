@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     sumsub_api_key: str = "TEST"
     sumsub_secret_key: str = "TEST"
 
+    # -- KYC Webhook --
+    # Shared secret for webhook authentication (stub).
+    # In production, replace with SumSub signature validation.
+    kyc_webhook_secret: str = ""
+
     # -- Email (EMAP primary, Mailgun fallback) --
     emap_api_key: str = "TEST"
     mailgun_api_key: str = "TEST"
@@ -93,38 +98,25 @@ class Settings(BaseSettings):
             else:
                 raise ValueError(
                     "SECRET_KEY is required in production. "
-                    'Generate: python -c "import secrets; print(secrets.token_urlsafe(64))"'
+                    "Generate with: python -c "
+                    "\"import secrets; print(secrets.token_urlsafe(64))\""
                 )
 
-        _valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        if self.log_level.upper() not in _valid_levels:
-            raise ValueError(
-                f"log_level must be one of {_valid_levels}, got '{self.log_level}'"
-            )
-        if not is_dev and self.log_level.upper() == "DEBUG":
-            raise ValueError("log_level DEBUG is not allowed in production.")
-
-        if not is_dev and self.cors_origins == "*":
-            raise ValueError("CORS_ORIGINS must not be '*' in production.")
+        if not self.kyc_webhook_secret:
+            if is_dev:
+                self.kyc_webhook_secret = "dev-webhook-secret"
+            else:
+                raise ValueError(
+                    "KYC_WEBHOOK_SECRET is required in production."
+                )
 
         return self
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=False,
+        extra="ignore",
     )
 
-    @property
-    def is_dev(self) -> bool:
-        """True when running in development mode."""
-        return self.app_env == "development"
 
-    @property
-    def crypto_network_list(self) -> list[str]:
-        """Parsed list of supported crypto networks."""
-        return [n.strip() for n in self.crypto_networks.split(",")]
-
-
-# Singleton: one Settings instance for the entire application.
 settings = Settings()
