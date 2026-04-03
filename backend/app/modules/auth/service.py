@@ -217,6 +217,9 @@ async def upsert_telegram_user(
     This follows P-05 pattern: savepoint rolls back only the INSERT,
     outer transaction remains valid for retry.
 
+    After set_jsonb + flush, session.refresh() reloads expired attrs
+    (updated_at) to prevent MissingGreenlet when Pydantic reads them.
+
     Does NOT commit -- caller manages transaction (P-01).
 
     Returns:
@@ -248,6 +251,9 @@ async def upsert_telegram_user(
         user.set_jsonb("credentials", updated_creds)
 
         await session.flush()
+        # Reload expired attrs (updated_at) after set_jsonb + flush.
+        # Without this, Pydantic model_validate hits MissingGreenlet.
+        await session.refresh(user)
 
         await record_audit(
             session=session,
@@ -292,6 +298,8 @@ async def upsert_telegram_user(
             updated_creds["telegram"] = telegram_creds
             user.set_jsonb("credentials", updated_creds)
             await session.flush()
+            # Reload expired attrs after set_jsonb + flush.
+            await session.refresh(user)
 
             logger.info(
                 "telegram_user_race_resolved",
