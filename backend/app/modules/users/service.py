@@ -22,11 +22,17 @@
 #   After set_jsonb + flush, SQLAlchemy marks updated_at as expired.
 #   session.refresh() reloads it to prevent MissingGreenlet when
 #   Pydantic model_validate reads the attribute synchronously.
+#
+# AUDIT:
+#   Profile changes are recorded in audit_log for compliance.
+#   Country and phone changes are especially significant for
+#   financial platform AML/KYC requirements.
 # =============================================================================
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError
 from app.modules.users.models import User
 from app.modules.users.schemas import UserUpdate
@@ -62,8 +68,6 @@ async def update_user(
         return user
 
     # language: NOT NULL column -- reject explicit null.
-    # Schema allows None as default ("not sent"), but explicit null
-    # in JSON means the client wants to clear it -- not allowed.
     if "language" in updates and updates["language"] is None:
         raise BadRequestError("language cannot be set to null")
 
@@ -80,6 +84,18 @@ async def update_user(
     await session.flush()
     # Reload expired attrs (updated_at) after potential set_jsonb + flush.
     await session.refresh(user)
+
+    # Audit: profile changes are compliance-significant
+    # (country, phone affect AML/KYC).
+    await record_audit(
+        session=session,
+        event="user.profile_updated",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={"fields": list(updates.keys())},
+    )
 
     logger.info(
         "user_profile_updated",

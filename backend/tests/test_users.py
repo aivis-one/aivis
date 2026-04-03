@@ -17,8 +17,12 @@ from collections.abc import AsyncGenerator
 import pytest
 import structlog
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ForbiddenError
+from app.modules.auth.avatar_guard import require_not_avatar
+from app.modules.users.models import User
 from tests.helpers import auth_headers, cleanup_test_users, register_user
 
 
@@ -183,9 +187,6 @@ async def test_get_me_blocked_user(
     db_session: AsyncSession,
 ) -> None:
     """GET /me with is_active=False -> 403."""
-    from sqlalchemy import select
-    from app.modules.users.models import User
-
     email = f"{EMAIL_PREFIX}blocked@example.com"
     data = await register_user(client, email=email)
     token = data["session_token"]
@@ -218,8 +219,6 @@ async def test_avatar_guard_blocks_restricted_operation() -> None:
     Simulates avatar mode by manually binding avatar_session_id
     to structlog contextvars (same mechanism Sprint 3.2 will use).
     """
-    from app.modules.auth.avatar_guard import require_not_avatar
-    from app.core.exceptions import ForbiddenError
 
     # Define a dummy restricted endpoint.
     @require_not_avatar("create_payment")
