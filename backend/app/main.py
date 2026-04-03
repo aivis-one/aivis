@@ -8,8 +8,11 @@
 #   GET /ready   -> Readiness probe (503 if degraded)
 #
 # ROUTERS:
-#   auth_router  -> /api/v1/auth/* (Sprint 1.1+)
-#   users_router -> /api/v1/users/* (Sprint 1.3)
+#   auth_router            -> /api/v1/auth/* (Sprint 1.1+)
+#   users_router           -> /api/v1/users/* (Sprint 1.3)
+#   kyc_router             -> /api/v1/kyc/* (Sprint 2.1)
+#   documents_router       -> /api/v1/documents/* (Sprint 2.2)
+#   staff_documents_router -> /api/v1/staff/documents/* (Sprint 2.2)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis
@@ -36,6 +39,9 @@ from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
 from app.modules.auth.router import router as auth_router
+from app.modules.documents.router import router as documents_router
+from app.modules.documents.staff_router import router as staff_documents_router
+from app.modules.kyc.router import router as kyc_router
 from app.modules.users.router import router as users_router
 
 logger = structlog.get_logger()
@@ -100,6 +106,9 @@ app.add_middleware(TraceIdMiddleware)
 
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(kyc_router)
+app.include_router(documents_router)
+app.include_router(staff_documents_router)
 
 
 # ---------------------------------------------------------------------------
@@ -136,71 +145,86 @@ async def global_exception_handler(
     request: Request, exc: Exception
 ) -> JSONResponse:
     """Catch-all for unexpected exceptions -- return generic 500."""
-    logger.error(
+    logger.exception(
         "unhandled_exception",
-        exc_type=type(exc).__name__,
-        exc_message=str(exc),
         path=request.url.path,
         method=request.method,
+        exc_type=type(exc).__name__,
     )
     return JSONResponse(
         status_code=500,
-        content={"error": "internal_error", "message": "Internal server error"},
+        content={
+            "error": "internal_error",
+            "message": "An unexpected error occurred",
+        },
     )
 
 
 # ---------------------------------------------------------------------------
-# Health Checks (shared logic -- DRY)
+# Root Endpoints
 # ---------------------------------------------------------------------------
 
-async def _check_components() -> tuple[dict[str, str], bool]:
-    """Check DB and Redis connectivity. Returns (result_dict, is_degraded)."""
-    result: dict[str, str] = {"status": "ok", "db": "ok", "redis": "ok"}
-    degraded = False
+@app.get("/")
+async def root() -> dict[str, str]:
+    """API info -- name and version."""
+    return {"name": "CBSHOME API", "version": APP_VERSION}
+
+
+@app.get("/health")
+async def health() -> JSONResponse:
+    """Health check -- DB + Redis connectivity. Always returns 200."""
+    db_ok = True
+    redis_ok = True
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
     except Exception:
-        result["db"] = "error"
-        degraded = True
+        db_ok = False
 
     try:
         redis = get_redis()
         await redis.ping()
     except Exception:
-        result["redis"] = "error"
-        degraded = True
+        redis_ok = False
 
-    if degraded:
-        result["status"] = "degraded"
-
-    return result, degraded
-
-
-# ---------------------------------------------------------------------------
-# System Endpoints
-# ---------------------------------------------------------------------------
-
-@app.get("/")
-async def root() -> dict[str, str]:
-    """Root endpoint -- API info."""
-    return {"name": "CBSHOME API", "version": APP_VERSION}
-
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    """Health check -- always returns 200."""
-    result, _ = await _check_components()
-    return result
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "ok" if (db_ok and redis_ok) else "degraded",
+            "db": "ok" if db_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
+    )
 
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe -- returns 503 if any component is degraded."""
-    result, degraded = await _check_components()
+    """Readiness probe -- returns 503 if any dependency is down."""
+    db_ok = True
+    redis_ok = True
+
+    try:
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+
+    try:
+        redis = get_redis()
+        await redis.ping()
+    except Exception:
+        redis_ok = False
+
+    all_ok = db_ok and redis_ok
+
     return JSONResponse(
-        status_code=503 if degraded else 200,
-        content=result,
+        status_code=200 if all_ok else 503,
+        content={
+            "status": "ok" if all_ok else "degraded",
+            "db": "ok" if db_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
     )

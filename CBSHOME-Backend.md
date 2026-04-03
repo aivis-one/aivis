@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.0
+**Версия:** 1.1
 **Дата:** 3 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -422,36 +422,55 @@ backend/tests/
 
 ---
 
-### Sprint 1.3: User Profile
+### ✅ Sprint 1.3: User Profile
 
-**Цель:** Чтение и редактирование профиля.
+**Цель:** Чтение и редактирование профиля. Закладка avatar_guard.
 
 **Задачи:**
-- [ ] `app/modules/users/schemas.py` — `UserResponse`, `UserUpdate`
-- [ ] `app/modules/users/service.py` — `update_user()` (partial update, exclude_unset)
-- [ ] `app/modules/users/router.py`:
+- [x] `app/modules/users/schemas.py` — `UserResponse`, `UserUpdate` (созданы в Sprint 1.1)
+- [x] `app/modules/users/service.py` — `update_user()` (partial update, exclude_unset, set_jsonb, refresh)
+- [x] `app/modules/users/router.py`:
   - `GET /api/v1/users/me`
   - `PATCH /api/v1/users/me`
-- [ ] `tests/test_users.py` — 10 тестов
+- [x] `app/modules/auth/avatar_guard.py` — `require_not_avatar` decorator + `RESTRICTED_OPERATIONS` frozenset
+- [x] `tests/test_users.py` — 10 тестов (включая avatar guard unit test)
 
-**Ограничения аватаринга:**
-- [ ] `app/modules/auth/avatar_guard.py` — `require_not_avatar` decorator
-- [ ] Список запрещённых операций в config:
-```yaml
-avatar_mode:
-  restricted_operations:
-    - change_password
-    - change_email
-    - delete_account
-    - create_payment
-    - create_withdrawal
-    - sign_document
-    - create_installment
-    - access_staff_shell
-    - modify_kyc
+**Решения реализации:**
+- `exclude_unset=True` для partial PATCH — различает "не отправлено" и "explicit null"
+- `language: null` rejection в service layer, не в schema validator (не конфликтует с default=None)
+- `session.refresh(user)` после `set_jsonb` + `flush` (MissingGreenlet prevention)
+- TD-029 pattern: `get_current_user_write` + `Depends(get_db_session)` — одна сессия
+- Profile merge: `dict.update()` — shallow merge, корректно для flat profile JSONB
+- `RESTRICTED_OPERATIONS` как `frozenset` с dev guard (`ValueError` при неизвестной операции)
+- Avatar guard читает из `structlog.contextvars.get_contextvars()` — тот же механизм что middleware
+- Audit: `user.profile_updated` с `data={"fields": [...]}` (без значений — compliance-safe)
+
+**Endpoints:**
+```
+GET   /api/v1/users/me  -> UserResponse  (200)
+PATCH /api/v1/users/me  -> UserResponse  (200)
 ```
 
-**Критерий готовности:** Юзер видит и редактирует свой профиль. Аватаринг-ограничения работают.
+**Результат:**
+```
+backend/app/modules/users/
+├── __init__.py
+├── schemas.py      -- UserResponse, UserUpdate (Sprint 1.1)
+├── service.py      -- update_user() with audit
+└── router.py       -- GET/PATCH /me (TD-029)
+
+backend/app/modules/auth/
+└── avatar_guard.py -- require_not_avatar decorator
+
+backend/tests/
+└── test_users.py   -- 10 tests
+```
+
+**Критерий готовности:** Юзер видит и редактирует свой профиль. Avatar guard создан и протестирован (unit test). Будет применён к endpoints в Sprint 3.2. 46 тестов зелёные.
+
+---
+
+**Phase 1 завершена.** 7 endpoints, 33 теста Phase 1 (+13 Phase 0 = 46 total), 3 миграции.
 
 ---
 
@@ -1315,6 +1334,7 @@ Event:
 | TD-021 | `app/modules/auth/` | Password reset flow (forgot password -> email token -> reset) | After MVP | ⬜ |
 | TD-022 | `app/modules/auth/telegram.py` | Generic error messages в production (сейчас details leakируют server time через "auth_date is in the future") | Before Prod | ⬜ |
 | TD-023 | `scripts/seed_platform.py` | `seed --reset` flag не реализован, но присутствует в management script help | Backlog | ⬜ |
+| TD-024 | `app/modules/users/service.py` | Profile JSONB: whitelist допустимых ключей и/или ограничение размера. XSS sanitization на фронте | Before Prod | ⬜ |
 
 ---
 
@@ -1322,4 +1342,4 @@ Event:
 
 ---
 
-*Version 1.0 | 2026-04-03 | cbshome Backend TZ*
+*Version 1.1 | 2026-04-03 | cbshome Backend TZ — Phase 1 complete*

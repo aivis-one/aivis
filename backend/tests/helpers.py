@@ -13,6 +13,16 @@
 #   BOT_TOKEN is read from settings to match the runtime token.
 #   _init_data_counter ensures unique query_id on every call to avoid
 #   anti-replay rejection when multiple calls happen in the same second.
+#
+# STAFF (Sprint 2.2):
+#   create_staff_user() registers a user and promotes to staff role
+#   directly in DB. Returns (user_data, token).
+#
+# CLEANUP:
+#   cleanup_test_users()          -- by email prefix
+#   cleanup_telegram_test_users() -- by telegram_id list
+#   cleanup_kyc_applications()    -- by user_id list
+#   cleanup_documents()           -- by email prefix (staff creator)
 # =============================================================================
 
 import hashlib
@@ -21,6 +31,7 @@ import itertools
 import json
 import time
 from urllib.parse import urlencode
+from uuid import UUID
 
 from httpx import AsyncClient
 from sqlalchemy import delete, or_, select
@@ -28,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.config import settings
-from app.modules.users.models import User
+from app.modules.users.models import User, UserRole
 
 # Read from settings -- must match the token used by the router
 # for HMAC validation. On VPS this is the real bot token from .env.
@@ -128,6 +139,33 @@ async def login_telegram(
     return resp.json()
 
 
+async def create_staff_user(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    email: str,
+    password: str = "testpass123",
+) -> tuple[dict, str]:
+    """Register a user and promote to staff role.
+
+    Returns (user_data_dict, session_token).
+    The role change is done directly in DB (no staff-creation endpoint yet).
+    """
+    data = await register_user(client, email=email, password=password)
+    token = data["session_token"]
+    user_id = UUID(data["user"]["id"])
+
+    # Promote to staff directly in DB.
+    stmt = select(User).where(User.id == user_id)
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.role = UserRole.STAFF
+    await db_session.commit()
+
+    # Re-login to get a session with updated role.
+    login_data = await login_user(client, email=email, password=password)
+    return login_data, login_data["session_token"]
+
+
 async def cleanup_test_users(
     session: AsyncSession,
     email_prefix: str,
@@ -144,6 +182,9 @@ async def cleanup_test_users(
 
     if not user_ids:
         return
+
+    # Clean up Phase 2 tables that reference users.
+    await _cleanup_user_related_data(session, user_ids)
 
     await session.execute(
         delete(AuditLog).where(
@@ -182,6 +223,9 @@ async def cleanup_telegram_test_users(
     if not user_ids:
         return
 
+    # Clean up Phase 2 tables that reference users.
+    await _cleanup_user_related_data(session, user_ids)
+
     await session.execute(
         delete(AuditLog).where(
             AuditLog.actor_id.in_(user_ids) | AuditLog.target_id.in_(user_ids)
@@ -193,3 +237,48 @@ async def cleanup_telegram_test_users(
     )
 
     await session.commit()
+
+
+async def _cleanup_user_related_data(
+    session: AsyncSession,
+    user_ids: list[UUID],
+) -> None:
+    """Clean up Phase 2+ tables that have FK references to users.
+
+    Called by cleanup_test_users and cleanup_telegram_test_users
+    before deleting users.
+    """
+    from app.modules.documents.models import Document, DocumentSigning
+    from app.modules.kyc.models import KYCApplication
+
+    # Document signings by user.
+    await session.execute(
+        delete(DocumentSigning).where(
+            DocumentSigning.user_id.in_(user_ids)
+        )
+    )
+
+    # Documents created by staff users being cleaned up.
+    # First remove signings referencing those documents.
+    doc_stmt = select(Document.id).where(
+        Document.created_by.in_(user_ids)
+    )
+    doc_result = await session.execute(doc_stmt)
+    doc_ids = [row[0] for row in doc_result.all()]
+
+    if doc_ids:
+        await session.execute(
+            delete(DocumentSigning).where(
+                DocumentSigning.document_id.in_(doc_ids)
+            )
+        )
+        await session.execute(
+            delete(Document).where(Document.id.in_(doc_ids))
+        )
+
+    # KYC applications.
+    await session.execute(
+        delete(KYCApplication).where(
+            KYCApplication.user_id.in_(user_ids)
+        )
+    )

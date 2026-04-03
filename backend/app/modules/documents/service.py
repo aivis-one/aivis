@@ -1,0 +1,336 @@
+# =============================================================================
+# CBSHOME Backend -- Document Service (Sprint 2.2)
+# =============================================================================
+#
+# RESPONSIBILITIES:
+#   Staff operations:
+#     create_document()  -- create new document in draft status
+#     update_document()  -- update document fields + status transitions
+#     delete_document()  -- delete draft documents only
+#
+#   User operations:
+#     list_documents_for_role()  -- active documents for user's role
+#     get_document()             -- single document with is_signed flag
+#     sign_document()            -- record checkbox consent
+#
+# STATUS TRANSITIONS (State Machines v1.4 section 5):
+#     draft  -> active    (Staff: publish)
+#     active -> draft     (Staff: unpublish for edits)
+#     active -> archived  (Staff: archive)
+#     draft  -> archived  (Staff: cancel draft)
+#
+# COMMIT RULE (P-01):
+#   Service never commits. Caller (get_db_session) manages the transaction.
+# =============================================================================
+
+from uuid import UUID
+
+import structlog
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.modules.documents.constants import (
+    ROLE_REQUIRED_DOCUMENT_TYPES,
+    VALID_STATUS_TRANSITIONS,
+)
+from app.modules.documents.models import (
+    Document,
+    DocumentSigning,
+    DocumentStatus,
+    DocumentType,
+)
+from app.modules.documents.schemas import (
+    DocumentCreateRequest,
+    DocumentResponse,
+    DocumentUpdateRequest,
+)
+
+logger = structlog.get_logger()
+
+# Max length for user_agent (mirrors audit.py).
+_USER_AGENT_MAX_LEN = 500
+
+
+# ---------------------------------------------------------------------------
+# Staff operations
+# ---------------------------------------------------------------------------
+
+
+async def create_document(
+    staff_id: UUID,
+    body: DocumentCreateRequest,
+    session: AsyncSession,
+) -> Document:
+    """Create a new document in draft status.
+
+    Raises:
+        BadRequestError: If type is not a valid DocumentType.
+        ConflictError: If (type, version) combination already exists.
+    """
+    # Validate type enum.
+    valid_types = [t.value for t in DocumentType]
+    if body.type not in valid_types:
+        raise BadRequestError(
+            f"Invalid document type: {body.type}. "
+            f"Valid types: {', '.join(valid_types)}"
+        )
+
+    document = Document(
+        type=body.type,
+        version=body.version,
+        title=body.title,
+        content_url=body.content_url,
+        status=DocumentStatus.DRAFT,
+        created_by=staff_id,
+    )
+    session.add(document)
+
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        if "uq_documents_type_version" in str(exc.orig):
+            raise ConflictError(
+                f"Document {body.type} version {body.version} already exists"
+            )
+        raise
+
+    await session.refresh(document)
+
+    logger.info(
+        "document_created",
+        document_id=str(document.id),
+        type=document.type,
+        version=document.version,
+    )
+
+    return document
+
+
+async def update_document(
+    document_id: UUID,
+    body: DocumentUpdateRequest,
+    session: AsyncSession,
+) -> Document:
+    """Update a document (partial update with status transition validation).
+
+    Raises:
+        NotFoundError: If document not found.
+        BadRequestError: If status transition is invalid.
+    """
+    stmt = select(Document).where(Document.id == document_id)
+    result = await session.execute(stmt)
+    document = result.scalar_one_or_none()
+
+    if document is None:
+        raise NotFoundError("Document not found")
+
+    updates = body.model_dump(exclude_unset=True)
+
+    if not updates:
+        return document
+
+    # Validate status transition if status is being changed.
+    if "status" in updates and updates["status"] is not None:
+        new_status = updates["status"]
+        allowed = VALID_STATUS_TRANSITIONS.get(document.status, [])
+        if new_status not in allowed:
+            raise BadRequestError(
+                f"Invalid status transition: {document.status} -> {new_status}"
+            )
+        document.status = new_status
+
+    # Apply other fields.
+    if "title" in updates and updates["title"] is not None:
+        document.title = updates["title"]
+    if "content_url" in updates and updates["content_url"] is not None:
+        document.content_url = updates["content_url"]
+
+    await session.flush()
+    await session.refresh(document)
+
+    logger.info(
+        "document_updated",
+        document_id=str(document.id),
+        updates=list(updates.keys()),
+    )
+
+    return document
+
+
+async def delete_document(
+    document_id: UUID,
+    session: AsyncSession,
+) -> None:
+    """Delete a draft document.
+
+    Only documents in draft status can be deleted. Active and archived
+    documents have signing history or audit significance.
+
+    Raises:
+        NotFoundError: If document not found.
+        BadRequestError: If document is not in draft status.
+    """
+    stmt = select(Document).where(Document.id == document_id)
+    result = await session.execute(stmt)
+    document = result.scalar_one_or_none()
+
+    if document is None:
+        raise NotFoundError("Document not found")
+
+    if document.status != DocumentStatus.DRAFT:
+        raise BadRequestError(
+            f"Only draft documents can be deleted (current: {document.status})"
+        )
+
+    await session.delete(document)
+    await session.flush()
+
+    logger.info(
+        "document_deleted",
+        document_id=str(document_id),
+    )
+
+
+# ---------------------------------------------------------------------------
+# User operations
+# ---------------------------------------------------------------------------
+
+
+async def list_documents_for_role(
+    role: str,
+    user_id: UUID,
+    session: AsyncSession,
+) -> list[DocumentResponse]:
+    """List active documents for a user's role with is_signed flag.
+
+    Returns documents whose type is in ROLE_REQUIRED_DOCUMENT_TYPES
+    for the given role, filtered to active status only.
+    """
+    doc_types = ROLE_REQUIRED_DOCUMENT_TYPES.get(role, [])
+    if not doc_types:
+        return []
+
+    # Get active documents for the role.
+    stmt = (
+        select(Document)
+        .where(
+            Document.type.in_(doc_types),
+            Document.status == DocumentStatus.ACTIVE,
+        )
+        .order_by(Document.type, Document.version.desc())
+    )
+    result = await session.execute(stmt)
+    documents = result.scalars().all()
+
+    if not documents:
+        return []
+
+    # Get user's signings for these documents in one query.
+    doc_ids = [d.id for d in documents]
+    signing_stmt = (
+        select(DocumentSigning.document_id)
+        .where(
+            DocumentSigning.user_id == user_id,
+            DocumentSigning.document_id.in_(doc_ids),
+        )
+    )
+    signing_result = await session.execute(signing_stmt)
+    signed_doc_ids = {row[0] for row in signing_result.all()}
+
+    # Build response with is_signed flag.
+    responses = []
+    for doc in documents:
+        resp = DocumentResponse.model_validate(doc)
+        resp.is_signed = doc.id in signed_doc_ids
+        responses.append(resp)
+
+    return responses
+
+
+async def get_document(
+    document_id: UUID,
+    user_id: UUID,
+    session: AsyncSession,
+) -> DocumentResponse:
+    """Get a single document with is_signed flag.
+
+    Raises:
+        NotFoundError: If document not found.
+    """
+    stmt = select(Document).where(Document.id == document_id)
+    result = await session.execute(stmt)
+    document = result.scalar_one_or_none()
+
+    if document is None:
+        raise NotFoundError("Document not found")
+
+    # Check if user signed this document.
+    signing_stmt = (
+        select(DocumentSigning)
+        .where(
+            DocumentSigning.user_id == user_id,
+            DocumentSigning.document_id == document_id,
+        )
+    )
+    signing_result = await session.execute(signing_stmt)
+    signing = signing_result.scalar_one_or_none()
+
+    resp = DocumentResponse.model_validate(document)
+    resp.is_signed = signing is not None
+    return resp
+
+
+async def sign_document(
+    user_id: UUID,
+    document_id: UUID,
+    ip_address: str,
+    user_agent: str,
+    session: AsyncSession,
+) -> DocumentSigning:
+    """Record user's checkbox consent for a document.
+
+    Raises:
+        NotFoundError: If document not found.
+        BadRequestError: If document is not in active status.
+        ConflictError: If user already signed this document.
+    """
+    # Load document.
+    stmt = select(Document).where(Document.id == document_id)
+    result = await session.execute(stmt)
+    document = result.scalar_one_or_none()
+
+    if document is None:
+        raise NotFoundError("Document not found")
+
+    if document.status != DocumentStatus.ACTIVE:
+        raise BadRequestError("Only active documents can be signed")
+
+    # Truncate user_agent to prevent DoS.
+    truncated_ua = user_agent[:_USER_AGENT_MAX_LEN] if user_agent else ""
+
+    signing = DocumentSigning(
+        user_id=user_id,
+        document_id=document_id,
+        ip_address=ip_address,
+        user_agent=truncated_ua,
+    )
+    session.add(signing)
+
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        if "uq_document_signings_user_document" in str(exc.orig):
+            raise ConflictError("Document already signed")
+        raise
+
+    await session.refresh(signing)
+
+    logger.info(
+        "document_signed",
+        user_id=str(user_id),
+        document_id=str(document_id),
+    )
+
+    return signing

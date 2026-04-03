@@ -2,14 +2,12 @@
 # CBSHOME Backend -- Alembic Environment Configuration
 # =============================================================================
 #
-# KEY POINTS:
-#   1. Async migrations: asyncpg requires an async engine. We bridge to
-#      Alembic's sync runner via connection.run_sync().
-#   2. Database URL: from app.core.config (reads .env) -- single source.
-#   3. target_metadata: Base.metadata -- Alembic compares against actual DB.
+# Async runner for Alembic migrations with SQLAlchemy 2.0.
 #
-# IMPORTANT: Every new models.py must be imported here so Alembic can
-#   see the tables via Base.metadata. Add imports as modules are created.
+# MODEL IMPORTS:
+#   Every model used in migrations MUST be imported here so that
+#   Alembic autogenerate can detect table changes.
+#   Add imports as modules are created.
 # =============================================================================
 
 import asyncio
@@ -33,10 +31,10 @@ from app.modules.staff.models import StaffProfile, AvatarSession  # noqa: F401
 from app.core.audit import AuditLog  # noqa: F401
 
 # Sprint 2.1: KYC
-# from app.modules.kyc.models import KYCApplication  # noqa: F401
+from app.modules.kyc.models import KYCApplication  # noqa: F401
 
 # Sprint 2.2: Documents
-# from app.modules.documents.models import Document, DocumentSigning  # noqa: F401
+from app.modules.documents.models import Document, DocumentSigning  # noqa: F401
 
 # Sprint 4.1: Companies
 # from app.modules.companies.models import CompanyProfile, CompanyPriceHistory, CompanyRoadmapItem  # noqa: F401
@@ -83,50 +81,37 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     """Generate SQL without connecting to DB (--sql mode)."""
+    url = settings.database_url
     context.configure(
-        url=settings.database_url,
+        url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
+
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
-    """Execute migrations with the provided sync connection."""
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-    )
+    """Run migrations with a live connection."""
+    context.configure(connection=connection, target_metadata=target_metadata)
+
     with context.begin_transaction():
         context.run_migrations()
 
 
-async def run_async_migrations() -> None:
-    """Run migrations with async engine.
+async def run_migrations_online() -> None:
+    """Run migrations against a live database."""
+    connectable = create_async_engine(settings.database_url)
 
-    asyncpg is async-only. We create an async engine, then bridge to
-    Alembic's sync runner via run_sync(). Engine is always disposed in
-    finally -- even if connect() raises (e.g. DB unreachable).
-    """
-    engine = create_async_engine(
-        settings.database_url,
-        pool_pre_ping=True,
-    )
-    try:
-        async with engine.connect() as connection:
-            await connection.run_sync(do_run_migrations)
-    finally:
-        await engine.dispose()
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
 
-
-def run_migrations_online() -> None:
-    """Entry point for online mode -- bridges async to sync."""
-    asyncio.run(run_async_migrations())
+    await connectable.dispose()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    asyncio.run(run_migrations_online())
