@@ -5,11 +5,11 @@
 # FastAPI dependencies for request authentication.
 #
 # DEPENDENCY OVERVIEW:
-#   get_current_user       -- any authenticated user, read session (get_db_reader)
-#   get_current_user_write -- any authenticated user, write session (get_db_session)
-#   get_optional_user      -- optional auth, read session; returns None if no token
-#   get_current_staff      -- staff role required (Sprint 1.1: role check only;
-#                             Sprint 3.1: expanded with permission matrix)
+#   get_current_user           -- any authenticated user, read session
+#   get_current_user_write     -- any authenticated user, write session
+#   get_optional_user          -- optional auth, read session; None if no token
+#   get_current_staff          -- staff role + StaffProfile (active) required
+#   require_staff_permission() -- factory: staff + specific permission check
 #
 # TD-029 PATTERN (from VELO):
 #   get_current_user_write uses get_db_session instead of get_db_reader.
@@ -20,17 +20,29 @@
 # PLATFORM USER BLOCK:
 #   role=platform is rejected in _load_user_from_request() with 401.
 #   Platform user is a system actor, never logs in via API.
+#
+# STAFF PERMISSION CHECK (Sprint 3.1):
+#   get_current_staff verifies: role == staff, StaffProfile exists,
+#   StaffProfile.is_active. Does NOT check specific permissions --
+#   use require_staff_permission("perm_name") for that.
+#
+#   require_staff_permission() returns a FastAPI dependency that
+#   performs the full staff check PLUS verifies a specific permission
+#   against resolved defaults + overrides.
 # =============================================================================
 
+from typing import Callable
 from uuid import UUID
 
 from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import DEFAULT_STAFF_PERMISSIONS, VALID_STAFF_PERMISSIONS
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.modules.auth.service import get_session
+from app.modules.staff.models import StaffProfile
 from app.modules.users.models import User, UserRole
 
 
@@ -100,6 +112,49 @@ async def _load_user_from_request(
     return user
 
 
+async def _load_staff_profile(
+    session: AsyncSession,
+    user_id: UUID,
+) -> StaffProfile | None:
+    """Load StaffProfile by user_id. Returns None if not found."""
+    stmt = select(StaffProfile).where(StaffProfile.user_id == user_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+def _has_permission(profile: StaffProfile, permission: str) -> bool:
+    """Check if a staff member has a specific permission.
+
+    Resolution: profile.permissions[key] ?? DEFAULT_STAFF_PERMISSIONS[key].
+    """
+    if permission in profile.permissions:
+        return bool(profile.permissions[permission])
+    return DEFAULT_STAFF_PERMISSIONS.get(permission, False)
+
+
+async def _get_verified_staff(
+    request: Request,
+    session: AsyncSession,
+) -> tuple[User, StaffProfile]:
+    """Load and verify staff user + profile.
+
+    Checks: authenticated, role=staff, StaffProfile exists, is_active.
+    Returns (User, StaffProfile) tuple.
+    """
+    user = await _load_user_from_request(request, session)
+
+    if user.role != UserRole.STAFF:
+        raise ForbiddenError("Staff access required")
+
+    profile = await _load_staff_profile(session, user.id)
+    if not profile:
+        raise ForbiddenError("Staff profile not found")
+    if not profile.is_active:
+        raise ForbiddenError("Staff profile deactivated")
+
+    return user, profile
+
+
 # ---------------------------------------------------------------------------
 # Public dependencies
 # ---------------------------------------------------------------------------
@@ -155,17 +210,53 @@ async def get_current_staff(
     request: Request,
     session: AsyncSession = Depends(get_db_reader),
 ) -> User:
-    """Require authenticated staff user.
+    """Require authenticated staff user with active StaffProfile.
 
-    Sprint 1.1: checks role == staff only.
-    Sprint 3.1: will be expanded to load StaffProfile and check
-    specific permissions from the permission matrix.
+    Sprint 3.1: verifies role=staff, loads StaffProfile, checks is_active.
+    Does NOT check specific permissions -- use require_staff_permission()
+    for that.
 
     Usage: staff: User = Depends(get_current_staff)
     """
-    user = await _load_user_from_request(request, session)
-
-    if user.role != UserRole.STAFF:
-        raise ForbiddenError("Staff access required")
-
+    user, _profile = await _get_verified_staff(request, session)
     return user
+
+
+def require_staff_permission(permission: str) -> Callable:
+    """Factory: dependency that requires a specific staff permission.
+
+    Performs full staff verification (role + profile + is_active) plus
+    checks that the resolved permission is True.
+
+    Args:
+        permission: key from VALID_STAFF_PERMISSIONS.
+
+    Returns:
+        FastAPI dependency function that returns User.
+
+    Raises:
+        ValueError: at import time if permission key is unknown (dev guard).
+
+    Usage:
+        staff: User = Depends(require_staff_permission("kyc_approve"))
+    """
+    if permission not in VALID_STAFF_PERMISSIONS:
+        raise ValueError(
+            f"Unknown permission: '{permission}'. "
+            f"Valid: {sorted(VALID_STAFF_PERMISSIONS)}"
+        )
+
+    async def _dependency(
+        request: Request,
+        session: AsyncSession = Depends(get_db_reader),
+    ) -> User:
+        user, profile = await _get_verified_staff(request, session)
+        if not _has_permission(profile, permission):
+            raise ForbiddenError(f"Missing permission: {permission}")
+        return user
+
+    # Set a meaningful name for FastAPI's dependency resolution.
+    _dependency.__name__ = f"require_{permission}"
+    _dependency.__qualname__ = f"require_staff_permission.<locals>.require_{permission}"
+
+    return _dependency

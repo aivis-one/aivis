@@ -13,6 +13,7 @@
 #   kyc_router             -> /api/v1/kyc/* (Sprint 2.1)
 #   documents_router       -> /api/v1/documents/* (Sprint 2.2)
 #   staff_documents_router -> /api/v1/staff/documents/* (Sprint 2.2)
+#   staff_router           -> /api/v1/staff/users/* (Sprint 3.1)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis
@@ -42,6 +43,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.kyc.router import router as kyc_router
+from app.modules.staff.router import router as staff_router
 from app.modules.users.router import router as users_router
 
 logger = structlog.get_logger()
@@ -56,12 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown."""
     setup_logging()
     await init_redis()
-    logger.info(
-        "app_started",
-        env=settings.app_env,
-        log_level=settings.log_level,
-        version=APP_VERSION,
-    )
+    logger.info("app_started", version=APP_VERSION)
 
     yield
 
@@ -71,12 +68,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # ---------------------------------------------------------------------------
-# FastAPI Application
+# Application
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="CBSHOME API",
-    description="Investment platform",
     version=APP_VERSION,
     lifespan=lifespan,
 )
@@ -86,18 +82,28 @@ app = FastAPI(
 # Middleware
 # ---------------------------------------------------------------------------
 
-_cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
-_allow_all = _cors_origins == ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=not _allow_all,
+    allow_origins=settings.cors_origins.split(","),
+    allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "X-Trace-ID"],
+    allow_headers=["*"],
 )
 
 app.add_middleware(TraceIdMiddleware)
+
+
+# ---------------------------------------------------------------------------
+# Exception handler
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(CBSError)
+async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
+    """Handle application-level errors with consistent JSON format."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -109,99 +115,59 @@ app.include_router(users_router)
 app.include_router(kyc_router)
 app.include_router(documents_router)
 app.include_router(staff_documents_router)
+app.include_router(staff_router)
 
 
 # ---------------------------------------------------------------------------
-# Exception Handlers
-# ---------------------------------------------------------------------------
-
-@app.exception_handler(CBSError)
-async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
-    """Convert CBSError exceptions into proper HTTP JSON responses."""
-    if exc.status_code >= 500:
-        logger.error(
-            "cbs_error",
-            status_code=exc.status_code,
-            code=exc.code,
-            message=exc.message,
-            path=request.url.path,
-        )
-    else:
-        logger.warning(
-            "cbs_error",
-            status_code=exc.status_code,
-            code=exc.code,
-            message=exc.message,
-            path=request.url.path,
-        )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error": exc.code, "message": exc.message},
-    )
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
-    """Catch-all for unexpected exceptions -- return generic 500."""
-    logger.exception(
-        "unhandled_exception",
-        path=request.url.path,
-        method=request.method,
-        exc_type=type(exc).__name__,
-    )
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "internal_error",
-            "message": "An unexpected error occurred",
-        },
-    )
-
-
-# ---------------------------------------------------------------------------
-# Root Endpoints
+# Root endpoints
 # ---------------------------------------------------------------------------
 
 @app.get("/")
-async def root() -> dict[str, str]:
-    """API info -- name and version."""
+async def root() -> dict:
+    """API info."""
     return {"name": "CBSHOME API", "version": APP_VERSION}
 
 
 @app.get("/health")
 async def health() -> JSONResponse:
-    """Health check -- DB + Redis connectivity. Always returns 200."""
-    db_ok = True
-    redis_ok = True
+    """Health check -- always returns 200.
+
+    Reports component status but never fails the request.
+    Use /ready for readiness probes that need to fail.
+    """
+    db_status = "ok"
+    redis_status = "ok"
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
     except Exception:
-        db_ok = False
+        db_status = "error"
 
     try:
         redis = get_redis()
         await redis.ping()
     except Exception:
-        redis_ok = False
+        redis_status = "error"
 
     return JSONResponse(
         status_code=200,
         content={
-            "status": "ok" if (db_ok and redis_ok) else "degraded",
-            "db": "ok" if db_ok else "error",
-            "redis": "ok" if redis_ok else "error",
+            "status": "ok",
+            "db": db_status,
+            "redis": redis_status,
         },
     )
 
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe -- returns 503 if any dependency is down."""
+    """Readiness probe -- 503 if any component is degraded.
+
+    Kubernetes / load balancer should stop routing traffic
+    until readiness is restored.
+    """
     db_ok = True
     redis_ok = True
 
@@ -219,7 +185,6 @@ async def ready() -> JSONResponse:
         redis_ok = False
 
     all_ok = db_ok and redis_ok
-
     return JSONResponse(
         status_code=200 if all_ok else 503,
         content={

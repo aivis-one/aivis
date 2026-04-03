@@ -14,15 +14,14 @@
 #   _init_data_counter ensures unique query_id on every call to avoid
 #   anti-replay rejection when multiple calls happen in the same second.
 #
-# STAFF (Sprint 2.2):
-#   create_staff_user() registers a user and promotes to staff role
-#   directly in DB. Returns (user_data, token).
+# STAFF (Sprint 3.1):
+#   create_staff_user() registers a user, promotes to staff role,
+#   creates StaffProfile, and returns (user_data, token).
 #
 # CLEANUP:
 #   cleanup_test_users()          -- by email prefix
 #   cleanup_telegram_test_users() -- by telegram_id list
-#   cleanup_kyc_applications()    -- by user_id list
-#   cleanup_documents()           -- by email prefix (staff creator)
+#   _cleanup_user_related_data()  -- Phase 2+ and Phase 3+ FK refs
 # =============================================================================
 
 import hashlib
@@ -68,7 +67,9 @@ def build_init_data(
     if auth_date is None:
         auth_date = int(time.time())
 
-    query_id = str(next(_init_data_counter))
+    # Unique query_id per call.
+    call_num = next(_init_data_counter)
+    query_id = f"AAE{user_data['id']}_{call_num}"
 
     params = {
         "user": json.dumps(user_data, separators=(",", ":")),
@@ -76,27 +77,32 @@ def build_init_data(
         "query_id": query_id,
     }
 
+    # Compute HMAC-SHA256 hash per Telegram spec.
     data_check_string = "\n".join(
         f"{k}={v}" for k, v in sorted(params.items())
     )
-
     secret_key = hmac.new(
-        b"WebAppData", bot_token.encode(), hashlib.sha256,
+        b"WebAppData", bot_token.encode(), hashlib.sha256
     ).digest()
-    computed_hash = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256,
+    hash_value = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256
     ).hexdigest()
 
-    params["hash"] = computed_hash
+    params["hash"] = hash_value
     return urlencode(params)
+
+
+# ---------------------------------------------------------------------------
+# Auth helpers (email)
+# ---------------------------------------------------------------------------
 
 
 async def register_user(
     client: AsyncClient,
     email: str = "test@example.com",
-    password: str = "testpass123",
+    password: str = "strongpass1",
 ) -> dict:
-    """Register a user via POST /api/v1/auth/email/register."""
+    """Register a user via email auth endpoint. Returns parsed JSON."""
     resp = await client.post(
         "/api/v1/auth/email/register",
         json={"email": email, "password": password},
@@ -108,9 +114,9 @@ async def register_user(
 async def login_user(
     client: AsyncClient,
     email: str = "test@example.com",
-    password: str = "testpass123",
+    password: str = "strongpass1",
 ) -> dict:
-    """Login a user via POST /api/v1/auth/email/login."""
+    """Login a user via email auth endpoint. Returns parsed JSON."""
     resp = await client.post(
         "/api/v1/auth/email/login",
         json={"email": email, "password": password},
@@ -119,14 +125,22 @@ async def login_user(
     return resp.json()
 
 
+# ---------------------------------------------------------------------------
+# Auth helpers (Telegram)
+# ---------------------------------------------------------------------------
+
+
 async def login_telegram(
     client: AsyncClient,
-    telegram_id: int,
+    telegram_id: int = 99999,
     first_name: str = "Test",
     username: str | None = None,
 ) -> dict:
-    """Login via POST /api/v1/auth/telegram."""
-    user_data = {"id": telegram_id, "first_name": first_name}
+    """Login via Telegram auth endpoint. Returns parsed JSON."""
+    user_data: dict = {
+        "id": telegram_id,
+        "first_name": first_name,
+    }
     if username:
         user_data["username"] = username
 
@@ -139,17 +153,26 @@ async def login_telegram(
     return resp.json()
 
 
+# ---------------------------------------------------------------------------
+# Staff helpers (Sprint 3.1)
+# ---------------------------------------------------------------------------
+
+
 async def create_staff_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    email: str,
-    password: str = "testpass123",
+    email: str = "staff@example.com",
+    password: str = "strongpass1",
 ) -> tuple[dict, str]:
-    """Register a user and promote to staff role.
+    """Create a staff user with StaffProfile.
+
+    Registers via email, promotes role to staff, creates StaffProfile,
+    re-logins to get a session with the updated role.
 
     Returns (user_data_dict, session_token).
-    The role change is done directly in DB (no staff-creation endpoint yet).
     """
+    from app.modules.staff.models import StaffProfile
+
     data = await register_user(client, email=email, password=password)
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
@@ -159,11 +182,21 @@ async def create_staff_user(
     result = await db_session.execute(stmt)
     user = result.scalar_one()
     user.role = UserRole.STAFF
+
+    # Create StaffProfile (defaults -- full admin permissions).
+    profile = StaffProfile(user_id=user_id, permissions={})
+    db_session.add(profile)
+
     await db_session.commit()
 
     # Re-login to get a session with updated role.
     login_data = await login_user(client, email=email, password=password)
     return login_data, login_data["session_token"]
+
+
+# ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
 
 
 async def cleanup_test_users(
@@ -183,7 +216,7 @@ async def cleanup_test_users(
     if not user_ids:
         return
 
-    # Clean up Phase 2 tables that reference users.
+    # Clean up tables that reference users.
     await _cleanup_user_related_data(session, user_ids)
 
     await session.execute(
@@ -223,7 +256,7 @@ async def cleanup_telegram_test_users(
     if not user_ids:
         return
 
-    # Clean up Phase 2 tables that reference users.
+    # Clean up tables that reference users.
     await _cleanup_user_related_data(session, user_ids)
 
     await session.execute(
@@ -243,15 +276,32 @@ async def _cleanup_user_related_data(
     session: AsyncSession,
     user_ids: list[UUID],
 ) -> None:
-    """Clean up Phase 2+ tables that have FK references to users.
+    """Clean up Phase 2+ and Phase 3+ tables that have FK references to users.
 
     Called by cleanup_test_users and cleanup_telegram_test_users
     before deleting users.
     """
     from app.modules.documents.models import Document, DocumentSigning
     from app.modules.kyc.models import KYCApplication
+    from app.modules.staff.models import AvatarSession, StaffProfile
 
-    # Document signings by user.
+    # -- Phase 3: Staff tables --
+    # AvatarSession references users via staff_id and target_user_id.
+    await session.execute(
+        delete(AvatarSession).where(
+            AvatarSession.staff_id.in_(user_ids)
+            | AvatarSession.target_user_id.in_(user_ids)
+        )
+    )
+
+    # StaffProfile references users via user_id (CASCADE but explicit cleanup).
+    await session.execute(
+        delete(StaffProfile).where(
+            StaffProfile.user_id.in_(user_ids)
+        )
+    )
+
+    # -- Phase 2: Document signings by user --
     await session.execute(
         delete(DocumentSigning).where(
             DocumentSigning.user_id.in_(user_ids)
