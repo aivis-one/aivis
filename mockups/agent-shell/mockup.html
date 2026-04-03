@@ -3,116 +3,225 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CBS HOME Agent Shell — Live Mockup</title>
+  <title>CBS HOME Agent — Live Mockup</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/variables.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/shell.css">
   <link rel="stylesheet" href="../css/nav-map.css">
   <style>
-    /* === AGENT-SPECIFIC STYLES ONLY === */
+    /* === AGENT-SPECIFIC STYLES === */
 
     /* Clickability fix — agent-specific selectors */
-    .rank-item[onclick] *,.ref-card[onclick] *,.comm-item[onclick] * { pointer-events: none; }
+    .rank-item[onclick] *,
+    .ref-card[onclick] *,
+    .comm-item[onclick] * { pointer-events: none; }
     .copy-btn { pointer-events: auto; }
 
     /* Commission items */
-    .comm-item { display:flex; align-items:center; gap:12px; padding:12px; border-radius:var(--radius-md); cursor:pointer; transition:background .2s; border-bottom:1px solid var(--border); }
-    .comm-item:hover { background:var(--bg-subtle); }
-    .comm-level { width:40px; height:40px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; }
-    .comm-level.l1 { background:rgba(232,101,26,0.15); color:var(--accent); }
-    .comm-level.l2 { background:rgba(26,107,106,0.15); color:var(--primary); }
-    .comm-level.l3 { background:var(--bg-elevated); color:var(--text-secondary); }
-    .comm-info { flex:1; min-width:0; }
-    .comm-source { font-size:14px; font-weight:600; color:var(--text); }
-    .comm-product { font-size:12px; color:var(--text-tertiary); }
-    .comm-amount { text-align:right; }
-    .comm-sum { font-size:14px; font-weight:700; color:var(--success); }
-    .comm-date { font-size:11px; color:var(--text-tertiary); }
-    .comm-status { font-size:11px; font-weight:500; }
-    .comm-status.confirmed { color:var(--success); }
-    .comm-status.frozen { color:var(--warning); }
+    .comm-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px; border-radius: var(--radius-md);
+      cursor: pointer; transition: background .2s;
+      border-bottom: 1px solid var(--border);
+    }
+    .comm-item:hover { background: var(--bg-subtle); }
+    .comm-level {
+      width: 40px; height: 40px; border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .comm-level.l1 { background: rgba(232, 101, 26, 0.15); color: var(--accent); }
+    .comm-level.l2 { background: rgba(26, 107, 106, 0.15); color: var(--primary); }
+    .comm-level.l3 { background: var(--bg-elevated); color: var(--text-secondary); }
+    .comm-info { flex: 1; min-width: 0; }
+    .comm-source { font-size: 14px; font-weight: 600; color: var(--text); }
+    .comm-product { font-size: 12px; color: var(--text-tertiary); }
+    .comm-amount { text-align: right; }
+    .comm-sum { font-size: 14px; font-weight: 700; color: var(--success); }
+    .comm-date { font-size: 11px; color: var(--text-tertiary); }
+    .comm-status { font-size: 11px; font-weight: 500; }
+    .comm-status.confirmed { color: var(--success); }
+    .comm-status.frozen { color: var(--warning); }
 
     /* Referral cards */
-    .ref-card { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; margin-bottom:12px; }
-    .ref-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-    .ref-code { font-size:16px; font-weight:700; color:var(--primary); font-family:monospace; }
-    .ref-status { font-size:11px; font-weight:600; padding:3px 8px; border-radius:var(--radius-sm); }
-    .ref-status.active { background:var(--success-dim); color:var(--success); }
-    .ref-url { font-size:12px; color:var(--text-tertiary); margin-bottom:8px; word-break:break-all; }
-    .ref-stats { display:flex; gap:16px; }
-    .ref-stat { text-align:center; }
-    .ref-stat-value { font-size:16px; font-weight:700; color:var(--text); }
-    .ref-stat-label { font-size:11px; color:var(--text-tertiary); }
-    .copy-btn { padding:6px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-subtle); font-size:12px; cursor:pointer; font-family:inherit; transition:all .2s; }
-    .copy-btn:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .ref-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px;
+    }
+    .ref-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .ref-code { font-size: 16px; font-weight: 700; color: var(--primary); font-family: monospace; }
+    .ref-status {
+      font-size: 11px; font-weight: 600; padding: 3px 8px;
+      border-radius: var(--radius-sm);
+    }
+    .ref-status.active { background: var(--success-dim); color: var(--success); }
+    .ref-url { font-size: 12px; color: var(--text-tertiary); margin-bottom: 8px; word-break: break-all; }
+    .ref-stats { display: flex; gap: 16px; }
+    .ref-stat { text-align: center; }
+    .ref-stat-value { font-size: 16px; font-weight: 700; color: var(--text); }
+    .ref-stat-label { font-size: 11px; color: var(--text-tertiary); }
+    .copy-btn {
+      padding: 6px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--bg-subtle);
+      font-size: 12px; cursor: pointer; font-family: inherit; transition: all .2s;
+    }
+    .copy-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
 
     /* Leaderboard */
-    .rank-item { display:flex; align-items:center; gap:12px; padding:12px; border-radius:var(--radius-md); cursor:pointer; transition:background .2s; border-bottom:1px solid var(--border); }
-    .rank-item:hover { background:var(--bg-subtle); }
-    .rank-item.me { background:var(--bg-elevated); border:2px solid var(--accent); }
-    .rank-pos { width:32px; font-size:18px; font-weight:800; color:var(--text); text-align:center; }
-    .rank-pos.top3 { color:var(--accent); }
-    .rank-avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; }
-    .rank-info { flex:1; min-width:0; }
-    .rank-name { font-size:14px; font-weight:600; color:var(--text); }
-    .rank-volume { font-size:12px; color:var(--text-tertiary); }
-    .rank-change { font-size:12px; font-weight:600; }
+    .rank-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px; border-radius: var(--radius-md);
+      cursor: pointer; transition: background .2s;
+      border-bottom: 1px solid var(--border);
+    }
+    .rank-item:hover { background: var(--bg-subtle); }
+    .rank-item.me { background: var(--bg-elevated); border: 2px solid var(--accent); }
+    .rank-pos { width: 32px; font-size: 18px; font-weight: 800; color: var(--text); text-align: center; }
+    .rank-pos.top3 { color: var(--accent); }
+    .rank-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .rank-info { flex: 1; min-width: 0; }
+    .rank-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .rank-volume { font-size: 12px; color: var(--text-tertiary); }
+    .rank-change { font-size: 12px; font-weight: 600; }
 
     /* Filter tabs */
-    .filter-tabs { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
-    .filter-tab { padding:8px 16px; border-radius:var(--radius-xl); border:1px solid var(--border); background:var(--bg); color:var(--text-secondary); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; font-family:inherit; transition:all .2s; }
-    .filter-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .filter-tab:hover { border-color:var(--primary); }
+    .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+    .filter-tab {
+      padding: 8px 16px; border-radius: var(--radius-xl);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text-secondary); font-size: 13px; font-weight: 500;
+      cursor: pointer; white-space: nowrap; font-family: inherit; transition: all .2s;
+    }
+    .filter-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .filter-tab:hover { border-color: var(--primary); }
 
+    /* Tab icon sizing */
     .tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
+
+    /* Responsive overrides */
+    @media (max-width: 480px) {
+      .ref-stats { gap: 12px; }
+      .ref-stat-value { font-size: 14px; }
+      .comm-item { gap: 8px; padding: 10px; }
+    }
   </style>
 </head>
 <body>
-  <!-- TOOLBAR -->
+
+  <!-- ==================== TOOLBAR ==================== -->
   <div class="preview-toolbar">
-    <div class="toolbar-left"><div class="project-info"><span class="project-name">CBS HOME Agent v1</span><span class="project-badge">LIVE</span></div></div>
-    <div class="toolbar-center"><div class="device-switcher">
-      <button class="device-btn active" data-device="phone">📱 <span class="device-label">Phone</span><span class="device-size">390</span></button>
-      <button class="device-btn" data-device="tablet">📱 <span class="device-label">Tablet</span><span class="device-size">820</span></button>
-      <button class="device-btn" data-device="desktop">🖥️ <span class="device-label">Desktop</span><span class="device-size">1280</span></button>
-    </div></div>
+    <div class="toolbar-left">
+      <div class="project-info">
+        <span class="project-name">CBS HOME Agent v1</span>
+        <span class="project-badge">LIVE</span>
+      </div>
+    </div>
+    <div class="toolbar-center">
+      <div class="device-switcher">
+        <button class="device-btn active" data-device="phone">📱 <span class="device-label">Phone</span><span class="device-size">390</span></button>
+        <button class="device-btn" data-device="tablet">📱 <span class="device-label">Tablet</span><span class="device-size">820</span></button>
+        <button class="device-btn" data-device="desktop">🖥️ <span class="device-label">Desktop</span><span class="device-size">1280</span></button>
+      </div>
+    </div>
     <div class="toolbar-right">
       <button class="map-btn" onclick="openNavMap()">📍 <span class="map-label">Map</span></button>
-      <div class="zoom-control"><button class="zoom-btn" data-zoom="-10">−</button><span class="zoom-value">100%</span><button class="zoom-btn" data-zoom="+10">+</button></div>
+      <div class="zoom-control">
+        <button class="zoom-btn" data-zoom="-10">−</button>
+        <span class="zoom-value">100%</span>
+        <button class="zoom-btn" data-zoom="+10">+</button>
+      </div>
     </div>
   </div>
 
+  <!-- ==================== DEVICE FRAME ==================== -->
   <div class="preview-container">
     <div class="device-frame phone" id="deviceFrame">
       <div class="device-notch"></div>
       <div class="device-screen" id="deviceScreen">
         <div class="mockup-content">
 
-          <!-- DASHBOARD -->
+          <!-- ==================== 1. DASHBOARD ==================== -->
           <div class="screen active" id="screen-dashboard">
             <header class="app-header">
-              <div class="header-left"><div class="header-logo">U</div><span class="header-title">CBS HOME</span></div>
-              <div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt=""></div>
+              <div class="header-left">
+                <div class="header-logo">U</div>
+                <span class="header-title">CBS HOME</span>
+              </div>
+              <div class="header-right">
+                <button class="notif-btn" onclick="showToast('Уведомления','info')">
+                  <i data-lucide="bell"></i>
+                  <span class="notif-badge">3</span>
+                </button>
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
+              </div>
             </header>
             <main class="main">
-              <div style="margin-bottom:20px"><span style="font-size:14px;color:var(--text-secondary)">Агент</span><h2 style="font-size:20px;font-weight:700;color:var(--text)">Sergej Seider</h2><div style="display:inline-block;margin-top:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(232,101,26,0.1);color:var(--accent)">🤝 Ранг: Silver Agent</div></div>
+              <div style="margin-bottom:20px">
+                <span style="font-size:14px;color:var(--text-secondary)">Агент</span>
+                <h2 style="font-size:20px;font-weight:700;color:var(--text)">Sergej Seider</h2>
+                <div style="display:inline-block;margin-top:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(232,101,26,0.1);color:var(--accent)">
+                  <i data-lucide="shield" style="width:12px;height:12px;vertical-align:-2px"></i> Silver Agent
+                </div>
+              </div>
+
               <div class="stats-grid">
-                <div class="stat-card" onclick="switchTab('screen-hub','tab-hub')"><div class="icon-box orange"><i data-lucide="user-plus"></i></div><div class="stat-label">Рефералы</div><div class="stat-value">47</div><div class="stat-change up">+5 за месяц</div></div>
-                <div class="stat-card" onclick="switchTab('screen-commissions','tab-comm')"><div class="icon-box teal"><i data-lucide="gem"></i></div><div class="stat-label">Комиссии</div><div class="stat-value">€3 420</div><div class="stat-change up">+€820 за месяц</div></div>
-                <div class="stat-card" onclick="switchTab('screen-passive','tab-balance')"><div class="icon-box green"><i data-lucide="wallet"></i></div><div class="stat-label">Пассивный баланс</div><div class="stat-value">€2 850</div><div class="stat-sub">Доступен для вывода</div></div>
-                <div class="stat-card" onclick="showToast('📌 Портфель инвестора — финальная точка')"><div class="icon-box blue"><i data-lucide="pie-chart"></i></div><div class="stat-label">Портфель</div><div class="stat-value">€24 750</div><div class="stat-change up">+12.4%</div></div>
+                <div class="stat-card" onclick="switchTab('screen-hub','tab-hub')">
+                  <div class="icon-box orange"><i data-lucide="user-plus"></i></div>
+                  <div class="stat-label">Рефералы</div>
+                  <div class="stat-value">47</div>
+                  <div class="stat-change up">+5 за месяц</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('screen-commissions','tab-comm')">
+                  <div class="icon-box teal"><i data-lucide="gem"></i></div>
+                  <div class="stat-label">Комиссии</div>
+                  <div class="stat-value">€3 420</div>
+                  <div class="stat-change up">+€820 за месяц</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('screen-passive','tab-balance')">
+                  <div class="icon-box green"><i data-lucide="wallet"></i></div>
+                  <div class="stat-label">Пассивный баланс</div>
+                  <div class="stat-value">€2 850</div>
+                  <div class="stat-sub">Доступен для вывода</div>
+                </div>
+                <div class="stat-card" onclick="showToast('📌 Портфель инвестора — финальная точка')">
+                  <div class="icon-box blue"><i data-lucide="pie-chart"></i></div>
+                  <div class="stat-label">Портфель</div>
+                  <div class="stat-value">€24 750</div>
+                  <div class="stat-change up">+12.4%</div>
+                </div>
               </div>
-              <div class="section-header"><span class="section-title">Последние комиссии</span><button class="section-link" onclick="switchTab('screen-commissions','tab-comm')">Все →</button></div>
-              <div class="comm-item" onclick="showToast('📌 Детали комиссии — финальная точка')">
-                <div class="comm-level l1">L1</div><div class="comm-info"><div class="comm-source">Анна Петрова</div><div class="comm-product">IPI AG • 5 000 юнитов</div></div><div class="comm-amount"><div class="comm-sum">+€500</div><div class="comm-date">Сегодня</div></div>
+
+              <div class="section-header">
+                <span class="section-title">Последние комиссии</span>
+                <button class="section-link" onclick="switchTab('screen-commissions','tab-comm')">Все →</button>
               </div>
               <div class="comm-item" onclick="showToast('📌 Детали комиссии — финальная точка')">
-                <div class="comm-level l2">L2</div><div class="comm-info"><div class="comm-source">Дмитрий Козлов</div><div class="comm-product">Immo-Pro-Invest • 3 000 юн.</div></div><div class="comm-amount"><div class="comm-sum">+€90</div><div class="comm-date">Вчера</div></div>
+                <div class="comm-level l1">L1</div>
+                <div class="comm-info">
+                  <div class="comm-source">Анна Петрова</div>
+                  <div class="comm-product">IPI AG · 5 000 юнитов</div>
+                </div>
+                <div class="comm-amount">
+                  <div class="comm-sum">+€500</div>
+                  <div class="comm-date">Сегодня</div>
+                </div>
+              </div>
+              <div class="comm-item" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                <div class="comm-level l2">L2</div>
+                <div class="comm-info">
+                  <div class="comm-source">Дмитрий Козлов</div>
+                  <div class="comm-product">Immo-Pro-Invest · 3 000 юн.</div>
+                </div>
+                <div class="comm-amount">
+                  <div class="comm-sum">+€90</div>
+                  <div class="comm-date">Вчера</div>
+                </div>
               </div>
             </main>
             <nav class="tab-bar">
-              <button class="tab-item active" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
+              <button class="tab-item active" id="tab-dash" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
               <button class="tab-item" id="tab-hub" onclick="switchTab('screen-hub','tab-hub')"><span class="tab-icon"><i data-lucide="users"></i></span>Hub</button>
               <button class="tab-item" id="tab-comm" onclick="switchTab('screen-commissions','tab-comm')"><span class="tab-icon"><i data-lucide="gem"></i></span>Комиссии</button>
               <button class="tab-item" id="tab-balance" onclick="switchTab('screen-passive','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span>Баланс</button>
@@ -120,28 +229,78 @@
             </nav>
           </div>
 
-          <!-- AGENT HUB -->
+          <!-- ==================== 2. AGENT HUB ==================== -->
           <div class="screen" id="screen-hub">
-            <header class="app-header"><div class="header-left"><div class="header-logo">U</div><span class="header-title">Agent Hub</span></div><div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt=""></div></header>
+            <header class="app-header">
+              <div class="header-left">
+                <div class="header-logo">U</div>
+                <span class="header-title">Agent Hub</span>
+              </div>
+              <div class="header-right">
+                <button class="notif-btn" onclick="showToast('Уведомления','info')">
+                  <i data-lucide="bell"></i>
+                  <span class="notif-badge">3</span>
+                </button>
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
+              </div>
+            </header>
             <main class="main">
-              <div class="balance-card" style="background:linear-gradient(135deg,var(--accent),var(--accent-dark))">
-                <div class="balance-label">Общий заработок</div><div class="balance-value">€3 420</div>
+              <div class="balance-card" style="background:linear-gradient(135deg, var(--accent), var(--accent-dark))">
+                <div class="balance-label">Общий заработок</div>
+                <div class="balance-value">€3 420</div>
                 <div class="balance-row">
-                  <div class="balance-sub"><div class="balance-sub-label">L1 (10%)</div><div class="balance-sub-value">€2 600</div></div>
-                  <div class="balance-sub"><div class="balance-sub-label">L2 (3%)</div><div class="balance-sub-value">€540</div></div>
-                  <div class="balance-sub"><div class="balance-sub-label">L3 (1%)</div><div class="balance-sub-value">€280</div></div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label">L1 (10%)</div>
+                    <div class="balance-sub-value">€2 600</div>
+                  </div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label">L2 (3%)</div>
+                    <div class="balance-sub-value">€540</div>
+                  </div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label">L3 (1%)</div>
+                    <div class="balance-sub-value">€280</div>
+                  </div>
                 </div>
               </div>
+
               <div class="stats-grid">
-                <div class="stat-card" onclick="navigateTo('screen-referrals')"><div class="icon-box teal"><i data-lucide="link"></i></div><div class="stat-label">Реферальные ссылки</div><div class="stat-value">3</div><div class="stat-sub">Активных</div></div>
-                <div class="stat-card" onclick="navigateTo('screen-leaderboard')"><div class="icon-box orange"><i data-lucide="trophy"></i></div><div class="stat-label">Ранг</div><div class="stat-value">#12</div><div class="stat-sub">из 156 агентов</div></div>
-                <div class="stat-card" onclick="showToast('📌 Бонусный пул — финальная точка')"><div class="icon-box green"><i data-lucide="gift"></i></div><div class="stat-label">Бонус (месяц)</div><div class="stat-value">€85</div><div class="stat-sub">Top-20 pool: 2%</div></div>
-                <div class="stat-card" onclick="showToast('📌 Сертификация — финальная точка')"><div class="icon-box yellow"><i data-lucide="award"></i></div><div class="stat-label">Сертификация</div><div class="stat-value">Silver</div><div class="stat-sub">До Gold: €1 580</div></div>
+                <div class="stat-card" onclick="navigateTo('screen-referrals')">
+                  <div class="icon-box teal"><i data-lucide="link"></i></div>
+                  <div class="stat-label">Реферальные ссылки</div>
+                  <div class="stat-value">3</div>
+                  <div class="stat-sub">Активных</div>
+                </div>
+                <div class="stat-card" onclick="navigateTo('screen-leaderboard')">
+                  <div class="icon-box orange"><i data-lucide="trophy"></i></div>
+                  <div class="stat-label">Ранг</div>
+                  <div class="stat-value">#12</div>
+                  <div class="stat-sub">из 156 агентов</div>
+                </div>
+                <div class="stat-card" onclick="showToast('📌 Бонусный пул — финальная точка')">
+                  <div class="icon-box green"><i data-lucide="gift"></i></div>
+                  <div class="stat-label">Бонус (месяц)</div>
+                  <div class="stat-value">€85</div>
+                  <div class="stat-sub">Top-20 pool: 2%</div>
+                </div>
+                <div class="stat-card" onclick="showToast('📌 Сертификация — финальная точка')">
+                  <div class="icon-box yellow"><i data-lucide="award"></i></div>
+                  <div class="stat-label">Сертификация</div>
+                  <div class="stat-value">Silver</div>
+                  <div class="stat-sub">До Gold: €1 580</div>
+                </div>
               </div>
+
               <div class="section-title">Быстрые действия</div>
-              <button class="btn btn-primary btn-sm" style="margin-bottom:8px" onclick="navigateTo('screen-referrals')">🔗 Создать реферальную ссылку</button>
-              <button class="btn btn-secondary btn-sm" style="margin-bottom:8px" onclick="navigateTo('screen-leaderboard')">🏆 Лидерборд</button>
-              <button class="btn btn-secondary btn-sm" onclick="switchTab('screen-passive','tab-balance')">💰 Вывести средства</button>
+              <button class="btn btn-primary btn-sm" style="margin-bottom:8px" onclick="navigateTo('screen-referrals')">
+                <i data-lucide="link" style="width:16px;height:16px"></i> Создать реферальную ссылку
+              </button>
+              <button class="btn btn-secondary btn-sm" style="margin-bottom:8px" onclick="navigateTo('screen-leaderboard')">
+                <i data-lucide="trophy" style="width:16px;height:16px"></i> Лидерборд
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="switchTab('screen-passive','tab-balance')">
+                <i data-lucide="wallet" style="width:16px;height:16px"></i> Вывести средства
+              </button>
             </main>
             <nav class="tab-bar">
               <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
@@ -152,58 +311,150 @@
             </nav>
           </div>
 
-          <!-- REFERRAL LINKS -->
+          <!-- ==================== 3. REFERRAL LINKS ==================== -->
           <div class="screen" id="screen-referrals">
-            <header class="app-header"><div class="header-left"><button class="btn-link" onclick="navigateTo('screen-hub')" style="padding:0;font-size:14px">← Hub</button><span class="header-title" style="margin-left:8px">Реферальные ссылки</span></div></header>
+            <header class="app-header">
+              <div class="header-left">
+                <button class="btn-link" onclick="navigateTo('screen-hub')" style="padding:0;font-size:14px">
+                  <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:-3px"></i> Hub
+                </button>
+                <span class="header-title" style="margin-left:8px">Реферальные ссылки</span>
+              </div>
+            </header>
             <main class="main">
-              <button class="btn btn-primary btn-sm" style="margin-bottom:16px" onclick="showToast('Ссылка создана: REF-SS-004','success')">+ Создать новую ссылку</button>
+              <button class="btn btn-primary btn-sm" style="margin-bottom:16px" onclick="showToast('Ссылка создана: REF-SS-004','success')">
+                <i data-lucide="plus" style="width:16px;height:16px"></i> Создать новую ссылку
+              </button>
+
               <div class="ref-card">
-                <div class="ref-header"><span class="ref-code">REF-SS-001</span><span class="ref-status active">Активна</span></div>
+                <div class="ref-header">
+                  <span class="ref-code">REF-SS-001</span>
+                  <span class="ref-status active">Активна</span>
+                </div>
                 <div class="ref-url">https://cbshome.org/r/REF-SS-001</div>
-                <div class="ref-stats"><div class="ref-stat"><div class="ref-stat-value">234</div><div class="ref-stat-label">Клики</div></div><div class="ref-stat"><div class="ref-stat-value">28</div><div class="ref-stat-label">Регистрации</div></div><div class="ref-stat"><div class="ref-stat-value">12</div><div class="ref-stat-label">Покупки</div></div></div>
-                <button class="copy-btn" style="margin-top:10px;width:100%" onclick="showToast('Ссылка скопирована','success')">📋 Копировать ссылку</button>
+                <div class="ref-stats">
+                  <div class="ref-stat"><div class="ref-stat-value">234</div><div class="ref-stat-label">Клики</div></div>
+                  <div class="ref-stat"><div class="ref-stat-value">28</div><div class="ref-stat-label">Регистрации</div></div>
+                  <div class="ref-stat"><div class="ref-stat-value">12</div><div class="ref-stat-label">Покупки</div></div>
+                </div>
+                <button class="copy-btn" style="margin-top:10px;width:100%" onclick="showToast('Ссылка скопирована','success')">
+                  <i data-lucide="copy" style="width:14px;height:14px;vertical-align:-2px"></i> Копировать ссылку
+                </button>
               </div>
+
               <div class="ref-card">
-                <div class="ref-header"><span class="ref-code">REF-SS-002</span><span class="ref-status active">Активна</span></div>
+                <div class="ref-header">
+                  <span class="ref-code">REF-SS-002</span>
+                  <span class="ref-status active">Активна</span>
+                </div>
                 <div class="ref-url">https://cbshome.org/r/REF-SS-002</div>
-                <div class="ref-stats"><div class="ref-stat"><div class="ref-stat-value">89</div><div class="ref-stat-label">Клики</div></div><div class="ref-stat"><div class="ref-stat-value">11</div><div class="ref-stat-label">Регистрации</div></div><div class="ref-stat"><div class="ref-stat-value">5</div><div class="ref-stat-label">Покупки</div></div></div>
-                <button class="copy-btn" style="margin-top:10px;width:100%" onclick="showToast('Ссылка скопирована','success')">📋 Копировать ссылку</button>
+                <div class="ref-stats">
+                  <div class="ref-stat"><div class="ref-stat-value">89</div><div class="ref-stat-label">Клики</div></div>
+                  <div class="ref-stat"><div class="ref-stat-value">11</div><div class="ref-stat-label">Регистрации</div></div>
+                  <div class="ref-stat"><div class="ref-stat-value">5</div><div class="ref-stat-label">Покупки</div></div>
+                </div>
+                <button class="copy-btn" style="margin-top:10px;width:100%" onclick="showToast('Ссылка скопирована','success')">
+                  <i data-lucide="copy" style="width:14px;height:14px;vertical-align:-2px"></i> Копировать ссылку
+                </button>
               </div>
+
               <div class="ref-card">
-                <div class="ref-header"><span class="ref-code">REF-SS-003</span><span class="ref-status active">Активна</span></div>
+                <div class="ref-header">
+                  <span class="ref-code">REF-SS-003</span>
+                  <span class="ref-status active">Активна</span>
+                </div>
                 <div class="ref-url">https://cbshome.org/r/REF-SS-003</div>
-                <div class="ref-stats"><div class="ref-stat"><div class="ref-stat-value">45</div><div class="ref-stat-label">Клики</div></div><div class="ref-stat"><div class="ref-stat-value">8</div><div class="ref-stat-label">Регистрации</div></div><div class="ref-stat"><div class="ref-stat-value">3</div><div class="ref-stat-label">Покупки</div></div></div>
-                <button class="copy-btn" style="margin-top:10px;width:100%" onclick="showToast('Ссылка скопирована','success')">📋 Копировать ссылку</button>
+                <div class="ref-stats">
+                  <div class="ref-stat"><div class="ref-stat-value">45</div><div class="ref-stat-label">Клики</div></div>
+                  <div class="ref-stat"><div class="ref-stat-value">8</div><div class="ref-stat-label">Регистрации</div></div>
+                  <div class="ref-stat"><div class="ref-stat-value">3</div><div class="ref-stat-label">Покупки</div></div>
+                </div>
+                <button class="copy-btn" style="margin-top:10px;width:100%" onclick="showToast('Ссылка скопирована','success')">
+                  <i data-lucide="copy" style="width:14px;height:14px;vertical-align:-2px"></i> Копировать ссылку
+                </button>
               </div>
             </main>
           </div>
 
-          <!-- COMMISSIONS -->
+          <!-- ==================== 4. COMMISSIONS ==================== -->
           <div class="screen" id="screen-commissions">
-            <header class="app-header"><div class="header-left"><div class="header-logo">U</div><span class="header-title">Комиссии</span></div><div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt=""></div></header>
+            <header class="app-header">
+              <div class="header-left">
+                <div class="header-logo">U</div>
+                <span class="header-title">Комиссии</span>
+              </div>
+              <div class="header-right">
+                <button class="notif-btn" onclick="showToast('Уведомления','info')">
+                  <i data-lucide="bell"></i>
+                  <span class="notif-badge">3</span>
+                </button>
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
+              </div>
+            </header>
             <main class="main">
-              <div class="balance-card" style="background:linear-gradient(135deg,var(--primary),var(--primary-dark))">
-                <div class="balance-label">Общие комиссии</div><div class="balance-value">€3 420</div>
+              <div class="balance-card" style="background:linear-gradient(135deg, var(--primary), var(--primary-dark))">
+                <div class="balance-label">Общие комиссии</div>
+                <div class="balance-value">€3 420</div>
                 <div class="balance-row">
-                  <div class="balance-sub"><div class="balance-sub-label">Этот месяц</div><div class="balance-sub-value">€820</div></div>
-                  <div class="balance-sub"><div class="balance-sub-label">Прошлый</div><div class="balance-sub-value">€640</div></div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label">Этот месяц</div>
+                    <div class="balance-sub-value">€820</div>
+                  </div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label">Прошлый</div>
+                    <div class="balance-sub-value">€640</div>
+                  </div>
                 </div>
               </div>
+
               <div class="filter-tabs">
                 <button class="filter-tab active" onclick="filterComm(this,'all')">Все</button>
                 <button class="filter-tab" onclick="filterComm(this,'l1')">L1 (10%)</button>
                 <button class="filter-tab" onclick="filterComm(this,'l2')">L2 (3%)</button>
                 <button class="filter-tab" onclick="filterComm(this,'l3')">L3 (1%)</button>
               </div>
+
               <div id="commList">
-                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l1">L1</div><div class="comm-info"><div class="comm-source">Анна Петрова</div><div class="comm-product">IPI AG • 5 000 юнитов</div></div><div class="comm-amount"><div class="comm-sum">+€500</div><div class="comm-date">01.04.2026</div><div class="comm-status confirmed">✓</div></div></div>
-                <div class="comm-item" data-level="l2" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l2">L2</div><div class="comm-info"><div class="comm-source">Дмитрий Козлов</div><div class="comm-product">Immo-Pro-Invest • 3 000 юн.</div></div><div class="comm-amount"><div class="comm-sum">+€90</div><div class="comm-date">31.03.2026</div><div class="comm-status confirmed">✓</div></div></div>
-                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l1">L1</div><div class="comm-info"><div class="comm-source">Елена Морозова</div><div class="comm-product">IPI AG • 2 000 юнитов</div></div><div class="comm-amount"><div class="comm-sum">+€200</div><div class="comm-date">28.03.2026</div><div class="comm-status confirmed">✓</div></div></div>
-                <div class="comm-item" data-level="l3" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l3">L3</div><div class="comm-info"><div class="comm-source">Алексей Новиков</div><div class="comm-product">CBS Home • 10 000 юнитов</div></div><div class="comm-amount"><div class="comm-sum">+€100</div><div class="comm-date">25.03.2026</div><div class="comm-status frozen">❄️ 14д</div></div></div>
-                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l1">L1</div><div class="comm-info"><div class="comm-source">Мария Волкова</div><div class="comm-product">IPI AG • 1 000 юнитов</div></div><div class="comm-amount"><div class="comm-sum">+€100</div><div class="comm-date">22.03.2026</div><div class="comm-status confirmed">✓</div></div></div>
-                <div class="comm-item" data-level="l2" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l2">L2</div><div class="comm-info"><div class="comm-source">Кирилл Соколов</div><div class="comm-product">Immo-Pro-Invest • 5 000 юн.</div></div><div class="comm-amount"><div class="comm-sum">+€150</div><div class="comm-date">20.03.2026</div><div class="comm-status confirmed">✓</div></div></div>
-                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l1">L1</div><div class="comm-info"><div class="comm-source">Ольга Лебедева</div><div class="comm-product">IPI AG • 8 000 юнитов</div></div><div class="comm-amount"><div class="comm-sum">+€800</div><div class="comm-date">18.03.2026</div><div class="comm-status confirmed">✓</div></div></div>
-                <div class="comm-item" data-level="l3" onclick="showToast('📌 Детали комиссии — финальная точка')"><div class="comm-level l3">L3</div><div class="comm-info"><div class="comm-source">Сергей Попов</div><div class="comm-product">IPI AG • 18 000 юнитов</div></div><div class="comm-amount"><div class="comm-sum">+€180</div><div class="comm-date">15.03.2026</div><div class="comm-status confirmed">✓</div></div></div>
+                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l1">L1</div>
+                  <div class="comm-info"><div class="comm-source">Анна Петрова</div><div class="comm-product">IPI AG · 5 000 юнитов</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€500</div><div class="comm-date">01.04.2026</div><div class="comm-status confirmed">✓</div></div>
+                </div>
+                <div class="comm-item" data-level="l2" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l2">L2</div>
+                  <div class="comm-info"><div class="comm-source">Дмитрий Козлов</div><div class="comm-product">Immo-Pro-Invest · 3 000 юн.</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€90</div><div class="comm-date">31.03.2026</div><div class="comm-status confirmed">✓</div></div>
+                </div>
+                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l1">L1</div>
+                  <div class="comm-info"><div class="comm-source">Елена Морозова</div><div class="comm-product">IPI AG · 2 000 юнитов</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€200</div><div class="comm-date">28.03.2026</div><div class="comm-status confirmed">✓</div></div>
+                </div>
+                <div class="comm-item" data-level="l3" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l3">L3</div>
+                  <div class="comm-info"><div class="comm-source">Алексей Новиков</div><div class="comm-product">CBS Home · 10 000 юнитов</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€100</div><div class="comm-date">25.03.2026</div><div class="comm-status frozen">❄️ 14д</div></div>
+                </div>
+                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l1">L1</div>
+                  <div class="comm-info"><div class="comm-source">Мария Волкова</div><div class="comm-product">IPI AG · 1 000 юнитов</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€100</div><div class="comm-date">22.03.2026</div><div class="comm-status confirmed">✓</div></div>
+                </div>
+                <div class="comm-item" data-level="l2" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l2">L2</div>
+                  <div class="comm-info"><div class="comm-source">Кирилл Соколов</div><div class="comm-product">Immo-Pro-Invest · 5 000 юн.</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€150</div><div class="comm-date">20.03.2026</div><div class="comm-status confirmed">✓</div></div>
+                </div>
+                <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l1">L1</div>
+                  <div class="comm-info"><div class="comm-source">Ольга Лебедева</div><div class="comm-product">IPI AG · 8 000 юнитов</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€800</div><div class="comm-date">18.03.2026</div><div class="comm-status confirmed">✓</div></div>
+                </div>
+                <div class="comm-item" data-level="l3" onclick="showToast('📌 Детали комиссии — финальная точка')">
+                  <div class="comm-level l3">L3</div>
+                  <div class="comm-info"><div class="comm-source">Сергей Попов</div><div class="comm-product">IPI AG · 18 000 юнитов</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€180</div><div class="comm-date">15.03.2026</div><div class="comm-status confirmed">✓</div></div>
+                </div>
               </div>
             </main>
             <nav class="tab-bar">
@@ -215,42 +466,133 @@
             </nav>
           </div>
 
-          <!-- LEADERBOARD -->
+          <!-- ==================== 5. LEADERBOARD ==================== -->
           <div class="screen" id="screen-leaderboard">
-            <header class="app-header"><div class="header-left"><button class="btn-link" onclick="navigateTo('screen-hub')" style="padding:0;font-size:14px">← Hub</button><span class="header-title" style="margin-left:8px">Лидерборд</span></div></header>
+            <header class="app-header">
+              <div class="header-left">
+                <button class="btn-link" onclick="navigateTo('screen-hub')" style="padding:0;font-size:14px">
+                  <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:-3px"></i> Hub
+                </button>
+                <span class="header-title" style="margin-left:8px">Лидерборд</span>
+              </div>
+            </header>
             <main class="main">
-              <div style="padding:12px;background:var(--warning-dim);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)">🏆 Топ-20 делят 2% месячного пула. Топ-10 — дополнительно 1% квартального. Обновление каждые 60 мин.</div>
-              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')"><div class="rank-pos top3">1</div><img class="rank-avatar" src="https://i.pravatar.cc/150?img=33" alt=""><div class="rank-info"><div class="rank-name">Максим Иванов</div><div class="rank-volume">€48 200 объём</div></div><div class="rank-change" style="color:var(--success)">—</div></div>
-              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')"><div class="rank-pos top3">2</div><img class="rank-avatar" src="https://i.pravatar.cc/150?img=47" alt=""><div class="rank-info"><div class="rank-name">Наталья Сидорова</div><div class="rank-volume">€41 800 объём</div></div><div class="rank-change" style="color:var(--success)">↑2</div></div>
-              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')"><div class="rank-pos top3">3</div><img class="rank-avatar" src="https://i.pravatar.cc/150?img=15" alt=""><div class="rank-info"><div class="rank-name">Артём Волков</div><div class="rank-volume">€38 500 объём</div></div><div class="rank-change" style="color:var(--danger)">↓1</div></div>
-              <div style="text-align:center;padding:8px;font-size:12px;color:var(--text-tertiary)">• • •</div>
-              <div class="rank-item me" onclick="showToast('Это вы!','info')"><div class="rank-pos">12</div><img class="rank-avatar" src="https://i.pravatar.cc/150?img=12" alt=""><div class="rank-info"><div class="rank-name">Sergej Seider <span style="font-size:11px;color:var(--accent)">(вы)</span></div><div class="rank-volume">€18 420 объём</div></div><div class="rank-change" style="color:var(--success)">↑3</div></div>
-              <div style="text-align:center;padding:8px;font-size:12px;color:var(--text-tertiary)">• • •</div>
-              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')"><div class="rank-pos">19</div><img class="rank-avatar" src="https://i.pravatar.cc/150?img=22" alt=""><div class="rank-info"><div class="rank-name">Илья Морозов</div><div class="rank-volume">€8 900 объём</div></div><div class="rank-change" style="color:var(--danger)">↓2</div></div>
-              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')"><div class="rank-pos">20</div><img class="rank-avatar" src="https://i.pravatar.cc/150?img=31" alt=""><div class="rank-info"><div class="rank-name">Татьяна Козлова</div><div class="rank-volume">€8 100 объём</div></div><div class="rank-change" style="color:var(--success)">↑1</div></div>
+              <div style="padding:12px;background:var(--warning-dim);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary);display:flex;align-items:flex-start;gap:8px">
+                <i data-lucide="info" style="width:16px;height:16px;color:var(--warning);flex-shrink:0;margin-top:1px"></i>
+                <span>Топ-20 делят 2% месячного пула. Топ-10 — дополнительно 1% квартального. Обновление каждые 60 мин.</span>
+              </div>
+
+              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
+                <div class="rank-pos top3">1</div>
+                <img class="rank-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
+                <div class="rank-info"><div class="rank-name">Максим Иванов</div><div class="rank-volume">€48 200 объём</div></div>
+                <div class="rank-change" style="color:var(--success)">—</div>
+              </div>
+              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
+                <div class="rank-pos top3">2</div>
+                <img class="rank-avatar" src="https://i.pravatar.cc/150?img=47" alt="">
+                <div class="rank-info"><div class="rank-name">Наталья Сидорова</div><div class="rank-volume">€41 800 объём</div></div>
+                <div class="rank-change" style="color:var(--success)">↑2</div>
+              </div>
+              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
+                <div class="rank-pos top3">3</div>
+                <img class="rank-avatar" src="https://i.pravatar.cc/150?img=15" alt="">
+                <div class="rank-info"><div class="rank-name">Артём Волков</div><div class="rank-volume">€38 500 объём</div></div>
+                <div class="rank-change" style="color:var(--danger)">↓1</div>
+              </div>
+
+              <div style="text-align:center;padding:8px;font-size:12px;color:var(--text-tertiary)">· · ·</div>
+
+              <div class="rank-item me" onclick="showToast('Это вы!','info')">
+                <div class="rank-pos">12</div>
+                <img class="rank-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
+                <div class="rank-info">
+                  <div class="rank-name">Sergej Seider <span style="font-size:11px;color:var(--accent)">(вы)</span></div>
+                  <div class="rank-volume">€18 420 объём</div>
+                </div>
+                <div class="rank-change" style="color:var(--success)">↑3</div>
+              </div>
+
+              <div style="text-align:center;padding:8px;font-size:12px;color:var(--text-tertiary)">· · ·</div>
+
+              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
+                <div class="rank-pos">19</div>
+                <img class="rank-avatar" src="https://i.pravatar.cc/150?img=22" alt="">
+                <div class="rank-info"><div class="rank-name">Илья Морозов</div><div class="rank-volume">€8 900 объём</div></div>
+                <div class="rank-change" style="color:var(--danger)">↓2</div>
+              </div>
+              <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
+                <div class="rank-pos">20</div>
+                <img class="rank-avatar" src="https://i.pravatar.cc/150?img=31" alt="">
+                <div class="rank-info"><div class="rank-name">Татьяна Козлова</div><div class="rank-volume">€8 100 объём</div></div>
+                <div class="rank-change" style="color:var(--success)">↑1</div>
+              </div>
             </main>
           </div>
 
-          <!-- PASSIVE BALANCE -->
+          <!-- ==================== 6. PASSIVE BALANCE ==================== -->
           <div class="screen" id="screen-passive">
-            <header class="app-header"><div class="header-left"><div class="header-logo">U</div><span class="header-title">Пассивный баланс</span></div><div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt=""></div></header>
+            <header class="app-header">
+              <div class="header-left">
+                <div class="header-logo">U</div>
+                <span class="header-title">Пассивный баланс</span>
+              </div>
+              <div class="header-right">
+                <button class="notif-btn" onclick="showToast('Уведомления','info')">
+                  <i data-lucide="bell"></i>
+                  <span class="notif-badge">3</span>
+                </button>
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
+              </div>
+            </header>
             <main class="main">
-              <div class="balance-card" style="background:linear-gradient(135deg,var(--accent),var(--accent-dark))">
-                <div class="balance-label">Пассивный баланс (заработок)</div><div class="balance-value">€2 850</div>
+              <div class="balance-card" style="background:linear-gradient(135deg, var(--accent), var(--accent-dark))">
+                <div class="balance-label">Пассивный баланс (заработок)</div>
+                <div class="balance-value">€2 850</div>
                 <div class="balance-row">
-                  <div class="balance-sub"><div class="balance-sub-label">Подтверждён</div><div class="balance-sub-value">€2 850</div></div>
-                  <div class="balance-sub"><div class="balance-sub-label">❄️ Cooling-off (14д)</div><div class="balance-sub-value">€570</div></div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label">Подтверждён</div>
+                    <div class="balance-sub-value">€2 850</div>
+                  </div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label">Cooling-off (14д)</div>
+                    <div class="balance-sub-value">€570</div>
+                  </div>
                 </div>
               </div>
+
               <div style="display:flex;gap:8px;margin-bottom:20px">
-                <button class="btn btn-primary btn-sm" style="flex:1" onclick="showToast('📌 Вывод средств — финальная точка')">💸 Вывести</button>
-                <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('📌 Перевод в активный баланс — финальная точка')">→ В активный</button>
+                <button class="btn btn-primary btn-sm" style="flex:1" onclick="showToast('📌 Вывод средств — финальная точка')">
+                  <i data-lucide="arrow-up-circle" style="width:16px;height:16px"></i> Вывести
+                </button>
+                <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('📌 Перевод в активный баланс — финальная точка')">
+                  <i data-lucide="arrow-right-circle" style="width:16px;height:16px"></i> В активный
+                </button>
               </div>
-              <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)">ℹ️ Пассивный баланс — это ваш заработок (комиссии, бонусы). Можно вывести (мин. €50) или перевести в активный баланс для покупок. Cooling-off период: 14 дней для EU fiat.</div>
+
+              <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary);display:flex;align-items:flex-start;gap:8px">
+                <i data-lucide="info" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;margin-top:1px"></i>
+                <span>Пассивный баланс — это ваш заработок (комиссии, бонусы). Можно вывести (мин. €50) или перевести в активный баланс для покупок. Cooling-off период: 14 дней для EU fiat.</span>
+              </div>
+
               <div class="section-title">История</div>
-              <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')"><div class="comm-level l1">L1</div><div class="comm-info"><div class="comm-source">Комиссия L1 — Петрова</div><div class="comm-product">IPI AG</div></div><div class="comm-amount"><div class="comm-sum">+€500</div><div class="comm-date">01.04.2026</div></div></div>
-              <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')"><div class="comm-level l2">L2</div><div class="comm-info"><div class="comm-source">Комиссия L2 — Козлов</div><div class="comm-product">Immo-Pro-Invest</div></div><div class="comm-amount"><div class="comm-sum">+€90</div><div class="comm-date">31.03.2026</div></div></div>
-              <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')"><div class="comm-level" style="background:rgba(232,101,26,0.1);color:var(--accent)">🎁</div><div class="comm-info"><div class="comm-source">Бонус Top-20 (март)</div><div class="comm-product">Месячный пул 2%</div></div><div class="comm-amount"><div class="comm-sum">+€85</div><div class="comm-date">01.04.2026</div></div></div>
+              <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')">
+                <div class="comm-level l1">L1</div>
+                <div class="comm-info"><div class="comm-source">Комиссия L1 — Петрова</div><div class="comm-product">IPI AG</div></div>
+                <div class="comm-amount"><div class="comm-sum">+€500</div><div class="comm-date">01.04.2026</div></div>
+              </div>
+              <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')">
+                <div class="comm-level l2">L2</div>
+                <div class="comm-info"><div class="comm-source">Комиссия L2 — Козлов</div><div class="comm-product">Immo-Pro-Invest</div></div>
+                <div class="comm-amount"><div class="comm-sum">+€90</div><div class="comm-date">31.03.2026</div></div>
+              </div>
+              <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')">
+                <div class="comm-level" style="background:rgba(232,101,26,0.1);color:var(--accent)">
+                  <i data-lucide="gift" style="width:16px;height:16px"></i>
+                </div>
+                <div class="comm-info"><div class="comm-source">Бонус Top-20 (март)</div><div class="comm-product">Месячный пул 2%</div></div>
+                <div class="comm-amount"><div class="comm-sum">+€85</div><div class="comm-date">01.04.2026</div></div>
+              </div>
             </main>
             <nav class="tab-bar">
               <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
@@ -261,28 +603,71 @@
             </nav>
           </div>
 
-          <!-- SETTINGS -->
+          <!-- ==================== 7. SETTINGS ==================== -->
           <div class="screen" id="screen-settings">
-            <header class="app-header"><div class="header-left"><div class="header-logo">U</div><span class="header-title">Настройки</span></div></header>
+            <header class="app-header">
+              <div class="header-left">
+                <div class="header-logo">U</div>
+                <span class="header-title">Настройки</span>
+              </div>
+            </header>
             <main class="main">
               <div style="text-align:center;padding:20px 0">
                 <img src="https://i.pravatar.cc/150?img=12" style="width:72px;height:72px;border-radius:50%;border:3px solid var(--accent);margin-bottom:12px" alt="">
                 <div style="font-size:18px;font-weight:700;color:var(--text)">Sergej Seider</div>
                 <div style="font-size:13px;color:var(--text-secondary)">sergej.seider@cbshome.org</div>
-                <div style="display:inline-flex;gap:8px;margin-top:8px"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(232,101,26,0.1);color:var(--accent)">🤝 Агент</span><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:var(--success-dim);color:var(--success)">Silver</span></div>
+                <div style="display:inline-flex;gap:8px;margin-top:8px">
+                  <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(232,101,26,0.1);color:var(--accent)">
+                    <i data-lucide="users" style="width:11px;height:11px;vertical-align:-2px"></i> Агент
+                  </span>
+                  <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:var(--success-dim);color:var(--success)">
+                    <i data-lucide="shield" style="width:11px;height:11px;vertical-align:-2px"></i> Silver
+                  </span>
+                </div>
               </div>
+
               <div style="border-top:1px solid var(--border);padding-top:16px">
-                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Агент</div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Ранг</span><span style="font-size:13px;color:var(--accent);font-weight:600">Silver Agent</span></div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Рефералов</span><span style="font-size:13px;color:var(--text-tertiary)">47</span></div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Сертификация</span><span style="font-size:13px;color:var(--warning);font-weight:600">📜 Silver (Phase 2)</span></div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showToast('📌 Документы агента — финальная точка')"><span style="font-size:14px;color:var(--primary);font-weight:600">📄 Документы агента</span><span style="font-size:13px;color:var(--text-tertiary)">→</span></div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">АГЕНТ</div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:14px;color:var(--text)">Ранг</span>
+                  <span style="font-size:13px;color:var(--accent);font-weight:600">Silver Agent</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:14px;color:var(--text)">Рефералов</span>
+                  <span style="font-size:13px;color:var(--text-tertiary)">47</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:14px;color:var(--text)">Сертификация</span>
+                  <span style="font-size:13px;color:var(--warning);font-weight:600">
+                    <i data-lucide="scroll-text" style="width:12px;height:12px;vertical-align:-2px"></i> Silver (Phase 2)
+                  </span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showToast('📌 Документы агента — финальная точка')">
+                  <span style="font-size:14px;color:var(--primary);font-weight:600">
+                    <i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-2px"></i> Документы агента
+                  </span>
+                  <span style="font-size:13px;color:var(--text-tertiary)"><i data-lucide="chevron-right" style="width:16px;height:16px;vertical-align:-3px"></i></span>
+                </div>
               </div>
+
               <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
-                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Профиль</div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">KYC</span><span style="font-size:13px;color:var(--success);font-weight:600">✓ Верифицирован</span></div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Язык</span><span style="font-size:13px;color:var(--text-tertiary)">Deutsch</span></div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;cursor:pointer" onclick="showToast('📌 Выход — финальная точка')"><span style="font-size:14px;color:var(--danger)">Выйти</span><span style="font-size:13px;color:var(--text-tertiary)">→</span></div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">ПРОФИЛЬ</div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:14px;color:var(--text)">KYC</span>
+                  <span style="font-size:13px;color:var(--success);font-weight:600">
+                    <i data-lucide="shield-check" style="width:12px;height:12px;vertical-align:-2px"></i> Верифицирован
+                  </span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)">
+                  <span style="font-size:14px;color:var(--text)">Язык</span>
+                  <span style="font-size:13px;color:var(--text-tertiary)">Deutsch</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;cursor:pointer" onclick="showToast('📌 Выход — финальная точка')">
+                  <span style="font-size:14px;color:var(--danger)">
+                    <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px"></i> Выйти
+                  </span>
+                  <span style="font-size:13px;color:var(--text-tertiary)"><i data-lucide="chevron-right" style="width:16px;height:16px;vertical-align:-3px"></i></span>
+                </div>
               </div>
             </main>
             <nav class="tab-bar">
@@ -300,10 +685,13 @@
     </div>
   </div>
 
-  <!-- NAV MAP -->
+  <!-- ==================== NAVIGATION MAP ==================== -->
   <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
     <div class="nav-map" onclick="event.stopPropagation()">
-      <div class="nav-map-header"><div class="nav-map-title">📍 Navigation Map</div><button class="nav-map-close" onclick="closeNavMap()">×</button></div>
+      <div class="nav-map-header">
+        <div class="nav-map-title">📍 Navigation Map</div>
+        <button class="nav-map-close" onclick="closeNavMap()">×</button>
+      </div>
       <div class="nav-map-body">
         <div class="nav-map-stats">
           <div class="nav-map-stat"><div class="nav-map-stat-value">7</div><div class="nav-map-stat-label">экранов</div></div>
@@ -316,55 +704,74 @@
           <div class="nav-map-legend-item"><span class="legend-dot red"></span> Тупик</div>
         </div>
         <div class="nav-map-tree">
+
+          <!-- TABS -->
           <div class="nav-map-section">
-            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">📱 TABS <span class="section-count">(5)</span></span><span class="section-arrow">▼</span></div>
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><i data-lucide="layout-grid" style="width:14px;height:14px"></i> TABS <span class="section-count">(5)</span></span>
+              <span class="section-arrow">▼</span>
+            </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')"><span class="nav-map-item-icon">🏠</span><span class="nav-map-item-name">Dashboard</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Agent Hub','screen-hub')"><span class="nav-map-item-icon">🤝</span><span class="nav-map-item-name">Agent Hub</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Commissions','screen-commissions')"><span class="nav-map-item-icon">💎</span><span class="nav-map-item-name">Commissions</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Passive Balance','screen-passive')"><span class="nav-map-item-icon">💰</span><span class="nav-map-item-name">Passive Balance</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Settings','screen-settings')"><span class="nav-map-item-icon">⚙️</span><span class="nav-map-item-name">Settings</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')"><span class="nav-map-item-icon"><i data-lucide="home" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Dashboard</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Agent Hub','screen-hub')"><span class="nav-map-item-icon"><i data-lucide="users" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Agent Hub</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Commissions','screen-commissions')"><span class="nav-map-item-icon"><i data-lucide="gem" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Commissions</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Passive Balance','screen-passive')"><span class="nav-map-item-icon"><i data-lucide="wallet" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Passive Balance</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Settings','screen-settings')"><span class="nav-map-item-icon"><i data-lucide="settings" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Settings</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
             </div>
           </div>
+
+          <!-- AGENT HUB -->
           <div class="nav-map-section">
-            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">🤝 AGENT HUB <span class="section-count">(2)</span></span><span class="section-arrow">▼</span></div>
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><i data-lucide="users" style="width:14px;height:14px"></i> AGENT HUB <span class="section-count">(2)</span></span>
+              <span class="section-arrow">▼</span>
+            </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-referrals')"><span class="nav-map-item-icon">🔗</span><span class="nav-map-item-name">Referral Links</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-leaderboard')"><span class="nav-map-item-icon">🏆</span><span class="nav-map-item-name">Leaderboard</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-referrals')"><span class="nav-map-item-icon"><i data-lucide="link" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Referral Links</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-leaderboard')"><span class="nav-map-item-icon"><i data-lucide="trophy" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Leaderboard</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
             </div>
           </div>
+
+          <!-- ENDPOINTS -->
           <div class="nav-map-section">
-            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">🔴 ENDPOINTS <span class="section-count">(9)</span></span><span class="section-arrow">▼</span></div>
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><i data-lucide="circle-dot" style="width:14px;height:14px"></i> ENDPOINTS <span class="section-count">(9)</span></span>
+              <span class="section-arrow">▼</span>
+            </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Портфель инвестора','screen-dashboard')"><span class="nav-map-item-name">📊 Портфель инвестора</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали комиссии','screen-commissions')"><span class="nav-map-item-name">💎 Детали комиссии</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Бонусный пул','screen-hub')"><span class="nav-map-item-name">🎁 Бонусный пул</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Сертификация','screen-hub')"><span class="nav-map-item-name">📜 Сертификация</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Профиль агента','screen-leaderboard')"><span class="nav-map-item-name">👤 Профиль агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Вывод средств','screen-passive')"><span class="nav-map-item-name">💸 Вывод средств</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Перевод в активный','screen-passive')"><span class="nav-map-item-name">→ Перевод в активный</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Документы агента','screen-settings')"><span class="nav-map-item-name">📄 Документы агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Выход','screen-settings')"><span class="nav-map-item-name">🚪 Выход</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Портфель инвестора','screen-dashboard')"><span class="nav-map-item-icon"><i data-lucide="pie-chart" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Портфель инвестора</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали комиссии','screen-commissions')"><span class="nav-map-item-icon"><i data-lucide="gem" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Детали комиссии</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Бонусный пул','screen-hub')"><span class="nav-map-item-icon"><i data-lucide="gift" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Бонусный пул</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Сертификация','screen-hub')"><span class="nav-map-item-icon"><i data-lucide="award" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Сертификация</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Профиль агента','screen-leaderboard')"><span class="nav-map-item-icon"><i data-lucide="user" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Профиль агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Вывод средств','screen-passive')"><span class="nav-map-item-icon"><i data-lucide="arrow-up-circle" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Вывод средств</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Перевод в активный','screen-passive')"><span class="nav-map-item-icon"><i data-lucide="arrow-right-circle" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Перевод в активный</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Документы агента','screen-settings')"><span class="nav-map-item-icon"><i data-lucide="file-text" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Документы агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Выход','screen-settings')"><span class="nav-map-item-icon"><i data-lucide="log-out" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Выход</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
   </div>
 
+  <!-- ==================== SCRIPTS ==================== -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="../js/shell.js"></script>
   <script src="../js/navigation.js"></script>
   <script>
-    /* === AGENT-SPECIFIC HANDLERS ONLY === */
+    /* === AGENT-SPECIFIC HANDLERS === */
     function filterComm(btn, level) {
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.filter-tab').forEach(function(t) { t.classList.remove('active'); });
       btn.classList.add('active');
-      document.querySelectorAll('.comm-item[data-level]').forEach(item => {
+      document.querySelectorAll('.comm-item[data-level]').forEach(function(item) {
         item.style.display = (level === 'all' || item.dataset.level === level) ? 'flex' : 'none';
       });
     }
+
+    /* Init Lucide icons */
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   </script>
-  <script>if(typeof lucide!=='undefined')lucide.createIcons();</script>
 </body>
 </html>

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CBS HOME Auth Flow — Live Mockup</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/variables.css">
   <link rel="stylesheet" href="../css/components.css">
@@ -56,7 +57,7 @@
     .role-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
     .role-card.selected { border-color: var(--accent); background: rgba(232,101,26,0.04); box-shadow: var(--shadow-accent-focus); }
     .role-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-    .role-card-icon { font-size: 28px; }
+    .role-card-icon { display: flex; align-items: center; }
     .role-card-title { font-size: 18px; font-weight: 700; color: var(--text); }
     .role-card-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
     .role-card-features { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -75,7 +76,8 @@
     .role-card.selected .role-card-check { background: var(--accent); border-color: var(--accent); }
 
     /* ========== EMAIL VERIFY ========== */
-    .verify-icon { font-size: 64px; margin-bottom: 24px; }
+    .verify-icon { display: flex; justify-content: center; margin-bottom: 24px; }
+    .verify-icon svg { width: 64px; height: 64px; }
     .code-inputs { display: flex; gap: 12px; margin-bottom: 24px; }
     .code-input {
       width: 52px; height: 60px; text-align: center; font-size: 24px; font-weight: 700;
@@ -92,7 +94,8 @@
     .kyc-status-card.pending { background: var(--warning-dim); border: 1px solid rgba(245,158,11,0.3); }
     .kyc-status-card.approved { background: var(--success-dim); border: 1px solid rgba(34,197,94,0.3); }
     .kyc-status-card.rejected { background: var(--danger-dim); border: 1px solid rgba(239,68,68,0.3); }
-    .kyc-icon { font-size: 48px; margin-bottom: 16px; }
+    .kyc-icon { display: flex; justify-content: center; margin-bottom: 16px; }
+    .kyc-icon svg { width: 48px; height: 48px; }
     .kyc-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
     .kyc-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
 
@@ -121,9 +124,10 @@
     .input-wrapper .form-input { padding-right: 48px; }
     .toggle-password {
       position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer; font-size: 18px;
-      color: var(--text-tertiary); padding: 4px;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-tertiary); padding: 4px; display: flex; align-items: center;
     }
+    .toggle-password svg { width: 20px; height: 20px; }
 
     /* ========== CHECKBOX INLINE ========== */
     .checkbox-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
@@ -137,6 +141,9 @@
     .checkbox-row label { font-size: 13px; color: var(--text-secondary); line-height: 1.4; cursor: pointer; }
     .checkbox-row label a { color: var(--primary); text-decoration: none; }
     .checkbox-row label a:hover { text-decoration: underline; }
+
+    /* ========== TAB ICON FIX ========== */
+    .tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
 
     /* ========== RESPONSIVE GRID INSIDE MOCKUP ========== */
     .device-frame.desktop .role-cards { flex-direction: row; max-width: 800px; }
@@ -160,22 +167,26 @@
     <div class="toolbar-center">
       <div class="device-switcher">
         <button class="device-btn active" data-device="phone">
-          📱 <span class="device-label">Phone</span>
+          <i data-lucide="smartphone" style="width:16px;height:16px;color:currentColor"></i>
+          <span class="device-label">Phone</span>
           <span class="device-size">390</span>
         </button>
         <button class="device-btn" data-device="tablet">
-          📱 <span class="device-label">Tablet</span>
+          <i data-lucide="tablet" style="width:16px;height:16px;color:currentColor"></i>
+          <span class="device-label">Tablet</span>
           <span class="device-size">820</span>
         </button>
         <button class="device-btn" data-device="desktop">
-          🖥️ <span class="device-label">Desktop</span>
+          <i data-lucide="monitor" style="width:16px;height:16px;color:currentColor"></i>
+          <span class="device-label">Desktop</span>
           <span class="device-size">1280</span>
         </button>
       </div>
     </div>
     <div class="toolbar-right">
       <button class="map-btn" onclick="openNavMap()">
-        📍 <span class="map-label">Map</span>
+        <i data-lucide="map-pin" style="width:14px;height:14px;color:currentColor"></i>
+        <span class="map-label">Map</span>
       </button>
       <div class="zoom-control">
         <button class="zoom-btn" data-zoom="-10">−</button>
@@ -211,7 +222,7 @@
             </div>
             <div class="auth-content">
               <div style="margin-bottom:24px; text-align:center;">
-                <div style="margin-bottom:8px;"><i data-lucide="lock-keyhole" style="font-size:48px;color:var(--primary)"></i></div>
+                <i data-lucide="lock-keyhole" style="width:48px;height:48px;color:var(--primary)"></i>
               </div>
               <h1 class="auth-title">Вход в аккаунт</h1>
               <p class="auth-subtitle">Войдите в CBS HOME для управления инвестициями</p>
@@ -223,19 +234,23 @@
                 <div class="form-group">
                   <label class="form-label">Пароль</label>
                   <div class="input-wrapper">
-                    <input type="password" class="form-input" placeholder="Введите пароль" value="••••••••">
-                    <button class="toggle-password" type="button"><i data-lucide="eye" class="icon-md"></i></button>
+                    <input type="password" class="form-input" placeholder="Введите пароль" value="password123">
+                    <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
+                      <i data-lucide="eye"></i>
+                    </button>
                   </div>
                 </div>
                 <div style="text-align:right; margin-bottom:20px;">
-                  <button class="btn-link" type="button" onclick="showToast('📌 Восстановление пароля — финальная точка')">Забыли пароль?</button>
+                  <button class="btn-link" type="button" onclick="showToast('Восстановление пароля — финальная точка', 'info')">Забыли пароль?</button>
                 </div>
-                <button class="btn btn-primary" type="button" onclick="handleLogin()">Войти</button>
+                <button class="btn btn-primary" type="button" onclick="handleLogin()">
+                  <i data-lucide="log-in" style="width:18px;height:18px"></i> Войти
+                </button>
 
                 <div class="divider"><span>или</span></div>
 
-                <button class="btn btn-telegram" type="button" onclick="showToast('📌 Telegram WebApp — внешний сервис')">
-                  <i data-lucide="send" class="icon-md"></i> Войти через Telegram
+                <button class="btn btn-telegram" type="button" onclick="showToast('Telegram WebApp — внешний сервис', 'info')">
+                  <i data-lucide="send" style="width:18px;height:18px"></i> Войти через Telegram
                 </button>
 
                 <div style="text-align:center; margin-top:24px;">
@@ -253,7 +268,9 @@
                 <div class="auth-logo-icon">U</div>
                 <span class="auth-logo-text">CBS HOME</span>
               </div>
-              <button class="btn-link" type="button" onclick="navigateTo('screen-login')">← Назад</button>
+              <button class="btn-link" type="button" onclick="navigateTo('screen-login')">
+                <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> Назад
+              </button>
             </header>
             <div class="progress-bar">
               <div class="progress-step active"></div>
@@ -276,7 +293,9 @@
                   <label class="form-label">Пароль</label>
                   <div class="input-wrapper">
                     <input type="password" class="form-input" placeholder="Минимум 8 символов">
-                    <button class="toggle-password" type="button"><i data-lucide="eye" class="icon-md"></i></button>
+                    <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
+                      <i data-lucide="eye"></i>
+                    </button>
                   </div>
                   <div class="form-hint">Минимум 8 символов, буквы и цифры</div>
                 </div>
@@ -284,14 +303,18 @@
                   <label class="form-label">Подтверждение пароля</label>
                   <div class="input-wrapper">
                     <input type="password" class="form-input" placeholder="Повторите пароль">
-                    <button class="toggle-password" type="button"><i data-lucide="eye" class="icon-md"></i></button>
+                    <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
+                      <i data-lucide="eye"></i>
+                    </button>
                   </div>
                 </div>
                 <div class="checkbox-row">
                   <div class="checkbox" onclick="toggleCheckbox(this)"></div>
-                  <label onclick="toggleCheckbox(this.previousElementSibling)">Я принимаю <a href="#" onclick="event.stopPropagation(); showToast('📌 Условия использования — финальная точка')">условия использования</a> и <a href="#" onclick="event.stopPropagation(); showToast('📌 Политика конфиденциальности — финальная точка')">политику конфиденциальности</a></label>
+                  <label onclick="toggleCheckbox(this.previousElementSibling)">Я принимаю <a href="#" onclick="event.stopPropagation(); showToast('Условия использования — финальная точка', 'info')">условия использования</a> и <a href="#" onclick="event.stopPropagation(); showToast('Политика конфиденциальности — финальная точка', 'info')">политику конфиденциальности</a></label>
                 </div>
-                <button class="btn btn-primary" type="button" onclick="handleRegister()">Создать аккаунт</button>
+                <button class="btn btn-primary" type="button" onclick="handleRegister()">
+                  <i data-lucide="user-plus" style="width:18px;height:18px"></i> Создать аккаунт
+                </button>
 
                 <div style="text-align:center; margin-top:24px;">
                   <span style="font-size:14px; color:var(--text-secondary);">Уже есть аккаунт? </span>
@@ -319,7 +342,9 @@
               <div class="progress-step"></div>
             </div>
             <div class="auth-content">
-              <div class="verify-icon"><i data-lucide="mail-check" style="font-size:64px;color:var(--primary)"></i></div>
+              <div class="verify-icon">
+                <i data-lucide="mail-check" style="width:64px;height:64px;color:var(--primary)"></i>
+              </div>
               <h1 class="auth-title">Проверьте почту</h1>
               <p class="auth-subtitle">Мы отправили код подтверждения на<br><strong style="color:var(--text)">sergej.seider@cbshome.org</strong></p>
               <div class="code-inputs">
@@ -331,10 +356,12 @@
                 <input class="code-input" type="text" maxlength="1">
               </div>
               <div class="auth-form">
-                <button class="btn btn-primary" type="button" onclick="handleVerify()">Подтвердить</button>
+                <button class="btn btn-primary" type="button" onclick="handleVerify()">
+                  <i data-lucide="check-circle" style="width:18px;height:18px"></i> Подтвердить
+                </button>
                 <div style="text-align:center; margin-top:20px;">
                   <span style="font-size:14px; color:var(--text-secondary);">Не получили код? </span>
-                  <button class="btn-link" type="button" onclick="showToast('Код отправлен повторно', 'info')">Отправить повторно</button>
+                  <button class="btn-link" type="button" onclick="showToast('Код отправлен повторно', 'success')">Отправить повторно</button>
                 </div>
               </div>
             </div>
@@ -380,7 +407,7 @@
                   <select class="form-select">
                     <option value="de" selected>Deutschland</option>
                     <option value="ch">Schweiz</option>
-                    <option value="at">Österreich</option>
+                    <option value="at">Osterreich</option>
                     <option value="ru">Россия</option>
                     <option value="other">Другая</option>
                   </select>
@@ -394,7 +421,9 @@
                     <option value="ar">العربية</option>
                   </select>
                 </div>
-                <button class="btn btn-primary" type="button" onclick="handleProfile()">Продолжить</button>
+                <button class="btn btn-primary" type="button" onclick="handleProfile()">
+                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> Продолжить
+                </button>
               </div>
             </div>
           </div>
@@ -491,15 +520,17 @@
               <p class="auth-subtitle">Для работы на платформе необходимо пройти KYC-верификацию</p>
 
               <div class="kyc-status-card approved">
-                <div class="kyc-icon"><i data-lucide="shield-check" style="font-size:48px;color:var(--success)"></i></div>
+                <div class="kyc-icon"><i data-lucide="shield-check" style="width:48px;height:48px;color:var(--success)"></i></div>
                 <div class="kyc-title" style="color:var(--success);">Верификация пройдена</div>
                 <div class="kyc-text">Ваша личность подтверждена. Вы можете продолжить настройку аккаунта.</div>
               </div>
 
               <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:12px;">
-                <button class="btn btn-primary" type="button" onclick="navigateTo('screen-docs')">Продолжить</button>
-                <button class="btn btn-outline" type="button" onclick="showToast('📌 SumSub — внешний сервис верификации')">
-                  🔄 Пройти заново
+                <button class="btn btn-primary" type="button" onclick="navigateTo('screen-docs')">
+                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> Продолжить
+                </button>
+                <button class="btn btn-outline" type="button" onclick="showToast('SumSub — внешний сервис верификации', 'info')">
+                  <i data-lucide="refresh-cw" style="width:16px;height:16px"></i> Пройти заново
                 </button>
               </div>
 
@@ -572,7 +603,9 @@
               </div>
 
               <div style="width:100%; max-width:400px;">
-                <button class="btn btn-primary" id="signBtn" type="button" disabled onclick="handleSign()">Подписать документы</button>
+                <button class="btn btn-primary" id="signBtn" type="button" disabled onclick="handleSign()">
+                  <i data-lucide="file-signature" style="width:18px;height:18px"></i> Подписать документы
+                </button>
                 <div style="text-align:center; margin-top:16px;">
                   <span style="font-size:12px; color:var(--text-tertiary);">Нажимая «Подписать», вы соглашаетесь с условиями всех перечисленных документов</span>
                 </div>
@@ -590,41 +623,41 @@
   <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
     <div class="nav-map" onclick="event.stopPropagation()">
       <div class="nav-map-header">
-        <div class="nav-map-title">📍 Navigation Map</div>
-        <button class="nav-map-close" onclick="closeNavMap()">×</button>
+        <div class="nav-map-title"><i data-lucide="map-pin" style="width:18px;height:18px;vertical-align:middle;margin-right:6px"></i> Navigation Map</div>
+        <button class="nav-map-close" onclick="closeNavMap()">&times;</button>
       </div>
       <div class="nav-map-body">
         <div class="nav-map-stats">
           <div class="nav-map-stat">
             <div class="nav-map-stat-value">7</div>
-            <div class="nav-map-stat-label">экранов</div>
+            <div class="nav-map-stat-label">screens</div>
           </div>
           <div class="nav-map-stat">
             <div class="nav-map-stat-value">2</div>
-            <div class="nav-map-stat-label">полных путей</div>
+            <div class="nav-map-stat-label">full paths</div>
           </div>
           <div class="nav-map-stat">
             <div class="nav-map-stat-value">4</div>
-            <div class="nav-map-stat-label">финальных точек</div>
+            <div class="nav-map-stat-label">endpoints</div>
           </div>
         </div>
 
         <div class="nav-map-legend">
-          <div class="nav-map-legend-item"><span class="legend-dot green"></span> Экран</div>
-          <div class="nav-map-legend-item"><span class="legend-dot red"></span> Тупик</div>
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> Screen</div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> Endpoint</div>
         </div>
 
         <div class="nav-map-tree">
           <!-- Auth Section -->
           <div class="nav-map-section">
             <div class="nav-map-section-title" onclick="toggleSection(this)">
-              <span class="section-info">🔐 АУТЕНТИФИКАЦИЯ <span class="section-count">(4)</span></span>
-              <span class="section-arrow">▼</span>
+              <span class="section-info"><i data-lucide="lock" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> AUTHENTICATION <span class="section-count">(4)</span></span>
+              <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-login')">
-                  <span class="nav-map-item-icon">🔑</span>
+                  <span class="nav-map-item-icon"><i data-lucide="lock-keyhole" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name">Login</span>
                   <span class="level-badge hub">ENTRY</span>
                   <span class="status-dot green"></span>
@@ -632,32 +665,32 @@
               </div>
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-register')">
-                  <span class="nav-map-item-icon">📝</span>
-                  <span class="nav-map-item-name">↳ Register</span>
+                  <span class="nav-map-item-icon"><i data-lucide="user-plus" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name">Register</span>
                   <span class="level-badge">L1</span>
                   <span class="status-dot green"></span>
                 </div>
               </div>
               <div class="nav-map-level" data-level="2">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-verify')">
-                  <span class="nav-map-item-icon">📧</span>
-                  <span class="nav-map-item-name">↳ Email Verification</span>
+                  <span class="nav-map-item-icon"><i data-lucide="mail-check" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name">Email Verification</span>
                   <span class="level-badge">L2</span>
                   <span class="status-dot green"></span>
                 </div>
               </div>
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Telegram WebApp', 'screen-login')">
-                  <span class="nav-map-item-icon">✈️</span>
-                  <span class="nav-map-item-name">↳ Telegram Login</span>
+                  <span class="nav-map-item-icon"><i data-lucide="send" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name">Telegram Login</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
               </div>
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Восстановление пароля', 'screen-login')">
-                  <span class="nav-map-item-icon">🔓</span>
-                  <span class="nav-map-item-name">↳ Forgot Password</span>
+                  <span class="nav-map-item-icon"><i data-lucide="key-round" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name">Forgot Password</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
@@ -668,13 +701,13 @@
           <!-- Onboarding Section -->
           <div class="nav-map-section">
             <div class="nav-map-section-title" onclick="toggleSection(this)">
-              <span class="section-info">👤 ОНБОРДИНГ <span class="section-count">(6)</span></span>
-              <span class="section-arrow">▼</span>
+              <span class="section-info"><i data-lucide="user-check" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> ONBOARDING <span class="section-count">(6)</span></span>
+              <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-profile')">
-                  <span class="nav-map-item-icon">👤</span>
+                  <span class="nav-map-item-icon"><i data-lucide="user" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name">Profile Setup</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
@@ -682,7 +715,7 @@
               </div>
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-role')">
-                  <span class="nav-map-item-icon">🎯</span>
+                  <span class="nav-map-item-icon"><i data-lucide="target" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name">Role Selection</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
@@ -690,7 +723,7 @@
               </div>
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-kyc')">
-                  <span class="nav-map-item-icon">🛡️</span>
+                  <span class="nav-map-item-icon"><i data-lucide="shield-check" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name">KYC Verification</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
@@ -698,15 +731,15 @@
               </div>
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('SumSub Verification', 'screen-kyc')">
-                  <span class="nav-map-item-icon">🔍</span>
-                  <span class="nav-map-item-name">↳ SumSub External</span>
+                  <span class="nav-map-item-icon"><i data-lucide="scan-face" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name">SumSub External</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
               </div>
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')">
-                  <span class="nav-map-item-icon">📄</span>
+                  <span class="nav-map-item-icon"><i data-lucide="file-text" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name">Document Signing</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
@@ -714,8 +747,8 @@
               </div>
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Onboarding Complete — переход в кабинет', 'screen-docs')">
-                  <span class="nav-map-item-icon">🏁</span>
-                  <span class="nav-map-item-name">↳ Onboarding Complete</span>
+                  <span class="nav-map-item-icon"><i data-lucide="flag" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name">Onboarding Complete</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
@@ -772,7 +805,7 @@
     function toggleDoc(item) {
       const checkbox = item.querySelector('.doc-checkbox');
       checkbox.classList.toggle('checked');
-      checkbox.innerHTML = checkbox.classList.contains('checked') ? '✓' : '';
+      checkbox.innerHTML = checkbox.classList.contains('checked') ? '&#10003;' : '';
       updateSignBtn();
     }
 
@@ -781,20 +814,42 @@
       const checkedCount = document.querySelectorAll('.doc-checkbox.checked').length;
       const btn = document.getElementById('signBtn');
       btn.disabled = checkedCount < allChecked.length;
-      btn.textContent = checkedCount === allChecked.length ? 'Подписать документы' : `Отмечено ${checkedCount} из ${allChecked.length}`;
+      if (checkedCount === allChecked.length) {
+        btn.innerHTML = '<i data-lucide="file-signature" style="width:18px;height:18px"></i> Подписать документы';
+      } else {
+        btn.innerHTML = 'Отмечено ' + checkedCount + ' из ' + allChecked.length;
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     function handleSign() {
       showToast('Документы подписаны', 'success');
-      setTimeout(() => showToast('📌 Onboarding завершён — переход в кабинет'), 1500);
+      setTimeout(() => showToast('Onboarding завершён — переход в кабинет', 'info'), 1500);
     }
 
     /* ========== CHECKBOX ========== */
     function toggleCheckbox(el) {
       el.classList.toggle('checked');
-      el.innerHTML = el.classList.contains('checked') ? '✓' : '';
+      el.innerHTML = el.classList.contains('checked') ? '&#10003;' : '';
     }
+
+    /* ========== PASSWORD TOGGLE ========== */
+    function togglePasswordVisibility(btn) {
+      const wrapper = btn.closest('.input-wrapper');
+      const input = wrapper.querySelector('.form-input');
+      const icon = btn.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    /* ========== INIT ========== */
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   </script>
-  <script>if(typeof lucide!=='undefined')lucide.createIcons();</script>
 </body>
 </html>
