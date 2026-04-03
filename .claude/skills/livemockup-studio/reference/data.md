@@ -1,6 +1,6 @@
 ---
 name: data
-description: "v1.3.0 | Realistic data patterns for mockups"
+description: "v1.4.0 | Realistic data patterns for mockups"
 ---
 
 # Data
@@ -300,4 +300,78 @@ function relativeTime(date) {
 
 ---
 
-*data v1.3.0*
+---
+
+## CBS HOME Platform Data
+
+### Investment Products
+
+```javascript
+const products = {
+  ipiAg: {
+    name: "IPI AG Shares",
+    company: "IPI AG",
+    pricePerUnit: 1.00,
+    currency: "EUR",
+    available: 500000,
+    description: "Инвестиционные юниты IPI AG, обеспеченные портфелем строительных проектов в Германии"
+  },
+  immoProInvest: {
+    name: "Immo-Pro-Invest",
+    company: "Immo-Pro-Invest GmbH",
+    pricePerUnit: 1.00,
+    currency: "EUR",
+    available: 300000,
+    description: "Инвестиции в портфель объектов недвижимости"
+  },
+  cbsHomeFranchise: {
+    name: "CBS Home Franchise",
+    company: "CBS Home AG",
+    pricePerUnit: 1.00,
+    currency: "EUR",
+    available: 200000,
+    description: "Франшиза CBS Home — запатентованная строительная технология (EP 3 574 160 B1)"
+  }
+};
+```
+
+### Platform Roles
+
+```javascript
+const roles = {
+  investor: { label: "Инвестор", icon: "📊", color: "var(--primary)" },
+  agent: { label: "Агент", icon: "🤝", color: "var(--accent)" },
+  company: { label: "Компания", icon: "🏢", color: "var(--primary-dark)" },
+  staff: { label: "Staff", icon: "🛡️", color: "var(--danger)" }
+};
+```
+
+### EUR Price Formatting
+
+```javascript
+function formatEUR(cents) {
+  return '€' + (cents / 100).toLocaleString('de-DE');
+}
+// 524000 → "€5.240" or use space: "€5 240"
+```
+
+### Commission Levels
+
+```javascript
+const commissions = {
+  l1: { label: "L1", percent: 10, color: "var(--accent)" },
+  l2: { label: "L2", percent: 3, color: "var(--primary)" },
+  l3: { label: "L3", percent: 1, color: "var(--text-secondary)" }
+};
+```
+
+### German + Russian Names Mix
+
+```javascript
+const names = {
+  german: ['Sergej Seider', 'Viktor Braun', 'Admin Müller', 'Erste Kapital GmbH'],
+  russian: ['Анна Петрова', 'Дмитрий Козлов', 'Елена Морозова', 'Максим Иванов', 'Наталья Сидорова', 'Ольга Лебедева']
+};
+```
+
+*data v1.4.0*

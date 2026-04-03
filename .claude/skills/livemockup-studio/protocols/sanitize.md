@@ -1,6 +1,6 @@
 ---
 name: sanitize
-description: "v1.3.0 | Cleanup downloaded/corrupted files"
+description: "v1.4.0 | Cleanup downloaded/corrupted files"
 ---
 
 # sanitize
@@ -39,8 +39,6 @@ Cleanup files downloaded from external sources.
 | 1 | reference/integrity.md | Patterns |
 
 ---
-
-1?
 
 ---
 
@@ -95,7 +93,7 @@ sanitize → test → deliver
 
 ## Anchor
 
-🎨 livemockup-studio v1.3.0 · sanitize
+🎨 livemockup-studio v1.4.0 · sanitize
 🟢 | NEXT: test
 
 ---
@@ -105,4 +103,4 @@ sanitize → test → deliver
 
 ---
 
-1?
+*sanitize v1.4.0*

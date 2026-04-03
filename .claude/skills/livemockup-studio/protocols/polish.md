@@ -1,6 +1,6 @@
 ---
 name: polish
-description: "v1.3.0 | L3 - Add animations, feedback, and realistic data"
+description: "v1.4.0 | L3 - Add animations, feedback, and realistic data"
 ---
 
 # polish
@@ -9,7 +9,7 @@ description: "v1.3.0 | L3 - Add animations, feedback, and realistic data"
 
 Polish mockup with animations, feedback, and realistic data.
 
-| Creates | final.html |
+| Creates | mockup.html (polished) |
 |---------|------------|
 | Layer | L3 (Roof) |
 | Output | Production-ready mockup |
@@ -64,6 +64,17 @@ Use unified Toast from **reference/interactions.md** → Toast Notifications sec
 | Error | `showToast('Ошибка', 'error')` |
 | Endpoint | `showToast('📌 {Name} — финальная точка')` |
 
+### Identify Endpoints
+
+Any clickable element without a destination screen = endpoint.
+
+| Question | If YES |
+|----------|----------|
+| Does this card have a detail screen? | Navigate to it |
+| Does this button trigger a new screen? | Navigate to it |
+| Is this a tab within current screen? | switchTab() |
+| None of the above? | showToast('📌 {Name} — финальная точка') |
+
 ---
 
 ## Step 4: Fill Realistic Data
@@ -95,6 +106,26 @@ Apply from **reference/interactions.md** → Scroll Effects:
 
 ---
 
+## Step 6.5: CSS Variable Validation
+
+Run in browser console:
+
+```javascript
+// Find hardcoded colors in mockup content (not shell)
+document.querySelectorAll('.mockup-content *').forEach(el => {
+  const s = el.getAttribute('style') || '';
+  if (/#[0-9a-fA-F]{3,6}/.test(s)) console.warn('Hardcoded color:', el, s);
+});
+```
+
+All colors should use CSS variables. Exception: Telegram blue (#2AABEE).
+
+---
+
 ## Step 7: Validate
 
 Run **reference/checklist.md** checks before moving to test protocol.
+
+---
+
+*polish v1.4.0*

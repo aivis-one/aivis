@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME Staff Shell — Live Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/shell.css">
+  <link rel="stylesheet" href="../css/nav-map.css">
+  <style>
+    /* === STAFF-SPECIFIC STYLES ONLY === */
+
+    /* Clickability fix — staff-specific selectors */
+    .user-item[onclick] *,.kyc-item[onclick] *,.pay-item[onclick] *,.agent-app[onclick] * { pointer-events: none; }
+
+    /* Button variants not in shared components */
+    .btn-success { background:var(--success); color:#fff; }
+    .btn-success:hover { opacity:.9; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .btn-danger:hover { opacity:.9; }
+    .btn-warning { background:var(--warning); color:#fff; }
+    .btn-warning:hover { opacity:.9; }
+    .btn-xs { padding:6px 12px; font-size:11px; width:auto; }
+
+    /* List items (user, kyc, payment, agent-app) */
+    .user-item,.kyc-item,.pay-item,.agent-app { display:flex; align-items:center; gap:12px; padding:14px; border-radius:var(--radius-md); cursor:pointer; transition:background .2s; border-bottom:1px solid var(--border); }
+    .user-item:hover,.kyc-item:hover,.pay-item:hover,.agent-app:hover { background:var(--bg-subtle); }
+    .item-avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+    .item-info { flex:1; min-width:0; }
+    .item-name { font-size:14px; font-weight:600; color:var(--text); }
+    .item-detail { font-size:12px; color:var(--text-tertiary); }
+    .item-right { text-align:right; flex-shrink:0; }
+    .item-amount { font-size:14px; font-weight:700; }
+    .item-date { font-size:11px; color:var(--text-tertiary); }
+
+    /* Badges */
+    .badge { font-size:11px; font-weight:600; padding:3px 8px; border-radius:var(--radius-sm); display:inline-block; }
+    .badge-success { background:var(--success-dim); color:var(--success); }
+    .badge-warning { background:var(--warning-dim); color:var(--warning); }
+    .badge-danger { background:var(--danger-dim); color:var(--danger); }
+    .badge-primary { background:rgba(26,107,106,0.1); color:var(--primary); }
+    .badge-accent { background:rgba(232,101,26,0.1); color:var(--accent); }
+    .badge-neutral { background:var(--bg-subtle); color:var(--text-secondary); }
+
+    /* Search box */
+    .search-box { width:100%; padding:12px 16px; border:1px solid var(--border); border-radius:var(--radius-md); font-size:14px; font-family:inherit; margin-bottom:12px; background:var(--bg-subtle); }
+    .search-box:focus { outline:none; border-color:var(--primary); box-shadow:var(--shadow-focus); }
+
+    /* Filter tabs */
+    .filter-tabs { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
+    .filter-tab { padding:8px 16px; border-radius:var(--radius-xl); border:1px solid var(--border); background:var(--bg); color:var(--text-secondary); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; font-family:inherit; transition:all .2s; }
+    .filter-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .filter-tab:hover { border-color:var(--primary); }
+
+    /* Action buttons row */
+    .action-row { display:flex; gap:8px; margin-top:8px; }
+
+    /* Avatar mode */
+    .avatar-banner { background:linear-gradient(135deg,var(--accent),var(--accent-dark)); color:#fff; padding:16px; border-radius:var(--radius-lg); margin-bottom:16px; text-align:center; }
+    .avatar-banner .banner-title { font-size:18px; font-weight:800; margin-bottom:4px; }
+    .avatar-banner .banner-sub { font-size:12px; opacity:.8; }
+    .avatar-active-bar { background:var(--accent); color:#fff; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:600; }
+    .restricted-list { list-style:none; padding:0; }
+    .restricted-list li { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text-secondary); display:flex; align-items:center; gap:8px; }
+    .restricted-list li::before { content:''; display:none; }
+
+    .tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
+  </style>
+</head>
+<body>
+  <!-- TOOLBAR -->
+  <div class="preview-toolbar">
+    <div class="toolbar-left"><div class="project-info"><span class="project-name">CBS HOME Staff v1</span><span class="project-badge">LIVE</span></div></div>
+    <div class="toolbar-center"><div class="device-switcher">
+      <button class="device-btn active" data-device="phone">&#x1F4F1; <span class="device-label">Phone</span><span class="device-size">390</span></button>
+      <button class="device-btn" data-device="tablet">&#x1F4F1; <span class="device-label">Tablet</span><span class="device-size">820</span></button>
+      <button class="device-btn" data-device="desktop">&#x1F5A5;&#xFE0F; <span class="device-label">Desktop</span><span class="device-size">1280</span></button>
+    </div></div>
+    <div class="toolbar-right">
+      <button class="map-btn" onclick="openNavMap()">&#x1F4CD; <span class="map-label">Map</span></button>
+      <div class="zoom-control"><button class="zoom-btn" data-zoom="-10">&minus;</button><span class="zoom-value">100%</span><button class="zoom-btn" data-zoom="+10">+</button></div>
+    </div>
+  </div>
+
+  <div class="preview-container">
+    <div class="device-frame phone" id="deviceFrame">
+      <div class="device-notch"></div>
+      <div class="device-screen" id="deviceScreen">
+        <div class="mockup-content">
+
+          <!-- DASHBOARD -->
+          <div class="screen active" id="screen-dashboard">
+            <header class="app-header">
+              <div class="header-left"><div class="header-logo">S</div><span class="header-title">CBS Staff</span></div>
+              <div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=60" alt=""></div>
+            </header>
+            <main class="main">
+              <div style="margin-bottom:20px"><span style="font-size:14px;color:var(--text-secondary)">Staff Panel</span><h2 style="font-size:20px;font-weight:700;color:var(--text)">Admin M&uuml;ller</h2><div style="display:inline-block;margin-top:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(26,107,106,0.15);color:var(--primary)">&#x1F6E1;&#xFE0F; Staff Admin</div></div>
+              <div class="stats-grid">
+                <div class="stat-card" onclick="switchTab('screen-users','tab-users')"><div class="icon-box teal"><i data-lucide="users"></i></div><div class="stat-label">&#x041F;&#x043E;&#x043B;&#x044C;&#x0437;&#x043E;&#x0432;&#x0430;&#x0442;&#x0435;&#x043B;&#x0438;</div><div class="stat-value">1 247</div><div class="stat-change up">+34 &#x0437;&#x0430; &#x043C;&#x0435;&#x0441;&#x044F;&#x0446;</div></div>
+                <div class="stat-card" onclick="switchTab('screen-kyc','tab-kyc')"><div class="icon-box yellow"><i data-lucide="shield-alert"></i></div><div class="stat-label">KYC &#x043E;&#x0447;&#x0435;&#x0440;&#x0435;&#x0434;&#x044C;</div><div class="stat-value">12</div><div class="stat-change down">&#x041E;&#x0436;&#x0438;&#x0434;&#x0430;&#x044E;&#x0442;</div></div>
+                <div class="stat-card" onclick="switchTab('screen-payments','tab-pay')"><div class="icon-box green"><i data-lucide="credit-card"></i></div><div class="stat-label">&#x041F;&#x043B;&#x0430;&#x0442;&#x0435;&#x0436;&#x0438;</div><div class="stat-value">5</div><div class="stat-sub">&#x041E;&#x0436;&#x0438;&#x0434;&#x0430;&#x044E;&#x0442; &#x043F;&#x043E;&#x0434;&#x0442;&#x0432;&#x0435;&#x0440;&#x0436;&#x0434;&#x0435;&#x043D;&#x0438;&#x044F;</div></div>
+                <div class="stat-card" onclick="switchTab('screen-more','tab-more')"><div class="icon-box orange"><i data-lucide="user-check"></i></div><div class="stat-label">&#x0417;&#x0430;&#x044F;&#x0432;&#x043A;&#x0438; &#x0430;&#x0433;&#x0435;&#x043D;&#x0442;&#x043E;&#x0432;</div><div class="stat-value">3</div><div class="stat-sub">&#x041D;&#x043E;&#x0432;&#x044B;&#x0435;</div></div>
+              </div>
+              <div class="section-title">&#x0411;&#x044B;&#x0441;&#x0442;&#x0440;&#x044B;&#x0435; &#x0434;&#x0435;&#x0439;&#x0441;&#x0442;&#x0432;&#x0438;&#x044F;</div>
+              <button class="btn btn-primary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-kyc','tab-kyc')">&#x1F6E1;&#xFE0F; &#x041E;&#x0431;&#x0440;&#x0430;&#x0431;&#x043E;&#x0442;&#x0430;&#x0442;&#x044C; KYC</button>
+              <button class="btn btn-secondary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-payments','tab-pay')">&#x1F4B3; &#x041F;&#x0440;&#x043E;&#x0432;&#x0435;&#x0440;&#x0438;&#x0442;&#x044C; &#x043F;&#x043B;&#x0430;&#x0442;&#x0435;&#x0436;&#x0438;</button>
+              <button class="btn btn-secondary btn-sm" onclick="navigateTo('screen-avatar')">&#x1F47B; Avatar Mode</button>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item active" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>&#x0413;&#x043B;&#x0430;&#x0432;&#x043D;&#x0430;&#x044F;</button>
+              <button class="tab-item" id="tab-users" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span>&#x041F;&#x043E;&#x043B;&#x044C;&#x0437;&#x043E;&#x0432;&#x0430;&#x0442;&#x0435;&#x043B;&#x0438;</button>
+              <button class="tab-item" id="tab-kyc" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span>KYC</button>
+              <button class="tab-item" id="tab-pay" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span>&#x041F;&#x043B;&#x0430;&#x0442;&#x0435;&#x0436;&#x0438;</button>
+              <button class="tab-item" id="tab-more" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span>&#x0415;&#x0449;&#x0451;</button>
+            </nav>
+          </div>
+
+          <!-- USERS -->
+          <div class="screen" id="screen-users">
+            <header class="app-header"><div class="header-left"><div class="header-logo">S</div><span class="header-title">Пользователи</span></div><div class="header-right"><span style="font-size:13px;color:var(--text-tertiary)">1 247</span></div></header>
+            <main class="main">
+              <input class="search-box" type="text" placeholder="Поиск по имени, email..." onclick="showToast('Поиск активирован','info')">
+              <div class="filter-tabs">
+                <button class="filter-tab active" onclick="filterUsers(this,'all')">Все</button>
+                <button class="filter-tab" onclick="filterUsers(this,'investor')">Инвесторы</button>
+                <button class="filter-tab" onclick="filterUsers(this,'agent')">Агенты</button>
+                <button class="filter-tab" onclick="filterUsers(this,'company')">Компании</button>
+              </div>
+              <div id="userList">
+                <div class="user-item" data-role="investor" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=1" alt=""><div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail">Инвестор &bull; anna@mail.ru</div></div><div class="item-right"><span class="badge badge-success">KYC &#x2713;</span></div></div>
+                <div class="user-item" data-role="agent" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=12" alt=""><div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail">Агент &bull; sergej@cbshome.org</div></div><div class="item-right"><span class="badge badge-success">KYC &#x2713;</span></div></div>
+                <div class="user-item" data-role="investor" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt=""><div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail">Инвестор &bull; max.iv@gmail.com</div></div><div class="item-right"><span class="badge badge-warning">KYC &#x231B;</span></div></div>
+                <div class="user-item" data-role="company" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=65" alt=""><div class="item-info"><div class="item-name">GmbH Immobilien AG</div><div class="item-detail">Компания &bull; info@immo-ag.de</div></div><div class="item-right"><span class="badge badge-success">KYC &#x2713;</span></div></div>
+                <div class="user-item" data-role="investor" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=47" alt=""><div class="item-info"><div class="item-name">Наталья Сидорова</div><div class="item-detail">Инвестор &bull; nat.sid@yandex.ru</div></div><div class="item-right"><span class="badge badge-danger">&#x1F6AB; Blocked</span></div></div>
+                <div class="user-item" data-role="agent" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=15" alt=""><div class="item-info"><div class="item-name">Klaus Hoffmann</div><div class="item-detail">Агент &bull; klaus@cbshome.org</div></div><div class="item-right"><span class="badge badge-success">KYC &#x2713;</span></div></div>
+                <div class="user-item" data-role="investor" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=22" alt=""><div class="item-info"><div class="item-name">Илья Морозов</div><div class="item-detail">Инвестор &bull; ilya.m@outlook.com</div></div><div class="item-right"><span class="badge badge-success">KYC &#x2713;</span></div></div>
+                <div class="user-item" data-role="company" onclick="showToast('&#x1F4CC; Профиль пользователя — финальная точка')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=68" alt=""><div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail">Компания &bull; ek@erste-kapital.de</div></div><div class="item-right"><span class="badge badge-warning">KYC &#x231B;</span></div></div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
+              <button class="tab-item active" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span>Пользователи</button>
+              <button class="tab-item" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span>KYC</button>
+              <button class="tab-item" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span>Платежи</button>
+              <button class="tab-item" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span>Ещё</button>
+            </nav>
+          </div>
+
+          <!-- KYC QUEUE -->
+          <div class="screen" id="screen-kyc">
+            <header class="app-header"><div class="header-left"><div class="header-logo">S</div><span class="header-title">KYC Очередь</span></div><div class="header-right"><span class="badge badge-warning">12 pending</span></div></header>
+            <main class="main">
+              <div style="padding:12px;background:var(--warning-dim);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)">&#x1F6E1;&#xFE0F; Проверьте документы и данные пользователя перед одобрением. Среднее время обработки: 15 мин.</div>
+
+              <div class="kyc-item" onclick="showToast('&#x1F4CC; KYC детали — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
+                <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail">Инвестор &bull; Паспорт РФ &bull; Подан 28.03.2026</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Максим Иванов','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Максим Иванов','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="kyc-item" onclick="showToast('&#x1F4CC; KYC детали — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=68" alt="">
+                <div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail">Компания &bull; Handelsregister &bull; Подан 30.03.2026</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Erste Kapital','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Erste Kapital','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="kyc-item" onclick="showToast('&#x1F4CC; KYC детали — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=44" alt="">
+                <div class="item-info"><div class="item-name">Ольга Шмидт</div><div class="item-detail">Инвестор &bull; Personalausweis &bull; Подан 01.04.2026</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Ольга Шмидт','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Ольга Шмидт','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px">... ещё 9 заявок</div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
+              <button class="tab-item" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span>Пользователи</button>
+              <button class="tab-item active" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span>KYC</button>
+              <button class="tab-item" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span>Платежи</button>
+              <button class="tab-item" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span>Ещё</button>
+            </nav>
+          </div>
+
+          <!-- PAYMENT REVIEW -->
+          <div class="screen" id="screen-payments">
+            <header class="app-header"><div class="header-left"><div class="header-logo">S</div><span class="header-title">Платежи</span></div><div class="header-right"><span class="badge badge-warning">5 pending</span></div></header>
+            <main class="main">
+              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)">&#x1F4B3; Проверьте хеш транзакции в блокчейне перед подтверждением. Все платежи — крипто (USDT).</div>
+
+              <div class="pay-item" onclick="showToast('&#x1F4CC; Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#x20AE;</div>
+                <div class="item-info"><div class="item-name">&euro;2 500 &bull; USDT TRC20</div><div class="item-detail">Анна Петрова &bull; TX: 0x8f3a...b21c</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;2 500','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('&#x1F4CC; Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#x20AE;</div>
+                <div class="item-info"><div class="item-name">&euro;10 000 &bull; USDT ERC20</div><div class="item-detail">Максим Иванов &bull; TX: 0x4c7d...e98f</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;10 000','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('&#x1F4CC; Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#x20AE;</div>
+                <div class="item-info"><div class="item-name">&euro;1 200 &bull; USDT BEP20</div><div class="item-detail">Klaus Hoffmann &bull; TX: 0xaa12...3f4b</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;1 200','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('&#x1F4CC; Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#x20AE;</div>
+                <div class="item-info"><div class="item-name">&euro;5 000 &bull; USDT TRC20</div><div class="item-detail">Илья Морозов &bull; TX: 0x6b9e...d7a1</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;5 000','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('&#x1F4CC; Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#x20AE;</div>
+                <div class="item-info"><div class="item-name">&euro;750 &bull; USDT ERC20</div><div class="item-detail">Ольга Шмидт &bull; TX: 0xfe21...8c3d</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;750','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')">&#x2717;</button>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
+              <button class="tab-item" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span>Пользователи</button>
+              <button class="tab-item" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span>KYC</button>
+              <button class="tab-item active" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span>Платежи</button>
+              <button class="tab-item" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span>Ещё</button>
+            </nav>
+          </div>
+
+          <!-- MORE (Settings / Agent Apps / Avatar access) -->
+          <div class="screen" id="screen-more">
+            <header class="app-header"><div class="header-left"><div class="header-logo">S</div><span class="header-title">Ещё</span></div></header>
+            <main class="main">
+              <div style="text-align:center;padding:20px 0">
+                <img src="https://i.pravatar.cc/150?img=60" style="width:72px;height:72px;border-radius:50%;border:3px solid var(--primary);margin-bottom:12px" alt="">
+                <div style="font-size:18px;font-weight:700;color:var(--text)">Admin M&uuml;ller</div>
+                <div style="font-size:13px;color:var(--text-secondary)">admin@cbshome.org</div>
+                <div style="display:inline-flex;gap:8px;margin-top:8px"><span class="badge badge-primary">&#x1F6E1;&#xFE0F; Staff</span><span class="badge badge-success">Online</span></div>
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:16px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Инструменты</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigateTo('screen-agent-apps')"><span style="font-size:14px;color:var(--text)">&#x1F4DD; Заявки агентов</span><span style="display:flex;align-items:center;gap:6px"><span class="badge badge-warning">3</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigateTo('screen-avatar')"><span style="font-size:14px;color:var(--accent);font-weight:600">&#x1F47B; Avatar Mode</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></div>
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Система</div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Платформа</span><span style="font-size:13px;color:var(--text-tertiary)">v2.4.1</span></div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Язык</span><span style="font-size:13px;color:var(--text-tertiary)">Русский</span></div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;cursor:pointer" onclick="showToast('&#x1F4CC; Выход — финальная точка')"><span style="font-size:14px;color:var(--danger)">Выйти</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
+              <button class="tab-item" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span>Пользователи</button>
+              <button class="tab-item" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span>KYC</button>
+              <button class="tab-item" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span>Платежи</button>
+              <button class="tab-item active" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span>Ещё</button>
+            </nav>
+          </div>
+
+          <!-- AGENT APPLICATIONS -->
+          <div class="screen" id="screen-agent-apps">
+            <header class="app-header"><div class="header-left"><button class="btn-link" onclick="switchTab('screen-more','tab-more')" style="padding:0;font-size:14px">&larr; Ещё</button><span class="header-title" style="margin-left:8px">Заявки агентов</span></div><div class="header-right"><span class="badge badge-warning">3</span></div></header>
+            <main class="main">
+              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)">&#x1F4DD; Инвестор может подать заявку на статус агента. Cooldown: 30 дней после отклонения. Проверьте историю инвестиций.</div>
+
+              <div class="agent-app" onclick="showToast('&#x1F4CC; Детали заявки — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=22" alt="">
+                <div class="item-info">
+                  <div class="item-name">Илья Морозов</div>
+                  <div class="item-detail">Инвестор с 2024 &bull; Портфель: &euro;18 400</div>
+                  <div class="item-detail">5 покупок &bull; KYC &#x2713;</div>
+                </div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Илья Морозов стал агентом','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Заявка отклонена (cooldown 30 дней)','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="agent-app" onclick="showToast('&#x1F4CC; Детали заявки — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=31" alt="">
+                <div class="item-info">
+                  <div class="item-name">Татьяна Козлова</div>
+                  <div class="item-detail">Инвестор с 2025 &bull; Портфель: &euro;8 100</div>
+                  <div class="item-detail">3 покупки &bull; KYC &#x2713;</div>
+                </div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Татьяна Козлова стала агентом','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Заявка отклонена (cooldown 30 дней)','error')">&#x2717;</button>
+                </div>
+              </div>
+
+              <div class="agent-app" onclick="showToast('&#x1F4CC; Детали заявки — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=52" alt="">
+                <div class="item-info">
+                  <div class="item-name">Viktor Braun</div>
+                  <div class="item-detail">Инвестор с 2025 &bull; Портфель: &euro;4 200</div>
+                  <div class="item-detail">2 покупки &bull; KYC &#x2713; &bull; &#x26A0; Cooldown закончился 15.03</div>
+                </div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Viktor Braun стал агентом','success')">&#x2713;</button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Заявка отклонена (cooldown 30 дней)','error')">&#x2717;</button>
+                </div>
+              </div>
+            </main>
+          </div>
+
+          <!-- AVATAR MODE -->
+          <div class="screen" id="screen-avatar">
+            <header class="app-header" style="background:var(--accent);border-bottom-color:var(--accent-dark)"><div class="header-left"><button class="btn-link" onclick="switchTab('screen-more','tab-more')" style="padding:0;font-size:14px;color:#fff">&larr; Ещё</button><span class="header-title" style="margin-left:8px;color:#fff">&#x1F47B; Avatar Mode</span></div></header>
+            <main class="main">
+              <div class="avatar-banner">
+                <div class="banner-title">&#x1F47B; Avatar Mode</div>
+                <div class="banner-sub">Просматривайте платформу глазами пользователя</div>
+              </div>
+
+              <div class="section-title">Выберите пользователя</div>
+              <input class="search-box" type="text" placeholder="Поиск пользователя для аватаринга..." onclick="showToast('Поиск пользователя','info')">
+
+              <div class="user-item" onclick="activateAvatar('Анна Петрова','Инвестор')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=1" alt=""><div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail">Инвестор &bull; &euro;24 750 портфель</div></div><div class="item-right"><span class="badge badge-accent">&#x1F47B;</span></div></div>
+              <div class="user-item" onclick="activateAvatar('Sergej Seider','Агент')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=12" alt=""><div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail">Агент &bull; 47 рефералов</div></div><div class="item-right"><span class="badge badge-accent">&#x1F47B;</span></div></div>
+              <div class="user-item" onclick="activateAvatar('Максим Иванов','Инвестор')"><img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt=""><div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail">Инвестор &bull; &euro;48 200 портфель</div></div><div class="item-right"><span class="badge badge-accent">&#x1F47B;</span></div></div>
+
+              <div style="margin-top:24px;padding:16px;background:var(--danger-dim);border:1px solid var(--danger);border-radius:var(--radius-lg)">
+                <div style="font-size:14px;font-weight:700;color:var(--danger);margin-bottom:8px">&#x26A0; Ограниченные операции в Avatar Mode</div>
+                <ul class="restricted-list">
+                  <li>&#x1F6AB; Нельзя совершать покупки от имени пользователя</li>
+                  <li>&#x1F6AB; Нельзя выводить средства</li>
+                  <li>&#x1F6AB; Нельзя менять пароль или email</li>
+                  <li>&#x1F6AB; Нельзя удалять аккаунт</li>
+                  <li>&#x1F6AB; Нельзя менять KYC данные</li>
+                </ul>
+              </div>
+
+              <div id="avatarSession" style="display:none;margin-top:16px">
+                <div style="padding:16px;background:var(--accent);color:#fff;border-radius:var(--radius-lg);text-align:center">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:4px">&#x1F47B; Активная сессия</div>
+                  <div id="avatarTarget" style="font-size:18px;font-weight:800;margin-bottom:4px"></div>
+                  <div id="avatarRole" style="font-size:12px;opacity:.8;margin-bottom:12px"></div>
+                  <button class="btn" style="background:#fff;color:var(--accent);font-weight:700" onclick="deactivateAvatar()">&#x1F6E1;&#xFE0F; Вернуться в Staff</button>
+                </div>
+              </div>
+            </main>
+          </div>
+
+        </div>
+      </div>
+      <div class="device-home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- NAV MAP -->
+  <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
+    <div class="nav-map" onclick="event.stopPropagation()">
+      <div class="nav-map-header"><div class="nav-map-title">&#x1F4CD; Navigation Map</div><button class="nav-map-close" onclick="closeNavMap()">&times;</button></div>
+      <div class="nav-map-body">
+        <div class="nav-map-stats">
+          <div class="nav-map-stat"><div class="nav-map-stat-value">6</div><div class="nav-map-stat-label">экранов</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">2</div><div class="nav-map-stat-label">полных путей</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">11</div><div class="nav-map-stat-label">финальных точек</div></div>
+        </div>
+        <div class="nav-map-legend">
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> Экран</div>
+          <div class="nav-map-legend-item"><span class="legend-dot yellow"></span> Табы</div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> Тупик</div>
+        </div>
+        <div class="nav-map-tree">
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">&#x1F4F1; TABS <span class="section-count">(5)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')"><span class="nav-map-item-icon">&#x1F3E0;</span><span class="nav-map-item-name">Dashboard</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Users','screen-users')"><span class="nav-map-item-icon">&#x1F465;</span><span class="nav-map-item-name">Users</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('KYC Queue','screen-kyc')"><span class="nav-map-item-icon">&#x1F6E1;&#xFE0F;</span><span class="nav-map-item-name">KYC Queue</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Payment Review','screen-payments')"><span class="nav-map-item-icon">&#x1F4B3;</span><span class="nav-map-item-name">Payment Review</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('More','screen-more')"><span class="nav-map-item-icon">&#x2699;&#xFE0F;</span><span class="nav-map-item-name">More / Settings</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+            </div>
+          </div>
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">&#x2699;&#xFE0F; MORE SCREENS <span class="section-count">(2)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-agent-apps')"><span class="nav-map-item-icon">&#x1F4DD;</span><span class="nav-map-item-name">Agent Applications</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-avatar')"><span class="nav-map-item-icon">&#x1F47B;</span><span class="nav-map-item-name">Avatar Mode</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
+            </div>
+          </div>
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">&#x1F534; ENDPOINTS <span class="section-count">(11)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Профиль пользователя','screen-users')"><span class="nav-map-item-name">&#x1F464; Профиль пользователя</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('KYC детали','screen-kyc')"><span class="nav-map-item-name">&#x1F6E1;&#xFE0F; KYC детали</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('KYC одобрение','screen-kyc')"><span class="nav-map-item-name">&#x2713; KYC одобрение</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('KYC отклонение','screen-kyc')"><span class="nav-map-item-name">&#x2717; KYC отклонение</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали платежа','screen-payments')"><span class="nav-map-item-name">&#x1F4B3; Детали платежа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Подтверждение платежа','screen-payments')"><span class="nav-map-item-name">&#x2713; Подтверждение платежа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Отклонение платежа','screen-payments')"><span class="nav-map-item-name">&#x2717; Отклонение платежа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали заявки агента','screen-agent-apps')"><span class="nav-map-item-name">&#x1F4DD; Детали заявки агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Avatar сессия','screen-avatar')"><span class="nav-map-item-name">&#x1F47B; Avatar сессия</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Выход','screen-more')"><span class="nav-map-item-name">&#x1F6AA; Выход</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Block/Unblock user','screen-users')"><span class="nav-map-item-name">&#x1F6AB; Block/Unblock user</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../js/shell.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script>
+    /* === STAFF-SPECIFIC HANDLERS ONLY === */
+
+    function filterUsers(btn, role) {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.user-item[data-role]').forEach(item => {
+        item.style.display = (role === 'all' || item.dataset.role === role) ? 'flex' : 'none';
+      });
+    }
+
+    function activateAvatar(name, role) {
+      document.getElementById('avatarSession').style.display = 'block';
+      document.getElementById('avatarTarget').textContent = name;
+      document.getElementById('avatarRole').textContent = '\u0420\u043E\u043B\u044C: ' + role;
+      showToast('\uD83D\uDC7B Avatar \u0430\u043A\u0442\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D: ' + name, 'warning');
+    }
+
+    function deactivateAvatar() {
+      document.getElementById('avatarSession').style.display = 'none';
+      showToast('\uD83D\uDEE1\uFE0F \u0412\u043E\u0437\u0432\u0440\u0430\u0442 \u0432 Staff \u0440\u0435\u0436\u0438\u043C', 'success');
+    }
+  </script>
+  <script>if(typeof lucide!=='undefined')lucide.createIcons();</script>
+</body>
+</html>

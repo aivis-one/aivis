@@ -1,6 +1,6 @@
 ---
 name: deliver
-description: "v1.3.0 | L4 - UAT checklist and final delivery"
+description: "v1.4.0 | L4 - UAT checklist and final delivery"
 ---
 
 # deliver
@@ -72,7 +72,7 @@ Based on brief.md:
 
 ```
 ✅ Мокап доставлен и принят.
-Файл: /mnt/user-data/outputs/{name}-final.html
+Файл: Save to project's mockup directory (e.g., `mocups/{name}/mockup.html`){name}-final.html
 
 📝 Если сломается после скачивания → sanitize
 ```
@@ -81,7 +81,7 @@ Based on brief.md:
 
 ## Anchor
 
-🎨 livemockup-studio v1.3.0 · deliver
+🎨 livemockup-studio v1.4.0 · deliver
 🟢 | Delivered
 
 ---
@@ -91,4 +91,4 @@ Based on brief.md:
 
 ---
 
-1?
+*deliver v1.4.0*

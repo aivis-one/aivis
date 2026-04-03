@@ -1,11 +1,13 @@
 ---
 name: livemockup-studio
-description: "v1.3.0 | Interactive HTML prototypes with Device Preview + Navigation Map"
+description: "v1.5.0 | Interactive HTML prototypes with Device Preview + Navigation Map + CBS HOME brand"
 ---
 
-# livemockup-studio v1.3.0
+# livemockup-studio v1.5.0
 
 Interactive HTML mockups: device preview, Navigation Map, microinteractions, realistic data.
+CBS HOME brand-native: Teal/Orange palette, Montserrat font, rectangular aesthetic.
+Ecosystem mode: shared CSS/JS + index hub for multi-mockup projects.
 
 ---
 
@@ -26,7 +28,7 @@ Interactive HTML mockups: device preview, Navigation Map, microinteractions, rea
 | **Always** adaptive toolbar | Toolbar adapts to mobile (<480px) |
 | **Always** endpoint marking | Toast for endpoints: `📌 [name] — финальная точка` |
 | **Never** multiple files | No separate CSS/JS files |
-| **Never** hardcode colors | Use CSS variables |
+| **Never** hardcode colors | Use CSS variables from reference/brand-cbs.md |
 | **Never** skip test | Validate before delivery |
 | **Never** align-items: center on container | Causes top clipping |
 
@@ -47,6 +49,13 @@ brief → design → build → polish → test → deliver
 | L3 | polish | Animations + realistic data |
 | L3.5 | test | Validated mockup |
 
+### Ecosystem Mode
+
+For multi-mockup projects, run `ecosystem` protocol after completing individual mockups:
+```
+[individual mockups ready] → ecosystem → shared CSS/JS + index hub
+```
+
 ---
 
 ## Quick Reference
@@ -56,11 +65,13 @@ brief → design → build → polish → test → deliver
 | New mockup | brief → design → build → polish → test |
 | Skip to building | build (if requirements clear) |
 | Polish existing | polish → test |
+| CBS HOME brand tokens | reference/brand-cbs.md |
 | Fix shell issues | reference/shell.md |
 | Add interactions | reference/interactions.md |
 | Validate quality | reference/checklist.md |
 | Realistic data | reference/data.md |
 | UI components | reference/components.md |
+| Ecosystem mode | reference/ecosystem.md + protocols/ecosystem.md |
 
 ---
 
@@ -88,3 +99,4 @@ brief → design → build → polish → test → deliver
 | Data looks fake | reference/data.md |
 | Quality issues | reference/checklist.md |
 | File corrupted | reference/integrity.md |
+| Shared CSS/JS broken | reference/ecosystem.md |

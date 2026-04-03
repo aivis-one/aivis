@@ -1,6 +1,6 @@
 ---
 name: build
-description: "v1.3.0 | L2 - Generate HTML mockup with device shell"
+description: "v1.4.0 | L2 - Generate HTML mockup with device shell"
 ---
 
 # build
@@ -22,6 +22,7 @@ Generate working HTML mockup with device preview shell.
 |---|------|-----|
 | 1 | reference/shell.md | Device Preview + clickability fix + flex chain |
 | 2 | reference/components.md | UI patterns |
+| 3 | reference/brand-cbs.md | CBS HOME tokens |
 
 ---
 
@@ -34,7 +35,7 @@ Generate working HTML mockup with device preview shell.
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{Project} — Live Mockup</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     /* === SHELL STYLES === from reference/shell.md */
     /* === CLICKABILITY FIX === from reference/shell.md */
@@ -126,6 +127,8 @@ Apply these from **reference/shell.md** (do NOT skip):
 
 Form submit handlers are unreliable in device preview.
 
+**Why:** Device preview wraps content in an iframe-like container. The default form submit causes page reload, breaking the preview. `div` + `onclick` keeps everything in-page.
+
 ---
 
 ## Step 5: Add Components
@@ -166,3 +169,7 @@ Add hover effects from reference/interactions.md.
 | Tab bar at bottom | |
 | Navigation Map works | |
 | Components styled | |
+
+---
+
+*build v1.4.0*
