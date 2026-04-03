@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     # -- Telegram --
     telegram_bot_token: str = "TEST"
 
+    # -- Telegram Auth Security --
+    auth_rate_limit_max_requests: int = 5
+    auth_rate_limit_window_seconds: int = 60
+    auth_init_data_ttl_seconds: int = 300
+    auth_clock_skew_seconds: int = 60
+
     # -- KYC (SumSub) --
     sumsub_api_key: str = "TEST"
     sumsub_secret_key: str = "TEST"

@@ -4,7 +4,8 @@
 #
 # RESPONSIBILITIES:
 #   1. Email registration and login (argon2 password hashing)
-#   2. Manage sessions in Redis (create / get / delete / delete-all)
+#   2. Telegram user upsert (Sprint 1.2)
+#   3. Manage sessions in Redis (create / get / delete / delete-all)
 #
 # SESSION FORMAT IN REDIS:
 #   Key:   session:{token}
@@ -16,15 +17,6 @@
 #   Type:  Redis ZSET (Sorted Set), score = creation timestamp
 #   TTL:   Same as session TTL
 #   Purpose: Reverse index for logout-all + concurrent session limit.
-#   GC: Expired tokens cleaned via ZREMRANGEBYSCORE on each login.
-#
-# MAX_CONCURRENT_SESSIONS:
-#   When session count exceeds the limit, the oldest session (ZPOPMIN)
-#   is evicted. This prevents unbounded session accumulation.
-#
-# ATOMIC OPERATIONS:
-#   Session creation uses MULTI/EXEC pipeline (SET + ZADD + GC + EXPIRE).
-#   Logout-all uses Lua script (ZRANGE + DEL in one atomic step).
 #
 # KNOWN LIMITATION:
 #   Redis session is created before DB commit in the router. If commit
@@ -126,8 +118,6 @@ async def register_email(
 
     session.add(user)
 
-    # Catch only the specific ix_users_email constraint violation.
-    # Other IntegrityErrors (future constraints) re-raise unmasked.
     try:
         await session.flush()
     except IntegrityError as exc:
@@ -161,9 +151,6 @@ async def login_email(
 ) -> User:
     """Authenticate a user by email + password.
 
-    Lookup uses the functional JSONB index ix_users_email.
-    Does NOT create a session -- caller handles that.
-
     Timing-safe: if email is not found, a dummy argon2 hash is computed
     to prevent email enumeration via response time side-channel.
 
@@ -173,7 +160,6 @@ async def login_email(
     """
     email_lower = email.strip().lower()
 
-    # Lookup via functional index on credentials->'email'->>'email'.
     stmt = select(User).where(
         User.credentials["email"]["email"].as_string() == email_lower
     )
@@ -181,24 +167,18 @@ async def login_email(
     user = result.scalar_one_or_none()
 
     if user is None:
-        # Constant-time: prevent email enumeration via timing side-channel.
-        # Without this, "email not found" returns instantly (~0ms) while
-        # "wrong password" takes ~100-300ms (argon2 verify).
         _ph.hash("dummy-password-timing-safe")
         raise UnauthorizedError("Invalid email or password")
 
-    # Verify password.
     email_creds = user.credentials.get("email", {})
     stored_hash = email_creds.get("password_hash", "")
 
     if not verify_password(password, stored_hash):
         raise UnauthorizedError("Invalid email or password")
 
-    # Guard: platform user cannot log in.
     if user.role == UserRole.PLATFORM:
         raise UnauthorizedError("Invalid email or password")
 
-    # Guard: deactivated account.
     if not user.is_active:
         raise ForbiddenError("Account is deactivated")
 
@@ -212,13 +192,133 @@ async def login_email(
         data={"auth_method": "email"},
     )
 
-    logger.info(
-        "user_login",
-        user_id=str(user.id),
-        auth_method="email",
-    )
+    logger.info("user_login", user_id=str(user.id), auth_method="email")
 
     return user
+
+
+# ---------------------------------------------------------------------------
+# Telegram Auth (Sprint 1.2)
+# ---------------------------------------------------------------------------
+
+
+async def upsert_telegram_user(
+    telegram_user: dict,
+    session: AsyncSession,
+) -> tuple[User, bool]:
+    """Create or update user on Telegram login.
+
+    Lookup by credentials->'telegram'->>'id' via functional index.
+    If found -- update credentials.telegram via set_jsonb().
+    If not found -- create new User with role=investor.
+
+    Race condition (two simultaneous first logins) is handled via
+    begin_nested() (SAVEPOINT) + IntegrityError catch + retry SELECT.
+    This follows P-05 pattern: savepoint rolls back only the INSERT,
+    outer transaction remains valid for retry.
+
+    Does NOT commit -- caller manages transaction (P-01).
+
+    Returns:
+        Tuple of (User, is_new) where is_new=True if user was just created.
+    """
+    telegram_id = telegram_user["id"]
+
+    telegram_creds = {
+        "id": telegram_id,
+        "username": telegram_user.get("username"),
+        "first_name": telegram_user.get("first_name"),
+        "last_name": telegram_user.get("last_name"),
+        "photo_url": telegram_user.get("photo_url"),
+        "language_code": telegram_user.get("language_code"),
+    }
+
+    # Step 1: Lookup existing user by telegram_id in JSONB.
+    stmt = select(User).where(
+        User.credentials["telegram"]["id"].as_integer() == telegram_id
+    )
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is not None:
+        # Existing user -- update credentials.telegram.
+        # Merge with existing credentials to preserve email auth data.
+        updated_creds = dict(user.credentials)
+        updated_creds["telegram"] = telegram_creds
+        user.set_jsonb("credentials", updated_creds)
+
+        await session.flush()
+
+        await record_audit(
+            session=session,
+            event="user.login",
+            actor_id=user.id,
+            actor_type="user",
+            target_type="user",
+            target_id=user.id,
+            data={"auth_method": "telegram"},
+        )
+
+        logger.info(
+            "telegram_user_updated",
+            user_id=str(user.id),
+            telegram_id=telegram_id,
+        )
+
+        return user, False
+
+    # Step 2: New user -- create with role=investor.
+    # Use begin_nested() (SAVEPOINT) so that IntegrityError from race
+    # condition only rolls back the INSERT, not the outer transaction (P-05).
+    lang = (telegram_user.get("language_code") or "en")[:2] or "en"
+    new_user = User(
+        role=UserRole.INVESTOR,
+        credentials={"telegram": telegram_creds},
+        language=lang,
+    )
+
+    try:
+        async with session.begin_nested():
+            session.add(new_user)
+            await session.flush()
+    except IntegrityError as exc:
+        if "ix_users_telegram_id" in str(exc.orig):
+            # Race condition: another request created this user first.
+            # Savepoint rolled back, outer transaction still valid.
+            result = await session.execute(stmt)
+            user = result.scalar_one()
+
+            updated_creds = dict(user.credentials)
+            updated_creds["telegram"] = telegram_creds
+            user.set_jsonb("credentials", updated_creds)
+            await session.flush()
+
+            logger.info(
+                "telegram_user_race_resolved",
+                user_id=str(user.id),
+                telegram_id=telegram_id,
+            )
+
+            return user, False
+        raise
+
+    await record_audit(
+        session=session,
+        event="user.registered",
+        actor_id=new_user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=new_user.id,
+        data={"auth_method": "telegram"},
+    )
+
+    logger.info(
+        "telegram_user_created",
+        user_id=str(new_user.id),
+        telegram_id=telegram_id,
+    )
+
+    return new_user, True
 
 
 # ---------------------------------------------------------------------------
@@ -234,12 +334,8 @@ def _get_session_ttl() -> int:
 async def create_session(user: User, auth_method: str = "email") -> str:
     """Create a new session in Redis and return the token.
 
-    Also registers the token in the user's session index (ZSET)
-    for logout-all support and concurrent session limiting.
-
     All Redis writes (SET + ZADD + GC + EXPIRE) execute in a single
-    MULTI/EXEC pipeline for atomicity. Without this, a crash between
-    SET and ZADD could create an orphan session.
+    MULTI/EXEC pipeline for atomicity.
 
     MAX_CONCURRENT_SESSIONS: if the user exceeds the limit, the oldest
     session is evicted via ZPOPMIN.
@@ -259,10 +355,8 @@ async def create_session(user: User, auth_method: str = "email") -> str:
     session_key = f"{_SESSION_PREFIX}{token}"
     index_key = f"{_USER_SESSIONS_PREFIX}{user.id}"
 
-    # GC cutoff: remove expired token entries from the ZSET.
     cutoff = now_ts - ttl
 
-    # Atomic pipeline: SET + ZADD + GC + EXPIRE.
     pipe = redis.pipeline(transaction=True)
     pipe.set(session_key, session_data, ex=ttl)
     pipe.zadd(index_key, {token: now_ts})
@@ -270,7 +364,6 @@ async def create_session(user: User, auth_method: str = "email") -> str:
     pipe.expire(index_key, ttl)
     results = await pipe.execute()
 
-    # results[2] = count of expired tokens removed by GC.
     removed = results[2]
     if removed:
         logger.debug(
@@ -279,7 +372,6 @@ async def create_session(user: User, auth_method: str = "email") -> str:
             removed=removed,
         )
 
-    # Enforce MAX_CONCURRENT_SESSIONS: evict oldest if over limit.
     await _enforce_session_limit(user.id, index_key)
 
     logger.info(
@@ -292,11 +384,7 @@ async def create_session(user: User, auth_method: str = "email") -> str:
 
 
 async def _enforce_session_limit(user_id: UUID, index_key: str) -> None:
-    """Evict oldest sessions if user exceeds MAX_CONCURRENT_SESSIONS.
-
-    Uses ZCARD to check count, then ZPOPMIN to remove oldest tokens
-    and DEL their session keys.
-    """
+    """Evict oldest sessions if user exceeds MAX_CONCURRENT_SESSIONS."""
     redis = get_redis()
     max_sessions = settings.max_concurrent_sessions
 
@@ -304,14 +392,10 @@ async def _enforce_session_limit(user_id: UUID, index_key: str) -> None:
     if count <= max_sessions:
         return
 
-    # Number of sessions to evict.
     to_evict = count - max_sessions
-
-    # ZPOPMIN returns list of (member, score) tuples -- oldest first.
     evicted = await redis.zpopmin(index_key, to_evict)
 
     if evicted:
-        # Delete session keys for evicted tokens.
         session_keys = [
             f"{_SESSION_PREFIX}{token}" for token, _score in evicted
         ]
@@ -325,10 +409,7 @@ async def _enforce_session_limit(user_id: UUID, index_key: str) -> None:
 
 
 async def get_session(token: str) -> dict | None:
-    """Retrieve session data from Redis by token.
-
-    Returns parsed dict or None if session expired / doesn't exist.
-    """
+    """Retrieve session data from Redis by token."""
     redis = get_redis()
     data = await redis.get(f"{_SESSION_PREFIX}{token}")
     if data is None:
@@ -337,10 +418,7 @@ async def get_session(token: str) -> dict | None:
 
 
 async def delete_session(token: str, user_id: UUID | None = None) -> None:
-    """Delete a single session from Redis.
-
-    Also removes token from user's ZSET index if user_id is provided.
-    """
+    """Delete a single session from Redis."""
     redis = get_redis()
     await redis.delete(f"{_SESSION_PREFIX}{token}")
 
@@ -352,14 +430,7 @@ async def delete_session(token: str, user_id: UUID | None = None) -> None:
 
 
 async def delete_all_sessions(user_id: UUID) -> int:
-    """Delete all sessions for a user (logout-all).
-
-    Uses Lua script for atomicity: ZRANGE + DEL execute on the Redis
-    server side in a single step. No interleaving possible.
-
-    Returns:
-        Number of sessions deleted.
-    """
+    """Delete all sessions for a user (logout-all). Atomic via Lua script."""
     redis = get_redis()
     index_key = f"{_USER_SESSIONS_PREFIX}{user_id}"
     session_prefix = _SESSION_PREFIX

@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 0.8
-**Дата:** 1 апреля 2026
+**Версия:** 0.9
+**Дата:** 3 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -311,25 +311,42 @@ cbshome version                   -- git log + runtime versions + image list
 
 ---
 
-### Sprint 1.1: Email Auth
+### ✅ Sprint 1.1: Email Auth
 
 **Цель:** Регистрация и вход через email + password.
 
 **Задачи:**
-- [ ] `app/modules/auth/service.py` — `register_email()`, `login_email()`, `logout()`, `logout_all()`
-- [ ] `app/modules/auth/router.py`:
+- [x] `app/modules/auth/service.py` — `register_email()`, `login_email()`, `create_session()`, `delete_session()`, `delete_all_sessions()`
+- [x] `app/modules/auth/router.py`:
   - `POST /api/v1/auth/email/register`
   - `POST /api/v1/auth/email/login`
   - `POST /api/v1/auth/logout`
   - `POST /api/v1/auth/logout-all`
-- [ ] Email verification token (сохраняется в `credentials.onboarding.email_token`)
-- [ ] Password hash: argon2
-- [ ] Redis сессии: `session:{token}` + `user_sessions:{user_id}` (SET for logout-all)
-- [ ] TTL: `SESSION_TTL_DAYS` из config
-- [ ] Лимит: `MAX_CONCURRENT_SESSIONS` (5) — при превышении закрываем самую старую
-- [ ] `app/modules/auth/dependencies.py` — `get_current_user`, `get_optional_user`, `get_current_staff`
-- [ ] Блокировка логина для `role=platform` в `get_current_user`
-- [ ] `tests/test_auth_email.py` — 12 тестов
+- [x] Email verification token (сохраняется в `credentials.onboarding.email_token`)
+- [x] Password hash: argon2 (`argon2-cffi`)
+- [x] Redis сессии: `session:{token}` + `user_sessions:{user_id}` (ZSET for logout-all)
+- [x] TTL: `SESSION_TTL_DAYS` из config
+- [x] Лимит: `MAX_CONCURRENT_SESSIONS` (5) — при превышении ZPOPMIN закрывает самую старую
+- [x] `app/modules/auth/dependencies.py` — `get_current_user`, `get_current_user_write`, `get_optional_user`, `get_current_staff`
+- [x] Блокировка логина для `role=platform` в `_load_user_from_request()`
+- [x] `tests/test_auth_email.py` — 13 тестов (включая session limit eviction)
+
+**Миграции:**
+- [x] `0002_auth_indexes` — partial unique indexes на `credentials` JSONB (email + telegram_id)
+- [x] `0003_ledger_amount_bigint` — фикс Phase 0: `amount_cents` INTEGER -> BIGINT
+
+**Решения реализации (не в оригинальном ТЗ):**
+- Email и telegram_id хранятся в `credentials` JSONB, не в отдельных колонках. Быстрый lookup через функциональные unique-индексы на JSONB. Позже — возможно вынесение в колонки или внешнюю таблицу (D-01/D-02)
+- Timing-safe login: dummy argon2 hash при отсутствии пользователя (предотвращает email enumeration через timing side-channel)
+- `IntegrityError` catch проверяет конкретный constraint `ix_users_email`, не маскирует другие ошибки
+- `get_current_staff` — Sprint 1.1: проверяет только `role == staff`; Sprint 3.1: расширится permission matrix (D-04)
+- Session data в Redis содержит `auth_method` ("email" | "telegram") для логирования
+- Атомарные Redis-операции: MULTI/EXEC pipeline для create_session, Lua script для delete_all_sessions
+- Known limitation: Redis session создаётся до DB commit; orphan чистится TTL (30 дней)
+
+**Schemas:**
+- [x] `app/modules/users/schemas.py` — `UserResponse` (без credentials), `UserUpdate`
+- [x] `app/modules/auth/schemas.py` — `EmailRegisterRequest`, `EmailLoginRequest`, `AuthResponse`
 
 **Endpoints:**
 ```
@@ -350,13 +367,31 @@ POST /api/v1/auth/logout-all      -> 204
   },
   "onboarding": {
     "email_token": "abc123",
-    "email_token_expires_at": "2026-03-28T11:00:00Z",
+    "email_token_expires_at": null,
     "email_verification_attempts": 0
   }
 }
 ```
 
-**Критерий готовности:** Юзер может зарегистрироваться и войти через email. `role=platform` логин заблокирован.
+**Результат:**
+```
+backend/app/modules/auth/
+├── __init__.py
+├── schemas.py          -- EmailRegisterRequest, EmailLoginRequest, AuthResponse
+├── service.py          -- register/login + Redis sessions (ZSET + Lua)
+├── dependencies.py     -- get_current_user, _write, optional, staff
+└── router.py           -- 4 endpoints
+
+backend/app/modules/users/
+└── schemas.py          -- UserResponse, UserUpdate
+
+backend/tests/
+├── __init__.py         -- package init
+├── helpers.py          -- auth_headers, register_user, login_user, cleanup
+└── test_auth_email.py  -- 13 tests
+```
+
+**Критерий готовности:** Юзер может зарегистрироваться и войти через email. `role=platform` логин заблокирован. 26 тестов зелёные.
 
 ---
 
@@ -1266,6 +1301,11 @@ Event:
 | TD-014 | `app/core/constants.py` | LedgerReason: заменить `: str` аннотации на `Final[str]` из `typing` | Backlog | ⬜ |
 | TD-015 | `app/core/mixins.py` | JSONBMixin.set_jsonb(): уточнить type hint `value: dict` -> `value: dict[str, Any]` | Backlog | ⬜ |
 | TD-016 | `tests/` | Добавить тесты: модели (User, Ledger, Staff), middleware (TraceId), config validation, seed_platform.py идемпотентность | Sprint 1+ | ⬜ |
+| TD-017 | `app/modules/auth/router.py` | Email enumeration: register возвращает 409 для дубликатов. Mitigation: при наличии email sending (Phase 8) — всегда 201, уведомление на email | Phase 8 | ⬜ |
+| TD-018 | `app/modules/auth/` | Rate limiting на auth endpoints (register + login). Отдельно от TD-008 (slowapi на все роутеры) — auth критичнее | Before Prod | ⬜ |
+| TD-019 | `app/modules/auth/schemas.py` | Password complexity: добавить требование цифры или mixed case. min_length=8 достаточно для MVP | Before Prod | ⬜ |
+| TD-020 | `app/core/middleware.py`, `app/core/audit.py` | `_USER_AGENT_MAX_LEN = 500` определён в двух файлах независимо. Вынести в `constants.py` | Backlog | ⬜ |
+| TD-021 | `app/modules/auth/` | Password reset flow (forgot password -> email token -> reset) | After MVP | ⬜ |
 
 ---
 
@@ -1273,4 +1313,4 @@ Event:
 
 ---
 
-*Version 0.8 | 2026-04-02 | cbshome Backend TZ*
+*Version 0.9 | 2026-04-03 | cbshome Backend TZ*

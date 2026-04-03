@@ -5,7 +5,7 @@
 # Pydantic models for auth request/response validation.
 #
 # Sprint 1.1: EmailRegisterRequest, EmailLoginRequest, AuthResponse
-# Sprint 1.2: TelegramAuthRequest (added later)
+# Sprint 1.2: TelegramAuthRequest
 # =============================================================================
 
 from pydantic import BaseModel, EmailStr, Field
@@ -38,6 +38,21 @@ class EmailLoginRequest(BaseModel):
 
     email: EmailStr
     password: str = Field(..., min_length=1)
+
+
+# ---------------------------------------------------------------------------
+# Telegram Auth (Sprint 1.2)
+# ---------------------------------------------------------------------------
+
+
+class TelegramAuthRequest(BaseModel):
+    """POST /api/v1/auth/telegram -- request body."""
+
+    init_data: str = Field(
+        ...,
+        min_length=1,
+        description="Raw initData string from Telegram WebApp",
+    )
 
 
 # ---------------------------------------------------------------------------
