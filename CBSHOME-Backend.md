@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.1
-**Дата:** 3 апреля 2026
+**Версия:** 1.2
+**Дата:** 4 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -478,57 +478,147 @@ backend/tests/
 
 ---
 
-### Sprint 2.1: KYC заглушка
+### ✅ Sprint 2.1: KYC заглушка
 
 **Цель:** Структура KYC без реальной интеграции SumSub.
 
 **Задачи:**
-- [ ] `app/modules/kyc/models.py` — `KYCApplication` (stub)
-- [ ] `app/modules/kyc/service.py` — `submit_kyc()`, `get_kyc_status()`
-- [ ] При изменении статуса KYCApplication — синхронизировать `User.kyc_status` (денормализованный кэш)
-- [ ] `POST /api/v1/kyc/submit` — создаёт KYCApplication, статус -> submitted
-- [ ] `GET /api/v1/kyc/status` — текущий статус
-- [ ] `POST /api/v1/kyc/webhook` — заглушка (SumSub webhook handler, всегда approved в dev)
-- [ ] `tests/test_kyc.py` — 5 тестов
+- [x] `app/modules/kyc/models.py` — `KYCApplication`, `KYCApplicationStatus` (StrEnum)
+- [x] `app/modules/kyc/service.py` — `submit_kyc()`, `get_kyc_status()`, `process_webhook()`
+- [x] При изменении статуса KYCApplication — синхронизация `User.kyc_status` (денормализованный кэш)
+- [x] `POST /api/v1/kyc/submit` — создаёт KYCApplication, статус -> submitted
+- [x] `GET /api/v1/kyc/status` — текущий статус + последняя заявка
+- [x] `POST /api/v1/kyc/webhook` — заглушка (SumSub webhook handler) с `X-Webhook-Secret` защитой
+- [x] `tests/test_kyc.py` — 7 тестов
 
-**Критерий готовности:** Юзер может подать KYC заявку, статус обновляется через webhook-заглушку. `User.kyc_status` синхронизирован.
+**Миграции:**
+- [x] `0004_kyc_and_documents` — `kyc_applications` + `documents` + `document_signings` (одна миграция на всю Phase 2)
+
+**Решения реализации:**
+- Минимальная модель KYCApplication: `id, user_id, status, created_at, updated_at`. Поля SumSub (applicant_id, external_status, rejection_reason) добавятся через ALTER ADD COLUMN при реальной интеграции (TD-003)
+- История заявок: rejected → повторная подача → новая строка KYCApplication. Полноценная логика заложена сразу, хотя заглушка всегда approved
+- Webhook защищён `X-Webhook-Secret` header, секрет генерируется при установке (`install_cbshome.sh`), обязателен в production. В будущем — замена на SumSub signature validation (TD-003)
+- `process_webhook()` содержит guard `_VALID_WEBHOOK_STATUSES = {"approved", "rejected"}` — защита от невалидных статусов при вызове из других модулей
+- `User.kyc_status` синхронизируется при каждом изменении статуса KYCApplication + audit `kyc.status_changed`
+- `KYC_WEBHOOK_SECRET` добавлен в `config.py` (dev default: `"dev-webhook-secret"`, production: ValueError при пустом) и в `install_cbshome.sh` (генерируется через `gen_password`)
+
+**Config (новые настройки):**
+```
+kyc_webhook_secret: str = ""  -- required in production
+```
+
+**Endpoints:**
+```
+POST /api/v1/kyc/submit   -> KYCSubmitResponse {id, status, created_at}  (201)
+GET  /api/v1/kyc/status   -> KYCStatusResponse {kyc_status, application_id?, application_status?}  (200)
+POST /api/v1/kyc/webhook  -> {"status": "ok"}  (200, requires X-Webhook-Secret)
+```
+
+**Результат:**
+```
+backend/app/modules/kyc/
+├── __init__.py
+├── models.py       -- KYCApplication, KYCApplicationStatus
+├── schemas.py      -- KYCSubmitResponse, KYCStatusResponse, KYCWebhookRequest
+├── service.py      -- submit_kyc, get_kyc_status, process_webhook
+└── router.py       -- 3 endpoints
+
+backend/tests/
+└── test_kyc.py     -- 7 tests
+```
+
+**Критерий готовности:** Юзер может подать KYC заявку, статус обновляется через webhook-заглушку. `User.kyc_status` синхронизирован. Webhook защищён shared secret.
 
 ---
 
-### Sprint 2.2: Documents
+### ✅ Sprint 2.2: Documents
 
-**Цель:** Модуль документов с версионированием и фактом подписания.
+**Цель:** Модуль документов с версионированием, статусами и фактом подписания (checkbox consent).
 
 **Задачи:**
-- [ ] `app/modules/documents/models.py` — `Document`, `DocumentSigning`
-- [ ] CRUD для Staff: `POST/PUT/DELETE /api/v1/staff/documents`
-- [ ] `POST /api/v1/documents/{id}/sign` — checkbox consent, запись в DocumentSigning
-- [ ] `GET /api/v1/documents` — список активных документов по роли
-- [ ] `GET /api/v1/documents/{id}` — документ с контентом
-- [ ] Проверка наличия подписей при смене роли
-- [ ] `tests/test_documents.py` — 8 тестов
+- [x] `app/modules/documents/models.py` — `Document`, `DocumentSigning`, `DocumentType`, `DocumentStatus`
+- [x] `app/modules/documents/constants.py` — `ROLE_REQUIRED_DOCUMENT_TYPES`, `VALID_STATUS_TRANSITIONS`
+- [x] Staff CRUD: `POST/PATCH/DELETE /api/v1/staff/documents`
+- [x] `POST /api/v1/documents/{id}/sign` — checkbox consent, запись в DocumentSigning
+- [x] `GET /api/v1/documents` — список активных документов по роли (с is_signed flag)
+- [x] `GET /api/v1/documents/{id}` — документ с is_signed flag
+- [x] `tests/test_documents.py` — 10 тестов
 
-**Модель:**
+**Решения реализации:**
+- `Document.status` — `str` с CHECK constraint (`draft | active | archived`), не `is_active: bool`. State machine из CBSHOME-State-Machines.md v1.4 section 5: `draft -> active, active -> draft, active -> archived, draft -> archived`
+- `DocumentType` — конкретные типы (`privacy_policy, terms_of_service, investment_agreement, agent_agreement, company_agreement`). Маппинг ролей в `ROLE_REQUIRED_DOCUMENT_TYPES` dict в `constants.py` — самодокументируемо, легко расширить
+- Подпись = запись факта (checkbox consent) в `DocumentSigning`. DocuSign — розетка Phase 2+ (TD-005). `DocumentSigning` — иммутабельная запись, нет `updated_at`
+- UNIQUE constraint `(type, version)` на Document — одна версия одного типа. UNIQUE constraint `(user_id, document_id)` на DocumentSigning — одна подпись на документ
+- `IntegrityError` catch по конкретному constraint name (паттерн P-05)
+- `content_url` валидируется `@field_validator` — только `https://` (предотвращает XSS через `javascript:` и LFI через `file:///`)
+- `is_signed` флаг в `DocumentResponse` через `model_copy(update=...)` — идиоматичный Pydantic v2
+- Staff endpoints в отдельном файле `staff_router.py` с prefix `/api/v1/staff/documents` — чистое разделение auth scopes
+- Staff auth: текущий `get_current_staff` (role == staff). Permission matrix — Phase 3
+- Проверка подписей при смене роли — не реализована, роль пока не меняется (Phase 7, TD-025)
+- `USER_AGENT_MAX_LEN` вынесен в `core/constants.py` (TD-020 закрыт), используется в `middleware.py`, `audit.py`, `documents/service.py`
+- Удаление только draft документов. Active и archived — имеют подписания или audit-значимость
+- `list_documents_for_role()` — 2 запроса (документы + подписания), для <20 документов на роль допустимо
+
+**Модели:**
 ```python
 Document:
-    id, type (enum), version: int
-    title: str, content_url: str
-    is_active: bool
-    created_by: UUID  -- staff_id
+    id: UUID, type: String(50)  -- CHECK: 5 типов
+    version: Integer, title: String(500), content_url: String(2000)
+    status: String(20)  -- CHECK: draft | active | archived
+    created_by: UUID  -- FK users.id (staff)
     created_at, updated_at
+    -- UNIQUE (type, version)
 
-DocumentSigning:
-    id, user_id, document_id
-    signed_at, ip_address, user_agent
-    -- Phase 2: docusign_envelope_id
+DocumentSigning:  -- иммутабельная, нет updated_at
+    id: UUID, user_id: UUID, document_id: UUID
+    signed_at: DateTime(tz), ip_address: String(45), user_agent: String(500)
+    -- UNIQUE (user_id, document_id)
+    -- Future: docusign_envelope_id (TD-005)
 ```
 
-**Пакеты по роли:**
-- investor: Privacy Policy, Terms, Investment Agreement
-- agent: всё инвесторское + агентское соглашение
-- company: корпоративный пакет
+**Endpoints:**
+```
+-- User endpoints:
+GET  /api/v1/documents          -> list[DocumentResponse]  (200)
+GET  /api/v1/documents/{id}     -> DocumentResponse         (200)
+POST /api/v1/documents/{id}/sign -> DocumentSigningResponse  (201)
 
-**Критерий готовности:** Юзер может подписать документы. Staff может управлять документами.
+-- Staff endpoints:
+POST   /api/v1/staff/documents       -> DocumentResponse  (201)
+PATCH  /api/v1/staff/documents/{id}  -> DocumentResponse  (200)
+DELETE /api/v1/staff/documents/{id}  -> 204
+```
+
+**Результат:**
+```
+backend/app/modules/documents/
+├── __init__.py
+├── models.py           -- Document, DocumentSigning, DocumentType, DocumentStatus
+├── constants.py        -- ROLE_REQUIRED_DOCUMENT_TYPES, VALID_STATUS_TRANSITIONS
+├── schemas.py          -- DocumentResponse, DocumentCreateRequest, DocumentUpdateRequest, DocumentSigningResponse
+├── service.py          -- Staff CRUD + user list/get/sign
+├── router.py           -- 3 user endpoints
+└── staff_router.py     -- 3 staff endpoints
+
+backend/tests/
+├── helpers.py          -- +create_staff_user, +_cleanup_user_related_data
+└── test_documents.py   -- 10 tests
+```
+
+**Критерий готовности:** Юзер видит документы по своей роли и подписывает. Staff управляет документами с валидацией state machine. 63 теста зелёные.
+
+---
+
+**Phase 2 завершена.** 9 endpoints (3 KYC + 3 documents user + 3 documents staff), 17 тестов Phase 2 (+46 Phase 0-1 = 63 total), 1 миграция (итого 4).
+
+**Обновлённые core-файлы:**
+- `core/constants.py` — `+USER_AGENT_MAX_LEN = 500`
+- `core/config.py` — `+kyc_webhook_secret`, `+is_dev` property, `+crypto_network_list` property, `+log_level` validation, `+CORS_ORIGINS` production validation
+- `core/audit.py` — `USER_AGENT_MAX_LEN` из constants (было локальное `_USER_AGENT_MAX_LEN`)
+- `core/middleware.py` — `USER_AGENT_MAX_LEN` из constants (было локальное `_USER_AGENT_MAX_LEN`)
+- `main.py` — `+kyc_router`, `+documents_router`, `+staff_documents_router`
+- `.env.example` — `+KYC_WEBHOOK_SECRET=`
+- `install_cbshome.sh` — `+KYC_WEBHOOK_SECRET` генерация в `.env`
 
 ---
 
@@ -1330,11 +1420,13 @@ Event:
 | TD-017 | `app/modules/auth/router.py` | Email enumeration: register возвращает 409 для дубликатов. Phase 8: всегда 201, уведомление на email | Phase 8 | ⬜ |
 | TD-018 | `app/modules/auth/` | Rate limiting на email auth endpoints (register + login). Отдельно от TD-008 | Before Prod | ⬜ |
 | TD-019 | `app/modules/auth/schemas.py` | Password complexity: добавить требование цифры или mixed case | Before Prod | ⬜ |
-| TD-020 | `app/core/middleware.py`, `app/core/audit.py` | `_USER_AGENT_MAX_LEN = 500` в двух файлах. Вынести в `constants.py` | Backlog | ⬜ |
+| TD-020 | `app/core/middleware.py`, `app/core/audit.py` | ~~`_USER_AGENT_MAX_LEN = 500` в двух файлах. Вынести в `constants.py`~~ | Backlog | ✅ Phase 2 |
 | TD-021 | `app/modules/auth/` | Password reset flow (forgot password -> email token -> reset) | After MVP | ⬜ |
 | TD-022 | `app/modules/auth/telegram.py` | Generic error messages в production (сейчас details leakируют server time через "auth_date is in the future") | Before Prod | ⬜ |
 | TD-023 | `scripts/seed_platform.py` | `seed --reset` flag не реализован, но присутствует в management script help | Backlog | ⬜ |
 | TD-024 | `app/modules/users/service.py` | Profile JSONB: whitelist допустимых ключей и/или ограничение размера. XSS sanitization на фронте | Before Prod | ⬜ |
+| TD-025 | `app/modules/documents/` | Проверка наличия подписей при смене роли. Структура готова, логика — при реализации role change (Phase 7) | Phase 7 | ⬜ |
+| TD-026 | `app/modules/documents/` | Версионирование: переподписание при обновлении редакции. Поле `version` заложено, логика определения пользователей без актуальной подписи — после MVP | After MVP | ⬜ |
 
 ---
 
@@ -1342,4 +1434,4 @@ Event:
 
 ---
 
-*Version 1.1 | 2026-04-03 | cbshome Backend TZ — Phase 1 complete*
+*Version 1.2 | 2026-04-04 | cbshome Backend TZ — Phase 2 complete*
