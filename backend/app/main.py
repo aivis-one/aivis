@@ -9,6 +9,7 @@
 #
 # ROUTERS:
 #   auth_router  -> /api/v1/auth/* (Sprint 1.1+)
+#   users_router -> /api/v1/users/* (Sprint 1.3)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis
@@ -35,6 +36,7 @@ from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
 from app.modules.auth.router import router as auth_router
+from app.modules.users.router import router as users_router
 
 logger = structlog.get_logger()
 
@@ -97,6 +99,7 @@ app.add_middleware(TraceIdMiddleware)
 # ---------------------------------------------------------------------------
 
 app.include_router(auth_router)
+app.include_router(users_router)
 
 
 # ---------------------------------------------------------------------------

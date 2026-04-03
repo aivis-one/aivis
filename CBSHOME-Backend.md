@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 0.9
+**Версия:** 1.0
 **Дата:** 3 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -326,7 +326,7 @@ cbshome version                   -- git log + runtime versions + image list
 - [x] Password hash: argon2 (`argon2-cffi`)
 - [x] Redis сессии: `session:{token}` + `user_sessions:{user_id}` (ZSET for logout-all)
 - [x] TTL: `SESSION_TTL_DAYS` из config
-- [x] Лимит: `MAX_CONCURRENT_SESSIONS` (5) — при превышении ZPOPMIN закрывает самую старую
+- [x] Лимит: `MAX_CONCURRENT_SESSIONS` (5) — ZPOPMIN закрывает самую старую
 - [x] `app/modules/auth/dependencies.py` — `get_current_user`, `get_current_user_write`, `get_optional_user`, `get_current_staff`
 - [x] Блокировка логина для `role=platform` в `_load_user_from_request()`
 - [x] `tests/test_auth_email.py` — 13 тестов (включая session limit eviction)
@@ -335,42 +335,21 @@ cbshome version                   -- git log + runtime versions + image list
 - [x] `0002_auth_indexes` — partial unique indexes на `credentials` JSONB (email + telegram_id)
 - [x] `0003_ledger_amount_bigint` — фикс Phase 0: `amount_cents` INTEGER -> BIGINT
 
-**Решения реализации (не в оригинальном ТЗ):**
-- Email и telegram_id хранятся в `credentials` JSONB, не в отдельных колонках. Быстрый lookup через функциональные unique-индексы на JSONB. Позже — возможно вынесение в колонки или внешнюю таблицу (D-01/D-02)
-- Timing-safe login: dummy argon2 hash при отсутствии пользователя (предотвращает email enumeration через timing side-channel)
-- `IntegrityError` catch проверяет конкретный constraint `ix_users_email`, не маскирует другие ошибки
-- `get_current_staff` — Sprint 1.1: проверяет только `role == staff`; Sprint 3.1: расширится permission matrix (D-04)
-- Session data в Redis содержит `auth_method` ("email" | "telegram") для логирования
-- Атомарные Redis-операции: MULTI/EXEC pipeline для create_session, Lua script для delete_all_sessions
-- Known limitation: Redis session создаётся до DB commit; orphan чистится TTL (30 дней)
-
-**Schemas:**
-- [x] `app/modules/users/schemas.py` — `UserResponse` (без credentials), `UserUpdate`
-- [x] `app/modules/auth/schemas.py` — `EmailRegisterRequest`, `EmailLoginRequest`, `AuthResponse`
+**Решения реализации:**
+- Email и telegram_id в `credentials` JSONB, не в колонках. Функциональные unique-индексы для lookup + уникальности
+- Timing-safe login: dummy argon2 hash при отсутствии пользователя
+- `IntegrityError` catch проверяет конкретный constraint `ix_users_email`
+- `get_current_staff` — Sprint 1.1: только `role == staff`; Sprint 3.1: permission matrix
+- Session data содержит `auth_method` ("email" | "telegram")
+- Атомарные Redis-операции: MULTI/EXEC pipeline + Lua script для logout-all
+- Known limitation: Redis session до DB commit; orphan чистится TTL (30 дней)
 
 **Endpoints:**
 ```
-POST /api/v1/auth/email/register  -> AuthResponse {user, session_token}
-POST /api/v1/auth/email/login     -> AuthResponse
+POST /api/v1/auth/email/register  -> AuthResponse {user, session_token}  (201)
+POST /api/v1/auth/email/login     -> AuthResponse                       (200)
 POST /api/v1/auth/logout          -> 204
 POST /api/v1/auth/logout-all      -> 204
-```
-
-**Структура credentials при регистрации:**
-```json
-{
-  "email": {
-    "email": "user@example.com",
-    "password_hash": "argon2:...",
-    "verified": false,
-    "verified_at": null
-  },
-  "onboarding": {
-    "email_token": "abc123",
-    "email_token_expires_at": null,
-    "email_verification_attempts": 0
-  }
-}
 ```
 
 **Результат:**
@@ -386,7 +365,7 @@ backend/app/modules/users/
 └── schemas.py          -- UserResponse, UserUpdate
 
 backend/tests/
-├── __init__.py         -- package init
+├── __init__.py
 ├── helpers.py          -- auth_headers, register_user, login_user, cleanup
 └── test_auth_email.py  -- 13 tests
 ```
@@ -395,23 +374,51 @@ backend/tests/
 
 ---
 
-### Sprint 1.2: Telegram Auth
+### ✅ Sprint 1.2: Telegram Auth
 
-**Цель:** Вход через Telegram WebApp.
+**Цель:** Вход через Telegram WebApp. Второй auth-метод.
 
 **Задачи:**
-- [ ] `app/modules/auth/telegram.py` — валидация initData (HMAC-SHA256)
-- [ ] `POST /api/v1/auth/telegram` — upsert юзера при логине
-- [ ] Атомарный upsert: INSERT ON CONFLICT DO UPDATE
-- [ ] Обновление `credentials.telegram` при каждом логине (username, photo_url, language_code)
-- [ ] `tests/test_auth_telegram.py` — 8 тестов
+- [x] `app/modules/auth/telegram.py` — валидация initData (HMAC-SHA256), anti-replay (Redis SET NX), rate limiting (INCR + EXPIRE)
+- [x] `POST /api/v1/auth/telegram` — upsert юзера при логине
+- [x] Upsert: SELECT + INSERT с SAVEPOINT (P-05) для race condition (ON CONFLICT невозможен на functional JSONB index)
+- [x] Обновление `credentials.telegram` при каждом логине (username, photo_url, language_code)
+- [x] `session.refresh(user)` после `set_jsonb` + `flush` (предотвращает MissingGreenlet)
+- [x] `tests/test_auth_telegram.py` — 10 тестов (включая clock skew boundary)
+
+**Решения реализации:**
+- `telegram.py` — отдельный модуль (валидация + security), `service.py` — бизнес-логика upsert
+- Anti-replay: Redis SET NX с TTL = `auth_init_data_ttl_seconds` (300s)
+- Rate limit: INCR + EXPIRE per telegram_id, `auth_rate_limit_max_requests` (5) за `auth_rate_limit_window_seconds` (60s)
+- Clock skew guard: `auth_clock_skew_seconds` (60s) — отклоняет auth_date из далёкого будущего
+- `begin_nested()` (SAVEPOINT) для race condition: INSERT rollback не ломает outer transaction
+- Audit записывается во всех ветках: login, register, race-resolved (с `race_resolved: True`)
+- `BOT_TOKEN` в тестах читается из `settings.telegram_bot_token` (совпадает с .env на VPS)
+
+**Config (новые настройки):**
+```
+auth_rate_limit_max_requests: int = 5
+auth_rate_limit_window_seconds: int = 60
+auth_init_data_ttl_seconds: int = 300
+auth_clock_skew_seconds: int = 60
+```
 
 **Endpoint:**
 ```
-POST /api/v1/auth/telegram  -> AuthResponse {user, session_token}
+POST /api/v1/auth/telegram  -> AuthResponse {user, session_token}  (200)
 ```
 
-**Критерий готовности:** Telegram WebApp может авторизовать юзера.
+**Результат:**
+```
+backend/app/modules/auth/
+└── telegram.py         -- HMAC validation, anti-replay, rate limiting
+
+backend/tests/
+├── helpers.py          -- +build_init_data, login_telegram, cleanup_telegram
+└── test_auth_telegram.py  -- 10 tests
+```
+
+**Критерий готовности:** Telegram WebApp авторизует юзера. Anti-replay и rate limiting работают. 36 тестов зелёные.
 
 ---
 
@@ -1301,11 +1308,13 @@ Event:
 | TD-014 | `app/core/constants.py` | LedgerReason: заменить `: str` аннотации на `Final[str]` из `typing` | Backlog | ⬜ |
 | TD-015 | `app/core/mixins.py` | JSONBMixin.set_jsonb(): уточнить type hint `value: dict` -> `value: dict[str, Any]` | Backlog | ⬜ |
 | TD-016 | `tests/` | Добавить тесты: модели (User, Ledger, Staff), middleware (TraceId), config validation, seed_platform.py идемпотентность | Sprint 1+ | ⬜ |
-| TD-017 | `app/modules/auth/router.py` | Email enumeration: register возвращает 409 для дубликатов. Mitigation: при наличии email sending (Phase 8) — всегда 201, уведомление на email | Phase 8 | ⬜ |
-| TD-018 | `app/modules/auth/` | Rate limiting на auth endpoints (register + login). Отдельно от TD-008 (slowapi на все роутеры) — auth критичнее | Before Prod | ⬜ |
-| TD-019 | `app/modules/auth/schemas.py` | Password complexity: добавить требование цифры или mixed case. min_length=8 достаточно для MVP | Before Prod | ⬜ |
-| TD-020 | `app/core/middleware.py`, `app/core/audit.py` | `_USER_AGENT_MAX_LEN = 500` определён в двух файлах независимо. Вынести в `constants.py` | Backlog | ⬜ |
+| TD-017 | `app/modules/auth/router.py` | Email enumeration: register возвращает 409 для дубликатов. Phase 8: всегда 201, уведомление на email | Phase 8 | ⬜ |
+| TD-018 | `app/modules/auth/` | Rate limiting на email auth endpoints (register + login). Отдельно от TD-008 | Before Prod | ⬜ |
+| TD-019 | `app/modules/auth/schemas.py` | Password complexity: добавить требование цифры или mixed case | Before Prod | ⬜ |
+| TD-020 | `app/core/middleware.py`, `app/core/audit.py` | `_USER_AGENT_MAX_LEN = 500` в двух файлах. Вынести в `constants.py` | Backlog | ⬜ |
 | TD-021 | `app/modules/auth/` | Password reset flow (forgot password -> email token -> reset) | After MVP | ⬜ |
+| TD-022 | `app/modules/auth/telegram.py` | Generic error messages в production (сейчас details leakируют server time через "auth_date is in the future") | Before Prod | ⬜ |
+| TD-023 | `scripts/seed_platform.py` | `seed --reset` flag не реализован, но присутствует в management script help | Backlog | ⬜ |
 
 ---
 
@@ -1313,4 +1322,4 @@ Event:
 
 ---
 
-*Version 0.9 | 2026-04-03 | cbshome Backend TZ*
+*Version 1.0 | 2026-04-03 | cbshome Backend TZ*
