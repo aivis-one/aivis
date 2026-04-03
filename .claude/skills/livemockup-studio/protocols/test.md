@@ -20,7 +20,7 @@ Validate mockup against quality checklist before delivery.
 
 | # | Read | Why |
 |---|------|-----|
-| 1 | reference/checklist.md | Full quality gates (66 checks) |
+| 1 | reference/checklist.md | Full quality gates (72 checks) |
 | 2 | reference/shell.md | If shell issues found |
 
 ---

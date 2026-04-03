@@ -38,7 +38,6 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --shadow-focus: 0 0 0 3px rgba(26, 107, 106, 0.3);
   --shadow-focus-teal: 0 0 0 3px rgba(26, 107, 106, 0.3);
   --shadow-accent-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
 

@@ -24,6 +24,7 @@ Convert standalone mockups into ecosystem with shared CSS/JS and index hub.
 | 2 | reference/brand-cbs.md | Design tokens for variables.css |
 | 3 | reference/components.md | Component styles |
 | 4 | reference/shell.md | Shell + nav-map styles and JS |
+| 5 | reference/cbs-patterns.md | CBS-specific UI patterns |
 
 ---
 
@@ -43,6 +44,7 @@ From reference/brand-cbs.md → copy `:root` block with ALL tokens:
 - Border-radius tokens
 - Shell theme variables
 - Dark mode @media query
+- Include the dark mode `@media (prefers-color-scheme: dark)` block.
 
 ## Step 3: Extract components.css
 

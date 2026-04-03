@@ -1,9 +1,9 @@
 ---
 name: livemockup-studio
-description: "v1.5.0 | Interactive HTML prototypes with Device Preview + Navigation Map + CBS HOME brand"
+description: "v1.5.1 | Interactive HTML prototypes with Device Preview + Navigation Map + CBS HOME brand"
 ---
 
-# livemockup-studio v1.5.0
+# livemockup-studio v1.5.1
 
 Interactive HTML mockups: device preview, Navigation Map, microinteractions, realistic data.
 CBS HOME brand-native: Teal/Orange palette, Montserrat font, rectangular aesthetic.
@@ -71,6 +71,7 @@ For multi-mockup projects, run `ecosystem` protocol after completing individual 
 | Validate quality | reference/checklist.md |
 | Realistic data | reference/data.md |
 | UI components | reference/components.md |
+| CBS HOME patterns | reference/cbs-patterns.md |
 | Ecosystem mode | reference/ecosystem.md + protocols/ecosystem.md |
 
 ---

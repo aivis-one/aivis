@@ -128,7 +128,7 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
 }
 .form-input:focus {
   outline: none; border-color: var(--primary);
-  box-shadow: var(--shadow-focus);
+  box-shadow: var(--shadow-focus-teal);
 }
 .form-input::placeholder { color: var(--text-tertiary); }
 .form-input.error { border-color: var(--danger); animation: shake 0.3s ease; }
@@ -146,7 +146,7 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
 }
 .form-select:focus {
   outline: none; border-color: var(--primary);
-  box-shadow: var(--shadow-focus);
+  box-shadow: var(--shadow-focus-teal);
 }
 
 .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }

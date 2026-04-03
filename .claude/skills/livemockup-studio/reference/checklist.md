@@ -173,7 +173,7 @@ Quality gates for validating live mockups before delivery.
 | B3 | Font = Montserrat | 🔴 | Check font-family in body, Google Fonts link |
 | B4 | No hardcoded hex in mockup content | 🟡 | `grep -c "color: #" mockup.html` — only in :root and shell |
 | B5 | Border-radius ≤ 12px (rectangular) | 🟡 | Check --radius-lg ≤ 12px |
-| B6 | Focus ring = orange (not blue) | 🟡 | Check --shadow-focus uses rgba(232,101,26) |
+| B6 | Focus rings: teal for inputs, orange for buttons | 🟡 | Check --shadow-focus-teal and --shadow-accent-focus |
 
 ---
 

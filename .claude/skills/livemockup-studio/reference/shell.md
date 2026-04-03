@@ -1075,16 +1075,25 @@ function toggleSection(titleEl) {
 }
 ```
 
-// ========== NAV MAP AUTO-STATS ==========
+---
+
+## Nav Map Stats Calculation
+
+Stats are populated from HTML content:
+
+```javascript
 function initNavMapStats() {
   const screens = document.querySelectorAll('.screen').length;
   const endpoints = document.querySelectorAll('.nav-map-item.endpoint-item').length;
-  const tabs = document.querySelectorAll('.nav-map-item.tab-item').length;
   const statEls = document.querySelectorAll('.nav-map-stat-value');
   if (statEls[0]) statEls[0].textContent = screens;
   if (statEls[2]) statEls[2].textContent = endpoints;
 }
-// Call after DOMContentLoaded
+```
+
+Call in DOMContentLoaded or after content loads.
+
+**Полных путей** (middle stat) = count of navigation chains from entry screen to deepest detail screen. Calculate manually based on mockup structure.
 
 ---
 

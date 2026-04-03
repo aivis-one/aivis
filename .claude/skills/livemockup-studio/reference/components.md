@@ -71,8 +71,8 @@ Reusable UI patterns for mockup content.
   --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
   --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
-  --shadow-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
   --shadow-focus-teal: 0 0 0 3px rgba(26, 107, 106, 0.3);
+  --shadow-accent-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
 
   /* Radius */
   --radius-sm: 4px;
@@ -80,6 +80,123 @@ Reusable UI patterns for mockup content.
   --radius-lg: 12px;
   --radius-xl: 24px;
 }
+```
+
+---
+
+## Lucide Icons ⭐
+
+SVG icon library for production-quality mockups. Replaces emoji in UI content.
+
+### Setup
+
+**Standalone mode** — add before closing `</body>`:
+```html
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+```
+
+**Ecosystem mode** — add in each mockup.html before `../js/shell.js`:
+```html
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+```
+And after all scripts:
+```html
+<script>if(typeof lucide!=='undefined')lucide.createIcons();</script>
+```
+
+### Usage
+
+```html
+<!-- Inline icon -->
+<i data-lucide="bell"></i>
+
+<!-- With size class -->
+<i data-lucide="wallet" class="icon-lg"></i>
+
+<!-- In colored box (stat cards, transactions) -->
+<div class="icon-box teal"><i data-lucide="pie-chart"></i></div>
+<div class="icon-box orange"><i data-lucide="users"></i></div>
+<div class="icon-box green"><i data-lucide="wallet"></i></div>
+
+<!-- In tab bar -->
+<span class="tab-icon"><i data-lucide="home"></i></span>
+```
+
+### Size Classes
+
+| Class | Size |
+|-------|------|
+| `.icon-sm` | 16px |
+| `.icon-md` | 20px |
+| `.icon-lg` | 24px |
+| `.icon-xl` | 32px |
+| `.icon-2xl` | 48px |
+
+### Icon-Box Colors
+
+| Class | Background | Color |
+|-------|-----------|-------|
+| `.icon-box.teal` | var(--tint-teal) | var(--primary) |
+| `.icon-box.orange` | var(--tint-orange) | var(--accent) |
+| `.icon-box.green` | var(--success-dim) | var(--success) |
+| `.icon-box.yellow` | var(--warning-dim) | var(--warning) |
+| `.icon-box.red` | var(--danger-dim) | var(--danger) |
+| `.icon-box.blue` | rgba(59,130,246,0.1) | #3b82f6 |
+| `.icon-box.neutral` | var(--bg-subtle) | var(--text-secondary) |
+
+### CBS HOME Icon Map
+
+| Context | Icon Name | Where |
+|---------|-----------|-------|
+| Home/Dashboard | `home` | Tab bar, nav |
+| Portfolio | `pie-chart` | Stat cards, tabs |
+| Marketplace | `shopping-bag` | Tab bar |
+| Wallet/Balance | `wallet` | Stat cards, tabs |
+| Settings | `settings` | Tab bar |
+| Users/Agents | `users` | Stat cards, tabs |
+| Commissions | `gem` | Agent shell |
+| Referral links | `link` | Agent hub |
+| Leaderboard | `trophy` | Agent hub |
+| Certification | `award` | Agent hub |
+| Bonus/Gift | `gift` | Bonus items |
+| Bell/Notifications | `bell` | Header |
+| Building/Company | `building` | Products |
+| Home/Property | `home` | Products |
+| Factory | `factory` | Products |
+| Documents | `file-text` | Document lists |
+| Shield/KYC | `shield-check` | KYC, security |
+| Credit card | `credit-card` | Payments |
+| Send/Telegram | `send` | Auth flow |
+| Lock | `lock-keyhole` | Login |
+| Mail | `mail-check` | Email verify |
+| Trending up | `trending-up` | Revenue stats |
+| Package | `package` | Products tab |
+| Bar chart | `bar-chart-3` | Analytics |
+| Arrow down | `arrow-down-circle` | Deposits |
+| Shopping cart | `shopping-cart` | Purchases |
+| Snowflake | `snowflake` | Frozen balance |
+| Eye | `eye` | Password toggle |
+| User check | `user-check` | Agent applications |
+| User plus | `user-plus` | Referrals |
+
+### Dynamic Icons (JS)
+
+When adding icons dynamically (e.g. after navigateTo), call `lucide.createIcons()`:
+
+```javascript
+function showProduct(id) {
+  document.getElementById('productIcon').innerHTML = '<i data-lucide="building"></i>';
+  navigateTo('screen-product');
+  lucide.createIcons();
+}
+```
+
+### Tab Bar Icons CSS
+
+Add to mockup-specific `<style>`:
+```css
+.tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
 ```
 
 ---

@@ -90,9 +90,9 @@ If missing → "brief отсутствует. Сначала brief."
 
 | Token | Value |
 |-------|-------|
-| --radius-sm | 6px |
-| --radius-md | 10px |
-| --radius-lg | 16px |
+| --radius-sm | 4px |
+| --radius-md | 8px |
+| --radius-lg | 12px |
 | --radius-xl | 24px |
 
 ---
@@ -102,7 +102,7 @@ If missing → "brief отсутствует. Сначала brief."
 | Element | Focus Style |
 |---------|-------------|
 | Inputs | border: var(--primary) + box-shadow: var(--shadow-focus-teal) |
-| Buttons | box-shadow: var(--shadow-focus) (orange ring) |
+| Buttons | box-shadow: var(--shadow-accent-focus) (orange ring) |
 
 ---
 
@@ -158,8 +158,8 @@ Create design.md:
 
 ## Typography
 
-Font: Inter
-Scale: 14px base
+Font: Montserrat
+Scale: 16px base
 
 ## Interaction Map
 

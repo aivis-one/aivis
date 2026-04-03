@@ -72,7 +72,7 @@ Based on brief.md:
 
 ```
 ✅ Мокап доставлен и принят.
-Файл: Save to project's mockup directory (e.g., `mocups/{name}/mockup.html`){name}-final.html
+Файл: mocups/{name}/mockup.html
 
 📝 Если сломается после скачивания → sanitize
 ```

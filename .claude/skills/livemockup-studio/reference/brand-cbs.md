@@ -62,8 +62,8 @@ Single source of truth for CBS HOME brand in mockups.
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-  --shadow-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
   --shadow-focus-teal: 0 0 0 3px rgba(26, 107, 106, 0.3);
+  --shadow-accent-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
 
   /* === Border Radius (rectangular aesthetic) === */
   --radius-sm: 4px;
@@ -170,18 +170,50 @@ Rules:
 
 ## Focus States
 
-**All focus rings use accent orange, NOT teal:**
+**Focus rings by element type:**
 
 ```css
+/* Inputs: teal focus ring */
 .form-input:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: var(--shadow-focus-teal);
 }
 
+/* Buttons/CTAs: orange focus ring */
 .btn-primary:focus-visible {
-  box-shadow: var(--shadow-focus);
+  box-shadow: var(--shadow-accent-focus);
 }
+```
+
+---
+
+## Icon System
+
+**Library:** Lucide Icons (lucide.dev) — outline SVG, 1.5px stroke
+**CDN:** `https://unpkg.com/lucide@latest/dist/umd/lucide.min.js`
+
+Usage:
+```html
+<i data-lucide="icon-name"></i>
+<script>lucide.createIcons();</script>
+```
+
+Rules:
+- Use `currentColor` (inherits text color from parent)
+- Never hardcode icon color — use text color tokens
+- Sizes: 16/20/24/32/48px via `.icon-sm` through `.icon-2xl` classes
+- Colored containers: `.icon-box.teal`, `.icon-box.orange`, `.icon-box.green`
+- See reference/components.md → Lucide Icons for full icon map
+
+---
+
+## Favicon
+
+Inline SVG favicon (no external file needed):
+
+```html
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
 ```
 
 ---

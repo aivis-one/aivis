@@ -2,6 +2,30 @@
 
 All notable changes to livemockup-studio.
 
+## [1.5.1] - 2026-04-03
+
+### Added
+
+- **`reference/cbs-patterns.md`** — CBS HOME-specific UI patterns (role cards, balance card, installment table, commission items, referral cards, KYC status, product cards, leaderboard, filter tabs)
+- **Lucide Icons documentation** in `reference/components.md` — CDN setup, usage syntax, icon map for CBS HOME (30+ icons), dynamic icons, tab bar sizing
+- **Icon System section** in `reference/brand-cbs.md` — Lucide as official icon library
+- **Favicon specification** in `reference/brand-cbs.md` — inline SVG U-icon favicon
+- **Nav Map Stats Calculation** in `reference/shell.md` — how to populate screen/endpoint counts
+
+### Fixed
+
+- **design.md** — radius values corrected: 6/10/16 → 4/8/12 (rectangular aesthetic)
+- **design.md** — font "Inter" → "Montserrat" in output template
+- **test.md** — checklist count 66 → 72
+- **deliver.md** — broken path template `{name}-final.html` → clean `mockup.html`
+- **brand-cbs.md** — focus states clarified: teal for inputs, orange for buttons (was contradictory)
+- **variables.css** — removed duplicate `--shadow-focus` (kept `--shadow-focus-teal` + `--shadow-accent-focus`)
+- **integrity.md** — version bumped from v1.3.0 to v1.5.1
+- **ecosystem.md** — added dark mode note to Step 2, cbs-patterns.md to pre-read
+- Cascade fix: all `--shadow-focus` references → `--shadow-focus-teal` across components.css, mockups, skill docs
+
+---
+
 ## [1.5.0] - 2026-04-03
 
 ### Added
