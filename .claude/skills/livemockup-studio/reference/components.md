@@ -1,6 +1,6 @@
 ---
 name: components
-description: "v1.3.0 | UI component patterns for mockups"
+description: "v1.4.0 | UI component patterns for mockups"
 ---
 
 # Components
@@ -28,22 +28,26 @@ Reusable UI patterns for mockup content.
 
 ```css
 :root {
-  /* Colors */
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --primary-light: #3b82f6;
-  --accent: #f59e0b;
-  --accent-dark: #d97706;
-  
+  /* Brand — CBS HOME */
+  --primary: #1A6B6A;
+  --primary-dark: #0E3D42;
+  --primary-light: #2A9B9A;
+  --accent: #E8651A;
+  --accent-dark: #D45A16;
+
   /* Neutrals */
   --bg: #ffffff;
   --bg-subtle: #f8fafc;
-  --bg-elevated: #f1f5f9;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --text-tertiary: #94a3b8;
-  --border: #e2e8f0;
-  
+  --bg-elevated: #EEFAFA;
+  --text: #1A1A1A;
+  --text-secondary: #525252;
+  --text-tertiary: #A3A3A3;
+  --border: #D4D4D4;
+
+  /* Tints */
+  --tint-teal: rgba(26, 107, 106, 0.08);
+  --tint-orange: rgba(232, 101, 26, 0.08);
+
   /* Semantic */
   --success: #22c55e;
   --success-dim: rgba(34, 197, 94, 0.15);
@@ -51,17 +55,29 @@ Reusable UI patterns for mockup content.
   --warning-dim: rgba(245, 158, 11, 0.15);
   --danger: #ef4444;
   --danger-dim: rgba(239, 68, 68, 0.1);
-  
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
-  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
   --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
-  
+  --shadow-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
+  --shadow-focus-teal: 0 0 0 3px rgba(26, 107, 106, 0.3);
+
   /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-xl: 24px;
 }
 ```
@@ -106,6 +122,8 @@ a {
 
 Now clicks anywhere in the card trigger the onclick, but nested buttons still work.
 
+**Add ALL your onclick container classes to this selector.** If you create `.my-card[onclick]`, add `.my-card[onclick] *` to the list.
+
 ---
 
 ## Buttons
@@ -139,7 +157,7 @@ Now clicks anywhere in the card trigger the onclick, but nested buttons still wo
 .btn-primary:hover {
   background: var(--primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(232, 101, 26, 0.3);
 }
 
 .btn-primary:active {
@@ -380,7 +398,7 @@ For dashboards with clickable stat rows:
 .form-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(26, 107, 106, 0.3);
 }
 
 .form-input::placeholder {
@@ -393,9 +411,10 @@ For dashboards with clickable stat rows:
 ```css
 .form-select {
   appearance: none;
-  background-image: url("data:image/svg+xml,...");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23525252' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
+  background-size: 20px;
   padding-right: 40px;
 }
 ```
@@ -853,16 +872,12 @@ Bottom navigation for mobile screens.
 ### JS ⚠️ UPDATED
 
 ```javascript
-function switchTab(btn, screenId) {
-  // Update active tab
+function switchTab(el, screenId) {
+  const btn = el.closest ? el.closest('.tab-item') : el;
   document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  
-  // Show screen
+  if (btn) btn.classList.add('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(screenId).classList.add('active');
-  
-  // ⚠️ Aggressive scroll reset
   const screen = document.getElementById('deviceScreen');
   screen.scrollTop = 0;
   screen.scrollTo({ top: 0, behavior: 'instant' });
@@ -909,4 +924,4 @@ For tab bar to stay at bottom, use this structure:
 
 ---
 
-*components v1.3.0*
+*components v1.4.0*

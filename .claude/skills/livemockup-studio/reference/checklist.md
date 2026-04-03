@@ -1,6 +1,6 @@
 ---
 name: checklist
-description: "v1.3.0 | Quality gates with Navigation Map checks"
+description: "v1.4.0 | Quality gates with Navigation Map + Brand compliance"
 ---
 
 # Checklist
@@ -164,6 +164,19 @@ Quality gates for validating live mockups before delivery.
 
 ---
 
+## Brand Compliance (CBS HOME) ⭐
+
+| ID | Check | Level | How to Test |
+|----|-------|-------|-------------|
+| B1 | Primary color = teal (#1A6B6A) | 🔴 | Check --primary in :root |
+| B2 | Accent color = orange (#E8651A) | 🔴 | Check --accent in :root |
+| B3 | Font = Montserrat | 🔴 | Check font-family in body, Google Fonts link |
+| B4 | No hardcoded hex in mockup content | 🟡 | `grep -c "color: #" mockup.html` — only in :root and shell |
+| B5 | Border-radius ≤ 12px (rectangular) | 🟡 | Check --radius-lg ≤ 12px |
+| B6 | Focus ring = orange (not blue) | 🟡 | Check --shadow-focus uses rgba(232,101,26) |
+
+---
+
 ## Quick Reference
 
 | Category | BLOCKER | MAJOR | MINOR | Total |
@@ -179,7 +192,8 @@ Quality gates for validating live mockups before delivery.
 | Responsive | 3 | 2 | 0 | 5 |
 | Interaction | 2 | 1 | 2 | 5 |
 | Visual | 0 | 3 | 2 | 5 |
-| **Total** | **38** | **23** | **5** | **66** |
+| Brand | 3 | 3 | 0 | 6 |
+| **Total** | **41** | **26** | **5** | **72** |
 
 ---
 
@@ -386,9 +400,17 @@ setDevice(type) {
 □ V4 Consistent spacing
 □ V5 Consistent icons
 
+## Brand (CBS HOME) ⭐
+□ B1 Primary = teal #1A6B6A
+□ B2 Accent = orange #E8651A
+□ B3 Font = Montserrat
+□ B4 No hardcoded hex in content
+□ B5 Radius ≤ 12px
+□ B6 Focus ring = orange
+
 RESULT: ___ BLOCKER / ___ MAJOR / ___ MINOR
 ```
 
 ---
 
-*checklist v1.3.0*
+*checklist v1.4.0*

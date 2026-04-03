@@ -1,6 +1,6 @@
 ---
 name: interactions
-description: "v1.3.0 | Microanimations + feedback + endpoints"
+description: "v1.4.0 | Microanimations + feedback + endpoints"
 ---
 
 # Interactions
@@ -79,6 +79,8 @@ Track endpoints in Navigation Map stats:
 --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);  /* Enter */
 --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);  /* Exit */
 ```
+
+**CBS HOME:** Industrial aesthetic — use linear and ease-out only. Never use bounce or spring curves.
 
 ---
 
@@ -160,7 +162,7 @@ Track endpoints in Navigation Map stats:
 
 .input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+  box-shadow: var(--shadow-focus-teal);
   outline: none;
 }
 ```
@@ -256,11 +258,13 @@ Track endpoints in Navigation Map stats:
 ```javascript
 function showToast(message, type = 'info') {
   const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+  const root = getComputedStyle(document.documentElement);
+  const getVar = (v, fb) => root.getPropertyValue(v).trim() || fb;
   const colors = {
-    success: '#22c55e',
-    error: '#ef4444',
-    warning: '#f59e0b',
-    info: '#3b82f6'
+    success: getVar('--success', '#22c55e'),
+    error: getVar('--danger', '#ef4444'),
+    warning: getVar('--warning', '#f59e0b'),
+    info: getVar('--primary', '#1A6B6A')
   };
 
   const existing = document.querySelector('.toast');
@@ -493,4 +497,4 @@ document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
 ---
 
-*interactions v1.3.0*
+*interactions v1.4.0*

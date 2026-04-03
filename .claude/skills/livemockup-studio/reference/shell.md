@@ -1,6 +1,6 @@
 ---
 name: shell
-description: "v1.3.0 | Device Preview shell with Navigation Map"
+description: "v1.4.0 | Device Preview shell with Navigation Map"
 ---
 
 # Shell
@@ -616,6 +616,7 @@ const DevicePreview = {
       case '+': case '=': this.changeZoom(10); break;
       case '-': this.changeZoom(-10); break;
       case '0': this.currentZoom = 100; this.changeZoom(0); break;
+      case 'm': case 'M': openNavMap(); break;
     }
   }
 };
@@ -1074,6 +1075,17 @@ function toggleSection(titleEl) {
 }
 ```
 
+// ========== NAV MAP AUTO-STATS ==========
+function initNavMapStats() {
+  const screens = document.querySelectorAll('.screen').length;
+  const endpoints = document.querySelectorAll('.nav-map-item.endpoint-item').length;
+  const tabs = document.querySelectorAll('.nav-map-item.tab-item').length;
+  const statEls = document.querySelectorAll('.nav-map-stat-value');
+  if (statEls[0]) statEls[0].textContent = screens;
+  if (statEls[2]) statEls[2].textContent = endpoints;
+}
+// Call after DOMContentLoaded
+
 ---
 
 ## Keyboard Shortcuts
@@ -1090,4 +1102,4 @@ function toggleSection(titleEl) {
 
 ---
 
-*shell v1.3.0*
+*shell v1.4.0*

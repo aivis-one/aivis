@@ -1,6 +1,6 @@
 ---
 name: brief
-description: "v1.3.0 | L0 - Collect requirements and data plan"
+description: "v1.4.0 | L0 - Collect requirements and data plan"
 ---
 
 # brief
@@ -34,8 +34,6 @@ No formal input required. User describes what they need.
 
 ---
 
-1?
-
 ---
 
 ## Step 1: Clarify Scope
@@ -49,6 +47,7 @@ No formal input required. User describes what they need.
 | Screens | How many views/screens? |
 | Interactions | What should be clickable? |
 | Data | Real data provided or generate realistic? |
+| Brand | Custom colors/fonts? Or use CBS HOME defaults? |
 
 ### Extract from User
 
@@ -71,6 +70,8 @@ No formal input required. User describes what they need.
 | Forms | Validation? Submit toast? |
 | Navigation | Screen switching? |
 | Modals | Which popups needed? |
+| Error states | What happens on failure? |
+| Empty states | What if no data? |
 
 ---
 
@@ -148,7 +149,7 @@ Create brief.md:
 
 ## Anchor
 
-🎨 livemockup-studio v1.3.0 · brief · complete
+🎨 livemockup-studio v1.4.0 · brief · complete
 🟢 | NEXT: user command
 
 ---
@@ -158,4 +159,4 @@ Create brief.md:
 
 ---
 
-1?
+*brief v1.4.0*

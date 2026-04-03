@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME Auth Flow — Live Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/shell.css">
+  <link rel="stylesheet" href="../css/nav-map.css">
+  <style>
+    /* === AUTH-SPECIFIC STYLES ONLY === */
+
+    /* ========== AUTH HEADER ========== */
+    .auth-header {
+      position: sticky; top: 0; z-index: 100; background: var(--bg);
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .auth-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .auth-logo-icon {
+      width: 36px; height: 36px; background: var(--accent); color: white;
+      border-radius: var(--radius-sm); display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 18px;
+    }
+    .auth-logo-text { font-size: 16px; font-weight: 700; color: var(--primary-dark); letter-spacing: 0.5px; }
+
+    /* ========== PROGRESS STEPS ========== */
+    .progress-bar {
+      display: flex; align-items: center; gap: 4px; padding: 12px 20px;
+      background: var(--bg-subtle);
+    }
+    .progress-step {
+      flex: 1; height: 4px; border-radius: 2px; background: var(--border);
+      transition: background 0.3s;
+    }
+    .progress-step.done { background: var(--primary); }
+    .progress-step.active { background: var(--accent); }
+
+    /* ========== AUTH CONTENT ========== */
+    .auth-content {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 32px 24px; overflow-y: auto;
+    }
+    .auth-title { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 8px; text-align: center; }
+    .auth-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; text-align: center; line-height: 1.5; }
+    .auth-form { width: 100%; max-width: 360px; }
+
+    /* ========== ROLE CARDS ========== */
+    .role-cards { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 400px; }
+    .role-card {
+      background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius-lg);
+      padding: 20px; cursor: pointer; transition: all 0.2s; position: relative;
+    }
+    .role-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
+    .role-card.selected { border-color: var(--accent); background: rgba(232,101,26,0.04); box-shadow: var(--shadow-accent-focus); }
+    .role-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .role-card-icon { font-size: 28px; }
+    .role-card-title { font-size: 18px; font-weight: 700; color: var(--text); }
+    .role-card-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+    .role-card-features { display: flex; flex-wrap: wrap; gap: 6px; }
+    .role-feature {
+      font-size: 11px; font-weight: 500; padding: 4px 10px;
+      border-radius: var(--radius-sm); background: var(--bg-elevated);
+      color: var(--primary);
+    }
+    .role-card.selected .role-feature { background: rgba(232,101,26,0.1); color: var(--accent); }
+    .role-card-check {
+      position: absolute; top: 16px; right: 16px; width: 24px; height: 24px;
+      border-radius: 50%; border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; font-size: 14px; color: white;
+    }
+    .role-card.selected .role-card-check { background: var(--accent); border-color: var(--accent); }
+
+    /* ========== EMAIL VERIFY ========== */
+    .verify-icon { font-size: 64px; margin-bottom: 24px; }
+    .code-inputs { display: flex; gap: 12px; margin-bottom: 24px; }
+    .code-input {
+      width: 52px; height: 60px; text-align: center; font-size: 24px; font-weight: 700;
+      border: 2px solid var(--border); border-radius: var(--radius-md); font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .code-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
+
+    /* ========== KYC STATUS ========== */
+    .kyc-status-card {
+      width: 100%; max-width: 360px; border-radius: var(--radius-lg);
+      padding: 32px 24px; text-align: center; margin-bottom: 24px;
+    }
+    .kyc-status-card.pending { background: var(--warning-dim); border: 1px solid rgba(245,158,11,0.3); }
+    .kyc-status-card.approved { background: var(--success-dim); border: 1px solid rgba(34,197,94,0.3); }
+    .kyc-status-card.rejected { background: var(--danger-dim); border: 1px solid rgba(239,68,68,0.3); }
+    .kyc-icon { font-size: 48px; margin-bottom: 16px; }
+    .kyc-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .kyc-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* ========== DOCUMENTS ========== */
+    .doc-list { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+    .doc-item {
+      display: flex; align-items: flex-start; gap: 14px; padding: 16px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .doc-item:hover { border-color: var(--primary-light); background: var(--bg-elevated); }
+    .doc-checkbox {
+      width: 22px; height: 22px; min-width: 22px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); display: flex; align-items: center;
+      justify-content: center; transition: all 0.2s; margin-top: 2px;
+      cursor: pointer; font-size: 13px; color: white;
+    }
+    .doc-checkbox.checked { background: var(--primary); border-color: var(--primary); }
+    .doc-info { flex: 1; }
+    .doc-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .doc-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+    .doc-required { font-size: 11px; color: var(--danger); font-weight: 500; margin-top: 4px; }
+
+    /* ========== PASSWORD TOGGLE ========== */
+    .input-wrapper { position: relative; }
+    .input-wrapper .form-input { padding-right: 48px; }
+    .toggle-password {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 18px;
+      color: var(--text-tertiary); padding: 4px;
+    }
+
+    /* ========== CHECKBOX INLINE ========== */
+    .checkbox-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
+    .checkbox-row .checkbox {
+      width: 20px; height: 20px; min-width: 20px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; display: flex;
+      align-items: center; justify-content: center; transition: all 0.2s;
+      font-size: 12px; color: white; margin-top: 2px;
+    }
+    .checkbox-row .checkbox.checked { background: var(--primary); border-color: var(--primary); }
+    .checkbox-row label { font-size: 13px; color: var(--text-secondary); line-height: 1.4; cursor: pointer; }
+    .checkbox-row label a { color: var(--primary); text-decoration: none; }
+    .checkbox-row label a:hover { text-decoration: underline; }
+
+    /* ========== RESPONSIVE GRID INSIDE MOCKUP ========== */
+    .device-frame.desktop .role-cards { flex-direction: row; max-width: 800px; }
+    .device-frame.desktop .role-card { flex: 1; }
+    .device-frame.tablet .role-cards { flex-direction: row; flex-wrap: wrap; max-width: 600px; }
+    .device-frame.tablet .role-card { flex: 1; min-width: 250px; }
+    .device-frame.desktop .auth-content { padding: 48px 40px; }
+    .device-frame.tablet .auth-content { padding: 40px 32px; }
+  </style>
+</head>
+<body>
+
+  <!-- ========== TOOLBAR ========== -->
+  <div class="preview-toolbar">
+    <div class="toolbar-left">
+      <div class="project-info">
+        <span class="project-name">CBS HOME Auth v1</span>
+        <span class="project-badge">LIVE</span>
+      </div>
+    </div>
+    <div class="toolbar-center">
+      <div class="device-switcher">
+        <button class="device-btn active" data-device="phone">
+          📱 <span class="device-label">Phone</span>
+          <span class="device-size">390</span>
+        </button>
+        <button class="device-btn" data-device="tablet">
+          📱 <span class="device-label">Tablet</span>
+          <span class="device-size">820</span>
+        </button>
+        <button class="device-btn" data-device="desktop">
+          🖥️ <span class="device-label">Desktop</span>
+          <span class="device-size">1280</span>
+        </button>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button class="map-btn" onclick="openNavMap()">
+        📍 <span class="map-label">Map</span>
+      </button>
+      <div class="zoom-control">
+        <button class="zoom-btn" data-zoom="-10">−</button>
+        <span class="zoom-value">100%</span>
+        <button class="zoom-btn" data-zoom="+10">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DEVICE FRAME ========== -->
+  <div class="preview-container">
+    <div class="device-frame phone" id="deviceFrame">
+      <div class="device-notch"></div>
+      <div class="device-screen" id="deviceScreen">
+        <div class="mockup-content">
+
+          <!-- ===== SCREEN 1: LOGIN ===== -->
+          <div class="screen active" id="screen-login">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <div style="margin-bottom:24px; text-align:center;">
+                <div style="margin-bottom:8px;"><i data-lucide="lock-keyhole" style="font-size:48px;color:var(--primary)"></i></div>
+              </div>
+              <h1 class="auth-title">Вход в аккаунт</h1>
+              <p class="auth-subtitle">Войдите в CBS HOME для управления инвестициями</p>
+              <div class="auth-form">
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <input type="email" class="form-input" placeholder="name@example.com" value="sergej.seider@cbshome.org">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Пароль</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Введите пароль" value="••••••••">
+                    <button class="toggle-password" type="button"><i data-lucide="eye" class="icon-md"></i></button>
+                  </div>
+                </div>
+                <div style="text-align:right; margin-bottom:20px;">
+                  <button class="btn-link" type="button" onclick="showToast('📌 Восстановление пароля — финальная точка')">Забыли пароль?</button>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleLogin()">Войти</button>
+
+                <div class="divider"><span>или</span></div>
+
+                <button class="btn btn-telegram" type="button" onclick="showToast('📌 Telegram WebApp — внешний сервис')">
+                  <i data-lucide="send" class="icon-md"></i> Войти через Telegram
+                </button>
+
+                <div style="text-align:center; margin-top:24px;">
+                  <span style="font-size:14px; color:var(--text-secondary);">Нет аккаунта? </span>
+                  <button class="btn-link" type="button" onclick="navigateTo('screen-register')">Создать аккаунт</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 2: REGISTER ===== -->
+          <div class="screen" id="screen-register">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+              <button class="btn-link" type="button" onclick="navigateTo('screen-login')">← Назад</button>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step active"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Создать аккаунт</h1>
+              <p class="auth-subtitle">Присоединяйтесь к инвестиционной платформе CBS HOME</p>
+              <div class="auth-form">
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <input type="email" class="form-input" placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Пароль</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Минимум 8 символов">
+                    <button class="toggle-password" type="button"><i data-lucide="eye" class="icon-md"></i></button>
+                  </div>
+                  <div class="form-hint">Минимум 8 символов, буквы и цифры</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Подтверждение пароля</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Повторите пароль">
+                    <button class="toggle-password" type="button"><i data-lucide="eye" class="icon-md"></i></button>
+                  </div>
+                </div>
+                <div class="checkbox-row">
+                  <div class="checkbox" onclick="toggleCheckbox(this)"></div>
+                  <label onclick="toggleCheckbox(this.previousElementSibling)">Я принимаю <a href="#" onclick="event.stopPropagation(); showToast('📌 Условия использования — финальная точка')">условия использования</a> и <a href="#" onclick="event.stopPropagation(); showToast('📌 Политика конфиденциальности — финальная точка')">политику конфиденциальности</a></label>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleRegister()">Создать аккаунт</button>
+
+                <div style="text-align:center; margin-top:24px;">
+                  <span style="font-size:14px; color:var(--text-secondary);">Уже есть аккаунт? </span>
+                  <button class="btn-link" type="button" onclick="navigateTo('screen-login')">Войти</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 3: EMAIL VERIFICATION ===== -->
+          <div class="screen" id="screen-verify">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <div class="verify-icon"><i data-lucide="mail-check" style="font-size:64px;color:var(--primary)"></i></div>
+              <h1 class="auth-title">Проверьте почту</h1>
+              <p class="auth-subtitle">Мы отправили код подтверждения на<br><strong style="color:var(--text)">sergej.seider@cbshome.org</strong></p>
+              <div class="code-inputs">
+                <input class="code-input" type="text" maxlength="1" value="4">
+                <input class="code-input" type="text" maxlength="1" value="7">
+                <input class="code-input" type="text" maxlength="1" value="2">
+                <input class="code-input" type="text" maxlength="1" value="9">
+                <input class="code-input" type="text" maxlength="1">
+                <input class="code-input" type="text" maxlength="1">
+              </div>
+              <div class="auth-form">
+                <button class="btn btn-primary" type="button" onclick="handleVerify()">Подтвердить</button>
+                <div style="text-align:center; margin-top:20px;">
+                  <span style="font-size:14px; color:var(--text-secondary);">Не получили код? </span>
+                  <button class="btn-link" type="button" onclick="showToast('Код отправлен повторно', 'info')">Отправить повторно</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 4: PROFILE SETUP ===== -->
+          <div class="screen" id="screen-profile">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Данные профиля</h1>
+              <p class="auth-subtitle">Заполните информацию для вашего аккаунта</p>
+              <div class="auth-form">
+                <div style="display:flex; gap:12px;">
+                  <div class="form-group" style="flex:1;">
+                    <label class="form-label">Имя</label>
+                    <input type="text" class="form-input" placeholder="Sergej" value="Sergej">
+                  </div>
+                  <div class="form-group" style="flex:1;">
+                    <label class="form-label">Фамилия</label>
+                    <input type="text" class="form-input" placeholder="Seider" value="Seider">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Телефон</label>
+                  <input type="tel" class="form-input" placeholder="+49 XXX XXXXXXXX" value="+49 172 5551234">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Страна</label>
+                  <select class="form-select">
+                    <option value="de" selected>Deutschland</option>
+                    <option value="ch">Schweiz</option>
+                    <option value="at">Österreich</option>
+                    <option value="ru">Россия</option>
+                    <option value="other">Другая</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Язык интерфейса</label>
+                  <select class="form-select">
+                    <option value="de" selected>Deutsch</option>
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                    <option value="ar">العربية</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleProfile()">Продолжить</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 5: ROLE SELECTION ===== -->
+          <div class="screen" id="screen-role">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Выберите роль</h1>
+              <p class="auth-subtitle">Как вы планируете использовать платформу?</p>
+              <div class="role-cards" id="roleCards">
+                <div class="role-card" onclick="selectRole(this, 'Инвестор')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon"><span class="icon-box teal"><i data-lucide="trending-up"></i></span></span>
+                    <span class="role-card-title">Инвестор</span>
+                  </div>
+                  <div class="role-card-desc">Покупайте продукты, управляйте портфелем и отслеживайте инвестиции</div>
+                  <div class="role-card-features">
+                    <span class="role-feature">Портфель</span>
+                    <span class="role-feature">Рассрочки</span>
+                    <span class="role-feature">Баланс</span>
+                    <span class="role-feature">Документы</span>
+                  </div>
+                </div>
+                <div class="role-card" onclick="selectRole(this, 'Агент')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon"><span class="icon-box orange"><i data-lucide="users"></i></span></span>
+                    <span class="role-card-title">Агент</span>
+                  </div>
+                  <div class="role-card-desc">Все возможности инвестора плюс реферальная программа и комиссии</div>
+                  <div class="role-card-features">
+                    <span class="role-feature">Реферальные ссылки</span>
+                    <span class="role-feature">Комиссии L1/L2/L3</span>
+                    <span class="role-feature">Лидерборд</span>
+                    <span class="role-feature">Сертификация</span>
+                  </div>
+                </div>
+                <div class="role-card" onclick="selectRole(this, 'Компания')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon"><span class="icon-box blue"><i data-lucide="building-2"></i></span></span>
+                    <span class="role-card-title">Компания</span>
+                  </div>
+                  <div class="role-card-desc">Размещайте продукты, управляйте продажами и получайте выручку</div>
+                  <div class="role-card-features">
+                    <span class="role-feature">Продукты</span>
+                    <span class="role-feature">Аналитика</span>
+                    <span class="role-feature">Выручка</span>
+                    <span class="role-feature">Документы</span>
+                  </div>
+                </div>
+              </div>
+              <div style="width:100%; max-width:400px; margin-top:24px;">
+                <button class="btn btn-primary" id="roleSubmitBtn" type="button" disabled onclick="handleRoleSelect()">Выберите роль</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 6: KYC STATUS ===== -->
+          <div class="screen" id="screen-kyc">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Верификация личности</h1>
+              <p class="auth-subtitle">Для работы на платформе необходимо пройти KYC-верификацию</p>
+
+              <div class="kyc-status-card approved">
+                <div class="kyc-icon"><i data-lucide="shield-check" style="font-size:48px;color:var(--success)"></i></div>
+                <div class="kyc-title" style="color:var(--success);">Верификация пройдена</div>
+                <div class="kyc-text">Ваша личность подтверждена. Вы можете продолжить настройку аккаунта.</div>
+              </div>
+
+              <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:12px;">
+                <button class="btn btn-primary" type="button" onclick="navigateTo('screen-docs')">Продолжить</button>
+                <button class="btn btn-outline" type="button" onclick="showToast('📌 SumSub — внешний сервис верификации')">
+                  🔄 Пройти заново
+                </button>
+              </div>
+
+              <div style="margin-top:32px; width:100%; max-width:360px; padding:16px; background:var(--bg-subtle); border-radius:var(--radius-md);">
+                <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--text);">Статусы верификации:</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--warning);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);">Ожидание — документы на проверке</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--success);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);">Одобрено — верификация пройдена</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--danger);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);">Отклонено — требуется повторная подача</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 7: DOCUMENT SIGNING ===== -->
+          <div class="screen" id="screen-docs">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <div class="auth-logo-icon">U</div>
+                <span class="auth-logo-text">CBS HOME</span>
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title">Подписание документов</h1>
+              <p class="auth-subtitle">Ознакомьтесь и подпишите обязательные документы для начала работы</p>
+
+              <div class="doc-list" id="docList">
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title">Пользовательское соглашение cbshome.org</div>
+                    <div class="doc-desc">Основные условия использования платформы, права и обязанности сторон</div>
+                    <div class="doc-required">Обязательный документ</div>
+                  </div>
+                </div>
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title">Политика конфиденциальности</div>
+                    <div class="doc-desc">Порядок обработки, хранения и защиты персональных данных в соответствии с GDPR</div>
+                    <div class="doc-required">Обязательный документ</div>
+                  </div>
+                </div>
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title">Согласие на обработку персональных данных</div>
+                    <div class="doc-desc">Явное согласие на обработку ваших данных для предоставления услуг платформы</div>
+                    <div class="doc-required">Обязательный документ</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="width:100%; max-width:400px;">
+                <button class="btn btn-primary" id="signBtn" type="button" disabled onclick="handleSign()">Подписать документы</button>
+                <div style="text-align:center; margin-top:16px;">
+                  <span style="font-size:12px; color:var(--text-tertiary);">Нажимая «Подписать», вы соглашаетесь с условиями всех перечисленных документов</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="device-home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ========== NAVIGATION MAP ========== -->
+  <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
+    <div class="nav-map" onclick="event.stopPropagation()">
+      <div class="nav-map-header">
+        <div class="nav-map-title">📍 Navigation Map</div>
+        <button class="nav-map-close" onclick="closeNavMap()">×</button>
+      </div>
+      <div class="nav-map-body">
+        <div class="nav-map-stats">
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">7</div>
+            <div class="nav-map-stat-label">экранов</div>
+          </div>
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">2</div>
+            <div class="nav-map-stat-label">полных путей</div>
+          </div>
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">4</div>
+            <div class="nav-map-stat-label">финальных точек</div>
+          </div>
+        </div>
+
+        <div class="nav-map-legend">
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> Экран</div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> Тупик</div>
+        </div>
+
+        <div class="nav-map-tree">
+          <!-- Auth Section -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info">🔐 АУТЕНТИФИКАЦИЯ <span class="section-count">(4)</span></span>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-login')">
+                  <span class="nav-map-item-icon">🔑</span>
+                  <span class="nav-map-item-name">Login</span>
+                  <span class="level-badge hub">ENTRY</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-register')">
+                  <span class="nav-map-item-icon">📝</span>
+                  <span class="nav-map-item-name">↳ Register</span>
+                  <span class="level-badge">L1</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="2">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-verify')">
+                  <span class="nav-map-item-icon">📧</span>
+                  <span class="nav-map-item-name">↳ Email Verification</span>
+                  <span class="level-badge">L2</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Telegram WebApp', 'screen-login')">
+                  <span class="nav-map-item-icon">✈️</span>
+                  <span class="nav-map-item-name">↳ Telegram Login</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Восстановление пароля', 'screen-login')">
+                  <span class="nav-map-item-icon">🔓</span>
+                  <span class="nav-map-item-name">↳ Forgot Password</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Onboarding Section -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info">👤 ОНБОРДИНГ <span class="section-count">(6)</span></span>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-profile')">
+                  <span class="nav-map-item-icon">👤</span>
+                  <span class="nav-map-item-name">Profile Setup</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-role')">
+                  <span class="nav-map-item-icon">🎯</span>
+                  <span class="nav-map-item-name">Role Selection</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-kyc')">
+                  <span class="nav-map-item-icon">🛡️</span>
+                  <span class="nav-map-item-name">KYC Verification</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('SumSub Verification', 'screen-kyc')">
+                  <span class="nav-map-item-icon">🔍</span>
+                  <span class="nav-map-item-name">↳ SumSub External</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="0">
+                <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')">
+                  <span class="nav-map-item-icon">📄</span>
+                  <span class="nav-map-item-name">Document Signing</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              </div>
+              <div class="nav-map-level" data-level="1">
+                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Onboarding Complete — переход в кабинет', 'screen-docs')">
+                  <span class="nav-map-item-icon">🏁</span>
+                  <span class="nav-map-item-name">↳ Onboarding Complete</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../js/shell.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script>
+    /* ========== AUTH HANDLERS ========== */
+    function handleLogin() {
+      showToast('Вход выполнен', 'success');
+      setTimeout(() => navigateTo('screen-role'), 800);
+    }
+
+    function handleRegister() {
+      showToast('Аккаунт создан', 'success');
+      setTimeout(() => navigateTo('screen-verify'), 800);
+    }
+
+    function handleVerify() {
+      showToast('Email подтверждён', 'success');
+      setTimeout(() => navigateTo('screen-profile'), 800);
+    }
+
+    function handleProfile() {
+      showToast('Профиль сохранён', 'success');
+      setTimeout(() => navigateTo('screen-role'), 800);
+    }
+
+    let selectedRole = null;
+    function selectRole(card, roleName) {
+      document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedRole = roleName;
+      const btn = document.getElementById('roleSubmitBtn');
+      btn.disabled = false;
+      btn.textContent = 'Продолжить как ' + roleName;
+    }
+
+    function handleRoleSelect() {
+      if (!selectedRole) return;
+      showToast('Роль выбрана: ' + selectedRole, 'success');
+      setTimeout(() => navigateTo('screen-kyc'), 800);
+    }
+
+    /* ========== DOCUMENT SIGNING ========== */
+    function toggleDoc(item) {
+      const checkbox = item.querySelector('.doc-checkbox');
+      checkbox.classList.toggle('checked');
+      checkbox.innerHTML = checkbox.classList.contains('checked') ? '✓' : '';
+      updateSignBtn();
+    }
+
+    function updateSignBtn() {
+      const allChecked = document.querySelectorAll('.doc-checkbox');
+      const checkedCount = document.querySelectorAll('.doc-checkbox.checked').length;
+      const btn = document.getElementById('signBtn');
+      btn.disabled = checkedCount < allChecked.length;
+      btn.textContent = checkedCount === allChecked.length ? 'Подписать документы' : `Отмечено ${checkedCount} из ${allChecked.length}`;
+    }
+
+    function handleSign() {
+      showToast('Документы подписаны', 'success');
+      setTimeout(() => showToast('📌 Onboarding завершён — переход в кабинет'), 1500);
+    }
+
+    /* ========== CHECKBOX ========== */
+    function toggleCheckbox(el) {
+      el.classList.toggle('checked');
+      el.innerHTML = el.classList.contains('checked') ? '✓' : '';
+    }
+  </script>
+  <script>if(typeof lucide!=='undefined')lucide.createIcons();</script>
+</body>
+</html>

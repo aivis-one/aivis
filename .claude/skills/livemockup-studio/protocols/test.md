@@ -1,6 +1,6 @@
 ---
 name: test
-description: "v1.3.0 | L3.5 - Validate mockup quality before delivery"
+description: "v1.4.0 | L3.5 - Validate mockup quality before delivery"
 ---
 
 # test
@@ -73,3 +73,28 @@ Run all checks from **reference/checklist.md**:
 | ≤2 MAJOR | |
 
 After fixes → rerun phases until pass criteria met.
+
+---
+
+## Auto-Validation Script
+
+Run in browser console to check common issues:
+
+```javascript
+const results = [];
+// INT: File structure
+results.push({ check: 'Screens exist', ok: document.querySelectorAll('.screen').length > 0 });
+results.push({ check: 'Nav Map exists', ok: !!document.getElementById('navMapOverlay') });
+results.push({ check: 'Device frame', ok: !!document.getElementById('deviceFrame') });
+// Brand
+results.push({ check: 'Font Montserrat', ok: getComputedStyle(document.body).fontFamily.includes('Montserrat') });
+// Flex chain
+results.push({ check: 'Flex chain', ok: getComputedStyle(document.querySelector('.mockup-content')).display === 'flex' });
+// No Lorem
+results.push({ check: 'No Lorem', ok: !document.body.innerText.toLowerCase().includes('lorem') });
+console.table(results);
+```
+
+---
+
+*test v1.4.0*

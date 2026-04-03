@@ -1,6 +1,6 @@
 ---
 name: design
-description: "v1.3.0 | L1 - Design tokens and interaction map"
+description: "v1.4.0 | L1 - Design tokens and interaction map"
 ---
 
 # design
@@ -32,14 +32,15 @@ If missing → "brief отсутствует. Сначала brief."
 |---|------|-----|
 | 1 | reference/components.md | Token structure |
 | 2 | reference/interactions.md | Animation patterns |
+| 3 | reference/brand-cbs.md | CBS HOME tokens |
 
 ---
-
-1?
 
 ---
 
 ## Step 1: Color Palette
+
+**CBS HOME default:** Copy palette from reference/brand-cbs.md
 
 ### Primary Colors
 
@@ -81,7 +82,7 @@ If missing → "brief отсутствует. Сначала brief."
 | Body | 14-16px | 400 |
 | Small | 12-13px | 500 |
 
-**Font:** Inter, -apple-system, sans-serif
+**Font:** Montserrat, -apple-system, sans-serif
 
 ---
 
@@ -93,6 +94,15 @@ If missing → "brief отсутствует. Сначала brief."
 | --radius-md | 10px |
 | --radius-lg | 16px |
 | --radius-xl | 24px |
+
+---
+
+## Step 3.5: Focus States
+
+| Element | Focus Style |
+|---------|-------------|
+| Inputs | border: var(--primary) + box-shadow: var(--shadow-focus-teal) |
+| Buttons | box-shadow: var(--shadow-focus) (orange ring) |
 
 ---
 
@@ -182,7 +192,7 @@ Scale: 14px base
 
 ## Anchor
 
-🎨 livemockup-studio v1.3.0 · design · complete
+🎨 livemockup-studio v1.4.0 · design · complete
 🟢 | NEXT: user command
 
 ---
@@ -192,4 +202,4 @@ Scale: 14px base
 
 ---
 
-1?
+*design v1.4.0*

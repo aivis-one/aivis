@@ -2,6 +2,70 @@
 
 All notable changes to livemockup-studio.
 
+## [1.5.0] - 2026-04-03
+
+### Added
+
+- **Ecosystem Mode** — Multi-mockup architecture with shared CSS/JS
+  - `reference/ecosystem.md` — File structure, templates, migration guide
+  - `protocols/ecosystem.md` — Step-by-step protocol for creating ecosystem
+  - Shared CSS: variables.css, components.css, shell.css, nav-map.css
+  - Shared JS: shell.js, navigation.js
+  - Index hub: entry point with role cards linking to mockups
+- **Two operation modes:** Standalone (single file) and Ecosystem (shared files)
+
+### Changed
+
+- **SKILL.md** — Added ecosystem mode to flow and quick reference
+- **Version** — v1.5.0
+
+---
+
+## [1.4.0] - 2026-04-03
+
+### Added
+
+- **CBS HOME Brand System** — Native brand tokens in `reference/brand-cbs.md`
+  - Teal (#1A6B6A) + Orange (#E8651A) palette
+  - Montserrat font with exact scale (12-48px)
+  - Rectangular aesthetic (radius: 4/8/12px)
+  - 8px spacing system (xs→4xl)
+  - Dark mode tokens
+  - U-icon component specification
+  - Gradient CSS classes (no more inline gradients)
+  - EUR data conventions
+- **Auto-validation script** in `protocols/test.md` — browser console JS checks
+- **Endpoint identification workflow** in `protocols/polish.md`
+- **CSS variable validation step** in `protocols/polish.md`
+- **Focus states specification** in `protocols/design.md`
+- **Nav Map auto-stats** JS in `reference/shell.md`
+
+### Changed
+
+- **components.md** — All tokens replaced with CBS HOME values
+  - Colors: teal/orange (was blue/amber)
+  - Radius: 4/8/12 rectangular (was 6/10/16 rounded)
+  - Shadows: brand-correct values
+  - SVG select arrow: complete data-URI (was truncated)
+  - switchTab(): safer event handling with `el.closest()`
+  - Focus ring: orange (was blue)
+- **interactions.md** — Toast reads CSS variables via getComputedStyle (was hardcoded hex)
+- **data.md** — Added CBS HOME products, roles, EUR formatting, commission levels
+- **shell.md** — Added initNavMapStats(), M keyboard shortcut
+- **design.md** — Montserrat (was Inter), brand-cbs.md pre-read, focus states
+- **build.md** — Montserrat font import, brand-cbs.md pre-read, form pattern explanation
+- **polish.md** — Output filename mockup.html (was final.html), endpoint workflow
+- **checklist.md** — Added 6 brand compliance checks (B1-B6), total: 72 checks
+
+### Fixed
+
+- Removed "1?" template artifacts from brief.md, design.md, sanitize.md
+- Fixed incomplete SVG in form-select component
+- Fixed deliver.md hardcoded path
+- Fixed switchTab() `this` binding bug
+
+---
+
 ## [1.3.0] - 2026-01-24
 
 ### Added
@@ -128,4 +192,4 @@ All notable changes to livemockup-studio.
 
 ---
 
-*CHANGELOG v1.3.0*
+*CHANGELOG v1.5.0*
