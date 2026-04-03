@@ -16,6 +16,7 @@
 # =============================================================================
 
 from collections.abc import AsyncGenerator
+from types import SimpleNamespace
 
 import pytest
 from httpx import AsyncClient
@@ -253,32 +254,28 @@ async def test_update_permissions_unknown_key(
 
 
 @pytest.mark.asyncio
-async def test_require_staff_permission_blocks(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """Staff with denied permission gets 403 from require_staff_permission.
+async def test_require_staff_permission_blocks() -> None:
+    """_has_permission correctly resolves defaults + overrides.
 
-    Tests the dependency by creating a staff user with translation_edit=False
-    (default) and verifying the guard works at the unit level.
+    Uses SimpleNamespace to avoid SQLAlchemy _sa_instance_state issue
+    with StaffProfile.__new__().
     """
-    from app.core.constants import DEFAULT_STAFF_PERMISSIONS
     from app.modules.auth.dependencies import _has_permission
-    from app.modules.staff.models import StaffProfile
 
-    # Simulate a profile with financial_operations overridden to False.
-    profile = StaffProfile.__new__(StaffProfile)
-    profile.permissions = {"financial_operations": False}
+    # Profile with financial_operations overridden to False.
+    profile_denied = SimpleNamespace(permissions={"financial_operations": False})
+    assert _has_permission(profile_denied, "financial_operations") is False
 
-    # Should be denied.
-    assert _has_permission(profile, "financial_operations") is False
-
-    # Default True permission should pass.
-    assert _has_permission(profile, "avatar_mode") is True
+    # Default True permission should pass (not overridden).
+    assert _has_permission(profile_denied, "avatar_mode") is True
 
     # Default False permission (translation_edit) without override.
-    profile_no_override = StaffProfile.__new__(StaffProfile)
-    profile_no_override.permissions = {}
-    assert _has_permission(profile_no_override, "translation_edit") is False
+    profile_empty = SimpleNamespace(permissions={})
+    assert _has_permission(profile_empty, "translation_edit") is False
+
+    # Override default False to True.
+    profile_override = SimpleNamespace(permissions={"translation_edit": True})
+    assert _has_permission(profile_override, "translation_edit") is True
 
 
 # ---------------------------------------------------------------------------

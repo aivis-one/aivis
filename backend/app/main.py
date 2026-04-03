@@ -13,7 +13,7 @@
 #   kyc_router             -> /api/v1/kyc/* (Sprint 2.1)
 #   documents_router       -> /api/v1/documents/* (Sprint 2.2)
 #   staff_documents_router -> /api/v1/staff/documents/* (Sprint 2.2)
-#   staff_router           -> /api/v1/staff/users/* (Sprint 3.1)
+#   staff_router           -> /api/v1/staff/* (Sprint 3.1)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis
@@ -102,7 +102,7 @@ async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
     """Handle application-level errors with consistent JSON format."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"error": exc.code, "message": exc.message},
     )
 
 

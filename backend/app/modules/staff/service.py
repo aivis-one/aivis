@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.constants import DEFAULT_STAFF_PERMISSIONS, VALID_STAFF_PERMISSIONS
-from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.auth.service import hash_password
 from app.modules.staff.models import StaffProfile
 from app.modules.staff.schemas import PermissionsUpdateRequest, StaffCreateRequest
@@ -85,10 +85,12 @@ async def create_staff(
         role=UserRole.STAFF,
         credentials=credentials,
     )
-    session.add(user)
 
-    # Flush to get user.id and catch duplicate email.
+    # P-05: session.add + flush inside begin_nested so that
+    # IntegrityError on duplicate email is caught within the
+    # savepoint, not on the outer transaction.
     async with session.begin_nested():
+        session.add(user)
         try:
             await session.flush()
         except IntegrityError as exc:
