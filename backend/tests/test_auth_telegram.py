@@ -5,27 +5,27 @@
 # Tests cover:
 #   1:   Valid initData -> 200, user created
 #   2:   Repeat login -> same user, credentials.telegram updated
-#   3:   Invalid HMAC signature -> 400
-#   4:   Expired initData -> 400
-#   5:   Replayed initData (same hash) -> 400
-#   6:   Rate limit exceeded -> 400
-#   7:   Missing init_data field -> 422
-#   8:   Session created (verified by authenticated request)
+#   3:   Session created (verified by authenticated request)
+#   4:   Invalid HMAC signature -> 400
+#   5:   Expired initData -> 400
+#   6:   Replayed initData (same hash) -> 400
+#   7:   Rate limit exceeded -> 400
+#   8:   Missing init_data field -> 422
 #
 # Telegram IDs: 100001-100099 range, cleaned up in fixture.
+# BOT_TOKEN is read from settings (matches runtime token).
 # =============================================================================
 
 import time
 from collections.abc import AsyncGenerator
-from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.redis import get_redis
 from tests.helpers import (
-    BOT_TOKEN,
     auth_headers,
     build_init_data,
     cleanup_telegram_test_users,
@@ -40,7 +40,6 @@ TG_IDS = list(range(100001, 100010))
 async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
     """Clean test users and Redis keys before/after each test."""
     await cleanup_telegram_test_users(db_session, TG_IDS)
-    # Clean rate limit and replay keys in Redis.
     redis = get_redis()
     for tg_id in TG_IDS:
         await redis.delete(f"auth_rate:{tg_id}")
@@ -70,13 +69,11 @@ async def test_telegram_repeat_login_updates_credentials(
     client: AsyncClient,
 ) -> None:
     """Repeat login with updated username -> same user, credentials updated."""
-    # First login.
     data1 = await login_telegram(
         client, telegram_id=100002, first_name="Bob", username="bob_old",
     )
     user_id = data1["user"]["id"]
 
-    # Second login with new username.
     data2 = await login_telegram(
         client, telegram_id=100002, first_name="Bob", username="bob_new",
     )
@@ -91,7 +88,6 @@ async def test_telegram_session_works(client: AsyncClient) -> None:
     data = await login_telegram(client, telegram_id=100003)
     token = data["session_token"]
 
-    # Use the token to hit an authenticated endpoint.
     resp = await client.post(
         "/api/v1/auth/logout",
         headers=auth_headers(token),
@@ -157,36 +153,32 @@ async def test_telegram_replayed_init_data(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_telegram_rate_limit(client: AsyncClient) -> None:
-    """More requests than auth_rate_limit_max_requests -> 400."""
+    """More requests than auth_rate_limit_max_requests -> 400.
+
+    Uses real settings (default max_requests=5). Sends max+1 requests.
+    """
     tg_id = 100007
+    max_requests = settings.auth_rate_limit_max_requests
 
-    # Patch max_requests to 2 to keep the test fast.
-    with patch("app.modules.auth.telegram.settings") as mock_settings:
-        mock_settings.auth_rate_limit_max_requests = 2
-        mock_settings.auth_rate_limit_window_seconds = 60
-        mock_settings.auth_init_data_ttl_seconds = 300
-        mock_settings.auth_clock_skew_seconds = 60
-        mock_settings.telegram_bot_token = BOT_TOKEN
-
-        # Requests 1 and 2 should succeed.
-        for _ in range(2):
-            data = {"id": tg_id, "first_name": "Ratelimit"}
-            init_data = build_init_data(data)
-            resp = await client.post(
-                "/api/v1/auth/telegram",
-                json={"init_data": init_data},
-            )
-            assert resp.status_code == 200
-
-        # Request 3 should be rate-limited.
+    # Send max_requests successful calls.
+    for _ in range(max_requests):
         data = {"id": tg_id, "first_name": "Ratelimit"}
         init_data = build_init_data(data)
         resp = await client.post(
             "/api/v1/auth/telegram",
             json={"init_data": init_data},
         )
-        assert resp.status_code == 400
-        assert "Too many" in resp.json()["message"]
+        assert resp.status_code == 200
+
+    # Next call should be rate-limited.
+    data = {"id": tg_id, "first_name": "Ratelimit"}
+    init_data = build_init_data(data)
+    resp = await client.post(
+        "/api/v1/auth/telegram",
+        json={"init_data": init_data},
+    )
+    assert resp.status_code == 400
+    assert "Too many" in resp.json()["message"]
 
 
 @pytest.mark.asyncio

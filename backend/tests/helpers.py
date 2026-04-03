@@ -10,7 +10,8 @@
 #
 # TELEGRAM AUTH (Sprint 1.2):
 #   build_init_data() creates a valid signed Telegram initData string.
-#   BOT_TOKEN matches the test config value.
+#   BOT_TOKEN is read from settings to match the runtime token (may differ
+#   between dev and VPS -- .env sets the real token on prod).
 #   _init_data_counter ensures unique query_id on every call to avoid
 #   anti-replay rejection when multiple calls happen in the same second.
 # =============================================================================
@@ -27,14 +28,14 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
+from app.core.config import settings
 from app.modules.users.models import User
 
-# Must match TELEGRAM_BOT_TOKEN in test .env / config defaults.
-BOT_TOKEN = "TEST"
+# Read from settings -- must match the token used by the router
+# for HMAC validation. On VPS this is the real bot token from .env.
+BOT_TOKEN = settings.telegram_bot_token
 
 # Module-level counter: unique query_id per build_init_data() call.
-# Prevents anti-replay from rejecting two calls for the same telegram_id
-# within the same second (identical params -> identical HMAC hash).
 _init_data_counter = itertools.count(1)
 
 
@@ -57,7 +58,6 @@ def build_init_data(
     if auth_date is None:
         auth_date = int(time.time())
 
-    # query_id is a real Telegram initData field -- HMAC validation accepts it.
     query_id = str(next(_init_data_counter))
 
     params = {
@@ -185,7 +185,6 @@ async def cleanup_telegram_test_users(
     if not telegram_ids:
         return
 
-    # Find user IDs by telegram_id in credentials JSONB.
     user_ids = []
     for tg_id in telegram_ids:
         stmt = select(User.id).where(
