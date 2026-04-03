@@ -72,7 +72,7 @@ Based on brief.md:
 
 ```
 ✅ Мокап доставлен и принят.
-Файл: mocups/{name}/mockup.html
+Файл: mockups/{name}/mockup.html
 
 📝 Если сломается после скачивания → sanitize
 ```

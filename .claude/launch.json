@@ -4,7 +4,7 @@
     {
       "name": "mockups",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "mocups", "-l", "3100", "--no-clipboard"],
+      "runtimeArgs": ["serve", "mockups", "-l", "3100", "--no-clipboard"],
       "port": 3100
     }
   ]

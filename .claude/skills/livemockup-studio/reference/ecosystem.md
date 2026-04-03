@@ -26,7 +26,7 @@ Use ecosystem when:
 ## File Structure
 
 ```
-mocups/
+mockups/
 ├── index.html                 ← Hub (entry point)
 ├── css/
 │   ├── variables.css          ← Design tokens (:root)

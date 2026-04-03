@@ -31,8 +31,8 @@ Convert standalone mockups into ecosystem with shared CSS/JS and index hub.
 ## Step 1: Create Directory Structure
 
 ```
-mocups/css/  — create if not exists
-mocups/js/   — create if not exists
+mockups/css/  — create if not exists
+mockups/js/   — create if not exists
 ```
 
 ## Step 2: Extract variables.css
@@ -104,7 +104,7 @@ For each mockup.html:
 
 ## Step 10: Test
 
-1. Serve from project root: `npx serve mocups -l 3100`
+1. Serve from project root: `npx serve mockups -l 3100`
 2. Open index.html → all cards visible
 3. Click each card → mockup loads
 4. In each mockup: device switching, nav map, toasts all work
