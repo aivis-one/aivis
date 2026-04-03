@@ -336,6 +336,7 @@ log "Generating .env with random passwords..."
 DB_PASS=$(gen_password)
 REDIS_PASS=$(gen_password)
 SECRET=$(gen_secret)
+KYC_SECRET=$(gen_password)
 
 # Write atomically via temp file -- if interrupted, .env is never half-written.
 cat > "${ENV_FILE}.tmp" << ENV_TEMPLATE
@@ -370,6 +371,7 @@ TELEGRAM_BOT_TOKEN=PLACEHOLDER
 # -- KYC (SumSub) --
 SUMSUB_API_KEY=PLACEHOLDER
 SUMSUB_SECRET_KEY=PLACEHOLDER
+KYC_WEBHOOK_SECRET=${KYC_SECRET}
 
 # -- Email --
 EMAP_API_KEY=PLACEHOLDER

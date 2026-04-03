@@ -16,6 +16,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Import as: from app.core.config import APP_VERSION, settings
 APP_VERSION = "0.1.0"
 
+# Valid structlog log levels.
+_VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -77,11 +80,39 @@ class Settings(BaseSettings):
     # -- Notifications --
     notification_max_delivery_attempts: int = 3
 
+    # -- Computed properties --
+
+    @property
+    def is_dev(self) -> bool:
+        """True when running in development mode."""
+        return self.app_env == "development"
+
+    @property
+    def crypto_network_list(self) -> list[str]:
+        """Parsed list of crypto networks from comma-separated string."""
+        return [n.strip() for n in self.crypto_networks.split(",") if n.strip()]
+
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
         """Apply dev defaults and enforce production requirements."""
         is_dev = self.app_env == "development"
 
+        # -- log_level --
+        if self.log_level.upper() not in _VALID_LOG_LEVELS:
+            raise ValueError(
+                f"Invalid LOG_LEVEL: {self.log_level}. "
+                f"Valid: {', '.join(sorted(_VALID_LOG_LEVELS))}"
+            )
+        self.log_level = self.log_level.upper()
+
+        # -- CORS in production --
+        if not is_dev and self.cors_origins.strip() == "*":
+            raise ValueError(
+                "CORS_ORIGINS=* is not allowed in production. "
+                "Set explicit origins, e.g. https://cbshome.org"
+            )
+
+        # -- database_url --
         if not self.database_url:
             if is_dev:
                 self.database_url = (
@@ -90,6 +121,7 @@ class Settings(BaseSettings):
             else:
                 raise ValueError("DATABASE_URL is required in production.")
 
+        # -- secret_key --
         if not self.secret_key:
             if is_dev:
                 self.secret_key = (
@@ -102,6 +134,7 @@ class Settings(BaseSettings):
                     "\"import secrets; print(secrets.token_urlsafe(64))\""
                 )
 
+        # -- kyc_webhook_secret --
         if not self.kyc_webhook_secret:
             if is_dev:
                 self.kyc_webhook_secret = "dev-webhook-secret"
