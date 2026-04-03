@@ -3,17 +3,18 @@
 # =============================================================================
 #
 # Tests cover:
-#   1:   Valid initData -> 200, user created
-#   2:   Repeat login -> same user, credentials.telegram updated
-#   3:   Session created (verified by authenticated request)
-#   4:   Invalid HMAC signature -> 400
-#   5:   Expired initData -> 400
-#   6:   Replayed initData (same hash) -> 400
-#   7:   Rate limit exceeded -> 400
-#   8:   Missing init_data field -> 422
+#   1:    Valid initData -> 200, user created
+#   2:    Repeat login -> same user, credentials.telegram updated
+#   3:    Session created (verified by authenticated request)
+#   4:    Invalid HMAC signature -> 400
+#   5:    Expired initData -> 400
+#   6:    Future auth_date beyond clock_skew -> 400
+#   7:    Slight future auth_date within clock_skew -> 200
+#   8:    Replayed initData (same hash) -> 400
+#   9:    Rate limit exceeded -> 400
+#   10:   Missing init_data field -> 422
 #
 # Telegram IDs: 100001-100099 range, cleaned up in fixture.
-# BOT_TOKEN is read from settings (matches runtime token).
 # =============================================================================
 
 import time
@@ -33,7 +34,7 @@ from tests.helpers import (
 )
 
 # Telegram IDs for this test file.
-TG_IDS = list(range(100001, 100010))
+TG_IDS = list(range(100001, 100020))
 
 
 @pytest.fixture(autouse=True)
@@ -105,7 +106,6 @@ async def test_telegram_invalid_signature(client: AsyncClient) -> None:
     """Tampered initData hash -> 400."""
     user_data = {"id": 100004, "first_name": "Eve"}
     init_data = build_init_data(user_data)
-    # Replace hash with garbage.
     tampered = init_data.rsplit("hash=", 1)[0] + "hash=deadbeef0000"
 
     resp = await client.post(
@@ -130,19 +130,66 @@ async def test_telegram_expired_init_data(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_telegram_future_auth_date_rejected(client: AsyncClient) -> None:
+    """auth_date far in the future (beyond clock_skew) -> 400.
+
+    Without this guard, an attacker sets auth_date to year 2030 and the
+    initData never expires (now - future_date < 0 < ttl).
+    """
+    clock_skew = settings.auth_clock_skew_seconds  # default 60
+    future_date = int(time.time()) + clock_skew + 60  # 60s beyond tolerance
+
+    user_data = {"id": 100008, "first_name": "Future"}
+    init_data = build_init_data(user_data, auth_date=future_date)
+
+    resp = await client.post(
+        "/api/v1/auth/telegram",
+        json={"init_data": init_data},
+    )
+    assert resp.status_code == 400
+    assert "future" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_telegram_slight_future_within_clock_skew(
+    client: AsyncClient,
+) -> None:
+    """auth_date slightly in the future (within clock_skew) -> 200.
+
+    Normal clock drift between Telegram server and our VPS should
+    not reject valid logins.
+    """
+    clock_skew = settings.auth_clock_skew_seconds  # default 60
+    # Half the tolerance -- safely within the window.
+    slight_future = int(time.time()) + clock_skew // 2
+
+    user_data = {"id": 100009, "first_name": "SlightFuture"}
+    init_data = build_init_data(user_data, auth_date=slight_future)
+
+    resp = await client.post(
+        "/api/v1/auth/telegram",
+        json={"init_data": init_data},
+    )
+    assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Anti-replay
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
 async def test_telegram_replayed_init_data(client: AsyncClient) -> None:
     """Same initData sent twice -> second request 400."""
     user_data = {"id": 100006, "first_name": "Replay"}
     init_data = build_init_data(user_data)
 
-    # First request -- should succeed.
     resp1 = await client.post(
         "/api/v1/auth/telegram",
         json={"init_data": init_data},
     )
     assert resp1.status_code == 200
 
-    # Second request with SAME init_data -- should fail.
     resp2 = await client.post(
         "/api/v1/auth/telegram",
         json={"init_data": init_data},
@@ -151,16 +198,20 @@ async def test_telegram_replayed_init_data(client: AsyncClient) -> None:
     assert "already used" in resp2.json()["message"]
 
 
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.asyncio
 async def test_telegram_rate_limit(client: AsyncClient) -> None:
     """More requests than auth_rate_limit_max_requests -> 400.
 
-    Uses real settings (default max_requests=5). Sends max+1 requests.
+    Uses real settings. Sends max+1 requests.
     """
     tg_id = 100007
     max_requests = settings.auth_rate_limit_max_requests
 
-    # Send max_requests successful calls.
     for _ in range(max_requests):
         data = {"id": tg_id, "first_name": "Ratelimit"}
         init_data = build_init_data(data)
@@ -179,6 +230,11 @@ async def test_telegram_rate_limit(client: AsyncClient) -> None:
     )
     assert resp.status_code == 400
     assert "Too many" in resp.json()["message"]
+
+
+# ---------------------------------------------------------------------------
+# Schema validation
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio

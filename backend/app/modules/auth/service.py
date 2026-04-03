@@ -252,7 +252,6 @@ async def upsert_telegram_user(
 
         await session.flush()
         # Reload expired attrs (updated_at) after set_jsonb + flush.
-        # Without this, Pydantic model_validate hits MissingGreenlet.
         await session.refresh(user)
 
         await record_audit(
@@ -298,8 +297,19 @@ async def upsert_telegram_user(
             updated_creds["telegram"] = telegram_creds
             user.set_jsonb("credentials", updated_creds)
             await session.flush()
-            # Reload expired attrs after set_jsonb + flush.
             await session.refresh(user)
+
+            # Audit the race-resolved login -- every auth event must
+            # be recorded for financial platform compliance.
+            await record_audit(
+                session=session,
+                event="user.login",
+                actor_id=user.id,
+                actor_type="user",
+                target_type="user",
+                target_id=user.id,
+                data={"auth_method": "telegram", "race_resolved": True},
+            )
 
             logger.info(
                 "telegram_user_race_resolved",

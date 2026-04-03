@@ -10,8 +10,7 @@
 #
 # TELEGRAM AUTH (Sprint 1.2):
 #   build_init_data() creates a valid signed Telegram initData string.
-#   BOT_TOKEN is read from settings to match the runtime token (may differ
-#   between dev and VPS -- .env sets the real token on prod).
+#   BOT_TOKEN is read from settings to match the runtime token.
 #   _init_data_counter ensures unique query_id on every call to avoid
 #   anti-replay rejection when multiple calls happen in the same second.
 # =============================================================================
@@ -24,7 +23,7 @@ import time
 from urllib.parse import urlencode
 
 from httpx import AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
@@ -66,12 +65,10 @@ def build_init_data(
         "query_id": query_id,
     }
 
-    # Build data-check-string: sorted key=value pairs joined by \n.
     data_check_string = "\n".join(
         f"{k}={v}" for k, v in sorted(params.items())
     )
 
-    # Compute HMAC-SHA256.
     secret_key = hmac.new(
         b"WebAppData", bot_token.encode(), hashlib.sha256,
     ).digest()
@@ -88,11 +85,7 @@ async def register_user(
     email: str = "test@example.com",
     password: str = "testpass123",
 ) -> dict:
-    """Register a user via POST /api/v1/auth/email/register.
-
-    Returns the parsed AuthResponse dict.
-    Raises AssertionError if status != 201.
-    """
+    """Register a user via POST /api/v1/auth/email/register."""
     resp = await client.post(
         "/api/v1/auth/email/register",
         json={"email": email, "password": password},
@@ -106,11 +99,7 @@ async def login_user(
     email: str = "test@example.com",
     password: str = "testpass123",
 ) -> dict:
-    """Login a user via POST /api/v1/auth/email/login.
-
-    Returns the parsed AuthResponse dict.
-    Raises AssertionError if status != 200.
-    """
+    """Login a user via POST /api/v1/auth/email/login."""
     resp = await client.post(
         "/api/v1/auth/email/login",
         json={"email": email, "password": password},
@@ -125,11 +114,7 @@ async def login_telegram(
     first_name: str = "Test",
     username: str | None = None,
 ) -> dict:
-    """Login via POST /api/v1/auth/telegram.
-
-    Returns the parsed AuthResponse dict.
-    Raises AssertionError if status != 200.
-    """
+    """Login via POST /api/v1/auth/telegram."""
     user_data = {"id": telegram_id, "first_name": first_name}
     if username:
         user_data["username"] = username
@@ -150,7 +135,6 @@ async def cleanup_test_users(
     """Delete test users whose email starts with the given prefix.
 
     Also cleans up related audit_log entries (actor_id or target_id).
-    Uses ORM delete (no raw SQL).
     """
     stmt = select(User.id).where(
         User.credentials["email"]["email"].as_string().startswith(email_prefix)
@@ -180,20 +164,20 @@ async def cleanup_telegram_test_users(
 ) -> None:
     """Delete test users by telegram_id in credentials JSONB.
 
+    Uses single query with or_() instead of N+1 selects.
     Also cleans up related audit_log entries.
     """
     if not telegram_ids:
         return
 
-    user_ids = []
-    for tg_id in telegram_ids:
-        stmt = select(User.id).where(
-            User.credentials["telegram"]["id"].as_integer() == tg_id
-        )
-        result = await session.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row:
-            user_ids.append(row)
+    # Single query: find all user IDs matching any of the telegram_ids.
+    conditions = [
+        User.credentials["telegram"]["id"].as_integer() == tg_id
+        for tg_id in telegram_ids
+    ]
+    stmt = select(User.id).where(or_(*conditions))
+    result = await session.execute(stmt)
+    user_ids = [row[0] for row in result.all()]
 
     if not user_ids:
         return
