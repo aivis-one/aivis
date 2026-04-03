@@ -101,7 +101,7 @@ async def register_email(
     the transaction lifecycle (P-01).
 
     Raises:
-        ConflictError: If email is already registered.
+        ConflictError: If email is already registered (ix_users_email).
     """
     email_lower = email.strip().lower()
     password_hashed = hash_password(password)
@@ -126,12 +126,14 @@ async def register_email(
 
     session.add(user)
 
-    # IntegrityError from ix_users_email unique index means duplicate.
-    # No rollback here -- get_db_session handles rollback on exception (P-01).
+    # Catch only the specific ix_users_email constraint violation.
+    # Other IntegrityErrors (future constraints) re-raise unmasked.
     try:
         await session.flush()
-    except IntegrityError:
-        raise ConflictError("Email is already registered")
+    except IntegrityError as exc:
+        if "ix_users_email" in str(exc.orig):
+            raise ConflictError("Email is already registered")
+        raise
 
     await record_audit(
         session=session,
