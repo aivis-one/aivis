@@ -8,8 +8,7 @@
 #   get_current_user           -- any authenticated user, read session
 #   get_current_user_write     -- any authenticated user, write session
 #   get_optional_user          -- optional auth, read session; None if no token
-#   get_current_staff          -- staff role + StaffProfile (active) required;
-#                                 returns (User, StaffProfile) tuple
+#   get_current_staff          -- staff role + StaffProfile (active) required
 #   require_staff_permission() -- factory: staff + specific permission check
 #
 # TD-029 PATTERN (from VELO):
@@ -24,8 +23,8 @@
 #
 # STAFF PERMISSION CHECK (Sprint 3.1):
 #   get_current_staff verifies: role == staff, StaffProfile exists,
-#   StaffProfile.is_active. Returns (User, StaffProfile) so callers
-#   don't need a second DB query.
+#   StaffProfile.is_active. Does NOT check specific permissions --
+#   use require_staff_permission("perm_name") for that.
 #
 #   require_staff_permission() returns a FastAPI dependency that
 #   performs the full staff check PLUS verifies a specific permission
@@ -214,16 +213,17 @@ async def get_optional_user(
 async def get_current_staff(
     request: Request,
     session: AsyncSession = Depends(get_db_reader),
-) -> tuple[User, StaffProfile]:
+) -> User:
     """Require authenticated staff user with active StaffProfile.
 
     Sprint 3.1: verifies role=staff, loads StaffProfile, checks is_active.
-    Returns (User, StaffProfile) tuple so callers can use the profile
-    without a second DB query.
+    Does NOT check specific permissions -- use require_staff_permission()
+    for that.
 
-    Usage: staff, profile = Depends(get_current_staff)
+    Usage: staff: User = Depends(get_current_staff)
     """
-    return await _get_verified_staff(request, session)
+    user, _profile = await _get_verified_staff(request, session)
+    return user
 
 
 def require_staff_permission(permission: str) -> Callable:

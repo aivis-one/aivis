@@ -8,6 +8,10 @@
 #                         Prevents disk exhaustion via oversized headers.
 #                         TD-020: consolidated from middleware.py + audit.py.
 #
+# STAFF PERMISSIONS:
+#   Single source of truth in app/modules/staff/constants.py.
+#   Not duplicated here.
+#
 # LEDGER REASONS:
 #   All ledger entry `reason` strings must come from this registry.
 #   Format: "{operation}:{details}"
@@ -16,10 +20,6 @@
 #   - reason.split(":")[0]  ->  operation type (for semaphore filtering)
 #   - Reversal entries:     original_reason + ":reversal" suffix
 #   - Semaphores filter by prefix, e.g. "deposit:", "commission:"
-#
-# STAFF PERMISSIONS:
-#   Single source of truth in app/modules/staff/constants.py.
-#   Not duplicated here.
 #
 # USAGE:
 #   from app.core.constants import LedgerReason, USER_AGENT_MAX_LEN

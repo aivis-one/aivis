@@ -13,10 +13,6 @@
 #   Admin = staff with ALL permissions True. Checked via is_admin().
 #   Only admin can create staff and update permissions.
 #
-# LAST-ADMIN GUARD:
-#   Cannot remove admin status from the last remaining admin.
-#   Prevents lockout scenario where no one can manage staff.
-#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
 #
@@ -33,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
-from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS, is_admin
+from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS
 from app.modules.staff.models import StaffProfile
 from app.modules.staff.schemas import StaffListItem, UpdatePermissionsRequest
 from app.modules.users.models import User, UserRole
@@ -61,20 +57,6 @@ async def get_staff_profile(
     stmt = select(StaffProfile).where(StaffProfile.user_id == user_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
-
-
-async def _count_admins(session: AsyncSession) -> int:
-    """Count staff profiles that have admin-level permissions (all True)."""
-    stmt = select(StaffProfile).where(StaffProfile.is_active.is_(True))
-    result = await session.execute(stmt)
-    profiles = result.scalars().all()
-
-    count = 0
-    for profile in profiles:
-        effective = get_effective_permissions(profile)
-        if is_admin(effective):
-            count += 1
-    return count
 
 
 async def create_staff(
@@ -155,11 +137,9 @@ async def update_permissions(
     """Update staff permission matrix (partial update).
 
     Only admin can call this. Only provided fields are updated.
-    Prevents removing admin status from the last remaining admin.
 
     Raises:
         NotFoundError: If staff profile not found.
-        BadRequestError: If update would remove the last admin.
     """
     stmt = select(StaffProfile).where(StaffProfile.id == staff_profile_id)
     result = await session.execute(stmt)
@@ -176,19 +156,6 @@ async def update_permissions(
 
     current = dict(profile.permissions) if profile.permissions else {}
     new_permissions = {**current, **updates}
-
-    # Last-admin guard: if this profile is currently admin and the update
-    # would make it non-admin, check there's at least one other admin.
-    current_effective = get_effective_permissions(profile)
-    new_effective = dict(DEFAULT_STAFF_PERMISSIONS)
-    new_effective.update(new_permissions)
-
-    if is_admin(current_effective) and not is_admin(new_effective):
-        admin_count = await _count_admins(session)
-        if admin_count <= 1:
-            raise BadRequestError(
-                "Cannot remove admin permissions: this is the last admin"
-            )
 
     # set_jsonb for safe JSONB mutation.
     profile.set_jsonb("permissions", new_permissions)
