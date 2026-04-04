@@ -169,7 +169,27 @@ Apply these from **reference/shell.md** (do NOT skip):
 
 ## Step 3.5: Toolbar Controls
 
-Add theme toggle and language switcher to toolbar-right:
+**toolbar-left** must include home button after project-info:
+
+```html
+<div class="toolbar-left">
+  <div class="project-info">
+    <span class="project-name">{PROJECT} v1</span>
+    <span class="project-badge">LIVE</span>
+  </div>
+  <a href="../index.html" class="home-btn" title="Hub"><i data-lucide="layout-grid"></i></a>
+</div>
+```
+
+**Device buttons** must use Lucide icons — NEVER emoji:
+
+```html
+<button class="device-btn" data-device="phone"><i data-lucide="smartphone" style="width:14px;height:14px"></i> ...</button>
+<button class="device-btn" data-device="tablet"><i data-lucide="tablet" style="width:14px;height:14px"></i> ...</button>
+<button class="device-btn" data-device="desktop"><i data-lucide="monitor" style="width:14px;height:14px"></i> ...</button>
+```
+
+**toolbar-right** — theme toggle, 3-language switcher, map button, zoom:
 
 ```html
 <div class="toolbar-right">

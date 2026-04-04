@@ -61,8 +61,8 @@ Quality gates for validating live mockups before delivery.
 
 | ID | Check | Level | How to Test |
 |----|-------|-------|-------------|
-| N1 | Map button visible in toolbar | 🔴 | Look for 📍 Map button |
-| N2 | Map popup opens on click | 🔴 | Click 📍 Map — popup appears |
+| N1 | Map button visible in toolbar | 🔴 | Look for Map button (Lucide map-pin icon) |
+| N2 | Map popup opens on click | 🔴 | Click Map button — popup appears |
 | N3 | Map popup closes on × or overlay click | 🔴 | Click × or outside popup |
 | N4 | Stats show correct counts | 🟡 | Verify экранов / путей / финальных точек |
 | N5 | 🟢 Screen items navigate correctly | 🔴 | Click green item → navigates to screen |

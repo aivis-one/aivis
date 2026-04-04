@@ -128,53 +128,53 @@
             </header>
             <main class="main">
               <div style="margin-bottom:20px">
-                <span style="font-size:14px;color:var(--text-secondary)">Компания</span>
+                <span style="font-size:14px;color:var(--text-secondary)" data-i18n="comp.role">Компания</span>
                 <h2 style="font-size:20px;font-weight:700;color:var(--text)">IPI AG</h2>
-                <div style="display:inline-block;margin-top:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(26,107,106,0.1);color:var(--primary)"><i data-lucide="building-2" style="width:12px;height:12px;vertical-align:-2px"></i> Админ: Sergej Seider</div>
+                <div style="display:inline-block;margin-top:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(26,107,106,0.1);color:var(--primary)"><i data-lucide="building-2" style="width:12px;height:12px;vertical-align:-2px"></i> <span data-i18n="comp.admin">Админ:</span> Sergej Seider</div>
               </div>
               <div class="stats-grid">
                 <div class="stat-card" onclick="showToast('Детали выручки — финальная точка')">
                   <div class="icon-box green"><i data-lucide="trending-up"></i></div>
-                  <div class="stat-label">Выручка</div>
+                  <div class="stat-label" data-i18n="comp.revenue">Выручка</div>
                   <div class="stat-value">&euro;847 500</div>
-                  <div class="stat-change up">+&euro;42K за месяц</div>
+                  <div class="stat-change up" data-i18n="comp.revenue.change">+&euro;42K за месяц</div>
                 </div>
                 <div class="stat-card" onclick="switchTab('screen-products','tab-products')">
                   <div class="icon-box teal"><i data-lucide="package"></i></div>
-                  <div class="stat-label">Продукты</div>
+                  <div class="stat-label" data-i18n="comp.products">Продукты</div>
                   <div class="stat-value">3</div>
-                  <div class="stat-sub">2 активных</div>
+                  <div class="stat-sub" data-i18n="comp.products.active">2 активных</div>
                 </div>
                 <div class="stat-card" onclick="switchTab('screen-analytics','tab-analytics')">
                   <div class="icon-box orange"><i data-lucide="shopping-cart"></i></div>
-                  <div class="stat-label">Продаж (мес)</div>
+                  <div class="stat-label" data-i18n="comp.monthlySales">Продаж (мес)</div>
                   <div class="stat-value">18 400</div>
                   <div class="stat-change up">+2.1K</div>
                 </div>
                 <div class="stat-card" onclick="switchTab('screen-settings','tab-settings')">
                   <div class="icon-box blue"><i data-lucide="wallet"></i></div>
-                  <div class="stat-label">Пассивный баланс</div>
+                  <div class="stat-label" data-i18n="comp.passive">Пассивный баланс</div>
                   <div class="stat-value">&euro;635 625</div>
-                  <div class="stat-sub">75% от выручки</div>
+                  <div class="stat-sub" data-i18n="comp.products.revShare">75% от выручки</div>
                 </div>
               </div>
               <div class="section-header">
-                <span class="section-title">Последние транзакции</span>
-                <button class="section-link" onclick="switchTab('screen-analytics','tab-analytics')">Все &rarr;</button>
+                <span class="section-title" data-i18n="comp.lastTx">Последние транзакции</span>
+                <button class="section-link" onclick="switchTab('screen-analytics','tab-analytics')" data-i18n="comp.allTx">Все &rarr;</button>
               </div>
               <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                 <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
-                <div class="tx-info"><div class="tx-name">IPI AG Shares — 5 000 ед.</div><div class="tx-detail">Анна Петрова &bull; L1 агент</div></div>
+                <div class="tx-info"><div class="tx-name" data-i18n="comp.tx.ipi5000">IPI AG Shares — 5 000 ед.</div><div class="tx-detail" data-i18n="comp.tx.petrova">Анна Петрова &bull; L1 агент</div></div>
                 <div class="tx-amount"><div class="tx-sum positive">+&euro;5 000</div><div class="tx-date">01.04.2026</div></div>
               </div>
               <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                 <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
-                <div class="tx-info"><div class="tx-name">Immo-Pro-Invest — 3 000 ед.</div><div class="tx-detail">Дмитрий Козлов &bull; L2 агент</div></div>
+                <div class="tx-info"><div class="tx-name" data-i18n="comp.tx.immo3000">Immo-Pro-Invest — 3 000 ед.</div><div class="tx-detail" data-i18n="comp.tx.kozlov">Дмитрий Козлов &bull; L2 агент</div></div>
                 <div class="tx-amount"><div class="tx-sum positive">+&euro;3 000</div><div class="tx-date">31.03.2026</div></div>
               </div>
               <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                 <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
-                <div class="tx-info"><div class="tx-name">IPI AG Shares — 8 000 ед.</div><div class="tx-detail">Елена Морозова &bull; L1 агент</div></div>
+                <div class="tx-info"><div class="tx-name" data-i18n="comp.tx.ipi8000">IPI AG Shares — 8 000 ед.</div><div class="tx-detail" data-i18n="comp.tx.morozova">Елена Морозова &bull; L1 агент</div></div>
                 <div class="tx-amount"><div class="tx-sum positive">+&euro;8 000</div><div class="tx-date">28.03.2026</div></div>
               </div>
             </main>
@@ -190,30 +190,30 @@
           <!-- ===== SCREEN 2: PRODUCTS ===== -->
           <div class="screen" id="screen-products">
             <header class="app-header">
-              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">Продукты</span></div>
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="comp.products.title">Продукты</span></div>
               <div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt=""></div>
             </header>
             <main class="main">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <span class="section-title" style="margin-bottom:0">3 продукта</span>
-                <button class="btn btn-primary btn-sm" style="width:auto;padding:8px 16px" onclick="showToast('Создание продукта — финальная точка')">+ Добавить</button>
+                <span class="section-title" style="margin-bottom:0" data-i18n="comp.products.count">3 продукта</span>
+                <button class="btn btn-primary btn-sm" style="width:auto;padding:8px 16px" onclick="showToast('Создание продукта — финальная точка')" data-i18n="comp.addProduct">+ Добавить</button>
               </div>
               <div class="product-item" onclick="navigateTo('screen-product-edit')">
                 <div class="product-icon" style="background:var(--success-dim)"><i data-lucide="bar-chart-3" style="width:20px;height:20px;color:var(--success)"></i></div>
-                <div class="product-info"><div class="product-name">IPI AG Shares</div><div class="product-meta"><span class="badge badge-active">Активен</span> &bull; &euro;1.00/ед.</div></div>
-                <div class="product-right"><div class="product-price">&euro;347 000</div><div class="product-sold">347K продано</div></div>
+                <div class="product-info"><div class="product-name">IPI AG Shares</div><div class="product-meta"><span class="badge badge-active" data-i18n="comp.badge.active">Активен</span> &bull; &euro;1.00/ед.</div></div>
+                <div class="product-right"><div class="product-price">&euro;347 000</div><div class="product-sold" data-i18n="comp.sold.347k">347K продано</div></div>
               </div>
               <div class="product-item" onclick="navigateTo('screen-product-edit')">
                 <div class="product-icon" style="background:rgba(26,107,106,0.15)"><i data-lucide="building" style="width:20px;height:20px;color:var(--primary)"></i></div>
-                <div class="product-info"><div class="product-name">Immo-Pro-Invest</div><div class="product-meta"><span class="badge badge-active">Активен</span> &bull; &euro;1.00/ед.</div></div>
-                <div class="product-right"><div class="product-price">&euro;128 000</div><div class="product-sold">128K продано</div></div>
+                <div class="product-info"><div class="product-name">Immo-Pro-Invest</div><div class="product-meta"><span class="badge badge-active" data-i18n="comp.badge.active">Активен</span> &bull; &euro;1.00/ед.</div></div>
+                <div class="product-right"><div class="product-price">&euro;128 000</div><div class="product-sold" data-i18n="comp.sold.128k">128K продано</div></div>
               </div>
               <div class="product-item" onclick="navigateTo('screen-product-edit')">
                 <div class="product-icon" style="background:var(--warning-dim)"><i data-lucide="building-2" style="width:20px;height:20px;color:var(--warning)"></i></div>
-                <div class="product-info"><div class="product-name">CBS Home Franchise</div><div class="product-meta"><span class="badge badge-hidden">Скрыт</span> &bull; Скоро</div></div>
+                <div class="product-info"><div class="product-name">CBS Home Franchise</div><div class="product-meta"><span class="badge badge-hidden" data-i18n="comp.badge.hidden">Скрыт</span> &bull; <span data-i18n="comp.comingSoon">Скоро</span></div></div>
                 <div class="product-right"><div class="product-price">&mdash;</div><div class="product-sold">Окт. 2026</div></div>
               </div>
-              <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);margin-top:16px;font-size:12px;color:var(--text-secondary)"><i data-lucide="info" style="width:12px;height:12px;vertical-align:-2px"></i> Нажмите на продукт для редактирования. Распределение комиссий настраивается в карточке продукта.</div>
+              <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);margin-top:16px;font-size:12px;color:var(--text-secondary)"><i data-lucide="info" style="width:12px;height:12px;vertical-align:-2px"></i> <span data-i18n="comp.editHint">Нажмите на продукт для редактирования. Распределение комиссий настраивается в карточке продукта.</span></div>
             </main>
             <nav class="tab-bar">
               <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.comp.home">Главная</span></button>
@@ -227,59 +227,59 @@
           <!-- ===== SCREEN 3: PRODUCT EDIT ===== -->
           <div class="screen" id="screen-product-edit">
             <header class="app-header">
-              <div class="header-left"><button class="btn-link" onclick="navigateTo('screen-products')" style="padding:0;font-size:14px">&larr; Продукты</button><span class="header-title" style="margin-left:8px">Редактирование</span></div>
+              <div class="header-left"><button class="btn-link" onclick="navigateTo('screen-products')" style="padding:0;font-size:14px">&larr; <span data-i18n="comp.backProducts">Продукты</span></button><span class="header-title" style="margin-left:8px" data-i18n="comp.editing">Редактирование</span></div>
             </header>
             <main class="main">
-              <div class="form-group"><label class="form-label">Название продукта</label><input class="form-input" type="text" value="IPI AG Shares"></div>
-              <div class="form-group"><label class="form-label">Описание</label><textarea class="form-input">Инвестиционные паи IPI AG. Минимальная покупка — 100 юнитов. Доход формируется из прибыли холдинга.</textarea></div>
+              <div class="form-group"><label class="form-label" data-i18n="comp.form.name">Название продукта</label><input class="form-input" type="text" value="IPI AG Shares"></div>
+              <div class="form-group"><label class="form-label" data-i18n="comp.form.desc">Описание</label><textarea class="form-input" data-i18n="comp.productDesc">Инвестиционные паи IPI AG. Минимальная покупка — 100 юнитов. Доход формируется из прибыли холдинга.</textarea></div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label">Цена за единицу (&euro;)</label><input class="form-input" type="text" value="1.00"></div>
-                <div class="form-group"><label class="form-label">Статус</label><select class="form-input"><option selected>Активен</option><option>Скрыт</option><option>Архив</option></select></div>
+                <div class="form-group"><label class="form-label" data-i18n="comp.form.pricePerUnit">Цена за единицу (&euro;)</label><input class="form-input" type="text" value="1.00"></div>
+                <div class="form-group"><label class="form-label" data-i18n="comp.form.status">Статус</label><select class="form-input"><option selected>Активен</option><option>Скрыт</option><option>Архив</option></select></div>
               </div>
               <div class="form-group">
-                <label class="form-label">Распределение комиссий</label>
+                <label class="form-label" data-i18n="comp.dist.title">Распределение комиссий</label>
                 <div class="dist-grid">
-                  <div class="dist-item"><div class="dist-label">Компания</div><div class="dist-value">75%</div></div>
-                  <div class="dist-item"><div class="dist-label">L1 агент</div><div class="dist-value">10%</div></div>
-                  <div class="dist-item"><div class="dist-label">L2 агент</div><div class="dist-value">3%</div></div>
-                  <div class="dist-item"><div class="dist-label">L3 агент</div><div class="dist-value">1%</div></div>
-                  <div class="dist-item" style="grid-column:1/-1"><div class="dist-label">Платформа CBS HOME</div><div class="dist-value">11%</div></div>
+                  <div class="dist-item"><div class="dist-label" data-i18n="comp.dist.company">Компания</div><div class="dist-value">75%</div></div>
+                  <div class="dist-item"><div class="dist-label" data-i18n="comp.dist.l1">L1 агент</div><div class="dist-value">10%</div></div>
+                  <div class="dist-item"><div class="dist-label" data-i18n="comp.dist.l2">L2 агент</div><div class="dist-value">3%</div></div>
+                  <div class="dist-item"><div class="dist-label" data-i18n="comp.dist.l3">L3 агент</div><div class="dist-value">1%</div></div>
+                  <div class="dist-item" style="grid-column:1/-1"><div class="dist-label" data-i18n="comp.dist.platform">Платформа CBS HOME</div><div class="dist-value">11%</div></div>
                 </div>
               </div>
-              <div style="padding:10px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--primary)"><i data-lucide="check-circle" style="width:12px;height:12px;vertical-align:-2px"></i> Сумма: 75 + 10 + 3 + 1 + 11 = 100%</div>
-              <button class="btn btn-primary" onclick="showToast('Продукт сохранён','success')"><i data-lucide="save" style="width:14px;height:14px;vertical-align:-2px"></i> Сохранить</button>
-              <button class="btn btn-secondary" style="margin-top:8px" onclick="navigateTo('screen-products')">Отмена</button>
+              <div style="padding:10px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--primary)"><i data-lucide="check-circle" style="width:12px;height:12px;vertical-align:-2px"></i> <span data-i18n="comp.dist.sumCheck">Сумма: 75 + 10 + 3 + 1 + 11 = 100%</span></div>
+              <button class="btn btn-primary" onclick="showToast('Продукт сохранён','success')"><i data-lucide="save" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.save">Сохранить</span></button>
+              <button class="btn btn-secondary" style="margin-top:8px" onclick="navigateTo('screen-products')" data-i18n="comp.cancel">Отмена</button>
             </main>
           </div>
 
           <!-- ===== SCREEN 4: ANALYTICS ===== -->
           <div class="screen" id="screen-analytics">
             <header class="app-header">
-              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">Аналитика</span></div>
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="comp.analytics.title">Аналитика</span></div>
               <div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt=""></div>
             </header>
             <main class="main">
               <div class="balance-card" style="background:linear-gradient(135deg,var(--primary),var(--primary-dark))">
-                <div class="balance-label">Общая выручка</div>
+                <div class="balance-label" data-i18n="comp.analytics.totalRev">Общая выручка</div>
                 <div class="balance-value">&euro;847 500</div>
                 <div class="balance-row">
-                  <div class="balance-sub"><div class="balance-sub-label">Этот месяц</div><div class="balance-sub-value">&euro;42 000</div></div>
-                  <div class="balance-sub"><div class="balance-sub-label">Юнитов продано</div><div class="balance-sub-value">475 000</div></div>
+                  <div class="balance-sub"><div class="balance-sub-label" data-i18n="comp.analytics.thisMonth">Этот месяц</div><div class="balance-sub-value">&euro;42 000</div></div>
+                  <div class="balance-sub"><div class="balance-sub-label" data-i18n="comp.analytics.unitsSold">Юнитов продано</div><div class="balance-sub-value">475 000</div></div>
                 </div>
               </div>
 
-              <div class="section-title">Продажи по месяцам</div>
+              <div class="section-title" data-i18n="comp.salesByMonth">Продажи по месяцам</div>
               <div class="chart-placeholder">
                 <div class="chart-bars">
-                  <div class="chart-bar" style="height:40%" title="Окт"></div>
-                  <div class="chart-bar" style="height:55%" title="Ноя"></div>
-                  <div class="chart-bar" style="height:50%" title="Дек"></div>
-                  <div class="chart-bar" style="height:65%" title="Янв"></div>
-                  <div class="chart-bar" style="height:72%" title="Фев"></div>
-                  <div class="chart-bar" style="height:85%" title="Мар"></div>
-                  <div class="chart-bar" style="height:95%;background:var(--accent)" title="Апр"></div>
+                  <div class="chart-bar" style="height:40%" title="Окт" data-i18n="comp.month.oct" data-i18n-attr="title"></div>
+                  <div class="chart-bar" style="height:55%" title="Ноя" data-i18n="comp.month.nov" data-i18n-attr="title"></div>
+                  <div class="chart-bar" style="height:50%" title="Дек" data-i18n="comp.month.dec" data-i18n-attr="title"></div>
+                  <div class="chart-bar" style="height:65%" title="Янв" data-i18n="comp.month.jan" data-i18n-attr="title"></div>
+                  <div class="chart-bar" style="height:72%" title="Фев" data-i18n="comp.month.feb" data-i18n-attr="title"></div>
+                  <div class="chart-bar" style="height:85%" title="Мар" data-i18n="comp.month.mar" data-i18n-attr="title"></div>
+                  <div class="chart-bar" style="height:95%;background:var(--accent)" title="Апр" data-i18n="comp.month.apr" data-i18n-attr="title"></div>
                 </div>
-                <div class="chart-label">Окт — Апр 2026 (юниты)</div>
+                <div class="chart-label" data-i18n="comp.chart.label">Окт — Апр 2026 (юниты)</div>
               </div>
 
               <div class="stats-grid">
@@ -287,50 +287,50 @@
                   <div class="icon-box teal"><i data-lucide="bar-chart-3"></i></div>
                   <div class="stat-label">IPI AG Shares</div>
                   <div class="stat-value">347K</div>
-                  <div class="stat-sub">юнитов</div>
+                  <div class="stat-sub" data-i18n="comp.analytics.units">юнитов</div>
                 </div>
                 <div class="stat-card" onclick="showToast('Детали Immo-Pro-Invest — финальная точка')">
                   <div class="icon-box orange"><i data-lucide="building"></i></div>
                   <div class="stat-label">Immo-Pro-Invest</div>
                   <div class="stat-value">128K</div>
-                  <div class="stat-sub">юнитов</div>
+                  <div class="stat-sub" data-i18n="comp.analytics.units">юнитов</div>
                 </div>
               </div>
 
               <div class="section-header">
-                <span class="section-title">Топ агенты</span>
-                <button class="section-link" onclick="showToast('Все агенты — финальная точка')">Все &rarr;</button>
+                <span class="section-title" data-i18n="comp.topAgents">Топ агенты</span>
+                <button class="section-link" onclick="showToast('Все агенты — финальная точка')" data-i18n="comp.topAgents.all">Все &rarr;</button>
               </div>
               <div class="agent-item" onclick="showToast('Профиль агента — финальная точка')">
-                <div class="agent-rank">1</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=33" alt=""><div class="agent-info"><div class="agent-name">Максим Иванов</div><div class="agent-volume">48 200 юнитов</div></div><div class="agent-earned">&euro;4 820</div>
+                <div class="agent-rank">1</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=33" alt=""><div class="agent-info"><div class="agent-name">Максим Иванов</div><div class="agent-volume" data-i18n="comp.agent.volume.48200">48 200 юнитов</div></div><div class="agent-earned">&euro;4 820</div>
               </div>
               <div class="agent-item" onclick="showToast('Профиль агента — финальная точка')">
-                <div class="agent-rank">2</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=47" alt=""><div class="agent-info"><div class="agent-name">Наталья Сидорова</div><div class="agent-volume">41 800 юнитов</div></div><div class="agent-earned">&euro;4 180</div>
+                <div class="agent-rank">2</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=47" alt=""><div class="agent-info"><div class="agent-name">Наталья Сидорова</div><div class="agent-volume" data-i18n="comp.agent.volume.41800">41 800 юнитов</div></div><div class="agent-earned">&euro;4 180</div>
               </div>
               <div class="agent-item" onclick="showToast('Профиль агента — финальная точка')">
-                <div class="agent-rank">3</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=15" alt=""><div class="agent-info"><div class="agent-name">Артём Волков</div><div class="agent-volume">38 500 юнитов</div></div><div class="agent-earned">&euro;3 850</div>
+                <div class="agent-rank">3</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=15" alt=""><div class="agent-info"><div class="agent-name">Артём Волков</div><div class="agent-volume" data-i18n="comp.agent.volume.38500">38 500 юнитов</div></div><div class="agent-earned">&euro;3 850</div>
               </div>
               <div class="agent-item" onclick="showToast('Профиль агента — финальная точка')">
-                <div class="agent-rank">4</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=22" alt=""><div class="agent-info"><div class="agent-name">Елена Морозова</div><div class="agent-volume">32 100 юнитов</div></div><div class="agent-earned">&euro;3 210</div>
+                <div class="agent-rank">4</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=22" alt=""><div class="agent-info"><div class="agent-name">Елена Морозова</div><div class="agent-volume" data-i18n="comp.agent.volume.32100">32 100 юнитов</div></div><div class="agent-earned">&euro;3 210</div>
               </div>
               <div class="agent-item" onclick="showToast('Профиль агента — финальная точка')">
-                <div class="agent-rank">5</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=31" alt=""><div class="agent-info"><div class="agent-name">Ольга Лебедева</div><div class="agent-volume">28 700 юнитов</div></div><div class="agent-earned">&euro;2 870</div>
+                <div class="agent-rank">5</div><img class="agent-avatar" src="https://i.pravatar.cc/150?img=31" alt=""><div class="agent-info"><div class="agent-name">Ольга Лебедева</div><div class="agent-volume" data-i18n="comp.agent.volume.28700">28 700 юнитов</div></div><div class="agent-earned">&euro;2 870</div>
               </div>
 
-              <div class="section-title" style="margin-top:20px">Месячная разбивка</div>
+              <div class="section-title" style="margin-top:20px" data-i18n="comp.monthBreakdown">Месячная разбивка</div>
               <div class="tx-item" onclick="showToast('Март детали — финальная точка')">
                 <div class="icon-box teal"><i data-lucide="calendar"></i></div>
-                <div class="tx-info"><div class="tx-name">Март 2026</div><div class="tx-detail">IPI: 28K + Immo: 14K юнитов</div></div>
+                <div class="tx-info"><div class="tx-name" data-i18n="comp.breakdown.mar">Март 2026</div><div class="tx-detail" data-i18n="comp.breakdown.mar.d">IPI: 28K + Immo: 14K юнитов</div></div>
                 <div class="tx-amount"><div class="tx-sum positive">&euro;42 000</div></div>
               </div>
               <div class="tx-item" onclick="showToast('Февраль детали — финальная точка')">
                 <div class="icon-box teal"><i data-lucide="calendar"></i></div>
-                <div class="tx-info"><div class="tx-name">Февраль 2026</div><div class="tx-detail">IPI: 24K + Immo: 12K юнитов</div></div>
+                <div class="tx-info"><div class="tx-name" data-i18n="comp.breakdown.feb">Февраль 2026</div><div class="tx-detail" data-i18n="comp.breakdown.feb.d">IPI: 24K + Immo: 12K юнитов</div></div>
                 <div class="tx-amount"><div class="tx-sum positive">&euro;36 000</div></div>
               </div>
               <div class="tx-item" onclick="showToast('Январь детали — финальная точка')">
                 <div class="icon-box teal"><i data-lucide="calendar"></i></div>
-                <div class="tx-info"><div class="tx-name">Январь 2026</div><div class="tx-detail">IPI: 22K + Immo: 10K юнитов</div></div>
+                <div class="tx-info"><div class="tx-name" data-i18n="comp.breakdown.jan">Январь 2026</div><div class="tx-detail" data-i18n="comp.breakdown.jan.d">IPI: 22K + Immo: 10K юнитов</div></div>
                 <div class="tx-amount"><div class="tx-sum positive">&euro;32 000</div></div>
               </div>
             </main>
@@ -346,55 +346,55 @@
           <!-- ===== SCREEN 5: SETTINGS ===== -->
           <div class="screen" id="screen-settings">
             <header class="app-header">
-              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">Настройки</span></div>
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="comp.settings.title">Настройки</span></div>
             </header>
             <main class="main">
               <div style="text-align:center;padding:20px 0">
                 <div style="width:72px;height:72px;border-radius:var(--radius-lg);background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;margin:0 auto 12px">IPI</div>
                 <div style="font-size:18px;font-weight:700;color:var(--text)">IPI AG</div>
-                <div style="font-size:13px;color:var(--text-secondary)">Sergej Seider — Администратор</div>
+                <div style="font-size:13px;color:var(--text-secondary)">Sergej Seider — <span data-i18n="comp.settings.admin">Администратор</span></div>
                 <div style="display:inline-flex;gap:8px;margin-top:8px">
-                  <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(26,107,106,0.1);color:var(--primary)"><i data-lucide="building-2" style="width:10px;height:10px;vertical-align:-1px"></i> Компания</span>
-                  <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:var(--success-dim);color:var(--success)"><i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i> Верифицирована</span>
+                  <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(26,107,106,0.1);color:var(--primary)"><i data-lucide="building-2" style="width:10px;height:10px;vertical-align:-1px"></i> <span data-i18n="comp.badge">Компания</span></span>
+                  <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:var(--success-dim);color:var(--success)"><i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i> <span data-i18n="comp.settings.verified">Верифицирована</span></span>
                 </div>
               </div>
 
               <div class="balance-card" style="background:linear-gradient(135deg,var(--accent),var(--accent-dark))">
-                <div class="balance-label">Пассивный баланс (выручка компании)</div>
+                <div class="balance-label" data-i18n="comp.passive.label">Пассивный баланс (выручка компании)</div>
                 <div class="balance-value">&euro;635 625</div>
                 <div class="balance-row">
-                  <div class="balance-sub"><div class="balance-sub-label">Подтверждён</div><div class="balance-sub-value">&euro;620 000</div></div>
+                  <div class="balance-sub"><div class="balance-sub-label" data-i18n="comp.settings.confirmed">Подтверждён</div><div class="balance-sub-value">&euro;620 000</div></div>
                   <div class="balance-sub"><div class="balance-sub-label"><i data-lucide="snowflake" style="width:10px;height:10px;vertical-align:-1px"></i> Cooling-off</div><div class="balance-sub-value">&euro;15 625</div></div>
                 </div>
               </div>
 
               <div style="display:flex;gap:8px;margin-bottom:20px">
-                <button class="btn btn-primary btn-sm" style="flex:1" onclick="showToast('Вывод средств — финальная точка')"><i data-lucide="arrow-up-circle" style="width:14px;height:14px;vertical-align:-2px"></i> Вывести</button>
-                <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Реинвестировать — финальная точка')"><i data-lucide="refresh-cw" style="width:14px;height:14px;vertical-align:-2px"></i> Реинвест</button>
+                <button class="btn btn-primary btn-sm" style="flex:1" onclick="showToast('Вывод средств — финальная точка')"><i data-lucide="arrow-up-circle" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.withdraw">Вывести</span></button>
+                <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Реинвестировать — финальная точка')"><i data-lucide="refresh-cw" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.reinvest">Реинвест</span></button>
               </div>
 
               <div style="border-top:1px solid var(--border);padding-top:16px">
-                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Профиль компании</div>
-                <div class="setting-row" onclick="showToast('Редактирование названия — финальная точка')"><span class="setting-row-label">Название</span><span class="setting-row-value">IPI AG &rarr;</span></div>
-                <div class="setting-row" onclick="showToast('Редактирование описания — финальная точка')"><span class="setting-row-label">Описание</span><span class="setting-row-value">Инвестиционный холдинг &rarr;</span></div>
-                <div class="setting-row" onclick="showToast('Юридический адрес — финальная точка')"><span class="setting-row-label">Юр. адрес</span><span class="setting-row-value">Zug, CH &rarr;</span></div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px" data-i18n="comp.settings.compProfile">Профиль компании</div>
+                <div class="setting-row" onclick="showToast('Редактирование названия — финальная точка')"><span class="setting-row-label" data-i18n="comp.settings.name">Название</span><span class="setting-row-value">IPI AG &rarr;</span></div>
+                <div class="setting-row" onclick="showToast('Редактирование описания — финальная точка')"><span class="setting-row-label" data-i18n="comp.settings.desc">Описание</span><span class="setting-row-value" data-i18n="comp.settings.descVal">Инвестиционный холдинг &rarr;</span></div>
+                <div class="setting-row" onclick="showToast('Юридический адрес — финальная точка')"><span class="setting-row-label" data-i18n="comp.settings.legalAddr">Юр. адрес</span><span class="setting-row-value">Zug, CH &rarr;</span></div>
               </div>
 
               <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
-                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Документы</div>
-                <div class="setting-row" onclick="showToast('Лицензия — финальная точка')"><span class="setting-row-label"><i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-2px"></i> Лицензия</span><span class="setting-row-value" style="color:var(--success)"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-1px"></i> Загружена</span></div>
-                <div class="setting-row" onclick="showToast('Устав компании — финальная точка')"><span class="setting-row-label"><i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-2px"></i> Устав</span><span class="setting-row-value" style="color:var(--success)"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-1px"></i> Загружен</span></div>
-                <div class="setting-row" onclick="showToast('KYB верификация — финальная точка')"><span class="setting-row-label"><i data-lucide="clipboard-check" style="width:14px;height:14px;vertical-align:-2px"></i> KYB верификация</span><span class="setting-row-value" style="color:var(--success)"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-1px"></i> Пройдена</span></div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px" data-i18n="comp.settings.docs">Документы</div>
+                <div class="setting-row" onclick="showToast('Лицензия — финальная точка')"><span class="setting-row-label"><i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.license">Лицензия</span></span><span class="setting-row-value" style="color:var(--success)"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-1px"></i> <span data-i18n="comp.settings.uploaded">Загружена</span></span></div>
+                <div class="setting-row" onclick="showToast('Устав компании — финальная точка')"><span class="setting-row-label"><i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.charter">Устав</span></span><span class="setting-row-value" style="color:var(--success)"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-1px"></i> <span data-i18n="comp.settings.charterVal">Загружен</span></span></div>
+                <div class="setting-row" onclick="showToast('KYB верификация — финальная точка')"><span class="setting-row-label"><i data-lucide="clipboard-check" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.kyb">KYB верификация</span></span><span class="setting-row-value" style="color:var(--success)"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-1px"></i> <span data-i18n="comp.settings.kybVal">Пройдена</span></span></div>
               </div>
 
               <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
-                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Вывод средств</div>
-                <div class="setting-row" onclick="showToast('Банковские реквизиты — финальная точка')"><span class="setting-row-label"><i data-lucide="landmark" style="width:14px;height:14px;vertical-align:-2px"></i> Банковские реквизиты</span><span class="setting-row-value">CH** **** 4521 &rarr;</span></div>
-                <div class="setting-row" onclick="showToast('История выводов — финальная точка')"><span class="setting-row-label"><i data-lucide="clipboard-list" style="width:14px;height:14px;vertical-align:-2px"></i> История выводов</span><span class="setting-row-value">12 операций &rarr;</span></div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px" data-i18n="comp.settings.withdrawal">Вывод средств</div>
+                <div class="setting-row" onclick="showToast('Банковские реквизиты — финальная точка')"><span class="setting-row-label"><i data-lucide="landmark" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.bankDetails">Банковские реквизиты</span></span><span class="setting-row-value">CH** **** 4521 &rarr;</span></div>
+                <div class="setting-row" onclick="showToast('История выводов — финальная точка')"><span class="setting-row-label"><i data-lucide="clipboard-list" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.history">История выводов</span></span><span class="setting-row-value" data-i18n="comp.settings.historyVal">12 операций &rarr;</span></div>
               </div>
 
               <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
-                <div class="setting-row" onclick="showToast('Выход — финальная точка')"><span class="setting-row-label" style="color:var(--danger)"><i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px"></i> Выйти</span><span class="setting-row-value">&rarr;</span></div>
+                <div class="setting-row" onclick="showToast('Выход — финальная точка')"><span class="setting-row-label" style="color:var(--danger)"><i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="comp.settings.logout">Выйти</span></span><span class="setting-row-value">&rarr;</span></div>
               </div>
             </main>
             <nav class="tab-bar">

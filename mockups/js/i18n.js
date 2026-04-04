@@ -15,6 +15,14 @@ const I18N = {
     'theme.light': { ru: 'Тема: Светлая', en: 'Theme: Light', de: 'Design: Hell' },
     'theme.dark':  { ru: 'Тема: Тёмная', en: 'Theme: Dark', de: 'Design: Dunkel' },
 
+    /* === CHART === */
+    'chart.1w':           { ru: '1Н', en: '1W', de: '1W' },
+    'chart.1m':           { ru: '1М', en: '1M', de: '1M' },
+    'chart.3m':           { ru: '3М', en: '3M', de: '3M' },
+    'chart.1y':           { ru: '1Г', en: '1Y', de: '1J' },
+    'inv.chart.title':    { ru: 'Динамика портфеля', en: 'Portfolio Trend', de: 'Portfolioentwicklung' },
+    'agent.chart.title':  { ru: 'Заработок', en: 'Earnings', de: 'Verdienst' },
+
     /* === NAVIGATION MAP === */
     'nav.map.title':     { ru: 'Карта навигации', en: 'Navigation Map', de: 'Navigationskarte' },
     'nav.map.screens':   { ru: 'экранов', en: 'screens', de: 'Bildschirme' },
@@ -315,6 +323,28 @@ const I18N = {
     'inv.settings.myDocs':        { ru: 'Мои документы', en: 'My Documents', de: 'Meine Dokumente' },
     'inv.settings.logout':        { ru: 'Выйти', en: 'Log Out', de: 'Abmelden' },
 
+    /* === INVESTOR — Transactions === */
+    'inv.tx.deposit':       { ru: 'Пополнение USDT (TRC20)', en: 'Deposit USDT (TRC20)', de: 'Einzahlung USDT (TRC20)' },
+    'inv.tx.deposit2':      { ru: 'Пополнение USDT (ERC20)', en: 'Deposit USDT (ERC20)', de: 'Einzahlung USDT (ERC20)' },
+    'inv.tx.purchaseIpi':   { ru: 'Покупка IPI AG', en: 'Purchase IPI AG', de: 'Kauf IPI AG' },
+    'inv.tx.purchaseIpi5k': { ru: 'Покупка IPI AG (5000 юн.)', en: 'Purchase IPI AG (5000 un.)', de: 'Kauf IPI AG (5000 Ant.)' },
+    'inv.tx.purchaseImmo':  { ru: 'Покупка Immo-Pro-Invest', en: 'Purchase Immo-Pro-Invest', de: 'Kauf Immo-Pro-Invest' },
+    'inv.tx.bankTransfer':  { ru: 'Банковский перевод', en: 'Bank Transfer', de: 'Banküberweisung' },
+    'inv.tx.today':         { ru: 'Сегодня, 14:23', en: 'Today, 14:23', de: 'Heute, 14:23' },
+
+    /* === INVESTOR — News === */
+    'inv.news.ipiTitle':         { ru: 'IPI AG: новый этап строительства', en: 'IPI AG: new construction phase', de: 'IPI AG: neue Bauphase' },
+    'inv.news.installmentTitle': { ru: 'Обновление условий рассрочки', en: 'Installment terms updated', de: 'Ratenbedingungen aktualisiert' },
+
+    /* === INVESTOR — Documents content === */
+    'inv.doc.agreementIpi':  { ru: 'Инвестиционное соглашение — IPI AG', en: 'Investment Agreement — IPI AG', de: 'Investitionsvereinbarung — IPI AG' },
+    'inv.doc.agreementImmo': { ru: 'Инвестиционное соглашение — Immo-Pro-Invest', en: 'Investment Agreement — Immo-Pro-Invest', de: 'Investitionsvereinbarung — Immo-Pro-Invest' },
+    'inv.doc.bonusCert':     { ru: 'Сертификат бонусных юнитов — IPI AG', en: 'Bonus Units Certificate — IPI AG', de: 'Bonusanteile-Zertifikat — IPI AG' },
+    'inv.doc.userAgreement': { ru: 'Пользовательское соглашение cbshome.org', en: 'User Agreement cbshome.org', de: 'Nutzungsvereinbarung cbshome.org' },
+
+    /* === INVESTOR — Installment table === */
+    'inv.installment.now':   { ru: '1 (сейчас)', en: '1 (now)', de: '1 (jetzt)' },
+
     /* === AGENT — Dashboard === */
     'agent.role':              { ru: 'Агент', en: 'Agent', de: 'Agent' },
     'agent.referrals':         { ru: 'Рефералы', en: 'Referrals', de: 'Empfehlungen' },
@@ -386,6 +416,289 @@ const I18N = {
     'agent.settings.kyc':      { ru: 'Верифицирован', en: 'Verified', de: 'Verifiziert' },
     'agent.settings.lang':     { ru: 'Язык', en: 'Language', de: 'Sprache' },
     'agent.settings.logout':   { ru: 'Выйти', en: 'Log Out', de: 'Abmelden' },
+
+    /* === COMPANY — Dashboard === */
+    'comp.role':               { ru: 'Компания', en: 'Company', de: 'Unternehmen' },
+    'comp.revenue':            { ru: 'Выручка', en: 'Revenue', de: 'Umsatz' },
+    'comp.products':           { ru: 'Продукты', en: 'Products', de: 'Produkte' },
+    'comp.monthlySales':       { ru: 'Продаж (мес)', en: 'Sales (month)', de: 'Verkäufe (Monat)' },
+    'comp.passive':            { ru: 'Пассивный баланс', en: 'Passive Balance', de: 'Passives Guthaben' },
+    'comp.lastTx':             { ru: 'Последние транзакции', en: 'Recent Transactions', de: 'Letzte Transaktionen' },
+    'comp.allTx':              { ru: 'Все →', en: 'All →', de: 'Alle →' },
+    'comp.products.title':     { ru: 'Продукты', en: 'Products', de: 'Produkte' },
+    'comp.backProducts':       { ru: 'Продукты', en: 'Products', de: 'Produkte' },
+    'comp.dist.company':       { ru: 'Компания', en: 'Company', de: 'Unternehmen' },
+    'comp.dist.l1':            { ru: 'L1 агент', en: 'L1 Agent', de: 'L1 Agent' },
+    'comp.dist.l2':            { ru: 'L2 агент', en: 'L2 Agent', de: 'L2 Agent' },
+    'comp.dist.l3':            { ru: 'L3 агент', en: 'L3 Agent', de: 'L3 Agent' },
+    'comp.salesByMonth':       { ru: 'Продажи по месяцам', en: 'Sales by Month', de: 'Verkäufe pro Monat' },
+    'comp.badge':              { ru: 'Компания', en: 'Company', de: 'Unternehmen' },
+    'comp.passive.label':      { ru: 'Пассивный баланс (выручка компании)', en: 'Passive Balance (company revenue)', de: 'Passives Guthaben (Unternehmensumsatz)' },
+
+    /* === STAFF — Dashboard === */
+    'staff.users.stat':        { ru: 'Пользователи', en: 'Users', de: 'Benutzer' },
+    'staff.kycQueue':          { ru: 'KYC очередь', en: 'KYC Queue', de: 'KYC-Warteschlange' },
+    'staff.pending':           { ru: 'Ожидают', en: 'Pending', de: 'Ausstehend' },
+    'staff.payments.stat':     { ru: 'Платежи', en: 'Payments', de: 'Zahlungen' },
+    'staff.awaitingConfirm':   { ru: 'Ожидают подтверждения', en: 'Awaiting Confirmation', de: 'Warten auf Bestätigung' },
+    'staff.agentApps':         { ru: 'Заявки агентов', en: 'Agent Applications', de: 'Agentenanträge' },
+    'staff.quickActions':      { ru: 'Быстрые действия', en: 'Quick Actions', de: 'Schnellaktionen' },
+    'staff.processKyc':        { ru: 'Обработать KYC', en: 'Process KYC', de: 'KYC bearbeiten' },
+    'staff.checkPayments':     { ru: 'Проверить платежи', en: 'Check Payments', de: 'Zahlungen prüfen' },
+    'staff.users.title':       { ru: 'Пользователи', en: 'Users', de: 'Benutzer' },
+    'staff.searchPlaceholder': { ru: 'Поиск по имени, email...', en: 'Search by name, email...', de: 'Suche nach Name, E-Mail...' },
+    'staff.kyc.title':         { ru: 'KYC Очередь', en: 'KYC Queue', de: 'KYC-Warteschlange' },
+    'staff.payments.title':    { ru: 'Платежи', en: 'Payments', de: 'Zahlungen' },
+    'staff.agentApps.title':   { ru: 'Заявки агентов', en: 'Agent Applications', de: 'Agentenanträge' },
+
+    /* === COMPANY — Dashboard extras === */
+    'comp.admin':              { ru: 'Админ:', en: 'Admin:', de: 'Admin:' },
+    'comp.revenue.change':     { ru: '+€42K за месяц', en: '+€42K this month', de: '+42K € diesen Monat' },
+    'comp.products.active':    { ru: '2 активных', en: '2 active', de: '2 aktiv' },
+    'comp.products.revShare':  { ru: '75% от выручки', en: '75% of revenue', de: '75 % des Umsatzes' },
+    'comp.products.count':     { ru: '3 продукта', en: '3 products', de: '3 Produkte' },
+    'comp.addProduct':         { ru: '+ Добавить', en: '+ Add', de: '+ Hinzufügen' },
+    'comp.badge.active':       { ru: 'Активен', en: 'Active', de: 'Aktiv' },
+    'comp.badge.hidden':       { ru: 'Скрыт', en: 'Hidden', de: 'Versteckt' },
+    'comp.badge.archive':      { ru: 'Архив', en: 'Archive', de: 'Archiv' },
+    'comp.perUnit':            { ru: '/ед.', en: '/unit', de: '/Ant.' },
+    'comp.sold.347k':          { ru: '347K продано', en: '347K sold', de: '347K verkauft' },
+    'comp.sold.128k':          { ru: '128K продано', en: '128K sold', de: '128K verkauft' },
+    'comp.comingSoon':         { ru: 'Скоро', en: 'Coming Soon', de: 'Demnächst' },
+    'comp.editHint':           { ru: 'Нажмите на продукт для редактирования. Распределение комиссий настраивается в карточке продукта.', en: 'Tap a product to edit. Commission distribution is configured in the product card.', de: 'Tippen Sie auf ein Produkt zum Bearbeiten. Die Provisionsverteilung wird in der Produktkarte konfiguriert.' },
+    'comp.editing':            { ru: 'Редактирование', en: 'Edit', de: 'Bearbeiten' },
+    'comp.form.name':          { ru: 'Название продукта', en: 'Product Name', de: 'Produktname' },
+    'comp.form.desc':          { ru: 'Описание', en: 'Description', de: 'Beschreibung' },
+    'comp.form.pricePerUnit':  { ru: 'Цена за единицу (€)', en: 'Price per unit (€)', de: 'Preis pro Einheit (€)' },
+    'comp.form.status':        { ru: 'Статус', en: 'Status', de: 'Status' },
+    'comp.dist.title':         { ru: 'Распределение комиссий', en: 'Commission Distribution', de: 'Provisionsverteilung' },
+    'comp.dist.platform':      { ru: 'Платформа CBS HOME', en: 'CBS HOME Platform', de: 'CBS HOME Plattform' },
+    'comp.dist.sumCheck':      { ru: 'Сумма: 75 + 10 + 3 + 1 + 11 = 100%', en: 'Sum: 75 + 10 + 3 + 1 + 11 = 100%', de: 'Summe: 75 + 10 + 3 + 1 + 11 = 100 %' },
+    'comp.save':               { ru: 'Сохранить', en: 'Save', de: 'Speichern' },
+    'comp.cancel':             { ru: 'Отмена', en: 'Cancel', de: 'Abbrechen' },
+
+    /* === COMPANY — Analytics === */
+    'comp.analytics.title':    { ru: 'Аналитика', en: 'Analytics', de: 'Analytik' },
+    'comp.analytics.totalRev': { ru: 'Общая выручка', en: 'Total Revenue', de: 'Gesamtumsatz' },
+    'comp.analytics.thisMonth':{ ru: 'Этот месяц', en: 'This month', de: 'Diesen Monat' },
+    'comp.analytics.unitsSold':{ ru: 'Юнитов продано', en: 'Units sold', de: 'Anteile verkauft' },
+    'comp.analytics.units':    { ru: 'юнитов', en: 'units', de: 'Anteile' },
+    'comp.chart.label':        { ru: 'Окт — Апр 2026 (юниты)', en: 'Oct — Apr 2026 (units)', de: 'Okt — Apr 2026 (Anteile)' },
+    'comp.month.oct':          { ru: 'Окт', en: 'Oct', de: 'Okt' },
+    'comp.month.nov':          { ru: 'Ноя', en: 'Nov', de: 'Nov' },
+    'comp.month.dec':          { ru: 'Дек', en: 'Dec', de: 'Dez' },
+    'comp.month.jan':          { ru: 'Янв', en: 'Jan', de: 'Jan' },
+    'comp.month.feb':          { ru: 'Фев', en: 'Feb', de: 'Feb' },
+    'comp.month.mar':          { ru: 'Мар', en: 'Mar', de: 'Mär' },
+    'comp.month.apr':          { ru: 'Апр', en: 'Apr', de: 'Apr' },
+    'comp.topAgents':          { ru: 'Топ агенты', en: 'Top Agents', de: 'Top-Agenten' },
+    'comp.topAgents.all':      { ru: 'Все →', en: 'All →', de: 'Alle →' },
+    'comp.monthBreakdown':     { ru: 'Месячная разбивка', en: 'Monthly Breakdown', de: 'Monatsaufschlüsselung' },
+
+    /* === COMPANY — Analytics data === */
+    'comp.agent.volume.48200': { ru: '48 200 юнитов', en: '48,200 units', de: '48.200 Anteile' },
+    'comp.agent.volume.41800': { ru: '41 800 юнитов', en: '41,800 units', de: '41.800 Anteile' },
+    'comp.agent.volume.38500': { ru: '38 500 юнитов', en: '38,500 units', de: '38.500 Anteile' },
+    'comp.agent.volume.32100': { ru: '32 100 юнитов', en: '32,100 units', de: '32.100 Anteile' },
+    'comp.agent.volume.28700': { ru: '28 700 юнитов', en: '28,700 units', de: '28.700 Anteile' },
+    'comp.breakdown.mar':      { ru: 'Март 2026', en: 'March 2026', de: 'März 2026' },
+    'comp.breakdown.mar.d':    { ru: 'IPI: 28K + Immo: 14K юнитов', en: 'IPI: 28K + Immo: 14K units', de: 'IPI: 28K + Immo: 14K Anteile' },
+    'comp.breakdown.feb':      { ru: 'Февраль 2026', en: 'February 2026', de: 'Februar 2026' },
+    'comp.breakdown.feb.d':    { ru: 'IPI: 24K + Immo: 12K юнитов', en: 'IPI: 24K + Immo: 12K units', de: 'IPI: 24K + Immo: 12K Anteile' },
+    'comp.breakdown.jan':      { ru: 'Январь 2026', en: 'January 2026', de: 'Januar 2026' },
+    'comp.breakdown.jan.d':    { ru: 'IPI: 22K + Immo: 10K юнитов', en: 'IPI: 22K + Immo: 10K units', de: 'IPI: 22K + Immo: 10K Anteile' },
+
+    /* === COMPANY — Transaction data === */
+    'comp.tx.ipi5000':         { ru: 'IPI AG Shares — 5 000 ед.', en: 'IPI AG Shares — 5,000 un.', de: 'IPI AG Shares — 5.000 Ant.' },
+    'comp.tx.immo3000':        { ru: 'Immo-Pro-Invest — 3 000 ед.', en: 'Immo-Pro-Invest — 3,000 un.', de: 'Immo-Pro-Invest — 3.000 Ant.' },
+    'comp.tx.ipi8000':         { ru: 'IPI AG Shares — 8 000 ед.', en: 'IPI AG Shares — 8,000 un.', de: 'IPI AG Shares — 8.000 Ant.' },
+    'comp.tx.petrova':         { ru: 'Анна Петрова \u2022 L1 агент', en: 'Anna Petrova \u2022 L1 Agent', de: 'Anna Petrowa \u2022 L1 Agent' },
+    'comp.tx.kozlov':          { ru: 'Дмитрий Козлов \u2022 L2 агент', en: 'Dmitry Kozlov \u2022 L2 Agent', de: 'Dmitri Koslow \u2022 L2 Agent' },
+    'comp.tx.morozova':        { ru: 'Елена Морозова \u2022 L1 агент', en: 'Elena Morozova \u2022 L1 Agent', de: 'Elena Morosowa \u2022 L1 Agent' },
+
+    /* === COMPANY — Settings === */
+    'comp.settings.title':     { ru: 'Настройки', en: 'Settings', de: 'Einstellungen' },
+    'comp.settings.admin':     { ru: 'Администратор', en: 'Administrator', de: 'Administrator' },
+    'comp.settings.verified':  { ru: 'Верифицирована', en: 'Verified', de: 'Verifiziert' },
+    'comp.settings.confirmed': { ru: 'Подтверждён', en: 'Confirmed', de: 'Bestätigt' },
+    'comp.settings.compProfile':{ ru: 'Профиль компании', en: 'Company Profile', de: 'Unternehmensprofil' },
+    'comp.settings.name':      { ru: 'Название', en: 'Name', de: 'Name' },
+    'comp.settings.desc':      { ru: 'Описание', en: 'Description', de: 'Beschreibung' },
+    'comp.settings.descVal':   { ru: 'Инвестиционный холдинг', en: 'Investment holding', de: 'Investmentholding' },
+    'comp.settings.legalAddr': { ru: 'Юр. адрес', en: 'Legal Address', de: 'Rechtsadresse' },
+    'comp.settings.docs':      { ru: 'Документы', en: 'Documents', de: 'Dokumente' },
+    'comp.settings.license':   { ru: 'Лицензия', en: 'License', de: 'Lizenz' },
+    'comp.settings.uploaded':  { ru: 'Загружена', en: 'Uploaded', de: 'Hochgeladen' },
+    'comp.settings.charter':   { ru: 'Устав', en: 'Charter', de: 'Satzung' },
+    'comp.settings.charterVal':{ ru: 'Загружен', en: 'Uploaded', de: 'Hochgeladen' },
+    'comp.settings.kyb':       { ru: 'KYB верификация', en: 'KYB Verification', de: 'KYB-Verifizierung' },
+    'comp.settings.kybVal':    { ru: 'Пройдена', en: 'Completed', de: 'Abgeschlossen' },
+    'comp.settings.withdrawal':{ ru: 'Вывод средств', en: 'Withdrawal', de: 'Auszahlung' },
+    'comp.settings.bankDetails':{ ru: 'Банковские реквизиты', en: 'Bank Details', de: 'Bankverbindung' },
+    'comp.settings.history':   { ru: 'История выводов', en: 'Withdrawal History', de: 'Auszahlungsverlauf' },
+    'comp.settings.historyVal':{ ru: '12 операций', en: '12 transactions', de: '12 Transaktionen' },
+    'comp.settings.withdraw':  { ru: 'Вывести', en: 'Withdraw', de: 'Auszahlen' },
+    'comp.settings.reinvest':  { ru: 'Реинвест', en: 'Reinvest', de: 'Reinvestieren' },
+    'comp.settings.logout':    { ru: 'Выйти', en: 'Log Out', de: 'Abmelden' },
+
+    /* === COMPANY — Product description data === */
+    'comp.productDesc':        { ru: 'Инвестиционные паи IPI AG. Минимальная покупка — 100 юнитов. Доход формируется из прибыли холдинга.', en: 'IPI AG investment units. Minimum purchase — 100 units. Income from holding profits.', de: 'IPI AG Investmentanteile. Mindestkauf — 100 Anteile. Erträge aus Holdinggewinnen.' },
+
+    /* === STAFF — Dashboard extras === */
+    'staff.users.change':      { ru: '+34 за месяц', en: '+34 this month', de: '+34 diesen Monat' },
+    'staff.new':               { ru: 'Новые', en: 'New', de: 'Neu' },
+    'staff.role.investor':     { ru: 'Инвестор', en: 'Investor', de: 'Investor' },
+    'staff.role.agent':        { ru: 'Агент', en: 'Agent', de: 'Agent' },
+    'staff.role.company':      { ru: 'Компания', en: 'Company', de: 'Unternehmen' },
+    'staff.kyc.hint':          { ru: 'Проверьте документы и данные пользователя перед одобрением. Среднее время обработки: 15 мин.', en: 'Review documents and user data before approval. Average processing time: 15 min.', de: 'Prüfen Sie Dokumente und Nutzerdaten vor der Genehmigung. Durchschnittliche Bearbeitungszeit: 15 Min.' },
+    'staff.kyc.passportRF':    { ru: 'Паспорт РФ', en: 'Russian Passport', de: 'Russischer Pass' },
+    'staff.kyc.submitted':     { ru: 'Подан', en: 'Submitted', de: 'Eingereicht' },
+    'staff.kyc.moreApps':      { ru: '... ещё 9 заявок', en: '... 9 more applications', de: '... 9 weitere Anträge' },
+    'staff.payments.hint':     { ru: 'Проверьте хеш транзакции в блокчейне перед подтверждением. Все платежи — крипто (USDT).', en: 'Verify the transaction hash on the blockchain before confirming. All payments are crypto (USDT).', de: 'Überprüfen Sie den Transaktionshash in der Blockchain vor der Bestätigung. Alle Zahlungen sind Krypto (USDT).' },
+    'staff.more.title':        { ru: 'Ещё', en: 'More', de: 'Mehr' },
+    'staff.settings.tools':    { ru: 'Инструменты', en: 'Tools', de: 'Werkzeuge' },
+    'staff.settings.system':   { ru: 'Система', en: 'System', de: 'System' },
+    'staff.settings.platform': { ru: 'Платформа', en: 'Platform', de: 'Plattform' },
+    'staff.settings.language': { ru: 'Язык', en: 'Language', de: 'Sprache' },
+    'staff.settings.langVal':  { ru: 'Русский', en: 'English', de: 'Deutsch' },
+
+    /* === STAFF — Agent Applications === */
+    'staff.agentApps.hint':    { ru: 'Инвестор может подать заявку на статус агента. Cooldown: 30 дней после отклонения. Проверьте историю инвестиций.', en: 'An investor can apply for agent status. Cooldown: 30 days after rejection. Review investment history.', de: 'Ein Investor kann den Agentenstatus beantragen. Cooldown: 30 Tage nach Ablehnung. Prüfen Sie die Investitionshistorie.' },
+    'staff.agentApps.since':   { ru: 'Инвестор с', en: 'Investor since', de: 'Investor seit' },
+    'staff.agentApps.portfolio':{ ru: 'Портфель:', en: 'Portfolio:', de: 'Portfolio:' },
+    'staff.agentApps.purchases5':{ ru: '5 покупок', en: '5 purchases', de: '5 Käufe' },
+    'staff.agentApps.purchases3':{ ru: '3 покупки', en: '3 purchases', de: '3 Käufe' },
+    'staff.agentApps.purchases2':{ ru: '2 покупки', en: '2 purchases', de: '2 Käufe' },
+    'staff.agentApps.cooldown':{ ru: 'Cooldown закончился 15.03', en: 'Cooldown ended 15.03', de: 'Cooldown endete 15.03' },
+
+    /* === STAFF — Avatar Mode === */
+    'staff.avatar.title':      { ru: 'Режим аватара', en: 'Avatar Mode', de: 'Avatar-Modus' },
+    'staff.avatar.subtitle':   { ru: 'Просматривайте платформу глазами пользователя', en: 'View the platform as the user sees it', de: 'Sehen Sie die Plattform aus Nutzersicht' },
+    'staff.avatar.selectUser': { ru: 'Выберите пользователя', en: 'Select user', de: 'Benutzer auswählen' },
+    'staff.avatar.portfolio':  { ru: 'портфель', en: 'portfolio', de: 'Portfolio' },
+    'staff.avatar.referrals':  { ru: 'рефералов', en: 'referrals', de: 'Empfehlungen' },
+    'staff.avatar.restrictions':{ ru: 'Ограниченные операции в Avatar Mode', en: 'Restricted operations in Avatar Mode', de: 'Eingeschränkte Operationen im Avatar-Modus' },
+    'staff.avatar.noPurchase': { ru: 'Нельзя совершать покупки от имени пользователя', en: 'Cannot make purchases on behalf of the user', de: 'Keine Käufe im Namen des Nutzers möglich' },
+    'staff.avatar.noWithdraw': { ru: 'Нельзя выводить средства', en: 'Cannot withdraw funds', de: 'Keine Auszahlungen möglich' },
+    'staff.avatar.noPassword': { ru: 'Нельзя менять пароль или email', en: 'Cannot change password or email', de: 'Passwort oder E-Mail nicht änderbar' },
+    'staff.avatar.noDelete':   { ru: 'Нельзя удалять аккаунт', en: 'Cannot delete account', de: 'Konto kann nicht gelöscht werden' },
+    'staff.avatar.noKyc':      { ru: 'Нельзя менять KYC данные', en: 'Cannot modify KYC data', de: 'KYC-Daten nicht änderbar' },
+    'staff.avatar.session':    { ru: 'Активная сессия', en: 'Active Session', de: 'Aktive Sitzung' },
+
+    /* === STAFF — User detail data === */
+    'staff.user.petrova.detail':  { ru: 'Инвестор \u2022 anna@mail.ru', en: 'Investor \u2022 anna@mail.ru', de: 'Investor \u2022 anna@mail.ru' },
+    'staff.user.seider.detail':   { ru: 'Агент \u2022 sergej@cbshome.org', en: 'Agent \u2022 sergej@cbshome.org', de: 'Agent \u2022 sergej@cbshome.org' },
+    'staff.user.ivanov.detail':   { ru: 'Инвестор \u2022 max.iv@gmail.com', en: 'Investor \u2022 max.iv@gmail.com', de: 'Investor \u2022 max.iv@gmail.com' },
+    'staff.user.immoag.detail':   { ru: 'Компания \u2022 info@immo-ag.de', en: 'Company \u2022 info@immo-ag.de', de: 'Unternehmen \u2022 info@immo-ag.de' },
+    'staff.user.sidorova.detail': { ru: 'Инвестор \u2022 nat.sid@yandex.ru', en: 'Investor \u2022 nat.sid@yandex.ru', de: 'Investor \u2022 nat.sid@yandex.ru' },
+    'staff.user.hoffmann.detail': { ru: 'Агент \u2022 klaus@cbshome.org', en: 'Agent \u2022 klaus@cbshome.org', de: 'Agent \u2022 klaus@cbshome.org' },
+    'staff.user.morozov.detail':  { ru: 'Инвестор \u2022 ilya.m@outlook.com', en: 'Investor \u2022 ilya.m@outlook.com', de: 'Investor \u2022 ilya.m@outlook.com' },
+    'staff.user.erstekapital.detail':{ ru: 'Компания \u2022 ek@erste-kapital.de', en: 'Company \u2022 ek@erste-kapital.de', de: 'Unternehmen \u2022 ek@erste-kapital.de' },
+
+    /* === STAFF — KYC data === */
+    'staff.kyc.ivanov':        { ru: 'Инвестор \u2022 Паспорт РФ \u2022 Подан 28.03.2026', en: 'Investor \u2022 Russian Passport \u2022 Submitted 28.03.2026', de: 'Investor \u2022 Russischer Pass \u2022 Eingereicht 28.03.2026' },
+    'staff.kyc.erstekapital':  { ru: 'Компания \u2022 Handelsregister \u2022 Подан 30.03.2026', en: 'Company \u2022 Handelsregister \u2022 Submitted 30.03.2026', de: 'Unternehmen \u2022 Handelsregister \u2022 Eingereicht 30.03.2026' },
+    'staff.kyc.schmidt':       { ru: 'Инвестор \u2022 Personalausweis \u2022 Подан 01.04.2026', en: 'Investor \u2022 Personalausweis \u2022 Submitted 01.04.2026', de: 'Investor \u2022 Personalausweis \u2022 Eingereicht 01.04.2026' },
+
+    /* === STAFF — Avatar detail data === */
+    'staff.avatar.petrova':    { ru: 'Инвестор \u2022 €24 750 портфель', en: 'Investor \u2022 €24,750 portfolio', de: 'Investor \u2022 24.750 € Portfolio' },
+    'staff.avatar.seider':     { ru: 'Агент \u2022 47 рефералов', en: 'Agent \u2022 47 referrals', de: 'Agent \u2022 47 Empfehlungen' },
+    'staff.avatar.ivanov':     { ru: 'Инвестор \u2022 €48 200 портфель', en: 'Investor \u2022 €48,200 portfolio', de: 'Investor \u2022 48.200 € Portfolio' },
+
+    /* === STAFF — Agent app detail data === */
+    'staff.agentApp.morozov.1':  { ru: 'Инвестор с 2024 \u2022 Портфель: €18 400', en: 'Investor since 2024 \u2022 Portfolio: €18,400', de: 'Investor seit 2024 \u2022 Portfolio: 18.400 €' },
+    'staff.agentApp.morozov.2':  { ru: '5 покупок \u2022 KYC', en: '5 purchases \u2022 KYC', de: '5 Käufe \u2022 KYC' },
+    'staff.agentApp.kozlova.1':  { ru: 'Инвестор с 2025 \u2022 Портфель: €8 100', en: 'Investor since 2025 \u2022 Portfolio: €8,100', de: 'Investor seit 2025 \u2022 Portfolio: 8.100 €' },
+    'staff.agentApp.kozlova.2':  { ru: '3 покупки \u2022 KYC', en: '3 purchases \u2022 KYC', de: '3 Käufe \u2022 KYC' },
+    'staff.agentApp.schneider.1':{ ru: 'Инвестор с 2025 \u2022 Портфель: €4 200', en: 'Investor since 2025 \u2022 Portfolio: €4,200', de: 'Investor seit 2025 \u2022 Portfolio: 4.200 €' },
+    'staff.agentApp.schneider.2':{ ru: '2 покупки \u2022 KYC', en: '2 purchases \u2022 KYC', de: '2 Käufe \u2022 KYC' },
+    'staff.agentApp.schneider.3':{ ru: 'Cooldown закончился 15.03', en: 'Cooldown ended 15.03', de: 'Cooldown endete 15.03' },
+
+    /* === AUTH — Placeholders === */
+    'auth.login.passPlaceholder':    { ru: 'Введите пароль', en: 'Enter password', de: 'Passwort eingeben' },
+    'auth.register.passPlaceholder': { ru: 'Минимум 8 символов', en: 'Minimum 8 characters', de: 'Mindestens 8 Zeichen' },
+    'auth.register.confirmPlaceholder':{ ru: 'Повторите пароль', en: 'Repeat password', de: 'Passwort wiederholen' },
+
+    /* === AUTH — Select options (data content, skip i18n in HTML but provide keys for JS) === */
+    'auth.profile.countryRu':     { ru: 'Россия', en: 'Russia', de: 'Russland' },
+    'auth.profile.countryOther':  { ru: 'Другая', en: 'Other', de: 'Andere' },
+    'auth.profile.langRu':        { ru: 'Русский', en: 'Russian', de: 'Russisch' },
+
+    /* === AUTH — JS strings === */
+    'auth.role.continueAs':        { ru: 'Продолжить как', en: 'Continue as', de: 'Weiter als' },
+    'auth.docs.signDocumentsBtn':  { ru: 'Подписать документы', en: 'Sign Documents', de: 'Dokumente unterschreiben' },
+    'auth.docs.checkedOf':         { ru: 'Отмечено {checked} из {total}', en: 'Checked {checked} of {total}', de: '{checked} von {total} markiert' },
+
+    /* === AGENT — Commission data === */
+    'agent.units':               { ru: 'юнитов', en: 'units', de: 'Anteile' },
+    'agent.unitsShort':          { ru: 'юн.', en: 'un.', de: 'Ant.' },
+    'agent.comm.l1label':        { ru: 'Комиссия L1', en: 'Commission L1', de: 'Provision L1' },
+    'agent.comm.l2label':        { ru: 'Комиссия L2', en: 'Commission L2', de: 'Provision L2' },
+    'agent.bonusTop20':          { ru: 'Бонус Top-20 (март)', en: 'Top-20 Bonus (March)', de: 'Top-20 Bonus (März)' },
+    'agent.monthlyPool':         { ru: 'Месячный пул 2%', en: 'Monthly pool 2%', de: 'Monatspool 2 %' },
+    'agent.coolingOff':          { ru: 'Cooling-off (14д)', en: 'Cooling-off (14d)', de: 'Cooling-off (14T)' },
+    'agent.frozenDays':          { ru: '❄️ 14д', en: '❄️ 14d', de: '❄️ 14T' },
+
+    /* === AGENT — Dashboard comm data === */
+    'agent.comm.petrova':        { ru: 'Анна Петрова', en: 'Anna Petrova', de: 'Anna Petrowa' },
+    'agent.comm.petrova.p':      { ru: 'IPI AG \u00B7 5 000 юнитов', en: 'IPI AG \u00B7 5,000 units', de: 'IPI AG \u00B7 5.000 Anteile' },
+    'agent.comm.kozlov':         { ru: 'Дмитрий Козлов', en: 'Dmitry Kozlov', de: 'Dmitri Koslow' },
+    'agent.comm.kozlov.p':       { ru: 'Immo-Pro-Invest \u00B7 3 000 юн.', en: 'Immo-Pro-Invest \u00B7 3,000 un.', de: 'Immo-Pro-Invest \u00B7 3.000 Ant.' },
+    'agent.comm.morozova':       { ru: 'Елена Морозова', en: 'Elena Morozova', de: 'Elena Morosowa' },
+    'agent.comm.morozova.p':     { ru: 'IPI AG \u00B7 2 000 юнитов', en: 'IPI AG \u00B7 2,000 units', de: 'IPI AG \u00B7 2.000 Anteile' },
+    'agent.comm.novikov':        { ru: 'Алексей Новиков', en: 'Alexey Novikov', de: 'Alexej Nowikow' },
+    'agent.comm.novikov.p':      { ru: 'CBS Home \u00B7 10 000 юнитов', en: 'CBS Home \u00B7 10,000 units', de: 'CBS Home \u00B7 10.000 Anteile' },
+    'agent.comm.volkova':        { ru: 'Мария Волкова', en: 'Maria Volkova', de: 'Maria Wolkowa' },
+    'agent.comm.volkova.p':      { ru: 'IPI AG \u00B7 1 000 юнитов', en: 'IPI AG \u00B7 1,000 units', de: 'IPI AG \u00B7 1.000 Anteile' },
+    'agent.comm.sokolov':        { ru: 'Кирилл Соколов', en: 'Kirill Sokolov', de: 'Kirill Sokolow' },
+    'agent.comm.sokolov.p':      { ru: 'Immo-Pro-Invest \u00B7 5 000 юн.', en: 'Immo-Pro-Invest \u00B7 5,000 un.', de: 'Immo-Pro-Invest \u00B7 5.000 Ant.' },
+    'agent.comm.lebedeva':       { ru: 'Ольга Лебедева', en: 'Olga Lebedeva', de: 'Olga Lebedewa' },
+    'agent.comm.lebedeva.p':     { ru: 'IPI AG \u00B7 8 000 юнитов', en: 'IPI AG \u00B7 8,000 units', de: 'IPI AG \u00B7 8.000 Anteile' },
+    'agent.comm.popov':          { ru: 'Сергей Попов', en: 'Sergey Popov', de: 'Sergej Popow' },
+    'agent.comm.popov.p':        { ru: 'IPI AG \u00B7 18 000 юнитов', en: 'IPI AG \u00B7 18,000 units', de: 'IPI AG \u00B7 18.000 Anteile' },
+
+    /* === AGENT — Leaderboard data === */
+    'agent.lb.ivanov':           { ru: 'Максим Иванов', en: 'Maxim Ivanov', de: 'Maxim Iwanow' },
+    'agent.lb.ivanov.v':         { ru: '€48 200 объём', en: '€48,200 volume', de: '48.200 € Volumen' },
+    'agent.lb.sidorova':         { ru: 'Наталья Сидорова', en: 'Natalia Sidorova', de: 'Natalja Sidorowa' },
+    'agent.lb.sidorova.v':       { ru: '€41 800 объём', en: '€41,800 volume', de: '41.800 € Volumen' },
+    'agent.lb.volkov':           { ru: 'Артём Волков', en: 'Artem Volkov', de: 'Artjom Wolkow' },
+    'agent.lb.volkov.v':         { ru: '€38 500 объём', en: '€38,500 volume', de: '38.500 € Volumen' },
+    'agent.lb.seider.v':         { ru: '€18 420 объём', en: '€18,420 volume', de: '18.420 € Volumen' },
+    'agent.lb.morozov':          { ru: 'Илья Морозов', en: 'Ilya Morozov', de: 'Ilja Morosow' },
+    'agent.lb.morozov.v':        { ru: '€8 900 объём', en: '€8,900 volume', de: '8.900 € Volumen' },
+    'agent.lb.kozlova':          { ru: 'Татьяна Козлова', en: 'Tatiana Kozlova', de: 'Tatjana Koslowa' },
+    'agent.lb.kozlova.v':        { ru: '€8 100 объём', en: '€8,100 volume', de: '8.100 € Volumen' },
+
+    /* === AGENT — Passive balance data === */
+    'agent.passive.commL1':      { ru: 'Комиссия L1 — Петрова', en: 'Commission L1 — Petrova', de: 'Provision L1 — Petrowa' },
+    'agent.passive.commL2':      { ru: 'Комиссия L2 — Козлов', en: 'Commission L2 — Kozlov', de: 'Provision L2 — Koslow' },
+    'agent.passive.bonusTop20':  { ru: 'Бонус Top-20 (март)', en: 'Top-20 Bonus (March)', de: 'Top-20 Bonus (März)' },
+    'agent.passive.monthlyPool': { ru: 'Месячный пул 2%', en: 'Monthly pool 2%', de: 'Monatspool 2 %' },
+
+    /* === INVESTOR — Product description (JS data) === */
+    'inv.product.desc.ipi':    { ru: 'Инвестиционные юниты IPI AG обеспечены портфелем строительных проектов в Германии. Патентованная технология CBS HOME (EP 3 574 160 B1) обеспечивает конкурентное преимущество: строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах.', en: 'IPI AG investment units are backed by a portfolio of construction projects in Germany. The patented CBS HOME technology (EP 3 574 160 B1) provides a competitive advantage: construction 6-9x faster than traditional methods with 15-20% material savings.', de: 'IPI AG Investmentanteile sind durch ein Portfolio von Bauprojekten in Deutschland abgesichert. Die patentierte CBS HOME Technologie (EP 3 574 160 B1) bietet einen Wettbewerbsvorteil: 6-9x schnelleres Bauen als traditionelle Methoden bei 15-20 % Materialeinsparung.' },
+    'inv.product.desc.immo':   { ru: 'Инвестиции в портфель объектов недвижимости через Immo-Pro-Invest GmbH. Профессиональное управление активами с фокусом на стабильный рост стоимости и диверсификацию.', en: 'Investments in a real estate portfolio via Immo-Pro-Invest GmbH. Professional asset management focused on stable value growth and diversification.', de: 'Investitionen in ein Immobilienportfolio über Immo-Pro-Invest GmbH. Professionelles Asset Management mit Fokus auf stabiles Wertwachstum und Diversifikation.' },
+    'inv.product.desc.cbs':    { ru: 'Франшиза CBS Home — инновационная строительная технология Compound Building System. Запатентованная система (58 стран), единственное допущение DIBt Z-14.5-883. Производственная мощность: 120-190 м²/день.', en: 'CBS Home franchise — innovative Compound Building System construction technology. Patented system (58 countries), sole DIBt Z-14.5-883 approval. Production capacity: 120-190 m²/day.', de: 'CBS Home Franchise — innovative Compound Building System Bautechnologie. Patentiertes System (58 Länder), einzige DIBt Z-14.5-883 Zulassung. Produktionskapazität: 120-190 m²/Tag.' },
+
+    /* === INVESTOR — Purchase flow data === */
+    'inv.purchase.product.ipi':  { ru: 'IPI AG Shares — €1.00 / юнит', en: 'IPI AG Shares — €1.00 / unit', de: 'IPI AG Shares — 1,00 € / Anteil' },
+    'inv.purchase.bonusUnits':   { ru: '+500 юнитов', en: '+500 units', de: '+500 Anteile' },
+    'inv.purchase.confirmBtn':   { ru: 'Подтвердить покупку', en: 'Confirm Purchase', de: 'Kauf bestätigen' },
+    'inv.purchase.done.text':    { ru: 'IPI AG Shares — 5 000 юнитов = €5 000', en: 'IPI AG Shares — 5,000 units = €5,000', de: 'IPI AG Shares — 5.000 Anteile = 5.000 €' },
+    'inv.installment.confirmBtn':{ ru: 'Оформить рассрочку', en: 'Start Installment', de: 'Ratenzahlung starten' },
+    'inv.bonusCalc':             { ru: 'юнитов', en: 'units', de: 'Anteile' },
+    'inv.bonusNone':             { ru: 'Нет (мин. 5 000)', en: 'None (min. 5,000)', de: 'Keine (min. 5.000)' },
+
+    /* === INVESTOR — Document meta === */
+    'inv.doc.meta.ipi1':       { ru: 'Подписан 28.03.2026 — 5 000 юнитов', en: 'Signed 28.03.2026 — 5,000 units', de: 'Unterschrieben 28.03.2026 — 5.000 Anteile' },
+    'inv.doc.meta.immo1':      { ru: 'Подписан 20.03.2026 — 5 000 юнитов', en: 'Signed 20.03.2026 — 5,000 units', de: 'Unterschrieben 20.03.2026 — 5.000 Anteile' },
+    'inv.doc.meta.bonus1':     { ru: 'Выдан 28.03.2026 — 500 юнитов', en: 'Issued 28.03.2026 — 500 units', de: 'Ausgestellt 28.03.2026 — 500 Anteile' },
+    'inv.doc.meta.agreement1': { ru: 'Подписан 15.03.2026', en: 'Signed 15.03.2026', de: 'Unterschrieben 15.03.2026' },
+
+    /* === INVESTOR — Balance frozen timer === */
+    'inv.balance.frozenMin':   { ru: '59 мин', en: '59 min', de: '59 Min' },
+    'inv.balance.until':       { ru: 'До 02.04.2026', en: 'Until 02.04.2026', de: 'Bis 02.04.2026' },
   },
 
   init() {

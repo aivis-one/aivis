@@ -245,7 +245,7 @@
                 <div class="form-group">
                   <label class="form-label" data-i18n="auth.login.password">Пароль</label>
                   <div class="input-wrapper">
-                    <input type="password" class="form-input" placeholder="Введите пароль" value="password123">
+                    <input type="password" class="form-input" placeholder="Введите пароль" value="password123" data-i18n="auth.login.passPlaceholder" data-i18n-attr="placeholder">
                     <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
                       <i data-lucide="eye"></i>
                     </button>
@@ -301,7 +301,7 @@
                 <div class="form-group">
                   <label class="form-label" data-i18n="auth.register.password">Пароль</label>
                   <div class="input-wrapper">
-                    <input type="password" class="form-input" placeholder="Минимум 8 символов">
+                    <input type="password" class="form-input" placeholder="Минимум 8 символов" data-i18n="auth.register.passPlaceholder" data-i18n-attr="placeholder">
                     <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
                       <i data-lucide="eye"></i>
                     </button>
@@ -311,7 +311,7 @@
                 <div class="form-group">
                   <label class="form-label" data-i18n="auth.register.confirmPassword">Подтверждение пароля</label>
                   <div class="input-wrapper">
-                    <input type="password" class="form-input" placeholder="Повторите пароль">
+                    <input type="password" class="form-input" placeholder="Повторите пароль" data-i18n="auth.register.confirmPlaceholder" data-i18n-attr="placeholder">
                     <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
                       <i data-lucide="eye"></i>
                     </button>
@@ -770,7 +770,7 @@
       selectedRole = roleName;
       const btn = document.getElementById('roleSubmitBtn');
       btn.disabled = false;
-      btn.textContent = 'Продолжить как ' + roleName;
+      btn.textContent = I18N.t('auth.role.continueAs') + ' ' + roleName;
     }
 
     function handleRoleSelect() {
@@ -793,9 +793,9 @@
       const btn = document.getElementById('signBtn');
       btn.disabled = checkedCount < allChecked.length;
       if (checkedCount === allChecked.length) {
-        btn.innerHTML = '<i data-lucide="file-signature" style="width:18px;height:18px"></i> Подписать документы';
+        btn.innerHTML = '<i data-lucide="file-signature" style="width:18px;height:18px"></i> ' + I18N.t('auth.docs.signDocumentsBtn');
       } else {
-        btn.innerHTML = 'Отмечено ' + checkedCount + ' из ' + allChecked.length;
+        btn.innerHTML = I18N.t('auth.docs.checkedOf', {checked: checkedCount, total: allChecked.length});
       }
       if (typeof lucide !== 'undefined') lucide.createIcons();
     }

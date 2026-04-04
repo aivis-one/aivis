@@ -159,7 +159,7 @@ mockups/
 - Map panel (.nav-map)
 - Stats grid (.nav-map-stats)
 - Legend (.nav-map-legend)
-- Tree items (.nav-map-item, .nav-map-level)
+- Tree items (.nav-map-item — chip layout, no .nav-map-level wrappers)
 - Section collapse (.nav-map-section, .collapsed)
 - Traffic light dots (.status-dot, .legend-dot)
 - Level badges (.level-badge)

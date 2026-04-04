@@ -177,6 +177,89 @@
                 </div>
               </div>
 
+              <!-- Hero Carousel: 2 slides (Portfolio + Earnings) -->
+              <div class="chart-carousel">
+                <div class="chart-carousel-track">
+                <div class="chart-slides" id="agentSlides">
+                  <!-- Slide 1: Portfolio -->
+                  <div class="chart-slide">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                      <div>
+                        <div class="stat-label" data-i18n="agent.portfolio">Портфель</div>
+                        <div class="stat-value">€24 750</div>
+                        <div class="stat-change up">+12.4%</div>
+                      </div>
+                      <div class="chart-timeframe">
+                        <button class="tf-btn" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1w">1Н</button>
+                        <button class="tf-btn active" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1m">1М</button>
+                        <button class="tf-btn" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.3m">3М</button>
+                        <button class="tf-btn" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1y">1Г</button>
+                      </div>
+                    </div>
+                    <div class="dot-chart" id="agentPortfolioChart"></div>
+                  </div>
+                  <!-- Slide 2: Earnings -->
+                  <div class="chart-slide">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                      <div>
+                        <div class="stat-label" data-i18n="agent.totalEarned">Общий заработок</div>
+                        <div class="stat-value">€3 420</div>
+                        <div class="stat-change up" data-i18n="agent.commissions.change">+€820 за месяц</div>
+                      </div>
+                      <div class="chart-timeframe">
+                        <button class="tf-btn" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1w">1Н</button>
+                        <button class="tf-btn active" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1m">1М</button>
+                        <button class="tf-btn" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.3m">3М</button>
+                        <button class="tf-btn" onclick="this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1y">1Г</button>
+                      </div>
+                    </div>
+                    <div class="dot-chart" id="agentEarningsChart"></div>
+                  </div>
+                </div>
+                </div>
+                <div class="carousel-dots">
+                  <span class="carousel-dot active" onclick="slideCarousel('agentSlides',0)"></span>
+                  <span class="carousel-dot" onclick="slideCarousel('agentSlides',1)"></span>
+                </div>
+              </div>
+              <script>
+              (function(){
+                var rows = 10;
+                // Portfolio data (24 months)
+                var pData = [2,3,3,4,3,5,4,6,5,5,6,7,5,6,7,7,8,7,8,8,9,8,9,10];
+                var pEl = document.getElementById('agentPortfolioChart');
+                pData.forEach(function(v, i){
+                  var col = document.createElement('div');
+                  col.className = 'dot-col' + (i === pData.length - 1 ? ' current' : '');
+                  for (var r = 0; r < rows; r++) { var d = document.createElement('div'); d.className = r < v ? 'dot' : 'dot empty'; col.appendChild(d); }
+                  pEl.appendChild(col);
+                });
+                // Earnings data (24 weeks)
+                var eData = [1,2,1,3,2,4,3,3,5,4,6,5,4,6,5,7,6,8,7,7,8,7,9,10];
+                var eEl = document.getElementById('agentEarningsChart');
+                eData.forEach(function(v, i){
+                  var col = document.createElement('div');
+                  col.className = 'dot-col' + (i === eData.length - 1 ? ' current' : '');
+                  for (var r = 0; r < rows; r++) { var d = document.createElement('div'); d.className = r < v ? 'dot' : 'dot empty'; col.appendChild(d); }
+                  eEl.appendChild(col);
+                });
+                // Swipe + dot click
+                var slides = document.getElementById('agentSlides');
+                var cur = 0, sx = 0;
+                slides.addEventListener('touchstart', function(e){ sx = e.touches[0].clientX; });
+                slides.addEventListener('touchend', function(e){
+                  var dx = e.changedTouches[0].clientX - sx;
+                  if (Math.abs(dx) > 50) slideCarousel('agentSlides', dx < 0 ? 1 : 0);
+                });
+              })();
+              function slideCarousel(id, idx) {
+                var s = document.getElementById(id);
+                s.style.transform = 'translateX(-' + (idx * 100) + '%)';
+                s.closest('.chart-carousel').querySelectorAll('.carousel-dot').forEach(function(d, i){ d.classList.toggle('active', i === idx); });
+              }
+              </script>
+
+              <!-- Stat cards -->
               <div class="stats-grid">
                 <div class="stat-card" onclick="switchTab('screen-hub','tab-hub')">
                   <div class="icon-box orange"><i data-lucide="user-plus"></i></div>
@@ -184,23 +267,11 @@
                   <div class="stat-value">47</div>
                   <div class="stat-change up" data-i18n="agent.referrals.change">+5 за месяц</div>
                 </div>
-                <div class="stat-card" onclick="switchTab('screen-commissions','tab-comm')">
-                  <div class="icon-box teal"><i data-lucide="gem"></i></div>
-                  <div class="stat-label" data-i18n="agent.commissions">Комиссии</div>
-                  <div class="stat-value">€3 420</div>
-                  <div class="stat-change up" data-i18n="agent.commissions.change">+€820 за месяц</div>
-                </div>
                 <div class="stat-card" onclick="switchTab('screen-passive','tab-balance')">
                   <div class="icon-box green"><i data-lucide="wallet"></i></div>
                   <div class="stat-label" data-i18n="agent.passive">Пассивный баланс</div>
                   <div class="stat-value">€2 850</div>
                   <div class="stat-sub" data-i18n="agent.passive.sub">Доступен для вывода</div>
-                </div>
-                <div class="stat-card" onclick="showToast('📌 Портфель инвестора — финальная точка')">
-                  <div class="icon-box blue"><i data-lucide="pie-chart"></i></div>
-                  <div class="stat-label" data-i18n="agent.portfolio">Портфель</div>
-                  <div class="stat-value">€24 750</div>
-                  <div class="stat-change up">+12.4%</div>
                 </div>
               </div>
 
@@ -211,8 +282,8 @@
               <div class="comm-item" onclick="showToast('📌 Детали комиссии — финальная точка')">
                 <div class="comm-level l1">L1</div>
                 <div class="comm-info">
-                  <div class="comm-source">Анна Петрова</div>
-                  <div class="comm-product">IPI AG · 5 000 юнитов</div>
+                  <div class="comm-source" data-i18n="agent.comm.petrova">Анна Петрова</div>
+                  <div class="comm-product" data-i18n="agent.comm.petrova.p">IPI AG · 5 000 юнитов</div>
                 </div>
                 <div class="comm-amount">
                   <div class="comm-sum">+€500</div>
@@ -222,8 +293,8 @@
               <div class="comm-item" onclick="showToast('📌 Детали комиссии — финальная точка')">
                 <div class="comm-level l2">L2</div>
                 <div class="comm-info">
-                  <div class="comm-source">Дмитрий Козлов</div>
-                  <div class="comm-product">Immo-Pro-Invest · 3 000 юн.</div>
+                  <div class="comm-source" data-i18n="agent.comm.kozlov">Дмитрий Козлов</div>
+                  <div class="comm-product" data-i18n="agent.comm.kozlov.p">Immo-Pro-Invest · 3 000 юн.</div>
                 </div>
                 <div class="comm-amount">
                   <div class="comm-sum">+€90</div>
@@ -428,42 +499,42 @@
               <div id="commList">
                 <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l1">L1</div>
-                  <div class="comm-info"><div class="comm-source">Анна Петрова</div><div class="comm-product">IPI AG · 5 000 юнитов</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.petrova">Анна Петрова</div><div class="comm-product" data-i18n="agent.comm.petrova.p">IPI AG · 5 000 юнитов</div></div>
                   <div class="comm-amount"><div class="comm-sum">+€500</div><div class="comm-date">01.04.2026</div><div class="comm-status confirmed">✓</div></div>
                 </div>
                 <div class="comm-item" data-level="l2" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l2">L2</div>
-                  <div class="comm-info"><div class="comm-source">Дмитрий Козлов</div><div class="comm-product">Immo-Pro-Invest · 3 000 юн.</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.kozlov">Дмитрий Козлов</div><div class="comm-product" data-i18n="agent.comm.kozlov.p">Immo-Pro-Invest · 3 000 юн.</div></div>
                   <div class="comm-amount"><div class="comm-sum">+€90</div><div class="comm-date">31.03.2026</div><div class="comm-status confirmed">✓</div></div>
                 </div>
                 <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l1">L1</div>
-                  <div class="comm-info"><div class="comm-source">Елена Морозова</div><div class="comm-product">IPI AG · 2 000 юнитов</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.morozova">Елена Морозова</div><div class="comm-product" data-i18n="agent.comm.morozova.p">IPI AG · 2 000 юнитов</div></div>
                   <div class="comm-amount"><div class="comm-sum">+€200</div><div class="comm-date">28.03.2026</div><div class="comm-status confirmed">✓</div></div>
                 </div>
                 <div class="comm-item" data-level="l3" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l3">L3</div>
-                  <div class="comm-info"><div class="comm-source">Алексей Новиков</div><div class="comm-product">CBS Home · 10 000 юнитов</div></div>
-                  <div class="comm-amount"><div class="comm-sum">+€100</div><div class="comm-date">25.03.2026</div><div class="comm-status frozen">❄️ 14д</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.novikov">Алексей Новиков</div><div class="comm-product" data-i18n="agent.comm.novikov.p">CBS Home · 10 000 юнитов</div></div>
+                  <div class="comm-amount"><div class="comm-sum">+€100</div><div class="comm-date">25.03.2026</div><div class="comm-status frozen" data-i18n="agent.frozenDays">❄️ 14д</div></div>
                 </div>
                 <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l1">L1</div>
-                  <div class="comm-info"><div class="comm-source">Мария Волкова</div><div class="comm-product">IPI AG · 1 000 юнитов</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.volkova">Мария Волкова</div><div class="comm-product" data-i18n="agent.comm.volkova.p">IPI AG · 1 000 юнитов</div></div>
                   <div class="comm-amount"><div class="comm-sum">+€100</div><div class="comm-date">22.03.2026</div><div class="comm-status confirmed">✓</div></div>
                 </div>
                 <div class="comm-item" data-level="l2" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l2">L2</div>
-                  <div class="comm-info"><div class="comm-source">Кирилл Соколов</div><div class="comm-product">Immo-Pro-Invest · 5 000 юн.</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.sokolov">Кирилл Соколов</div><div class="comm-product" data-i18n="agent.comm.sokolov.p">Immo-Pro-Invest · 5 000 юн.</div></div>
                   <div class="comm-amount"><div class="comm-sum">+€150</div><div class="comm-date">20.03.2026</div><div class="comm-status confirmed">✓</div></div>
                 </div>
                 <div class="comm-item" data-level="l1" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l1">L1</div>
-                  <div class="comm-info"><div class="comm-source">Ольга Лебедева</div><div class="comm-product">IPI AG · 8 000 юнитов</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.lebedeva">Ольга Лебедева</div><div class="comm-product" data-i18n="agent.comm.lebedeva.p">IPI AG · 8 000 юнитов</div></div>
                   <div class="comm-amount"><div class="comm-sum">+€800</div><div class="comm-date">18.03.2026</div><div class="comm-status confirmed">✓</div></div>
                 </div>
                 <div class="comm-item" data-level="l3" onclick="showToast('📌 Детали комиссии — финальная точка')">
                   <div class="comm-level l3">L3</div>
-                  <div class="comm-info"><div class="comm-source">Сергей Попов</div><div class="comm-product">IPI AG · 18 000 юнитов</div></div>
+                  <div class="comm-info"><div class="comm-source" data-i18n="agent.comm.popov">Сергей Попов</div><div class="comm-product" data-i18n="agent.comm.popov.p">IPI AG · 18 000 юнитов</div></div>
                   <div class="comm-amount"><div class="comm-sum">+€180</div><div class="comm-date">15.03.2026</div><div class="comm-status confirmed">✓</div></div>
                 </div>
               </div>
@@ -496,19 +567,19 @@
               <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
                 <div class="rank-pos top3">1</div>
                 <img class="rank-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
-                <div class="rank-info"><div class="rank-name">Максим Иванов</div><div class="rank-volume">€48 200 объём</div></div>
+                <div class="rank-info"><div class="rank-name" data-i18n="agent.lb.ivanov">Максим Иванов</div><div class="rank-volume" data-i18n="agent.lb.ivanov.v">€48 200 объём</div></div>
                 <div class="rank-change" style="color:var(--success)">—</div>
               </div>
               <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
                 <div class="rank-pos top3">2</div>
                 <img class="rank-avatar" src="https://i.pravatar.cc/150?img=47" alt="">
-                <div class="rank-info"><div class="rank-name">Наталья Сидорова</div><div class="rank-volume">€41 800 объём</div></div>
+                <div class="rank-info"><div class="rank-name" data-i18n="agent.lb.sidorova">Наталья Сидорова</div><div class="rank-volume" data-i18n="agent.lb.sidorova.v">€41 800 объём</div></div>
                 <div class="rank-change" style="color:var(--success)">↑2</div>
               </div>
               <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
                 <div class="rank-pos top3">3</div>
                 <img class="rank-avatar" src="https://i.pravatar.cc/150?img=15" alt="">
-                <div class="rank-info"><div class="rank-name">Артём Волков</div><div class="rank-volume">€38 500 объём</div></div>
+                <div class="rank-info"><div class="rank-name" data-i18n="agent.lb.volkov">Артём Волков</div><div class="rank-volume" data-i18n="agent.lb.volkov.v">€38 500 объём</div></div>
                 <div class="rank-change" style="color:var(--danger)">↓1</div>
               </div>
 
@@ -519,7 +590,7 @@
                 <img class="rank-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
                 <div class="rank-info">
                   <div class="rank-name">Sergej Seider <span style="font-size:11px;color:var(--accent)">(вы)</span></div>
-                  <div class="rank-volume">€18 420 объём</div>
+                  <div class="rank-volume" data-i18n="agent.lb.seider.v">€18 420 объём</div>
                 </div>
                 <div class="rank-change" style="color:var(--success)">↑3</div>
               </div>
@@ -529,13 +600,13 @@
               <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
                 <div class="rank-pos">19</div>
                 <img class="rank-avatar" src="https://i.pravatar.cc/150?img=22" alt="">
-                <div class="rank-info"><div class="rank-name">Илья Морозов</div><div class="rank-volume">€8 900 объём</div></div>
+                <div class="rank-info"><div class="rank-name" data-i18n="agent.lb.morozov">Илья Морозов</div><div class="rank-volume" data-i18n="agent.lb.morozov.v">€8 900 объём</div></div>
                 <div class="rank-change" style="color:var(--danger)">↓2</div>
               </div>
               <div class="rank-item" onclick="showToast('📌 Профиль агента — финальная точка')">
                 <div class="rank-pos">20</div>
                 <img class="rank-avatar" src="https://i.pravatar.cc/150?img=31" alt="">
-                <div class="rank-info"><div class="rank-name">Татьяна Козлова</div><div class="rank-volume">€8 100 объём</div></div>
+                <div class="rank-info"><div class="rank-name" data-i18n="agent.lb.kozlova">Татьяна Козлова</div><div class="rank-volume" data-i18n="agent.lb.kozlova.v">€8 100 объём</div></div>
                 <div class="rank-change" style="color:var(--success)">↑1</div>
               </div>
             </main>
@@ -566,7 +637,7 @@
                     <div class="balance-sub-value">€2 850</div>
                   </div>
                   <div class="balance-sub">
-                    <div class="balance-sub-label">Cooling-off (14д)</div>
+                    <div class="balance-sub-label" data-i18n="agent.coolingOff">Cooling-off (14д)</div>
                     <div class="balance-sub-value">€570</div>
                   </div>
                 </div>
@@ -589,19 +660,19 @@
               <div class="section-title" data-i18n="agent.history">История</div>
               <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')">
                 <div class="comm-level l1">L1</div>
-                <div class="comm-info"><div class="comm-source">Комиссия L1 — Петрова</div><div class="comm-product">IPI AG</div></div>
+                <div class="comm-info"><div class="comm-source" data-i18n="agent.passive.commL1">Комиссия L1 — Петрова</div><div class="comm-product">IPI AG</div></div>
                 <div class="comm-amount"><div class="comm-sum">+€500</div><div class="comm-date">01.04.2026</div></div>
               </div>
               <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')">
                 <div class="comm-level l2">L2</div>
-                <div class="comm-info"><div class="comm-source">Комиссия L2 — Козлов</div><div class="comm-product">Immo-Pro-Invest</div></div>
+                <div class="comm-info"><div class="comm-source" data-i18n="agent.passive.commL2">Комиссия L2 — Козлов</div><div class="comm-product">Immo-Pro-Invest</div></div>
                 <div class="comm-amount"><div class="comm-sum">+€90</div><div class="comm-date">31.03.2026</div></div>
               </div>
               <div class="comm-item" onclick="showToast('📌 Детали операции — финальная точка')">
                 <div class="comm-level" style="background:rgba(232,101,26,0.1);color:var(--accent)">
                   <i data-lucide="gift" style="width:16px;height:16px"></i>
                 </div>
-                <div class="comm-info"><div class="comm-source">Бонус Top-20 (март)</div><div class="comm-product">Месячный пул 2%</div></div>
+                <div class="comm-info"><div class="comm-source" data-i18n="agent.passive.bonusTop20">Бонус Top-20 (март)</div><div class="comm-product" data-i18n="agent.passive.monthlyPool">Месячный пул 2%</div></div>
                 <div class="comm-amount"><div class="comm-sum">+€85</div><div class="comm-date">01.04.2026</div></div>
               </div>
             </main>
@@ -629,7 +700,7 @@
                 <div style="font-size:13px;color:var(--text-secondary)">sergej.seider@cbshome.org</div>
                 <div style="display:inline-flex;gap:8px;margin-top:8px">
                   <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(232,101,26,0.1);color:var(--accent)">
-                    <i data-lucide="users" style="width:11px;height:11px;vertical-align:-2px"></i> Агент
+                    <i data-lucide="users" style="width:11px;height:11px;vertical-align:-2px"></i> <span data-i18n="agent.role">Агент</span>
                   </span>
                   <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:var(--success-dim);color:var(--success)">
                     <i data-lucide="shield" style="width:11px;height:11px;vertical-align:-2px"></i> Silver

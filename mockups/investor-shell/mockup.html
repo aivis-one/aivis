@@ -281,14 +281,43 @@
                 <h2 style="font-size:20px;font-weight:700;color:var(--text)">Sergej Seider</h2>
               </div>
 
-              <!-- Stats Grid -->
-              <div class="stats-grid">
-                <div class="stat-card wide" onclick="switchTab('screen-portfolio','tab-portfolio')">
-                  <div class="icon-box teal"><i data-lucide="pie-chart"></i></div>
-                  <div class="stat-label" data-i18n="inv.dashboard.portfolio">Портфель</div>
-                  <div class="stat-value">€24 750</div>
-                  <div class="stat-change up" data-i18n="inv.dashboard.portfolioChange">+12.4% за месяц</div>
+              <!-- Hero: Portfolio + Dense Dot Chart -->
+              <div class="stat-card wide" onclick="switchTab('screen-portfolio','tab-portfolio')" style="margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div>
+                    <div class="stat-label" data-i18n="inv.dashboard.portfolio">Портфель</div>
+                    <div class="stat-value">€24 750</div>
+                    <div class="stat-change up" data-i18n="inv.dashboard.portfolioChange">+12.4% за месяц</div>
+                  </div>
+                  <div class="chart-timeframe">
+                    <button class="tf-btn" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1w">1Н</button>
+                    <button class="tf-btn active" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1m">1М</button>
+                    <button class="tf-btn" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.3m">3М</button>
+                    <button class="tf-btn" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1y">1Г</button>
+                  </div>
                 </div>
+                <div class="dot-chart" id="investorChart"></div>
+                <script>
+                (function(){
+                  var data = [2,3,3,4,3,5,4,6,5,5,6,7,5,6,7,7,8,7,8,8,9,8,9,10];
+                  var rows = 10;
+                  var el = document.getElementById('investorChart');
+                  data.forEach(function(v, i){
+                    var col = document.createElement('div');
+                    col.className = 'dot-col' + (i === data.length - 1 ? ' current' : '');
+                    for (var r = 0; r < rows; r++) {
+                      var d = document.createElement('div');
+                      d.className = r < v ? 'dot' : 'dot empty';
+                      col.appendChild(d);
+                    }
+                    el.appendChild(col);
+                  });
+                })();
+                </script>
+              </div>
+
+              <!-- Balance cards -->
+              <div class="stats-grid">
                 <div class="stat-card" onclick="switchTab('screen-balance','tab-balance')">
                   <div class="icon-box green"><i data-lucide="wallet"></i></div>
                   <div class="stat-label" data-i18n="inv.dashboard.activeBalance">Активный баланс</div>
@@ -299,7 +328,7 @@
                   <div class="icon-box blue"><i data-lucide="snowflake"></i></div>
                   <div class="stat-label" data-i18n="inv.dashboard.frozen">Заморожен</div>
                   <div class="stat-value">€1 000</div>
-                  <div class="stat-sub">До 02.04.2026</div>
+                  <div class="stat-sub" data-i18n="inv.balance.until">До 02.04.2026</div>
                 </div>
               </div>
 
@@ -312,8 +341,8 @@
                 <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                   <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
                   <div class="tx-info">
-                    <div class="tx-title">Пополнение USDT (TRC20)</div>
-                    <div class="tx-date">Сегодня, 14:23</div>
+                    <div class="tx-title" data-i18n="inv.tx.deposit">Пополнение USDT (TRC20)</div>
+                    <div class="tx-date" data-i18n="inv.tx.today">Сегодня, 14:23</div>
                   </div>
                   <div class="tx-amount">
                     <div class="tx-sum positive">+€1 000</div>
@@ -323,7 +352,7 @@
                 <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                   <div class="icon-box teal"><i data-lucide="shopping-cart"></i></div>
                   <div class="tx-info">
-                    <div class="tx-title">Покупка IPI AG</div>
+                    <div class="tx-title" data-i18n="inv.tx.purchaseIpi">Покупка IPI AG</div>
                     <div class="tx-date">28.03.2026</div>
                   </div>
                   <div class="tx-amount">
@@ -334,7 +363,7 @@
                 <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                   <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
                   <div class="tx-info">
-                    <div class="tx-title">Пополнение USDT (ERC20)</div>
+                    <div class="tx-title" data-i18n="inv.tx.deposit2">Пополнение USDT (ERC20)</div>
                     <div class="tx-date">25.03.2026</div>
                   </div>
                   <div class="tx-amount">
@@ -352,14 +381,14 @@
                 <div class="news-item" onclick="showToast('Новость — финальная точка')">
                   <div><div class="news-badge" data-i18n="inv.news.product">Продукт</div></div>
                   <div>
-                    <div class="news-title">IPI AG: новый этап строительства</div>
+                    <div class="news-title" data-i18n="inv.news.ipiTitle">IPI AG: новый этап строительства</div>
                     <div class="news-date">29.03.2026</div>
                   </div>
                 </div>
                 <div class="news-item" onclick="showToast('Новость — финальная точка')">
                   <div><div class="news-badge" data-i18n="inv.news.platform">Платформа</div></div>
                   <div>
-                    <div class="news-title">Обновление условий рассрочки</div>
+                    <div class="news-title" data-i18n="inv.news.installmentTitle">Обновление условий рассрочки</div>
                     <div class="news-date">26.03.2026</div>
                   </div>
                 </div>
@@ -547,7 +576,7 @@
                 </div>
                 <div class="detail-section">
                   <h3 data-i18n="inv.detail.about">О продукте</h3>
-                  <p id="productDesc">Инвестиционные юниты IPI AG обеспечены портфелем строительных проектов в Германии. Патентованная технология CBS HOME (EP 3 574 160 B1) обеспечивает конкурентное преимущество: строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах.</p>
+                  <p id="productDesc" data-i18n="inv.product.desc.ipi">Инвестиционные юниты IPI AG обеспечены портфелем строительных проектов в Германии. Патентованная технология CBS HOME (EP 3 574 160 B1) обеспечивает конкурентное преимущество: строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах.</p>
                 </div>
                 <div class="detail-section">
                   <h3 data-i18n="inv.detail.bonus">Бонусные юниты</h3>
@@ -576,7 +605,7 @@
             <main class="main">
               <div class="form-group">
                 <label class="form-label" data-i18n="inv.purchase.product">Продукт</label>
-                <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);font-size:14px;color:var(--text)">
+                <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);font-size:14px;color:var(--text)" data-i18n="inv.purchase.product.ipi">
                   IPI AG Shares — €1.00 / юнит
                 </div>
               </div>
@@ -603,7 +632,7 @@
                 </div>
                 <div class="summary-row">
                   <span class="summary-label" data-i18n="inv.purchase.bonus">Бонус</span>
-                  <span class="summary-value" style="color:var(--success)" id="sumBonus">+500 юнитов</span>
+                  <span class="summary-value" style="color:var(--success)" id="sumBonus" data-i18n="inv.purchase.bonusUnits">+500 юнитов</span>
                 </div>
                 <div class="summary-row summary-total">
                   <span class="summary-label" data-i18n="inv.purchase.total">Итого</span>
@@ -611,7 +640,7 @@
                 </div>
               </div>
 
-              <button class="btn btn-primary" style="margin-top:20px" onclick="showToast('Покупка выполнена: 5 500 юнитов IPI AG','success');setTimeout(()=>showToast('Покупка завершена — возврат в портфель'),1500)" data-i18n="inv.purchase.confirm">
+              <button class="btn btn-primary" style="margin-top:20px" onclick="showToast('Покупка выполнена: 5 500 юнитов IPI AG','success');setTimeout(()=>showToast('Покупка завершена — возврат в портфель'),1500)" data-i18n="inv.purchase.confirmBtn">
                 Подтвердить покупку
               </button>
             </main>
@@ -632,7 +661,7 @@
             <main class="main">
               <div class="form-group">
                 <label class="form-label" data-i18n="inv.purchase.product">Продукт</label>
-                <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);font-size:14px;color:var(--text)">
+                <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);font-size:14px;color:var(--text)" data-i18n="inv.purchase.done.text">
                   IPI AG Shares — 5 000 юнитов = €5 000
                 </div>
               </div>
@@ -649,7 +678,7 @@
                     <tr><th data-i18n="inv.installment.month">Месяц</th><th data-i18n="inv.installment.amount">Сумма</th><th data-i18n="inv.installment.unitsCol">Юнитов</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>1 (сейчас)</td><td>€500</td><td>500</td></tr>
+                    <tr><td data-i18n="inv.installment.now">1 (сейчас)</td><td>€500</td><td>500</td></tr>
                     <tr><td>2-5</td><td>€500 x 4</td><td>500 x 4</td></tr>
                     <tr><td>6</td><td>€2 500</td><td>2 500</td></tr>
                   </tbody>
@@ -665,7 +694,7 @@
                     <tr><th data-i18n="inv.installment.month">Месяц</th><th data-i18n="inv.installment.amount">Сумма</th><th data-i18n="inv.installment.unitsCol">Юнитов</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>1 (сейчас)</td><td>€250</td><td>250</td></tr>
+                    <tr><td data-i18n="inv.installment.now">1 (сейчас)</td><td>€250</td><td>250</td></tr>
                     <tr><td>2-11</td><td>€250 x 10</td><td>250 x 10</td></tr>
                     <tr><td>12</td><td>€2 250</td><td>2 250</td></tr>
                   </tbody>
@@ -677,7 +706,7 @@
                 <span data-i18n="inv.installment.notice">Цена фиксируется при оформлении. Первый платёж списывается сразу с активного баланса.</span>
               </div>
 
-              <button class="btn btn-primary" style="margin-top:16px" onclick="showToast('Рассрочка оформлена: 6 мес','success');setTimeout(()=>showToast('Рассрочка оформлена — первый платёж списан'),1500)" data-i18n="inv.installment.confirm">
+              <button class="btn btn-primary" style="margin-top:16px" onclick="showToast('Рассрочка оформлена: 6 мес','success');setTimeout(()=>showToast('Рассрочка оформлена — первый платёж списан'),1500)" data-i18n="inv.installment.confirmBtn">
                 Оформить рассрочку
               </button>
             </main>
@@ -727,13 +756,13 @@
                   </div>
                   <div class="tx-amount">
                     <div class="tx-sum positive">+€1 000</div>
-                    <div class="tx-status frozen">59 мин</div>
+                    <div class="tx-status frozen" data-i18n="inv.balance.frozenMin">59 мин</div>
                   </div>
                 </div>
                 <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                   <div class="icon-box teal"><i data-lucide="shopping-cart"></i></div>
                   <div class="tx-info">
-                    <div class="tx-title">Покупка IPI AG (5000 юн.)</div>
+                    <div class="tx-title" data-i18n="inv.tx.purchaseIpi5k">Покупка IPI AG (5000 юн.)</div>
                     <div class="tx-date">28.03.2026</div>
                   </div>
                   <div class="tx-amount">
@@ -755,7 +784,7 @@
                 <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                   <div class="icon-box teal"><i data-lucide="shopping-cart"></i></div>
                   <div class="tx-info">
-                    <div class="tx-title">Покупка Immo-Pro-Invest</div>
+                    <div class="tx-title" data-i18n="inv.tx.purchaseImmo">Покупка Immo-Pro-Invest</div>
                     <div class="tx-date">20.03.2026</div>
                   </div>
                   <div class="tx-amount">
@@ -766,7 +795,7 @@
                 <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
                   <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
                   <div class="tx-info">
-                    <div class="tx-title">Банковский перевод</div>
+                    <div class="tx-title" data-i18n="inv.tx.bankTransfer">Банковский перевод</div>
                     <div class="tx-date">15.03.2026</div>
                   </div>
                   <div class="tx-amount">
@@ -799,32 +828,32 @@
               <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
                 <div class="icon-box teal"><i data-lucide="file-text"></i></div>
                 <div class="doc-info">
-                  <div class="doc-title">Инвестиционное соглашение — IPI AG</div>
-                  <div class="doc-meta">Подписан 28.03.2026 -- 5 000 юнитов</div>
+                  <div class="doc-title" data-i18n="inv.doc.agreementIpi">Инвестиционное соглашение — IPI AG</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.ipi1">Подписан 28.03.2026 -- 5 000 юнитов</div>
                 </div>
                 <span class="doc-status signed" data-i18n="inv.docs.signed">Подписан</span>
               </div>
               <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
                 <div class="icon-box teal"><i data-lucide="file-text"></i></div>
                 <div class="doc-info">
-                  <div class="doc-title">Инвестиционное соглашение — Immo-Pro-Invest</div>
-                  <div class="doc-meta">Подписан 20.03.2026 -- 5 000 юнитов</div>
+                  <div class="doc-title" data-i18n="inv.doc.agreementImmo">Инвестиционное соглашение — Immo-Pro-Invest</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.immo1">Подписан 20.03.2026 -- 5 000 юнитов</div>
                 </div>
                 <span class="doc-status signed" data-i18n="inv.docs.signed">Подписан</span>
               </div>
               <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
                 <div class="icon-box orange"><i data-lucide="gift"></i></div>
                 <div class="doc-info">
-                  <div class="doc-title">Сертификат бонусных юнитов — IPI AG</div>
-                  <div class="doc-meta">Выдан 28.03.2026 -- 500 юнитов</div>
+                  <div class="doc-title" data-i18n="inv.doc.bonusCert">Сертификат бонусных юнитов — IPI AG</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.bonus1">Выдан 28.03.2026 -- 500 юнитов</div>
                 </div>
                 <span class="doc-status signed" data-i18n="inv.docs.issued">Выдан</span>
               </div>
               <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
                 <div class="icon-box neutral"><i data-lucide="clipboard-list"></i></div>
                 <div class="doc-info">
-                  <div class="doc-title">Пользовательское соглашение cbshome.org</div>
-                  <div class="doc-meta">Подписан 15.03.2026</div>
+                  <div class="doc-title" data-i18n="inv.doc.userAgreement">Пользовательское соглашение cbshome.org</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.agreement1">Подписан 15.03.2026</div>
                 </div>
                 <span class="doc-status signed" data-i18n="inv.docs.signed">Подписан</span>
               </div>
@@ -1031,7 +1060,7 @@
         company: 'IPI AG',
         price: '\u20AC1.00',
         avail: '500 000',
-        desc: 'Инвестиционные юниты IPI AG обеспечены портфелем строительных проектов в Германии. Патентованная технология CBS HOME (EP 3 574 160 B1) обеспечивает конкурентное преимущество: строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах.',
+        desc: I18N.t('inv.product.desc.ipi'),
         gradient: 'gradient-primary',
         photo: 'photo-1.jpg'
       },
@@ -1041,7 +1070,7 @@
         company: 'Immo-Pro-Invest GmbH',
         price: '\u20AC1.00',
         avail: '300 000',
-        desc: 'Инвестиции в портфель объектов недвижимости через Immo-Pro-Invest GmbH. Профессиональное управление активами с фокусом на стабильный рост стоимости и диверсификацию.',
+        desc: I18N.t('inv.product.desc.immo'),
         gradient: 'gradient-deep',
         photo: 'photo-2.jpg'
       },
@@ -1051,7 +1080,7 @@
         company: 'CBS Home AG',
         price: '\u20AC1.00',
         avail: '200 000',
-        desc: 'Франшиза CBS Home — инновационная строительная технология Compound Building System. Запатентованная система (58 стран), единственное допущение DIBt Z-14.5-883. Производственная мощность: 120-190 м\u00B2/день.',
+        desc: I18N.t('inv.product.desc.cbs'),
         gradient: 'gradient-accent',
         photo: 'photo-3.jpg'
       }
@@ -1084,7 +1113,7 @@
       document.getElementById('sumTotal').textContent =
         '\u20AC' + u.toLocaleString('de-DE');
       document.getElementById('sumBonus').textContent =
-        u >= 5000 ? '+' + (Math.floor(u / 5000) * 500) + ' юнитов' : 'Нет (мин. 5 000)';
+        u >= 5000 ? '+' + (Math.floor(u / 5000) * 500) + ' ' + I18N.t('inv.bonusCalc') : I18N.t('inv.bonusNone');
     }
 
     /* --- Installment Plan Selection --- */

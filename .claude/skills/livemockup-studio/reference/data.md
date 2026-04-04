@@ -174,10 +174,10 @@ const chartData = {
 
 ```javascript
 const activities = [
-  { icon: "📦", text: "Новый заказ #1234", time: "5 мин назад", type: "order" },
-  { icon: "👤", text: "Регистрация: Иван П.", time: "12 мин назад", type: "user" },
-  { icon: "💬", text: "Отзыв на товар", time: "1 час назад", type: "review" },
-  { icon: "⚠️", text: "Товар заканчивается", time: "2 часа назад", type: "alert" }
+  { icon: "package", text: "Новый заказ #1234", time: "5 мин назад", type: "order" },
+  { icon: "user", text: "Регистрация: Иван П.", time: "12 мин назад", type: "user" },
+  { icon: "message-circle", text: "Отзыв на товар", time: "1 час назад", type: "review" },
+  { icon: "alert-triangle", text: "Товар заканчивается", time: "2 часа назад", type: "alert" }
 ];
 ```
 
@@ -218,8 +218,8 @@ const messages = {
 
 ```javascript
 const menu = [
-  { label: "Главная", href: "#", icon: "🏠" },
-  { label: "Каталог", href: "#catalog", icon: "📦", badge: "New" },
+  { label: "Главная", href: "#", icon: "home" },
+  { label: "Каталог", href: "#catalog", icon: "package", badge: "New" },
   { label: "О компании", href: "#about", icon: "ℹ️" },
   { label: "Контакты", href: "#contacts", icon: "📞" }
 ];
@@ -339,7 +339,7 @@ const products = {
 
 ```javascript
 const roles = {
-  investor: { label: "Инвестор", icon: "📊", color: "var(--primary)" },
+  investor: { label: "Инвестор", icon: "bar-chart-3", color: "var(--primary)" },
   agent: { label: "Агент", icon: "🤝", color: "var(--accent)" },
   company: { label: "Компания", icon: "🏢", color: "var(--primary-dark)" },
   staff: { label: "Staff", icon: "🛡️", color: "var(--danger)" }

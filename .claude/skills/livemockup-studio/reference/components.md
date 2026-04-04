@@ -596,9 +596,9 @@ For dashboards with clickable stat rows:
       <a href="#">Контакты</a>
     </nav>
     <div class="header-actions">
-      <button class="icon-btn">🔍</button>
+      <button class="icon-btn"><i data-lucide="search"></i></button>
       <button class="icon-btn">
-        🛒
+        <i data-lucide="shopping-cart"></i>
         <span class="badge">3</span>
       </button>
     </div>
@@ -702,7 +702,7 @@ For dashboards with clickable stat rows:
 
 ```html
 <div class="stat-card" onclick="showStatDetails('orders')">
-  <div class="stat-icon">📊</div>
+  <div class="icon-box teal"><i data-lucide="bar-chart-3"></i></div>
   <div class="stat-value">1,250</div>
   <div class="stat-label">Заказов</div>
   <div class="stat-change positive">+12%</div>
@@ -938,20 +938,20 @@ Bottom navigation for mobile screens.
 ```html
 <nav class="tab-bar">
   <button class="tab-item active" onclick="switchTab(this, 'screen-home')">
-    <span class="tab-icon">🏠</span>
-    <span>Главная</span>
+    <span class="tab-icon"><i data-lucide="home"></i></span>
+    <span data-i18n="tab.home">Главная</span>
   </button>
   <button class="tab-item" onclick="switchTab(this, 'screen-catalog')">
-    <span class="tab-icon">📋</span>
-    <span>Каталог</span>
+    <span class="tab-icon"><i data-lucide="clipboard-list"></i></span>
+    <span data-i18n="tab.catalog">Каталог</span>
   </button>
   <button class="tab-item" onclick="switchTab(this, 'screen-cart')">
-    <span class="tab-icon">🛒</span>
-    <span>Корзина</span>
+    <span class="tab-icon"><i data-lucide="shopping-cart"></i></span>
+    <span data-i18n="tab.cart">Корзина</span>
   </button>
   <button class="tab-item" onclick="switchTab(this, 'screen-profile')">
-    <span class="tab-icon">👤</span>
-    <span>Профиль</span>
+    <span class="tab-icon"><i data-lucide="user"></i></span>
+    <span data-i18n="tab.profile">Профиль</span>
   </button>
 </nav>
 ```
@@ -1072,5 +1072,88 @@ For tab bar to stay at bottom, use this structure:
 ```
 
 ---
+
+## Charts (Dot-Matrix)
+
+Dense dot-matrix chart for portfolio/earnings visualization. CSS-only rendering with JS data generation.
+
+### Dot Chart (single)
+
+For investor dashboard — one chart inside a `stat-card wide`:
+
+```html
+<div class="stat-card wide">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <div class="stat-label" data-i18n="inv.dashboard.portfolio">Портфель</div>
+      <div class="stat-value">€24 750</div>
+      <div class="stat-change up" data-i18n="inv.dashboard.portfolioChange">+12.4% за месяц</div>
+    </div>
+    <div class="chart-timeframe">
+      <button class="tf-btn" data-i18n="chart.1w">1Н</button>
+      <button class="tf-btn active" data-i18n="chart.1m">1М</button>
+      <button class="tf-btn" data-i18n="chart.3m">3М</button>
+      <button class="tf-btn" data-i18n="chart.1y">1Г</button>
+    </div>
+  </div>
+  <div class="dot-chart" id="chartId"></div>
+</div>
+```
+
+### JS Generator
+
+```javascript
+// data = array of values (0-10), rows = max height
+var data = [2,3,3,4,3,5,4,6,5,5,6,7,5,6,7,7,8,7,8,8,9,8,9,10]; // 24 columns
+var rows = 10;
+var el = document.getElementById('chartId');
+data.forEach(function(v, i) {
+  var col = document.createElement('div');
+  col.className = 'dot-col' + (i === data.length - 1 ? ' current' : '');
+  for (var r = 0; r < rows; r++) {
+    var d = document.createElement('div');
+    d.className = r < v ? 'dot' : 'dot empty';
+    col.appendChild(d);
+  }
+  el.appendChild(col);
+});
+```
+
+### Chart Carousel (agent 2-slide)
+
+For agent dashboard — two charts (Portfolio + Earnings) with swipe:
+
+```html
+<div class="chart-carousel">
+  <div class="chart-carousel-track">
+    <div class="chart-slides" id="slides">
+      <div class="chart-slide"><!-- Slide 1: Portfolio --></div>
+      <div class="chart-slide"><!-- Slide 2: Earnings --></div>
+    </div>
+  </div>
+  <div class="carousel-dots">
+    <span class="carousel-dot active" onclick="slideCarousel('slides',0)"></span>
+    <span class="carousel-dot" onclick="slideCarousel('slides',1)"></span>
+  </div>
+</div>
+```
+
+```javascript
+function slideCarousel(id, idx) {
+  var s = document.getElementById(id);
+  s.style.transform = 'translateX(-' + (idx * 100) + '%)';
+  s.closest('.chart-carousel').querySelectorAll('.carousel-dot')
+    .forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+}
+```
+
+### Key Rules
+
+- Always 24 columns x 10 rows = 240 dots per chart
+- Empty positions = `.dot.empty` (faded border color)
+- Last column = `.dot-col.current` (accent color)
+- Dots: `aspect-ratio: 1`, `border-radius: 1px`, `gap: 1.5px`
+- `.chart-carousel-track` has `overflow: hidden` to clip slides
+- Touch swipe: `touchstart`/`touchend` with 50px threshold
 
 *components v1.8.0*

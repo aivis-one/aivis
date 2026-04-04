@@ -165,7 +165,7 @@ Use `div` + `onclick`, NOT `form` + `onsubmit`.
       <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
     </div>
     <button class="map-btn" onclick="openNavMap()">
-      📍 <span class="map-label">Map</span>
+      <i data-lucide="map-pin" style="width:14px;height:14px"></i> <span class="map-label">Map</span>
     </button>
     <div class="zoom-control">
       <button class="zoom-btn" data-zoom="-10">−</button>
@@ -800,7 +800,7 @@ function navigateTo(screenId) {
 <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
   <div class="nav-map" onclick="event.stopPropagation()">
     <div class="nav-map-header">
-      <div class="nav-map-title">📍 Navigation Map</div>
+      <div class="nav-map-title"><i data-lucide="map-pin" style="width:16px;height:16px;vertical-align:-3px"></i> <span data-i18n="nav.map.title">Карта навигации</span></div>
       <button class="nav-map-close" onclick="closeNavMap()">×</button>
     </div>
     <div class="nav-map-body">
@@ -829,7 +829,7 @@ function navigateTo(screenId) {
           <span class="legend-dot yellow"></span> Табы
         </div>
         <div class="nav-map-legend-item">
-          <span class="legend-dot red"></span> Тупик
+          <span class="legend-dot red"></span> <span data-i18n="nav.legend.endpoint">Финальная точка</span>
         </div>
       </div>
 
@@ -858,20 +858,18 @@ function navigateTo(screenId) {
               <span class="nav-map-item-name">Покупка</span>
               <span class="level-badge end">END</span>
             </div>
-                <span class="nav-map-item-icon">👤</span>
+                <span class="nav-map-item-icon"><i data-lucide="user" style="width:14px;height:14px"></i></span>
                 <span class="nav-map-item-name">↳ Detail Screen</span>
                 <span class="level-badge">L3</span>
                 <span class="status-dot green"></span>
               </div>
             </div>
 
-            <!-- L3: Endpoint -->
-            <div class="nav-map-level" data-level="3">
-              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Item Name', 'screen-list')">
-                <span class="nav-map-item-name">↳ Item Name</span>
-                <span class="level-badge end">END</span>
-                <span class="status-dot red"></span>
-              </div>
+            <!-- Endpoint chip (no wrapper div) -->
+            <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Item Name', 'screen-list')">
+              <span class="status-dot red"></span>
+              <span class="nav-map-item-name">Item Name</span>
+              <span class="level-badge end">END</span>
             </div>
           </div>
         </div>
@@ -986,15 +984,15 @@ function navigateTo(screenId) {
 /* Tree */
 .nav-map-tree { display: flex; flex-direction: column; gap: 4px; }
 
-/* Level indentation via CSS variables */
-.nav-map-level { padding-left: calc(var(--level, 0) * 16px); }
-.nav-map-level[data-level="1"] { --level: 1; }
-.nav-map-level[data-level="2"] { --level: 2; }
-.nav-map-level[data-level="3"] { --level: 3; }
+/* Section content: horizontal chip flow (v1.8.0) */
+.nav-map-section-content {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 2px 0 4px;
+}
 
-/* Items */
+/* Items as compact chips — NO nav-map-level wrappers */
 .nav-map-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;

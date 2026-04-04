@@ -116,32 +116,32 @@
               <div class="stats-grid">
                 <div class="stat-card" onclick="switchTab('screen-users','tab-users')">
                   <div class="icon-box teal"><i data-lucide="users"></i></div>
-                  <div class="stat-label">Пользователи</div>
+                  <div class="stat-label" data-i18n="staff.users.stat">Пользователи</div>
                   <div class="stat-value">1 247</div>
-                  <div class="stat-change up">+34 за месяц</div>
+                  <div class="stat-change up" data-i18n="staff.users.change">+34 за месяц</div>
                 </div>
                 <div class="stat-card" onclick="switchTab('screen-kyc','tab-kyc')">
                   <div class="icon-box yellow"><i data-lucide="shield-alert"></i></div>
-                  <div class="stat-label">KYC очередь</div>
+                  <div class="stat-label" data-i18n="staff.kycQueue">KYC очередь</div>
                   <div class="stat-value">12</div>
-                  <div class="stat-change down">Ожидают</div>
+                  <div class="stat-change down" data-i18n="staff.pending">Ожидают</div>
                 </div>
                 <div class="stat-card" onclick="switchTab('screen-payments','tab-pay')">
                   <div class="icon-box green"><i data-lucide="credit-card"></i></div>
-                  <div class="stat-label">Платежи</div>
+                  <div class="stat-label" data-i18n="staff.payments.stat">Платежи</div>
                   <div class="stat-value">5</div>
-                  <div class="stat-sub">Ожидают подтверждения</div>
+                  <div class="stat-sub" data-i18n="staff.awaitingConfirm">Ожидают подтверждения</div>
                 </div>
                 <div class="stat-card" onclick="switchTab('screen-more','tab-more')">
                   <div class="icon-box orange"><i data-lucide="user-check"></i></div>
-                  <div class="stat-label">Заявки агентов</div>
+                  <div class="stat-label" data-i18n="staff.agentApps">Заявки агентов</div>
                   <div class="stat-value">3</div>
-                  <div class="stat-sub">Новые</div>
+                  <div class="stat-sub" data-i18n="staff.new">Новые</div>
                 </div>
               </div>
-              <div class="section-title">Быстрые действия</div>
-              <button class="btn btn-primary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-kyc','tab-kyc')"><i data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px"></i> Обработать KYC</button>
-              <button class="btn btn-secondary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-payments','tab-pay')"><i data-lucide="credit-card" style="width:14px;height:14px;vertical-align:-2px"></i> Проверить платежи</button>
+              <div class="section-title" data-i18n="staff.quickActions">Быстрые действия</div>
+              <button class="btn btn-primary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-kyc','tab-kyc')"><i data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="staff.processKyc">Обработать KYC</span></button>
+              <button class="btn btn-secondary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-payments','tab-pay')"><i data-lucide="credit-card" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="staff.checkPayments">Проверить платежи</span></button>
               <button class="btn btn-secondary btn-sm" onclick="navigateTo('screen-avatar')"><i data-lucide="ghost" style="width:14px;height:14px;vertical-align:-2px"></i> Avatar Mode</button>
             </main>
             <nav class="tab-bar">
@@ -156,11 +156,11 @@
           <!-- ===== SCREEN 2: USERS ===== -->
           <div class="screen" id="screen-users">
             <header class="app-header">
-              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">Пользователи</span></div>
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.users.title">Пользователи</span></div>
               <div class="header-right"><span style="font-size:13px;color:var(--text-tertiary)">1 247</span></div>
             </header>
             <main class="main">
-              <input class="search-box" type="text" placeholder="Поиск по имени, email..." onclick="showToast('Поиск активирован','info')">
+              <input class="search-box" type="text" placeholder="Поиск по имени, email..." data-i18n="staff.searchPlaceholder" data-i18n-attr="placeholder" onclick="showToast('Поиск активирован','info')">
               <div class="filter-tabs">
                 <button class="filter-tab active" onclick="filterUsers(this,'all')">Все</button>
                 <button class="filter-tab" onclick="filterUsers(this,'investor')">Инвесторы</button>
@@ -170,42 +170,42 @@
               <div id="userList">
                 <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=1" alt="">
-                  <div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail">Инвестор &bull; anna@mail.ru</div></div>
+                  <div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail" data-i18n="staff.user.petrova.detail">Инвестор &bull; anna@mail.ru</div></div>
                   <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
                 </div>
                 <div class="user-item" data-role="agent" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
-                  <div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail">Агент &bull; sergej@cbshome.org</div></div>
+                  <div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail" data-i18n="staff.user.seider.detail">Агент &bull; sergej@cbshome.org</div></div>
                   <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
                 </div>
                 <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
-                  <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail">Инвестор &bull; max.iv@gmail.com</div></div>
+                  <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail" data-i18n="staff.user.ivanov.detail">Инвестор &bull; max.iv@gmail.com</div></div>
                   <div class="item-right"><span class="badge badge-warning">KYC <i data-lucide="clock" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
                 </div>
                 <div class="user-item" data-role="company" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=65" alt="">
-                  <div class="item-info"><div class="item-name">GmbH Immobilien AG</div><div class="item-detail">Компания &bull; info@immo-ag.de</div></div>
+                  <div class="item-info"><div class="item-name">GmbH Immobilien AG</div><div class="item-detail" data-i18n="staff.user.immoag.detail">Компания &bull; info@immo-ag.de</div></div>
                   <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
                 </div>
                 <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=47" alt="">
-                  <div class="item-info"><div class="item-name">Наталья Сидорова</div><div class="item-detail">Инвестор &bull; nat.sid@yandex.ru</div></div>
+                  <div class="item-info"><div class="item-name">Наталья Сидорова</div><div class="item-detail" data-i18n="staff.user.sidorova.detail">Инвестор &bull; nat.sid@yandex.ru</div></div>
                   <div class="item-right"><span class="badge badge-danger"><i data-lucide="ban" style="width:10px;height:10px;vertical-align:-1px"></i> Blocked</span></div>
                 </div>
                 <div class="user-item" data-role="agent" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=15" alt="">
-                  <div class="item-info"><div class="item-name">Klaus Hoffmann</div><div class="item-detail">Агент &bull; klaus@cbshome.org</div></div>
+                  <div class="item-info"><div class="item-name">Klaus Hoffmann</div><div class="item-detail" data-i18n="staff.user.hoffmann.detail">Агент &bull; klaus@cbshome.org</div></div>
                   <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
                 </div>
                 <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=22" alt="">
-                  <div class="item-info"><div class="item-name">Илья Морозов</div><div class="item-detail">Инвестор &bull; ilya.m@outlook.com</div></div>
+                  <div class="item-info"><div class="item-name">Илья Морозов</div><div class="item-detail" data-i18n="staff.user.morozov.detail">Инвестор &bull; ilya.m@outlook.com</div></div>
                   <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
                 </div>
                 <div class="user-item" data-role="company" onclick="showToast('Профиль пользователя — финальная точка')">
                   <img class="item-avatar" src="https://i.pravatar.cc/150?img=68" alt="">
-                  <div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail">Компания &bull; ek@erste-kapital.de</div></div>
+                  <div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail" data-i18n="staff.user.erstekapital.detail">Компания &bull; ek@erste-kapital.de</div></div>
                   <div class="item-right"><span class="badge badge-warning">KYC <i data-lucide="clock" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
                 </div>
               </div>
@@ -222,15 +222,15 @@
           <!-- ===== SCREEN 3: KYC QUEUE ===== -->
           <div class="screen" id="screen-kyc">
             <header class="app-header">
-              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">KYC Очередь</span></div>
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.kyc.title">KYC Очередь</span></div>
               <div class="header-right"><span class="badge badge-warning">12 pending</span></div>
             </header>
             <main class="main">
-              <div style="padding:12px;background:var(--warning-dim);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)"><i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:-2px"></i> Проверьте документы и данные пользователя перед одобрением. Среднее время обработки: 15 мин.</div>
+              <div style="padding:12px;background:var(--warning-dim);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)" data-i18n="staff.kyc.hint"><i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:-2px"></i> Проверьте документы и данные пользователя перед одобрением. Среднее время обработки: 15 мин.</div>
 
               <div class="kyc-item" onclick="showToast('KYC детали — финальная точка')">
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
-                <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail">Инвестор &bull; Паспорт РФ &bull; Подан 28.03.2026</div></div>
+                <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail" data-i18n="staff.kyc.ivanov">Инвестор &bull; Паспорт РФ &bull; Подан 28.03.2026</div></div>
                 <div class="item-right" style="display:flex;gap:4px">
                   <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Максим Иванов','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
                   <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Максим Иванов','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
@@ -239,7 +239,7 @@
 
               <div class="kyc-item" onclick="showToast('KYC детали — финальная точка')">
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=68" alt="">
-                <div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail">Компания &bull; Handelsregister &bull; Подан 30.03.2026</div></div>
+                <div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail" data-i18n="staff.kyc.erstekapital">Компания &bull; Handelsregister &bull; Подан 30.03.2026</div></div>
                 <div class="item-right" style="display:flex;gap:4px">
                   <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Erste Kapital','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
                   <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Erste Kapital','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
@@ -248,14 +248,14 @@
 
               <div class="kyc-item" onclick="showToast('KYC детали — финальная точка')">
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=44" alt="">
-                <div class="item-info"><div class="item-name">Ольга Шмидт</div><div class="item-detail">Инвестор &bull; Personalausweis &bull; Подан 01.04.2026</div></div>
+                <div class="item-info"><div class="item-name">Ольга Шмидт</div><div class="item-detail" data-i18n="staff.kyc.schmidt">Инвестор &bull; Personalausweis &bull; Подан 01.04.2026</div></div>
                 <div class="item-right" style="display:flex;gap:4px">
                   <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Ольга Шмидт','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
                   <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Ольга Шмидт','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
                 </div>
               </div>
 
-              <div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px">... ещё 9 заявок</div>
+              <div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px" data-i18n="staff.kyc.moreApps">... ещё 9 заявок</div>
             </main>
             <nav class="tab-bar">
               <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.staff.home">Главная</span></button>
@@ -269,11 +269,11 @@
           <!-- ===== SCREEN 4: PAYMENT REVIEW ===== -->
           <div class="screen" id="screen-payments">
             <header class="app-header">
-              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">Платежи</span></div>
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.payments.title">Платежи</span></div>
               <div class="header-right"><span class="badge badge-warning">5 pending</span></div>
             </header>
             <main class="main">
-              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)"><i data-lucide="credit-card" style="width:12px;height:12px;vertical-align:-2px"></i> Проверьте хеш транзакции в блокчейне перед подтверждением. Все платежи — крипто (USDT).</div>
+              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)" data-i18n="staff.payments.hint"><i data-lucide="credit-card" style="width:12px;height:12px;vertical-align:-2px"></i> Проверьте хеш транзакции в блокчейне перед подтверждением. Все платежи — крипто (USDT).</div>
 
               <div class="pay-item" onclick="showToast('Детали платежа — финальная точка')">
                 <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="circle-dollar-sign" style="width:20px;height:20px;color:var(--success)"></i></div>
@@ -332,7 +332,7 @@
           <!-- ===== SCREEN 5: MORE (Settings / Agent Apps / Avatar access) ===== -->
           <div class="screen" id="screen-more">
             <header class="app-header">
-              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">Ещё</span></div>
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.more.title">Ещё</span></div>
             </header>
             <main class="main">
               <div style="text-align:center;padding:20px 0">
@@ -346,15 +346,15 @@
               </div>
 
               <div style="border-top:1px solid var(--border);padding-top:16px">
-                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Инструменты</div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px" data-i18n="staff.settings.tools">Инструменты</div>
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigateTo('screen-agent-apps')"><span style="font-size:14px;color:var(--text)"><i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-2px"></i> Заявки агентов</span><span style="display:flex;align-items:center;gap:6px"><span class="badge badge-warning">3</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></span></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigateTo('screen-avatar')"><span style="font-size:14px;color:var(--accent);font-weight:600"><i data-lucide="ghost" style="width:14px;height:14px;vertical-align:-2px"></i> Avatar Mode</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></div>
               </div>
 
               <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
-                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Система</div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Платформа</span><span style="font-size:13px;color:var(--text-tertiary)">v2.4.1</span></div>
-                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)">Язык</span><span style="font-size:13px;color:var(--text-tertiary)">Русский</span></div>
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px" data-i18n="staff.settings.system">Система</div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)" data-i18n="staff.settings.platform">Платформа</span><span style="font-size:13px;color:var(--text-tertiary)">v2.4.1</span></div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)" data-i18n="staff.settings.language">Язык</span><span style="font-size:13px;color:var(--text-tertiary)" data-i18n="staff.settings.langVal">Русский</span></div>
                 <div style="display:flex;justify-content:space-between;padding:14px 0;cursor:pointer" onclick="showToast('Выход — финальная точка')"><span style="font-size:14px;color:var(--danger)"><i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px"></i> Выйти</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></div>
               </div>
             </main>
@@ -370,18 +370,18 @@
           <!-- ===== SCREEN 6: AGENT APPLICATIONS ===== -->
           <div class="screen" id="screen-agent-apps">
             <header class="app-header">
-              <div class="header-left"><button class="btn-link" onclick="switchTab('screen-more','tab-more')" style="padding:0;font-size:14px">&larr; Ещё</button><span class="header-title" style="margin-left:8px">Заявки агентов</span></div>
+              <div class="header-left"><button class="btn-link" onclick="switchTab('screen-more','tab-more')" style="padding:0;font-size:14px">&larr; Ещё</button><span class="header-title" style="margin-left:8px" data-i18n="staff.agentApps.title">Заявки агентов</span></div>
               <div class="header-right"><span class="badge badge-warning">3</span></div>
             </header>
             <main class="main">
-              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)"><i data-lucide="file-text" style="width:12px;height:12px;vertical-align:-2px"></i> Инвестор может подать заявку на статус агента. Cooldown: 30 дней после отклонения. Проверьте историю инвестиций.</div>
+              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)" data-i18n="staff.agentApps.hint"><i data-lucide="file-text" style="width:12px;height:12px;vertical-align:-2px"></i> Инвестор может подать заявку на статус агента. Cooldown: 30 дней после отклонения. Проверьте историю инвестиций.</div>
 
               <div class="agent-app" onclick="showToast('Детали заявки — финальная точка')">
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=22" alt="">
                 <div class="item-info">
                   <div class="item-name">Илья Морозов</div>
-                  <div class="item-detail">Инвестор с 2024 &bull; Портфель: &euro;18 400</div>
-                  <div class="item-detail">5 покупок &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></div>
+                  <div class="item-detail" data-i18n="staff.agentApp.morozov.1">Инвестор с 2024 &bull; Портфель: &euro;18 400</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.morozov.2">5 покупок &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></div>
                 </div>
                 <div class="item-right" style="display:flex;gap:4px">
                   <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Илья Морозов стал агентом','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
@@ -393,8 +393,8 @@
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=31" alt="">
                 <div class="item-info">
                   <div class="item-name">Татьяна Козлова</div>
-                  <div class="item-detail">Инвестор с 2025 &bull; Портфель: &euro;8 100</div>
-                  <div class="item-detail">3 покупки &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></div>
+                  <div class="item-detail" data-i18n="staff.agentApp.kozlova.1">Инвестор с 2025 &bull; Портфель: &euro;8 100</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.kozlova.2">3 покупки &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></div>
                 </div>
                 <div class="item-right" style="display:flex;gap:4px">
                   <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Татьяна Козлова стала агентом','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
@@ -406,8 +406,8 @@
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=52" alt="">
                 <div class="item-info">
                   <div class="item-name">Viktor Braun</div>
-                  <div class="item-detail">Инвестор с 2025 &bull; Портфель: &euro;4 200</div>
-                  <div class="item-detail">2 покупки &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i> &bull; <i data-lucide="alert-triangle" style="width:10px;height:10px;vertical-align:-1px;color:var(--warning)"></i> Cooldown закончился 15.03</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.schneider.1">Инвестор с 2025 &bull; Портфель: &euro;4 200</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.schneider.2">2 покупки &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i> &bull; <i data-lucide="alert-triangle" style="width:10px;height:10px;vertical-align:-1px;color:var(--warning)"></i> Cooldown закончился 15.03</div>
                 </div>
                 <div class="item-right" style="display:flex;gap:4px">
                   <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Viktor Braun стал агентом','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
@@ -424,43 +424,43 @@
             </header>
             <main class="main">
               <div class="avatar-banner">
-                <div class="banner-title"><i data-lucide="ghost" style="width:20px;height:20px;vertical-align:-4px"></i> Avatar Mode</div>
-                <div class="banner-sub">Просматривайте платформу глазами пользователя</div>
+                <div class="banner-title" data-i18n="staff.avatar.title"><i data-lucide="ghost" style="width:20px;height:20px;vertical-align:-4px"></i> Avatar Mode</div>
+                <div class="banner-sub" data-i18n="staff.avatar.subtitle">Просматривайте платформу глазами пользователя</div>
               </div>
 
-              <div class="section-title">Выберите пользователя</div>
+              <div class="section-title" data-i18n="staff.avatar.selectUser">Выберите пользователя</div>
               <input class="search-box" type="text" placeholder="Поиск пользователя для аватаринга..." onclick="showToast('Поиск пользователя','info')">
 
               <div class="user-item" onclick="activateAvatar('Анна Петрова','Инвестор')">
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=1" alt="">
-                <div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail">Инвестор &bull; &euro;24 750 портфель</div></div>
+                <div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail" data-i18n="staff.avatar.petrova">Инвестор &bull; &euro;24 750 портфель</div></div>
                 <div class="item-right"><span class="badge badge-accent"><i data-lucide="ghost" style="width:12px;height:12px"></i></span></div>
               </div>
               <div class="user-item" onclick="activateAvatar('Sergej Seider','Агент')">
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
-                <div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail">Агент &bull; 47 рефералов</div></div>
+                <div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail" data-i18n="staff.avatar.seider">Агент &bull; 47 рефералов</div></div>
                 <div class="item-right"><span class="badge badge-accent"><i data-lucide="ghost" style="width:12px;height:12px"></i></span></div>
               </div>
               <div class="user-item" onclick="activateAvatar('Максим Иванов','Инвестор')">
                 <img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
-                <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail">Инвестор &bull; &euro;48 200 портфель</div></div>
+                <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail" data-i18n="staff.avatar.ivanov">Инвестор &bull; &euro;48 200 портфель</div></div>
                 <div class="item-right"><span class="badge badge-accent"><i data-lucide="ghost" style="width:12px;height:12px"></i></span></div>
               </div>
 
               <div style="margin-top:24px;padding:16px;background:var(--danger-dim);border:1px solid var(--danger);border-radius:var(--radius-lg)">
-                <div style="font-size:14px;font-weight:700;color:var(--danger);margin-bottom:8px"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px"></i> Ограниченные операции в Avatar Mode</div>
+                <div style="font-size:14px;font-weight:700;color:var(--danger);margin-bottom:8px" data-i18n="staff.avatar.restrictions"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px"></i> Ограниченные операции в Avatar Mode</div>
                 <ul class="restricted-list">
-                  <li><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя совершать покупки от имени пользователя</li>
-                  <li><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя выводить средства</li>
-                  <li><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя менять пароль или email</li>
-                  <li><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя удалять аккаунт</li>
-                  <li><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя менять KYC данные</li>
+                  <li data-i18n="staff.avatar.noPurchase"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя совершать покупки от имени пользователя</li>
+                  <li data-i18n="staff.avatar.noWithdraw"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя выводить средства</li>
+                  <li data-i18n="staff.avatar.noPassword"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя менять пароль или email</li>
+                  <li data-i18n="staff.avatar.noDelete"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя удалять аккаунт</li>
+                  <li data-i18n="staff.avatar.noKyc"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя менять KYC данные</li>
                 </ul>
               </div>
 
               <div id="avatarSession" style="display:none;margin-top:16px">
                 <div style="padding:16px;background:var(--accent);color:#fff;border-radius:var(--radius-lg);text-align:center">
-                  <div style="font-size:14px;font-weight:700;margin-bottom:4px"><i data-lucide="ghost" style="width:14px;height:14px;vertical-align:-2px"></i> Активная сессия</div>
+                  <div style="font-size:14px;font-weight:700;margin-bottom:4px" data-i18n="staff.avatar.session"><i data-lucide="ghost" style="width:14px;height:14px;vertical-align:-2px"></i> Активная сессия</div>
                   <div id="avatarTarget" style="font-size:18px;font-weight:800;margin-bottom:4px"></div>
                   <div id="avatarRole" style="font-size:12px;opacity:.8;margin-bottom:12px"></div>
                   <button class="btn" style="background:#fff;color:var(--accent);font-weight:700" onclick="deactivateAvatar()"><i data-lucide="shield" style="width:14px;height:14px;vertical-align:-2px"></i> Вернуться в Staff</button>
