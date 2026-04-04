@@ -2,90 +2,75 @@
 # CBSHOME Backend -- Staff Schemas (Sprint 3.1)
 # =============================================================================
 #
-# Pydantic models for staff management endpoints.
-#
-# StaffCreateRequest:       create a new staff user (email + password)
-# StaffResponse:            staff member info with resolved permissions
-# PermissionsUpdateRequest: update staff permission overrides
-#
-# PERMISSION RESOLUTION:
-#   StaffResponse.permissions contains the *resolved* permission dict:
-#   defaults merged with per-staff overrides from StaffProfile.permissions.
-#   The client always sees the effective permissions, never raw overrides.
+# REQUEST/RESPONSE SCHEMAS:
+#   CreateStaffRequest     -- POST /staff/users {user_id}
+#   UpdatePermissionsRequest -- PATCH /staff/users/{id}/permissions
+#   StaffProfileResponse   -- response for all staff endpoints
+#   StaffListResponse      -- list item (profile + user info)
 # =============================================================================
 
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
-
-from app.core.constants import VALID_STAFF_PERMISSIONS
+from pydantic import BaseModel, ConfigDict
 
 
-class StaffCreateRequest(BaseModel):
-    """Create a new user with role=staff + StaffProfile."""
-
-    email: EmailStr
-    password: str = Field(..., min_length=8)
-    permissions: dict[str, bool] | None = Field(
-        default=None,
-        description="Permission overrides. Omitted keys use defaults.",
-    )
-
-    @field_validator("permissions")
-    @classmethod
-    def validate_permission_keys(
-        cls, v: dict[str, bool] | None,
-    ) -> dict[str, bool] | None:
-        """Reject unknown permission keys."""
-        if v is None:
-            return v
-        unknown = set(v.keys()) - VALID_STAFF_PERMISSIONS
-        if unknown:
-            raise ValueError(
-                f"Unknown permissions: {sorted(unknown)}. "
-                f"Valid: {sorted(VALID_STAFF_PERMISSIONS)}"
-            )
-        return v
+# ---------------------------------------------------------------------------
+# Requests
+# ---------------------------------------------------------------------------
 
 
-class PermissionsUpdateRequest(BaseModel):
-    """Update permission overrides for a staff member."""
+class CreateStaffRequest(BaseModel):
+    """Request to promote an existing user to staff role."""
 
-    permissions: dict[str, bool] = Field(
-        ...,
-        description="Permission overrides to set. Only provided keys are changed.",
-    )
-
-    @field_validator("permissions")
-    @classmethod
-    def validate_permission_keys(
-        cls, v: dict[str, bool],
-    ) -> dict[str, bool]:
-        """Reject unknown permission keys."""
-        unknown = set(v.keys()) - VALID_STAFF_PERMISSIONS
-        if unknown:
-            raise ValueError(
-                f"Unknown permissions: {sorted(unknown)}. "
-                f"Valid: {sorted(VALID_STAFF_PERMISSIONS)}"
-            )
-        return v
+    user_id: UUID
 
 
-class StaffResponse(BaseModel):
-    """Staff member representation in API responses.
+class UpdatePermissionsRequest(BaseModel):
+    """Request to update staff permissions (partial update).
 
-    permissions: resolved (defaults + overrides), not raw JSONB.
-    email: extracted from credentials JSONB for admin convenience.
+    Only provided keys are updated; missing keys retain current values.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
+    avatar_mode: bool | None = None
+    kyc_approve: bool | None = None
+    payment_review: bool | None = None
+    user_block: bool | None = None
+    financial_operations: bool | None = None
+    agent_application_review: bool | None = None
+    translation_edit: bool | None = None
+
+
+# ---------------------------------------------------------------------------
+# Responses
+# ---------------------------------------------------------------------------
+
+
+class StaffProfileResponse(BaseModel):
+    """Staff profile response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
-    email: str | None = None
-    role: str
-    is_active: bool
-    staff_profile_id: UUID
+    user_id: UUID
     permissions: dict[str, bool]
+    is_active: bool
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+
+class StaffListItem(BaseModel):
+    """Staff list item -- profile + basic user info."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    permissions: dict[str, bool]
+    is_active: bool
+    created_at: datetime
+    # User fields (populated in service)
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None

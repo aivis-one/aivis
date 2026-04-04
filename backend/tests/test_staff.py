@@ -1,32 +1,35 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Management Tests (Sprint 3.1)
+# CBSHOME Backend -- Staff Tests (Sprint 3.1)
 # =============================================================================
 #
 # Tests cover:
-#   1:  Create staff user -> 201, role=staff, default permissions
-#   2:  Create staff with custom permissions -> 201, overrides applied
-#   3:  Create staff duplicate email -> 409
-#   4:  List staff users -> includes created staff with resolved perms
-#   5:  Update permissions -> PATCH changes specific keys
-#   6:  Update permissions unknown key -> 422
-#   7:  require_staff_permission blocks when permission is false
-#   8:  Non-staff cannot access staff endpoints -> 403
+#   1:  Admin promotes user to staff -> 201
+#   2:  Non-admin promotes user -> 403
+#   3:  Promote platform user -> 400
+#   4:  Promote already-staff user -> 409
+#   5:  Update permissions -> 200, partial update works
+#   6:  Non-admin updates permissions -> 403
+#   7:  List staff -> 200, returns all staff with user info
+#   8:  Promote non-existent user -> 404
 #
 # Email prefix: "s31_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
-from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import DEFAULT_STAFF_PERMISSIONS
+from app.modules.staff.constants import VALID_PERMISSION_KEYS
+from app.modules.staff.models import StaffProfile
+from app.modules.users.models import User, UserRole
 from tests.helpers import (
     auth_headers,
     cleanup_test_users,
-    create_staff_user,
+    create_admin_user,
     register_user,
 )
 
@@ -41,152 +44,158 @@ async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
     await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
-async def _get_staff_token(
-    client: AsyncClient, db_session: AsyncSession, suffix: str = "admin",
+async def _admin_token(
+    client: AsyncClient, db_session: AsyncSession
 ) -> str:
-    """Helper: create and return a staff user's session token."""
-    _, token = await create_staff_user(
-        client, db_session, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+    """Helper: create and return an admin user's session token."""
+    _, token = await create_admin_user(
+        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
     )
     return token
 
 
+async def _register_investor(
+    client: AsyncClient,
+    email: str | None = None,
+) -> dict:
+    """Helper: register an investor and return response data."""
+    email = email or f"{EMAIL_PREFIX}investor@example.com"
+    return await register_user(client, email=email)
+
+
 # ---------------------------------------------------------------------------
-# Create staff
+# POST /staff/users -- promote user to staff
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_create_staff_user(
+async def test_promote_user_to_staff(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """POST /staff/users -> 201, role=staff, default permissions resolved."""
-    admin_token = await _get_staff_token(client, db_session, suffix="creator")
+    """Admin promotes investor to staff -> 201."""
+    admin_token = await _admin_token(client, db_session)
+    investor_data = await _register_investor(client)
+    investor_id = investor_data["user"]["id"]
 
     resp = await client.post(
         "/api/v1/staff/users",
-        json={
-            "email": f"{EMAIL_PREFIX}new@example.com",
-            "password": "strongpass1",
-        },
+        json={"user_id": investor_id},
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201
     body = resp.json()
-
-    assert body["role"] == "staff"
+    assert body["user_id"] == investor_id
     assert body["is_active"] is True
-    assert body["email"] == f"{EMAIL_PREFIX}new@example.com"
-    assert "staff_profile_id" in body
     assert "permissions" in body
 
-    # Verify all default permissions are resolved.
-    for key, default_val in DEFAULT_STAFF_PERMISSIONS.items():
-        assert body["permissions"][key] == default_val, (
-            f"Permission '{key}' should be {default_val}"
-        )
+    # Verify role changed in DB.
+    stmt = select(User).where(User.id == investor_id)
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    assert user.role == UserRole.STAFF
 
 
 @pytest.mark.asyncio
-async def test_create_staff_with_custom_permissions(
+async def test_promote_non_admin_forbidden(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """POST /staff/users with permission overrides -> 201, overrides applied."""
-    admin_token = await _get_staff_token(client, db_session, suffix="creator2")
+    """Non-admin staff cannot promote users -> 403."""
+    # Create admin first, then create a regular staff via admin.
+    admin_token = await _admin_token(client, db_session)
+    regular_data = await register_user(
+        client, email=f"{EMAIL_PREFIX}regular@example.com"
+    )
+    regular_id = regular_data["user"]["id"]
 
+    # Admin promotes regular to staff.
     resp = await client.post(
         "/api/v1/staff/users",
-        json={
-            "email": f"{EMAIL_PREFIX}support@example.com",
-            "password": "strongpass1",
-            "permissions": {
-                "financial_operations": False,
-                "translation_edit": True,
-            },
-        },
+        json={"user_id": regular_id},
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201
-    body = resp.json()
+    staff_profile = resp.json()
 
-    # Overrides applied.
-    assert body["permissions"]["financial_operations"] is False
-    assert body["permissions"]["translation_edit"] is True
+    # Remove one permission to make them non-admin.
+    resp2 = await client.patch(
+        f"/api/v1/staff/users/{staff_profile['id']}/permissions",
+        json={"translation_edit": False},
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
 
-    # Defaults preserved for non-overridden keys.
-    assert body["permissions"]["avatar_mode"] is True
-    assert body["permissions"]["kyc_approve"] is True
+    # Regular staff re-login.
+    from tests.helpers import login_user
+    login_data = await login_user(
+        client, email=f"{EMAIL_PREFIX}regular@example.com"
+    )
+    regular_token = login_data["session_token"]
+
+    # Try to promote another user -- should fail.
+    another = await register_user(
+        client, email=f"{EMAIL_PREFIX}another@example.com"
+    )
+    resp3 = await client.post(
+        "/api/v1/staff/users",
+        json={"user_id": another["user"]["id"]},
+        headers=auth_headers(regular_token),
+    )
+    assert resp3.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_create_staff_duplicate_email(
+async def test_promote_platform_user_fails(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """POST /staff/users with existing email -> 409."""
-    admin_token = await _get_staff_token(client, db_session, suffix="creator3")
+    """Cannot promote platform user -> 400."""
+    admin_token = await _admin_token(client, db_session)
 
-    email = f"{EMAIL_PREFIX}dup@example.com"
+    # Find platform user.
+    stmt = select(User).where(User.role == UserRole.PLATFORM)
+    result = await db_session.execute(stmt)
+    platform = result.scalar_one_or_none()
 
-    # First creation succeeds.
+    if platform is None:
+        pytest.skip("No platform user in DB")
+
+    resp = await client.post(
+        "/api/v1/staff/users",
+        json={"user_id": str(platform.id)},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_promote_already_staff_conflict(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Promoting already-staff user -> 409."""
+    admin_token = await _admin_token(client, db_session)
+    investor_data = await _register_investor(
+        client, email=f"{EMAIL_PREFIX}dup@example.com"
+    )
+    investor_id = investor_data["user"]["id"]
+
+    # First promotion -- success.
     resp1 = await client.post(
         "/api/v1/staff/users",
-        json={"email": email, "password": "strongpass1"},
+        json={"user_id": investor_id},
         headers=auth_headers(admin_token),
     )
     assert resp1.status_code == 201
 
-    # Second creation with same email -> 409.
+    # Second promotion -- conflict.
     resp2 = await client.post(
         "/api/v1/staff/users",
-        json={"email": email, "password": "strongpass1"},
+        json={"user_id": investor_id},
         headers=auth_headers(admin_token),
     )
     assert resp2.status_code == 409
 
 
 # ---------------------------------------------------------------------------
-# List staff
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_list_staff_users(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """GET /staff/users -> list includes created staff with resolved perms."""
-    admin_token = await _get_staff_token(client, db_session, suffix="lister")
-
-    # Create another staff user via API.
-    await client.post(
-        "/api/v1/staff/users",
-        json={
-            "email": f"{EMAIL_PREFIX}listed@example.com",
-            "password": "strongpass1",
-        },
-        headers=auth_headers(admin_token),
-    )
-
-    resp = await client.get(
-        "/api/v1/staff/users",
-        headers=auth_headers(admin_token),
-    )
-    assert resp.status_code == 200
-    body = resp.json()
-
-    # At least the admin and the newly created staff.
-    assert len(body) >= 2
-
-    emails = [item["email"] for item in body]
-    assert f"{EMAIL_PREFIX}listed@example.com" in emails
-
-    # Each item has resolved permissions.
-    for item in body:
-        assert "permissions" in item
-        assert "avatar_mode" in item["permissions"]
-
-
-# ---------------------------------------------------------------------------
-# Update permissions
+# PATCH /staff/users/{id}/permissions
 # ---------------------------------------------------------------------------
 
 
@@ -194,108 +203,121 @@ async def test_list_staff_users(
 async def test_update_permissions(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """PATCH /staff/users/{id}/permissions -> updates specific keys."""
-    admin_token = await _get_staff_token(client, db_session, suffix="updater")
+    """Admin updates staff permissions -> 200, partial update."""
+    admin_token = await _admin_token(client, db_session)
+    investor_data = await _register_investor(
+        client, email=f"{EMAIL_PREFIX}perm@example.com"
+    )
+    investor_id = investor_data["user"]["id"]
 
-    # Create target staff.
-    resp_create = await client.post(
+    # Promote to staff.
+    resp = await client.post(
         "/api/v1/staff/users",
-        json={
-            "email": f"{EMAIL_PREFIX}target@example.com",
-            "password": "strongpass1",
-        },
+        json={"user_id": investor_id},
         headers=auth_headers(admin_token),
     )
-    target_id = resp_create.json()["id"]
+    assert resp.status_code == 201
+    profile_id = resp.json()["id"]
 
-    # Update permissions.
-    resp = await client.patch(
-        f"/api/v1/staff/users/{target_id}/permissions",
-        json={"permissions": {"financial_operations": False}},
+    # Update one permission.
+    resp2 = await client.patch(
+        f"/api/v1/staff/users/{profile_id}/permissions",
+        json={"financial_operations": False},
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+    body = resp2.json()
+    assert body["permissions"]["financial_operations"] is False
+    # Other defaults remain.
+    assert body["permissions"]["kyc_approve"] is True
+
+
+@pytest.mark.asyncio
+async def test_update_permissions_non_admin_forbidden(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Non-admin cannot update permissions -> 403."""
+    admin_token = await _admin_token(client, db_session)
+
+    # Create a regular staff.
+    regular_data = await register_user(
+        client, email=f"{EMAIL_PREFIX}nonadm@example.com"
+    )
+    resp = await client.post(
+        "/api/v1/staff/users",
+        json={"user_id": regular_data["user"]["id"]},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 201
+    profile_id = resp.json()["id"]
+
+    # Downgrade to non-admin.
+    await client.patch(
+        f"/api/v1/staff/users/{profile_id}/permissions",
+        json={"translation_edit": False},
+        headers=auth_headers(admin_token),
+    )
+
+    # Re-login as regular staff.
+    from tests.helpers import login_user
+    login_data = await login_user(
+        client, email=f"{EMAIL_PREFIX}nonadm@example.com"
+    )
+    regular_token = login_data["session_token"]
+
+    # Try to update own permissions.
+    resp2 = await client.patch(
+        f"/api/v1/staff/users/{profile_id}/permissions",
+        json={"financial_operations": True},
+        headers=auth_headers(regular_token),
+    )
+    assert resp2.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# GET /staff/users -- list staff
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_staff(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Any staff can list all staff -> 200."""
+    admin_token = await _admin_token(client, db_session)
+
+    resp = await client.get(
+        "/api/v1/staff/users",
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 200
     body = resp.json()
+    assert isinstance(body, list)
+    assert len(body) >= 1  # At least the admin itself.
 
-    assert body["permissions"]["financial_operations"] is False
-    # Other keys unchanged.
-    assert body["permissions"]["avatar_mode"] is True
+    # Check structure.
+    item = body[0]
+    assert "id" in item
+    assert "user_id" in item
+    assert "permissions" in item
+    assert "is_active" in item
+
+
+# ---------------------------------------------------------------------------
+# Edge case: non-existent user
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_update_permissions_unknown_key(
+async def test_promote_nonexistent_user(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """PATCH /staff/users/{id}/permissions with unknown key -> 422."""
-    admin_token = await _get_staff_token(client, db_session, suffix="updater2")
+    """Promote non-existent user -> 404."""
+    admin_token = await _admin_token(client, db_session)
 
-    # Create target staff.
-    resp_create = await client.post(
+    resp = await client.post(
         "/api/v1/staff/users",
-        json={
-            "email": f"{EMAIL_PREFIX}target2@example.com",
-            "password": "strongpass1",
-        },
+        json={"user_id": str(uuid4())},
         headers=auth_headers(admin_token),
     )
-    target_id = resp_create.json()["id"]
-
-    resp = await client.patch(
-        f"/api/v1/staff/users/{target_id}/permissions",
-        json={"permissions": {"nonexistent_perm": True}},
-        headers=auth_headers(admin_token),
-    )
-    assert resp.status_code == 422
-
-
-# ---------------------------------------------------------------------------
-# Permission dependency
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_require_staff_permission_blocks() -> None:
-    """_has_permission correctly resolves defaults + overrides.
-
-    Uses SimpleNamespace to avoid SQLAlchemy _sa_instance_state issue
-    with StaffProfile.__new__().
-    """
-    from app.modules.auth.dependencies import _has_permission
-
-    # Profile with financial_operations overridden to False.
-    profile_denied = SimpleNamespace(permissions={"financial_operations": False})
-    assert _has_permission(profile_denied, "financial_operations") is False
-
-    # Default True permission should pass (not overridden).
-    assert _has_permission(profile_denied, "avatar_mode") is True
-
-    # Default False permission (translation_edit) without override.
-    profile_empty = SimpleNamespace(permissions={})
-    assert _has_permission(profile_empty, "translation_edit") is False
-
-    # Override default False to True.
-    profile_override = SimpleNamespace(permissions={"translation_edit": True})
-    assert _has_permission(profile_override, "translation_edit") is True
-
-
-# ---------------------------------------------------------------------------
-# Non-staff access
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_non_staff_cannot_access_staff_endpoints(
-    client: AsyncClient,
-) -> None:
-    """Investor trying staff endpoints -> 403."""
-    data = await register_user(
-        client, email=f"{EMAIL_PREFIX}investor@example.com"
-    )
-    token = data["session_token"]
-
-    # Try to list staff.
-    resp = await client.get(
-        "/api/v1/staff/users",
-        headers=auth_headers(token),
-    )
-    assert resp.status_code == 403
+    assert resp.status_code == 404

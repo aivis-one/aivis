@@ -2,17 +2,14 @@
 # CBSHOME Backend -- Staff Router (Sprint 3.1)
 # =============================================================================
 #
-# Staff management endpoints.
-#
 # ENDPOINTS:
-#   POST  /api/v1/staff/users                    -- Create staff user
-#   GET   /api/v1/staff/users                    -- List staff members
-#   PATCH /api/v1/staff/users/{user_id}/permissions -- Update permissions
+#   POST  /api/v1/staff/users                  -- promote user to staff (admin only)
+#   PATCH /api/v1/staff/users/{id}/permissions  -- update permissions (admin only)
+#   GET   /api/v1/staff/users                   -- list all staff (any staff)
 #
 # AUTH:
-#   All endpoints require get_current_staff (role=staff + StaffProfile
-#   exists + is_active). No specific permission check for these endpoints
-#   -- any active staff can manage other staff members.
+#   All endpoints require get_current_staff (role=staff + StaffProfile loaded).
+#   POST and PATCH additionally require admin (all permissions True).
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -26,96 +23,96 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import get_current_staff
+from app.modules.staff.constants import is_admin
 from app.modules.staff.schemas import (
-    PermissionsUpdateRequest,
-    StaffCreateRequest,
-    StaffResponse,
+    CreateStaffRequest,
+    StaffListItem,
+    StaffProfileResponse,
+    UpdatePermissionsRequest,
 )
 from app.modules.staff.service import (
     create_staff,
+    get_effective_permissions,
+    get_staff_profile,
     list_staff,
-    resolve_permissions,
     update_permissions,
 )
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
 
-router = APIRouter(prefix="/api/v1/staff", tags=["staff"])
+router = APIRouter(prefix="/api/v1/staff/users", tags=["staff-users"])
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+async def _require_admin(staff: User, session: AsyncSession) -> None:
+    """Check that the current staff member is admin (all permissions True).
+
+    Raises ForbiddenError if not admin.
+    """
+    profile = await get_staff_profile(staff.id, session)
+    if profile is None:
+        raise ForbiddenError("Staff profile not found")
+
+    effective = get_effective_permissions(profile)
+    if not is_admin(effective):
+        raise ForbiddenError("Admin access required")
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 
 @router.post(
-    "/users",
-    response_model=StaffResponse,
+    "",
+    response_model=StaffProfileResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_staff_user(
-    body: StaffCreateRequest,
+async def staff_create(
+    body: CreateStaffRequest,
     staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session),
-) -> StaffResponse:
-    """Create a new user with role=staff and a StaffProfile."""
-    user, profile = await create_staff(body, staff.id, session)
-
-    email = None
-    if user.credentials and "email" in user.credentials:
-        email = user.credentials["email"].get("email")
-
-    return StaffResponse(
-        id=user.id,
-        email=email,
-        role=user.role,
-        is_active=user.is_active and profile.is_active,
-        staff_profile_id=profile.id,
-        permissions=resolve_permissions(profile),
-        created_at=user.created_at,
-    )
-
-
-@router.get(
-    "/users",
-    response_model=list[StaffResponse],
-)
-async def list_staff_users(
-    staff: User = Depends(get_current_staff),
-    session: AsyncSession = Depends(get_db_reader),
-) -> list[StaffResponse]:
-    """List all staff members with resolved permissions."""
-    items = await list_staff(session)
-    return [StaffResponse(**item) for item in items]
+) -> StaffProfileResponse:
+    """Promote an existing user to staff role. Admin only."""
+    await _require_admin(staff, session)
+    profile = await create_staff(body.user_id, staff, session)
+    return StaffProfileResponse.model_validate(profile)
 
 
 @router.patch(
-    "/users/{user_id}/permissions",
-    response_model=StaffResponse,
+    "/{staff_profile_id}/permissions",
+    response_model=StaffProfileResponse,
 )
-async def update_staff_permissions(
-    user_id: UUID,
-    body: PermissionsUpdateRequest,
+async def staff_update_permissions(
+    staff_profile_id: UUID,
+    body: UpdatePermissionsRequest,
     staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session),
-) -> StaffResponse:
-    """Update permission overrides for a staff member."""
-    profile = await update_permissions(user_id, body, staff.id, session)
+) -> StaffProfileResponse:
+    """Update staff permissions. Admin only."""
+    await _require_admin(staff, session)
+    profile = await update_permissions(staff_profile_id, body, staff, session)
 
-    # Load the user for response construction.
-    from sqlalchemy import select
+    # Return with effective permissions (defaults merged).
+    response = StaffProfileResponse.model_validate(profile)
+    response.permissions = get_effective_permissions(profile)
+    return response
 
-    stmt = select(User).where(User.id == user_id)
-    result = await session.execute(stmt)
-    user = result.scalar_one()
 
-    email = None
-    if user.credentials and "email" in user.credentials:
-        email = user.credentials["email"].get("email")
-
-    return StaffResponse(
-        id=user.id,
-        email=email,
-        role=user.role,
-        is_active=user.is_active and profile.is_active,
-        staff_profile_id=profile.id,
-        permissions=resolve_permissions(profile),
-        created_at=user.created_at,
-    )
+@router.get(
+    "",
+    response_model=list[StaffListItem],
+)
+async def staff_list(
+    staff: User = Depends(get_current_staff),
+    session: AsyncSession = Depends(get_db_reader),
+) -> list[StaffListItem]:
+    """List all staff profiles with user info. Any staff can view."""
+    return await list_staff(session)
