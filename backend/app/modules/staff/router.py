@@ -10,7 +10,6 @@
 # AUTH:
 #   All endpoints require get_current_staff (role=staff + StaffProfile loaded).
 #   POST and PATCH additionally require admin (all permissions True).
-#   get_current_staff returns (User, StaffProfile) -- no second DB query needed.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -27,7 +26,6 @@ from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import get_current_staff
 from app.modules.staff.constants import is_admin
-from app.modules.staff.models import StaffProfile
 from app.modules.staff.schemas import (
     CreateStaffRequest,
     StaffListItem,
@@ -37,6 +35,7 @@ from app.modules.staff.schemas import (
 from app.modules.staff.service import (
     create_staff,
     get_effective_permissions,
+    get_staff_profile,
     list_staff,
     update_permissions,
 )
@@ -52,14 +51,15 @@ router = APIRouter(prefix="/api/v1/staff/users", tags=["staff-users"])
 # ---------------------------------------------------------------------------
 
 
-def _require_admin(profile: StaffProfile) -> None:
-    """Check that the staff member is admin (all permissions True).
-
-    Uses the StaffProfile already loaded by get_current_staff dependency.
-    No extra DB query needed.
+async def _require_admin(staff: User, session: AsyncSession) -> None:
+    """Check that the current staff member is admin (all permissions True).
 
     Raises ForbiddenError if not admin.
     """
+    profile = await get_staff_profile(staff.id, session)
+    if profile is None:
+        raise ForbiddenError("Staff profile not found")
+
     effective = get_effective_permissions(profile)
     if not is_admin(effective):
         raise ForbiddenError("Admin access required")
@@ -77,12 +77,11 @@ def _require_admin(profile: StaffProfile) -> None:
 )
 async def staff_create(
     body: CreateStaffRequest,
-    staff_data: tuple[User, StaffProfile] = Depends(get_current_staff),
+    staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session),
 ) -> StaffProfileResponse:
     """Promote an existing user to staff role. Admin only."""
-    staff, staff_profile = staff_data
-    _require_admin(staff_profile)
+    await _require_admin(staff, session)
     profile = await create_staff(body.user_id, staff, session)
     return StaffProfileResponse.model_validate(profile)
 
@@ -94,12 +93,11 @@ async def staff_create(
 async def staff_update_permissions(
     staff_profile_id: UUID,
     body: UpdatePermissionsRequest,
-    staff_data: tuple[User, StaffProfile] = Depends(get_current_staff),
+    staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session),
 ) -> StaffProfileResponse:
     """Update staff permissions. Admin only."""
-    staff, staff_profile = staff_data
-    _require_admin(staff_profile)
+    await _require_admin(staff, session)
     profile = await update_permissions(staff_profile_id, body, staff, session)
 
     # Return with effective permissions (defaults merged).
@@ -113,7 +111,7 @@ async def staff_update_permissions(
     response_model=list[StaffListItem],
 )
 async def staff_list(
-    staff_data: tuple[User, StaffProfile] = Depends(get_current_staff),
+    staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_reader),
 ) -> list[StaffListItem]:
     """List all staff profiles with user info. Any staff can view."""
