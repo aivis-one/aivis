@@ -7,7 +7,13 @@
 # Admin = staff with ALL permissions True.
 #
 # USAGE:
-#   python scripts/seed_admin.py --email admin@cbshome.org --password <pw>
+#   ADMIN_PASSWORD=secret python scripts/seed_admin.py --email admin@cbshome.org
+#   python scripts/seed_admin.py --email admin@cbshome.org  (prompts for password)
+#
+# SECURITY:
+#   Password read from ADMIN_PASSWORD env var (preferred for automation)
+#   or interactive getpass prompt. Never passed as CLI argument to avoid
+#   exposure in ps aux, shell history, and docker logs.
 #
 # RULES:
 #   - Idempotent: skips if any admin (all-True permissions) exists
@@ -17,6 +23,8 @@
 
 import argparse
 import asyncio
+import getpass
+import os
 import sys
 from pathlib import Path
 
@@ -54,6 +62,14 @@ def warn(msg: str) -> None:
 
 def err(msg: str) -> None:
     print(f"{R}[ERROR]{N} {msg}")
+
+
+def _get_password() -> str:
+    """Read password from ADMIN_PASSWORD env var or interactive prompt."""
+    password = os.environ.get("ADMIN_PASSWORD", "").strip()
+    if password:
+        return password
+    return getpass.getpass("Admin password: ")
 
 
 async def seed_admin(email: str, password: str) -> None:
@@ -120,10 +136,14 @@ async def seed_admin(email: str, password: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed admin user")
     parser.add_argument("--email", required=True, help="Admin email")
-    parser.add_argument("--password", required=True, help="Admin password")
     args = parser.parse_args()
 
-    asyncio.run(seed_admin(args.email, args.password))
+    password = _get_password()
+    if not password:
+        err("Password is required")
+        sys.exit(1)
+
+    asyncio.run(seed_admin(args.email, password))
 
 
 if __name__ == "__main__":

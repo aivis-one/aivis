@@ -8,12 +8,6 @@
 #                         Prevents disk exhaustion via oversized headers.
 #                         TD-020: consolidated from middleware.py + audit.py.
 #
-# STAFF PERMISSIONS (Sprint 3.1):
-#   VALID_STAFF_PERMISSIONS -- frozenset of all known permission keys.
-#   DEFAULT_STAFF_PERMISSIONS -- default values applied when StaffProfile
-#                                does not override a key.
-#   Resolution: profile.permissions[key] ?? DEFAULT_STAFF_PERMISSIONS[key]
-#
 # LEDGER REASONS:
 #   All ledger entry `reason` strings must come from this registry.
 #   Format: "{operation}:{details}"
@@ -22,6 +16,10 @@
 #   - reason.split(":")[0]  ->  operation type (for semaphore filtering)
 #   - Reversal entries:     original_reason + ":reversal" suffix
 #   - Semaphores filter by prefix, e.g. "deposit:", "commission:"
+#
+# STAFF PERMISSIONS:
+#   Single source of truth in app/modules/staff/constants.py.
+#   Not duplicated here.
 #
 # USAGE:
 #   from app.core.constants import LedgerReason, USER_AGENT_MAX_LEN
@@ -33,36 +31,6 @@
 # Max length for user_agent strings stored in DB and structlog context.
 # Used in: TraceIdMiddleware, record_audit(), DocumentSigning.
 USER_AGENT_MAX_LEN: int = 500
-
-
-# ---------------------------------------------------------------------------
-# Staff Permissions (Sprint 3.1)
-# ---------------------------------------------------------------------------
-
-# All recognised permission keys. Used as dev guard in require_staff_permission
-# and in update_permissions validation.
-VALID_STAFF_PERMISSIONS: frozenset[str] = frozenset({
-    "avatar_mode",
-    "kyc_approve",
-    "payment_review",
-    "user_block",
-    "financial_operations",
-    "agent_application_review",
-    "translation_edit",
-})
-
-# Default permission values applied when StaffProfile.permissions
-# does not contain the key. "Admin" = all defaults. "Support" =
-# override financial_operations -> false (etc.) in StaffProfile.
-DEFAULT_STAFF_PERMISSIONS: dict[str, bool] = {
-    "avatar_mode": True,
-    "kyc_approve": True,
-    "payment_review": True,
-    "user_block": True,
-    "financial_operations": True,
-    "agent_application_review": True,
-    "translation_edit": False,
-}
 
 
 class LedgerReason:

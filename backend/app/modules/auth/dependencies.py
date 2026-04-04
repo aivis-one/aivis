@@ -8,7 +8,8 @@
 #   get_current_user           -- any authenticated user, read session
 #   get_current_user_write     -- any authenticated user, write session
 #   get_optional_user          -- optional auth, read session; None if no token
-#   get_current_staff          -- staff role + StaffProfile (active) required
+#   get_current_staff          -- staff role + StaffProfile (active) required;
+#                                 returns (User, StaffProfile) tuple
 #   require_staff_permission() -- factory: staff + specific permission check
 #
 # TD-029 PATTERN (from VELO):
@@ -23,12 +24,16 @@
 #
 # STAFF PERMISSION CHECK (Sprint 3.1):
 #   get_current_staff verifies: role == staff, StaffProfile exists,
-#   StaffProfile.is_active. Does NOT check specific permissions --
-#   use require_staff_permission("perm_name") for that.
+#   StaffProfile.is_active. Returns (User, StaffProfile) so callers
+#   don't need a second DB query.
 #
 #   require_staff_permission() returns a FastAPI dependency that
 #   performs the full staff check PLUS verifies a specific permission
 #   against resolved defaults + overrides.
+#
+# SINGLE SOURCE:
+#   Staff permission constants imported from app.modules.staff.constants
+#   (not duplicated in core/constants.py).
 # =============================================================================
 
 from typing import Callable
@@ -38,10 +43,10 @@ from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import DEFAULT_STAFF_PERMISSIONS, VALID_STAFF_PERMISSIONS
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.modules.auth.service import get_session
+from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS, VALID_PERMISSION_KEYS
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import User, UserRole
 
@@ -209,17 +214,16 @@ async def get_optional_user(
 async def get_current_staff(
     request: Request,
     session: AsyncSession = Depends(get_db_reader),
-) -> User:
+) -> tuple[User, StaffProfile]:
     """Require authenticated staff user with active StaffProfile.
 
     Sprint 3.1: verifies role=staff, loads StaffProfile, checks is_active.
-    Does NOT check specific permissions -- use require_staff_permission()
-    for that.
+    Returns (User, StaffProfile) tuple so callers can use the profile
+    without a second DB query.
 
-    Usage: staff: User = Depends(get_current_staff)
+    Usage: staff, profile = Depends(get_current_staff)
     """
-    user, _profile = await _get_verified_staff(request, session)
-    return user
+    return await _get_verified_staff(request, session)
 
 
 def require_staff_permission(permission: str) -> Callable:
@@ -229,7 +233,7 @@ def require_staff_permission(permission: str) -> Callable:
     checks that the resolved permission is True.
 
     Args:
-        permission: key from VALID_STAFF_PERMISSIONS.
+        permission: key from VALID_PERMISSION_KEYS.
 
     Returns:
         FastAPI dependency function that returns User.
@@ -240,10 +244,10 @@ def require_staff_permission(permission: str) -> Callable:
     Usage:
         staff: User = Depends(require_staff_permission("kyc_approve"))
     """
-    if permission not in VALID_STAFF_PERMISSIONS:
+    if permission not in VALID_PERMISSION_KEYS:
         raise ValueError(
             f"Unknown permission: '{permission}'. "
-            f"Valid: {sorted(VALID_STAFF_PERMISSIONS)}"
+            f"Valid: {sorted(VALID_PERMISSION_KEYS)}"
         )
 
     async def _dependency(

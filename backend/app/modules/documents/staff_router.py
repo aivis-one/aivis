@@ -10,8 +10,8 @@
 #   DELETE /api/v1/staff/documents/{id}  -- Delete draft document
 #
 # AUTH:
-#   All endpoints require get_current_staff (Sprint 1.1: role == staff).
-#   Sprint 3.1 will expand this with permission matrix checks.
+#   All endpoints require get_current_staff (role=staff + StaffProfile).
+#   get_current_staff returns (User, StaffProfile) tuple.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -36,6 +36,7 @@ from app.modules.documents.service import (
     delete_document,
     update_document,
 )
+from app.modules.staff.models import StaffProfile
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -50,10 +51,11 @@ router = APIRouter(prefix="/api/v1/staff/documents", tags=["staff-documents"])
 )
 async def staff_create_document(
     body: DocumentCreateRequest,
-    staff: User = Depends(get_current_staff),
+    staff_data: tuple[User, StaffProfile] = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session),
 ) -> DocumentResponse:
     """Create a new document in draft status."""
+    staff, _profile = staff_data
     document = await create_document(staff.id, body, session)
     return DocumentResponse.model_validate(document)
 
@@ -65,7 +67,7 @@ async def staff_create_document(
 async def staff_update_document(
     document_id: UUID,
     body: DocumentUpdateRequest,
-    staff: User = Depends(get_current_staff),
+    staff_data: tuple[User, StaffProfile] = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session),
 ) -> DocumentResponse:
     """Update a document (fields and/or status transition)."""
@@ -79,7 +81,7 @@ async def staff_update_document(
 )
 async def staff_delete_document(
     document_id: UUID,
-    staff: User = Depends(get_current_staff),
+    staff_data: tuple[User, StaffProfile] = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Delete a draft document.
