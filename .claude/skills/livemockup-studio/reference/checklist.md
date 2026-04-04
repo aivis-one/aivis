@@ -1,6 +1,6 @@
 ---
 name: checklist
-description: "v1.6.1 | Quality gates with Navigation Map + Brand compliance + Theme & Language"
+description: "v1.8.0 | Quality gates with Navigation Map + Brand compliance + Theme & Language + i18n & Color validation"
 ---
 
 # Checklist
@@ -212,7 +212,9 @@ Quality gates for validating live mockups before delivery.
 | Visual | 0 | 3 | 2 | 5 |
 | Brand | 3 | 3 | 0 | 6 |
 | Theme & Language | 4 | 7 | 0 | 11 |
-| **Total** | **45** | **33** | **5** | **83** |
+| i18n Validation | 4 | 2 | 0 | 6 |
+| Color Validation | 3 | 2 | 0 | 5 |
+| **Total** | **52** | **37** | **5** | **94** |
 
 ---
 
@@ -440,9 +442,82 @@ setDevice(type) {
 □ I4 Language persists
 □ I5 Keyboard L works
 
+## i18n Validation ⭐
+□ IV1 🔴 Every data-i18n key exists in i18n.js dictionary
+□ IV2 🔴 Every key has 3 translations (ru, en, de)
+□ IV3 🟡 Default text in HTML = Russian translation
+□ IV4 🟡 Nav-map items default text is Russian
+□ IV5 🔴 No raw i18n keys visible in rendered page
+□ IV6 🔴 Language switcher shows RU/EN/DE (3 buttons)
+
+## Color Validation ⭐
+□ CV1 🔴 Zero hardcoded hex in mockup-content (outside :root)
+□ CV2 🔴 All colors use CSS variables
+□ CV3 🟡 Primary UI = teal family, not orange
+□ CV4 🟡 Accent/CTA = orange family, not teal
+□ CV5 🔴 Logo icon-bg = #cc3203 via --logo-icon-bg
+
 RESULT: ___ BLOCKER / ___ MAJOR / ___ MINOR
 ```
 
 ---
 
-*checklist v1.6.1*
+### i18n Validation Details
+
+| ID | Check | Level | How to Test |
+|----|-------|-------|-------------|
+| IV1 | Every `data-i18n` key in HTML has matching entry in i18n.js | 🔴 | `grep -oP 'data-i18n="[^"]*"' mockup.html \| sort -u` then verify each in i18n.js |
+| IV2 | Every dictionary key has `ru`, `en`, `de` translations | 🔴 | Check i18n.js `_dict` object — each key needs 3 sub-keys |
+| IV3 | Default text in HTML matches Russian translation | 🟡 | Compare `<h1 data-i18n="key">Text</h1>` — Text should be Russian |
+| IV4 | Nav-map items default to Russian labels | 🟡 | Visual check nav-map overlay — all section/item labels in Russian |
+| IV5 | No raw i18n keys visible when page renders | 🔴 | Open page, check no `auth.login.title` style keys showing |
+| IV6 | Language switcher has 3 buttons: RU, EN, DE | 🔴 | Check `.lang-switcher` in toolbar — must have 3 `.lang-btn` |
+
+---
+
+### Color Validation Details
+
+| ID | Check | Level | How to Test |
+|----|-------|-------|-------------|
+| CV1 | No hardcoded hex colors in mockup-content | 🔴 | `grep -n "#[0-9a-fA-F]\{3,8\}" mockup.html \| grep -v ":root" \| grep -v "favicon" \| grep -v "svg.*icon"` — must be 0 |
+| CV2 | All styling uses CSS variables | 🔴 | All `color:`, `background:`, `border-color:` reference `var(--*)` |
+| CV3 | Primary UI elements use teal, not orange | 🟡 | Headers, nav, cards use `var(--primary)` family |
+| CV4 | CTA buttons and badges use orange, not teal | 🟡 | `.btn-primary` uses `var(--accent)`, active indicators use `var(--accent)` |
+| CV5 | Logo icon bg = #cc3203 via variable | 🔴 | `.cbs-logo-icon` or `.header-logo` uses `var(--logo-icon-bg)`, not `var(--accent)` |
+
+---
+
+## Toolbar & Hub Checks
+
+| ID | Check | Level | How to Test |
+|----|-------|-------|-------------|
+| H1 | Home button in toolbar | 🔴 | `grep -c 'home-btn' mockup.html` — must be 1 |
+| H2 | Home button links to index | 🔴 | `grep 'home-btn' mockup.html` — href = `../index.html` |
+| H3 | Device buttons use Lucide icons | 🔴 | `grep 'data-device' mockup.html` — each has `data-lucide="smartphone\|tablet\|monitor"`, no emoji |
+| H4 | Hub card icons use Lucide | 🟡 | `index.html` — `.hub-card-icon` contains `<i data-lucide="...">`, no emoji |
+
+---
+
+## i18n Coverage Checks
+
+| ID | Check | Level | How to Test |
+|----|-------|-------|-------------|
+| I6 | All stat labels have data-i18n | 🔴 | `grep 'stat-label' mockup.html` — every `.stat-label` has `data-i18n` attr |
+| I7 | All section titles have data-i18n | 🔴 | `grep 'section-title' mockup.html` — every `.section-title` has `data-i18n` attr |
+| I8 | All button text has data-i18n | 🟡 | Button labels (not icons) wrapped in `<span data-i18n="...">` |
+| I9 | Settings screen labels have data-i18n | 🔴 | All setting row text in screen-settings has `data-i18n` |
+| I10 | Nav-map default text is Russian | 🔴 | All `data-i18n` elements have Russian default text (not English) |
+
+---
+
+## Nav Map Checks (v1.8.0)
+
+| ID | Check | Level | How to Test |
+|----|-------|-------|-------------|
+| N14 | Items render as horizontal chips | 🔴 | `.nav-map-section-content` has `display:flex; flex-wrap:wrap` |
+| N15 | No nav-map-level wrapper divs | 🔴 | `grep -c 'nav-map-level' mockup.html` — must be 0 |
+| N16 | Legend text = "Финальная точка" | 🟡 | `grep 'nav.legend.endpoint' mockup.html` — default text consistent |
+
+---
+
+*checklist v1.8.0*

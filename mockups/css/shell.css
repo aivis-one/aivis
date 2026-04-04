@@ -172,6 +172,17 @@ body { overflow: hidden; }
   .lang-btn { padding: 3px 5px; font-size: 10px; }
 }
 
+/* ========== HOME BUTTON ========== */
+.home-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border: none; border-radius: 6px;
+  background: rgba(255,255,255,0.08); color: var(--shell-text-dim);
+  cursor: pointer; transition: all 0.2s; padding: 0;
+  text-decoration: none; margin-left: 8px;
+}
+.home-btn:hover { background: rgba(255,255,255,0.15); color: var(--shell-text); }
+.home-btn svg { width: 16px; height: 16px; }
+
 /* ========== THEME TOGGLE ========== */
 .theme-toggle {
   display: flex; align-items: center; justify-content: center;

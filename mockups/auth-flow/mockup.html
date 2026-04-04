@@ -166,6 +166,7 @@
         <span class="project-name">CBS HOME Auth v1</span>
         <span class="project-badge">LIVE</span>
       </div>
+      <a href="../index.html" class="home-btn" title="Hub"><i data-lucide="layout-grid"></i></a>
     </div>
     <div class="toolbar-center">
       <div class="device-switcher">
@@ -193,6 +194,7 @@
       <div class="lang-switcher">
         <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
         <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+        <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
       </div>
       <button class="map-btn" onclick="openNavMap()">
         <i data-lucide="map-pin" style="width:14px;height:14px;color:currentColor"></i>
@@ -266,7 +268,6 @@
                   <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.login.noAccount">Нет аккаунта? </span>
                   <button class="btn-link" type="button" data-i18n="auth.login.createAccount" onclick="navigateTo('screen-register')">Создать аккаунт</button>
                 </div>
-              </div>
             </div>
           </div>
 
@@ -328,7 +329,6 @@
                   <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.register.hasAccount">Уже есть аккаунт? </span>
                   <button class="btn-link" type="button" data-i18n="auth.register.loginLink" onclick="navigateTo('screen-login')">Войти</button>
                 </div>
-              </div>
             </div>
           </div>
 
@@ -370,7 +370,6 @@
                   <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.verify.noCode">Не получили код? </span>
                   <button class="btn-link" type="button" data-i18n="auth.verify.resend" onclick="showToast('Код отправлен повторно', 'success')">Отправить повторно</button>
                 </div>
-              </div>
             </div>
           </div>
 
@@ -553,7 +552,6 @@
                     <span style="width:10px; height:10px; border-radius:50%; background:var(--danger);"></span>
                     <span style="font-size:13px; color:var(--text-secondary);" data-i18n="auth.kyc.statusRejected">Отклонено — требуется повторная подача</span>
                   </div>
-                </div>
               </div>
             </div>
           </div>
@@ -601,7 +599,6 @@
                     <div class="doc-title" data-i18n="auth.docs.consent">Согласие на обработку персональных данных</div>
                     <div class="doc-desc" data-i18n="auth.docs.consentDesc">Явное согласие на обработку ваших данных для предоставления услуг платформы</div>
                     <div class="doc-required" data-i18n="auth.docs.required">Обязательный документ</div>
-                  </div>
                 </div>
               </div>
 
@@ -612,7 +609,6 @@
                 <div style="text-align:center; margin-top:16px;">
                   <span style="font-size:12px; color:var(--text-tertiary);" data-i18n="auth.docs.signNote">Нажимая «Подписать», вы соглашаетесь с условиями всех перечисленных документов</span>
                 </div>
-              </div>
             </div>
           </div>
 
@@ -658,46 +654,36 @@
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0">
-                <div class="nav-map-item screen-item" onclick="navMapGo('screen-login')">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-login')">
                   <span class="nav-map-item-icon"><i data-lucide="lock-keyhole" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.login">Вход</span>
                   <span class="level-badge hub">ENTRY</span>
                   <span class="status-dot green"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="1">
-                <div class="nav-map-item screen-item" onclick="navMapGo('screen-register')">
+              <div class="nav-map-item screen-item" data-depth="1" onclick="navMapGo('screen-register')">
                   <span class="nav-map-item-icon"><i data-lucide="user-plus" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.register">Регистрация</span>
                   <span class="level-badge">L1</span>
                   <span class="status-dot green"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="2">
-                <div class="nav-map-item screen-item" onclick="navMapGo('screen-verify')">
+              <div class="nav-map-item screen-item" data-depth="2" onclick="navMapGo('screen-verify')">
                   <span class="nav-map-item-icon"><i data-lucide="mail-check" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.verify">Подтверждение Email</span>
                   <span class="level-badge">L2</span>
                   <span class="status-dot green"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="1">
-                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Telegram WebApp', 'screen-login')">
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('Telegram WebApp', 'screen-login')">
                   <span class="nav-map-item-icon"><i data-lucide="send" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.telegram">Вход через Telegram</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="1">
-                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Восстановление пароля', 'screen-login')">
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('Восстановление пароля', 'screen-login')">
                   <span class="nav-map-item-icon"><i data-lucide="key-round" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.forgot">Забыли пароль</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
-              </div>
             </div>
           </div>
 
@@ -708,58 +694,45 @@
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0">
-                <div class="nav-map-item screen-item" onclick="navMapGo('screen-profile')">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-profile')">
                   <span class="nav-map-item-icon"><i data-lucide="user" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.profile">Настройка профиля</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="0">
-                <div class="nav-map-item screen-item" onclick="navMapGo('screen-role')">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-role')">
                   <span class="nav-map-item-icon"><i data-lucide="target" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.role">Выбор роли</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="0">
-                <div class="nav-map-item screen-item" onclick="navMapGo('screen-kyc')">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-kyc')">
                   <span class="nav-map-item-icon"><i data-lucide="shield-check" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.kyc">Верификация KYC</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="1">
-                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('SumSub Verification', 'screen-kyc')">
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('SumSub Verification', 'screen-kyc')">
                   <span class="nav-map-item-icon"><i data-lucide="scan-face" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.sumsub">SumSub (внешний)</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="0">
-                <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')">
                   <span class="nav-map-item-icon"><i data-lucide="file-text" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.docs">Подписание документов</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
-              </div>
-              <div class="nav-map-level" data-level="1">
-                <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Onboarding Complete — переход в кабинет', 'screen-docs')">
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('Onboarding Complete — переход в кабинет', 'screen-docs')">
                   <span class="nav-map-item-icon"><i data-lucide="flag" style="width:14px;height:14px"></i></span>
                   <span class="nav-map-item-name" data-i18n="nav.auth.complete">Онбординг завершён</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
-              </div>
             </div>
           </div>
         </div>
-      </div>
     </div>
   </div>
 

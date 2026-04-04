@@ -1,6 +1,6 @@
 ---
 name: test
-description: "v1.6.1 | L3.5 - Validate mockup quality before delivery"
+description: "v1.8.0 | L3.5 - Validate mockup quality before delivery"
 ---
 
 # test
@@ -20,7 +20,7 @@ Validate mockup against quality checklist before delivery.
 
 | # | Read | Why |
 |---|------|-----|
-| 1 | reference/checklist.md | Full quality gates (72 checks) |
+| 1 | reference/checklist.md | Full quality gates (94 checks) |
 | 2 | reference/shell.md | If shell issues found |
 
 ---
@@ -97,4 +97,4 @@ console.table(results);
 
 ---
 
-*test v1.6.1*
+*test v1.8.0*

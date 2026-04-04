@@ -1,6 +1,6 @@
 ---
 name: ecosystem
-description: "v1.6.1 | Create multi-mockup ecosystem with shared CSS/JS + theme + i18n"
+description: "v1.8.0 | Create multi-mockup ecosystem with shared CSS/JS + theme + i18n"
 ---
 
 # ecosystem
@@ -158,4 +158,4 @@ For each mockup.html:
 
 ---
 
-*ecosystem v1.6.1*
+*ecosystem v1.8.0*

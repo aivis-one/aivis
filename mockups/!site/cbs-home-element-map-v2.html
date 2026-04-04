@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBS HOME — Design Element Map v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════
+   FINAL TOKEN SYSTEM
+   Primary: #cc3203 | Accent: #E8651A | Light: #EFB44C
+   ══════════════════════════════════════════════════ */
+:root {
+  /* Orange triad */
+  --o-primary: #cc3203;
+  --o-accent: #E8651A;
+  --o-accent-hover: #D45A16;
+  --o-light: #EFB44C;
+  --o-tint-8: rgba(232,101,26,0.08);
+  --o-tint-15: rgba(232,101,26,0.15);
+  --o-light-tint-8: rgba(239,180,76,0.08);
+  --o-light-tint-15: rgba(239,180,76,0.15);
+
+  /* Teal system */
+  --t-500: #228B8A;
+  --t-600: #1E7A79;
+  --t-700: #1A6B6A;
+  --t-800: #15565A;
+  --t-900: #0E3D42;
+  --t-950: #0A2A2E;
+  --t-tint-8: rgba(26,107,106,0.08);
+  --t-tint-15: rgba(26,107,106,0.15);
+
+  /* Neutrals */
+  --n-white: #FFFFFF;
+  --n-100: #F5F5F5;
+  --n-200: #E8E8E8;
+  --n-300: #D4D4D4;
+  --n-400: #A3A3A3;
+  --n-600: #525252;
+  --n-900: #1A1A1A;
+
+  /* Feedback */
+  --success: #16A34A;
+  --error: #DC2626;
+  --info: var(--t-700);
+
+  /* Logo (from SVG source) */
+  --logo-icon-bg: #cc3203;
+  --logo-text: #084456;
+
+  /* Spacing (8px base, brand KB names) */
+  --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px;
+  --sp-xl: 32px; --sp-2xl: 48px; --sp-3xl: 64px; --sp-4xl: 96px;
+
+  /* Shadows */
+  --sh-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --sh-md: 0 4px 12px rgba(0,0,0,0.10);
+  --sh-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --sh-xl: 0 16px 48px rgba(0,0,0,0.14);
+  --sh-focus: 0 0 0 3px rgba(232,101,26,0.4);
+
+  /* Radii */
+  --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
+
+  /* Font */
+  --f: 'Montserrat', system-ui, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--f); color: var(--n-900); background: var(--n-100); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+
+/* ═══ LAYOUT ═══ */
+.bar { background: var(--n-900); color: var(--n-400); padding: 12px 32px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; position: sticky; top: 0; z-index: 200; display: flex; justify-content: space-between; }
+.bar b { color: var(--o-accent); }
+.wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+.section { padding: 56px 0; }
+.section + .section { border-top: 1px solid var(--n-200); }
+.lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--o-accent); margin-bottom: 4px; }
+.h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+.desc { font-size: 13px; color: var(--n-600); margin-bottom: 24px; max-width: 560px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.card { background: var(--n-white); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--sh-sm); }
+
+/* ═══ 1. COLOUR MAP ═══ */
+.clr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.clr { border-radius: var(--r-md); overflow: hidden; box-shadow: var(--sh-sm); }
+.clr-top { height: 56px; display: flex; align-items: flex-end; padding: 6px 8px; }
+.clr-top span { font-size: 10px; font-weight: 700; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.clr-bot { padding: 6px 10px; background: white; font-size: 10px; font-weight: 600; }
+.clr-bot small { display: block; font-weight: 400; color: var(--n-400); font-size: 9px; margin-top: 1px; }
+
+/* ═══ 2. GRADIENTS ═══ */
+.grad-strip { height: 48px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.3); letter-spacing: 0.03em; }
+
+/* ═══ 3. TYPOGRAPHY ═══ */
+.type-row { display: flex; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--n-200); }
+.type-sample { flex: 1; }
+.type-meta { font-size: 10px; color: var(--n-400); font-family: monospace; min-width: 180px; text-align: right; }
+
+/* ═══ COMPONENTS ═══ */
+/* Nav */
+.c-nav { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 24px; border-radius: var(--r-lg); }
+.c-nav .logo { display: flex; align-items: center; gap: 8px; }
+.c-nav .u { width: 32px; height: 32px; border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; }
+.c-nav .wm { font-weight: 700; font-size: 15px; }
+.c-nav .links { display: flex; gap: 28px; list-style: none; }
+.c-nav .links a { text-decoration: none; font-size: 13px; font-weight: 500; }
+
+/* Buttons */
+.btn { font-family: var(--f); font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
+.btn-p { background: var(--o-accent); color: white; padding: 12px 28px; border-radius: var(--r-full); font-size: 14px; }
+.btn-p:hover { background: var(--o-accent-hover); transform: translateY(-1px); }
+.btn-s { background: transparent; color: var(--o-accent); padding: 10px 24px; border-radius: var(--r-full); font-size: 13px; border: 2px solid var(--o-accent); }
+.btn-s:hover { background: var(--o-tint-8); }
+.btn-t { background: var(--t-700); color: white; padding: 12px 28px; border-radius: var(--r-full); font-size: 14px; }
+.btn-t:hover { background: var(--t-800); }
+.btn-g { background: transparent; color: var(--o-accent); padding: 10px 16px; font-size: 13px; }
+.btn-g:hover { text-decoration: underline; }
+.btn-light { background: var(--o-light); color: var(--n-900); padding: 12px 28px; border-radius: var(--r-full); font-size: 14px; }
+
+/* Chips */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-family: var(--f); font-size: 12px; font-weight: 600; padding: 7px 16px; border-radius: var(--r-full); border: none; cursor: pointer; transition: all 0.15s; }
+.chip-active { background: var(--o-accent); color: white; }
+.chip-default { background: var(--n-100); color: var(--n-600); }
+.chip-teal { background: var(--t-tint-15); color: var(--t-700); }
+.chip-light { background: var(--o-light-tint-15); color: var(--o-accent); }
+
+/* Toggle */
+.tog { width: 44px; height: 26px; border-radius: var(--r-full); position: relative; cursor: pointer; transition: background 0.2s; }
+.tog::after { content: ''; position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.tog-on { background: var(--o-accent); }
+.tog-on::after { transform: translateX(18px); }
+.tog-off { background: var(--n-300); }
+.tog-teal { background: var(--t-700); }
+.tog-teal::after { transform: translateX(18px); }
+
+/* Stat card */
+.stat { text-align: center; padding: 24px 16px; }
+.stat .num { font-size: 32px; font-weight: 800; line-height: 1; }
+.stat .unit { font-size: 14px; font-weight: 700; }
+.stat .lab { font-size: 12px; color: var(--n-600); margin-top: 4px; font-weight: 500; }
+
+/* Bento */
+.bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.bento-w { grid-column: span 2; }
+.bento-c { background: var(--n-white); border-radius: var(--r-lg); padding: 24px; box-shadow: var(--sh-sm); transition: transform 0.2s, box-shadow 0.2s; }
+.bento-c:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
+.bento-i { width: 40px; height: 40px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; font-size: 18px; }
+.bento-n { font-size: 28px; font-weight: 800; margin-bottom: 2px; }
+.bento-t { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.bento-d { font-size: 13px; color: var(--n-600); }
+
+/* List card */
+.li-c { background: var(--n-white); border-radius: var(--r-md); padding: 14px 18px; box-shadow: var(--sh-sm); display: flex; align-items: center; gap: 14px; border-left: 3px solid; transition: box-shadow 0.2s; }
+.li-c:hover { box-shadow: var(--sh-md); }
+.li-i { width: 36px; height: 36px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.li-b { flex: 1; }
+.li-b .t { font-size: 13px; font-weight: 600; }
+.li-b .s { font-size: 11px; color: var(--n-600); }
+.li-v { font-size: 15px; font-weight: 700; text-align: right; }
+.li-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: var(--r-full); }
+
+/* Project card */
+.proj { border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-md); transition: transform 0.2s; cursor: pointer; }
+.proj:hover { transform: translateY(-3px); }
+.proj-img { height: 180px; position: relative; display: flex; align-items: flex-end; padding: 16px; }
+.proj-img .tag { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: var(--r-full); background: var(--o-accent); color: white; }
+.proj-img h3 { color: white; font-size: 16px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.proj-bot { background: white; padding: 12px 16px; display: flex; justify-content: space-between; font-size: 12px; color: var(--n-600); }
+.proj-bot strong { color: var(--n-900); }
+
+/* Section header */
+.sh .label { font-size: 14px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+.sh h2 { font-size: 32px; font-weight: 700; line-height: 1.2; }
+.sh h2 em { font-style: normal; }
+.sh p { font-size: 15px; color: var(--n-600); margin-top: 8px; max-width: 480px; }
+
+/* Hero */
+.hero { border-radius: var(--r-lg); padding: 80px 48px 56px; position: relative; overflow: hidden; }
+.hero::after { content: ''; position: absolute; right: -80px; top: -80px; width: 400px; height: 400px; border-radius: 50%; pointer-events: none; }
+.hero .label { font-size: 14px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 12px; }
+.hero h1 { font-size: 44px; font-weight: 800; color: white; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px; max-width: 640px; }
+.hero h1 em { font-style: normal; }
+.hero .sub { font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 28px; max-width: 480px; line-height: 1.6; }
+
+/* CTA section */
+.cta-sec { border-radius: var(--r-lg); padding: 48px 40px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+.cta-sec h2 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.cta-sec p { font-size: 14px; color: var(--n-600); max-width: 440px; }
+
+/* Footer */
+.footer { border-radius: var(--r-lg); padding: 48px 40px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
+.footer .tagline { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.6; max-width: 260px; margin-top: 12px; }
+.footer h4 { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 14px; }
+.footer a { display: block; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; margin-bottom: 8px; }
+.footer .u-lg { width: 44px; height: 44px; border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; color: white; }
+
+/* ═══ FULL PAGE DEMO ═══ */
+.full { border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-xl); }
+.full > div { padding: 48px 40px; }
+
+@media (max-width: 800px) {
+  .grid2,.grid3,.grid4,.bento { grid-template-columns: 1fr; }
+  .bento-w { grid-column: span 1; }
+  .footer { grid-template-columns: 1fr 1fr; }
+  .cta-sec { flex-direction: column; text-align: center; }
+  .hero h1 { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bar"><div>CBS HOME — Element Map v2</div><div><b>#cc3203</b> → <b>#E8651A</b> → <b>#EFB44C</b> | Teal #1A6B6A</div></div>
+
+<div class="wrap">
+
+<!-- ══════════ 1. COLOUR SYSTEM ══════════ -->
+<div class="section">
+  <div class="lbl">01</div>
+  <div class="h2">Colour System</div>
+  <div class="desc">Финальная триада + teal system + neutrals. Все токены для production.</div>
+
+  <div style="margin-bottom:20px;"><strong style="font-size:12px;color:var(--n-600);letter-spacing:0.1em;">ORANGE TRIAD</strong></div>
+  <div class="clr-grid" style="margin-bottom:24px;">
+    <div class="clr"><div class="clr-top" style="background:var(--o-primary);"><span>#cc3203</span></div><div class="clr-bot">Primary<small>U-icon, logo, hero mark</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--o-accent);"><span>#E8651A</span></div><div class="clr-bot">Accent<small>CTA, buttons, badges</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--o-accent-hover);"><span>#D45A16</span></div><div class="clr-bot">Accent Hover<small>Button hover</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--o-light);"><span>#EFB44C</span></div><div class="clr-bot">Light / Gold<small>Soft bg, progress, secondary</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--o-tint-15);border:1px solid var(--n-200);"><span style="color:var(--o-accent);text-shadow:none;">15%</span></div><div class="clr-bot">Accent Tint<small>Icon bg, tag bg</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--o-light-tint-15);border:1px solid var(--n-200);"><span style="color:var(--o-light);text-shadow:none;">15%</span></div><div class="clr-bot">Light Tint<small>Gold wash, feature bg</small></div></div>
+  </div>
+
+  <div style="margin-bottom:20px;"><strong style="font-size:12px;color:var(--n-600);letter-spacing:0.1em;">TEAL SYSTEM</strong></div>
+  <div class="clr-grid" style="margin-bottom:24px;">
+    <div class="clr"><div class="clr-top" style="background:var(--t-500);"><span>#228B8A</span></div><div class="clr-bot">Teal 500<small>Light accent, links</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--t-600);"><span>#1E7A79</span></div><div class="clr-bot">Teal 600<small>Hover, secondary btn</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--t-700);"><span>#1A6B6A</span></div><div class="clr-bot">Teal 700<small>Brand primary teal</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--t-800);"><span>#15565A</span></div><div class="clr-bot">Teal 800<small>Hero, header bg</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--t-900);"><span>#0E3D42</span></div><div class="clr-bot">Teal 900<small>Footer, dark sections</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--t-950);"><span>#0A2A2E</span></div><div class="clr-bot">Teal 950<small>Deepest dark</small></div></div>
+  </div>
+
+  <div style="margin-bottom:20px;"><strong style="font-size:12px;color:var(--n-600);letter-spacing:0.1em;">NEUTRALS</strong></div>
+  <div class="clr-grid">
+    <div class="clr"><div class="clr-top" style="background:var(--n-white);border:1px solid var(--n-200);"><span style="color:var(--n-400);text-shadow:none;">#FFF</span></div><div class="clr-bot">White<small>Card bg, page</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--n-100);border:1px solid var(--n-200);"><span style="color:var(--n-400);text-shadow:none;">#F5F5F5</span></div><div class="clr-bot">Gray 100<small>Section alt bg</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--n-200);"><span style="color:var(--n-600);text-shadow:none;">#E8E8E8</span></div><div class="clr-bot">Gray 200<small>Dividers</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--n-300);"><span style="color:var(--n-600);text-shadow:none;">#D4D4D4</span></div><div class="clr-bot">Gray 300<small>Borders</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--n-600);"><span>#525252</span></div><div class="clr-bot">Gray 600<small>Secondary text</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:var(--n-900);"><span>#1A1A1A</span></div><div class="clr-bot">Gray 900<small>Primary text</small></div></div>
+  </div>
+
+  <div style="margin-top:28px;margin-bottom:20px;"><strong style="font-size:12px;color:var(--n-600);letter-spacing:0.1em;">LOGO SOURCE</strong></div>
+  <div class="clr-grid" style="margin-bottom:24px;">
+    <div class="clr"><div class="clr-top" style="background:#cc3203;"><span>#cc3203</span></div><div class="clr-bot">Logo Icon Bg<small>U-square in SVG</small></div></div>
+    <div class="clr"><div class="clr-top" style="background:#084456;"><span>#084456</span></div><div class="clr-bot">Logo Text<small>"CBS HOME" in SVG (print/light bg)</small></div></div>
+  </div>
+
+  <div style="margin-top:28px;margin-bottom:20px;"><strong style="font-size:12px;color:var(--n-600);letter-spacing:0.1em;">WCAG CONTRAST RULES</strong></div>
+  <div style="background:white;border-radius:var(--r-lg);padding:20px;box-shadow:var(--sh-sm);font-size:13px;line-height:1.7;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div style="font-weight:700;margin-bottom:8px;">Accent #E8651A on white</div>
+        <div>Ratio ≈ 3.5:1 — <span style="color:var(--error);font-weight:600;">FAIL AA small text</span></div>
+        <div>✓ Pass AA large text (≥18px bold / ≥24px)</div>
+        <div style="font-size:11px;color:var(--n-600);margin-top:4px;">→ Use for headings, stat numbers, buttons. Never for body copy &lt;18px.</div>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:8px;">Primary #cc3203 on white</div>
+        <div>Ratio ≈ 4.8:1 — <span style="color:var(--success);font-weight:600;">PASS AA all sizes</span></div>
+        <div style="font-size:11px;color:var(--n-600);margin-top:4px;">→ Safe for any text on white.</div>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:8px;">Light #EFB44C on white</div>
+        <div>Ratio ≈ 1.9:1 — <span style="color:var(--error);font-weight:600;">FAIL all text</span></div>
+        <div style="font-size:11px;color:var(--n-600);margin-top:4px;">→ Decorative only: progress bars, borders, icon bg tints. Never for text.</div>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:8px;">Accent #E8651A on teal-800</div>
+        <div>Ratio ≈ 2.8:1 — <span style="color:var(--error);font-weight:600;">FAIL AA small text</span></div>
+        <div>✓ Pass AA large text (≥18px bold / ≥24px)</div>
+        <div style="font-size:11px;color:var(--n-600);margin-top:4px;">→ Hero labels must be ≥14px bold (font-section-label).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 2. GRADIENTS ══════════ -->
+<div class="section">
+  <div class="lbl">02</div>
+  <div class="h2">Gradients</div>
+  <div class="desc">Все комбинации orange triad + teal для hero, progress bars, backgrounds, cards.</div>
+
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div class="grad-strip" style="background:linear-gradient(90deg, #cc3203, #E8651A, #EFB44C);">Primary → Accent → Light</div>
+    <div class="grad-strip" style="background:linear-gradient(90deg, #E8651A, #EFB44C);">Accent → Light (CTA hover, progress)</div>
+    <div class="grad-strip" style="background:linear-gradient(135deg, var(--t-800), var(--t-900));">Teal 800 → 900 (Hero bg)</div>
+    <div class="grad-strip" style="background:linear-gradient(135deg, var(--t-700), var(--t-900));">Teal 700 → 900 (Project card)</div>
+    <div class="grad-strip" style="background:linear-gradient(135deg, var(--t-900), var(--t-950));">Teal 900 → 950 (Footer)</div>
+    <div class="grad-strip" style="background:linear-gradient(90deg, var(--t-800), #1A6B6A, #228B8A);">Teal full range</div>
+    <div class="grad-strip" style="background:linear-gradient(135deg, #cc3203, var(--t-900));">Primary × Teal (cross-brand, decorative)</div>
+    <div class="grad-strip" style="background:linear-gradient(90deg, #EFB44C, #E8651A, #cc3203); height:10px; border-radius: var(--r-full);"></div>
+    <div style="font-size:11px;color:var(--n-400);text-align:center;margin-top:-4px;">Progress bar (reversed: gold → accent → primary)</div>
+  </div>
+</div>
+
+<!-- ══════════ 3. TYPOGRAPHY ══════════ -->
+<div class="section">
+  <div class="lbl">03</div>
+  <div class="h2">Typography</div>
+  <div style="display:flex;flex-direction:column;gap:0;">
+    <div class="type-row"><div class="type-sample" style="font-size:64px;font-weight:800;line-height:1.1;letter-spacing:0.15em;">DISPLAY</div><div class="type-meta">64 / 800 / 1.1 / 0.15em (tracking-wide)</div></div>
+    <div class="type-row"><div class="type-sample" style="font-size:48px;font-weight:700;line-height:1.1;letter-spacing:-0.02em;">Heading 1</div><div class="type-meta">48 / 700 / 1.1 / -0.02em (tracking-tight)</div></div>
+    <div class="type-row"><div class="type-sample" style="font-size:32px;font-weight:700;line-height:1.2;">Heading 2</div><div class="type-meta">32 / 700 / 1.2</div></div>
+    <div class="type-row"><div class="type-sample" style="font-size:24px;font-weight:600;line-height:1.2;">Heading 3</div><div class="type-meta">24 / 600 / 1.2</div></div>
+    <div class="type-row"><div class="type-sample" style="font-size:16px;font-weight:400;line-height:1.5;">Body — Der CBS-Hybridbau ermöglicht eine vollumfängliche Sicherheit der Tragwerke und erfüllt alle bauphysikalischen Anforderungen.</div><div class="type-meta">16 / 400 / 1.5</div></div>
+    <div class="type-row"><div class="type-sample" style="font-size:14px;font-weight:400;color:var(--n-600);">Body Small — Einsparung von bis zu 25% der Herstellkosten.</div><div class="type-meta">14 / 400 / 1.5 / gray-600</div></div>
+    <div class="type-row"><div class="type-sample" style="font-size:14px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--o-accent);">SECTION LABEL</div><div class="type-meta">14 / 700 / 0.15em / uppercase</div></div>
+    <div class="type-row"><div class="type-sample" style="font-size:14px;font-weight:500;letter-spacing:0.15em;color:var(--n-400);">Label / Caption</div><div class="type-meta">14 / 500 / 0.15em (tracking-wide)</div></div>
+  </div>
+</div>
+
+<!-- ══════════ 4. BUTTONS & CONTROLS ══════════ -->
+<div class="section">
+  <div class="lbl">04</div>
+  <div class="h2">Buttons & Controls</div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:24px;">
+    <button class="btn btn-p">Kontakt aufnehmen</button>
+    <button class="btn btn-s">Mehr erfahren</button>
+    <button class="btn btn-t">CBS-System</button>
+    <button class="btn btn-light">Investment Info</button>
+    <button class="btn btn-g">Alle Projekte →</button>
+  </div>
+
+  <div style="margin-bottom:24px;">
+    <div style="font-size:11px;font-weight:600;color:var(--n-600);margin-bottom:8px;">CHIPS</div>
+    <div class="chips">
+      <button class="chip chip-active">Alle</button>
+      <button class="chip chip-default">Bauträger</button>
+      <button class="chip chip-default">Architekten</button>
+      <button class="chip chip-teal">CBS-System</button>
+      <button class="chip chip-light">Premium</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:24px;align-items:center;">
+    <div style="display:flex;align-items:center;gap:8px;"><div class="tog tog-on"></div><span style="font-size:13px;font-weight:500;">Orange On</span></div>
+    <div style="display:flex;align-items:center;gap:8px;"><div class="tog tog-off"></div><span style="font-size:13px;font-weight:500;">Off</span></div>
+    <div style="display:flex;align-items:center;gap:8px;"><div class="tog tog-teal"></div><span style="font-size:13px;font-weight:500;">Teal On</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 5. STAT CARDS ══════════ -->
+<div class="section">
+  <div class="lbl">05</div>
+  <div class="h2">Stat Cards</div>
+  <div class="grid4">
+    <div class="card stat"><div class="num" style="color:var(--o-accent);">30<span class="unit">%</span></div><div class="lab">kürzere Bauzeit</div></div>
+    <div class="card stat"><div class="num" style="color:var(--o-accent);">20<span class="unit">%</span></div><div class="lab">günstiger</div></div>
+    <div class="card stat"><div class="num" style="color:var(--o-accent);">>90<span class="unit">%</span></div><div class="lab">Recycling-Rate</div></div>
+    <div class="card stat"><div class="num" style="color:var(--o-accent);">±3<span class="unit">mm</span></div><div class="lab">Werkspräzision</div></div>
+  </div>
+</div>
+
+<!-- ══════════ 6. BENTO GRID ══════════ -->
+<div class="section">
+  <div class="lbl">06</div>
+  <div class="h2">Bento Feature Grid</div>
+  <div style="background:var(--n-100);border-radius:var(--r-lg);padding:32px;">
+    <div class="bento">
+      <div class="bento-c bento-w">
+        <div class="bento-i" style="background:var(--o-tint-15);color:var(--o-accent);">⏱</div>
+        <div class="bento-n" style="color:var(--o-accent);">60–65%</div>
+        <div class="bento-t">Schnellerer Rohbau</div>
+        <div class="bento-d">120–190 m²/Tag vs. 20 m²/Tag konventionell. Vorfertigung eliminiert Witterungsrisiken.</div>
+      </div>
+      <div class="bento-c">
+        <div class="bento-i" style="background:var(--o-light-tint-15);color:var(--o-light);">💰</div>
+        <div class="bento-n" style="color:var(--o-accent);">15–20%</div>
+        <div class="bento-t">Materialkosten</div>
+        <div class="bento-d">Weniger Zement, Stahl, Transport.</div>
+      </div>
+      <div class="bento-c">
+        <div class="bento-i" style="background:var(--t-tint-15);color:var(--t-700);">🛡</div>
+        <div class="bento-n" style="color:var(--t-700);">REI 90-M</div>
+        <div class="bento-t">Brandschutz</div>
+        <div class="bento-d">DIN EN 13501-2.</div>
+      </div>
+      <div class="bento-c">
+        <div class="bento-i" style="background:var(--t-tint-15);color:var(--t-700);">🌍</div>
+        <div class="bento-n" style="color:var(--t-700);">58</div>
+        <div class="bento-t">Länder Patent</div>
+        <div class="bento-d">EP 3 574 160 B1.</div>
+      </div>
+      <div class="bento-c bento-w">
+        <div class="bento-i" style="background:var(--o-tint-15);color:var(--o-accent);">♻️</div>
+        <div class="bento-n" style="color:var(--o-accent);">>90%</div>
+        <div class="bento-t">Recycelbar</div>
+        <div class="bento-d">IBR-zertifiziert. CO₂-neutrale Produktionshalle. Erneuerbare Werkstoffe.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 7. LIST CARDS ══════════ -->
+<div class="section">
+  <div class="lbl">07</div>
+  <div class="h2">List Cards</div>
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:540px;">
+    <div class="li-c" style="border-color:var(--o-primary);">
+      <div class="li-i" style="background:var(--o-tint-15);color:var(--o-accent);">🏠</div>
+      <div class="li-b"><div class="t">Mehrfamilienhaus Deißlingen</div><div class="s">24 WE · 3 Geschosse · CBS-Rohbau</div></div>
+      <div><div class="li-v" style="color:var(--o-accent);">€2.4M</div><div class="li-badge" style="background:var(--o-tint-15);color:var(--o-accent);">Bauphase</div></div>
+    </div>
+    <div class="li-c" style="border-color:var(--o-light);">
+      <div class="li-i" style="background:var(--o-light-tint-15);color:var(--o-accent);">🏨</div>
+      <div class="li-b"><div class="t">Hotel Schwarzwald</div><div class="s">72 Zimmer · 7 Geschosse</div></div>
+      <div><div class="li-v">€8.1M</div><div class="li-badge" style="background:rgba(22,163,74,0.1);color:var(--success);">Fertig</div></div>
+    </div>
+    <div class="li-c" style="border-color:var(--t-700);">
+      <div class="li-i" style="background:var(--t-tint-15);color:var(--t-700);">🏗</div>
+      <div class="li-b"><div class="t">Wohnanlage Stuttgart</div><div class="s">48 WE · 5 Geschosse · Baugenossenschaft</div></div>
+      <div><div class="li-v">€5.8M</div><div class="li-badge" style="background:rgba(22,163,74,0.1);color:var(--success);">Fertig</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 8. PROJECT CARDS ══════════ -->
+<div class="section">
+  <div class="lbl">08</div>
+  <div class="h2">Project Cards</div>
+  <div class="grid3">
+    <div class="proj"><div class="proj-img" style="background:linear-gradient(135deg,var(--t-700),var(--t-900));"><div class="tag">24 WE</div><h3>Mehrgeschossbau</h3></div><div class="proj-bot"><span><strong>Deißlingen</strong> · 2024</span><span>3 Geschosse</span></div></div>
+    <div class="proj"><div class="proj-img" style="background:linear-gradient(135deg,var(--t-800),var(--t-700));"><div class="tag">72 Zimmer</div><h3>Hotelprojekt</h3></div><div class="proj-bot"><span><strong>Schwarzwald</strong> · 2023</span><span>7 Geschosse</span></div></div>
+    <div class="proj"><div class="proj-img" style="background:linear-gradient(135deg,var(--t-900),var(--t-800));"><div class="tag">48 WE</div><h3>Wohnanlage</h3></div><div class="proj-bot"><span><strong>Stuttgart</strong> · 2023</span><span>5 Geschosse</span></div></div>
+  </div>
+</div>
+
+<!-- ══════════ 9. SECTION HEADERS ══════════ -->
+<div class="section">
+  <div class="lbl">09</div>
+  <div class="h2">Section Headers</div>
+  <div style="display:grid;gap:40px;">
+    <div class="sh"><div class="label" style="color:var(--o-accent);">Technologie</div><h2>Das CBS-<em style="color:var(--o-accent);">System</em></h2><p>Zukunftsweisende Bautechnologie durch industrielle Serienfertigung.</p></div>
+    <div class="sh"><div class="label" style="color:var(--t-700);">Referenzen</div><h2>Europaweit <em style="color:var(--t-700);">bewährt</em></h2><p>Über 1.000 Wohneinheiten realisiert.</p></div>
+    <div class="sh"><div class="label" style="color:var(--o-light);">Investment</div><h2>Investieren in die <em style="color:var(--o-accent);">Zukunft</em></h2></div>
+  </div>
+</div>
+
+<!-- ══════════ 10. DARK SURFACES ══════════ -->
+<div class="section">
+  <div class="lbl">10</div>
+  <div class="h2">Surface Variants</div>
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="background:var(--t-800);border-radius:var(--r-lg);padding:32px;color:white;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--o-accent);margin-bottom:6px;">HERO / HEADER</div>
+      <div style="font-size:20px;font-weight:700;">Teal 800 — #15565A</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">Primary dark surface. Hero, navigation.</div>
+    </div>
+    <div style="background:var(--t-900);border-radius:var(--r-lg);padding:32px;color:white;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--o-light);margin-bottom:6px;">FOOTER / DEEP</div>
+      <div style="font-size:20px;font-weight:700;">Teal 900 — #0E3D42</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">Footer, deep dark sections. Gold label accent.</div>
+    </div>
+    <div class="grid2">
+      <div style="background:var(--n-100);border-radius:var(--r-lg);padding:24px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--n-400);margin-bottom:6px;">ALT SECTION</div>
+        <div style="font-size:16px;font-weight:700;">Gray 100 — #F5F5F5</div>
+      </div>
+      <div style="background:var(--o-light-tint-8);border-radius:var(--r-lg);padding:24px;border:1px solid rgba(239,180,76,0.12);">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:var(--o-light);margin-bottom:6px;">WARM SECTION</div>
+        <div style="font-size:16px;font-weight:700;">Gold Tint 8% — featured</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 11. FULL PAGE ══════════ -->
+<div class="section">
+  <div class="lbl">11</div>
+  <div class="h2">Assembled Page</div>
+  <div class="desc">Все элементы в реальном потоке.</div>
+
+  <div class="full">
+    <!-- Nav -->
+    <div style="background:var(--t-800);padding:0 32px;">
+      <div class="c-nav">
+        <div class="logo"><div class="u" style="background:var(--o-primary);color:white;">U</div><div class="wm" style="color:white;">CBS HOME</div></div>
+        <ul class="links" style="list-style:none;display:flex;gap:28px;"><li><a href="#" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;font-weight:500;">CBS-System</a></li><li><a href="#" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;font-weight:500;">Leistungen</a></li><li><a href="#" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;font-weight:500;">Unternehmen</a></li><li><a href="#" style="color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;font-weight:500;">Referenzen</a></li></ul>
+        <button class="btn btn-p" style="padding:8px 20px;font-size:12px;">Kontakt</button>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div style="background:linear-gradient(135deg,var(--t-800),var(--t-900));padding:72px 40px 56px;position:relative;overflow:hidden;">
+      <div style="position:absolute;right:-60px;top:-60px;width:350px;height:350px;background:radial-gradient(circle,rgba(239,180,76,0.08) 0%,transparent 70%);"></div>
+      <div style="font-size:14px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--o-accent);margin-bottom:12px;">Compound Building System</div>
+      <h1 style="font-size:48px;font-weight:800;color:white;line-height:1.1;letter-spacing:-0.02em;margin-bottom:18px;max-width:600px;">Zukunft bauen.<br><em style="font-style:normal;color:var(--o-accent);">Schneller. Günstiger. Nachhaltig.</em></h1>
+      <p style="font-size:16px;color:rgba(255,255,255,0.65);margin-bottom:28px;max-width:460px;line-height:1.6;">Industrielle Serienfertigung — patentiert, zugelassen, bewährt in über 1.000 WE europaweit.</p>
+      <button class="btn btn-p">Mehr erfahren →</button>
+    </div>
+
+    <!-- Stats -->
+    <div style="background:white;padding:40px;">
+      <div class="grid4">
+        <div class="card stat" style="box-shadow:var(--sh-md);"><div class="num" style="color:var(--o-accent);">30<span class="unit">%</span></div><div class="lab">kürzere Bauzeit</div></div>
+        <div class="card stat" style="box-shadow:var(--sh-md);"><div class="num" style="color:var(--o-accent);">20<span class="unit">%</span></div><div class="lab">günstiger</div></div>
+        <div class="card stat" style="box-shadow:var(--sh-md);"><div class="num" style="color:var(--o-accent);">>90<span class="unit">%</span></div><div class="lab">Recycling</div></div>
+        <div class="card stat" style="box-shadow:var(--sh-md);"><div class="num" style="color:var(--o-accent);">±3<span class="unit">mm</span></div><div class="lab">Präzision</div></div>
+      </div>
+    </div>
+
+    <!-- Bento -->
+    <div style="background:var(--n-100);padding:56px 40px;">
+      <div class="sh" style="margin-bottom:24px;"><div class="label" style="color:var(--o-accent);">Technologie</div><h2 style="font-size:28px;">Vorteile auf <em style="color:var(--o-accent);">einen Blick</em></h2></div>
+      <div class="bento">
+        <div class="bento-c bento-w"><div class="bento-i" style="background:var(--o-tint-15);color:var(--o-accent);">⏱</div><div class="bento-n" style="color:var(--o-accent);">60–65%</div><div class="bento-t">Schnellerer Rohbau</div><div class="bento-d">120–190 m²/Tag vs. 20 m²/Tag konventionell.</div></div>
+        <div class="bento-c"><div class="bento-i" style="background:var(--o-light-tint-15);color:var(--o-light);">💰</div><div class="bento-n" style="color:var(--o-accent);">15–20%</div><div class="bento-t">Materialkosten</div><div class="bento-d">Weniger Zement, Stahl.</div></div>
+        <div class="bento-c"><div class="bento-i" style="background:var(--t-tint-15);color:var(--t-700);">🛡</div><div class="bento-n" style="color:var(--t-700);">REI 90-M</div><div class="bento-t">Brandschutz</div><div class="bento-d">DIN EN 13501-2.</div></div>
+        <div class="bento-c bento-w"><div class="bento-i" style="background:var(--o-tint-15);color:var(--o-accent);">♻️</div><div class="bento-n" style="color:var(--o-accent);">>90%</div><div class="bento-t">Recycelbar</div><div class="bento-d">IBR-zertifiziert. CO₂-neutrale Produktion.</div></div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div style="background:white;padding:48px 40px;">
+      <div class="cta-sec" style="background:var(--o-light-tint-8);border-radius:var(--r-lg);padding:40px;">
+        <div><h2 style="font-size:24px;font-weight:700;">Bereit für die Zukunft?</h2><p style="font-size:14px;color:var(--n-600);margin-top:6px;">Kontaktieren Sie uns für eine individuelle Beratung.</p></div>
+        <button class="btn btn-p" style="white-space:nowrap;">Termin vereinbaren →</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer" style="background:linear-gradient(135deg,var(--t-900),var(--t-950));border-radius:0;">
+      <div><div class="u-lg" style="background:var(--o-primary);">U</div><div class="tagline">made in Germany → constructing the future with U</div></div>
+      <div><h4>CBS-Home</h4><a href="#">CBS-System</a><a href="#">Leistungen</a><a href="#">Über uns</a><a href="#">Karriere</a></div>
+      <div><h4>Rechtliches</h4><a href="#">Impressum</a><a href="#">Datenschutz</a><a href="#">AGB</a></div>
+      <div><h4>Kontakt</h4><a href="#">info@cbs-home.com</a><a href="#">07420 692 950</a><a href="#">Instagram</a></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<div style="height:64px;"></div>
+</body>
+</html>

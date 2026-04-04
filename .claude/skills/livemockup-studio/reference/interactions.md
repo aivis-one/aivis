@@ -1,6 +1,6 @@
 ---
 name: interactions
-description: "v1.6.1 | Microanimations + feedback + endpoints"
+description: "v1.8.0 | Microanimations + feedback + endpoints"
 ---
 
 # Interactions
@@ -497,4 +497,4 @@ document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
 ---
 
-*interactions v1.6.1*
+*interactions v1.8.0*

@@ -60,7 +60,17 @@
       border-color: rgba(232,101,26,0.4);
       background: rgba(255,255,255,0.08);
     }
-    .hub-card-icon { font-size: 36px; margin-bottom: 16px; }
+    .hub-card-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .hub-card-icon svg { width: 24px; height: 24px; }
+    .hub-card-icon.orange { background: rgba(232,101,26,0.15); color: #E8651A; }
+    .hub-card-icon.teal { background: rgba(26,107,106,0.15); color: #2A9B9A; }
+    .hub-card-icon.yellow { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .hub-card-icon.blue { background: rgba(59,130,246,0.15); color: #3b82f6; }
+    .hub-card-icon.green { background: rgba(34,197,94,0.15); color: #22c55e; }
     .hub-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
     .hub-card p {
       font-size: 13px; color: rgba(255,255,255,0.6);
@@ -83,9 +93,10 @@
     .hub-badge.web { background: rgba(59,130,246,0.2); color: #3b82f6; }
     .hub-card-arrow {
       position: absolute; top: 24px; right: 24px;
-      font-size: 18px; color: rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.2);
       transition: all 0.3s;
     }
+    .hub-card-arrow svg { width: 18px; height: 18px; }
     .hub-card:hover .hub-card-arrow {
       color: #E8651A; transform: translateX(4px);
     }
@@ -119,8 +130,8 @@
 
     <div class="hub-grid">
       <a href="auth-flow/mockup.html" class="hub-card">
-        <span class="hub-card-arrow">→</span>
-        <span class="hub-card-icon">🔐</span>
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon orange"><i data-lucide="lock-keyhole"></i></span>
         <h2>Auth Flow</h2>
         <p>Login, Register, Email Verification, Profile Setup, Role Selection, KYC, Document Signing</p>
         <div class="hub-card-meta">
@@ -130,8 +141,8 @@
       </a>
 
       <a href="investor-shell/mockup.html" class="hub-card">
-        <span class="hub-card-arrow">→</span>
-        <span class="hub-card-icon">📊</span>
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon teal"><i data-lucide="bar-chart-3"></i></span>
         <h2>Investor</h2>
         <p>Dashboard, Portfolio, Marketplace, Product Detail, Purchase, Installment, Balance, Documents, Settings</p>
         <div class="hub-card-meta">
@@ -141,8 +152,8 @@
       </a>
 
       <a href="agent-shell/mockup.html" class="hub-card">
-        <span class="hub-card-arrow">→</span>
-        <span class="hub-card-icon">🤝</span>
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon yellow"><i data-lucide="users"></i></span>
         <h2>Agent</h2>
         <p>Agent Hub, Referral Links, Commissions L1/L2/L3, Leaderboard, Passive Balance, Certification</p>
         <div class="hub-card-meta">
@@ -152,8 +163,8 @@
       </a>
 
       <a href="company-shell/mockup.html" class="hub-card">
-        <span class="hub-card-arrow">→</span>
-        <span class="hub-card-icon">🏢</span>
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon blue"><i data-lucide="building-2"></i></span>
         <h2>Company</h2>
         <p>Dashboard, Product Management, Product Edit, Sales Analytics, Revenue Balance, Settings</p>
         <div class="hub-card-meta">
@@ -163,8 +174,8 @@
       </a>
 
       <a href="staff-shell/mockup.html" class="hub-card">
-        <span class="hub-card-arrow">→</span>
-        <span class="hub-card-icon">🛡️</span>
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon green"><i data-lucide="shield-check"></i></span>
         <h2>Staff</h2>
         <p>User Management, KYC Queue, Payment Review, Agent Applications, Avatar Mode</p>
         <div class="hub-card-meta">
@@ -179,7 +190,9 @@
       <span>+/− — zoom</span>
       <span>M — map</span>
     </div>
-    <div class="hub-version">v1.5.0 · livemockup-studio · CBS HOME</div>
+    <div class="hub-version">v1.8.0 · livemockup-studio · CBS HOME</div>
   </div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>if(typeof lucide!=='undefined') lucide.createIcons();</script>
 </body>
 </html>

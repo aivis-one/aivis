@@ -1,6 +1,7 @@
 /* ============================================================
    CBS HOME Navigation Map — nav-map.css
-   Overlay panel with tree view, stats, legend, and sections.
+   Overlay panel with horizontal chip layout.
+   v1.8.0 — chip redesign
    ============================================================ */
 
 /* ========== OVERLAY ========== */
@@ -59,60 +60,23 @@
   display: flex; align-items: center; gap: 6px;
 }
 
-/* ========== STATUS DOTS ========== */
+/* ========== DOTS ========== */
 .status-dot {
-  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
 }
 .status-dot.green  { background: var(--success); }
 .status-dot.yellow { background: var(--warning); }
 .status-dot.red    { background: var(--danger); }
 
-/* ========== LEGEND DOTS ========== */
 .legend-dot {
-  display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%;
 }
 .legend-dot.green  { background: var(--success); }
 .legend-dot.yellow { background: var(--warning); }
 .legend-dot.red    { background: var(--danger); }
 
 /* ========== TREE ========== */
-.nav-map-tree { display: flex; flex-direction: column; gap: 4px; }
-
-/* ========== LEVELS (indentation) ========== */
-.nav-map-level { padding-left: calc(var(--level, 0) * 16px); }
-.nav-map-level[data-level="1"] { --level: 1; }
-.nav-map-level[data-level="2"] { --level: 2; }
-.nav-map-level[data-level="3"] { --level: 3; }
-
-/* ========== ITEMS ========== */
-.nav-map-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; border-radius: 6px;
-  cursor: pointer; transition: all 0.2s;
-}
-.nav-map-item:hover { background: rgba(59, 130, 246, 0.2); }
-.nav-map-item-icon { font-size: 14px; }
-.nav-map-item-name { flex: 1; font-size: 13px; color: var(--shell-text); }
-.nav-map-item .status-dot { margin-left: 8px; }
-
-/* --- Type-specific hovers --- */
-.nav-map-item.screen-item:hover { background: rgba(34, 197, 94, 0.15); }
-
-.nav-map-item.tab-item { opacity: 0.85; }
-.nav-map-item.tab-item:hover { opacity: 1; background: rgba(245, 158, 11, 0.15); }
-
-.nav-map-item.endpoint-item { opacity: 0.7; }
-.nav-map-item.endpoint-item:hover { opacity: 1; background: rgba(239, 68, 68, 0.15); }
-
-/* ========== LEVEL BADGES ========== */
-.level-badge {
-  font-size: 9px; font-weight: 700; padding: 2px 6px;
-  border-radius: 4px; background: rgba(255, 255, 255, 0.1);
-  color: var(--shell-text-dim); margin-left: auto;
-}
-.level-badge.hub { background: var(--shell-accent-glow); color: var(--shell-accent); }
-.level-badge.tab { background: var(--warning-dim); color: var(--warning); }
-.level-badge.end { background: var(--danger-dim); color: var(--danger); }
+.nav-map-tree { display: flex; flex-direction: column; }
 
 /* ========== SECTIONS ========== */
 .nav-map-section {
@@ -124,7 +88,7 @@
 .nav-map-section-title {
   font-size: 11px; font-weight: 600; color: var(--shell-text-dim);
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
-  padding: 8px 12px; cursor: pointer;
+  padding: 6px 10px; cursor: pointer;
   display: flex; align-items: center; justify-content: space-between;
   border-radius: 6px; transition: all 0.2s;
 }
@@ -141,12 +105,49 @@
   font-size: 10px; transition: transform 0.2s;
 }
 
-/* ========== SECTION CONTENT ========== */
+/* ========== SECTION CONTENT — horizontal chip flow ========== */
 .nav-map-section-content {
-  display: flex; flex-direction: column; gap: 4px;
-  overflow: hidden; transition: all 0.2s;
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 2px 0 4px;
 }
+
+/* ========== ITEMS — compact chips ========== */
+.nav-map-item {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 6px;
+  cursor: pointer; transition: all 0.15s;
+  font-size: 12px; white-space: nowrap;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.nav-map-item:hover { background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.3); }
+.nav-map-item-name { font-size: 12px; color: var(--shell-text); }
+
+/* --- Type-specific hover colors --- */
+.nav-map-item.screen-item:hover { background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.25); }
+.nav-map-item.tab-item { opacity: 0.9; }
+.nav-map-item.tab-item:hover { opacity: 1; background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.25); }
+.nav-map-item.endpoint-item { opacity: 0.75; }
+.nav-map-item.endpoint-item:hover { opacity: 1; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.2); }
+
+/* ========== LEVEL BADGES ========== */
+.level-badge {
+  font-size: 8px; font-weight: 700; padding: 1px 5px;
+  border-radius: 3px; background: rgba(255, 255, 255, 0.08);
+  color: var(--shell-text-dim); margin-left: 2px;
+  line-height: 1.4;
+}
+.level-badge.hub { background: var(--shell-accent-glow); color: var(--shell-accent); }
+.level-badge.tab { background: var(--warning-dim); color: var(--warning); }
+.level-badge.end { background: var(--danger-dim); color: var(--danger); }
+
+/* ========== DEPTH (nested chips) ========== */
+.nav-map-item[data-depth="1"] { margin-left: 4px; }
+.nav-map-item[data-depth="2"] { margin-left: 8px; }
 
 /* ========== COLLAPSED STATE ========== */
 .nav-map-section.collapsed .section-arrow { transform: rotate(-90deg); }
 .nav-map-section.collapsed .nav-map-section-content { display: none; }
+
+/* ========== ICON INSIDE ITEM (hidden in chip mode) ========== */
+.nav-map-item-icon { display: none; }

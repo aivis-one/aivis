@@ -1,6 +1,6 @@
 ---
 name: build
-description: "v1.6.1 | L2 - Generate HTML mockup with device shell"
+description: "v1.8.0 | L2 - Generate HTML mockup with device shell"
 ---
 
 # build
@@ -45,7 +45,7 @@ For multi-mockup projects with shared CSS/JS files.
     (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
   </script>
   <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Shared CSS -->
@@ -181,6 +181,7 @@ Add theme toggle and language switcher to toolbar-right:
   <div class="lang-switcher">
     <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
     <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+    <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
   </div>
   <!-- Map button -->
   <button class="map-btn" onclick="openNavMap()">
@@ -275,11 +276,18 @@ See reference/brand-cbs.md -> i18n section for key naming conventions.
 | Navigation Map works | |
 | Components styled | |
 | Theme toggle cycles auto/light/dark | |
-| Lang switcher toggles RU/EN | |
+| Lang switcher cycles RU/EN/DE | |
 | Lucide icons render | |
 | Flash prevention script in head | |
 | data-i18n on translatable text | |
 
 ---
 
-*build v1.6.1*
+## Auto-Test
+
+After build completes, **automatically** run the `test` protocol.
+Do not wait for user request — test is mandatory after every build.
+
+---
+
+*build v1.8.0*

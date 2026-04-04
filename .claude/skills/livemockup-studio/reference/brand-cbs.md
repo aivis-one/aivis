@@ -1,11 +1,12 @@
 ---
 name: brand-cbs
-description: "v1.7.0 | CBS HOME design tokens — single source of truth"
+description: "v1.8.0 | CBS HOME design tokens — single source of truth"
 ---
 
 # CBS HOME Design Tokens
 
 Single source of truth for CBS HOME brand in mockups.
+Canonical source: `mockups/css/variables.css` (element-map-v2 derived).
 
 ---
 
@@ -17,59 +18,121 @@ Single source of truth for CBS HOME brand in mockups.
 | Archetype | The Engineer — data-driven, precise, trustworthy |
 | Aesthetic | Clean, rectangular, industrial, no hype |
 | Font | Montserrat (web) |
-| Primary | Teal #1A6B6A |
-| Accent | Orange #E8651A |
+| Primary UI | Teal #1A6B6A (`--t-700`) |
+| Accent UI | Orange #E8651A (`--o-accent`) |
+| Logo bg | #cc3203 (`--logo-icon-bg` / `--o-primary`) |
+| Logo text | #084456 (`--logo-text`) |
 
 ---
 
-## Color Palette
+## Color Architecture
 
-### Copy-paste ready `:root` block
+Three-tier system: **Orange Triad** → **Teal System** → **Semantic Aliases**.
+
+### Orange Triad
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--o-primary` | #cc3203 | Logo icon bg, hero mark, U-icon |
+| `--o-accent` | #E8651A | CTA buttons, badges, active indicators |
+| `--o-accent-hover` | #D45A16 | Button hover states |
+| `--o-light` | #EFB44C | Soft backgrounds, progress bars, secondary accent |
+| `--o-tint-8` | rgba(232,101,26,0.08) | Light orange overlay |
+| `--o-tint-15` | rgba(232,101,26,0.15) | Medium orange overlay |
+| `--o-light-tint-8` | rgba(239,180,76,0.08) | Light gold overlay |
+| `--o-light-tint-15` | rgba(239,180,76,0.15) | Medium gold overlay |
+
+### Teal System
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--t-500` | #228B8A | Light accent, links, dark-mode primary |
+| `--t-600` | #1E7A79 | Hover states, secondary buttons |
+| `--t-700` | #1A6B6A | **Primary UI color** (= `--primary`) |
+| `--t-800` | #15565A | Hero bg, header bg |
+| `--t-900` | #0E3D42 | Footer, dark sections |
+| `--t-950` | #0A2A2E | Deepest dark backgrounds |
+| `--t-tint-8` | rgba(26,107,106,0.08) | Light teal overlay |
+| `--t-tint-15` | rgba(26,107,106,0.15) | Medium teal overlay |
+
+### Semantic Aliases
+
+| Token | Value | Maps to |
+|-------|-------|---------|
+| `--primary` | #1A6B6A | = `--t-700` |
+| `--primary-dark` | #0E3D42 | = `--t-900` |
+| `--primary-light` | #228B8A | = `--t-500` |
+| `--accent` | #E8651A | = `--o-accent` |
+| `--accent-dark` | #D45A16 | = `--o-accent-hover` |
+| `--logo-icon-bg` | #cc3203 | = `--o-primary` |
+| `--logo-text` | #084456 | Dark teal for "CBS HOME" text |
+
+---
+
+## Color Palette — Copy-paste `:root`
 
 ```css
 :root {
-  /* === CBS HOME Brand Colors === */
+  /* === Orange Triad === */
+  --o-primary: #cc3203;
+  --o-accent: #E8651A;
+  --o-accent-hover: #D45A16;
+  --o-light: #EFB44C;
+  --o-tint-8: rgba(232,101,26,0.08);
+  --o-tint-15: rgba(232,101,26,0.15);
+  --o-light-tint-8: rgba(239,180,76,0.08);
+  --o-light-tint-15: rgba(239,180,76,0.15);
+
+  /* === Teal System === */
+  --t-500: #228B8A;
+  --t-600: #1E7A79;
+  --t-700: #1A6B6A;
+  --t-800: #15565A;
+  --t-900: #0E3D42;
+  --t-950: #0A2A2E;
+  --t-tint-8: rgba(26,107,106,0.08);
+  --t-tint-15: rgba(26,107,106,0.15);
+
+  /* === Semantic Aliases === */
   --primary: #1A6B6A;
   --primary-dark: #0E3D42;
-  --primary-light: #2A9B9A;
-  --primary-800: #15565A;
+  --primary-light: #228B8A;
   --accent: #E8651A;
   --accent-dark: #D45A16;
-  --accent-700: #B94D13;
+  --logo-icon-bg: #cc3203;
+  --logo-text: #084456;
 
   /* === Neutrals === */
   --bg: #FFFFFF;
   --bg-subtle: #F5F5F5;
-  --bg-elevated: #EEFAFA;
+  --bg-elevated: #EEF3F6;
   --text: #1A1A1A;
   --text-secondary: #525252;
   --text-tertiary: #A3A3A3;
   --border: #D4D4D4;
 
-  /* === Semantic === */
-  --success: #22c55e;
-  --success-dim: rgba(34, 197, 94, 0.15);
+  /* === Semantic Status === */
+  --success: #16A34A;
+  --success-dim: rgba(22, 163, 74, 0.15);
+  --error: #DC2626;
+  --error-dim: rgba(220, 38, 38, 0.1);
   --warning: #f59e0b;
   --warning-dim: rgba(245, 158, 11, 0.15);
-  --danger: #ef4444;
-  --danger-dim: rgba(239, 68, 68, 0.1);
-
-  /* === Tint Overlays === */
-  --tint-teal: rgba(26, 107, 106, 0.08);
-  --tint-orange: rgba(232, 101, 26, 0.08);
+  --danger: #DC2626;
+  --danger-dim: rgba(220, 38, 38, 0.1);
 
   /* === Shadows === */
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-  --shadow-focus-teal: 0 0 0 3px rgba(26, 107, 106, 0.3);
-  --shadow-accent-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
+  --shadow-xl: 0 16px 48px rgba(0,0,0,0.14);
+  --shadow-focus: 0 0 0 3px rgba(232,101,26,0.4);
 
-  /* === Border Radius (rectangular aesthetic) === */
+  /* === Border Radius === */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --radius-xl: 24px;
+  --radius-full: 9999px;
 
   /* === Spacing (8px base) === */
   --space-xs: 4px;
@@ -80,6 +143,13 @@ Single source of truth for CBS HOME brand in mockups.
   --space-2xl: 48px;
   --space-3xl: 64px;
   --space-4xl: 96px;
+
+  /* === Font === */
+  --font: 'Montserrat', system-ui, sans-serif;
+
+  /* === Telegram === */
+  --telegram: #2AABEE;
+  --telegram-dark: #229ED9;
 }
 ```
 
@@ -87,21 +157,36 @@ Single source of truth for CBS HOME brand in mockups.
 
 ## Dark Mode
 
+Two mechanisms: manual toggle (`[data-theme="dark"]`) and system preference (`@media`).
+
 ```css
+/* Manual toggle */
+[data-theme="dark"] {
+  --bg: #121212;
+  --bg-subtle: #1E1E1E;
+  --bg-elevated: #0A2A2E;
+  --text: #E5E5E5;
+  --text-secondary: #A3A3A3;
+  --text-tertiary: #737373;
+  --border: #3A3A3A;
+  --primary: #228B8A;
+  --accent: #E8651A;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  --o-tint-8: rgba(232,101,26,0.12);
+  --o-tint-15: rgba(232,101,26,0.2);
+  --t-tint-8: rgba(34,139,138,0.12);
+  --t-tint-15: rgba(34,139,138,0.2);
+  --success-dim: rgba(22,163,74,0.2);
+  --warning-dim: rgba(245,158,11,0.2);
+  --danger-dim: rgba(220,38,38,0.15);
+}
+
+/* System preference (when no manual toggle set) */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121212;
-    --bg-subtle: #1E1E1E;
-    --bg-elevated: #0A2A2E;
-    --text: #E5E5E5;
-    --text-secondary: #A3A3A3;
-    --text-tertiary: #737373;
-    --border: #3A3A3A;
-    --primary: #2A9B9A;
-    --accent: #E8651A;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  html:not([data-theme]) {
+    /* Same overrides as [data-theme="dark"] above */
   }
 }
 ```
@@ -112,7 +197,7 @@ Single source of truth for CBS HOME brand in mockups.
 
 ```css
 body {
-  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Montserrat', system-ui, sans-serif;
 }
 ```
 
@@ -138,7 +223,7 @@ Google Fonts import:
 
 ## U-Icon
 
-The core brand mark: white "U" on orange square.
+White "U" on **--logo-icon-bg** (#cc3203) square.
 
 ```html
 <div class="cbs-logo-icon">U</div>
@@ -148,7 +233,7 @@ The core brand mark: white "U" on orange square.
 .cbs-logo-icon {
   width: 36px;
   height: 36px;
-  background: var(--accent);
+  background: var(--logo-icon-bg);
   color: #FFFFFF;
   border-radius: var(--radius-sm);
   display: flex;
@@ -161,8 +246,8 @@ The core brand mark: white "U" on orange square.
 ```
 
 Rules:
-- Never recolor the orange background
-- Never distort proportions
+- Background = `var(--logo-icon-bg)` (#cc3203), never `var(--accent)`
+- Never recolor or distort
 - Minimum clear space = half icon width
 - Sizes: 24, 32, 36, 48px
 
@@ -170,19 +255,17 @@ Rules:
 
 ## Focus States
 
-**Focus rings by element type:**
-
 ```css
 /* Inputs: teal focus ring */
 .form-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: var(--shadow-focus-teal);
+  box-shadow: var(--shadow-focus);
 }
 
 /* Buttons/CTAs: orange focus ring */
 .btn-primary:focus-visible {
-  box-shadow: var(--shadow-accent-focus);
+  box-shadow: var(--shadow-focus);
 }
 ```
 
@@ -213,7 +296,7 @@ Rules:
 Inline SVG favicon (no external file needed):
 
 ```html
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
 ```
 
 ---
@@ -225,7 +308,7 @@ Inline SVG favicon (no external file needed):
 | Primary (CTA) | var(--accent) | white | none | var(--accent-dark) |
 | Secondary | white | var(--primary) | 2px var(--primary) | bg: var(--primary) |
 | Outline | transparent | var(--text-secondary) | 2px var(--border) | border: var(--primary) |
-| Telegram | #2AABEE | white | none | #229ED9 |
+| Telegram | var(--telegram) | white | none | var(--telegram-dark) |
 
 Telegram is the **only** non-variable color allowed (external brand).
 
@@ -288,8 +371,6 @@ Use CSS variables, not hardcoded hex:
 
 ---
 
----
-
 ## Theme Toggle
 
 Three-state theme switching: Auto → Light → Dark
@@ -349,20 +430,21 @@ Add inline script in `<head>` BEFORE CSS imports:
 
 ## i18n (Internationalization)
 
-RU/EN language switching via `data-i18n` attributes.
+RU/EN/DE language switching via `data-i18n` attributes. 242 keys covering all 5 mockups.
 
 ### I18N API
 
 | Method | Description |
 |--------|-------------|
 | `I18N.t(key, params)` | Translate key. Optional `params` object for interpolation (`{name}` patterns). |
-| `I18N.setLocale(lang)` | Set locale to `'ru'` or `'en'`. Saves to localStorage, calls `applyI18n()`. |
-| `I18N.toggleLocale()` | Toggle RU ↔ EN. |
+| `I18N.setLocale(lang)` | Set locale to `'ru'`, `'en'`, or `'de'`. Saves to localStorage, calls `applyI18n()`. |
+| `I18N.toggleLocale()` | Cycle: RU → EN → DE → RU. |
 | `I18N.applyI18n()` | Sweep all `[data-i18n]` elements and update their text/attributes. Call after DOM changes. |
+| `I18N._locales` | Array `['ru', 'en', 'de']` — supported locales. |
 
 ### localStorage Key
 
-`'cbs-lang'` — stores `'ru'` or `'en'`. Default: `'ru'`.
+`'cbs-lang'` — stores `'ru'`, `'en'`, or `'de'`. Default: `'ru'`.
 
 ### data-i18n Patterns
 
@@ -373,53 +455,63 @@ RU/EN language switching via `data-i18n` attributes.
 <!-- Attribute: replaces the named attribute instead of textContent -->
 <input data-i18n="common.email" data-i18n-attr="placeholder" placeholder="Email">
 
-<!-- Toolbar switcher -->
+<!-- Toolbar switcher (3 buttons) -->
 <div class="lang-switcher">
   <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
   <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+  <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
 </div>
 ```
 
-### Example Dictionary Entries
+### Dictionary Format
+
+Each key is an object with `ru`, `en`, `de` fields:
 
 ```javascript
-I18N._dict = {
-  ru: {
-    'auth.login.title': 'Вход в аккаунт',
-    'auth.login.subtitle': 'Войдите через Telegram',
-    'nav.home': 'Главная',
-    'nav.portfolio': 'Портфель',
-    'nav.market': 'Маркетплейс',
-    'nav.settings': 'Настройки',
-    'nav.endpoint': '📌 {name} — финальная точка',
-    'common.email': 'Email',
-    'common.save': 'Сохранить',
-    'common.cancel': 'Отмена',
-  },
-  en: {
-    'auth.login.title': 'Sign In',
-    'auth.login.subtitle': 'Sign in with Telegram',
-    'nav.home': 'Home',
-    'nav.portfolio': 'Portfolio',
-    'nav.market': 'Marketplace',
-    'nav.settings': 'Settings',
-    'nav.endpoint': '📌 {name} — endpoint',
-    'common.email': 'Email',
-    'common.save': 'Save',
-    'common.cancel': 'Cancel',
-  }
-};
+'auth.login.title': { ru: 'Вход в аккаунт', en: 'Sign In', de: 'Anmelden' },
+'nav.endpoint':     { ru: '📌 {name} — финальная точка', en: '📌 {name} — endpoint', de: '📌 {name} — Endpunkt' },
 ```
+
+### Key Namespaces (242 keys total)
+
+| Namespace | Count | Coverage |
+|-----------|-------|----------|
+| `auth.*` | ~55 | Login, register, verify, profile, role, KYC, docs |
+| `inv.*` | ~60 | Dashboard, portfolio, market, detail, purchase, installment, balance, docs, settings |
+| `tab.*` | ~20 | Tab bars for all 4 roles |
+| `nav.*` | ~80 | Nav map sections, items, legend, stats, toasts |
+| `theme.*` | 3 | Theme toggle labels |
 
 ### Usage in JS
 
 ```javascript
-I18N.t('auth.login.title');           // → "Вход в аккаунт" (ru) or "Sign In" (en)
+I18N.t('auth.login.title');           // → "Вход в аккаунт" (ru) / "Sign In" (en) / "Anmelden" (de)
 I18N.t('nav.endpoint', {name: 'X'});  // → "📌 X — финальная точка"
-I18N.setLocale('en');                  // Switch to English
-I18N.toggleLocale();                   // Toggle RU ↔ EN
+I18N.setLocale('de');                  // Switch to German
+I18N.toggleLocale();                   // Cycle: RU → EN → DE → RU
 ```
 
 Keyboard shortcut: `L`
 
-*brand-cbs v1.7.0*
+### i18n Coverage Rule
+
+**ALL visible screen text must have `data-i18n` attributes** — not just tab bars and nav-maps. This includes:
+- Stat card labels (`.stat-label`)
+- Section titles (`.section-title`)
+- Balance card labels (`.balance-label`, `.balance-sub-label`)
+- Button text (wrap in `<span data-i18n="...">`)
+- Settings row labels
+- Filter tab labels
+- Header titles (`.header-title`)
+
+Default text in HTML must be Russian. i18n.js handles the switching.
+
+### Icon Rule
+
+**Never use emoji in UI.** Always use Lucide icons via `<i data-lucide="icon-name"></i>`. This includes:
+- Device buttons: `smartphone`/`tablet`/`monitor`
+- Hub card icons: Lucide in `.icon-box` containers
+- Map button: `map-pin` Lucide icon
+- Home button: `layout-grid` Lucide icon
+
+*brand-cbs v1.8.0*

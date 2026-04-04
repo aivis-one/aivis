@@ -1,6 +1,6 @@
 ---
 name: polish
-description: "v1.6.1 | L3 - Add animations, feedback, and realistic data"
+description: "v1.8.0 | L3 - Add animations, feedback, and realistic data"
 ---
 
 # polish
@@ -128,4 +128,11 @@ Run **reference/checklist.md** checks before moving to test protocol.
 
 ---
 
-*polish v1.6.1*
+## Auto-Test
+
+After polish completes, **automatically** run the `test` protocol.
+Do not wait for user request — test is mandatory after every polish.
+
+---
+
+*polish v1.8.0*

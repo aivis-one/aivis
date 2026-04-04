@@ -1,6 +1,6 @@
 ---
 name: shell
-description: "v1.6.1 | Device Preview shell with Navigation Map"
+description: "v1.8.0 | Device Preview shell with Navigation Map"
 ---
 
 # Shell
@@ -132,20 +132,24 @@ Use `div` + `onclick`, NOT `form` + `onsubmit`.
       <span class="project-name">{PROJECT} v1</span>
       <span class="project-badge">LIVE</span>
     </div>
+    <a href="../index.html" class="home-btn" title="Hub"><i data-lucide="layout-grid"></i></a>
   </div>
-  
+
   <div class="toolbar-center">
     <div class="device-switcher">
       <button class="device-btn active" data-device="phone">
-        📱 <span class="device-label">Phone</span>
+        <i data-lucide="smartphone" style="width:14px;height:14px"></i>
+        <span class="device-label">Phone</span>
         <span class="device-size">390</span>
       </button>
       <button class="device-btn" data-device="tablet">
-        📱 <span class="device-label">Tablet</span>
+        <i data-lucide="tablet" style="width:14px;height:14px"></i>
+        <span class="device-label">Tablet</span>
         <span class="device-size">820</span>
       </button>
       <button class="device-btn" data-device="desktop">
-        🖥️ <span class="device-label">Desktop</span>
+        <i data-lucide="monitor" style="width:14px;height:14px"></i>
+        <span class="device-label">Desktop</span>
         <span class="device-size">1280</span>
       </button>
     </div>
@@ -158,6 +162,7 @@ Use `div` + `onclick`, NOT `form` + `onsubmit`.
     <div class="lang-switcher">
       <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
       <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+      <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
     </div>
     <button class="map-btn" onclick="openNavMap()">
       📍 <span class="map-label">Map</span>
@@ -828,57 +833,31 @@ function navigateTo(screenId) {
         </div>
       </div>
 
-      <!-- Tree -->
+      <!-- Tree: horizontal chip layout -->
       <div class="nav-map-tree">
-        <!-- L0: Entry (outside sections) -->
-        <div class="nav-map-level" data-level="0">
-          <div class="nav-map-item screen-item" onclick="navMapGo('screen-entry')">
-            <span class="nav-map-item-icon">🔐</span>
-            <span class="nav-map-item-name">Entry Screen</span>
-            <span class="level-badge">L0</span>
-            <span class="status-dot green"></span>
-          </div>
-        </div>
-
         <!-- Collapsible Section -->
-        <div class="nav-map-section collapsed">
+        <div class="nav-map-section">
           <div class="nav-map-section-title" onclick="toggleSection(this)">
-            <span class="section-info">📁 SECTION NAME <span class="section-count">(N)</span></span>
-            <span class="section-arrow">▼</span>
+            <span class="section-info"><span data-i18n="nav.section.tabs">ТАБЫ</span> <span class="section-count">(N)</span></span>
+            <span class="section-arrow">&#x25BC;</span>
           </div>
           <div class="nav-map-section-content">
-            <!-- L1: Hub -->
-            <div class="nav-map-level" data-level="1">
-              <div class="nav-map-item screen-item" onclick="navMapGo('screen-hub')">
-                <span class="nav-map-item-icon">📊</span>
-                <span class="nav-map-item-name">Hub Screen</span>
-                <span class="level-badge hub">HUB</span>
-                <span class="status-dot green"></span>
-              </div>
+            <!-- Chips: no wrapper divs, no icons, dot before name -->
+            <div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')">
+              <span class="status-dot yellow"></span>
+              <span class="nav-map-item-name" data-i18n="nav.inv.dashboard">Главная</span>
+              <span class="level-badge tab">TAB</span>
             </div>
-
-            <!-- L2: List -->
-            <div class="nav-map-level" data-level="2">
-              <div class="nav-map-item screen-item" onclick="navMapGo('screen-list')">
-                <span class="nav-map-item-icon">📋</span>
-                <span class="nav-map-item-name">List Screen</span>
-                <span class="level-badge">L2</span>
-                <span class="status-dot green"></span>
-              </div>
+            <div class="nav-map-item screen-item" onclick="navMapGo('screen-detail')" data-depth="1">
+              <span class="status-dot green"></span>
+              <span class="nav-map-item-name" data-i18n="nav.inv.productDetail">Детали продукта</span>
+              <span class="level-badge">L1</span>
             </div>
-
-            <!-- L3: Tab -->
-            <div class="nav-map-level" data-level="3">
-              <div class="nav-map-item tab-item" onclick="navMapTab('Tab Name', 'screen-list')">
-                <span class="nav-map-item-name">↳ Tab: Tab Name</span>
-                <span class="level-badge tab">TAB</span>
-                <span class="status-dot yellow"></span>
-              </div>
+            <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Покупка','screen-detail')">
+              <span class="status-dot red"></span>
+              <span class="nav-map-item-name">Покупка</span>
+              <span class="level-badge end">END</span>
             </div>
-
-            <!-- L3: Detail -->
-            <div class="nav-map-level" data-level="3">
-              <div class="nav-map-item screen-item" onclick="navMapGo('screen-detail')">
                 <span class="nav-map-item-icon">👤</span>
                 <span class="nav-map-item-name">↳ Detail Screen</span>
                 <span class="level-badge">L3</span>
@@ -1174,9 +1153,9 @@ Call in DOMContentLoaded or after content loads.
 | `0` | Reset Zoom |
 | `M` | Open Navigation Map |
 | `T` | Toggle Theme (auto/light/dark) |
-| `L` | Toggle Language (RU/EN) |
+| `L` | Cycle Language (RU → EN → DE) |
 | `Esc` | Close Navigation Map |
 
 ---
 
-*shell v1.6.1*
+*shell v1.8.0*

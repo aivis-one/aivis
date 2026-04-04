@@ -1,6 +1,6 @@
 ---
 name: sanitize
-description: "v1.6.1 | Cleanup downloaded/corrupted files"
+description: "v1.8.0 | Cleanup downloaded/corrupted files"
 ---
 
 # sanitize
@@ -93,7 +93,7 @@ sanitize → test → deliver
 
 ## Anchor
 
-🎨 livemockup-studio v1.6.1 · sanitize
+🎨 livemockup-studio v1.8.0 · sanitize
 🟢 | NEXT: test
 
 ---
@@ -103,4 +103,4 @@ sanitize → test → deliver
 
 ---
 
-*sanitize v1.6.1*
+*sanitize v1.8.0*

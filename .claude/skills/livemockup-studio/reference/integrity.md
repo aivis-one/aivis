@@ -1,6 +1,6 @@
 ---
 name: integrity
-description: "v1.6.1 | File integrity patterns and recovery"
+description: "v1.8.0 | File integrity patterns and recovery"
 ---
 
 # Integrity Reference
@@ -126,4 +126,4 @@ echo "=== Done ==="
 
 ---
 
-*integrity v1.6.1*
+*integrity v1.8.0*

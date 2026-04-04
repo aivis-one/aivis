@@ -1,6 +1,6 @@
 ---
 name: design
-description: "v1.6.1 | L1 - Design tokens and interaction map"
+description: "v1.8.0 | L1 - Design tokens and interaction map"
 ---
 
 # design
@@ -192,7 +192,7 @@ Scale: 16px base
 
 ## Anchor
 
-🎨 livemockup-studio v1.6.1 · design · complete
+🎨 livemockup-studio v1.8.0 · design · complete
 🟢 | NEXT: user command
 
 ---
@@ -202,4 +202,4 @@ Scale: 16px base
 
 ---
 
-*design v1.6.1*
+*design v1.8.0*

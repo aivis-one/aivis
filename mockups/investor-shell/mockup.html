@@ -226,6 +226,7 @@
         <span class="project-name">CBS HOME Investor v1.5</span>
         <span class="project-badge">LIVE</span>
       </div>
+      <a href="../index.html" class="home-btn" title="Hub"><i data-lucide="layout-grid"></i></a>
     </div>
     <div class="toolbar-center">
       <div class="device-switcher">
@@ -241,6 +242,7 @@
       <div class="lang-switcher">
         <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
         <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+        <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
       </div>
       <button class="map-btn" onclick="openNavMap()"><i data-lucide="map-pin" style="width:14px;height:14px"></i> <span class="map-label">Map</span></button>
       <div class="zoom-control">
@@ -960,11 +962,11 @@
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.dashboard">Главная</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Portfolio','screen-portfolio')"><span class="nav-map-item-name" data-i18n="nav.inv.portfolio">Портфель</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Marketplace','screen-market')"><span class="nav-map-item-name" data-i18n="nav.inv.marketplace">Маркетплейс</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Balance','screen-balance')"><span class="nav-map-item-name" data-i18n="nav.inv.balance">Баланс</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Settings','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.settings">Настройки</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.dashboard">Главная</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Portfolio','screen-portfolio')"><span class="nav-map-item-name" data-i18n="nav.inv.portfolio">Портфель</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Marketplace','screen-market')"><span class="nav-map-item-name" data-i18n="nav.inv.marketplace">Маркетплейс</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Balance','screen-balance')"><span class="nav-map-item-name" data-i18n="nav.inv.balance">Баланс</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Settings','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.settings">Настройки</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
             </div>
           </div>
           <!-- PURCHASE Flow -->
@@ -974,11 +976,11 @@
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-product')"><span class="nav-map-item-name" data-i18n="nav.inv.productDetail">Детали продукта</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
-              <div class="nav-map-level" data-level="1"><div class="nav-map-item screen-item" onclick="navMapGo('screen-purchase')"><span class="nav-map-item-name" data-i18n="nav.inv.purchase">&#8627; Покупка</span><span class="level-badge">L2</span><span class="status-dot green"></span></div></div>
-              <div class="nav-map-level" data-level="2"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Покупка выполнена','screen-purchase')"><span class="nav-map-item-name" data-i18n="nav.inv.purchaseDone">&#8627; Покупка выполнена</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="1"><div class="nav-map-item screen-item" onclick="navMapGo('screen-installment')"><span class="nav-map-item-name" data-i18n="nav.inv.installment">&#8627; Рассрочка</span><span class="level-badge">L2</span><span class="status-dot green"></span></div></div>
-              <div class="nav-map-level" data-level="2"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Рассрочка оформлена','screen-installment')"><span class="nav-map-item-name" data-i18n="nav.inv.installmentDone">&#8627; Рассрочка оформлена</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-product')"><span class="nav-map-item-name" data-i18n="nav.inv.productDetail">Детали продукта</span><span class="level-badge">L1</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-purchase')"><span class="nav-map-item-name" data-i18n="nav.inv.purchase">&#8627; Покупка</span><span class="level-badge">L2</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Покупка выполнена','screen-purchase')"><span class="nav-map-item-name" data-i18n="nav.inv.purchaseDone">&#8627; Покупка выполнена</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-installment')"><span class="nav-map-item-name" data-i18n="nav.inv.installment">&#8627; Рассрочка</span><span class="level-badge">L2</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Рассрочка оформлена','screen-installment')"><span class="nav-map-item-name" data-i18n="nav.inv.installmentDone">&#8627; Рассрочка оформлена</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
             </div>
           </div>
           <!-- DOCUMENTS Flow -->
@@ -988,8 +990,8 @@
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')"><span class="nav-map-item-name" data-i18n="nav.inv.documents">Документы</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
-              <div class="nav-map-level" data-level="1"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Просмотр документа','screen-docs')"><span class="nav-map-item-name" data-i18n="nav.inv.docView">&#8627; Просмотр документа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')"><span class="nav-map-item-name" data-i18n="nav.inv.documents">Документы</span><span class="level-badge">L1</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Просмотр документа','screen-docs')"><span class="nav-map-item-name" data-i18n="nav.inv.docView">&#8627; Просмотр документа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
             </div>
           </div>
           <!-- ENDPOINTS -->
@@ -999,13 +1001,13 @@
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Уведомления','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.notifications">Уведомления</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали транзакции','screen-balance')"><span class="nav-map-item-name" data-i18n="nav.inv.txDetails">Детали транзакции</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Новость','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.newsItem">Новость</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали по компании','screen-portfolio')"><span class="nav-map-item-name" data-i18n="nav.inv.companyDetails">Детали по компании</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Crypto deposit','screen-balance')"><span class="nav-map-item-name">Crypto deposit</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Заявка на роль агента','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.agentRequest">Заявка на роль агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Выход из аккаунта','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.logout">Выход из аккаунта</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Уведомления','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.notifications">Уведомления</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали транзакции','screen-balance')"><span class="nav-map-item-name" data-i18n="nav.inv.txDetails">Детали транзакции</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Новость','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.newsItem">Новость</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали по компании','screen-portfolio')"><span class="nav-map-item-name" data-i18n="nav.inv.companyDetails">Детали по компании</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Пополнение Crypto','screen-balance')"><span class="nav-map-item-name">Пополнение Crypto</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Заявка на роль агента','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.agentRequest">Заявка на роль агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Выход из аккаунта','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.logout">Выход из аккаунта</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
             </div>
           </div>
         </div>

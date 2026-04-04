@@ -2,15 +2,67 @@
 
 All notable changes to livemockup-studio.
 
+## [1.8.0] - 2026-04-04
+
+### Added — i18n Expansion + Element-Map Color System
+
+- **German language (DE)** — Full DE translations for all 242 i18n keys
+  - `toggleLocale()` cycles RU → EN → DE → RU
+  - `_locales` array: `['ru', 'en', 'de']`
+  - Toast: `'Sprache: Deutsch'` on DE switch
+  - 3-button lang switcher in toolbar (RU | EN | DE)
+- **i18n key expansion** — From ~105 to 242 keys covering all 5 mockups:
+  - `auth.*` (~55 keys) — login, register, verify, profile, role features, KYC statuses, document signing
+  - `inv.*` (~60 keys) — dashboard, portfolio, market, product detail, purchase, installment, balance, docs, settings
+  - `tab.*` (~20 keys) — per-role tab bars (investor, agent, company, staff)
+  - `nav.*` (~80 keys) — nav map sections, items, legend, stats, toasts
+- **Element-map color system** (Phase 1) — Orange triad + Teal tokens from design reference:
+  - Primary: #cc3203, Accent: #E8651A, Light: #EFB44C
+  - Teal: #1A6B6A → #0A2A2E
+  - variables.css updated with new token names
+
+- **Agent-shell full i18n** — 108 data-i18n elements (was 42), all 7 screens: dashboard, hub, referrals, commissions, leaderboard, passive balance, settings
+  - 57 new `agent.*` keys with ru/en/de translations (299 total keys)
+- **Home button** — `layout-grid` Lucide icon linking to `../index.html`, added to all 5 mockups
+- **Nav-map chip redesign** — Horizontal flex-wrap chip layout replacing vertical list
+  - Items render as compact chips with status dot + name + badge
+  - Removed `nav-map-level` wrapper divs, `nav-map-item-icon` spans hidden via CSS
+- **Emoji → Lucide** — All UI emoji replaced with Lucide SVG icons:
+  - index.html hub cards: 5 emoji → Lucide icons in colored icon-box containers
+  - agent-shell device buttons: emoji → `smartphone`/`tablet`/`monitor`
+  - Hub card arrows: `→` text → `arrow-right` Lucide icon
+
+### Changed
+
+- **i18n key naming** — Switched to camelCase (e.g. `auth.login.noAccount` not `auth.login.no_account`) matching HTML `data-i18n` attributes
+- **Nav-map defaults** — All nav-map hardcoded text now Russian (was English in agent/staff/company shells)
+- **Nav legend** — Standardized "Финальная точка" across all mockups (was "Тупик" in 3 files)
+- **Investor endpoint** — "Crypto deposit" → "Пополнение Crypto" (Russian default)
+- **Staff endpoint** — "Block/Unblock user" → "Блокировка пользователя"
+- **Index hub** — Version badge updated to v1.8.0, Lucide CDN added
+
+### Skill Docs — Full Sync with Codebase
+
+- **brand-cbs.md** — Complete color rewrite: 3-tier (Orange Triad → Teal System → Semantic Aliases), fixed --primary=#1A6B6A, --accent=#E8651A, --logo-icon-bg=#cc3203, --success=#16A34A, --error=#DC2626, --bg-elevated=#EEF3F6, dual dark mode, favicon fix
+- **components.md** — :root synced with variables.css, icon-box uses --t-tint-8/--o-tint-15
+- **shell.md** — 3-lang switcher (RU/EN/DE), keyboard L cycles 3 languages
+- **build.md** — Favicon #cc3203, 3-lang switcher, auto-test trigger
+- **polish.md** — Auto-test trigger after polish
+- **test.md** — Gate count → 94
+- **checklist.md** — +11 new checks (H1-H4, I6-I10, N14-N16) + i18n Validation (IV1-IV6) + Color Validation (CV1-CV5) = 94 total
+- **SKILL.md** — 4 new invariants: test-after-build, test-after-polish, 3-language, logo-icon-bg
+- All 19 files synced to v1.8.0
+
+---
+
 ## [1.7.0] - 2026-04-04
 
 ### Changed — Production-Quality Visual Upgrade
 
 - **Color palette** — Updated to official logo colors:
-  - Primary: #084456 (navy blue, was #1A6B6A teal)
-  - Accent: #cc3203 (red-orange, was #E8651A orange)
-  - All tints, shadows, dark mode tokens adjusted
-  - Renamed: --tint-teal → --tint-primary, --tint-orange → --tint-accent
+  - Primary: #084456 as --logo-text (was incorrectly set as --primary; corrected in v1.8.0)
+  - Accent: #cc3203 as --logo-icon-bg (was incorrectly set as --accent; corrected in v1.8.0)
+  - Note: v1.7.0 color assignments were reversed. v1.8.0 restored --primary=#1A6B6A, --accent=#E8651A
 - **Real SVG logo** — CBS-HOME_logo.svg replaces text "U" icon in all mockups + index hub
 - **Construction photos** — 3 real photos in investor marketplace product cards with gradient overlay
 - **UI polish** — Fintech dashboard style refinements:
@@ -292,4 +344,4 @@ A builder following any protocol now produces mockups identical to actual implem
 
 ---
 
-*CHANGELOG v1.5.0*
+*CHANGELOG v1.8.0*

@@ -1,6 +1,6 @@
 ---
 name: data
-description: "v1.6.1 | Realistic data patterns for mockups"
+description: "v1.8.0 | Realistic data patterns for mockups"
 ---
 
 # Data
@@ -374,4 +374,4 @@ const names = {
 };
 ```
 
-*data v1.6.1*
+*data v1.8.0*

@@ -1,6 +1,6 @@
 ---
 name: components
-description: "v1.7.0 | UI component patterns for mockups"
+description: "v1.8.0 | UI component patterns for mockups"
 ---
 
 # Components
@@ -26,37 +26,69 @@ Reusable UI patterns for mockup content.
 
 ## Design Tokens
 
+See `reference/brand-cbs.md` for full token documentation. Key subset:
+
 ```css
 :root {
-  /* Brand — CBS HOME */
+  /* === Orange Triad === */
+  --o-primary: #cc3203;
+  --o-accent: #E8651A;
+  --o-accent-hover: #D45A16;
+  --o-light: #EFB44C;
+  --o-tint-8: rgba(232,101,26,0.08);
+  --o-tint-15: rgba(232,101,26,0.15);
+
+  /* === Teal System === */
+  --t-500: #228B8A;
+  --t-700: #1A6B6A;
+  --t-800: #15565A;
+  --t-900: #0E3D42;
+  --t-950: #0A2A2E;
+  --t-tint-8: rgba(26,107,106,0.08);
+  --t-tint-15: rgba(26,107,106,0.15);
+
+  /* === Semantic Aliases === */
   --primary: #1A6B6A;
   --primary-dark: #0E3D42;
-  --primary-light: #2A9B9A;
+  --primary-light: #228B8A;
   --accent: #E8651A;
   --accent-dark: #D45A16;
+  --logo-icon-bg: #cc3203;
+  --logo-text: #084456;
 
-  /* Neutrals */
-  --bg: #ffffff;
-  --bg-subtle: #f8fafc;
-  --bg-elevated: #EEFAFA;
+  /* === Neutrals === */
+  --bg: #FFFFFF;
+  --bg-subtle: #F5F5F5;
+  --bg-elevated: #EEF3F6;
   --text: #1A1A1A;
   --text-secondary: #525252;
   --text-tertiary: #A3A3A3;
   --border: #D4D4D4;
 
-  /* Tints */
-  --tint-teal: rgba(26, 107, 106, 0.08);
-  --tint-orange: rgba(232, 101, 26, 0.08);
-
-  /* Semantic */
-  --success: #22c55e;
-  --success-dim: rgba(34, 197, 94, 0.15);
+  /* === Semantic Status === */
+  --success: #16A34A;
+  --success-dim: rgba(22, 163, 74, 0.15);
+  --error: #DC2626;
+  --error-dim: rgba(220, 38, 38, 0.1);
   --warning: #f59e0b;
   --warning-dim: rgba(245, 158, 11, 0.15);
-  --danger: #ef4444;
-  --danger-dim: rgba(239, 68, 68, 0.1);
+  --danger: #DC2626;
+  --danger-dim: rgba(220, 38, 38, 0.1);
 
-  /* Spacing */
+  /* === Shadows === */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-xl: 0 16px 48px rgba(0,0,0,0.14);
+  --shadow-focus: 0 0 0 3px rgba(232,101,26,0.4);
+
+  /* === Radius === */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* === Spacing (8px base) === */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -65,20 +97,6 @@ Reusable UI patterns for mockup content.
   --space-2xl: 48px;
   --space-3xl: 64px;
   --space-4xl: 96px;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-  --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
-  --shadow-focus-teal: 0 0 0 3px rgba(26, 107, 106, 0.3);
-  --shadow-accent-focus: 0 0 0 3px rgba(232, 101, 26, 0.4);
-
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 24px;
 }
 ```
 
@@ -137,8 +155,8 @@ And after all scripts:
 
 | Class | Background | Color |
 |-------|-----------|-------|
-| `.icon-box.teal` | var(--tint-teal) | var(--primary) |
-| `.icon-box.orange` | var(--tint-orange) | var(--accent) |
+| `.icon-box.teal` | var(--t-tint-8) | var(--primary) |
+| `.icon-box.orange` | var(--o-tint-15) | var(--accent) |
 | `.icon-box.green` | var(--success-dim) | var(--success) |
 | `.icon-box.yellow` | var(--warning-dim) | var(--warning) |
 | `.icon-box.red` | var(--danger-dim) | var(--danger) |
@@ -1055,4 +1073,4 @@ For tab bar to stay at bottom, use this structure:
 
 ---
 
-*components v1.7.0*
+*components v1.8.0*

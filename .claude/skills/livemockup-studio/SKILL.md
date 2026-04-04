@@ -1,13 +1,14 @@
 ---
 name: livemockup-studio
-description: "v1.7.0 | Interactive HTML prototypes with Device Preview + Navigation Map + CBS HOME brand"
+description: "v1.8.0 | Interactive HTML prototypes with Device Preview + Navigation Map + CBS HOME brand"
 ---
 
-# livemockup-studio v1.7.0
+# livemockup-studio v1.8.0
 
 Interactive HTML mockups: device preview, Navigation Map, microinteractions, realistic data.
-CBS HOME brand-native: Teal/Orange palette, Montserrat font, rectangular aesthetic.
+CBS HOME brand-native: Orange triad / Teal palette, Montserrat font, rectangular aesthetic.
 Ecosystem mode: shared CSS/JS + index hub for multi-mockup projects.
+i18n: RU/EN/DE with 242 keys. Element-map-driven color system.
 
 ---
 
@@ -29,6 +30,10 @@ Ecosystem mode: shared CSS/JS + index hub for multi-mockup projects.
 | **Always** endpoint marking | Toast for endpoints: `📌 [name] — финальная точка` |
 | **Always** theme + i18n | Include theme toggle (T key) and lang switcher (L key) |
 | **Never** multiple files | No separate CSS/JS files |
+| **Always** test after build | Auto-run test protocol after build completes |
+| **Always** test after polish | Auto-run test protocol after polish completes |
+| **Always** 3-language i18n | ru/en/de with default Russian text in HTML |
+| **Always** logo-icon-bg | U-icon uses `var(--logo-icon-bg)` #cc3203, not `var(--accent)` |
 | **Never** hardcode colors | Use CSS variables from reference/brand-cbs.md |
 | **Never** skip test | Validate before delivery |
 | **Never** align-items: center on container | Causes top clipping |
