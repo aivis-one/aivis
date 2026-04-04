@@ -8,7 +8,7 @@ description: "v1.0.0 | Auto-scan Backend-API-Frontend triple map. Triggers: proj
 
 Auto-scan backend code, frontend mockups, and spec documents. Generate interactive HTML visualization of the Frontend-API-Backend triple connection. Detect dead-ends, measure coverage, recommend what is ready for production.
 
-Also triggers on: карта проекта, покрытие, тупики, что готово к проду, обнови карту
+Also triggers on: project map, coverage, dead-ends, prod-readiness, map update
 
 ---
 

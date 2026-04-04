@@ -19,7 +19,7 @@ Microanimations, feedback patterns, and endpoint handling for live mockups.
 | Linear easing | Use ease-out or cubic-bezier |
 | No hover feedback | Always show state change |
 | Silent actions | Toast on every action |
-| Unclear dead ends | Toast `📌 ... — финальная точка` ⭐ |
+| Unclear dead ends | Toast `📌 ... — endpoint` ⭐ |
 
 ---
 
@@ -32,7 +32,7 @@ Microanimations, feedback patterns, and endpoint handling for live mockups.
 ### Toast Format
 
 ```
-📌 {Element Name} — финальная точка
+📌 {Element Name} — endpoint
 ```
 
 ### Examples

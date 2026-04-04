@@ -76,7 +76,7 @@ For each mockup file:
 2. Extract all `id="screen-*"` screen IDs
 3. For each screen block:
    - Extract `navigateTo('...')` and `switchTab('...')` -> navigation targets
-   - Extract `showToast('...финальная точка...')` -> features needing API
+   - Extract `showToast('...endpoint...')` -> features needing API
    - Count data entity CSS classes (`.tx-item`, `.stat-card`, etc.)
    - Detect forms (`.form-group` with submit buttons) -> write endpoints
 

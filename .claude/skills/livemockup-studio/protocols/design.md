@@ -22,7 +22,7 @@ Define visual style and interaction map before building.
 |-------|-------|
 | brief.md | In context |
 
-If missing → "brief отсутствует. Сначала brief."
+If missing → "brief not found. Run brief first."
 
 ---
 
@@ -118,7 +118,7 @@ For each screen from brief:
 
 | Element | Trigger | Action | Feedback |
 |---------|---------|--------|----------|
-| Add to cart | Click | Add item | Toast "Добавлено" |
+| Add to cart | Click | Add item | Toast "Added" |
 | Product card | Hover | Lift + shadow | - |
 | Submit form | Click | Validate + send | Toast success/error |
 | Nav item | Click | Show screen | Screen transition |

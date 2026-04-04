@@ -52,13 +52,13 @@ Spot-check: verify 3 random screen IDs from manifest actually exist in correspon
 
 ### Step 2: Dead-End Analysis
 
-Output table (Russian):
+Output table:
 
 ```
 ╔═══════════════════════════════════════════════════════╗
 ║                   DEAD-END REPORT                     ║
 ╠═══════════════════════════════════════════════════════╣
-║ Тип                    │ Кол-во │ Детали              ║
+║ Type                   │ Count  │ Details             ║
 ╠════════════════════════╪════════╪═════════════════════╣
 ║ Frontend orphans (0%)  │ XX     │ screen-dashboard,   ║
 ║                        │        │ screen-portfolio,    ║
@@ -132,20 +132,20 @@ Generate 3 recommendation categories:
 
 **1. Quick Wins** -- screens closest to 100% that need the fewest additional endpoints:
 ```
-Рекомендация: Реализуйте Sprint 1.3 (GET/PATCH /users/me)
-Результат: screen-profile и screen-settings получат +50% покрытие
+Recommendation: Implement Sprint 1.3 (GET/PATCH /users/me)
+Result: screen-profile and screen-settings gain +50% coverage
 ```
 
 **2. Maximum Unblock** -- which sprint unblocks the most screens:
 ```
-Рекомендация: Sprint X.Y разблокирует N экранов
-Детали: [list screens]
+Recommendation: Sprint X.Y unblocks N screens
+Details: [list screens]
 ```
 
 **3. Prod-Ready Flows** -- which business flows can ship first:
 ```
-Ближайший полный flow: "Investor Onboarding" -- нужен Sprint 1.3 + 2.1
-Текущий прогресс: XX%
+Nearest complete flow: "Investor Onboarding" -- needs Sprint 1.3 + 2.1
+Current progress: XX%
 ```
 
 ### Step 6: Output

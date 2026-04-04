@@ -64,7 +64,7 @@ Quality gates for validating live mockups before delivery.
 | N1 | Map button visible in toolbar | 🔴 | Look for Map button (Lucide map-pin icon) |
 | N2 | Map popup opens on click | 🔴 | Click Map button — popup appears |
 | N3 | Map popup closes on × or overlay click | 🔴 | Click × or outside popup |
-| N4 | Stats show correct counts | 🟡 | Verify экранов / путей / финальных точек |
+| N4 | Stats show correct counts | 🟡 | Verify screens / paths / endpoints |
 | N5 | 🟢 Screen items navigate correctly | 🔴 | Click green item → navigates to screen |
 | N6 | 🔴 Endpoint items show toast | 🔴 | Click red item → navigates + shows endpoint toast |
 | N7 | All screens present in map | 🟡 | Cross-check with actual screens |
@@ -82,8 +82,8 @@ Quality gates for validating live mockups before delivery.
 | ID | Check | Level | How to Test |
 |----|-------|-------|-------------|
 | E1 | All dead-ends show endpoint toast | 🔴 | Click every non-navigating element |
-| E2 | Endpoint toast format correct | 🟡 | Must be `📌 {Name} — финальная точка` |
-| E3 | Tabs show yellow toast | 🔴 | Click tabs → `🟡 Таб "{Name}" — переключает контент` |
+| E2 | Endpoint toast format correct | 🟡 | Must be `📌 {Name} — endpoint` |
+| E3 | Tabs show yellow toast | 🔴 | Click tabs → `🟡 Tab "{Name}" — switches content` |
 | E4 | List items without detail show endpoint | 🔴 | Click items without detail screens |
 | E5 | No confusing toasts | 🟡 | No toasts that suggest something works when it doesn't |
 
@@ -516,7 +516,7 @@ RESULT: ___ BLOCKER / ___ MAJOR / ___ MINOR
 |----|-------|-------|-------------|
 | N14 | Items render as horizontal chips | 🔴 | `.nav-map-section-content` has `display:flex; flex-wrap:wrap` |
 | N15 | No nav-map-level wrapper divs | 🔴 | `grep -c 'nav-map-level' mockup.html` — must be 0 |
-| N16 | Legend text = "Финальная точка" | 🟡 | `grep 'nav.legend.endpoint' mockup.html` — default text consistent |
+| N16 | Legend text = "Endpoint" | 🟡 | `grep 'nav.legend.endpoint' mockup.html` — default text consistent |
 
 ---
 

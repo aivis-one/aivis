@@ -22,7 +22,7 @@ Device Preview shell — wrapper for mockup content with Navigation Map.
 | `align-items: center` on container | `align-items: flex-start` + `margin: auto` on frame |
 | `form` + `onsubmit` | `div` + `onclick` on button |
 | No navigation visibility | Navigation Map shows all screens |
-| Unclear dead ends | Toast `📌 ... — финальная точка` |
+| Unclear dead ends | Toast `📌 ... — endpoint` |
 
 ---
 
@@ -35,7 +35,7 @@ Use `div` + `onclick`, NOT `form` + `onsubmit`.
 ```html
 <div class="form">
   <input type="email" value="user@example.com" readonly>
-  <button type="button" onclick="handleLogin()">Войти</button>
+  <button type="button" onclick="handleLogin()">Sign In</button>
 </div>
 ```
 
@@ -43,7 +43,7 @@ Use `div` + `onclick`, NOT `form` + `onsubmit`.
 
 ```html
 <form onsubmit="handleLogin(event)">
-  <button type="submit">Войти</button>
+  <button type="submit">Sign In</button>
 </form>
 ```
 
@@ -1096,7 +1096,7 @@ function navMapEndpoint(name, parentScreen) {
     navigateTo(parentScreen);
   }
   setTimeout(() => {
-    showToast('📌 ' + name + ' — финальная точка');
+    showToast('📌 ' + name + ' — endpoint');
   }, 300);
 }
 
@@ -1107,7 +1107,7 @@ function navMapTab(name, parentScreen) {
     navigateTo(parentScreen);
   }
   setTimeout(() => {
-    showToast('🟡 Таб "' + name + '" — переключает контент');
+    showToast('🟡 Tab "' + name + '" — switches content');
   }, 300);
 }
 
@@ -1135,7 +1135,7 @@ function initNavMapStats() {
 
 Call in DOMContentLoaded or after content loads.
 
-**Полных путей** (middle stat) = count of navigation chains from entry screen to deepest detail screen. Calculate manually based on mockup structure.
+**Full paths** (middle stat) = count of navigation chains from entry screen to deepest detail screen. Calculate manually based on mockup structure.
 
 ---
 

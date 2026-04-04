@@ -27,7 +27,7 @@ i18n: RU/EN/DE with 242 keys. Element-map-driven color system.
 | **Always** flex-start container | `align-items: flex-start` + `margin: auto` on frame |
 | **Always** navigation map | Include Map button with screen tree |
 | **Always** adaptive toolbar | Toolbar adapts to mobile (<480px) |
-| **Always** endpoint marking | Toast for endpoints: `📌 [name] — финальная точка` |
+| **Always** endpoint marking | Toast for endpoints: `📌 [name] — endpoint` |
 | **Always** theme + i18n | Include theme toggle (T key) and lang switcher (L key) |
 | **Never** multiple files | No separate CSS/JS files |
 | **Always** test after build | Auto-run test protocol after build completes |
@@ -42,10 +42,9 @@ i18n: RU/EN/DE with 242 keys. Element-map-driven color system.
 
 ## Flow
 
-```
-brief → design → build → polish → test → deliver
- L0       L1       L2       L3      L3.5    L4
-```
+| brief | → | design | → | build | → | polish | → | test | → | deliver |
+|-------|---|--------|---|-------|---|--------|---|------|---|---------|
+| L0 | | L1 | | L2 | | L3 | | L3.5 | | L4 |
 
 | Layer | Protocol | Creates |
 |-------|----------|---------|
@@ -58,9 +57,8 @@ brief → design → build → polish → test → deliver
 ### Ecosystem Mode
 
 For multi-mockup projects, run `ecosystem` protocol after completing individual mockups:
-```
-[individual mockups ready] → ecosystem → shared CSS/JS + index hub
-```
+| [individual mockups ready] → ecosystem → shared CSS/JS + index hub |
+|----------------------------------------------------------------------|
 
 ---
 

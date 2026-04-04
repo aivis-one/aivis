@@ -150,9 +150,9 @@ switchTab\(['"]([^'"]+)['"]
 
 ### Endpoint markers (API needed)
 ```
-showToast\(['"]([^'"]*финальная точка[^'"]*)['"]\)
+showToast\(['"]([^'"]*endpoint[^'"]*)['"]\)
 ```
-Toast text containing "финальная точка" = feature needs backend implementation.
+Toast text containing "endpoint" = feature needs backend implementation.
 
 ### Data entity CSS classes
 Look for these class patterns within each screen's `<div>`:
@@ -206,7 +206,7 @@ May be inside backticks or bold markers.
 
 ### Phase header
 ```
-##\s*(?:Phase|Фаза)\s+(\d+)
+##\s*(?:Phase)\s+(\d+)
 ```
 
 ---
