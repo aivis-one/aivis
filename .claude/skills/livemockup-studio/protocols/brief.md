@@ -1,6 +1,6 @@
 ---
 name: brief
-description: "v1.4.0 | L0 - Collect requirements and data plan"
+description: "v1.6.1 | L0 - Collect requirements and data plan"
 ---
 
 # brief
@@ -149,7 +149,7 @@ Create brief.md:
 
 ## Anchor
 
-🎨 livemockup-studio v1.4.0 · brief · complete
+🎨 livemockup-studio v1.6.1 · brief · complete
 🟢 | NEXT: user command
 
 ---
@@ -159,4 +159,4 @@ Create brief.md:
 
 ---
 
-*brief v1.4.0*
+*brief v1.6.1*

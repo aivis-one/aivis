@@ -1,6 +1,6 @@
 ---
 name: ecosystem
-description: "v1.5.0 | Multi-mockup ecosystem with shared CSS/JS and index hub"
+description: "v1.6.1 | Multi-mockup ecosystem with shared CSS/JS and index hub"
 ---
 
 # Ecosystem
@@ -198,4 +198,4 @@ mockups/
 
 ---
 
-*ecosystem v1.6.0*
+*ecosystem v1.6.1*

@@ -1,6 +1,6 @@
 ---
 name: cbs-patterns
-description: "v1.5.1 | CBS HOME-specific UI patterns for investment platform"
+description: "v1.6.1 | CBS HOME-specific UI patterns for investment platform"
 ---
 
 # CBS HOME Patterns
@@ -267,4 +267,4 @@ Horizontal filter for lists (commissions, users).
 
 ---
 
-*cbs-patterns v1.5.1*
+*cbs-patterns v1.6.1*

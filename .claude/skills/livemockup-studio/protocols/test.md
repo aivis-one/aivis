@@ -1,6 +1,6 @@
 ---
 name: test
-description: "v1.4.0 | L3.5 - Validate mockup quality before delivery"
+description: "v1.6.1 | L3.5 - Validate mockup quality before delivery"
 ---
 
 # test
@@ -97,4 +97,4 @@ console.table(results);
 
 ---
 
-*test v1.4.0*
+*test v1.6.1*

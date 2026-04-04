@@ -1,6 +1,6 @@
 ---
 name: brand-cbs
-description: "v1.4.0 | CBS HOME design tokens — single source of truth"
+description: "v1.6.1 | CBS HOME design tokens — single source of truth"
 ---
 
 # CBS HOME Design Tokens
@@ -294,6 +294,29 @@ Use CSS variables, not hardcoded hex:
 
 Three-state theme switching: Auto → Light → Dark
 
+### ThemeManager API
+
+| Method | Description |
+|--------|-------------|
+| `ThemeManager.init()` | Read localStorage, apply theme, render icon. Call on DOMContentLoaded. |
+| `ThemeManager.set(mode)` | Set theme to `'auto'`, `'light'`, or `'dark'`. Saves to localStorage. |
+| `ThemeManager.cycle()` | Rotate: auto → light → dark → auto. |
+| `ThemeManager.getEffective()` | Returns the resolved theme (`'light'` or `'dark'`), resolving `'auto'` via `prefers-color-scheme`. |
+
+### Three States & Icons
+
+| State | Lucide Icon | `data-theme` attr | Behavior |
+|-------|-------------|-------------------|----------|
+| auto | `monitor` | (removed) | Follows system `prefers-color-scheme` |
+| light | `sun` | `light` | Forces light mode |
+| dark | `moon` | `dark` | Forces dark mode |
+
+### localStorage Key
+
+`'cbs-theme'` — stores `'auto'`, `'light'`, or `'dark'`.
+
+### HTML
+
 ```html
 <!-- Toolbar button -->
 <button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
@@ -312,6 +335,8 @@ Keyboard shortcut: `T`
 
 ### Flash Prevention
 
+**Why:** Without this, a user who set dark mode will see a white flash on reload because the browser renders HTML before JS runs. The inline script in `<head>` reads localStorage synchronously and sets `data-theme` before any paint occurs.
+
 Add inline script in `<head>` BEFORE CSS imports:
 ```html
 <script>
@@ -326,11 +351,26 @@ Add inline script in `<head>` BEFORE CSS imports:
 
 RU/EN language switching via `data-i18n` attributes.
 
+### I18N API
+
+| Method | Description |
+|--------|-------------|
+| `I18N.t(key, params)` | Translate key. Optional `params` object for interpolation (`{name}` patterns). |
+| `I18N.setLocale(lang)` | Set locale to `'ru'` or `'en'`. Saves to localStorage, calls `applyI18n()`. |
+| `I18N.toggleLocale()` | Toggle RU ↔ EN. |
+| `I18N.applyI18n()` | Sweep all `[data-i18n]` elements and update their text/attributes. Call after DOM changes. |
+
+### localStorage Key
+
+`'cbs-lang'` — stores `'ru'` or `'en'`. Default: `'ru'`.
+
+### data-i18n Patterns
+
 ```html
-<!-- Static text -->
+<!-- Static text: replaces textContent -->
 <h1 data-i18n="auth.login.title">Вход в аккаунт</h1>
 
-<!-- Attribute -->
+<!-- Attribute: replaces the named attribute instead of textContent -->
 <input data-i18n="common.email" data-i18n-attr="placeholder" placeholder="Email">
 
 <!-- Toolbar switcher -->
@@ -339,6 +379,39 @@ RU/EN language switching via `data-i18n` attributes.
   <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
 </div>
 ```
+
+### Example Dictionary Entries
+
+```javascript
+I18N._dict = {
+  ru: {
+    'auth.login.title': 'Вход в аккаунт',
+    'auth.login.subtitle': 'Войдите через Telegram',
+    'nav.home': 'Главная',
+    'nav.portfolio': 'Портфель',
+    'nav.market': 'Маркетплейс',
+    'nav.settings': 'Настройки',
+    'nav.endpoint': '📌 {name} — финальная точка',
+    'common.email': 'Email',
+    'common.save': 'Сохранить',
+    'common.cancel': 'Отмена',
+  },
+  en: {
+    'auth.login.title': 'Sign In',
+    'auth.login.subtitle': 'Sign in with Telegram',
+    'nav.home': 'Home',
+    'nav.portfolio': 'Portfolio',
+    'nav.market': 'Marketplace',
+    'nav.settings': 'Settings',
+    'nav.endpoint': '📌 {name} — endpoint',
+    'common.email': 'Email',
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+  }
+};
+```
+
+### Usage in JS
 
 ```javascript
 I18N.t('auth.login.title');           // → "Вход в аккаунт" (ru) or "Sign In" (en)
@@ -349,4 +422,4 @@ I18N.toggleLocale();                   // Toggle RU ↔ EN
 
 Keyboard shortcut: `L`
 
-*brand-cbs v1.6.0*
+*brand-cbs v1.6.1*

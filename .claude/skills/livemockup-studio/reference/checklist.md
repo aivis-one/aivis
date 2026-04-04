@@ -1,6 +1,6 @@
 ---
 name: checklist
-description: "v1.4.0 | Quality gates with Navigation Map + Brand compliance"
+description: "v1.6.1 | Quality gates with Navigation Map + Brand compliance + Theme & Language"
 ---
 
 # Checklist
@@ -164,6 +164,24 @@ Quality gates for validating live mockups before delivery.
 
 ---
 
+## Theme & Language Checks ⭐
+
+| ID | Check | Level | How to Test |
+|----|-------|-------|-------------|
+| T1 | Theme toggle button visible in toolbar | 🔴 | Look for monitor/sun/moon icon button |
+| T2 | Theme cycle works: auto → light → dark | 🔴 | Click 3 times, observe icon change |
+| T3 | Dark mode changes mockup colors | 🟡 | Set dark → check background, text colors |
+| T4 | No light flash on dark-mode page load | 🔴 | Set dark, reload page |
+| T5 | Theme persists on reload | 🟡 | Set theme, reload, check state |
+| T6 | Keyboard T toggles theme | 🟡 | Press T, observe change |
+| I1 | Language buttons visible (RU/EN) | 🔴 | Look for RU|EN in toolbar |
+| I2 | Language switch changes text | 🔴 | Click EN → check headings, labels |
+| I3 | No i18n keys showing as text | 🟡 | Read all text — no "auth.login.title" etc. |
+| I4 | Language persists on reload | 🟡 | Switch to EN, reload, verify |
+| I5 | Keyboard L toggles language | 🟡 | Press L, observe change |
+
+---
+
 ## Brand Compliance (CBS HOME) ⭐
 
 | ID | Check | Level | How to Test |
@@ -193,7 +211,8 @@ Quality gates for validating live mockups before delivery.
 | Interaction | 2 | 1 | 2 | 5 |
 | Visual | 0 | 3 | 2 | 5 |
 | Brand | 3 | 3 | 0 | 6 |
-| **Total** | **41** | **26** | **5** | **72** |
+| Theme & Language | 4 | 7 | 0 | 11 |
+| **Total** | **45** | **33** | **5** | **83** |
 
 ---
 
@@ -408,9 +427,22 @@ setDevice(type) {
 □ B5 Radius ≤ 12px
 □ B6 Focus ring = orange
 
+## Theme & Language ⭐
+□ T1 Theme button visible
+□ T2 Theme cycle works
+□ T3 Dark mode colors change
+□ T4 No flash on load
+□ T5 Theme persists
+□ T6 Keyboard T works
+□ I1 Language buttons visible
+□ I2 Language switch works
+□ I3 No i18n keys visible
+□ I4 Language persists
+□ I5 Keyboard L works
+
 RESULT: ___ BLOCKER / ___ MAJOR / ___ MINOR
 ```
 
 ---
 
-*checklist v1.4.0*
+*checklist v1.6.1*

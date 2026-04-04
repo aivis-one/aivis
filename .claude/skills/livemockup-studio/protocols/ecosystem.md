@@ -1,6 +1,6 @@
 ---
 name: ecosystem
-description: "v1.5.0 | Create multi-mockup ecosystem with shared CSS/JS"
+description: "v1.6.1 | Create multi-mockup ecosystem with shared CSS/JS + theme + i18n"
 ---
 
 # ecosystem
@@ -33,6 +33,8 @@ Convert standalone mockups into ecosystem with shared CSS/JS and index hub.
 ```
 mockups/css/  — create if not exists
 mockups/js/   — create if not exists
+  js/theme.js
+  js/i18n.js
 ```
 
 ## Step 2: Extract variables.css
@@ -76,6 +78,22 @@ From reference/shell.md → extract DevicePreview JS:
 - DevicePreview object
 - DOMContentLoaded init
 
+## Step 6.5: Extract theme.js
+
+From reference/brand-cbs.md → ThemeManager:
+- ThemeManager object: init(), set(), cycle(), getEffective()
+- Three states: auto, light, dark
+- localStorage persist: 'cbs-theme'
+- Dynamic Lucide icon updates (monitor/sun/moon)
+
+## Step 6.6: Extract i18n.js
+
+From reference/brand-cbs.md → I18N:
+- I18N object: _dict, t(), setLocale(), toggleLocale(), applyI18n()
+- Translation dictionary (~150 keys for CBS HOME)
+- data-i18n attribute sweeper
+- localStorage persist: 'cbs-lang'
+
 ## Step 7: Extract navigation.js
 
 From reference/shell.md + interactions.md → extract:
@@ -91,6 +109,7 @@ From reference/ecosystem.md → hub template:
 - Card per mockup with link
 - Keyboard hints
 - Dark theme
+- Include flash prevention script in `<head>` of index.html too
 
 ## Step 9: Refactor Mockups
 
@@ -101,6 +120,10 @@ For each mockup.html:
 4. Add `<script>` tags to shared JS
 5. Keep only mockup-specific styles and handlers
 6. Verify links resolve correctly (../css/, ../js/)
+7. Add flash prevention inline script in `<head>` (before CSS)
+8. Add theme toggle + lang switcher to toolbar-right
+9. Add data-i18n attributes to nav map items, tab bars, headings
+10. Add Lucide CDN script before other JS
 
 ## Step 10: Test
 
@@ -128,7 +151,11 @@ For each mockup.html:
 | Each mockup uses shared files | |
 | No 404 on CSS/JS imports | |
 | All screens render correctly | |
+| Lucide CDN loaded before JS | |
+| theme.js loads before shell.js | |
+| i18n.js loads before navigation.js | |
+| Flash prevention in <head> | |
 
 ---
 
-*ecosystem v1.5.0*
+*ecosystem v1.6.1*

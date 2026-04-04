@@ -1,6 +1,6 @@
 ---
 name: deliver
-description: "v1.4.0 | L4 - UAT checklist and final delivery"
+description: "v1.6.1 | L4 - UAT checklist and final delivery"
 ---
 
 # deliver
@@ -81,7 +81,7 @@ Based on brief.md:
 
 ## Anchor
 
-🎨 livemockup-studio v1.4.0 · deliver
+🎨 livemockup-studio v1.6.1 · deliver
 🟢 | Delivered
 
 ---
@@ -91,4 +91,4 @@ Based on brief.md:
 
 ---
 
-*deliver v1.4.0*
+*deliver v1.6.1*

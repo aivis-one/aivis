@@ -1,9 +1,9 @@
 ---
 name: livemockup-studio
-description: "v1.6.0 | Interactive HTML prototypes with Device Preview + Navigation Map + CBS HOME brand"
+description: "v1.6.1 | Interactive HTML prototypes with Device Preview + Navigation Map + CBS HOME brand"
 ---
 
-# livemockup-studio v1.6.0
+# livemockup-studio v1.6.1
 
 Interactive HTML mockups: device preview, Navigation Map, microinteractions, realistic data.
 CBS HOME brand-native: Teal/Orange palette, Montserrat font, rectangular aesthetic.

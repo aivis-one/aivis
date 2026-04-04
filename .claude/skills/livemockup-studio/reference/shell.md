@@ -1,6 +1,6 @@
 ---
 name: shell
-description: "v1.4.0 | Device Preview shell with Navigation Map"
+description: "v1.6.1 | Device Preview shell with Navigation Map"
 ---
 
 # Shell
@@ -152,7 +152,13 @@ Use `div` + `onclick`, NOT `form` + `onsubmit`.
   </div>
   
   <div class="toolbar-right">
-    <!-- ⭐ Map Button -->
+    <button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
+      <i data-lucide="monitor"></i>
+    </button>
+    <div class="lang-switcher">
+      <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
+      <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+    </div>
     <button class="map-btn" onclick="openNavMap()">
       📍 <span class="map-label">Map</span>
     </button>
@@ -575,6 +581,10 @@ const DevicePreview = {
     
     document.addEventListener('keydown', (e) => this.handleKeyboard(e));
     this.setDevice('phone');
+
+    // Init theme and i18n if available
+    if (typeof ThemeManager !== 'undefined') ThemeManager.init();
+    if (typeof I18N !== 'undefined') I18N.init();
   },
 
   setDevice(type) {
@@ -608,7 +618,7 @@ const DevicePreview = {
   },
 
   handleKeyboard(e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
     switch(e.key) {
       case '1': this.setDevice('phone'); break;
       case '2': this.setDevice('tablet'); break;
@@ -616,7 +626,18 @@ const DevicePreview = {
       case '+': case '=': this.changeZoom(10); break;
       case '-': this.changeZoom(-10); break;
       case '0': this.currentZoom = 100; this.changeZoom(0); break;
-      case 'm': case 'M': openNavMap(); break;
+      case 'm': case 'M':
+        if (typeof openNavMap === 'function') openNavMap();
+        break;
+      case 't': case 'T':
+        if (typeof ThemeManager !== 'undefined') ThemeManager.cycle();
+        break;
+      case 'l': case 'L':
+        if (typeof I18N !== 'undefined') I18N.toggleLocale();
+        break;
+      case 'Escape':
+        if (typeof closeNavMap === 'function') closeNavMap();
+        break;
     }
   }
 };
@@ -660,6 +681,39 @@ function navigateTo(screenId) {
   background: var(--shell-accent);
   color: white;
 }
+```
+
+---
+
+## Theme Toggle CSS ⭐
+
+```css
+.theme-toggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border: none; border-radius: 6px;
+  background: rgba(255,255,255,0.08); color: var(--shell-text-dim);
+  cursor: pointer; transition: all 0.2s; padding: 0;
+}
+.theme-toggle:hover { background: rgba(255,255,255,0.15); color: var(--shell-text); }
+.theme-toggle svg { width: 16px; height: 16px; }
+```
+
+---
+
+## Language Switcher CSS ⭐
+
+```css
+.lang-switcher {
+  display: flex; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 2px;
+}
+.lang-btn {
+  padding: 4px 8px; border: none; border-radius: 4px;
+  background: transparent; color: var(--shell-text-dim);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
+}
+.lang-btn:hover { color: var(--shell-text); }
+.lang-btn.active { background: var(--shell-accent); color: #fff; }
 ```
 
 ---
@@ -718,6 +772,17 @@ function navigateTo(screenId) {
   
   .map-btn .map-label {
     display: none;
+  }
+
+  .theme-toggle {
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+  }
+
+  .lang-btn {
+    padding: 3px 5px;
+    font-size: 10px;
   }
 }
 ```
@@ -1110,7 +1175,8 @@ Call in DOMContentLoaded or after content loads.
 | `M` | Open Navigation Map |
 | `T` | Toggle Theme (auto/light/dark) |
 | `L` | Toggle Language (RU/EN) |
+| `Esc` | Close Navigation Map |
 
 ---
 
-*shell v1.6.0*
+*shell v1.6.1*

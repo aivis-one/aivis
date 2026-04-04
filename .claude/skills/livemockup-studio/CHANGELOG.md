@@ -2,6 +2,23 @@
 
 All notable changes to livemockup-studio.
 
+## [1.6.1] - 2026-04-04
+
+### Fixed — Documentation Sync
+
+All skill protocols and references now match actual implementation:
+
+- **build.md** — Full rewrite: ecosystem mode template with flash prevention, favicon, shared CSS/JS, Lucide CDN, theme toggle + lang switcher steps, data-i18n step
+- **shell.md** — Toolbar HTML updated with theme-toggle + lang-switcher buttons, JS controller updated with T/L/Escape handlers + ThemeManager/I18N init, theme-toggle + lang-switcher CSS sections added, mobile overrides added
+- **checklist.md** — Added 11 Theme & Language checks (T1-T6, I1-I5), total 83 gates
+- **ecosystem.md** — Added theme.js + i18n.js extraction steps, flash prevention, Lucide CDN, script load order checks
+- **components.md** — Added monitor/sun/moon theme icons, selective lucide.createIcons({ nodes }) pattern
+- **brand-cbs.md** — Expanded ThemeManager API table, I18N API table, localStorage keys, dictionary examples
+
+A builder following any protocol now produces mockups identical to actual implementation.
+
+---
+
 ## [1.6.0] - 2026-04-04
 
 ### Added

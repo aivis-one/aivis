@@ -1,6 +1,6 @@
 ---
 name: polish
-description: "v1.4.0 | L3 - Add animations, feedback, and realistic data"
+description: "v1.6.1 | L3 - Add animations, feedback, and realistic data"
 ---
 
 # polish
@@ -128,4 +128,4 @@ Run **reference/checklist.md** checks before moving to test protocol.
 
 ---
 
-*polish v1.4.0*
+*polish v1.6.1*

@@ -1,6 +1,6 @@
 ---
 name: components
-description: "v1.4.0 | UI component patterns for mockups"
+description: "v1.6.1 | UI component patterns for mockups"
 ---
 
 # Components
@@ -179,6 +179,9 @@ And after all scripts:
 | Eye | `eye` | Password toggle |
 | User check | `user-check` | Agent applications |
 | User plus | `user-plus` | Referrals |
+| Theme: auto | `monitor` | Theme toggle (auto mode) |
+| Theme: light | `sun` | Theme toggle (light mode) |
+| Theme: dark | `moon` | Theme toggle (dark mode) |
 
 ### Dynamic Icons (JS)
 
@@ -190,6 +193,17 @@ function showProduct(id) {
   navigateTo('screen-product');
   lucide.createIcons();
 }
+```
+
+### Selective Icon Update
+
+When updating a single element, pass `{ nodes }` to avoid re-processing all icons:
+
+```javascript
+// Update only the theme button icon
+const btn = document.querySelector('.theme-toggle');
+btn.innerHTML = '<i data-lucide="sun"></i>';
+lucide.createIcons({ nodes: [btn] });
 ```
 
 ### Tab Bar Icons CSS
@@ -1041,4 +1055,4 @@ For tab bar to stay at bottom, use this structure:
 
 ---
 
-*components v1.4.0*
+*components v1.6.1*
