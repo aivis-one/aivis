@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Documents Router (Sprint 2.2)
+# CBSHOME Backend -- Documents Router (Sprint 2.2 + Sprint 3.2)
 # =============================================================================
 #
 # User-facing endpoints for document browsing and signing.
@@ -8,6 +8,10 @@
 #   GET  /api/v1/documents          -- List active documents for user's role
 #   GET  /api/v1/documents/{id}     -- Get single document with is_signed
 #   POST /api/v1/documents/{id}/sign -- Sign document (checkbox consent)
+#
+# AVATAR GUARD (Sprint 3.2):
+#   sign_document_endpoint is decorated with @require_not_avatar("sign_document")
+#   to prevent staff in avatar mode from signing documents on behalf of users.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -21,6 +25,7 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.modules.auth.avatar_guard import require_not_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.documents.schemas import DocumentResponse, DocumentSigningResponse
 from app.modules.documents.service import (
@@ -69,6 +74,7 @@ async def get_document_detail(
     response_model=DocumentSigningResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@require_not_avatar("sign_document")
 async def sign_document_endpoint(
     document_id: UUID,
     request: Request,
@@ -79,6 +85,9 @@ async def sign_document_endpoint(
 
     Records the signing fact with IP address and user agent
     for compliance purposes.
+
+    Blocked in avatar mode (Sprint 3.2) -- staff cannot sign
+    documents on behalf of users.
     """
     ip_address = request.headers.get(
         "X-Real-IP",

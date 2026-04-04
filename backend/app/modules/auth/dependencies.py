@@ -30,6 +30,14 @@
 #   performs the full staff check PLUS verifies a specific permission
 #   against resolved defaults + overrides.
 #
+# AVATAR CONTEXT (Sprint 3.2):
+#   If Redis session contains avatar_session_id, _load_user_from_request
+#   binds avatar_session_id and avatar_staff_id to structlog contextvars.
+#   This enables:
+#     - avatar_guard.py to block restricted operations
+#     - record_audit() to auto-fill performed_by / on_behalf_of
+#     - Every log line in avatar mode to include avatar_session_id
+#
 # SINGLE SOURCE:
 #   Staff permission constants imported from app.modules.staff.constants
 #   (not duplicated in core/constants.py).
@@ -38,6 +46,7 @@
 from typing import Callable
 from uuid import UUID
 
+import structlog
 from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,6 +96,9 @@ async def _load_user_from_request(
 
     Raises UnauthorizedError or ForbiddenError on failure.
     Used by get_current_user, get_current_user_write, and get_optional_user.
+
+    Sprint 3.2: If session contains avatar_session_id, binds avatar context
+    to structlog contextvars for logging, audit, and avatar_guard.
     """
     token = _extract_token(request)
     if not token:
@@ -112,6 +124,16 @@ async def _load_user_from_request(
 
     if not user.is_active:
         raise ForbiddenError("Account is deactivated")
+
+    # --- Avatar context (Sprint 3.2) ---
+    # If this is an avatar session, bind context for logging + audit.
+    avatar_session_id = session_data.get("avatar_session_id")
+    avatar_staff_id = session_data.get("avatar_staff_id")
+    if avatar_session_id and avatar_staff_id:
+        structlog.contextvars.bind_contextvars(
+            avatar_session_id=avatar_session_id,
+            avatar_staff_id=avatar_staff_id,
+        )
 
     return user
 

@@ -9,10 +9,15 @@
 #   Entries are never updated or deleted. No updated_at.
 #   Inherits Base directly (not UUIDMixin/TimestampMixin).
 #
-# AVATAR CONTEXT:
+# AVATAR CONTEXT (Sprint 3.2):
 #   performed_by -- staff_id when operating in avatar mode
 #   on_behalf_of -- target_user_id when operating in avatar mode
 #   Both NULL for normal user operations.
+#
+#   AUTO-FILL: If avatar_staff_id is present in structlog contextvars
+#   and caller did not explicitly pass performed_by, record_audit()
+#   automatically fills performed_by=staff_id and on_behalf_of=actor_id.
+#   Existing code does not need changes to support avatar auditing.
 #
 # TRACE ID:
 #   Links AuditLog entries to structlog application logs.
@@ -123,6 +128,11 @@ async def record_audit(
     Reads trace_id, ip_address, user_agent from structlog contextvars
     set by TraceIdMiddleware. No need to pass them explicitly.
 
+    Sprint 3.2 auto-fill: If avatar_staff_id is in contextvars and
+    performed_by is not explicitly passed, auto-fills:
+      performed_by = avatar_staff_id (the staff doing the action)
+      on_behalf_of = actor_id (the user being acted upon)
+
     Args:
         session: Active DB session. Caller manages commit.
         event: Event name, e.g. "user.registered".
@@ -131,8 +141,8 @@ async def record_audit(
         target_type: Entity type, e.g. "user", "payment".
         target_id: UUID of the affected entity.
         data: Additional event context (serializable dict).
-        performed_by: Staff UUID when in avatar mode.
-        on_behalf_of: Target user UUID when in avatar mode.
+        performed_by: Staff UUID when in avatar mode (auto-filled if None).
+        on_behalf_of: Target user UUID when in avatar mode (auto-filled if None).
 
     Returns:
         The created AuditLog entry (flushed, not committed).
@@ -142,6 +152,13 @@ async def record_audit(
     trace_id = bound.get("trace_id")
     ip_address = bound.get("ip_address")
     raw_user_agent = bound.get("user_agent")
+
+    # Avatar auto-fill: if in avatar mode and caller didn't explicitly set.
+    if performed_by is None:
+        avatar_staff_id = bound.get("avatar_staff_id")
+        if avatar_staff_id:
+            performed_by = UUID(avatar_staff_id)
+            on_behalf_of = actor_id
 
     # Truncate user_agent to prevent disk exhaustion via oversized headers.
     user_agent: str | None = None
