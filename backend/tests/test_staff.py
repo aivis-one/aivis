@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Tests (Sprint 3.1)
+# CBSHOME Backend -- Staff Tests (Sprint 3.1 + 3.3)
 # =============================================================================
 #
 # Tests cover:
@@ -9,7 +9,7 @@
 #   4:  Promote already-staff user -> 409
 #   5:  Update permissions -> 200, partial update works
 #   6:  Non-admin updates permissions -> 403
-#   7:  List staff -> 200, returns all staff with user info
+#   7:  List users -> 200, paginated, staff have staff_profile
 #   8:  Promote non-existent user -> 404
 #
 # Email prefix: "s31_" -- unique to this test file, cleaned up in fixture.
@@ -275,15 +275,15 @@ async def test_update_permissions_non_admin_forbidden(
 
 
 # ---------------------------------------------------------------------------
-# GET /staff/users -- list staff
+# GET /staff/users -- unified user list (Sprint 3.3)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_list_staff(
+async def test_list_users(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Any staff can list all staff -> 200."""
+    """Staff can list users -> 200, paginated, staff have staff_profile."""
     admin_token = await _admin_token(client, db_session)
 
     resp = await client.get(
@@ -292,15 +292,22 @@ async def test_list_staff(
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert isinstance(body, list)
-    assert len(body) >= 1  # At least the admin itself.
 
-    # Check structure.
-    item = body[0]
-    assert "id" in item
-    assert "user_id" in item
-    assert "permissions" in item
-    assert "is_active" in item
+    # Paginated response.
+    assert "items" in body
+    assert "total" in body
+    assert "page" in body
+    assert "per_page" in body
+    assert body["total"] >= 1
+
+    # At least the admin should be in the list.
+    staff_items = [i for i in body["items"] if i["role"] == "staff"]
+    assert len(staff_items) >= 1
+
+    # Staff items have staff_profile with permissions.
+    for item in staff_items:
+        assert item["staff_profile"] is not None
+        assert "permissions" in item["staff_profile"]
 
 
 # ---------------------------------------------------------------------------

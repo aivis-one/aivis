@@ -5,9 +5,11 @@
 # RESPONSIBILITIES:
 #   create_staff()          -- promote existing user to staff role
 #   update_permissions()    -- update staff permission matrix
-#   list_staff()            -- list all staff profiles with user info
 #   get_staff_profile()     -- load StaffProfile by user_id
 #   get_effective_permissions() -- merge config defaults with overrides
+#
+# USER MANAGEMENT (Sprint 3.3):
+#   list_users, get_user_detail, block_user moved to admin_service.py.
 #
 # ADMIN CHECK:
 #   Admin = staff with ALL permissions True. Checked via is_admin().
@@ -31,7 +33,7 @@ from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS
 from app.modules.staff.models import StaffProfile
-from app.modules.staff.schemas import StaffListItem, UpdatePermissionsRequest
+from app.modules.staff.schemas import UpdatePermissionsRequest
 from app.modules.users.models import User, UserRole
 
 logger = structlog.get_logger()
@@ -181,46 +183,3 @@ async def update_permissions(
     )
 
     return profile
-
-
-async def list_staff(
-    session: AsyncSession,
-) -> list[StaffListItem]:
-    """List all staff profiles with basic user info.
-
-    Returns StaffListItem with email, first_name, last_name from User.
-    Platform user is never staff, so no filtering needed.
-    """
-    stmt = (
-        select(StaffProfile, User)
-        .join(User, StaffProfile.user_id == User.id)
-        .order_by(StaffProfile.created_at.desc())
-    )
-    result = await session.execute(stmt)
-    rows = result.all()
-
-    items = []
-    for profile, user in rows:
-        # Extract email and name from User JSONB fields.
-        email = None
-        if user.credentials and "email" in user.credentials:
-            email = user.credentials["email"].get("email")
-
-        first_name = None
-        last_name = None
-        if user.profile:
-            first_name = user.profile.get("first_name")
-            last_name = user.profile.get("last_name")
-
-        items.append(StaffListItem(
-            id=profile.id,
-            user_id=profile.user_id,
-            permissions=get_effective_permissions(profile),
-            is_active=profile.is_active,
-            created_at=profile.created_at,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-        ))
-
-    return items

@@ -13,8 +13,10 @@
 #   kyc_router             -> /api/v1/kyc/* (Sprint 2.1)
 #   documents_router       -> /api/v1/documents/* (Sprint 2.2)
 #   staff_documents_router -> /api/v1/staff/documents/* (Sprint 2.2)
-#   staff_users_router     -> /api/v1/staff/users/* (Sprint 3.1)
+#   staff_users_router     -> /api/v1/staff/users/* (Sprint 3.1+3.3)
 #   avatar_router          -> /api/v1/staff/avatar/* (Sprint 3.2)
+#   dashboard_router       -> /api/v1/staff/dashboard/* (Sprint 3.3)
+#   kyc_admin_router       -> /api/v1/staff/kyc/* (Sprint 3.3)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis
@@ -44,6 +46,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.kyc.router import router as kyc_router
+from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.router import router as staff_users_router
 from app.modules.users.router import router as users_router
@@ -115,6 +118,8 @@ app.include_router(documents_router)
 app.include_router(staff_documents_router)
 app.include_router(staff_users_router)
 app.include_router(avatar_router)
+app.include_router(dashboard_router)
+app.include_router(kyc_admin_router)
 
 
 # ---------------------------------------------------------------------------

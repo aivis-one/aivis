@@ -1,15 +1,18 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Router (Sprint 3.1)
+# CBSHOME Backend -- Staff Router (Sprint 3.1 + 3.3)
 # =============================================================================
 #
 # ENDPOINTS:
-#   POST  /api/v1/staff/users                  -- promote user to staff (admin only)
-#   PATCH /api/v1/staff/users/{id}/permissions  -- update permissions (admin only)
-#   GET   /api/v1/staff/users                   -- list all staff (any staff)
+#   POST  /api/v1/staff/users                     -- promote user to staff (admin)
+#   PATCH /api/v1/staff/users/{id}/permissions     -- update permissions (admin)
+#   GET   /api/v1/staff/users                      -- unified user list (?role=, pagination)
+#   GET   /api/v1/staff/users/{id}                 -- user detail
+#   PATCH /api/v1/staff/users/{id}/block           -- block user (user_block perm)
 #
 # AUTH:
-#   All endpoints require get_current_staff (role=staff + StaffProfile loaded).
-#   POST and PATCH additionally require admin (all permissions True).
+#   POST/PATCH permissions: admin only (all permissions True).
+#   GET list/detail: any staff.
+#   PATCH block: requires user_block permission.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -19,16 +22,28 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError
-from app.modules.auth.dependencies import get_current_staff
+from app.modules.auth.dependencies import (
+    get_current_staff,
+    require_staff_permission,
+)
+from app.modules.staff.admin_schemas import (
+    BlockRequest,
+    UserDetailResponse,
+    UserListResponse,
+)
+from app.modules.staff.admin_service import (
+    block_user,
+    get_user_detail,
+    list_users,
+)
 from app.modules.staff.constants import is_admin
 from app.modules.staff.schemas import (
     CreateStaffRequest,
-    StaffListItem,
     StaffProfileResponse,
     UpdatePermissionsRequest,
 )
@@ -36,7 +51,6 @@ from app.modules.staff.service import (
     create_staff,
     get_effective_permissions,
     get_staff_profile,
-    list_staff,
     update_permissions,
 )
 from app.modules.users.models import User
@@ -66,7 +80,7 @@ async def _require_admin(staff: User, session: AsyncSession) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Staff promotion (Sprint 3.1)
 # ---------------------------------------------------------------------------
 
 
@@ -106,13 +120,55 @@ async def staff_update_permissions(
     return response
 
 
+# ---------------------------------------------------------------------------
+# User management (Sprint 3.3)
+# ---------------------------------------------------------------------------
+
+
 @router.get(
     "",
-    response_model=list[StaffListItem],
+    response_model=UserListResponse,
 )
-async def staff_list(
+async def user_list(
+    role: str | None = Query(default=None, description="Filter by role"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    per_page: int = Query(default=20, ge=1, le=100, description="Items per page"),
     staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_reader),
-) -> list[StaffListItem]:
-    """List all staff profiles with user info. Any staff can view."""
-    return await list_staff(session)
+) -> UserListResponse:
+    """List all users with pagination. Optional ?role= filter.
+
+    Platform user is always excluded. For staff users, includes
+    StaffProfile with effective permissions.
+    """
+    return await list_users(session, role=role, page=page, per_page=per_page)
+
+
+@router.get(
+    "/{user_id}",
+    response_model=UserDetailResponse,
+)
+async def user_detail(
+    user_id: UUID,
+    staff: User = Depends(get_current_staff),
+    session: AsyncSession = Depends(get_db_reader),
+) -> UserDetailResponse:
+    """Get full user detail. Platform user is not viewable."""
+    return await get_user_detail(user_id, session)
+
+
+@router.patch(
+    "/{user_id}/block",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def user_block(
+    user_id: UUID,
+    body: BlockRequest,
+    staff: User = Depends(require_staff_permission("user_block")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Block a user: deactivate + kill all sessions.
+
+    Only non-staff users can be blocked. Requires user_block permission.
+    """
+    await block_user(user_id, staff, body.reason, session)
