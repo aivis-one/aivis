@@ -7,7 +7,7 @@
   <script>
     (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
   </script>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/variables.css">
   <link rel="stylesheet" href="../css/components.css">
@@ -45,6 +45,17 @@
       justify-content: center; color: #fff; font-size: 40px; position: relative;
     }
     .product-img i, .product-img svg { width: 48px; height: 48px; stroke: white; }
+    .product-img::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(transparent 40%, rgba(0,0,0,0.6));
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    .product-img > * {
+      position: relative;
+      z-index: 1;
+    }
     .product-company {
       position: absolute; top: 8px; left: 8px;
       font-size: 11px; font-weight: 600; padding: 3px 8px;
@@ -251,8 +262,7 @@
           <div class="screen active" id="screen-dashboard">
             <header class="app-header">
               <div class="header-left">
-                <div class="header-logo">U</div>
-                <span class="header-title">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
               <div class="header-right">
                 <button class="notif-btn" onclick="showToast('Uведомления — финальная точка')">
@@ -366,7 +376,7 @@
           <div class="screen" id="screen-portfolio">
             <header class="app-header">
               <div class="header-left">
-                <div class="header-logo">U</div>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
                 <span class="header-title" data-i18n="tab.portfolio">Портфель</span>
               </div>
               <div class="header-right">
@@ -432,7 +442,7 @@
           <div class="screen" id="screen-market">
             <header class="app-header">
               <div class="header-left">
-                <div class="header-logo">U</div>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
                 <span class="header-title" data-i18n="inv.market.title">Маркетплейс</span>
               </div>
               <div class="header-right">
@@ -444,7 +454,7 @@
               <div class="product-grid">
                 <!-- IPI AG -->
                 <div class="product-card" onclick="showProduct('ipi')">
-                  <div class="product-img gradient-primary">
+                  <div class="product-img" style="background-image:url('../assets/photo-1.jpg');background-size:cover;background-position:center;">
                     <i data-lucide="building"></i>
                     <span class="product-company">IPI AG</span>
                   </div>
@@ -459,7 +469,7 @@
                 </div>
                 <!-- Immo-Pro-Invest -->
                 <div class="product-card" onclick="showProduct('immo')">
-                  <div class="product-img gradient-deep">
+                  <div class="product-img" style="background-image:url('../assets/photo-2.jpg');background-size:cover;background-position:center;">
                     <i data-lucide="home"></i>
                     <span class="product-company">Immo-Pro-Invest</span>
                   </div>
@@ -474,7 +484,7 @@
                 </div>
                 <!-- CBS Home Franchise -->
                 <div class="product-card" onclick="showProduct('cbs')">
-                  <div class="product-img gradient-accent">
+                  <div class="product-img" style="background-image:url('../assets/photo-3.jpg');background-size:cover;background-position:center;">
                     <i data-lucide="factory"></i>
                     <span class="product-company">CBS Home AG</span>
                   </div>
@@ -675,7 +685,7 @@
           <div class="screen" id="screen-balance">
             <header class="app-header">
               <div class="header-left">
-                <div class="header-logo">U</div>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
                 <span class="header-title" data-i18n="tab.balance">Баланс</span>
               </div>
               <div class="header-right">
@@ -823,7 +833,7 @@
           <div class="screen" id="screen-settings">
             <header class="app-header">
               <div class="header-left">
-                <div class="header-logo">U</div>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
                 <span class="header-title" data-i18n="inv.settings.title">Настройки</span>
               </div>
             </header>
@@ -1020,7 +1030,8 @@
         price: '\u20AC1.00',
         avail: '500 000',
         desc: 'Инвестиционные юниты IPI AG обеспечены портфелем строительных проектов в Германии. Патентованная технология CBS HOME (EP 3 574 160 B1) обеспечивает конкурентное преимущество: строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах.',
-        gradient: 'gradient-primary'
+        gradient: 'gradient-primary',
+        photo: 'photo-1.jpg'
       },
       immo: {
         icon: 'home',
@@ -1029,7 +1040,8 @@
         price: '\u20AC1.00',
         avail: '300 000',
         desc: 'Инвестиции в портфель объектов недвижимости через Immo-Pro-Invest GmbH. Профессиональное управление активами с фокусом на стабильный рост стоимости и диверсификацию.',
-        gradient: 'gradient-deep'
+        gradient: 'gradient-deep',
+        photo: 'photo-2.jpg'
       },
       cbs: {
         icon: 'factory',
@@ -1038,7 +1050,8 @@
         price: '\u20AC1.00',
         avail: '200 000',
         desc: 'Франшиза CBS Home — инновационная строительная технология Compound Building System. Запатентованная система (58 стран), единственное допущение DIBt Z-14.5-883. Производственная мощность: 120-190 м\u00B2/день.',
-        gradient: 'gradient-accent'
+        gradient: 'gradient-accent',
+        photo: 'photo-3.jpg'
       }
     };
 
@@ -1048,6 +1061,9 @@
       if (!p) return;
       const hero = document.getElementById('productHero');
       hero.className = 'detail-hero ' + p.gradient;
+      hero.style.backgroundImage = "url('../assets/" + p.photo + "')";
+      hero.style.backgroundSize = "cover";
+      hero.style.backgroundPosition = "center";
       document.getElementById('productIcon').innerHTML =
         '<i data-lucide="' + p.icon + '"></i>';
       document.getElementById('productTitle').textContent = p.title;

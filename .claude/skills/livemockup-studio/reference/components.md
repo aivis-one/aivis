@@ -1,6 +1,6 @@
 ---
 name: components
-description: "v1.6.1 | UI component patterns for mockups"
+description: "v1.7.0 | UI component patterns for mockups"
 ---
 
 # Components
@@ -1055,4 +1055,4 @@ For tab bar to stay at bottom, use this structure:
 
 ---
 
-*components v1.6.1*
+*components v1.7.0*

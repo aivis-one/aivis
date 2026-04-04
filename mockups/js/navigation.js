@@ -43,7 +43,7 @@ function showToast(message, type) {
     success: getVar('--success', '#22c55e'),
     error: getVar('--danger', '#ef4444'),
     warning: getVar('--warning', '#f59e0b'),
-    info: getVar('--primary', '#1A6B6A')
+    info: getVar('--primary', '#084456')
   };
 
   var existing = document.querySelector('.toast');

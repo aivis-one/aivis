@@ -2,6 +2,33 @@
 
 All notable changes to livemockup-studio.
 
+## [1.7.0] - 2026-04-04
+
+### Changed — Production-Quality Visual Upgrade
+
+- **Color palette** — Updated to official logo colors:
+  - Primary: #084456 (navy blue, was #1A6B6A teal)
+  - Accent: #cc3203 (red-orange, was #E8651A orange)
+  - All tints, shadows, dark mode tokens adjusted
+  - Renamed: --tint-teal → --tint-primary, --tint-orange → --tint-accent
+- **Real SVG logo** — CBS-HOME_logo.svg replaces text "U" icon in all mockups + index hub
+- **Construction photos** — 3 real photos in investor marketplace product cards with gradient overlay
+- **UI polish** — Fintech dashboard style refinements:
+  - Stat cards: borderless with shadow-sm (was bordered)
+  - Balance value: 34px with letter-spacing (was 28px)
+  - Tab bar: accent dot indicator on active tab
+  - Header logo image class added
+- **Favicon** — Updated to #cc3203 accent color
+
+### Assets
+
+- `mockups/assets/logo.svg` — Official CBS-HOME vector logo
+- `mockups/assets/photo-1.jpg` — Construction equipment
+- `mockups/assets/photo-2.jpg` — Warehouse/construction site
+- `mockups/assets/photo-3.jpg` — Industrial production
+
+---
+
 ## [1.6.1] - 2026-04-04
 
 ### Fixed — Documentation Sync

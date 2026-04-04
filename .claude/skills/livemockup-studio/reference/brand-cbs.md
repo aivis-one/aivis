@@ -1,6 +1,6 @@
 ---
 name: brand-cbs
-description: "v1.6.1 | CBS HOME design tokens — single source of truth"
+description: "v1.7.0 | CBS HOME design tokens — single source of truth"
 ---
 
 # CBS HOME Design Tokens
@@ -422,4 +422,4 @@ I18N.toggleLocale();                   // Toggle RU ↔ EN
 
 Keyboard shortcut: `L`
 
-*brand-cbs v1.6.1*
+*brand-cbs v1.7.0*

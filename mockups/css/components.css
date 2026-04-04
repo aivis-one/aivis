@@ -45,8 +45,8 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .icon-box svg { width: 22px; height: 22px; }
-.icon-box.teal { background: var(--tint-teal); color: var(--primary); }
-.icon-box.orange { background: var(--tint-orange); color: var(--accent); }
+.icon-box.teal { background: var(--tint-primary); color: var(--primary); }
+.icon-box.orange { background: var(--tint-accent); color: var(--accent); }
 .icon-box.green { background: var(--success-dim); color: var(--success); }
 .icon-box.yellow { background: var(--warning-dim); color: var(--warning); }
 .icon-box.red { background: var(--danger-dim); color: var(--danger); }
@@ -128,7 +128,7 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
 }
 .form-input:focus {
   outline: none; border-color: var(--primary);
-  box-shadow: var(--shadow-focus-teal);
+  box-shadow: var(--shadow-focus);
 }
 .form-input::placeholder { color: var(--text-tertiary); }
 .form-input.error { border-color: var(--danger); animation: shake 0.3s ease; }
@@ -146,7 +146,7 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
 }
 .form-select:focus {
   outline: none; border-color: var(--primary);
-  box-shadow: var(--shadow-focus-teal);
+  box-shadow: var(--shadow-focus);
 }
 
 .form-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
@@ -181,6 +181,7 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
   font-size: 9px; font-weight: 700; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
 }
+.header-logo-img { height: 28px; width: auto; display: block; }
 
 /* ========== TAB BAR ========== */
 .tab-bar {
@@ -195,9 +196,21 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
   color: var(--text-tertiary); font-size: 10px; font-weight: 500;
   cursor: pointer; transition: color 0.2s;
   border: none; background: none; font-family: inherit;
+  position: relative;
 }
 .tab-item:hover { color: var(--primary-light); }
 .tab-item.active { color: var(--primary); }
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
 .tab-item .tab-icon { font-size: 20px; }
 
 /* ========== SECTION HEADERS ========== */
@@ -228,7 +241,7 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
 /* ========== STAT CARDS ========== */
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
 .stat-card {
-  background: var(--bg); border: 1px solid var(--border);
+  background: var(--bg); box-shadow: var(--shadow-sm);
   border-radius: var(--radius-lg); padding: 16px;
   cursor: pointer; transition: all 0.2s;
 }
@@ -249,7 +262,7 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
   color: #fff; margin-bottom: 20px;
 }
 .balance-label { font-size: 13px; opacity: 0.8; margin-bottom: 4px; }
-.balance-value { font-size: 28px; font-weight: 800; }
+.balance-value { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
 .balance-row { display: flex; gap: 16px; margin-top: 12px; }
 .balance-sub { flex: 1; }
 .balance-sub-label { font-size: 11px; opacity: 0.6; }

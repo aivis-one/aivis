@@ -7,7 +7,7 @@
   <script>
     (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
   </script>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/variables.css">
   <link rel="stylesheet" href="../css/components.css">
@@ -87,7 +87,7 @@
       border: 2px solid var(--border); border-radius: var(--radius-md); font-family: inherit;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .code-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus-teal); }
+    .code-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
 
     /* ========== KYC STATUS ========== */
     .kyc-status-card {
@@ -217,8 +217,7 @@
           <div class="screen active" id="screen-login">
             <header class="auth-header">
               <div class="auth-logo">
-                <div class="auth-logo-icon">U</div>
-                <span class="auth-logo-text">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
             </header>
             <div class="progress-bar">
@@ -275,8 +274,7 @@
           <div class="screen" id="screen-register">
             <header class="auth-header">
               <div class="auth-logo">
-                <div class="auth-logo-icon">U</div>
-                <span class="auth-logo-text">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
               <button class="btn-link" type="button" onclick="navigateTo('screen-login')">
                 <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="auth.back">Назад</span>
@@ -338,8 +336,7 @@
           <div class="screen" id="screen-verify">
             <header class="auth-header">
               <div class="auth-logo">
-                <div class="auth-logo-icon">U</div>
-                <span class="auth-logo-text">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
             </header>
             <div class="progress-bar">
@@ -381,8 +378,7 @@
           <div class="screen" id="screen-profile">
             <header class="auth-header">
               <div class="auth-logo">
-                <div class="auth-logo-icon">U</div>
-                <span class="auth-logo-text">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
             </header>
             <div class="progress-bar">
@@ -442,8 +438,7 @@
           <div class="screen" id="screen-role">
             <header class="auth-header">
               <div class="auth-logo">
-                <div class="auth-logo-icon">U</div>
-                <span class="auth-logo-text">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
             </header>
             <div class="progress-bar">
@@ -512,8 +507,7 @@
           <div class="screen" id="screen-kyc">
             <header class="auth-header">
               <div class="auth-logo">
-                <div class="auth-logo-icon">U</div>
-                <span class="auth-logo-text">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
             </header>
             <div class="progress-bar">
@@ -568,8 +562,7 @@
           <div class="screen" id="screen-docs">
             <header class="auth-header">
               <div class="auth-logo">
-                <div class="auth-logo-icon">U</div>
-                <span class="auth-logo-text">CBS HOME</span>
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
               </div>
             </header>
             <div class="progress-bar">
