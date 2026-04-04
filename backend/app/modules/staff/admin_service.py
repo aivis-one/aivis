@@ -368,6 +368,17 @@ async def kyc_approve(
         session=session,
     )
 
+    # Staff-specific audit (process_webhook writes system audit separately).
+    await record_audit(
+        session=session,
+        event="kyc.approved_by_staff",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="user",
+        target_id=application.user_id,
+        data={"application_id": str(application_id)},
+    )
+
     logger.info(
         "kyc_approved_by_staff",
         application_id=str(application_id),
@@ -397,6 +408,17 @@ async def kyc_reject(
         user_id=str(application.user_id),
         new_status=KYCApplicationStatus.REJECTED,
         session=session,
+    )
+
+    # Staff-specific audit (process_webhook writes system audit separately).
+    await record_audit(
+        session=session,
+        event="kyc.rejected_by_staff",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="user",
+        target_id=application.user_id,
+        data={"application_id": str(application_id)},
     )
 
     logger.info(
