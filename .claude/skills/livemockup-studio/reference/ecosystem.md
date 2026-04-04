@@ -35,7 +35,9 @@ mockups/
 │   └── nav-map.css            ← Navigation map popup
 ├── js/
 │   ├── shell.js               ← Device controller + zoom + keyboard
-│   └── navigation.js          ← navigateTo, switchTab, toast, navMap
+│   ├── navigation.js          ← navigateTo, switchTab, toast, navMap
+│   ├── theme.js              ← Theme toggle (dark/light/auto)
+│   └── i18n.js               ← Language switcher (RU/EN)
 ├── auth-flow/
 │   └── mockup.html            ← Mockup content only
 ├── investor-shell/
@@ -114,6 +116,8 @@ mockups/
   <!-- NAVIGATION MAP (same structure, uses nav-map.css) -->
 
   <!-- Shared JS -->
+  <script src="../js/theme.js"></script>
+  <script src="../js/i18n.js"></script>
   <script src="../js/shell.js"></script>
   <script src="../js/navigation.js"></script>
   <script>
@@ -194,4 +198,4 @@ mockups/
 
 ---
 
-*ecosystem v1.5.0*
+*ecosystem v1.6.0*

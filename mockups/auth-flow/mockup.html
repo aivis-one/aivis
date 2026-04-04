@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CBS HOME Auth Flow — Live Mockup</title>
+  <script>
+    (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/variables.css">
@@ -184,6 +187,13 @@
       </div>
     </div>
     <div class="toolbar-right">
+      <button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
+        <i data-lucide="monitor"></i>
+      </button>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
+        <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+      </div>
       <button class="map-btn" onclick="openNavMap()">
         <i data-lucide="map-pin" style="width:14px;height:14px;color:currentColor"></i>
         <span class="map-label">Map</span>
@@ -224,15 +234,15 @@
               <div style="margin-bottom:24px; text-align:center;">
                 <i data-lucide="lock-keyhole" style="width:48px;height:48px;color:var(--primary)"></i>
               </div>
-              <h1 class="auth-title">Вход в аккаунт</h1>
-              <p class="auth-subtitle">Войдите в CBS HOME для управления инвестициями</p>
+              <h1 class="auth-title" data-i18n="auth.login.title">Вход в аккаунт</h1>
+              <p class="auth-subtitle" data-i18n="auth.login.subtitle">Войдите в CBS HOME для управления инвестициями</p>
               <div class="auth-form">
                 <div class="form-group">
-                  <label class="form-label">Email</label>
+                  <label class="form-label" data-i18n="auth.login.email">Email</label>
                   <input type="email" class="form-input" placeholder="name@example.com" value="sergej.seider@cbshome.org">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Пароль</label>
+                  <label class="form-label" data-i18n="auth.login.password">Пароль</label>
                   <div class="input-wrapper">
                     <input type="password" class="form-input" placeholder="Введите пароль" value="password123">
                     <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
@@ -241,21 +251,21 @@
                   </div>
                 </div>
                 <div style="text-align:right; margin-bottom:20px;">
-                  <button class="btn-link" type="button" onclick="showToast('Восстановление пароля — финальная точка', 'info')">Забыли пароль?</button>
+                  <button class="btn-link" type="button" data-i18n="auth.login.forgot" onclick="showToast('Восстановление пароля — финальная точка', 'info')">Забыли пароль?</button>
                 </div>
                 <button class="btn btn-primary" type="button" onclick="handleLogin()">
-                  <i data-lucide="log-in" style="width:18px;height:18px"></i> Войти
+                  <i data-lucide="log-in" style="width:18px;height:18px"></i> <span data-i18n="auth.login.btn">Войти</span>
                 </button>
 
-                <div class="divider"><span>или</span></div>
+                <div class="divider"><span data-i18n="auth.login.or">или</span></div>
 
                 <button class="btn btn-telegram" type="button" onclick="showToast('Telegram WebApp — внешний сервис', 'info')">
-                  <i data-lucide="send" style="width:18px;height:18px"></i> Войти через Telegram
+                  <i data-lucide="send" style="width:18px;height:18px"></i> <span data-i18n="auth.login.telegram">Войти через Telegram</span>
                 </button>
 
                 <div style="text-align:center; margin-top:24px;">
-                  <span style="font-size:14px; color:var(--text-secondary);">Нет аккаунта? </span>
-                  <button class="btn-link" type="button" onclick="navigateTo('screen-register')">Создать аккаунт</button>
+                  <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.login.noAccount">Нет аккаунта? </span>
+                  <button class="btn-link" type="button" data-i18n="auth.login.createAccount" onclick="navigateTo('screen-register')">Создать аккаунт</button>
                 </div>
               </div>
             </div>
@@ -269,7 +279,7 @@
                 <span class="auth-logo-text">CBS HOME</span>
               </div>
               <button class="btn-link" type="button" onclick="navigateTo('screen-login')">
-                <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> Назад
+                <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="auth.back">Назад</span>
               </button>
             </header>
             <div class="progress-bar">
@@ -282,25 +292,25 @@
               <div class="progress-step"></div>
             </div>
             <div class="auth-content">
-              <h1 class="auth-title">Создать аккаунт</h1>
-              <p class="auth-subtitle">Присоединяйтесь к инвестиционной платформе CBS HOME</p>
+              <h1 class="auth-title" data-i18n="auth.register.title">Создать аккаунт</h1>
+              <p class="auth-subtitle" data-i18n="auth.register.subtitle">Присоединяйтесь к инвестиционной платформе CBS HOME</p>
               <div class="auth-form">
                 <div class="form-group">
-                  <label class="form-label">Email</label>
+                  <label class="form-label" data-i18n="auth.register.email">Email</label>
                   <input type="email" class="form-input" placeholder="name@example.com">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Пароль</label>
+                  <label class="form-label" data-i18n="auth.register.password">Пароль</label>
                   <div class="input-wrapper">
                     <input type="password" class="form-input" placeholder="Минимум 8 символов">
                     <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
                       <i data-lucide="eye"></i>
                     </button>
                   </div>
-                  <div class="form-hint">Минимум 8 символов, буквы и цифры</div>
+                  <div class="form-hint" data-i18n="auth.register.passwordHint">Минимум 8 символов, буквы и цифры</div>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Подтверждение пароля</label>
+                  <label class="form-label" data-i18n="auth.register.confirmPassword">Подтверждение пароля</label>
                   <div class="input-wrapper">
                     <input type="password" class="form-input" placeholder="Повторите пароль">
                     <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
@@ -310,15 +320,15 @@
                 </div>
                 <div class="checkbox-row">
                   <div class="checkbox" onclick="toggleCheckbox(this)"></div>
-                  <label onclick="toggleCheckbox(this.previousElementSibling)">Я принимаю <a href="#" onclick="event.stopPropagation(); showToast('Условия использования — финальная точка', 'info')">условия использования</a> и <a href="#" onclick="event.stopPropagation(); showToast('Политика конфиденциальности — финальная точка', 'info')">политику конфиденциальности</a></label>
+                  <label onclick="toggleCheckbox(this.previousElementSibling)"><span data-i18n="auth.register.terms">Я принимаю <a href="#" onclick="event.stopPropagation(); showToast('Условия использования — финальная точка', 'info')">условия использования</a> и <a href="#" onclick="event.stopPropagation(); showToast('Политика конфиденциальности — финальная точка', 'info')">политику конфиденциальности</a></span></label>
                 </div>
                 <button class="btn btn-primary" type="button" onclick="handleRegister()">
-                  <i data-lucide="user-plus" style="width:18px;height:18px"></i> Создать аккаунт
+                  <i data-lucide="user-plus" style="width:18px;height:18px"></i> <span data-i18n="auth.register.btn">Создать аккаунт</span>
                 </button>
 
                 <div style="text-align:center; margin-top:24px;">
-                  <span style="font-size:14px; color:var(--text-secondary);">Уже есть аккаунт? </span>
-                  <button class="btn-link" type="button" onclick="navigateTo('screen-login')">Войти</button>
+                  <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.register.hasAccount">Уже есть аккаунт? </span>
+                  <button class="btn-link" type="button" data-i18n="auth.register.loginLink" onclick="navigateTo('screen-login')">Войти</button>
                 </div>
               </div>
             </div>
@@ -345,8 +355,8 @@
               <div class="verify-icon">
                 <i data-lucide="mail-check" style="width:64px;height:64px;color:var(--primary)"></i>
               </div>
-              <h1 class="auth-title">Проверьте почту</h1>
-              <p class="auth-subtitle">Мы отправили код подтверждения на<br><strong style="color:var(--text)">sergej.seider@cbshome.org</strong></p>
+              <h1 class="auth-title" data-i18n="auth.verify.title">Проверьте почту</h1>
+              <p class="auth-subtitle"><span data-i18n="auth.verify.subtitle">Мы отправили код подтверждения на</span><br><strong style="color:var(--text)">sergej.seider@cbshome.org</strong></p>
               <div class="code-inputs">
                 <input class="code-input" type="text" maxlength="1" value="4">
                 <input class="code-input" type="text" maxlength="1" value="7">
@@ -357,11 +367,11 @@
               </div>
               <div class="auth-form">
                 <button class="btn btn-primary" type="button" onclick="handleVerify()">
-                  <i data-lucide="check-circle" style="width:18px;height:18px"></i> Подтвердить
+                  <i data-lucide="check-circle" style="width:18px;height:18px"></i> <span data-i18n="auth.verify.btn">Подтвердить</span>
                 </button>
                 <div style="text-align:center; margin-top:20px;">
-                  <span style="font-size:14px; color:var(--text-secondary);">Не получили код? </span>
-                  <button class="btn-link" type="button" onclick="showToast('Код отправлен повторно', 'success')">Отправить повторно</button>
+                  <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.verify.noCode">Не получили код? </span>
+                  <button class="btn-link" type="button" data-i18n="auth.verify.resend" onclick="showToast('Код отправлен повторно', 'success')">Отправить повторно</button>
                 </div>
               </div>
             </div>
@@ -385,25 +395,25 @@
               <div class="progress-step"></div>
             </div>
             <div class="auth-content">
-              <h1 class="auth-title">Данные профиля</h1>
-              <p class="auth-subtitle">Заполните информацию для вашего аккаунта</p>
+              <h1 class="auth-title" data-i18n="auth.profile.title">Данные профиля</h1>
+              <p class="auth-subtitle" data-i18n="auth.profile.subtitle">Заполните информацию для вашего аккаунта</p>
               <div class="auth-form">
                 <div style="display:flex; gap:12px;">
                   <div class="form-group" style="flex:1;">
-                    <label class="form-label">Имя</label>
+                    <label class="form-label" data-i18n="auth.profile.firstName">Имя</label>
                     <input type="text" class="form-input" placeholder="Sergej" value="Sergej">
                   </div>
                   <div class="form-group" style="flex:1;">
-                    <label class="form-label">Фамилия</label>
+                    <label class="form-label" data-i18n="auth.profile.lastName">Фамилия</label>
                     <input type="text" class="form-input" placeholder="Seider" value="Seider">
                   </div>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Телефон</label>
+                  <label class="form-label" data-i18n="auth.profile.phone">Телефон</label>
                   <input type="tel" class="form-input" placeholder="+49 XXX XXXXXXXX" value="+49 172 5551234">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Страна</label>
+                  <label class="form-label" data-i18n="auth.profile.country">Страна</label>
                   <select class="form-select">
                     <option value="de" selected>Deutschland</option>
                     <option value="ch">Schweiz</option>
@@ -413,7 +423,7 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Язык интерфейса</label>
+                  <label class="form-label" data-i18n="auth.profile.language">Язык интерфейса</label>
                   <select class="form-select">
                     <option value="de" selected>Deutsch</option>
                     <option value="en">English</option>
@@ -422,7 +432,7 @@
                   </select>
                 </div>
                 <button class="btn btn-primary" type="button" onclick="handleProfile()">
-                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> Продолжить
+                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> <span data-i18n="auth.profile.btn">Продолжить</span>
                 </button>
               </div>
             </div>
@@ -446,54 +456,54 @@
               <div class="progress-step"></div>
             </div>
             <div class="auth-content">
-              <h1 class="auth-title">Выберите роль</h1>
-              <p class="auth-subtitle">Как вы планируете использовать платформу?</p>
+              <h1 class="auth-title" data-i18n="auth.role.title">Выберите роль</h1>
+              <p class="auth-subtitle" data-i18n="auth.role.subtitle">Как вы планируете использовать платформу?</p>
               <div class="role-cards" id="roleCards">
                 <div class="role-card" onclick="selectRole(this, 'Инвестор')">
                   <div class="role-card-check"></div>
                   <div class="role-card-header">
                     <span class="role-card-icon"><span class="icon-box teal"><i data-lucide="trending-up"></i></span></span>
-                    <span class="role-card-title">Инвестор</span>
+                    <span class="role-card-title" data-i18n="auth.role.investor">Инвестор</span>
                   </div>
-                  <div class="role-card-desc">Покупайте продукты, управляйте портфелем и отслеживайте инвестиции</div>
+                  <div class="role-card-desc" data-i18n="auth.role.investorDesc">Покупайте продукты, управляйте портфелем и отслеживайте инвестиции</div>
                   <div class="role-card-features">
-                    <span class="role-feature">Портфель</span>
-                    <span class="role-feature">Рассрочки</span>
-                    <span class="role-feature">Баланс</span>
-                    <span class="role-feature">Документы</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.portfolio">Портфель</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.installments">Рассрочки</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.balance">Баланс</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.documents">Документы</span>
                   </div>
                 </div>
                 <div class="role-card" onclick="selectRole(this, 'Агент')">
                   <div class="role-card-check"></div>
                   <div class="role-card-header">
                     <span class="role-card-icon"><span class="icon-box orange"><i data-lucide="users"></i></span></span>
-                    <span class="role-card-title">Агент</span>
+                    <span class="role-card-title" data-i18n="auth.role.agent">Агент</span>
                   </div>
-                  <div class="role-card-desc">Все возможности инвестора плюс реферальная программа и комиссии</div>
+                  <div class="role-card-desc" data-i18n="auth.role.agentDesc">Все возможности инвестора плюс реферальная программа и комиссии</div>
                   <div class="role-card-features">
-                    <span class="role-feature">Реферальные ссылки</span>
-                    <span class="role-feature">Комиссии L1/L2/L3</span>
-                    <span class="role-feature">Лидерборд</span>
-                    <span class="role-feature">Сертификация</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.referrals">Реферальные ссылки</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.commissions">Комиссии L1/L2/L3</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.leaderboard">Лидерборд</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.certification">Сертификация</span>
                   </div>
                 </div>
                 <div class="role-card" onclick="selectRole(this, 'Компания')">
                   <div class="role-card-check"></div>
                   <div class="role-card-header">
                     <span class="role-card-icon"><span class="icon-box blue"><i data-lucide="building-2"></i></span></span>
-                    <span class="role-card-title">Компания</span>
+                    <span class="role-card-title" data-i18n="auth.role.company">Компания</span>
                   </div>
-                  <div class="role-card-desc">Размещайте продукты, управляйте продажами и получайте выручку</div>
+                  <div class="role-card-desc" data-i18n="auth.role.companyDesc">Размещайте продукты, управляйте продажами и получайте выручку</div>
                   <div class="role-card-features">
-                    <span class="role-feature">Продукты</span>
-                    <span class="role-feature">Аналитика</span>
-                    <span class="role-feature">Выручка</span>
-                    <span class="role-feature">Документы</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.products">Продукты</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.analytics">Аналитика</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.revenue">Выручка</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.documents">Документы</span>
                   </div>
                 </div>
               </div>
               <div style="width:100%; max-width:400px; margin-top:24px;">
-                <button class="btn btn-primary" id="roleSubmitBtn" type="button" disabled onclick="handleRoleSelect()">Выберите роль</button>
+                <button class="btn btn-primary" id="roleSubmitBtn" type="button" disabled onclick="handleRoleSelect()" data-i18n="auth.role.btn">Выберите роль</button>
               </div>
             </div>
           </div>
@@ -516,38 +526,38 @@
               <div class="progress-step"></div>
             </div>
             <div class="auth-content">
-              <h1 class="auth-title">Верификация личности</h1>
-              <p class="auth-subtitle">Для работы на платформе необходимо пройти KYC-верификацию</p>
+              <h1 class="auth-title" data-i18n="auth.kyc.title">Верификация личности</h1>
+              <p class="auth-subtitle" data-i18n="auth.kyc.subtitle">Для работы на платформе необходимо пройти KYC-верификацию</p>
 
               <div class="kyc-status-card approved">
                 <div class="kyc-icon"><i data-lucide="shield-check" style="width:48px;height:48px;color:var(--success)"></i></div>
-                <div class="kyc-title" style="color:var(--success);">Верификация пройдена</div>
-                <div class="kyc-text">Ваша личность подтверждена. Вы можете продолжить настройку аккаунта.</div>
+                <div class="kyc-title" style="color:var(--success);" data-i18n="auth.kyc.approved">Верификация пройдена</div>
+                <div class="kyc-text" data-i18n="auth.kyc.approvedText">Ваша личность подтверждена. Вы можете продолжить настройку аккаунта.</div>
               </div>
 
               <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:12px;">
                 <button class="btn btn-primary" type="button" onclick="navigateTo('screen-docs')">
-                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> Продолжить
+                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> <span data-i18n="auth.kyc.continue">Продолжить</span>
                 </button>
                 <button class="btn btn-outline" type="button" onclick="showToast('SumSub — внешний сервис верификации', 'info')">
-                  <i data-lucide="refresh-cw" style="width:16px;height:16px"></i> Пройти заново
+                  <i data-lucide="refresh-cw" style="width:16px;height:16px"></i> <span data-i18n="auth.kyc.redo">Пройти заново</span>
                 </button>
               </div>
 
               <div style="margin-top:32px; width:100%; max-width:360px; padding:16px; background:var(--bg-subtle); border-radius:var(--radius-md);">
-                <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--text);">Статусы верификации:</div>
+                <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--text);" data-i18n="auth.kyc.statusesTitle">Статусы верификации:</div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span style="width:10px; height:10px; border-radius:50%; background:var(--warning);"></span>
-                    <span style="font-size:13px; color:var(--text-secondary);">Ожидание — документы на проверке</span>
+                    <span style="font-size:13px; color:var(--text-secondary);" data-i18n="auth.kyc.statusPending">Ожидание — документы на проверке</span>
                   </div>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span style="width:10px; height:10px; border-radius:50%; background:var(--success);"></span>
-                    <span style="font-size:13px; color:var(--text-secondary);">Одобрено — верификация пройдена</span>
+                    <span style="font-size:13px; color:var(--text-secondary);" data-i18n="auth.kyc.statusApproved">Одобрено — верификация пройдена</span>
                   </div>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span style="width:10px; height:10px; border-radius:50%; background:var(--danger);"></span>
-                    <span style="font-size:13px; color:var(--text-secondary);">Отклонено — требуется повторная подача</span>
+                    <span style="font-size:13px; color:var(--text-secondary);" data-i18n="auth.kyc.statusRejected">Отклонено — требуется повторная подача</span>
                   </div>
                 </div>
               </div>
@@ -572,42 +582,42 @@
               <div class="progress-step active"></div>
             </div>
             <div class="auth-content">
-              <h1 class="auth-title">Подписание документов</h1>
-              <p class="auth-subtitle">Ознакомьтесь и подпишите обязательные документы для начала работы</p>
+              <h1 class="auth-title" data-i18n="auth.docs.title">Подписание документов</h1>
+              <p class="auth-subtitle" data-i18n="auth.docs.subtitle">Ознакомьтесь и подпишите обязательные документы для начала работы</p>
 
               <div class="doc-list" id="docList">
                 <div class="doc-item" onclick="toggleDoc(this)">
                   <div class="doc-checkbox"></div>
                   <div class="doc-info">
-                    <div class="doc-title">Пользовательское соглашение cbshome.org</div>
-                    <div class="doc-desc">Основные условия использования платформы, права и обязанности сторон</div>
-                    <div class="doc-required">Обязательный документ</div>
+                    <div class="doc-title" data-i18n="auth.docs.agreement">Пользовательское соглашение cbshome.org</div>
+                    <div class="doc-desc" data-i18n="auth.docs.agreementDesc">Основные условия использования платформы, права и обязанности сторон</div>
+                    <div class="doc-required" data-i18n="auth.docs.required">Обязательный документ</div>
                   </div>
                 </div>
                 <div class="doc-item" onclick="toggleDoc(this)">
                   <div class="doc-checkbox"></div>
                   <div class="doc-info">
-                    <div class="doc-title">Политика конфиденциальности</div>
-                    <div class="doc-desc">Порядок обработки, хранения и защиты персональных данных в соответствии с GDPR</div>
-                    <div class="doc-required">Обязательный документ</div>
+                    <div class="doc-title" data-i18n="auth.docs.privacy">Политика конфиденциальности</div>
+                    <div class="doc-desc" data-i18n="auth.docs.privacyDesc">Порядок обработки, хранения и защиты персональных данных в соответствии с GDPR</div>
+                    <div class="doc-required" data-i18n="auth.docs.required">Обязательный документ</div>
                   </div>
                 </div>
                 <div class="doc-item" onclick="toggleDoc(this)">
                   <div class="doc-checkbox"></div>
                   <div class="doc-info">
-                    <div class="doc-title">Согласие на обработку персональных данных</div>
-                    <div class="doc-desc">Явное согласие на обработку ваших данных для предоставления услуг платформы</div>
-                    <div class="doc-required">Обязательный документ</div>
+                    <div class="doc-title" data-i18n="auth.docs.consent">Согласие на обработку персональных данных</div>
+                    <div class="doc-desc" data-i18n="auth.docs.consentDesc">Явное согласие на обработку ваших данных для предоставления услуг платформы</div>
+                    <div class="doc-required" data-i18n="auth.docs.required">Обязательный документ</div>
                   </div>
                 </div>
               </div>
 
               <div style="width:100%; max-width:400px;">
                 <button class="btn btn-primary" id="signBtn" type="button" disabled onclick="handleSign()">
-                  <i data-lucide="file-signature" style="width:18px;height:18px"></i> Подписать документы
+                  <i data-lucide="file-signature" style="width:18px;height:18px"></i> <span data-i18n="auth.docs.signBtn">Подписать документы</span>
                 </button>
                 <div style="text-align:center; margin-top:16px;">
-                  <span style="font-size:12px; color:var(--text-tertiary);">Нажимая «Подписать», вы соглашаетесь с условиями всех перечисленных документов</span>
+                  <span style="font-size:12px; color:var(--text-tertiary);" data-i18n="auth.docs.signNote">Нажимая «Подписать», вы соглашаетесь с условиями всех перечисленных документов</span>
                 </div>
               </div>
             </div>
@@ -623,42 +633,42 @@
   <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
     <div class="nav-map" onclick="event.stopPropagation()">
       <div class="nav-map-header">
-        <div class="nav-map-title"><i data-lucide="map-pin" style="width:18px;height:18px;vertical-align:middle;margin-right:6px"></i> Navigation Map</div>
+        <div class="nav-map-title"><i data-lucide="map-pin" style="width:18px;height:18px;vertical-align:middle;margin-right:6px"></i> <span data-i18n="nav.map.title">Карта навигации</span></div>
         <button class="nav-map-close" onclick="closeNavMap()">&times;</button>
       </div>
       <div class="nav-map-body">
         <div class="nav-map-stats">
           <div class="nav-map-stat">
             <div class="nav-map-stat-value">7</div>
-            <div class="nav-map-stat-label">screens</div>
+            <div class="nav-map-stat-label" data-i18n="nav.map.screens">экранов</div>
           </div>
           <div class="nav-map-stat">
             <div class="nav-map-stat-value">2</div>
-            <div class="nav-map-stat-label">full paths</div>
+            <div class="nav-map-stat-label" data-i18n="nav.map.paths">полных путей</div>
           </div>
           <div class="nav-map-stat">
             <div class="nav-map-stat-value">4</div>
-            <div class="nav-map-stat-label">endpoints</div>
+            <div class="nav-map-stat-label" data-i18n="nav.map.endpoints">финальных точек</div>
           </div>
         </div>
 
         <div class="nav-map-legend">
-          <div class="nav-map-legend-item"><span class="legend-dot green"></span> Screen</div>
-          <div class="nav-map-legend-item"><span class="legend-dot red"></span> Endpoint</div>
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> <span data-i18n="nav.legend.screen">Экран</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> <span data-i18n="nav.legend.endpoint">Финальная точка</span></div>
         </div>
 
         <div class="nav-map-tree">
           <!-- Auth Section -->
           <div class="nav-map-section">
             <div class="nav-map-section-title" onclick="toggleSection(this)">
-              <span class="section-info"><i data-lucide="lock" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> AUTHENTICATION <span class="section-count">(4)</span></span>
+              <span class="section-info"><i data-lucide="lock" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="nav.section.auth">АУТЕНТИФИКАЦИЯ</span> <span class="section-count">(4)</span></span>
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-login')">
                   <span class="nav-map-item-icon"><i data-lucide="lock-keyhole" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Login</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.login">Вход</span>
                   <span class="level-badge hub">ENTRY</span>
                   <span class="status-dot green"></span>
                 </div>
@@ -666,7 +676,7 @@
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-register')">
                   <span class="nav-map-item-icon"><i data-lucide="user-plus" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Register</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.register">Регистрация</span>
                   <span class="level-badge">L1</span>
                   <span class="status-dot green"></span>
                 </div>
@@ -674,7 +684,7 @@
               <div class="nav-map-level" data-level="2">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-verify')">
                   <span class="nav-map-item-icon"><i data-lucide="mail-check" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Email Verification</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.verify">Подтверждение Email</span>
                   <span class="level-badge">L2</span>
                   <span class="status-dot green"></span>
                 </div>
@@ -682,7 +692,7 @@
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Telegram WebApp', 'screen-login')">
                   <span class="nav-map-item-icon"><i data-lucide="send" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Telegram Login</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.telegram">Вход через Telegram</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
@@ -690,7 +700,7 @@
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Восстановление пароля', 'screen-login')">
                   <span class="nav-map-item-icon"><i data-lucide="key-round" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Forgot Password</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.forgot">Забыли пароль</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
@@ -701,14 +711,14 @@
           <!-- Onboarding Section -->
           <div class="nav-map-section">
             <div class="nav-map-section-title" onclick="toggleSection(this)">
-              <span class="section-info"><i data-lucide="user-check" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> ONBOARDING <span class="section-count">(6)</span></span>
+              <span class="section-info"><i data-lucide="user-check" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="nav.section.onboarding">ОНБОРДИНГ</span> <span class="section-count">(6)</span></span>
               <span class="section-arrow">&#9660;</span>
             </div>
             <div class="nav-map-section-content">
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-profile')">
                   <span class="nav-map-item-icon"><i data-lucide="user" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Profile Setup</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.profile">Настройка профиля</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
@@ -716,7 +726,7 @@
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-role')">
                   <span class="nav-map-item-icon"><i data-lucide="target" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Role Selection</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.role">Выбор роли</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
@@ -724,7 +734,7 @@
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-kyc')">
                   <span class="nav-map-item-icon"><i data-lucide="shield-check" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">KYC Verification</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.kyc">Верификация KYC</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
@@ -732,7 +742,7 @@
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('SumSub Verification', 'screen-kyc')">
                   <span class="nav-map-item-icon"><i data-lucide="scan-face" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">SumSub External</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.sumsub">SumSub (внешний)</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
@@ -740,7 +750,7 @@
               <div class="nav-map-level" data-level="0">
                 <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')">
                   <span class="nav-map-item-icon"><i data-lucide="file-text" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Document Signing</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.docs">Подписание документов</span>
                   <span class="level-badge">L0</span>
                   <span class="status-dot green"></span>
                 </div>
@@ -748,7 +758,7 @@
               <div class="nav-map-level" data-level="1">
                 <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Onboarding Complete — переход в кабинет', 'screen-docs')">
                   <span class="nav-map-item-icon"><i data-lucide="flag" style="width:14px;height:14px"></i></span>
-                  <span class="nav-map-item-name">Onboarding Complete</span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.complete">Онбординг завершён</span>
                   <span class="level-badge end">END</span>
                   <span class="status-dot red"></span>
                 </div>
@@ -761,6 +771,8 @@
   </div>
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/i18n.js"></script>
   <script src="../js/shell.js"></script>
   <script src="../js/navigation.js"></script>
   <script>

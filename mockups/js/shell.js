@@ -1,5 +1,5 @@
 /* ========== DEVICE PREVIEW CONTROLLER ========== */
-/* livemockup-studio v1.5.0 — CBS HOME */
+/* livemockup-studio v1.6.0 — CBS HOME */
 
 const DevicePreview = {
   devices: {
@@ -25,6 +25,10 @@ const DevicePreview = {
     });
     document.addEventListener('keydown', (e) => this.handleKeyboard(e));
     this.setDevice('phone');
+
+    // Init theme and i18n if available
+    if (typeof ThemeManager !== 'undefined') ThemeManager.init();
+    if (typeof I18N !== 'undefined') I18N.init();
   },
 
   setDevice(type) {
@@ -64,6 +68,12 @@ const DevicePreview = {
       case '0': this.currentZoom = 100; this.changeZoom(0); break;
       case 'm': case 'M':
         if (typeof openNavMap === 'function') openNavMap();
+        break;
+      case 't': case 'T':
+        if (typeof ThemeManager !== 'undefined') ThemeManager.cycle();
+        break;
+      case 'l': case 'L':
+        if (typeof I18N !== 'undefined') I18N.toggleLocale();
         break;
       case 'Escape':
         if (typeof closeNavMap === 'function') closeNavMap();

@@ -2,6 +2,38 @@
 
 All notable changes to livemockup-studio.
 
+## [1.6.0] - 2026-04-04
+
+### Added
+
+- **Theme Toggle** — Dark/Light/Auto mode switching
+  - `js/theme.js` — ThemeManager with cycle(), set(), getEffective()
+  - Three states: auto (system), light, dark
+  - Persist via localStorage('cbs-theme')
+  - Flash prevention inline script in `<head>`
+  - Keyboard shortcut: T
+  - Toolbar button with sun/moon/monitor icons
+- **i18n System** — RU/EN language switching
+  - `js/i18n.js` — I18N dictionary with ~150 keys, t() interpolation, applyI18n()
+  - `data-i18n` attributes on HTML elements
+  - Persist via localStorage('cbs-lang')
+  - Keyboard shortcut: L
+  - Compact RU|EN switcher in toolbar
+- **Nav Map Standardization** — Consistent Lucide map-pin icon, all labels via data-i18n
+
+### Changed
+
+- **variables.css** — Dark mode via `[data-theme="dark"]` selector (was `@media prefers-color-scheme`)
+  - System preference still works as fallback: `html:not([data-theme])`
+  - Added tint/dim overrides for dark mode
+- **shell.css** — `.device-screen` background: var(--bg) (was #fff)
+  - Added .theme-toggle, .lang-switcher, .lang-btn styles
+- **shell.js** — T/L keyboard shortcuts, init calls ThemeManager.init() + I18N.init()
+- **navigation.js** — navMapEndpoint/navMapTab use I18N.t() for localized toasts
+- **All 5 mockups** — Theme toggle + lang switcher in toolbar, data-i18n attributes on nav map items, tab bars, screen headings
+
+---
+
 ## [1.5.1] - 2026-04-03
 
 ### Added

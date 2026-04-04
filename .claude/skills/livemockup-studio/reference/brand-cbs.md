@@ -288,4 +288,65 @@ Use CSS variables, not hardcoded hex:
 
 ---
 
-*brand-cbs v1.4.0*
+---
+
+## Theme Toggle
+
+Three-state theme switching: Auto → Light → Dark
+
+```html
+<!-- Toolbar button -->
+<button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
+  <i data-lucide="monitor"></i>
+</button>
+```
+
+```javascript
+ThemeManager.set('light');  // Force light
+ThemeManager.set('dark');   // Force dark
+ThemeManager.set('auto');   // Follow system
+ThemeManager.cycle();       // Rotate: auto → light → dark
+```
+
+Keyboard shortcut: `T`
+
+### Flash Prevention
+
+Add inline script in `<head>` BEFORE CSS imports:
+```html
+<script>
+  (function(){var t=localStorage.getItem('cbs-theme');
+  if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();
+</script>
+```
+
+---
+
+## i18n (Internationalization)
+
+RU/EN language switching via `data-i18n` attributes.
+
+```html
+<!-- Static text -->
+<h1 data-i18n="auth.login.title">Вход в аккаунт</h1>
+
+<!-- Attribute -->
+<input data-i18n="common.email" data-i18n-attr="placeholder" placeholder="Email">
+
+<!-- Toolbar switcher -->
+<div class="lang-switcher">
+  <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
+  <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+</div>
+```
+
+```javascript
+I18N.t('auth.login.title');           // → "Вход в аккаунт" (ru) or "Sign In" (en)
+I18N.t('nav.endpoint', {name: 'X'});  // → "📌 X — финальная точка"
+I18N.setLocale('en');                  // Switch to English
+I18N.toggleLocale();                   // Toggle RU ↔ EN
+```
+
+Keyboard shortcut: `L`
+
+*brand-cbs v1.6.0*

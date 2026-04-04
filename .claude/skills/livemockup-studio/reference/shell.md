@@ -1108,7 +1108,9 @@ Call in DOMContentLoaded or after content loads.
 | `-` | Zoom Out |
 | `0` | Reset Zoom |
 | `M` | Open Navigation Map |
+| `T` | Toggle Theme (auto/light/dark) |
+| `L` | Toggle Language (RU/EN) |
 
 ---
 
-*shell v1.4.0*
+*shell v1.6.0*

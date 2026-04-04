@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CBS HOME Company — Live Mockup</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23E8651A'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <script>
+    (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/variables.css">
   <link rel="stylesheet" href="../css/components.css">
@@ -98,6 +101,13 @@
       <button class="device-btn" data-device="desktop"><i data-lucide="monitor" style="width:14px;height:14px"></i> <span class="device-label">Desktop</span><span class="device-size">1280</span></button>
     </div></div>
     <div class="toolbar-right">
+      <button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
+        <i data-lucide="monitor"></i>
+      </button>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
+        <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+      </div>
       <button class="map-btn" onclick="openNavMap()"><i data-lucide="map-pin" style="width:14px;height:14px"></i> <span class="map-label">Map</span></button>
       <div class="zoom-control"><button class="zoom-btn" data-zoom="-10">&minus;</button><span class="zoom-value">100%</span><button class="zoom-btn" data-zoom="+10">+</button></div>
     </div>
@@ -168,11 +178,11 @@
               </div>
             </main>
             <nav class="tab-bar">
-              <button class="tab-item active" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
-              <button class="tab-item" id="tab-products" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span>Продукты</button>
-              <button class="tab-item" id="tab-analytics" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span>Аналитика</button>
-              <button class="tab-item" id="tab-balance" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span>Баланс</button>
-              <button class="tab-item" id="tab-settings" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span>Настройки</button>
+              <button class="tab-item active" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.comp.home">Главная</span></button>
+              <button class="tab-item" id="tab-products" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span><span data-i18n="tab.comp.products">Продукты</span></button>
+              <button class="tab-item" id="tab-analytics" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span><span data-i18n="tab.comp.analytics">Аналитика</span></button>
+              <button class="tab-item" id="tab-balance" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.comp.balance">Баланс</span></button>
+              <button class="tab-item" id="tab-settings" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.comp.settings">Настройки</span></button>
             </nav>
           </div>
 
@@ -205,11 +215,11 @@
               <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);margin-top:16px;font-size:12px;color:var(--text-secondary)"><i data-lucide="info" style="width:12px;height:12px;vertical-align:-2px"></i> Нажмите на продукт для редактирования. Распределение комиссий настраивается в карточке продукта.</div>
             </main>
             <nav class="tab-bar">
-              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
-              <button class="tab-item active" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span>Продукты</button>
-              <button class="tab-item" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span>Аналитика</button>
-              <button class="tab-item" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span>Баланс</button>
-              <button class="tab-item" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span>Настройки</button>
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.comp.home">Главная</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span><span data-i18n="tab.comp.products">Продукты</span></button>
+              <button class="tab-item" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span><span data-i18n="tab.comp.analytics">Аналитика</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.comp.balance">Баланс</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.comp.settings">Настройки</span></button>
             </nav>
           </div>
 
@@ -324,11 +334,11 @@
               </div>
             </main>
             <nav class="tab-bar">
-              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
-              <button class="tab-item" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span>Продукты</button>
-              <button class="tab-item active" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span>Аналитика</button>
-              <button class="tab-item" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span>Баланс</button>
-              <button class="tab-item" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span>Настройки</button>
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.comp.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span><span data-i18n="tab.comp.products">Продукты</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span><span data-i18n="tab.comp.analytics">Аналитика</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.comp.balance">Баланс</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.comp.settings">Настройки</span></button>
             </nav>
           </div>
 
@@ -387,11 +397,11 @@
               </div>
             </main>
             <nav class="tab-bar">
-              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span>Главная</button>
-              <button class="tab-item" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span>Продукты</button>
-              <button class="tab-item" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span>Аналитика</button>
-              <button class="tab-item" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span>Баланс</button>
-              <button class="tab-item active" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span>Настройки</button>
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.comp.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-products','tab-products')"><span class="tab-icon"><i data-lucide="package"></i></span><span data-i18n="tab.comp.products">Продукты</span></button>
+              <button class="tab-item" onclick="switchTab('screen-analytics','tab-analytics')"><span class="tab-icon"><i data-lucide="bar-chart-3"></i></span><span data-i18n="tab.comp.analytics">Аналитика</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.comp.balance">Баланс</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-settings','tab-settings')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.comp.settings">Настройки</span></button>
             </nav>
           </div>
 
@@ -404,37 +414,37 @@
   <!-- NAV MAP -->
   <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
     <div class="nav-map" onclick="event.stopPropagation()">
-      <div class="nav-map-header"><div class="nav-map-title"><i data-lucide="map-pin" style="width:16px;height:16px;vertical-align:-3px"></i> Navigation Map</div><button class="nav-map-close" onclick="closeNavMap()">&times;</button></div>
+      <div class="nav-map-header"><div class="nav-map-title"><i data-lucide="map-pin" style="width:16px;height:16px;vertical-align:-3px"></i> <span data-i18n="nav.map.title">Карта навигации</span></div><button class="nav-map-close" onclick="closeNavMap()">&times;</button></div>
       <div class="nav-map-body">
         <div class="nav-map-stats">
-          <div class="nav-map-stat"><div class="nav-map-stat-value">5</div><div class="nav-map-stat-label">экранов</div></div>
-          <div class="nav-map-stat"><div class="nav-map-stat-value">1</div><div class="nav-map-stat-label">полных путей</div></div>
-          <div class="nav-map-stat"><div class="nav-map-stat-value">18</div><div class="nav-map-stat-label">финальных точек</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">5</div><div class="nav-map-stat-label" data-i18n="nav.map.screens">экранов</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">1</div><div class="nav-map-stat-label" data-i18n="nav.map.paths">полных путей</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">18</div><div class="nav-map-stat-label" data-i18n="nav.map.endpoints">финальных точек</div></div>
         </div>
         <div class="nav-map-legend">
-          <div class="nav-map-legend-item"><span class="legend-dot green"></span> Экран</div>
-          <div class="nav-map-legend-item"><span class="legend-dot yellow"></span> Табы</div>
-          <div class="nav-map-legend-item"><span class="legend-dot red"></span> Тупик</div>
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> <span data-i18n="nav.legend.screen">Экран</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot yellow"></span> <span data-i18n="nav.legend.tab">Табы</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> <span data-i18n="nav.legend.endpoint">Тупик</span></div>
         </div>
         <div class="nav-map-tree">
           <div class="nav-map-section">
-            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">TABS <span class="section-count">(5)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info"><span data-i18n="nav.section.tabs">TABS</span> <span class="section-count">(5)</span></span><span class="section-arrow">&#x25BC;</span></div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Главная','screen-dashboard')"><span class="nav-map-item-icon"><i data-lucide="home" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Dashboard</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Продукты','screen-products')"><span class="nav-map-item-icon"><i data-lucide="package" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Products</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Аналитика','screen-analytics')"><span class="nav-map-item-icon"><i data-lucide="bar-chart-3" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Analytics</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Баланс','screen-settings')"><span class="nav-map-item-icon"><i data-lucide="wallet" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Balance / Settings</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Настройки','screen-settings')"><span class="nav-map-item-icon"><i data-lucide="settings" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Settings</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Главная','screen-dashboard')"><span class="nav-map-item-icon"><i data-lucide="home" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.comp.dashboard">Dashboard</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Продукты','screen-products')"><span class="nav-map-item-icon"><i data-lucide="package" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.comp.products">Products</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Аналитика','screen-analytics')"><span class="nav-map-item-icon"><i data-lucide="bar-chart-3" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.comp.analytics">Analytics</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Баланс','screen-settings')"><span class="nav-map-item-icon"><i data-lucide="wallet" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.comp.balance">Balance / Settings</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item tab-item" onclick="navMapTab('Настройки','screen-settings')"><span class="nav-map-item-icon"><i data-lucide="settings" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.comp.settings">Settings</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div></div>
             </div>
           </div>
           <div class="nav-map-section">
             <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">PRODUCTS <span class="section-count">(1)</span></span><span class="section-arrow">&#x25BC;</span></div>
             <div class="nav-map-section-content">
-              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-product-edit')"><span class="nav-map-item-icon"><i data-lucide="pencil" style="width:14px;height:14px"></i></span><span class="nav-map-item-name">Product Edit</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
+              <div class="nav-map-level" data-level="0"><div class="nav-map-item screen-item" onclick="navMapGo('screen-product-edit')"><span class="nav-map-item-icon"><i data-lucide="pencil" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.comp.product_edit">Product Edit</span><span class="level-badge">L1</span><span class="status-dot green"></span></div></div>
             </div>
           </div>
           <div class="nav-map-section">
-            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info">ENDPOINTS <span class="section-count">(18)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info"><span data-i18n="nav.section.endpoints">ENDPOINTS</span> <span class="section-count">(18)</span></span><span class="section-arrow">&#x25BC;</span></div>
             <div class="nav-map-section-content">
               <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали выручки','screen-dashboard')"><span class="nav-map-item-name"><i data-lucide="trending-up" style="width:12px;height:12px;vertical-align:-2px"></i> Детали выручки</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
               <div class="nav-map-level" data-level="0"><div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали транзакции','screen-dashboard')"><span class="nav-map-item-name"><i data-lucide="arrow-down-circle" style="width:12px;height:12px;vertical-align:-2px"></i> Детали транзакции</span><span class="level-badge end">END</span><span class="status-dot red"></span></div></div>
@@ -462,6 +472,8 @@
   </div>
 
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/i18n.js"></script>
   <script src="../js/shell.js"></script>
   <script src="../js/navigation.js"></script>
   <script>/* HANDLERS */ if(typeof lucide!=='undefined') lucide.createIcons();</script>
