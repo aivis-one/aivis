@@ -69,12 +69,12 @@ def build_init_data(
     if auth_date is None:
         auth_date = int(time.time())
 
-    unique_id = next(_init_data_counter)
+    query_id = str(next(_init_data_counter))
 
     params = {
         "user": json.dumps(user_data, separators=(",", ":")),
         "auth_date": str(auth_date),
-        "query_id": f"test_qid_{unique_id}_{auth_date}",
+        "query_id": query_id,
     }
 
     data_check_string = "\n".join(
@@ -82,10 +82,10 @@ def build_init_data(
     )
 
     secret_key = hmac.new(
-        b"WebAppData", bot_token.encode(), hashlib.sha256
+        b"WebAppData", bot_token.encode(), hashlib.sha256,
     ).digest()
     computed_hash = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256
+        secret_key, data_check_string.encode(), hashlib.sha256,
     ).hexdigest()
 
     params["hash"] = computed_hash
@@ -95,36 +95,56 @@ def build_init_data(
 async def register_user(
     client: AsyncClient,
     email: str = "test@example.com",
-    password: str = "TestPass123!",
+    password: str = "testpass123",
 ) -> dict:
-    """Register a user via email and return the response JSON."""
+    """Register a user via POST /api/v1/auth/email/register."""
     resp = await client.post(
         "/api/v1/auth/email/register",
         json={"email": email, "password": password},
     )
-    assert resp.status_code == 201, f"Register failed: {resp.text}"
+    assert resp.status_code == 201, f"Register failed: {resp.status_code} {resp.text}"
     return resp.json()
 
 
 async def login_user(
     client: AsyncClient,
     email: str = "test@example.com",
-    password: str = "TestPass123!",
+    password: str = "testpass123",
 ) -> dict:
-    """Login a user via email and return the response JSON."""
+    """Login a user via POST /api/v1/auth/email/login."""
     resp = await client.post(
         "/api/v1/auth/email/login",
         json={"email": email, "password": password},
     )
-    assert resp.status_code == 200, f"Login failed: {resp.text}"
+    assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text}"
+    return resp.json()
+
+
+async def login_telegram(
+    client: AsyncClient,
+    telegram_id: int,
+    first_name: str = "Test",
+    username: str | None = None,
+) -> dict:
+    """Login via POST /api/v1/auth/telegram."""
+    user_data = {"id": telegram_id, "first_name": first_name}
+    if username:
+        user_data["username"] = username
+
+    init_data = build_init_data(user_data)
+    resp = await client.post(
+        "/api/v1/auth/telegram",
+        json={"init_data": init_data},
+    )
+    assert resp.status_code == 200, f"Telegram login failed: {resp.status_code} {resp.text}"
     return resp.json()
 
 
 async def create_staff_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    email: str = "staff@example.com",
-    password: str = "TestPass123!",
+    email: str,
+    password: str = "testpass123",
 ) -> tuple[dict, str]:
     """Register a user, promote to staff, create StaffProfile.
 
@@ -159,7 +179,7 @@ async def create_admin_user(
     client: AsyncClient,
     db_session: AsyncSession,
     email: str = "admin@example.com",
-    password: str = "TestPass123!",
+    password: str = "testpass123",
 ) -> tuple[dict, str]:
     """Register a user, promote to staff, create StaffProfile with full permissions.
 
