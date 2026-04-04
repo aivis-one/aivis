@@ -1,0 +1,510 @@
+version: "1.0.0"
+generated_at: "2026-04-05T01:30:00Z"
+git_commit: "8acf856"
+
+backend:
+  models:
+    - name: User
+      table: users
+      file: backend/app/modules/users/models.py
+      columns:
+        - {name: id, type: UUID, nullable: false}
+        - {name: role, type: "String(20)", nullable: false, default: investor}
+        - {name: is_active, type: Boolean, nullable: false, default: true}
+        - {name: onboarding_step, type: "String(30)", nullable: false, default: registered}
+        - {name: kyc_status, type: "String(20)", nullable: false, default: not_started}
+        - {name: credentials, type: JSONB, nullable: false}
+        - {name: profile, type: JSONB, nullable: false}
+        - {name: language, type: "String(10)", nullable: false, default: en}
+        - {name: created_at, type: DateTime, nullable: false}
+        - {name: updated_at, type: DateTime, nullable: true}
+    - name: ActiveLedger
+      table: active_ledger
+      file: backend/app/modules/ledgers/models.py
+      columns:
+        - {name: id, type: UUID, nullable: false}
+        - {name: user_id, type: UUID, nullable: false, fk: users.id}
+        - {name: amount_cents, type: BigInteger, nullable: false}
+        - {name: status, type: "String(20)", nullable: false}
+        - {name: frozen_until, type: DateTime, nullable: true}
+        - {name: origin_payment_id, type: UUID, nullable: true}
+        - {name: reason, type: "String(500)", nullable: false}
+        - {name: created_at, type: DateTime, nullable: false}
+    - name: PassiveLedger
+      table: passive_ledger
+      file: backend/app/modules/ledgers/models.py
+      columns:
+        - {name: id, type: UUID, nullable: false}
+        - {name: user_id, type: UUID, nullable: false, fk: users.id}
+        - {name: amount_cents, type: BigInteger, nullable: false}
+        - {name: status, type: "String(20)", nullable: false}
+        - {name: frozen_until, type: DateTime, nullable: true}
+        - {name: origin_payment_id, type: UUID, nullable: true}
+        - {name: reason, type: "String(500)", nullable: false}
+        - {name: created_at, type: DateTime, nullable: false}
+    - name: StaffProfile
+      table: staff_profiles
+      file: backend/app/modules/staff/models.py
+      columns:
+        - {name: id, type: UUID, nullable: false}
+        - {name: user_id, type: UUID, nullable: false, fk: users.id}
+        - {name: permissions, type: JSONB, nullable: false}
+        - {name: is_active, type: Boolean, nullable: false, default: true}
+        - {name: created_at, type: DateTime, nullable: false}
+    - name: AvatarSession
+      table: avatar_sessions
+      file: backend/app/modules/staff/models.py
+      columns:
+        - {name: id, type: UUID, nullable: false}
+        - {name: staff_id, type: UUID, nullable: false, fk: users.id}
+        - {name: target_user_id, type: UUID, nullable: false, fk: users.id}
+        - {name: status, type: "String(10)", nullable: false, default: active}
+        - {name: ip_address, type: "String(45)", nullable: false}
+        - {name: created_at, type: DateTime, nullable: false}
+        - {name: ended_at, type: DateTime, nullable: true}
+    - name: AuditLog
+      table: audit_log
+      file: backend/app/core/audit.py
+      columns:
+        - {name: id, type: UUID, nullable: false}
+        - {name: created_at, type: DateTime, nullable: false}
+        - {name: event, type: "String(100)", nullable: false}
+        - {name: actor_id, type: UUID, nullable: true}
+        - {name: actor_type, type: "String(20)", nullable: false}
+        - {name: target_type, type: "String(50)", nullable: false}
+        - {name: target_id, type: UUID, nullable: false}
+        - {name: data, type: JSONB, nullable: false}
+        - {name: performed_by, type: UUID, nullable: true}
+        - {name: on_behalf_of, type: UUID, nullable: true}
+        - {name: ip_address, type: "String(45)", nullable: true}
+        - {name: user_agent, type: "String(500)", nullable: true}
+        - {name: trace_id, type: "String(36)", nullable: true}
+
+  endpoints:
+    system:
+      - {method: GET, path: /, function: root}
+      - {method: GET, path: /health, function: health}
+      - {method: GET, path: /ready, function: ready}
+    implemented:
+      - {method: POST, path: /api/v1/auth/email/register, module: auth, function: auth_email_register, sprint: "1.1"}
+      - {method: POST, path: /api/v1/auth/email/login, module: auth, function: auth_email_login, sprint: "1.1"}
+      - {method: POST, path: /api/v1/auth/telegram, module: auth, function: auth_telegram, sprint: "1.2"}
+      - {method: POST, path: /api/v1/auth/logout, module: auth, function: auth_logout, sprint: "1.1"}
+      - {method: POST, path: /api/v1/auth/logout-all, module: auth, function: auth_logout_all, sprint: "1.1"}
+    planned:
+      - {method: GET, path: /api/v1/users/me, sprint: "1.3"}
+      - {method: PATCH, path: /api/v1/users/me, sprint: "1.3"}
+      - {method: POST, path: /api/v1/kyc/submit, sprint: "2.1"}
+      - {method: GET, path: /api/v1/kyc/status, sprint: "2.1"}
+      - {method: POST, path: /api/v1/kyc/webhook, sprint: "2.1"}
+      - {method: GET, path: /api/v1/documents, sprint: "2.2"}
+      - {method: GET, path: /api/v1/documents/{id}, sprint: "2.2"}
+      - {method: POST, path: /api/v1/documents/{id}/sign, sprint: "2.2"}
+      - {method: POST, path: /api/v1/staff/documents, sprint: "2.2"}
+      - {method: PUT, path: /api/v1/staff/documents/{id}, sprint: "2.2"}
+      - {method: DELETE, path: /api/v1/staff/documents/{id}, sprint: "2.2"}
+      - {method: POST, path: /api/v1/staff/users, sprint: "3.1"}
+      - {method: PATCH, path: /api/v1/staff/users/{id}/permissions, sprint: "3.1"}
+      - {method: GET, path: /api/v1/staff/users, sprint: "3.3"}
+      - {method: GET, path: /api/v1/staff/users/{id}, sprint: "3.3"}
+      - {method: PATCH, path: /api/v1/staff/users/{id}/block, sprint: "3.3"}
+      - {method: GET, path: /api/v1/staff/dashboard/stats, sprint: "3.3"}
+      - {method: GET, path: /api/v1/staff/kyc/queue, sprint: "3.3"}
+      - {method: POST, path: /api/v1/staff/kyc/{id}/approve, sprint: "3.3"}
+      - {method: POST, path: /api/v1/staff/kyc/{id}/reject, sprint: "3.3"}
+      - {method: POST, path: /api/v1/staff/avatar/start, sprint: "3.2"}
+      - {method: POST, path: /api/v1/staff/avatar/end, sprint: "3.2"}
+      - {method: GET, path: /api/v1/staff/avatar/active, sprint: "3.2"}
+      - {method: GET, path: /api/v1/companies, sprint: "4.1"}
+      - {method: GET, path: /api/v1/companies/{id}, sprint: "4.1"}
+      - {method: POST, path: /api/v1/staff/companies, sprint: "4.1"}
+      - {method: PATCH, path: /api/v1/staff/companies/{id}, sprint: "4.1"}
+      - {method: GET, path: /api/v1/products, sprint: "4.2"}
+      - {method: GET, path: /api/v1/products/{id}, sprint: "4.2"}
+      - {method: POST, path: /api/v1/staff/products, sprint: "4.2"}
+      - {method: PATCH, path: /api/v1/staff/products/{id}, sprint: "4.2"}
+      - {method: GET, path: /api/v1/payments/crypto-address/{network}, sprint: "5.2"}
+      - {method: GET, path: /api/v1/payments/history, sprint: "5.2"}
+      - {method: POST, path: /api/v1/products/{id}/purchase, sprint: "6.1"}
+      - {method: POST, path: /api/v1/products/{id}/installment, sprint: "6.2"}
+      - {method: GET, path: /api/v1/installments/me, sprint: "6.2"}
+      - {method: GET, path: /api/v1/installments/{id}, sprint: "6.2"}
+      - {method: POST, path: /api/v1/withdrawals, sprint: "6.3"}
+      - {method: GET, path: /api/v1/withdrawals/me, sprint: "6.3"}
+      - {method: POST, path: /api/v1/staff/withdrawals/{id}/confirm, sprint: "6.3"}
+      - {method: POST, path: /api/v1/staff/withdrawals/{id}/reject, sprint: "6.3"}
+      - {method: GET, path: /api/v1/transactions, sprint: "6.4"}
+      - {method: GET, path: /api/v1/transactions/{id}, sprint: "6.4"}
+      - {method: POST, path: /api/v1/agent-applications, sprint: "7.1"}
+      - {method: GET, path: /api/v1/agent-applications/me, sprint: "7.1"}
+      - {method: GET, path: /api/v1/staff/agent-applications, sprint: "7.1"}
+      - {method: POST, path: /api/v1/staff/agent-applications/{id}/approve, sprint: "7.1"}
+      - {method: POST, path: /api/v1/staff/agent-applications/{id}/reject, sprint: "7.1"}
+      - {method: POST, path: /api/v1/referrals/links, sprint: "7.2"}
+      - {method: GET, path: /api/v1/referrals/links/me, sprint: "7.2"}
+      - {method: GET, path: /api/v1/referrals/stats/me, sprint: "7.2"}
+      - {method: GET, path: /api/v1/agent/leaderboard, sprint: "7.3"}
+      - {method: GET, path: /api/v1/agent/commissions/me, sprint: "7.3"}
+      - {method: GET, path: /api/v1/notifications, sprint: "8.3"}
+      - {method: GET, path: /api/v1/notifications/unread-count, sprint: "8.3"}
+      - {method: POST, path: /api/v1/notifications/{delivery_id}/read, sprint: "8.3"}
+      - {method: POST, path: /api/v1/notifications/read-all, sprint: "8.3"}
+      - {method: GET, path: /api/v1/posts, sprint: "9.1"}
+      - {method: GET, path: /api/v1/posts/{id}, sprint: "9.1"}
+      - {method: GET, path: /api/v1/events, sprint: "9.1"}
+      - {method: GET, path: /api/v1/events/upcoming, sprint: "9.1"}
+      - {method: GET, path: /api/v1/dashboard/summary, sprint: "9.2"}
+      - {method: GET, path: /api/v1/portfolio/me, sprint: "9.2"}
+      - {method: GET, path: /api/v1/portfolio/me/company/{id}, sprint: "9.2"}
+      - {method: PATCH, path: /api/v1/staff/companies/{id}/price, sprint: "4.1"}
+      - {method: POST, path: /api/v1/staff/companies/{id}/roadmap, sprint: "4.1"}
+      - {method: PATCH, path: /api/v1/staff/companies/{id}/roadmap/{item_id}, sprint: "4.1"}
+      - {method: DELETE, path: /api/v1/staff/companies/{id}/roadmap/{item_id}, sprint: "4.1"}
+      - {method: PATCH, path: /api/v1/staff/companies/{id}/roadmap/reorder, sprint: "4.1"}
+      - {method: PATCH, path: /api/v1/staff/products/{id}/status, sprint: "4.2"}
+      - {method: POST, path: /api/v1/staff/products/{id}/installments, sprint: "4.2"}
+      - {method: PATCH, path: /api/v1/staff/products/{id}/installments/{inst_id}, sprint: "4.2"}
+      - {method: DELETE, path: /api/v1/staff/products/{id}/installments/{inst_id}, sprint: "4.2"}
+      - {method: POST, path: /api/v1/payments/crypto/webhook, sprint: "5.2"}
+      - {method: POST, path: /api/v1/staff/payments/{id}/reverse, sprint: "5.3"}
+      - {method: GET, path: /api/v1/staff/consistency, sprint: "6.4"}
+      - {method: POST, path: /api/v1/posts/{id}/dismiss, sprint: "9.1"}
+      - {method: POST, path: /api/v1/staff/posts, sprint: "9.1"}
+      - {method: PUT, path: /api/v1/staff/posts/{id}, sprint: "9.1"}
+      - {method: DELETE, path: /api/v1/staff/posts/{id}, sprint: "9.1"}
+      - {method: POST, path: /api/v1/staff/events, sprint: "9.1"}
+      - {method: PUT, path: /api/v1/staff/events/{id}, sprint: "9.1"}
+      - {method: DELETE, path: /api/v1/staff/events/{id}, sprint: "9.1"}
+      - {method: POST, path: /api/v1/staff/notifications/templates/reload, sprint: "8.2"}
+      - {method: GET, path: /api/v1/transactions/export, sprint: "10.1"}
+
+  services:
+    - name: auth
+      file: backend/app/modules/auth/service.py
+      functions: [hash_password, verify_password, register_email, login_email, upsert_telegram_user, create_session, get_session, delete_session, delete_all_sessions]
+      uses_models: [User]
+
+frontend:
+  mockups:
+    - id: auth-flow
+      file: mockups/auth-flow/mockup.html
+      role: auth
+      screens:
+        - id: screen-login
+          navigation_targets: [screen-register]
+          required_endpoints:
+            - {method: POST, path: /api/v1/auth/email/login, status: implemented, sprint: "1.1"}
+            - {method: POST, path: /api/v1/auth/telegram, status: implemented, sprint: "1.2"}
+        - id: screen-register
+          navigation_targets: [screen-login]
+          required_endpoints:
+            - {method: POST, path: /api/v1/auth/email/register, status: implemented, sprint: "1.1"}
+        - id: screen-verify
+          navigation_targets: []
+          required_endpoints:
+            - {method: POST, path: /api/v1/auth/verify-email, status: gap}
+        - id: screen-profile
+          navigation_targets: [screen-role]
+          required_endpoints:
+            - {method: GET, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+            - {method: PATCH, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+        - id: screen-role
+          navigation_targets: [screen-kyc]
+          required_endpoints:
+            - {method: PATCH, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+        - id: screen-kyc
+          navigation_targets: [screen-docs]
+          required_endpoints:
+            - {method: GET, path: /api/v1/kyc/status, status: planned, sprint: "2.1"}
+            - {method: POST, path: /api/v1/kyc/submit, status: planned, sprint: "2.1"}
+        - id: screen-docs
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/documents, status: planned, sprint: "2.2"}
+            - {method: POST, path: /api/v1/documents/{id}/sign, status: planned, sprint: "2.2"}
+
+    - id: investor-shell
+      file: mockups/investor-shell/mockup.html
+      role: investor
+      screens:
+        - id: screen-dashboard
+          navigation_targets: [screen-portfolio, screen-market, screen-balance, screen-settings]
+          required_endpoints:
+            - {method: GET, path: /api/v1/dashboard/summary, status: planned, sprint: "9.2"}
+            - {method: GET, path: /api/v1/portfolio/me, status: planned, sprint: "9.2"}
+            - {method: GET, path: /api/v1/transactions, status: planned, sprint: "6.4"}
+            - {method: GET, path: /api/v1/posts, status: planned, sprint: "9.1"}
+        - id: screen-portfolio
+          navigation_targets: [screen-market]
+          required_endpoints:
+            - {method: GET, path: /api/v1/portfolio/me, status: planned, sprint: "9.2"}
+        - id: screen-market
+          navigation_targets: [screen-product]
+          required_endpoints:
+            - {method: GET, path: /api/v1/products, status: planned, sprint: "4.2"}
+        - id: screen-product
+          navigation_targets: [screen-market, screen-purchase, screen-installment]
+          required_endpoints:
+            - {method: GET, path: /api/v1/products/{id}, status: planned, sprint: "4.2"}
+        - id: screen-purchase
+          navigation_targets: []
+          required_endpoints:
+            - {method: POST, path: /api/v1/products/{id}/purchase, status: planned, sprint: "6.1"}
+        - id: screen-installment
+          navigation_targets: []
+          required_endpoints:
+            - {method: POST, path: /api/v1/products/{id}/installment, status: planned, sprint: "6.2"}
+            - {method: GET, path: /api/v1/installments/me, status: planned, sprint: "6.2"}
+        - id: screen-balance
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/transactions, status: planned, sprint: "6.4"}
+            - {method: GET, path: /api/v1/payments/crypto-address/{network}, status: planned, sprint: "5.2"}
+        - id: screen-docs
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/documents, status: planned, sprint: "2.2"}
+        - id: screen-settings
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+            - {method: PATCH, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+
+    - id: agent-shell
+      file: mockups/agent-shell/mockup.html
+      role: agent
+      screens:
+        - id: screen-dashboard
+          navigation_targets: [screen-hub, screen-commissions, screen-passive, screen-settings]
+          required_endpoints:
+            - {method: GET, path: /api/v1/dashboard/summary, status: planned, sprint: "9.2"}
+            - {method: GET, path: /api/v1/agent/commissions/me, status: planned, sprint: "7.3"}
+        - id: screen-hub
+          navigation_targets: [screen-referrals, screen-commissions, screen-passive]
+          required_endpoints:
+            - {method: GET, path: /api/v1/referrals/stats/me, status: planned, sprint: "7.2"}
+            - {method: GET, path: /api/v1/agent/leaderboard, status: planned, sprint: "7.3"}
+        - id: screen-referrals
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/referrals/links/me, status: planned, sprint: "7.2"}
+            - {method: POST, path: /api/v1/referrals/links, status: planned, sprint: "7.2"}
+        - id: screen-commissions
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/agent/commissions/me, status: planned, sprint: "7.3"}
+        - id: screen-leaderboard
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/agent/leaderboard, status: planned, sprint: "7.3"}
+        - id: screen-passive
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/transactions, status: planned, sprint: "6.4"}
+            - {method: POST, path: /api/v1/withdrawals, status: planned, sprint: "6.3"}
+        - id: screen-settings
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+            - {method: PATCH, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+
+    - id: company-shell
+      file: mockups/company-shell/mockup.html
+      role: company
+      screens:
+        - id: screen-dashboard
+          navigation_targets: [screen-products, screen-analytics, screen-settings]
+          required_endpoints:
+            - {method: GET, path: /api/v1/dashboard/summary, status: planned, sprint: "9.2"}
+            - {method: GET, path: /api/v1/transactions, status: planned, sprint: "6.4"}
+        - id: screen-products
+          navigation_targets: [screen-product-edit]
+          required_endpoints:
+            - {method: GET, path: /api/v1/products, status: planned, sprint: "4.2"}
+        - id: screen-product-edit
+          navigation_targets: [screen-products]
+          required_endpoints:
+            - {method: GET, path: /api/v1/products/{id}, status: planned, sprint: "4.2"}
+            - {method: PATCH, path: /api/v1/staff/products/{id}, status: planned, sprint: "4.2"}
+        - id: screen-analytics
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/portfolio/me/company/{id}, status: planned, sprint: "9.2"}
+            - {method: GET, path: /api/v1/agent/leaderboard, status: planned, sprint: "7.3"}
+        - id: screen-settings
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/companies/{id}, status: planned, sprint: "4.1"}
+            - {method: PATCH, path: /api/v1/staff/companies/{id}, status: planned, sprint: "4.1"}
+
+    - id: staff-shell
+      file: mockups/staff-shell/mockup.html
+      role: staff
+      screens:
+        - id: screen-dashboard
+          navigation_targets: [screen-users, screen-kyc, screen-payments, screen-more, screen-avatar]
+          required_endpoints:
+            - {method: GET, path: /api/v1/staff/dashboard/stats, status: planned, sprint: "3.3"}
+        - id: screen-users
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/staff/users, status: planned, sprint: "3.3"}
+        - id: screen-kyc
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/staff/kyc/queue, status: planned, sprint: "3.3"}
+            - {method: POST, path: /api/v1/staff/kyc/{id}/approve, status: planned, sprint: "3.3"}
+            - {method: POST, path: /api/v1/staff/kyc/{id}/reject, status: planned, sprint: "3.3"}
+        - id: screen-payments
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/payments/history, status: planned, sprint: "5.2"}
+            - {method: POST, path: /api/v1/staff/withdrawals/{id}/confirm, status: planned, sprint: "6.3"}
+            - {method: POST, path: /api/v1/staff/withdrawals/{id}/reject, status: planned, sprint: "6.3"}
+        - id: screen-more
+          navigation_targets: [screen-agent-apps, screen-avatar]
+          required_endpoints:
+            - {method: GET, path: /api/v1/users/me, status: planned, sprint: "1.3"}
+        - id: screen-agent-apps
+          navigation_targets: []
+          required_endpoints:
+            - {method: GET, path: /api/v1/staff/agent-applications, status: planned, sprint: "7.1"}
+            - {method: POST, path: /api/v1/staff/agent-applications/{id}/approve, status: planned, sprint: "7.1"}
+            - {method: POST, path: /api/v1/staff/agent-applications/{id}/reject, status: planned, sprint: "7.1"}
+        - id: screen-avatar
+          navigation_targets: []
+          required_endpoints:
+            - {method: POST, path: /api/v1/staff/avatar/start, status: planned, sprint: "3.2"}
+            - {method: POST, path: /api/v1/staff/avatar/end, status: planned, sprint: "3.2"}
+
+cross_reference:
+  dead_ends:
+    frontend_orphans:
+      - auth/screen-verify
+      - auth/screen-profile
+      - auth/screen-role
+      - auth/screen-kyc
+      - auth/screen-docs
+      - investor/screen-dashboard
+      - investor/screen-portfolio
+      - investor/screen-market
+      - investor/screen-product
+      - investor/screen-purchase
+      - investor/screen-installment
+      - investor/screen-balance
+      - investor/screen-docs
+      - investor/screen-settings
+      - agent/screen-dashboard
+      - agent/screen-hub
+      - agent/screen-referrals
+      - agent/screen-commissions
+      - agent/screen-leaderboard
+      - agent/screen-passive
+      - agent/screen-settings
+      - company/screen-dashboard
+      - company/screen-products
+      - company/screen-product-edit
+      - company/screen-analytics
+      - company/screen-settings
+      - staff/screen-dashboard
+      - staff/screen-users
+      - staff/screen-kyc
+      - staff/screen-payments
+      - staff/screen-more
+      - staff/screen-agent-apps
+      - staff/screen-avatar
+    backend_orphans: []
+    gap_endpoints:
+      - {method: POST, path: /api/v1/auth/verify-email, needed_by: screen-verify}
+  coverage:
+    total_endpoints: {implemented: 5, in_progress: 0, planned: 85, gap: 1}
+    percentage: 5
+    by_role:
+      auth: {screens: 7, avg_score: 29}
+      investor: {screens: 9, avg_score: 0}
+      agent: {screens: 7, avg_score: 0}
+      company: {screens: 5, avg_score: 0}
+      staff: {screens: 7, avg_score: 0}
+  prod_readiness:
+    - {screen: screen-login, role: auth, score: 100, status: ready}
+    - {screen: screen-register, role: auth, score: 100, status: ready}
+    - {screen: screen-verify, role: auth, score: 0, status: blocked, blocked_by: gap}
+    - {screen: screen-profile, role: auth, score: 0, status: blocked, blocked_by: "1.3"}
+    - {screen: screen-role, role: auth, score: 0, status: blocked, blocked_by: "1.3"}
+    - {screen: screen-kyc, role: auth, score: 0, status: blocked, blocked_by: "2.1"}
+    - {screen: screen-docs, role: auth, score: 0, status: blocked, blocked_by: "2.2"}
+    - {screen: screen-dashboard, role: investor, score: 0, status: blocked, blocked_by: "6.4"}
+    - {screen: screen-portfolio, role: investor, score: 0, status: blocked, blocked_by: "9.2"}
+    - {screen: screen-market, role: investor, score: 0, status: blocked, blocked_by: "4.2"}
+    - {screen: screen-product, role: investor, score: 0, status: blocked, blocked_by: "4.2"}
+    - {screen: screen-purchase, role: investor, score: 0, status: blocked, blocked_by: "6.1"}
+    - {screen: screen-installment, role: investor, score: 0, status: blocked, blocked_by: "6.2"}
+    - {screen: screen-balance, role: investor, score: 0, status: blocked, blocked_by: "5.2"}
+    - {screen: screen-docs-inv, role: investor, score: 0, status: blocked, blocked_by: "2.2"}
+    - {screen: screen-settings, role: investor, score: 0, status: blocked, blocked_by: "1.3"}
+    - {screen: screen-dashboard, role: agent, score: 0, status: blocked, blocked_by: "7.3"}
+    - {screen: screen-hub, role: agent, score: 0, status: blocked, blocked_by: "7.2"}
+    - {screen: screen-referrals, role: agent, score: 0, status: blocked, blocked_by: "7.2"}
+    - {screen: screen-commissions, role: agent, score: 0, status: blocked, blocked_by: "7.3"}
+    - {screen: screen-leaderboard, role: agent, score: 0, status: blocked, blocked_by: "7.3"}
+    - {screen: screen-passive, role: agent, score: 0, status: blocked, blocked_by: "6.3"}
+    - {screen: screen-settings, role: agent, score: 0, status: blocked, blocked_by: "1.3"}
+    - {screen: screen-dashboard, role: company, score: 0, status: blocked, blocked_by: "6.4"}
+    - {screen: screen-products, role: company, score: 0, status: blocked, blocked_by: "4.2"}
+    - {screen: screen-product-edit, role: company, score: 0, status: blocked, blocked_by: "4.2"}
+    - {screen: screen-analytics, role: company, score: 0, status: blocked, blocked_by: "7.3"}
+    - {screen: screen-settings, role: company, score: 0, status: blocked, blocked_by: "4.1"}
+    - {screen: screen-dashboard, role: staff, score: 0, status: blocked, blocked_by: "3.3"}
+    - {screen: screen-users, role: staff, score: 0, status: blocked, blocked_by: "3.3"}
+    - {screen: screen-kyc, role: staff, score: 0, status: blocked, blocked_by: "3.3"}
+    - {screen: screen-payments, role: staff, score: 0, status: blocked, blocked_by: "5.2"}
+    - {screen: screen-more, role: staff, score: 0, status: blocked, blocked_by: "1.3"}
+    - {screen: screen-agent-apps, role: staff, score: 0, status: blocked, blocked_by: "7.1"}
+    - {screen: screen-avatar, role: staff, score: 0, status: blocked, blocked_by: "3.2"}
+
+flows:
+  - id: inv.onboard
+    name: "Investor: Register -> Dashboard"
+    steps:
+      - {screen: screen-register, endpoint: "POST /api/v1/auth/email/register", status: implemented}
+      - {screen: screen-verify, endpoint: "POST /api/v1/auth/verify-email", status: gap}
+      - {screen: screen-profile, endpoint: "PATCH /api/v1/users/me", status: planned}
+      - {screen: screen-role, endpoint: "PATCH /api/v1/users/me", status: planned}
+      - {screen: screen-kyc, endpoint: "POST /api/v1/kyc/submit", status: planned}
+      - {screen: screen-docs, endpoint: "POST /api/v1/documents/{id}/sign", status: planned}
+      - {screen: screen-dashboard, endpoint: "GET /api/v1/dashboard/summary", status: planned}
+    score: 14
+
+  - id: inv.purchase
+    name: "Investor: Browse -> Buy"
+    steps:
+      - {screen: screen-dashboard, endpoint: "GET /api/v1/dashboard/summary", status: planned}
+      - {screen: screen-market, endpoint: "GET /api/v1/products", status: planned}
+      - {screen: screen-product, endpoint: "GET /api/v1/products/{id}", status: planned}
+      - {screen: screen-purchase, endpoint: "POST /api/v1/products/{id}/purchase", status: planned}
+    score: 0
+
+  - id: agent.earn
+    name: "Agent: Dashboard -> Withdraw"
+    steps:
+      - {screen: screen-dashboard, endpoint: "GET /api/v1/dashboard/summary", status: planned}
+      - {screen: screen-hub, endpoint: "GET /api/v1/referrals/stats/me", status: planned}
+      - {screen: screen-commissions, endpoint: "GET /api/v1/agent/commissions/me", status: planned}
+      - {screen: screen-passive, endpoint: "POST /api/v1/withdrawals", status: planned}
+    score: 0
+
+  - id: staff.kyc
+    name: "Staff: KYC Review"
+    steps:
+      - {screen: screen-dashboard, endpoint: "GET /api/v1/staff/dashboard/stats", status: planned}
+      - {screen: screen-kyc, endpoint: "GET /api/v1/staff/kyc/queue", status: planned}
+      - {screen: screen-kyc, endpoint: "POST /api/v1/staff/kyc/{id}/approve", status: planned}
+    score: 0
+
+  - id: comp.manage
+    name: "Company: Product Management"
+    steps:
+      - {screen: screen-dashboard, endpoint: "GET /api/v1/dashboard/summary", status: planned}
+      - {screen: screen-products, endpoint: "GET /api/v1/products", status: planned}
+      - {screen: screen-product-edit, endpoint: "PATCH /api/v1/staff/products/{id}", status: planned}
+    score: 0
