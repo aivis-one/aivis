@@ -45,8 +45,8 @@ button, input, select, textarea, .checkbox, .doc-checkbox, .toggle-switch { poin
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .icon-box svg { width: 22px; height: 22px; }
-.icon-box.teal { background: var(--tint-primary); color: var(--primary); }
-.icon-box.orange { background: var(--tint-accent); color: var(--accent); }
+.icon-box.teal { background: var(--t-tint-8); color: var(--primary); }
+.icon-box.orange { background: var(--o-tint-15); color: var(--accent); }
 .icon-box.green { background: var(--success-dim); color: var(--success); }
 .icon-box.yellow { background: var(--warning-dim); color: var(--warning); }
 .icon-box.red { background: var(--danger-dim); color: var(--danger); }
