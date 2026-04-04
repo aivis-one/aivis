@@ -157,8 +157,12 @@ async def record_audit(
     if performed_by is None:
         avatar_staff_id = bound.get("avatar_staff_id")
         if avatar_staff_id:
-            performed_by = UUID(avatar_staff_id)
-            on_behalf_of = actor_id
+            try:
+                performed_by = UUID(avatar_staff_id)
+                on_behalf_of = actor_id
+            except (ValueError, TypeError):
+                # Corrupted contextvars -- continue without auto-fill.
+                pass
 
     # Truncate user_agent to prevent disk exhaustion via oversized headers.
     user_agent: str | None = None

@@ -10,7 +10,7 @@
 #   trace_id          -- UUID, from X-Trace-ID header or auto-generated
 #   ip_address        -- real client IP from X-Real-IP (set by Nginx)
 #   user_agent        -- User-Agent header (truncated to USER_AGENT_MAX_LEN)
-#   avatar_session_id -- set in Sprint 3.2 when avatar mode is active
+#   avatar_session_id -- bound by auth dependency when avatar session is active
 #
 # IP ADDRESS STRATEGY:
 #   Nginx sets X-Real-IP to $remote_addr (the actual connecting IP).
@@ -98,9 +98,9 @@ class TraceIdMiddleware:
         )
 
         # --- avatar_session_id (Sprint 3.2) ---
-        # TraceIdMiddleware reads avatar_session_id from Redis session
-        # and binds it so every log line in avatar mode is annotated automatically.
-        # Implemented in Sprint 3.2 when auth session parsing is available.
+        # Bound by _load_user_from_request() in auth/dependencies.py
+        # when Redis session contains avatar_session_id + avatar_staff_id.
+        # Not done here to avoid Redis call on every request (incl. health).
 
         # --- Inject X-Trace-ID into response headers ---
         async def send_with_trace(message: dict) -> None:  # type: ignore[type-arg]
