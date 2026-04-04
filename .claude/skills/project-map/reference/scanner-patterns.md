@@ -17,19 +17,19 @@ Exact extraction patterns for all three data sources.
 ```
 APIRouter\(prefix="([^"]+)"
 ```
-Example: `APIRouter(prefix="/api/v1/auth")` → `/api/v1/auth`
+Example: `APIRouter(prefix="/api/v1/auth")` -> `/api/v1/auth`
 
 ### Route decorator
 ```
 @router\.(get|post|patch|put|delete)\(\s*"([^"]+)"
 ```
-Example: `@router.post("/email/register")` → method=POST, path=/email/register
+Example: `@router.post("/email/register")` -> method=POST, path=/email/register
 
 ### Full endpoint path
 ```
 full_path = router_prefix + route_path
 ```
-Example: `/api/v1/auth` + `/email/register` → `POST /api/v1/auth/email/register`
+Example: `/api/v1/auth` + `/email/register` -> `POST /api/v1/auth/email/register`
 
 ### Response model
 ```
@@ -279,18 +279,18 @@ Named user journeys for flow scoring:
 
 | Flow ID | Name | Steps (screens) |
 |---------|------|-----------------|
-| `inv.onboard` | Investor Onboarding | login → register → verify → profile → role → kyc → docs → dashboard |
-| `inv.purchase` | Investor Purchase | dashboard → market → product → purchase → (success) → portfolio |
-| `inv.installment` | Investor Installment | product → installment → (success) → balance |
-| `inv.deposit` | Investor Deposit | balance → (deposit crypto) → balance |
-| `agent.onboard` | Agent Onboarding | login → register → verify → profile → role(agent) → kyc → docs → dashboard |
-| `agent.earn` | Agent Earnings Flow | dashboard → hub → commissions → passive → (withdraw) |
-| `agent.refer` | Agent Referral | hub → referrals → (create link) → (share) |
-| `comp.manage` | Company Product Mgmt | dashboard → products → product-edit → (save) → products |
-| `comp.analytics` | Company Analytics | dashboard → analytics → (top agents) |
-| `staff.kyc` | Staff KYC Review | dashboard → kyc → (approve/reject) |
-| `staff.payment` | Staff Payment Review | dashboard → payments → (confirm/reject) |
-| `staff.avatar` | Staff Avatar Mode | more → avatar → (select user) → (impersonate) |
+| `inv.onboard` | Investor Onboarding | login -> register -> verify -> profile -> role -> kyc -> docs -> dashboard |
+| `inv.purchase` | Investor Purchase | dashboard -> market -> product -> purchase -> (success) -> portfolio |
+| `inv.installment` | Investor Installment | product -> installment -> (success) -> balance |
+| `inv.deposit` | Investor Deposit | balance -> (deposit crypto) -> balance |
+| `agent.onboard` | Agent Onboarding | login -> register -> verify -> profile -> role(agent) -> kyc -> docs -> dashboard |
+| `agent.earn` | Agent Earnings Flow | dashboard -> hub -> commissions -> passive -> (withdraw) |
+| `agent.refer` | Agent Referral | hub -> referrals -> (create link) -> (share) |
+| `comp.manage` | Company Product Mgmt | dashboard -> products -> product-edit -> (save) -> products |
+| `comp.analytics` | Company Analytics | dashboard -> analytics -> (top agents) |
+| `staff.kyc` | Staff KYC Review | dashboard -> kyc -> (approve/reject) |
+| `staff.payment` | Staff Payment Review | dashboard -> payments -> (confirm/reject) |
+| `staff.avatar` | Staff Avatar Mode | more -> avatar -> (select user) -> (impersonate) |
 
 ---
 

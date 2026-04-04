@@ -9,7 +9,7 @@ Extract all data from three sources into a unified YAML manifest.
 
 | Creates | `mockups/project-map/manifest.yaml` |
 |---------|--------------------------------------|
-| Phase | P1 — Data extraction |
+| Phase | P1 -- Data extraction |
 
 ---
 
@@ -75,10 +75,10 @@ For each mockup file:
 1. Determine role from directory name (see scanner-patterns.md mapping table)
 2. Extract all `id="screen-*"` screen IDs
 3. For each screen block:
-   - Extract `navigateTo('...')` and `switchTab('...')` → navigation targets
-   - Extract `showToast('...финальная точка...')` → features needing API
+   - Extract `navigateTo('...')` and `switchTab('...')` -> navigation targets
+   - Extract `showToast('...финальная точка...')` -> features needing API
    - Count data entity CSS classes (`.tx-item`, `.stat-card`, etc.)
-   - Detect forms (`.form-group` with submit buttons) → write endpoints
+   - Detect forms (`.form-group` with submit buttons) -> write endpoints
 
 **Output**: List of mockups with role, screens, navigation, data entities, endpoint markers.
 
@@ -97,14 +97,14 @@ Parse:
 ### Step 6: Cross-Reference & Classify
 
 For every endpoint found in spec (Step 5):
-- If found in router scan (Step 1) → `implemented`
-- Elif its domain model exists (Step 2) but no router → `in_progress`
-- Else → `planned`
+- If found in router scan (Step 1) -> `implemented`
+- Elif its domain model exists (Step 2) but no router -> `in_progress`
+- Else -> `planned`
 
 For every screen (Step 4), use the semantic mapping table (scanner-patterns.md §6):
 - Look up required endpoints per screen
 - For each required endpoint, determine its status from above
-- If endpoint not in spec AND not in code → `gap`
+- If endpoint not in spec AND not in code -> `gap`
 
 Detect dead-ends:
 - **Frontend orphans**: screens where ALL required endpoints have status != `implemented`

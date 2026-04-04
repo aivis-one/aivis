@@ -313,10 +313,10 @@ const PM = {
   init() { this.bindEvents(); this.renderActiveTab(); },
 
   bindEvents() {
-    // Tab clicks → switchTab()
-    // Filter clicks → toggleFilter() → re-render
-    // Search input → filterByText() → re-render
-    // Card headers → toggleCard()
+    // Tab clicks -> switchTab()
+    // Filter clicks -> toggleFilter() -> re-render
+    // Search input -> filterByText() -> re-render
+    // Card headers -> toggleCard()
   },
 
   switchTab(tabId) {
@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => PM.init());
 <div class="pm-deadends">
   <div class="pm-deadend-section">
     <h3>Frontend Orphans <span class="pm-count">28</span></h3>
-    <p class="pm-hint">Screens with 0% API backing — need backend implementation</p>
+    <p class="pm-hint">Screens with 0% API backing -- need backend implementation</p>
     <div class="pm-orphan-list">
       <div class="pm-orphan" data-role="investor">
         <span class="pm-orphan-role">INVESTOR</span>

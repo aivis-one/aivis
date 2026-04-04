@@ -9,7 +9,7 @@ Transform manifest.yaml into an interactive single-file HTML visualization.
 
 | Creates | `mockups/project-map/index.html` |
 |---------|----------------------------------|
-| Phase | P2 — Visualization |
+| Phase | P2 -- Visualization |
 
 ---
 
@@ -19,7 +19,7 @@ Transform manifest.yaml into an interactive single-file HTML visualization.
 |-------|-------|
 | `mockups/project-map/manifest.yaml` | Must exist (run P1 scan first) |
 
-If missing → Run `protocols/scan.md` first.
+If missing -> Run `protocols/scan.md` first.
 
 ---
 
@@ -40,13 +40,13 @@ If missing → Run `protocols/scan.md` first.
 Create one Mermaid `graph LR` diagram per role (investor, agent, company, staff).
 
 Each diagram has three `subgraph` columns:
-- **Left — Screens**: node per screen, colored by worst-status of its endpoints
-- **Center — API Modules**: group endpoints by module (auth, investor, products, etc.)
-- **Right — Models**: node per model used by the module
+- **Left -- Screens**: node per screen, colored by worst-status of its endpoints
+- **Center -- API Modules**: group endpoints by module (auth, investor, products, etc.)
+- **Right -- Models**: node per model used by the module
 
 Edges:
-- Screen → API Module (if screen requires endpoints from that module)
-- API Module → Model (if module's service uses that model)
+- Screen -> API Module (if screen requires endpoints from that module)
+- API Module -> Model (if module's service uses that model)
 
 Apply Mermaid `classDef` for status colors (see status-model.md §Mermaid Node CSS Classes).
 

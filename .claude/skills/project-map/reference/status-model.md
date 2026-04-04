@@ -24,19 +24,19 @@ description: "v1.0.0 | Implementation status definitions, scoring formulas, spri
 
 ### Endpoint Status
 ```
-IF endpoint path found in backend/app/modules/*/router.py  → implemented
-ELIF model for this domain exists in models.py              → in_progress
-ELIF endpoint listed in CBSHOME-Backend.md                  → planned
-ELSE                                                        → gap
+IF endpoint path found in backend/app/modules/*/router.py  -> implemented
+ELIF model for this domain exists in models.py              -> in_progress
+ELIF endpoint listed in CBSHOME-Backend.md                  -> planned
+ELSE                                                        -> gap
 ```
 
 ### Screen Status (worst-of)
 Screen inherits the worst status of its required endpoints:
 ```
-IF any required endpoint is gap         → gap
-ELIF any required endpoint is planned   → planned
-ELIF any required endpoint is in_progress → in_progress
-ELSE                                    → implemented
+IF any required endpoint is gap         -> gap
+ELIF any required endpoint is planned   -> planned
+ELIF any required endpoint is in_progress -> in_progress
+ELSE                                    -> implemented
 ```
 
 ### Flow Status
@@ -93,9 +93,9 @@ role_coverage = SUM(screen_scores) / COUNT(screens) for given role
 ## System Endpoints (Excluded from Orphan Detection)
 
 These serve infrastructure, not UI:
-- `GET /` — API info
-- `GET /health` — health check
-- `GET /ready` — readiness probe
+- `GET /` -- API info
+- `GET /health` -- health check
+- `GET /ready` -- readiness probe
 
 ---
 

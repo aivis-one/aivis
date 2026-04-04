@@ -9,7 +9,7 @@ Verify map accuracy, catalog dead-ends, produce actionable recommendations.
 
 | Creates | Validation report (chat) + manifest.validation section |
 |---------|--------------------------------------------------------|
-| Phase | P3 — Quality & recommendations |
+| Phase | P3 -- Quality & recommendations |
 
 ---
 
@@ -20,7 +20,7 @@ Verify map accuracy, catalog dead-ends, produce actionable recommendations.
 | `mockups/project-map/manifest.yaml` | Must exist (run P1) |
 | `mockups/project-map/index.html` | Must exist (run P2) |
 
-If missing → Run P1 (scan) then P2 (generate) first.
+If missing -> Run P1 (scan) then P2 (generate) first.
 
 ---
 
@@ -39,14 +39,14 @@ If missing → Run P1 (scan) then P2 (generate) first.
 
 Verify manifest has all required sections:
 - [ ] `version`, `generated_at`, `git_commit`
-- [ ] `backend.models` — non-empty array
-- [ ] `backend.endpoints.implemented` — array (may be empty)
-- [ ] `backend.endpoints.planned` — non-empty array
-- [ ] `frontend.mockups` — non-empty array with screens
-- [ ] `cross_reference.dead_ends` — present
-- [ ] `cross_reference.coverage` — present
-- [ ] `cross_reference.prod_readiness` — present
-- [ ] `flows` — non-empty array
+- [ ] `backend.models` -- non-empty array
+- [ ] `backend.endpoints.implemented` -- array (may be empty)
+- [ ] `backend.endpoints.planned` -- non-empty array
+- [ ] `frontend.mockups` -- non-empty array with screens
+- [ ] `cross_reference.dead_ends` -- present
+- [ ] `cross_reference.coverage` -- present
+- [ ] `cross_reference.prod_readiness` -- present
+- [ ] `flows` -- non-empty array
 
 Spot-check: verify 3 random screen IDs from manifest actually exist in corresponding mockup HTML files.
 
@@ -130,21 +130,21 @@ Output grouped list:
 
 Generate 3 recommendation categories:
 
-**1. Quick Wins** — screens closest to 100% that need the fewest additional endpoints:
+**1. Quick Wins** -- screens closest to 100% that need the fewest additional endpoints:
 ```
 Рекомендация: Реализуйте Sprint 1.3 (GET/PATCH /users/me)
 Результат: screen-profile и screen-settings получат +50% покрытие
 ```
 
-**2. Maximum Unblock** — which sprint unblocks the most screens:
+**2. Maximum Unblock** -- which sprint unblocks the most screens:
 ```
 Рекомендация: Sprint X.Y разблокирует N экранов
 Детали: [list screens]
 ```
 
-**3. Prod-Ready Flows** — which business flows can ship first:
+**3. Prod-Ready Flows** -- which business flows can ship first:
 ```
-Ближайший полный flow: "Investor Onboarding" — нужен Sprint 1.3 + 2.1
+Ближайший полный flow: "Investor Onboarding" -- нужен Sprint 1.3 + 2.1
 Текущий прогресс: XX%
 ```
 
@@ -193,12 +193,12 @@ validation:
 
 project-map v1.0.0 | validate | complete
 
-Full cycle: scan → generate → validate ✓
+Full cycle: scan -> generate -> validate ✓
 
 ---
 
-1 → Re-scan (if code changed): run scan.md
-2 → Re-generate (if manifest updated): run generate.md
+1 -> Re-scan (if code changed): run scan.md
+2 -> Re-generate (if manifest updated): run generate.md
 
 ---
 
