@@ -9,15 +9,18 @@
 #   4:  record_passive_ledger confirmed -> entry created, no frozen_until
 #   5:  record_active_ledger negative amount (debit) -> works
 #   6:  record_active_ledger with origin_payment_id -> stored
-#   7:  get_active_balance -> frozen and confirmed split correctly
-#   8:  get_passive_balance -> frozen and confirmed split correctly
-#   9:  get_active_balance empty -> {frozen: 0, confirmed: 0}
-#   10: get_active_balance excludes reversed entries
-#   11: get_passive_balance excludes reversed entries
-#   12: validate_route active->passive -> AMLViolationError
-#   13: validate_route active->active -> ok
-#   14: validate_route passive->active -> ok
-#   15: validate_route passive->passive -> ok
+#   7:  record_active_ledger invalid status -> BadRequestError
+#   8:  record_passive_ledger invalid status -> BadRequestError
+#   9:  get_active_balance -> frozen and confirmed split correctly
+#   10: get_passive_balance -> frozen and confirmed split correctly
+#   11: get_active_balance empty -> {frozen: 0, confirmed: 0}
+#   12: get_active_balance excludes reversed entries
+#   13: get_passive_balance excludes reversed entries
+#   14: validate_route active->passive -> AMLViolationError
+#   15: validate_route active->active -> ok
+#   16: validate_route passive->active -> ok
+#   17: validate_route passive->passive -> ok
+#   18: validate_route invalid ledger type -> ValueError
 #
 # Email prefix: "s51_" -- unique to this test file, cleaned up in fixture.
 #
@@ -33,7 +36,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AMLViolationError
+from app.core.exceptions import AMLViolationError, BadRequestError
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.ledgers.service import (
     get_active_balance,
@@ -42,7 +45,7 @@ from app.modules.ledgers.service import (
     record_passive_ledger,
 )
 from app.modules.ledgers.validators import validate_route
-from tests.helpers import auth_headers, cleanup_test_users, register_user
+from tests.helpers import cleanup_test_users, register_user
 
 EMAIL_PREFIX = "s51_"
 
@@ -213,6 +216,49 @@ async def test_record_active_ledger_with_origin_payment(
 
 
 # ---------------------------------------------------------------------------
+# Status validation (CRIT-2 fix)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_record_active_ledger_invalid_status(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Record active ledger with invalid status -> BadRequestError."""
+    user_id = await _create_user(client, "al_badst")
+
+    with pytest.raises(BadRequestError, match="Invalid ledger status"):
+        await record_active_ledger(
+            db_session,
+            user_id=user_id,
+            amount_cents=10000,
+            status="bogus",
+            reason="deposit:crypto:0xbad",
+        )
+
+
+@pytest.mark.asyncio
+async def test_record_passive_ledger_reversed_status_rejected(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Record passive ledger with 'reversed' status -> BadRequestError.
+
+    Reversed entries are created only by the reversal process (Sprint 5.3),
+    never directly.
+    """
+    user_id = await _create_user(client, "pl_revst")
+
+    with pytest.raises(BadRequestError, match="Invalid ledger status"):
+        await record_passive_ledger(
+            db_session,
+            user_id=user_id,
+            amount_cents=-5000,
+            status=LedgerStatus.REVERSED,
+            reason="chargeback:test-payment-id",
+        )
+
+
+# ---------------------------------------------------------------------------
 # get_active_balance
 # ---------------------------------------------------------------------------
 
@@ -294,16 +340,19 @@ async def test_get_active_balance_excludes_reversed(
         status=LedgerStatus.CONFIRMED,
         reason="deposit:crypto:0xrev1",
     )
+    await db_session.commit()
 
-    # Reversed entry (should NOT count).
-    await record_active_ledger(
-        db_session,
+    # Insert a reversed entry directly via ORM (bypassing service
+    # since service rejects "reversed" status -- as it should).
+    from app.modules.ledgers.models import ActiveLedger as AL
+    reversed_entry = AL(
         user_id=user_id,
         amount_cents=50000,
         status=LedgerStatus.REVERSED,
         reason="deposit:crypto:0xrev2",
     )
-
+    db_session.add(reversed_entry)
+    await db_session.flush()
     await db_session.commit()
 
     balance = await get_active_balance(db_session, user_id)
@@ -362,16 +411,18 @@ async def test_get_passive_balance_excludes_reversed(
         status=LedgerStatus.CONFIRMED,
         reason="commission:l1:agent1:purchase1",
     )
+    await db_session.commit()
 
-    # Reversed entry.
-    await record_passive_ledger(
-        db_session,
+    # Insert reversed entry directly via ORM.
+    from app.modules.ledgers.models import PassiveLedger as PL
+    reversed_entry = PL(
         user_id=user_id,
         amount_cents=5000,
         status=LedgerStatus.REVERSED,
         reason="commission:l1:agent1:purchase2",
     )
-
+    db_session.add(reversed_entry)
+    await db_session.flush()
     await db_session.commit()
 
     balance = await get_passive_balance(db_session, user_id)
@@ -408,3 +459,13 @@ async def test_validate_route_passive_to_active_allowed() -> None:
 async def test_validate_route_passive_to_passive_allowed() -> None:
     """Passive -> Passive route is allowed."""
     validate_route("passive", "passive")
+
+
+@pytest.mark.asyncio
+async def test_validate_route_invalid_ledger_type() -> None:
+    """Invalid ledger type -> ValueError."""
+    with pytest.raises(ValueError, match="Invalid ledger type"):
+        validate_route("unknown", "active")
+
+    with pytest.raises(ValueError, match="Invalid ledger type"):
+        validate_route("active", "bogus")

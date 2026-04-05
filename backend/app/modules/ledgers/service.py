@@ -13,6 +13,11 @@
 #   routes -- that responsibility belongs to the orchestrator layer
 #   (transfer service, Phase 6+). See validators.py for validate_route().
 #
+# STATUS VALIDATION:
+#   record_*() validates status against LedgerStatus enum. Only "frozen"
+#   and "confirmed" are accepted for new entries. "reversed" is never
+#   written directly -- it's set by the reversal process (Sprint 5.3).
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
 #
@@ -23,6 +28,7 @@
 # AMOUNT CONVENTION:
 #   Positive = credit (money coming in to this ledger)
 #   Negative = debit  (money going out from this ledger)
+#   Zero = valid for gift entries (semaphore COUNT works without exceptions)
 # =============================================================================
 
 from datetime import datetime
@@ -32,6 +38,7 @@ import structlog
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import BadRequestError
 from app.modules.ledgers.models import (
     ActiveLedger,
     LedgerStatus,
@@ -39,6 +46,23 @@ from app.modules.ledgers.models import (
 )
 
 logger = structlog.get_logger()
+
+# Statuses allowed for new ledger entries.
+# "reversed" is never written directly -- only by the reversal process.
+_WRITABLE_STATUSES = {LedgerStatus.FROZEN, LedgerStatus.CONFIRMED}
+
+
+def _validate_status(status: str) -> None:
+    """Validate that status is allowed for new ledger entries.
+
+    Raises:
+        BadRequestError: If status is not frozen or confirmed.
+    """
+    if status not in _WRITABLE_STATUSES:
+        raise BadRequestError(
+            f"Invalid ledger status for new entry: {status!r}. "
+            f"Allowed: {', '.join(sorted(_WRITABLE_STATUSES))}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +88,7 @@ async def record_active_ledger(
     Args:
         session: Active DB session. Caller manages commit (P-01).
         user_id: Owner of the ledger.
-        amount_cents: Positive for credit, negative for debit.
+        amount_cents: Positive for credit, negative for debit, zero for gifts.
         status: "frozen" or "confirmed" (from LedgerStatus).
         reason: Canonical reason from LedgerReason.
         frozen_until: When the entry becomes confirmed (nullable).
@@ -72,7 +96,12 @@ async def record_active_ledger(
 
     Returns:
         The created ActiveLedger entry (flushed, not committed).
+
+    Raises:
+        BadRequestError: If status is not a valid writable status.
     """
+    _validate_status(status)
+
     entry = ActiveLedger(
         user_id=user_id,
         amount_cents=amount_cents,
@@ -114,7 +143,7 @@ async def record_passive_ledger(
     Args:
         session: Active DB session. Caller manages commit (P-01).
         user_id: Owner of the ledger.
-        amount_cents: Positive for credit, negative for debit.
+        amount_cents: Positive for credit, negative for debit, zero for gifts.
         status: "frozen" or "confirmed" (from LedgerStatus).
         reason: Canonical reason from LedgerReason.
         frozen_until: When the entry becomes confirmed (nullable).
@@ -122,7 +151,12 @@ async def record_passive_ledger(
 
     Returns:
         The created PassiveLedger entry (flushed, not committed).
+
+    Raises:
+        BadRequestError: If status is not a valid writable status.
     """
+    _validate_status(status)
+
     entry = PassiveLedger(
         user_id=user_id,
         amount_cents=amount_cents,

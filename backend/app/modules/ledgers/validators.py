@@ -27,6 +27,8 @@
 
 from app.core.exceptions import AMLViolationError
 
+_VALID_LEDGER_TYPES = {"active", "passive"}
+
 
 def validate_route(source: str, target: str) -> None:
     """Validate that a ledger transfer route is AML-compliant.
@@ -36,8 +38,15 @@ def validate_route(source: str, target: str) -> None:
         target: Target ledger type ("active" or "passive").
 
     Raises:
+        ValueError: If source or target is not a valid ledger type.
         AMLViolationError: If route is Active -> Passive.
     """
+    if source not in _VALID_LEDGER_TYPES or target not in _VALID_LEDGER_TYPES:
+        raise ValueError(
+            f"Invalid ledger type: source={source!r}, target={target!r}. "
+            f"Valid types: {_VALID_LEDGER_TYPES}"
+        )
+
     if source == "active" and target == "passive":
         raise AMLViolationError(
             "Active -> Passive route is forbidden by AML policy"
