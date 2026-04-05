@@ -138,7 +138,7 @@ class PriceHistoryResponse(BaseModel):
 
 
 class CompanyResponse(BaseModel):
-    """Company info for list display."""
+    """Company info for staff (includes distribution_config)."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -158,15 +158,47 @@ class CompanyResponse(BaseModel):
 
 
 class CompanyDetailResponse(CompanyResponse):
-    """Full company detail with roadmap items."""
+    """Full company detail with roadmap items (staff)."""
 
     roadmap: list[RoadmapItemResponse] = []
 
 
 class CompanyListResponse(BaseModel):
-    """Paginated list of companies."""
+    """Paginated list of companies (staff)."""
 
     items: list[CompanyResponse]
+    total: int
+    page: int
+    per_page: int
+
+
+class PublicCompanyResponse(BaseModel):
+    """Company info for public storefront (no distribution_config)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    description: str | None
+    logo_url: str | None
+    cover_url: str | None
+    promo_video_url: str | None
+    presentation_url: str | None
+    price_per_unit_cents: int
+    status: str
+    created_at: datetime
+
+
+class PublicCompanyDetailResponse(PublicCompanyResponse):
+    """Public company detail with roadmap items (no distribution_config)."""
+
+    roadmap: list[RoadmapItemResponse] = []
+
+
+class PublicCompanyListResponse(BaseModel):
+    """Paginated list of companies (public)."""
+
+    items: list[PublicCompanyResponse]
     total: int
     page: int
     per_page: int

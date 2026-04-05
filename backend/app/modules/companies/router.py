@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
 from app.modules.companies.schemas import (
-    CompanyDetailResponse,
-    CompanyListResponse,
-    CompanyResponse,
+    PublicCompanyDetailResponse,
+    PublicCompanyListResponse,
+    PublicCompanyResponse,
     RoadmapItemResponse,
 )
 from app.modules.companies.service import get_company_detail, list_companies
@@ -29,13 +29,13 @@ router = APIRouter(prefix="/api/v1/companies", tags=["companies"])
 
 @router.get(
     "",
-    response_model=CompanyListResponse,
+    response_model=PublicCompanyListResponse,
 )
 async def list_companies_endpoint(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_db_reader),
-) -> CompanyListResponse:
+) -> PublicCompanyListResponse:
     """List active companies (public storefront)."""
     companies, total = await list_companies(
         session,
@@ -43,8 +43,8 @@ async def list_companies_endpoint(
         page=page,
         per_page=per_page,
     )
-    return CompanyListResponse(
-        items=[CompanyResponse.model_validate(c) for c in companies],
+    return PublicCompanyListResponse(
+        items=[PublicCompanyResponse.model_validate(c) for c in companies],
         total=total,
         page=page,
         per_page=per_page,
@@ -53,15 +53,15 @@ async def list_companies_endpoint(
 
 @router.get(
     "/{company_id}",
-    response_model=CompanyDetailResponse,
+    response_model=PublicCompanyDetailResponse,
 )
 async def get_company_detail_endpoint(
     company_id: UUID,
     session: AsyncSession = Depends(get_db_reader),
-) -> CompanyDetailResponse:
+) -> PublicCompanyDetailResponse:
     """Get company detail with roadmap items (public)."""
     profile, roadmap_items = await get_company_detail(company_id, session)
-    response = CompanyDetailResponse.model_validate(profile)
+    response = PublicCompanyDetailResponse.model_validate(profile)
     response.roadmap = [
         RoadmapItemResponse.model_validate(item) for item in roadmap_items
     ]
