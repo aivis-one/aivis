@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Schemas (Sprint 3.1)
+# CBSHOME Backend -- Staff Schemas (Sprint 3.1, updated Sprint 4.1)
 # =============================================================================
 #
 # REQUEST/RESPONSE SCHEMAS:
@@ -7,6 +7,9 @@
 #   UpdatePermissionsRequest -- PATCH /staff/users/{id}/permissions
 #   StaffProfileResponse   -- response for all staff endpoints
 #   StaffListResponse      -- list item (profile + user info)
+#
+# Sprint 4.1:
+#   Added company_manage to UpdatePermissionsRequest.
 # =============================================================================
 
 from datetime import datetime
@@ -41,6 +44,7 @@ class UpdatePermissionsRequest(BaseModel):
     financial_operations: bool | None = None
     agent_application_review: bool | None = None
     translation_edit: bool | None = None
+    company_manage: bool | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -22,6 +22,10 @@
 # CLEANUP:
 #   cleanup_test_users()          -- by email prefix
 #   cleanup_telegram_test_users() -- by telegram_id list
+#
+# Sprint 4.1:
+#   _cleanup_user_related_data() extended with company table cleanup
+#   (CompanyRoadmapItem, CompanyPriceHistory, CompanyProfile).
 # =============================================================================
 
 import hashlib
@@ -293,8 +297,49 @@ async def _cleanup_user_related_data(
     Called by cleanup_test_users and cleanup_telegram_test_users
     before deleting users.
     """
+    from app.modules.companies.models import (
+        CompanyPriceHistory,
+        CompanyProfile,
+        CompanyRoadmapItem,
+    )
     from app.modules.documents.models import Document, DocumentSigning
     from app.modules.kyc.models import KYCApplication
+
+    # Phase 4.1: Company-related tables.
+    # Find company profiles owned by these users.
+    cp_stmt = select(CompanyProfile.id).where(
+        CompanyProfile.user_id.in_(user_ids)
+    )
+    cp_result = await session.execute(cp_stmt)
+    company_ids = [row[0] for row in cp_result.all()]
+
+    if company_ids:
+        # Roadmap items reference company_profiles.
+        await session.execute(
+            delete(CompanyRoadmapItem).where(
+                CompanyRoadmapItem.company_id.in_(company_ids)
+            )
+        )
+        # Price history references company_profiles and users (changed_by).
+        await session.execute(
+            delete(CompanyPriceHistory).where(
+                CompanyPriceHistory.company_id.in_(company_ids)
+            )
+        )
+        # Company profiles reference users.
+        await session.execute(
+            delete(CompanyProfile).where(
+                CompanyProfile.id.in_(company_ids)
+            )
+        )
+
+    # Also clean price history where changed_by is one of the users
+    # (staff who changed price of a company owned by someone else).
+    await session.execute(
+        delete(CompanyPriceHistory).where(
+            CompanyPriceHistory.changed_by.in_(user_ids)
+        )
+    )
 
     # Phase 3: Avatar sessions (staff_id or target_user_id).
     await session.execute(

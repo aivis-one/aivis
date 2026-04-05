@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.2
+**Версия:** 1.3
 **Дата:** 4 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -626,21 +626,24 @@ backend/tests/
 
 ---
 
-### Sprint 3.1: StaffProfile + Permissions
+### ✅ Sprint 3.1: StaffProfile + Permissions
 
 **Цель:** Профили сотрудников с матрицей прав.
 
 **Задачи:**
-- [ ] `app/modules/staff/service.py` — `create_staff()`, `update_permissions()`
-- [ ] `app/modules/staff/router.py`:
-  - `POST /api/v1/staff/users` — создать Staff юзера
-  - `PATCH /api/v1/staff/users/{id}/permissions` — изменить права
-  - `GET /api/v1/staff/users` — список Staff
-- [ ] Permission matrix из config (дефолты) + override в StaffProfile.permissions
-- [ ] `get_current_staff` dependency с проверкой конкретного права
-- [ ] `tests/test_staff.py` — 8 тестов
+- [x] `app/modules/staff/constants.py` — `DEFAULT_STAFF_PERMISSIONS`, `VALID_PERMISSION_KEYS`, `is_admin()`
+- [x] `app/modules/staff/schemas.py` — `CreateStaffRequest`, `UpdatePermissionsRequest`, `StaffProfileResponse`, `StaffListItem`
+- [x] `app/modules/staff/service.py` — `create_staff()`, `update_permissions()`, `get_staff_profile()`, `get_effective_permissions()`
+- [x] `app/modules/staff/router.py`:
+  - `POST /api/v1/staff/users` — создать Staff юзера (admin only)
+  - `PATCH /api/v1/staff/users/{id}/permissions` — изменить права (admin only)
+  - `GET /api/v1/staff/users` — список Staff (any staff)
+- [x] Permission matrix из config (дефолты) + override в StaffProfile.permissions
+- [x] `get_current_staff` dependency с проверкой конкретного права
+- [x] `scripts/seed_admin.py` — создание первого admin
+- [x] `tests/test_staff.py` — 8 тестов
 
-**Дефолтные права:**
+**Дефолтные права (single source в `staff/constants.py`):**
 ```yaml
 staff_permissions:
   avatar_mode: true
@@ -652,49 +655,179 @@ staff_permissions:
   translation_edit: false
 ```
 
-**Критерий готовности:** Staff создаётся, права проверяются в зависимостях.
+**Решения реализации:**
+- P3-01: `POST /staff/users` принимает `{user_id}` — промоутит существующего юзера, не создаёт нового. Staff — роль, не отдельная сущность
+- P3-02: Admin = staff с ALL permissions True. Нет отдельного admin-флага. `is_admin()` helper в `constants.py`. "Градации определяются конфигурацией, не отдельными ролями в коде"
+- P3-03: Только admin может создавать staff и менять permissions. Первый admin — через `seed_admin.py`
+- P3-04: Промоция staff необратима. Staff не имеет пользовательской функциональности (документы, KYC)
+- P3-05: `get_current_staff` возвращает `User` (не tuple). Дополнительный DB query в `_require_admin` допустим для редких admin-операций
+- P3-06: Нет guard последнего admin — staff trusted. Если admin заблокирует себя, `seed_admin.py` восстановит
+- P3-07: `seed_admin.py` читает пароль из `ADMIN_PASSWORD` env var или `getpass` prompt (не CLI arg — security)
+- P3-08: `require_staff_permission()` — фабрика FastAPI dependency: staff check + конкретный permission. Имя dependency устанавливается для отладки
+- P3-09: `staff/constants.py` — единственный source of truth для permissions. `core/constants.py` не дублирует. `auth/dependencies.py` импортирует из `staff/constants.py`
+
+**Endpoints:**
+```
+POST  /api/v1/staff/users                     -> StaffProfileResponse  (201)
+PATCH /api/v1/staff/users/{id}/permissions     -> StaffProfileResponse  (200)
+GET   /api/v1/staff/users                      -> list[StaffListItem]   (200)
+```
+
+**Результат:**
+```
+backend/app/modules/staff/
+├── __init__.py
+├── models.py           -- StaffProfile, AvatarSession (Phase 0)
+├── constants.py        -- DEFAULT_STAFF_PERMISSIONS, VALID_PERMISSION_KEYS, is_admin()
+├── schemas.py          -- CreateStaffRequest, UpdatePermissionsRequest, StaffProfileResponse, StaffListItem
+├── service.py          -- create_staff, update_permissions, get_staff_profile, get_effective_permissions
+└── router.py           -- 3 endpoints
+
+backend/scripts/
+└── seed_admin.py       -- seed first admin (ADMIN_PASSWORD env or getpass)
+
+backend/tests/
+└── test_staff.py       -- 8 tests
+```
+
+**Критерий готовности:** Staff создаётся, права проверяются в зависимостях. 71 тест зелёный.
 
 ---
 
-### Sprint 3.2: Avataring
+### ✅ Sprint 3.2: Avataring
 
 **Цель:** Механизм входа Staff под пользователем.
 
 **Задачи:**
-- [ ] `app/modules/staff/avatar_service.py` — `start_avatar()`, `end_avatar()`
-- [ ] `POST /api/v1/staff/avatar/start` — создание AvatarSession, дочерняя JWT/сессия
-- [ ] `POST /api/v1/staff/avatar/end` — завершение AvatarSession
-- [ ] JWT/сессия содержит `avatar_session_id`; `start_avatar()` пишет `avatar_session_id` в Redis-сессию так, чтобы `TraceIdMiddleware` читал его в contextvars на каждом запросе
-- [ ] Все мутирующие операции в avatar режиме: `performed_by=staff_id`, `on_behalf_of=target_user_id` в audit_log
-- [ ] `require_not_avatar` применяется к запрещённым операциям
-- [ ] `tests/test_avatar.py` — 10 тестов
+- [x] `app/modules/staff/avatar_schemas.py` — `AvatarStartRequest`, `AvatarStartResponse`, `AvatarSessionResponse`
+- [x] `app/modules/staff/avatar_service.py` — `start_avatar()`, `end_avatar()`, `get_active_avatar()`
+- [x] `app/modules/staff/avatar_router.py`:
+  - `POST /api/v1/staff/avatar/start` — создание AvatarSession + Redis avatar token
+  - `POST /api/v1/staff/avatar/end` — завершение AvatarSession (staff's original token)
+  - `GET /api/v1/staff/avatar/active` — текущая активная сессия
+- [x] Avatar token в Redis с `avatar_session_id` + `avatar_staff_id` в session data
+- [x] `avatar_session_id` + `avatar_staff_id` биндятся в `_load_user_from_request()` (dependencies.py) — НЕ в middleware
+- [x] `core/audit.py` — auto-fill `performed_by`/`on_behalf_of` из contextvars + defensive UUID parse
+- [x] `@require_not_avatar("sign_document")` применён к `documents/router.py`
+- [x] `tests/test_avatar.py` — 10 тестов
+
+**Avatar Session Redis Format:**
+```json
+{
+  "user_id": "<target_user_id>",
+  "auth_method": "avatar",
+  "created_at": "iso",
+  "avatar_session_id": "<avatar_session.id>",
+  "avatar_staff_id": "<staff.id>"
+}
+```
+
+**Решения реализации:**
+- P3-10: Avatar token отделён от user ZSET — не занимает слот из MAX_CONCURRENT_SESSIONS, не вытесняется user's logout-all
+- P3-11: Redis reverse lookup `avatar_token:{avatar_session_id}` → token для cleanup при `/end`. Никаких миграций — сессионные токены живут в Redis, AvatarSession в БД — аудит-запись
+- P3-12: `/end` вызывается оригинальным staff-токеном (не аватарным). Аватарный токен привязан к целевому юзеру — через него staff не идентифицируется
+- P3-13: Повторный `/start` автоматически закрывает предыдущий активный аватар
+- P3-14: Staff не может аватарить другого staff или platform user
+- P3-15: Avatar contextvars биндятся в `_load_user_from_request()` (dependencies.py), не в middleware — избегает Redis call на каждом запросе включая health checks. Middleware comment обновлён
+- P3-16: `record_audit()` auto-fill: если `avatar_staff_id` в contextvars и caller не передал `performed_by` явно → `performed_by=staff_id`, `on_behalf_of=actor_id`. Существующий код не меняется
+- P3-17: Defensive `try/except (ValueError, TypeError)` при UUID parse `avatar_staff_id` из contextvars
 
 **Endpoints:**
 ```
-POST /api/v1/staff/avatar/start   Body: {target_user_id} -> {avatar_session_id, session_token}
+POST /api/v1/staff/avatar/start   Body: {target_user_id} -> AvatarStartResponse  (200)
 POST /api/v1/staff/avatar/end     -> 204
-GET  /api/v1/staff/avatar/active  -> AvatarSession | null
+GET  /api/v1/staff/avatar/active  -> AvatarSessionResponse | null                (200)
 ```
 
-**Критерий готовности:** Staff входит под юзером. `avatar_session_id` присутствует в каждом structlog-сообщении в режиме аватара. Все операции логируются в audit_log. Запрещённые операции блокируются.
+**Результат:**
+```
+backend/app/modules/staff/
+├── avatar_schemas.py    -- AvatarStartRequest, AvatarStartResponse, AvatarSessionResponse
+├── avatar_service.py    -- start_avatar, end_avatar, get_active_avatar
+└── avatar_router.py     -- 3 endpoints
+
+backend/tests/
+└── test_avatar.py       -- 10 tests
+```
+
+**Критерий готовности:** Staff входит под юзером. `avatar_session_id` присутствует в каждом structlog-сообщении в режиме аватара. Audit auto-fill работает. Avatar guard блокирует `sign_document`. 81 тест зелёный.
 
 ---
 
-### Sprint 3.3: Admin endpoints
+### ✅ Sprint 3.3: Admin endpoints
 
 **Цель:** Базовые admin-функции для управления пользователями.
 
 **Задачи:**
-- [ ] `GET /api/v1/staff/dashboard/stats` — базовая статистика платформы
-- [ ] `GET /api/v1/staff/users` — список юзеров (пагинация, фильтры; `role=platform` исключён)
-- [ ] `GET /api/v1/staff/users/{id}` — детали юзера
-- [ ] `PATCH /api/v1/staff/users/{id}/block` — блокировка (is_active=false + завершить все сессии)
-- [ ] `GET /api/v1/staff/kyc/queue` — очередь KYC заявок
-- [ ] `POST /api/v1/staff/kyc/{id}/approve` — одобрить KYC
-- [ ] `POST /api/v1/staff/kyc/{id}/reject` — отклонить KYC
-- [ ] `tests/test_staff_admin.py` — 12 тестов
+- [x] `app/modules/staff/admin_schemas.py` — `UserListItem`, `UserListResponse`, `UserDetailResponse`, `DashboardStatsResponse`, `KYCQueueItem`, `BlockRequest`
+- [x] `app/modules/staff/admin_service.py` — `list_users()`, `get_user_detail()`, `block_user()`, `dashboard_stats()`, `kyc_queue()`, `kyc_approve()`, `kyc_reject()`
+- [x] `app/modules/staff/admin_router.py`:
+  - `GET /api/v1/staff/dashboard/stats` — статистика платформы (any staff)
+  - `GET /api/v1/staff/kyc/queue` — очередь KYC (kyc_approve perm)
+  - `POST /api/v1/staff/kyc/{id}/approve` — одобрить KYC (kyc_approve perm)
+  - `POST /api/v1/staff/kyc/{id}/reject` — отклонить KYC (kyc_approve perm)
+- [x] `app/modules/staff/router.py` (расширен):
+  - `GET /api/v1/staff/users` — унифицированный список юзеров (?role=, ?page=, ?per_page=)
+  - `GET /api/v1/staff/users/{id}` — детали юзера
+  - `PATCH /api/v1/staff/users/{id}/block` — блокировка (user_block perm)
+- [x] `tests/test_staff_admin.py` — 12 тестов
+- [x] `tests/test_staff.py` — обновлён (`test_list_staff` → `test_list_users`, paginated response)
 
-**Критерий готовности:** Staff видит и управляет пользователями. Platform user не появляется в списках.
+**Решения реализации:**
+- P3-18: Унифицированный `GET /staff/users` с `?role=` filter заменяет отдельный staff-only list. Один endpoint, один ресурс. Ответ `UserListItem` с `staff_profile: StaffProfileResponse | null`
+- P3-19: Пагинация: `{items, total, page, per_page}`. `per_page` capped at 100. Staff profiles загружаются одним `IN` query для текущей страницы — нет N+1
+- P3-20: Block только non-staff юзеров. Staff trusted. `is_active=false` + `delete_all_sessions()` — немедленный эффект
+- P3-21: KYC approve/reject делегирует в существующий `process_webhook()` + добавляет staff-specific audit (`kyc.approved_by_staff` / `kyc.rejected_by_staff` с `actor_id=staff.id`). Два audit-записи: system (status change) + staff (кто именно одобрил)
+- P3-22: Dashboard stats: 4 COUNT queries (total_users, by_role, pending_kyc, active_avatars). Platform user исключён из всех списков
+- P3-23: `list_staff()` удалён из `service.py` (перенесён в `admin_service.py` как `list_users()`)
+- P3-24: Platform user скрыт: не появляется в списках, detail возвращает 404
+
+**Endpoints:**
+```
+GET   /api/v1/staff/users                  -> UserListResponse  (200)
+GET   /api/v1/staff/users/{id}             -> UserDetailResponse  (200)
+PATCH /api/v1/staff/users/{id}/block       -> 204
+GET   /api/v1/staff/dashboard/stats        -> DashboardStatsResponse  (200)
+GET   /api/v1/staff/kyc/queue              -> list[KYCQueueItem]  (200)
+POST  /api/v1/staff/kyc/{id}/approve       -> 204
+POST  /api/v1/staff/kyc/{id}/reject        -> 204
+```
+
+**Результат:**
+```
+backend/app/modules/staff/
+├── admin_schemas.py     -- UserListItem, UserListResponse, UserDetailResponse, DashboardStatsResponse, KYCQueueItem, BlockRequest
+├── admin_service.py     -- list_users, get_user_detail, block_user, dashboard_stats, kyc_queue/approve/reject
+└── admin_router.py      -- dashboard_router + kyc_admin_router (4 endpoints)
+
+backend/tests/
+├── test_staff.py        -- 8 tests (updated: paginated response)
+└── test_staff_admin.py  -- 12 tests
+```
+
+**Критерий готовности:** Staff видит и управляет пользователями. Platform user не появляется в списках. KYC одобряется/отклоняется с audit trail. 93 теста зелёные.
+
+---
+
+**Phase 3 завершена.** 11 endpoints (3 staff users + 3 avatar + 5 admin/KYC/dashboard), 30 тестов Phase 3 (+63 Phase 0-2 = 93 total), 0 миграций (таблицы из Phase 0, итого 4).
+
+**Новые audit events:**
+- `staff.created` — промоция юзера в staff
+- `staff.permissions_updated` — изменение прав
+- `staff.avatar_started` — начало аватар-сессии
+- `staff.avatar_ended` — завершение аватар-сессии
+- `user.blocked` — блокировка юзера staff'ом
+- `kyc.approved_by_staff` — ручное одобрение KYC
+- `kyc.rejected_by_staff` — ручное отклонение KYC
+
+**Обновлённые core-файлы:**
+- `core/constants.py` — удалены дубли staff permissions (single source в `staff/constants.py`)
+- `core/audit.py` — avatar auto-fill `performed_by`/`on_behalf_of` из contextvars + defensive UUID parse
+- `core/middleware.py` — обновлён комментарий: avatar binding в dependencies, не middleware
+- `auth/dependencies.py` — `_get_verified_staff()`, `require_staff_permission()`, avatar contextvars binding в `_load_user_from_request()`
+- `documents/router.py` — `@require_not_avatar("sign_document")` на sign endpoint
+- `main.py` — `+staff_users_router`, `+avatar_router`, `+dashboard_router`, `+kyc_admin_router`
+- `tests/helpers.py` — `+create_admin_user()`, StaffProfile в `create_staff_user()`, AvatarSession cleanup
 
 ---
 
@@ -1427,6 +1560,8 @@ Event:
 | TD-024 | `app/modules/users/service.py` | Profile JSONB: whitelist допустимых ключей и/или ограничение размера. XSS sanitization на фронте | Before Prod | ⬜ |
 | TD-025 | `app/modules/documents/` | Проверка наличия подписей при смене роли. Структура готова, логика — при реализации role change (Phase 7) | Phase 7 | ⬜ |
 | TD-026 | `app/modules/documents/` | Версионирование: переподписание при обновлении редакции. Поле `version` заложено, логика определения пользователей без актуальной подписи — после MVP | After MVP | ⬜ |
+| TD-027 | `app/modules/staff/router.py` | Unblock endpoint (`PATCH /staff/users/{id}/unblock`). Сейчас разблокировка только через DB | After MVP | ⬜ |
+| TD-028 | `app/modules/auth/avatar_guard.py` | Применить `@require_not_avatar` к остальным RESTRICTED_OPERATIONS endpoints по мере их создания (create_payment, create_withdrawal и т.д.) | Phase 5+ | ⬜ |
 
 ---
 
@@ -1434,4 +1569,4 @@ Event:
 
 ---
 
-*Version 1.2 | 2026-04-04 | cbshome Backend TZ — Phase 2 complete*
+*Version 1.3 | 2026-04-04 | cbshome Backend TZ — Phase 3 complete*

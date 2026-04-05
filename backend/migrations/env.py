@@ -1,12 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Alembic Environment Configuration
+# CBSHOME Backend -- Alembic env.py
 # =============================================================================
 #
-# Async runner for Alembic migrations with SQLAlchemy 2.0.
+# Alembic migration environment. Imports all ORM models so that
+# Base.metadata contains the full schema for autogenerate.
 #
-# MODEL IMPORTS:
-#   Every model used in migrations MUST be imported here so that
-#   Alembic autogenerate can detect table changes.
+# RULE:
 #   Add imports as modules are created.
 # =============================================================================
 
@@ -37,7 +36,7 @@ from app.modules.kyc.models import KYCApplication  # noqa: F401
 from app.modules.documents.models import Document, DocumentSigning  # noqa: F401
 
 # Sprint 4.1: Companies
-# from app.modules.companies.models import CompanyProfile, CompanyPriceHistory, CompanyRoadmapItem  # noqa: F401
+from app.modules.companies.models import CompanyProfile, CompanyPriceHistory, CompanyRoadmapItem  # noqa: F401
 
 # Sprint 4.2: Products
 # from app.modules.products.models import Product, ProductInstallment  # noqa: F401
@@ -93,9 +92,12 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
+def do_run_migrations(connection):
     """Run migrations with a live connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
