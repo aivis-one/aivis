@@ -23,7 +23,7 @@
 # PRICE CASCADE:
 #   When price changes, all active/hidden Products of this company
 #   are updated. Archived products are not touched.
-#   TODO: cascade to Products table (Sprint 4.2 -- table does not exist yet).
+#   Implemented in Sprint 4.2 when Products table exists.
 # =============================================================================
 
 from uuid import UUID
@@ -224,7 +224,7 @@ async def update_price(
     """Update company share price with cascade and history.
 
     1. Update CompanyProfile.price_per_unit_cents
-    2. Cascade to active/hidden Products (Sprint 4.2 -- TODO)
+    2. Cascade to active/hidden Products
     3. Insert CompanyPriceHistory record
 
     Raises:
