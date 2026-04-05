@@ -29,6 +29,7 @@
 from uuid import UUID
 
 import structlog
+from datetime import datetime, UTC
 from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -456,7 +457,7 @@ async def cascade_price(
     update_stmt = (
         update(Product)
         .where(Product.id.in_(product_ids))
-        .values(price_per_unit_cents=new_price)
+        .values(price_per_unit_cents=new_price, updated_at=datetime.now(UTC))
     )
     await session.execute(update_stmt)
 
