@@ -26,6 +26,10 @@
 # Sprint 4.1:
 #   _cleanup_user_related_data() extended with company table cleanup
 #   (CompanyRoadmapItem, CompanyPriceHistory, CompanyProfile).
+#
+# Sprint 5.1:
+#   _cleanup_user_related_data() extended with ledger table cleanup
+#   (ActiveLedger, PassiveLedger).
 # =============================================================================
 
 import hashlib
@@ -304,7 +308,20 @@ async def _cleanup_user_related_data(
     )
     from app.modules.documents.models import Document, DocumentSigning
     from app.modules.kyc.models import KYCApplication
+    from app.modules.ledgers.models import ActiveLedger, PassiveLedger
     from app.modules.products.models import Product, ProductInstallment
+
+    # Sprint 5.1: Ledger entries (FK to users.id with RESTRICT).
+    await session.execute(
+        delete(ActiveLedger).where(
+            ActiveLedger.user_id.in_(user_ids)
+        )
+    )
+    await session.execute(
+        delete(PassiveLedger).where(
+            PassiveLedger.user_id.in_(user_ids)
+        )
+    )
 
     # Phase 4.1+4.2: Company and product-related tables.
     # Find company profiles owned by these users.

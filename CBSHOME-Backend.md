@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.3
-**Дата:** 4 апреля 2026
+**Версия:** 1.4
+**Дата:** 5 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -835,94 +835,165 @@ backend/tests/
 
 ---
 
-### Sprint 4.1: Companies
+### ✅ Sprint 4.1: Companies
 
 **Цель:** Профили компаний с медиа-материалами и дорожной картой.
 
 **Задачи:**
-- [ ] `app/modules/companies/models.py` — `CompanyProfile`, `CompanyPriceHistory`, `CompanyRoadmapItem`
-- [ ] `app/modules/companies/service.py` — CRUD + `update_price()` (каскадное обновление Product)
-- [ ] Staff endpoints (компания):
-  - `POST /api/v1/staff/companies` — создать компанию
-  - `PATCH /api/v1/staff/companies/{id}` — редактировать профиль и медиа
-  - `PATCH /api/v1/staff/companies/{id}/price` — изменить цену акции (каскад + история)
-- [ ] Staff endpoints (дорожная карта):
-  - `POST /api/v1/staff/companies/{id}/roadmap` — добавить этап
-  - `PATCH /api/v1/staff/companies/{id}/roadmap/{item_id}` — редактировать этап
-  - `DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}` — удалить этап
-  - `PATCH /api/v1/staff/companies/{id}/roadmap/reorder` — изменить порядок (список id)
-- [ ] Public endpoints:
+- [x] `app/modules/companies/models.py` — `CompanyProfile`, `CompanyPriceHistory`, `CompanyRoadmapItem`
+- [x] `app/modules/companies/constants.py` — `CompanyStatus`, `RoadmapItemStatus`, `VALID_COMPANY_STATUS_TRANSITIONS`, `validate_distribution_config()`
+- [x] `app/modules/companies/schemas.py` — 6 request + 7 response schemas (PublicCompanyResponse без distribution_config)
+- [x] `app/modules/companies/service.py` — CRUD + `update_price()` (каскадное обновление Product) + roadmap management
+- [x] Staff endpoints (компания):
+  - `POST /api/v1/staff/companies` — создать компанию (company_manage + financial_operations)
+  - `PATCH /api/v1/staff/companies/{id}` — редактировать профиль и медиа (company_manage; + financial_operations если distribution_config в body)
+  - `PATCH /api/v1/staff/companies/{id}/price` — изменить цену акции (company_manage + financial_operations)
+- [x] Staff endpoints (дорожная карта):
+  - `POST /api/v1/staff/companies/{id}/roadmap` — добавить этап (company_manage)
+  - `PATCH /api/v1/staff/companies/{id}/roadmap/reorder` — изменить порядок (company_manage)
+  - `PATCH /api/v1/staff/companies/{id}/roadmap/{item_id}` — редактировать этап (company_manage)
+  - `DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}` — soft-delete этап (company_manage)
+- [x] Public endpoints:
   - `GET /api/v1/companies` — список активных компаний
   - `GET /api/v1/companies/{id}` — детали компании с дорожной картой
-- [ ] `tests/test_companies.py` — 10 тестов
+- [x] `tests/test_companies.py` — 10 тестов
+
+**Миграции:**
+- [x] `0005_companies` — `company_profiles`, `company_price_history`, `company_roadmap_items` (3 таблицы, CHECK constraints)
+
+**Решения реализации:**
+- P4-01: Company = новый `User(role=company)` + `CompanyProfile`, создаётся админом. Не промоция из существующего юзера — компания создаётся целиком, креды передаются представителю
+- P4-02: Новая permission `company_manage` в `staff/constants.py`. Двойная проверка: `company_manage` для всех операций, + `financial_operations` для create/price/distribution_config
+- P4-03: Если `distribution_config` присутствует в body `PATCH /staff/companies/{id}`, роутер дополнительно проверяет `financial_operations`. Если только name/description/URLs — хватает `company_manage`
+- P4-04: Soft-delete для roadmap items через `is_deleted: bool` (не status-based)
+- P4-05: `PublicCompanyResponse` без `distribution_config`, `user_id`, `updated_at` — бизнес-чувствительные данные скрыты от публичного API
+- P4-06: Route ordering: `/reorder` объявлен ПЕРЕД `/{item_id}` — предотвращает UUID parse conflict в FastAPI
+- P4-07: `validate_distribution_config()` — `company_pct + sum(agent_levels) <= 1.0`, unknown keys rejected, все значения `0 < x < 1.0`
+- P4-08: `CompanyPriceHistory` — иммутабельная запись, нет `updated_at`. Tracks `changed_by` (staff_id)
+- P4-09: Reorder validation: exact set match + duplicate check. Все non-deleted items должны быть в списке
 
 **Модели:**
 ```python
 CompanyProfile:
-    id, user_id  -- FK users.id (Company как User с role=company)
-    name, description
-    logo_url: str | None
-    cover_url: str | None
-    promo_video_url: str | None
-    presentation_url: str | None
-    price_per_unit_cents: int
+    id, user_id  -- FK users.id (Company как User с role=company), UNIQUE
+    name: String(500), description: String(5000) | None
+    logo_url, cover_url, promo_video_url, presentation_url: String(2000) | None
+    price_per_unit_cents: BigInteger
     distribution_config: JSONB
-    -- Структура: {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
-    -- agent_levels: произвольное число уровней, может быть [] (нет агентов)
-    -- Остаток до 1.0 автоматически идёт Platform, не хранится
+    -- {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
     -- Инвариант: company_pct + SUM(agent_levels) <= 1.0
-    status: enum  -- active | hidden | archived
+    status: String(20)  -- CHECK: active | hidden | archived
     created_at, updated_at
 
-CompanyPriceHistory:
-    id, company_id
-    price_per_unit_cents: int
-    changed_at: datetime
-    changed_by: UUID  -- staff_id
+CompanyPriceHistory:  -- иммутабельная, нет updated_at
+    id, company_id  -- FK company_profiles.id
+    price_per_unit_cents: BigInteger
+    changed_at: DateTime(tz), changed_by: UUID  -- FK users.id (staff)
 
 CompanyRoadmapItem:
     id, company_id  -- FK company_profiles.id
-    title: str
-    description: str | None
-    target_date: date | None
-    status: enum    -- planned | in_progress | completed
-    order: int      -- для сортировки
+    title: String(500), description: String(5000) | None
+    target_date: Date | None
+    status: String(20)  -- CHECK: planned | in_progress | completed
+    order: Integer
+    is_deleted: Boolean  -- soft-delete
     created_at, updated_at
 ```
 
-**Критерий готовности:** Компании создаются с медиа-полями. Цена обновляется каскадно. `distribution_config` валидируется. Дорожная карта управляется Staff и отображается публично.
+**Endpoints:**
+```
+-- Staff endpoints:
+POST   /api/v1/staff/companies                             -> CompanyResponse      (201)
+PATCH  /api/v1/staff/companies/{id}                        -> CompanyResponse      (200)
+PATCH  /api/v1/staff/companies/{id}/price                  -> CompanyResponse      (200)
+POST   /api/v1/staff/companies/{id}/roadmap                -> RoadmapItemResponse  (201)
+PATCH  /api/v1/staff/companies/{id}/roadmap/reorder        -> list[RoadmapItemResponse]  (200)
+PATCH  /api/v1/staff/companies/{id}/roadmap/{item_id}      -> RoadmapItemResponse  (200)
+DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}      -> 204
+
+-- Public endpoints:
+GET    /api/v1/companies                                   -> PublicCompanyListResponse   (200)
+GET    /api/v1/companies/{id}                              -> PublicCompanyDetailResponse (200)
+```
+
+**Матрица permissions:**
+```
+company_manage                              -> profile/media update, roadmap CRUD
+company_manage + financial_operations       -> create company, price change, distribution_config update
+```
+
+**Результат:**
+```
+backend/app/modules/companies/
+├── __init__.py
+├── constants.py        -- CompanyStatus, RoadmapItemStatus, validate_distribution_config()
+├── models.py           -- CompanyProfile, CompanyPriceHistory, CompanyRoadmapItem
+├── schemas.py          -- 6 request + 7 response (Public* variants)
+├── service.py          -- CRUD + update_price() + roadmap management
+├── staff_router.py     -- 7 staff endpoints
+└── router.py           -- 2 public endpoints
+
+backend/tests/
+└── test_companies.py   -- 10 tests
+```
+
+**Критерий готовности:** Компании создаются с медиа-полями. Цена обновляется каскадно. `distribution_config` валидируется. Дорожная карта управляется Staff и отображается публично. 103 теста зелёные.
 
 ---
 
-### Sprint 4.2: Products
+### ✅ Sprint 4.2: Products
 
 **Цель:** Продукты компаний с произвольным числом планов рассрочки.
 
 **Задачи:**
-- [ ] `app/modules/products/models.py` — `Product`, `ProductInstallment`
-- [ ] `app/modules/products/service.py` — CRUD + `PurchaseConfigValidator`:
-  - Валидация `distribution_config`: `company_pct + SUM(agent_levels) <= 1.0`
-  - Валидация `plan_config`: см. ниже
-- [ ] Staff endpoints:
-  - `POST /api/v1/staff/products` — создать продукт
-  - `PATCH /api/v1/staff/products/{id}` — редактировать
-  - `PATCH /api/v1/staff/products/{id}/status` — изменить статус
-  - `POST /api/v1/staff/products/{id}/installments` — добавить план рассрочки
-  - `PATCH /api/v1/staff/products/{id}/installments/{inst_id}` — редактировать план
-  - `DELETE /api/v1/staff/products/{id}/installments/{inst_id}` — удалить план
-- [ ] Public endpoints (витрина):
-  - `GET /api/v1/products` — список активных продуктов с планами рассрочки
-  - `GET /api/v1/products/{id}` — детали продукта
-- [ ] Redis кэш social proof (`sold_units` по продукту): TTL = `SOCIAL_PROOF_CACHE_TTL`
-- [ ] `tests/test_products.py` — 12 тестов
+- [x] `app/modules/products/models.py` — `Product`, `ProductInstallment`
+- [x] `app/modules/products/constants.py` — `ProductStatus`, `VALID_PRODUCT_STATUS_TRANSITIONS`, `validate_plan_config()`
+- [x] `app/modules/products/schemas.py` — 5 request + 8 response schemas (Public* variants + sold_units stub)
+- [x] `app/modules/products/service.py` — CRUD + `cascade_price()` + installment management
+- [x] Staff endpoints:
+  - `POST /api/v1/staff/products` — создать продукт (company_manage + financial_operations)
+  - `PATCH /api/v1/staff/products/{id}` — редактировать (company_manage; + financial_operations если gift_units в body)
+  - `PATCH /api/v1/staff/products/{id}/status` — изменить статус (company_manage)
+  - `POST /api/v1/staff/products/{id}/installments` — добавить план рассрочки (company_manage + financial_operations)
+  - `PATCH /api/v1/staff/products/{id}/installments/{inst_id}` — редактировать план (company_manage + financial_operations)
+  - `DELETE /api/v1/staff/products/{id}/installments/{inst_id}` — soft-delete план (company_manage + financial_operations)
+- [x] Public endpoints (витрина):
+  - `GET /api/v1/products` — список активных продуктов (+ optional `?company_id=` filter)
+  - `GET /api/v1/products/{id}` — детали продукта с планами рассрочки
+- [x] Social proof: `sold_units: int = 0` заглушка в PublicProductResponse (TODO Sprint 6.1)
+- [x] Price cascade: `companies/service.py update_price()` → `products/service.py cascade_price()`
+- [x] `tests/test_products.py` — 12 тестов
 
-**Модель `ProductInstallment`:**
+**Миграции:**
+- [x] `0006_products` — `products`, `product_installments` (2 таблицы, CHECK constraints)
+
+**Решения реализации:**
+- P4-10: Price cascade = обновление `price_per_unit_cents` на active/hidden Products + soft-delete всех `ProductInstallment` шаблонов. Staff создаёт новые шаблоны по новой цене. Активные `InstallmentPlan` (Sprint 6.2) не затрагиваются — работают по снапшоту
+- P4-11: `validate_plan_config()` — context-aware: принимает `product_units` и `price_per_unit_cents`. Инварианты: `len(tranches) >= 2`, `sum(amount_cents) == units * price`, `sum(units_percent) == 100`, `bonus_units >= 0`, `agent_bonus_units >= 0`. Unknown keys rejected
+- P4-12: `Product.units` иммутабелен после создания — нет в `UpdateProductRequest`
+- P4-13: `Product.price_per_unit_cents` копируется из Company при создании, обновляется только через cascade. Прямое редактирование запрещено
+- P4-14: `ProductInstallment` без `updated_at` (по ТЗ). plan_config изменяется через `set_jsonb()`. Soft-delete через `is_deleted: bool`
+- P4-15: `cascade_price()` использует bulk `update()` с явным `updated_at=datetime.now(UTC)` — ORM `onupdate` не срабатывает на bulk operations
+- P4-16: Lazy import `from app.modules.products.service import cascade_price` в `companies/service.py` — избегает circular import
+- P4-17: `gift_units` в body `PATCH /staff/products/{id}` триггерит дополнительную проверку `financial_operations` (аналогично distribution_config в Sprint 4.1)
+- P4-18: `sold_units: int = 0` — заглушка в `PublicProductResponse`. Реальный подсчёт из purchases — Sprint 6.1 с Redis кэшем (`SOCIAL_PROOF_CACHE_TTL`)
+
+**Модели:**
 ```python
-ProductInstallment:
-    id: UUID
-    product_id: UUID  -- FK products.id
-    name: str         -- "6-месячный план", "Годовой VIP", etc.
+Product:
+    id, company_id  -- FK company_profiles.id
+    name: String(500), description: String(5000) | None
+    units: Integer  -- immutable after creation
+    gift_units: Integer  -- default 0, bonus on instant purchase
+    price_per_unit_cents: BigInteger  -- denormalized from Company, cascade-updated
+    status: String(20)  -- CHECK: active | hidden | archived
+    created_at, updated_at
+
+ProductInstallment:  -- no updated_at per ТЗ
+    id, product_id  -- FK products.id
+    name: String(500)
     plan_config: JSONB
+    is_deleted: Boolean  -- soft-delete on price cascade
     created_at
 ```
 
@@ -942,21 +1013,80 @@ ProductInstallment:
 }
 ```
 
-**Семантика траншей:**
-- `tranches[0]` — немедленный платёж (day 0, при создании плана)
-- `tranches[1..N]` — ежемесячно по february rule
-- Количество траншей не ограничено сверху
-
-**Валидация `plan_config` при сохранении (`PurchaseConfigValidator`):**
+**Валидация `plan_config` (Sprint 4.2 — `validate_plan_config()`):**
 ```python
 assert len(tranches) >= 2
 assert all(t["amount_cents"] > 0 for t in tranches)
 assert all(t["units_percent"] > 0 for t in tranches)
 assert sum(t["amount_cents"] for t in tranches) == product.units * company.price_per_unit_cents
 assert sum(t["units_percent"] for t in tranches) == 100
+assert bonus_units >= 0
+assert agent_bonus_units >= 0
 ```
 
-**Критерий готовности:** Витрина работает. Один продукт может иметь произвольное число планов рассрочки. `plan_config` и `distribution_config` валидируются при сохранении.
+**Endpoints:**
+```
+-- Staff endpoints:
+POST   /api/v1/staff/products                                   -> ProductResponse      (201)
+PATCH  /api/v1/staff/products/{id}                               -> ProductResponse      (200)
+PATCH  /api/v1/staff/products/{id}/status                        -> ProductResponse      (200)
+POST   /api/v1/staff/products/{id}/installments                  -> InstallmentResponse  (201)
+PATCH  /api/v1/staff/products/{id}/installments/{inst_id}        -> InstallmentResponse  (200)
+DELETE /api/v1/staff/products/{id}/installments/{inst_id}        -> 204
+
+-- Public endpoints:
+GET    /api/v1/products                                          -> PublicProductListResponse   (200)
+GET    /api/v1/products/{id}                                     -> PublicProductDetailResponse (200)
+```
+
+**Матрица permissions:**
+```
+company_manage                              -> update name/description, status change
+company_manage + financial_operations       -> create product, update gift_units, installment CRUD
+```
+
+**Результат:**
+```
+backend/app/modules/products/
+├── __init__.py
+├── constants.py        -- ProductStatus, validate_plan_config()
+├── models.py           -- Product, ProductInstallment
+├── schemas.py          -- 5 request + 8 response (Public* + sold_units stub)
+├── service.py          -- CRUD + cascade_price() + installment management
+├── staff_router.py     -- 6 staff endpoints
+└── router.py           -- 2 public endpoints
+
+backend/tests/
+└── test_products.py    -- 12 tests
+```
+
+**Критерий готовности:** Витрина работает. Один продукт может иметь произвольное число планов рассрочки. `plan_config` валидируется при сохранении. Price cascade обновляет продукты и soft-delete'ит installment-шаблоны. 115 тестов зелёные.
+
+---
+
+**Phase 4 завершена.** 17 endpoints (7 staff companies + 2 public companies + 6 staff products + 2 public products), 22 теста Phase 4 (+93 Phase 0-3 = 115 total), 2 миграции (итого 6).
+
+**Новые audit events:**
+- `company.created` — создание компании
+- `company.updated` — обновление профиля
+- `company.price_updated` — изменение цены (+ products_updated count)
+- `company.roadmap_item_created` — создание roadmap item
+- `company.roadmap_item_updated` — обновление roadmap item
+- `company.roadmap_item_deleted` — soft-delete roadmap item
+- `company.roadmap_reordered` — изменение порядка
+- `product.created` — создание продукта
+- `product.updated` — обновление продукта
+- `product.status_changed` — изменение статуса
+- `product.installment_created` — создание installment template
+- `product.installment_updated` — обновление installment template
+- `product.installment_deleted` — soft-delete installment template
+
+**Обновлённые файлы (Phase 4):**
+- `staff/constants.py` — `+company_manage: True` в DEFAULT_STAFF_PERMISSIONS
+- `staff/schemas.py` — `+company_manage: bool | None` в UpdatePermissionsRequest
+- `main.py` — `+companies_router`, `+staff_companies_router`, `+products_router`, `+staff_products_router`
+- `migrations/env.py` — раскомментированы импорты CompanyProfile, CompanyPriceHistory, CompanyRoadmapItem, Product, ProductInstallment
+- `tests/helpers.py` — cleanup для company + product таблиц в `_cleanup_user_related_data()`
 
 ---
 
@@ -1562,6 +1692,9 @@ Event:
 | TD-026 | `app/modules/documents/` | Версионирование: переподписание при обновлении редакции. Поле `version` заложено, логика определения пользователей без актуальной подписи — после MVP | After MVP | ⬜ |
 | TD-027 | `app/modules/staff/router.py` | Unblock endpoint (`PATCH /staff/users/{id}/unblock`). Сейчас разблокировка только через DB | After MVP | ⬜ |
 | TD-028 | `app/modules/auth/avatar_guard.py` | Применить `@require_not_avatar` к остальным RESTRICTED_OPERATIONS endpoints по мере их создания (create_payment, create_withdrawal и т.д.) | Phase 5+ | ⬜ |
+| TD-029 | `companies/`, `products/` | Enum duplication: `CompanyStatus`, `ProductStatus`, `RoadmapItemStatus` определены и в `models.py`, и в `constants.py`. Консолидировать в одном месте | Backlog | ⬜ |
+| TD-030 | `companies/schemas.py` | `CreateCompanyRequest.email` использует `str`, не `EmailStr`. Auth schemas используют `EmailStr` — inconsistency | Backlog | ⬜ |
+| TD-031 | `products/schemas.py` | Social proof `sold_units: int = 0` — заглушка. Реализовать подсчёт из purchases с Redis кэшем (TTL = `SOCIAL_PROOF_CACHE_TTL`) | Sprint 6.1 | ⬜ |
 
 ---
 
@@ -1569,4 +1702,4 @@ Event:
 
 ---
 
-*Version 1.3 | 2026-04-04 | cbshome Backend TZ — Phase 3 complete*
+*Version 1.4 | 2026-04-05 | cbshome Backend TZ — Phase 4 complete*
