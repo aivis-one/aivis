@@ -436,33 +436,28 @@ async def test_get_passive_balance_excludes_reversed(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_validate_route_active_to_passive_forbidden() -> None:
+def test_validate_route_active_to_passive_forbidden() -> None:
     """Active -> Passive route raises AMLViolationError."""
     with pytest.raises(AMLViolationError):
         validate_route("active", "passive")
 
 
-@pytest.mark.asyncio
-async def test_validate_route_active_to_active_allowed() -> None:
+def test_validate_route_active_to_active_allowed() -> None:
     """Active -> Active route is allowed."""
     validate_route("active", "active")
 
 
-@pytest.mark.asyncio
-async def test_validate_route_passive_to_active_allowed() -> None:
+def test_validate_route_passive_to_active_allowed() -> None:
     """Passive -> Active route is allowed."""
     validate_route("passive", "active")
 
 
-@pytest.mark.asyncio
-async def test_validate_route_passive_to_passive_allowed() -> None:
+def test_validate_route_passive_to_passive_allowed() -> None:
     """Passive -> Passive route is allowed."""
     validate_route("passive", "passive")
 
 
-@pytest.mark.asyncio
-async def test_validate_route_invalid_ledger_type() -> None:
+def test_validate_route_invalid_ledger_type() -> None:
     """Invalid ledger type -> ValueError."""
     with pytest.raises(ValueError, match="Invalid ledger type"):
         validate_route("unknown", "active")

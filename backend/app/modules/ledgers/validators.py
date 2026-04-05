@@ -27,7 +27,7 @@
 
 from app.core.exceptions import AMLViolationError
 
-_VALID_LEDGER_TYPES = {"active", "passive"}
+_VALID_LEDGER_TYPES = frozenset({"active", "passive"})
 
 
 def validate_route(source: str, target: str) -> None:

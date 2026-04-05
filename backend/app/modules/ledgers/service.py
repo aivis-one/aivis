@@ -49,7 +49,7 @@ logger = structlog.get_logger()
 
 # Statuses allowed for new ledger entries.
 # "reversed" is never written directly -- only by the reversal process.
-_WRITABLE_STATUSES = {LedgerStatus.FROZEN, LedgerStatus.CONFIRMED}
+_WRITABLE_STATUSES = frozenset({LedgerStatus.FROZEN, LedgerStatus.CONFIRMED})
 
 
 def _validate_status(status: str) -> None:
