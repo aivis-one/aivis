@@ -22,8 +22,8 @@
 #
 # PRICE CASCADE:
 #   When price changes, all active/hidden Products of this company
-#   are updated. Archived products are not touched.
-#   Implemented in Sprint 4.2 when Products table exists.
+#   are updated and their installment templates soft-deleted.
+#   Implemented via products/service.py cascade_price().
 # =============================================================================
 
 from uuid import UUID
@@ -240,9 +240,9 @@ async def update_price(
     # Update company price.
     profile.price_per_unit_cents = new_price
 
-    # TODO Sprint 4.2: cascade to Products table.
-    # UPDATE products SET price_per_unit_cents = new_price
-    # WHERE company_id = company_id AND status IN ('active', 'hidden')
+    # Cascade to Products: update price + soft-delete installment templates.
+    from app.modules.products.service import cascade_price
+    products_updated = await cascade_price(profile.id, new_price, session)
 
     # Record price history.
     history = CompanyPriceHistory(
@@ -263,7 +263,7 @@ async def update_price(
         actor_type="staff",
         target_type="company",
         target_id=profile.id,
-        data={"old_price": old_price, "new_price": new_price},
+        data={"old_price": old_price, "new_price": new_price, "products_updated": products_updated},
     )
 
     logger.info(

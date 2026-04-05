@@ -39,7 +39,7 @@ from app.modules.documents.models import Document, DocumentSigning  # noqa: F401
 from app.modules.companies.models import CompanyProfile, CompanyPriceHistory, CompanyRoadmapItem  # noqa: F401
 
 # Sprint 4.2: Products
-# from app.modules.products.models import Product, ProductInstallment  # noqa: F401
+from app.modules.products.models import Product, ProductInstallment  # noqa: F401
 
 # Sprint 5.2: Payments
 # from app.modules.payments.models import Payment, CryptoAddress  # noqa: F401

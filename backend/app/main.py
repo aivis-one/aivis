@@ -19,6 +19,8 @@
 #   kyc_admin_router       -> /api/v1/staff/kyc/* (Sprint 3.3)
 #   companies_router       -> /api/v1/companies/* (Sprint 4.1)
 #   staff_companies_router -> /api/v1/staff/companies/* (Sprint 4.1)
+#   products_router        -> /api/v1/products/* (Sprint 4.2)
+#   staff_products_router  -> /api/v1/staff/products/* (Sprint 4.2)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis
@@ -50,6 +52,8 @@ from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.kyc.router import router as kyc_router
+from app.modules.products.router import router as products_router
+from app.modules.products.staff_router import router as staff_products_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.router import router as staff_users_router
@@ -126,6 +130,8 @@ app.include_router(dashboard_router)
 app.include_router(kyc_admin_router)
 app.include_router(companies_router)
 app.include_router(staff_companies_router)
+app.include_router(products_router)
+app.include_router(staff_products_router)
 
 
 # ---------------------------------------------------------------------------

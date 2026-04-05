@@ -304,8 +304,9 @@ async def _cleanup_user_related_data(
     )
     from app.modules.documents.models import Document, DocumentSigning
     from app.modules.kyc.models import KYCApplication
+    from app.modules.products.models import Product, ProductInstallment
 
-    # Phase 4.1: Company-related tables.
+    # Phase 4.1+4.2: Company and product-related tables.
     # Find company profiles owned by these users.
     cp_stmt = select(CompanyProfile.id).where(
         CompanyProfile.user_id.in_(user_ids)
@@ -314,6 +315,27 @@ async def _cleanup_user_related_data(
     company_ids = [row[0] for row in cp_result.all()]
 
     if company_ids:
+        # Find products belonging to these companies.
+        prod_stmt = select(Product.id).where(
+            Product.company_id.in_(company_ids)
+        )
+        prod_result = await session.execute(prod_stmt)
+        product_ids = [row[0] for row in prod_result.all()]
+
+        if product_ids:
+            # Product installments reference products.
+            await session.execute(
+                delete(ProductInstallment).where(
+                    ProductInstallment.product_id.in_(product_ids)
+                )
+            )
+            # Products reference company_profiles.
+            await session.execute(
+                delete(Product).where(
+                    Product.id.in_(product_ids)
+                )
+            )
+
         # Roadmap items reference company_profiles.
         await session.execute(
             delete(CompanyRoadmapItem).where(
