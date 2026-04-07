@@ -514,4 +514,11 @@ async def delete_all_sessions(user_id: UUID) -> int:
     """
 
     count = await redis.eval(lua, 1, index_key, _SESSION_PREFIX)
+
+    logger.info(
+        "all_sessions_deleted",
+        user_id=str(user_id),
+        sessions_invalidated=int(count),
+    )
+
     return int(count)
