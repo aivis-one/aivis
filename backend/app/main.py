@@ -21,15 +21,21 @@
 #   staff_companies_router -> /api/v1/staff/companies/* (Sprint 4.1)
 #   products_router        -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router  -> /api/v1/staff/products/* (Sprint 4.2)
+#   payments_router        -> /api/v1/payments/* (Sprint 5.2)
+#   payments_webhook_router -> /api/v1/payments/crypto/* (Sprint 5.2)
 #
 # LIFESPAN:
-#   startup:  setup_logging -> init_redis
-#   shutdown: close_redis   -> dispose_engine
+#   startup:  setup_logging -> init_redis -> start confirmation daemon
+#   shutdown: cancel daemon -> close_redis -> dispose_engine
+#
+# DAEMONS:
+#   payment_confirmation_worker -- skeleton (Sprint 5.2), full logic (Sprint 5.3)
 #
 # MIDDLEWARE (applied in reverse order -- outermost last):
 #   CORSMiddleware -> TraceIdMiddleware
 # =============================================================================
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -52,6 +58,8 @@ from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.kyc.router import router as kyc_router
+from app.modules.payments.router import router as payments_router
+from app.modules.payments.webhook_router import router as payments_webhook_router
 from app.modules.products.router import router as products_router
 from app.modules.products.staff_router import router as staff_products_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
@@ -63,14 +71,53 @@ logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
+# Payment confirmation daemon (skeleton -- Sprint 5.2, logic -- Sprint 5.3)
+# ---------------------------------------------------------------------------
+
+
+async def _payment_confirmation_worker() -> None:
+    """Background task: confirm frozen ledger entries and payments.
+
+    Skeleton in Sprint 5.2 -- empty loop with configured interval.
+    Full logic (batch UPDATE frozen -> confirmed) added in Sprint 5.3.
+    """
+    interval = settings.confirmation_worker_interval_minutes * 60
+    logger.info(
+        "confirmation_worker_started",
+        interval_minutes=settings.confirmation_worker_interval_minutes,
+    )
+
+    while True:
+        try:
+            await asyncio.sleep(interval)
+            # Sprint 5.3: actual confirmation logic goes here.
+            logger.debug("confirmation_worker_tick")
+        except asyncio.CancelledError:
+            logger.info("confirmation_worker_stopped")
+            break
+        except Exception:
+            logger.exception("confirmation_worker_error")
+            # Continue running after unexpected errors.
+            await asyncio.sleep(interval)
+
+
+# ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application startup and shutdown."""
     setup_logging()
     await init_redis()
+
+    # Start background daemons.
+    confirmation_task = asyncio.create_task(
+        _payment_confirmation_worker(),
+        name="payment_confirmation_worker",
+    )
+
     logger.info(
         "app_started",
         env=settings.app_env,
@@ -79,6 +126,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     yield
+
+    # Stop background daemons.
+    confirmation_task.cancel()
+    try:
+        await confirmation_task
+    except asyncio.CancelledError:
+        pass
 
     await close_redis()
     await dispose_engine()
@@ -132,6 +186,8 @@ app.include_router(companies_router)
 app.include_router(staff_companies_router)
 app.include_router(products_router)
 app.include_router(staff_products_router)
+app.include_router(payments_router)
+app.include_router(payments_webhook_router)
 
 
 # ---------------------------------------------------------------------------

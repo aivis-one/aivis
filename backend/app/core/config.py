@@ -67,6 +67,14 @@ class Settings(BaseSettings):
     freezing_hours_crypto: int = 1
     freezing_hours_bank: int = 72 * 14
 
+    # -- Crypto Webhook (Sprint 5.2) --
+    # Shared secret for blockchain webhook authentication (stub).
+    # In production, replace with provider-specific signature validation.
+    crypto_webhook_secret: str = ""
+
+    # -- Payment confirmation daemon (Sprint 5.3) --
+    confirmation_worker_interval_minutes: int = 5
+
     # -- Installments --
     installment_default_days: int = 7
     installment_worker_hour: int = 3
@@ -141,6 +149,15 @@ class Settings(BaseSettings):
             else:
                 raise ValueError(
                     "KYC_WEBHOOK_SECRET is required in production."
+                )
+
+        # -- crypto_webhook_secret (Sprint 5.2) --
+        if not self.crypto_webhook_secret:
+            if is_dev:
+                self.crypto_webhook_secret = "dev-crypto-webhook-secret"
+            else:
+                raise ValueError(
+                    "CRYPTO_WEBHOOK_SECRET is required in production."
                 )
 
         return self

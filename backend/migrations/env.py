@@ -42,7 +42,7 @@ from app.modules.companies.models import CompanyProfile, CompanyPriceHistory, Co
 from app.modules.products.models import Product, ProductInstallment  # noqa: F401
 
 # Sprint 5.2: Payments
-# from app.modules.payments.models import Payment, CryptoAddress  # noqa: F401
+from app.modules.payments.models import Payment, CryptoAddress  # noqa: F401
 
 # Sprint 6.1: Purchases
 # from app.modules.purchases.models import Purchase  # noqa: F401

@@ -30,6 +30,11 @@
 # Sprint 5.1:
 #   _cleanup_user_related_data() extended with ledger table cleanup
 #   (ActiveLedger, PassiveLedger).
+#
+# Sprint 5.2:
+#   _cleanup_user_related_data() extended with payment table cleanup
+#   (Payment, CryptoAddress). Order: ledger entries first (FK to payments),
+#   then payments, then crypto_addresses.
 # =============================================================================
 
 import hashlib
@@ -309,6 +314,7 @@ async def _cleanup_user_related_data(
     from app.modules.documents.models import Document, DocumentSigning
     from app.modules.kyc.models import KYCApplication
     from app.modules.ledgers.models import ActiveLedger, PassiveLedger
+    from app.modules.payments.models import CryptoAddress, Payment
     from app.modules.products.models import Product, ProductInstallment
 
     # Sprint 5.1: Ledger entries (FK to users.id with RESTRICT).
@@ -320,6 +326,20 @@ async def _cleanup_user_related_data(
     await session.execute(
         delete(PassiveLedger).where(
             PassiveLedger.user_id.in_(user_ids)
+        )
+    )
+
+    # Sprint 5.2: Payments and crypto addresses (FK to users.id with RESTRICT).
+    # Deleted AFTER ledger entries because active_ledger.origin_payment_id
+    # has FK to payments.id.
+    await session.execute(
+        delete(Payment).where(
+            Payment.user_id.in_(user_ids)
+        )
+    )
+    await session.execute(
+        delete(CryptoAddress).where(
+            CryptoAddress.user_id.in_(user_ids)
         )
     )
 
