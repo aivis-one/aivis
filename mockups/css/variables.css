@@ -1,0 +1,154 @@
+/* ============================================================
+   CBS HOME Design Tokens — variables.css v1.8.0
+   Based on: cbs-home-element-map-v2.html
+   Orange Triad: #cc3203 → #E8651A → #EFB44C
+   Teal System: #228B8A → #0A2A2E
+   Logo: #cc3203 (icon bg) + #084456 (text)
+   ============================================================ */
+
+:root {
+  /* === Orange Triad === */
+  --o-primary: #cc3203;
+  --o-accent: #E8651A;
+  --o-accent-hover: #D45A16;
+  --o-light: #EFB44C;
+  --o-tint-8: rgba(232,101,26,0.08);
+  --o-tint-15: rgba(232,101,26,0.15);
+  --o-light-tint-8: rgba(239,180,76,0.08);
+  --o-light-tint-15: rgba(239,180,76,0.15);
+
+  /* === Teal System === */
+  --t-500: #228B8A;
+  --t-600: #1E7A79;
+  --t-700: #1A6B6A;
+  --t-800: #15565A;
+  --t-900: #0E3D42;
+  --t-950: #0A2A2E;
+  --t-tint-8: rgba(26,107,106,0.08);
+  --t-tint-15: rgba(26,107,106,0.15);
+
+  /* === Semantic Aliases (mockup compatibility) === */
+  --primary: #1A6B6A;
+  --primary-dark: #0E3D42;
+  --primary-light: #228B8A;
+  --accent: #E8651A;
+  --accent-dark: #D45A16;
+  --logo-icon-bg: #cc3203;
+  --logo-text: #084456;
+
+  /* === Neutrals === */
+  --bg: #FFFFFF;
+  --bg-subtle: #F5F5F5;
+  --bg-elevated: #EEF3F6;
+  --text: #1A1A1A;
+  --text-secondary: #525252;
+  --text-tertiary: #A3A3A3;
+  --border: #D4D4D4;
+
+  /* === Semantic === */
+  --success: #16A34A;
+  --success-dim: rgba(22, 163, 74, 0.15);
+  --error: #DC2626;
+  --error-dim: rgba(220, 38, 38, 0.1);
+  --warning: #f59e0b;
+  --warning-dim: rgba(245, 158, 11, 0.15);
+  --danger: #DC2626;
+  --danger-dim: rgba(220, 38, 38, 0.1);
+
+  /* === Shadows === */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-xl: 0 16px 48px rgba(0,0,0,0.14);
+  --shadow-focus: 0 0 0 3px rgba(232,101,26,0.4);
+
+  /* === Border Radius === */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* === Spacing (8px base) === */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* === Font === */
+  --font: 'Montserrat', system-ui, sans-serif;
+
+  /* === Shell Theme === */
+  --shell-bg: #0f172a;
+  --shell-surface: #1e293b;
+  --shell-border: #334155;
+  --shell-text: #ffffff;
+  --shell-text-dim: rgba(255,255,255,0.5);
+  --shell-accent: #3b82f6;
+  --shell-accent-glow: rgba(59,130,246,0.3);
+
+  /* === Frame === */
+  --frame-bg: #374151;
+  --frame-padding: 12px;
+  --frame-radius-phone: 44px;
+  --frame-radius-tablet: 24px;
+  --frame-radius-desktop: 12px;
+  --screen-radius-phone: 38px;
+  --screen-radius-tablet: 16px;
+  --screen-radius-desktop: 8px;
+
+  /* === Telegram === */
+  --telegram: #2AABEE;
+  --telegram-dark: #229ED9;
+}
+
+/* === Dark Mode: Manual Toggle === */
+[data-theme="dark"] {
+  --bg: #121212;
+  --bg-subtle: #1E1E1E;
+  --bg-elevated: #0A2A2E;
+  --text: #E5E5E5;
+  --text-secondary: #A3A3A3;
+  --text-tertiary: #737373;
+  --border: #3A3A3A;
+  --primary: #228B8A;
+  --accent: #E8651A;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  --o-tint-8: rgba(232,101,26,0.12);
+  --o-tint-15: rgba(232,101,26,0.2);
+  --t-tint-8: rgba(34,139,138,0.12);
+  --t-tint-15: rgba(34,139,138,0.2);
+  --success-dim: rgba(22,163,74,0.2);
+  --warning-dim: rgba(245,158,11,0.2);
+  --danger-dim: rgba(220,38,38,0.15);
+}
+
+/* === Dark Mode: System Preference === */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --bg: #121212;
+    --bg-subtle: #1E1E1E;
+    --bg-elevated: #0A2A2E;
+    --text: #E5E5E5;
+    --text-secondary: #A3A3A3;
+    --text-tertiary: #737373;
+    --border: #3A3A3A;
+    --primary: #228B8A;
+    --accent: #E8651A;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+    --o-tint-8: rgba(232,101,26,0.12);
+    --o-tint-15: rgba(232,101,26,0.2);
+    --t-tint-8: rgba(34,139,138,0.12);
+    --t-tint-15: rgba(34,139,138,0.2);
+    --success-dim: rgba(22,163,74,0.2);
+    --warning-dim: rgba(245,158,11,0.2);
+    --danger-dim: rgba(220,38,38,0.15);
+  }
+}

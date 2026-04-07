@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME Staff — Live Mockup</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <script>
+    (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/shell.css">
+  <link rel="stylesheet" href="../css/nav-map.css">
+  <style>/* MOCKUP-SPECIFIC */
+
+    /* Clickability fix — staff-specific selectors */
+    .user-item[onclick] *,.kyc-item[onclick] *,.pay-item[onclick] *,.agent-app[onclick] * { pointer-events: none; }
+
+    /* Button variants not in shared components */
+    .btn-success { background:var(--success); color:#fff; }
+    .btn-success:hover { opacity:.9; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .btn-danger:hover { opacity:.9; }
+    .btn-warning { background:var(--warning); color:#fff; }
+    .btn-warning:hover { opacity:.9; }
+    .btn-xs { padding:6px 12px; font-size:11px; width:auto; }
+
+    /* List items (user, kyc, payment, agent-app) */
+    .user-item,.kyc-item,.pay-item,.agent-app { display:flex; align-items:center; gap:12px; padding:14px; border-radius:var(--radius-md); cursor:pointer; transition:background .2s; border-bottom:1px solid var(--border); }
+    .user-item:hover,.kyc-item:hover,.pay-item:hover,.agent-app:hover { background:var(--bg-subtle); }
+    .item-avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+    .item-info { flex:1; min-width:0; }
+    .item-name { font-size:14px; font-weight:600; color:var(--text); }
+    .item-detail { font-size:12px; color:var(--text-tertiary); }
+    .item-right { text-align:right; flex-shrink:0; }
+    .item-amount { font-size:14px; font-weight:700; }
+    .item-date { font-size:11px; color:var(--text-tertiary); }
+
+    /* Badges */
+    .badge { font-size:11px; font-weight:600; padding:3px 8px; border-radius:var(--radius-sm); display:inline-block; }
+    .badge-success { background:var(--success-dim); color:var(--success); }
+    .badge-warning { background:var(--warning-dim); color:var(--warning); }
+    .badge-danger { background:var(--danger-dim); color:var(--danger); }
+    .badge-primary { background:rgba(26,107,106,0.1); color:var(--primary); }
+    .badge-accent { background:rgba(232,101,26,0.1); color:var(--accent); }
+    .badge-neutral { background:var(--bg-subtle); color:var(--text-secondary); }
+
+    /* Search box */
+    .search-box { width:100%; padding:12px 16px; border:1px solid var(--border); border-radius:var(--radius-md); font-size:14px; font-family:inherit; margin-bottom:12px; background:var(--bg-subtle); }
+    .search-box:focus { outline:none; border-color:var(--primary); box-shadow:var(--shadow-focus); }
+
+    /* Filter tabs */
+    .filter-tabs { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
+    .filter-tab { padding:8px 16px; border-radius:var(--radius-xl); border:1px solid var(--border); background:var(--bg); color:var(--text-secondary); font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; font-family:inherit; transition:all .2s; }
+    .filter-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .filter-tab:hover { border-color:var(--primary); }
+
+    /* Action buttons row */
+    .action-row { display:flex; gap:8px; margin-top:8px; }
+
+    /* Avatar mode */
+    .avatar-banner { background:linear-gradient(135deg,var(--accent),var(--accent-dark)); color:#fff; padding:16px; border-radius:var(--radius-lg); margin-bottom:16px; text-align:center; }
+    .avatar-banner .banner-title { font-size:18px; font-weight:800; margin-bottom:4px; }
+    .avatar-banner .banner-sub { font-size:12px; opacity:.8; }
+    .avatar-active-bar { background:var(--accent); color:#fff; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:600; }
+    .restricted-list { list-style:none; padding:0; }
+    .restricted-list li { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text-secondary); display:flex; align-items:center; gap:8px; }
+    .restricted-list li::before { content:''; display:none; }
+
+    .tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
+  </style>
+</head>
+<body>
+  <!-- TOOLBAR -->
+  <div class="preview-toolbar">
+    <div class="toolbar-left"><div class="project-info"><span class="project-name">CBS HOME Staff v1.5</span><span class="project-badge">LIVE</span></div><a href="../index.html" class="home-btn" title="Hub"><i data-lucide="layout-grid"></i></a></div>
+    <div class="toolbar-center"><div class="device-switcher">
+      <button class="device-btn active" data-device="phone"><i data-lucide="smartphone" style="width:14px;height:14px"></i> <span class="device-label">Phone</span><span class="device-size">390</span></button>
+      <button class="device-btn" data-device="tablet"><i data-lucide="tablet" style="width:14px;height:14px"></i> <span class="device-label">Tablet</span><span class="device-size">820</span></button>
+      <button class="device-btn" data-device="desktop"><i data-lucide="monitor" style="width:14px;height:14px"></i> <span class="device-label">Desktop</span><span class="device-size">1280</span></button>
+    </div></div>
+    <div class="toolbar-right">
+      <button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
+        <i data-lucide="monitor"></i>
+      </button>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
+        <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+        <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
+      </div>
+      <button class="map-btn" onclick="openNavMap()"><i data-lucide="map-pin" style="width:14px;height:14px"></i> <span class="map-label">Map</span></button>
+      <div class="zoom-control"><button class="zoom-btn" data-zoom="-10">&minus;</button><span class="zoom-value">100%</span><button class="zoom-btn" data-zoom="+10">+</button></div>
+    </div>
+  </div>
+
+  <div class="preview-container">
+    <div class="device-frame phone" id="deviceFrame">
+      <div class="device-notch"></div>
+      <div class="device-screen" id="deviceScreen">
+        <div class="mockup-content">
+
+          <!-- ===== SCREEN 1: DASHBOARD ===== -->
+          <div class="screen active" id="screen-dashboard">
+            <header class="app-header">
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title">CBS Staff</span></div>
+              <div class="header-right"><img class="header-avatar" src="https://i.pravatar.cc/150?img=60" alt=""></div>
+            </header>
+            <main class="main">
+              <div style="margin-bottom:20px">
+                <span style="font-size:14px;color:var(--text-secondary)">Staff Panel</span>
+                <h2 style="font-size:20px;font-weight:700;color:var(--text)">Admin M&uuml;ller</h2>
+                <div style="display:inline-block;margin-top:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-sm);background:rgba(26,107,106,0.15);color:var(--primary)"><i data-lucide="shield" style="width:12px;height:12px;vertical-align:-2px"></i> Staff Admin</div>
+              </div>
+              <div class="stats-grid">
+                <div class="stat-card" onclick="switchTab('screen-users','tab-users')">
+                  <div class="icon-box teal"><i data-lucide="users"></i></div>
+                  <div class="stat-label" data-i18n="staff.users.stat">Пользователи</div>
+                  <div class="stat-value">1 247</div>
+                  <div class="stat-change up" data-i18n="staff.users.change">+34 за месяц</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('screen-kyc','tab-kyc')">
+                  <div class="icon-box yellow"><i data-lucide="shield-alert"></i></div>
+                  <div class="stat-label" data-i18n="staff.kycQueue">KYC очередь</div>
+                  <div class="stat-value">12</div>
+                  <div class="stat-change down" data-i18n="staff.pending">Ожидают</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('screen-payments','tab-pay')">
+                  <div class="icon-box green"><i data-lucide="credit-card"></i></div>
+                  <div class="stat-label" data-i18n="staff.payments.stat">Платежи</div>
+                  <div class="stat-value">5</div>
+                  <div class="stat-sub" data-i18n="staff.awaitingConfirm">Ожидают подтверждения</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('screen-more','tab-more')">
+                  <div class="icon-box orange"><i data-lucide="user-check"></i></div>
+                  <div class="stat-label" data-i18n="staff.agentApps">Заявки агентов</div>
+                  <div class="stat-value">3</div>
+                  <div class="stat-sub" data-i18n="staff.new">Новые</div>
+                </div>
+              </div>
+              <div class="section-title" data-i18n="staff.quickActions">Быстрые действия</div>
+              <button class="btn btn-primary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-kyc','tab-kyc')"><i data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="staff.processKyc">Обработать KYC</span></button>
+              <button class="btn btn-secondary btn-sm" style="margin-bottom:8px" onclick="switchTab('screen-payments','tab-pay')"><i data-lucide="credit-card" style="width:14px;height:14px;vertical-align:-2px"></i> <span data-i18n="staff.checkPayments">Проверить платежи</span></button>
+              <button class="btn btn-secondary btn-sm" onclick="navigateTo('screen-avatar')"><i data-lucide="ghost" style="width:14px;height:14px;vertical-align:-2px"></i> Avatar Mode</button>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item active" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.staff.home">Главная</span></button>
+              <button class="tab-item" id="tab-users" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span><span data-i18n="tab.staff.users">Пользователи</span></button>
+              <button class="tab-item" id="tab-kyc" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span><span data-i18n="tab.staff.kyc">KYC</span></button>
+              <button class="tab-item" id="tab-pay" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span><span data-i18n="tab.staff.payments">Платежи</span></button>
+              <button class="tab-item" id="tab-more" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.staff.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 2: USERS ===== -->
+          <div class="screen" id="screen-users">
+            <header class="app-header">
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.users.title">Пользователи</span></div>
+              <div class="header-right"><span style="font-size:13px;color:var(--text-tertiary)">1 247</span></div>
+            </header>
+            <main class="main">
+              <input class="search-box" type="text" placeholder="Поиск по имени, email..." data-i18n="staff.searchPlaceholder" data-i18n-attr="placeholder" onclick="showToast('Поиск активирован','info')">
+              <div class="filter-tabs">
+                <button class="filter-tab active" onclick="filterUsers(this,'all')">Все</button>
+                <button class="filter-tab" onclick="filterUsers(this,'investor')">Инвесторы</button>
+                <button class="filter-tab" onclick="filterUsers(this,'agent')">Агенты</button>
+                <button class="filter-tab" onclick="filterUsers(this,'company')">Компании</button>
+              </div>
+              <div id="userList">
+                <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=1" alt="">
+                  <div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail" data-i18n="staff.user.petrova.detail">Инвестор &bull; anna@mail.ru</div></div>
+                  <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
+                </div>
+                <div class="user-item" data-role="agent" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
+                  <div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail" data-i18n="staff.user.seider.detail">Агент &bull; sergej@cbshome.org</div></div>
+                  <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
+                </div>
+                <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
+                  <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail" data-i18n="staff.user.ivanov.detail">Инвестор &bull; max.iv@gmail.com</div></div>
+                  <div class="item-right"><span class="badge badge-warning">KYC <i data-lucide="clock" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
+                </div>
+                <div class="user-item" data-role="company" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=65" alt="">
+                  <div class="item-info"><div class="item-name">GmbH Immobilien AG</div><div class="item-detail" data-i18n="staff.user.immoag.detail">Компания &bull; info@immo-ag.de</div></div>
+                  <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
+                </div>
+                <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=47" alt="">
+                  <div class="item-info"><div class="item-name">Наталья Сидорова</div><div class="item-detail" data-i18n="staff.user.sidorova.detail">Инвестор &bull; nat.sid@yandex.ru</div></div>
+                  <div class="item-right"><span class="badge badge-danger"><i data-lucide="ban" style="width:10px;height:10px;vertical-align:-1px"></i> Blocked</span></div>
+                </div>
+                <div class="user-item" data-role="agent" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=15" alt="">
+                  <div class="item-info"><div class="item-name">Klaus Hoffmann</div><div class="item-detail" data-i18n="staff.user.hoffmann.detail">Агент &bull; klaus@cbshome.org</div></div>
+                  <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
+                </div>
+                <div class="user-item" data-role="investor" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=22" alt="">
+                  <div class="item-info"><div class="item-name">Илья Морозов</div><div class="item-detail" data-i18n="staff.user.morozov.detail">Инвестор &bull; ilya.m@outlook.com</div></div>
+                  <div class="item-right"><span class="badge badge-success">KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
+                </div>
+                <div class="user-item" data-role="company" onclick="showToast('Профиль пользователя — финальная точка')">
+                  <img class="item-avatar" src="https://i.pravatar.cc/150?img=68" alt="">
+                  <div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail" data-i18n="staff.user.erstekapital.detail">Компания &bull; ek@erste-kapital.de</div></div>
+                  <div class="item-right"><span class="badge badge-warning">KYC <i data-lucide="clock" style="width:10px;height:10px;vertical-align:-1px"></i></span></div>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.staff.home">Главная</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span><span data-i18n="tab.staff.users">Пользователи</span></button>
+              <button class="tab-item" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span><span data-i18n="tab.staff.kyc">KYC</span></button>
+              <button class="tab-item" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span><span data-i18n="tab.staff.payments">Платежи</span></button>
+              <button class="tab-item" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.staff.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 3: KYC QUEUE ===== -->
+          <div class="screen" id="screen-kyc">
+            <header class="app-header">
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.kyc.title">KYC Очередь</span></div>
+              <div class="header-right"><span class="badge badge-warning">12 pending</span></div>
+            </header>
+            <main class="main">
+              <div style="padding:12px;background:var(--warning-dim);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)" data-i18n="staff.kyc.hint"><i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:-2px"></i> Проверьте документы и данные пользователя перед одобрением. Среднее время обработки: 15 мин.</div>
+
+              <div class="kyc-item" onclick="showToast('KYC детали — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
+                <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail" data-i18n="staff.kyc.ivanov">Инвестор &bull; Паспорт РФ &bull; Подан 28.03.2026</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Максим Иванов','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Максим Иванов','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="kyc-item" onclick="showToast('KYC детали — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=68" alt="">
+                <div class="item-info"><div class="item-name">Erste Kapital GmbH</div><div class="item-detail" data-i18n="staff.kyc.erstekapital">Компания &bull; Handelsregister &bull; Подан 30.03.2026</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Erste Kapital','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Erste Kapital','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="kyc-item" onclick="showToast('KYC детали — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=44" alt="">
+                <div class="item-info"><div class="item-name">Ольга Шмидт</div><div class="item-detail" data-i18n="staff.kyc.schmidt">Инвестор &bull; Personalausweis &bull; Подан 01.04.2026</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('KYC одобрен: Ольга Шмидт','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('KYC отклонён: Ольга Шмидт','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px" data-i18n="staff.kyc.moreApps">... ещё 9 заявок</div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.staff.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span><span data-i18n="tab.staff.users">Пользователи</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span><span data-i18n="tab.staff.kyc">KYC</span></button>
+              <button class="tab-item" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span><span data-i18n="tab.staff.payments">Платежи</span></button>
+              <button class="tab-item" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.staff.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 4: PAYMENT REVIEW ===== -->
+          <div class="screen" id="screen-payments">
+            <header class="app-header">
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.payments.title">Платежи</span></div>
+              <div class="header-right"><span class="badge badge-warning">5 pending</span></div>
+            </header>
+            <main class="main">
+              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)" data-i18n="staff.payments.hint"><i data-lucide="credit-card" style="width:12px;height:12px;vertical-align:-2px"></i> Проверьте хеш транзакции в блокчейне перед подтверждением. Все платежи — крипто (USDT).</div>
+
+              <div class="pay-item" onclick="showToast('Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="circle-dollar-sign" style="width:20px;height:20px;color:var(--success)"></i></div>
+                <div class="item-info"><div class="item-name">&euro;2 500 &bull; USDT TRC20</div><div class="item-detail">Анна Петрова &bull; TX: 0x8f3a...b21c</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;2 500','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="circle-dollar-sign" style="width:20px;height:20px;color:var(--success)"></i></div>
+                <div class="item-info"><div class="item-name">&euro;10 000 &bull; USDT ERC20</div><div class="item-detail">Максим Иванов &bull; TX: 0x4c7d...e98f</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;10 000','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="circle-dollar-sign" style="width:20px;height:20px;color:var(--success)"></i></div>
+                <div class="item-info"><div class="item-name">&euro;1 200 &bull; USDT BEP20</div><div class="item-detail">Klaus Hoffmann &bull; TX: 0xaa12...3f4b</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;1 200','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="circle-dollar-sign" style="width:20px;height:20px;color:var(--success)"></i></div>
+                <div class="item-info"><div class="item-name">&euro;5 000 &bull; USDT TRC20</div><div class="item-detail">Илья Морозов &bull; TX: 0x6b9e...d7a1</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;5 000','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="pay-item" onclick="showToast('Детали платежа — финальная точка')">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--success-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="circle-dollar-sign" style="width:20px;height:20px;color:var(--success)"></i></div>
+                <div class="item-info"><div class="item-name">&euro;750 &bull; USDT ERC20</div><div class="item-detail">Ольга Шмидт &bull; TX: 0xfe21...8c3d</div></div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Платёж подтверждён: &euro;750','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Платёж отклонён','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.staff.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span><span data-i18n="tab.staff.users">Пользователи</span></button>
+              <button class="tab-item" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span><span data-i18n="tab.staff.kyc">KYC</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span><span data-i18n="tab.staff.payments">Платежи</span></button>
+              <button class="tab-item" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.staff.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 5: MORE (Settings / Agent Apps / Avatar access) ===== -->
+          <div class="screen" id="screen-more">
+            <header class="app-header">
+              <div class="header-left"><img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;"><span class="header-title" data-i18n="staff.more.title">Ещё</span></div>
+            </header>
+            <main class="main">
+              <div style="text-align:center;padding:20px 0">
+                <img src="https://i.pravatar.cc/150?img=60" style="width:72px;height:72px;border-radius:50%;border:3px solid var(--primary);margin-bottom:12px" alt="">
+                <div style="font-size:18px;font-weight:700;color:var(--text)">Admin M&uuml;ller</div>
+                <div style="font-size:13px;color:var(--text-secondary)">admin@cbshome.org</div>
+                <div style="display:inline-flex;gap:8px;margin-top:8px">
+                  <span class="badge badge-primary"><i data-lucide="shield" style="width:10px;height:10px;vertical-align:-1px"></i> Staff</span>
+                  <span class="badge badge-success">Online</span>
+                </div>
+              </div>
+
+              <div style="border-top:1px solid var(--border);padding-top:16px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px" data-i18n="staff.settings.tools">Инструменты</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigateTo('screen-agent-apps')"><span style="font-size:14px;color:var(--text)"><i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-2px"></i> Заявки агентов</span><span style="display:flex;align-items:center;gap:6px"><span class="badge badge-warning">3</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigateTo('screen-avatar')"><span style="font-size:14px;color:var(--accent);font-weight:600"><i data-lucide="ghost" style="width:14px;height:14px;vertical-align:-2px"></i> Avatar Mode</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></div>
+              </div>
+
+              <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px" data-i18n="staff.settings.system">Система</div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)" data-i18n="staff.settings.platform">Платформа</span><span style="font-size:13px;color:var(--text-tertiary)">v2.4.1</span></div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;color:var(--text)" data-i18n="staff.settings.language">Язык</span><span style="font-size:13px;color:var(--text-tertiary)" data-i18n="staff.settings.langVal">Русский</span></div>
+                <div style="display:flex;justify-content:space-between;padding:14px 0;cursor:pointer" onclick="showToast('Выход — финальная точка')"><span style="font-size:14px;color:var(--danger)"><i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px"></i> Выйти</span><span style="font-size:13px;color:var(--text-tertiary)">&rarr;</span></div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dash')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.staff.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-users','tab-users')"><span class="tab-icon"><i data-lucide="users"></i></span><span data-i18n="tab.staff.users">Пользователи</span></button>
+              <button class="tab-item" onclick="switchTab('screen-kyc','tab-kyc')"><span class="tab-icon"><i data-lucide="shield-check"></i></span><span data-i18n="tab.staff.kyc">KYC</span></button>
+              <button class="tab-item" onclick="switchTab('screen-payments','tab-pay')"><span class="tab-icon"><i data-lucide="credit-card"></i></span><span data-i18n="tab.staff.payments">Платежи</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-more','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.staff.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 6: AGENT APPLICATIONS ===== -->
+          <div class="screen" id="screen-agent-apps">
+            <header class="app-header">
+              <div class="header-left"><button class="btn-link" onclick="switchTab('screen-more','tab-more')" style="padding:0;font-size:14px">&larr; Ещё</button><span class="header-title" style="margin-left:8px" data-i18n="staff.agentApps.title">Заявки агентов</span></div>
+              <div class="header-right"><span class="badge badge-warning">3</span></div>
+            </header>
+            <main class="main">
+              <div style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);margin-bottom:16px;font-size:12px;color:var(--text-secondary)" data-i18n="staff.agentApps.hint"><i data-lucide="file-text" style="width:12px;height:12px;vertical-align:-2px"></i> Инвестор может подать заявку на статус агента. Cooldown: 30 дней после отклонения. Проверьте историю инвестиций.</div>
+
+              <div class="agent-app" onclick="showToast('Детали заявки — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=22" alt="">
+                <div class="item-info">
+                  <div class="item-name">Илья Морозов</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.morozov.1">Инвестор с 2024 &bull; Портфель: &euro;18 400</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.morozov.2">5 покупок &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></div>
+                </div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Илья Морозов стал агентом','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Заявка отклонена (cooldown 30 дней)','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="agent-app" onclick="showToast('Детали заявки — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=31" alt="">
+                <div class="item-info">
+                  <div class="item-name">Татьяна Козлова</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.kozlova.1">Инвестор с 2025 &bull; Портфель: &euro;8 100</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.kozlova.2">3 покупки &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i></div>
+                </div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Татьяна Козлова стала агентом','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Заявка отклонена (cooldown 30 дней)','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+
+              <div class="agent-app" onclick="showToast('Детали заявки — финальная точка')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=52" alt="">
+                <div class="item-info">
+                  <div class="item-name">Viktor Braun</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.schneider.1">Инвестор с 2025 &bull; Портфель: &euro;4 200</div>
+                  <div class="item-detail" data-i18n="staff.agentApp.schneider.2">2 покупки &bull; KYC <i data-lucide="check" style="width:10px;height:10px;vertical-align:-1px"></i> &bull; <i data-lucide="alert-triangle" style="width:10px;height:10px;vertical-align:-1px;color:var(--warning)"></i> Cooldown закончился 15.03</div>
+                </div>
+                <div class="item-right" style="display:flex;gap:4px">
+                  <button class="btn btn-success btn-xs" onclick="event.stopPropagation();showToast('Заявка одобрена: Viktor Braun стал агентом','success')"><i data-lucide="check" style="width:12px;height:12px"></i></button>
+                  <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();showToast('Заявка отклонена (cooldown 30 дней)','error')"><i data-lucide="x" style="width:12px;height:12px"></i></button>
+                </div>
+              </div>
+            </main>
+          </div>
+
+          <!-- ===== SCREEN 7: AVATAR MODE ===== -->
+          <div class="screen" id="screen-avatar">
+            <header class="app-header" style="background:var(--accent);border-bottom-color:var(--accent-dark)">
+              <div class="header-left"><button class="btn-link" onclick="switchTab('screen-more','tab-more')" style="padding:0;font-size:14px;color:#fff">&larr; Ещё</button><span class="header-title" style="margin-left:8px;color:#fff"><i data-lucide="ghost" style="width:16px;height:16px;vertical-align:-3px"></i> Avatar Mode</span></div>
+            </header>
+            <main class="main">
+              <div class="avatar-banner">
+                <div class="banner-title" data-i18n="staff.avatar.title"><i data-lucide="ghost" style="width:20px;height:20px;vertical-align:-4px"></i> Avatar Mode</div>
+                <div class="banner-sub" data-i18n="staff.avatar.subtitle">Просматривайте платформу глазами пользователя</div>
+              </div>
+
+              <div class="section-title" data-i18n="staff.avatar.selectUser">Выберите пользователя</div>
+              <input class="search-box" type="text" placeholder="Поиск пользователя для аватаринга..." onclick="showToast('Поиск пользователя','info')">
+
+              <div class="user-item" onclick="activateAvatar('Анна Петрова','Инвестор')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=1" alt="">
+                <div class="item-info"><div class="item-name">Анна Петрова</div><div class="item-detail" data-i18n="staff.avatar.petrova">Инвестор &bull; &euro;24 750 портфель</div></div>
+                <div class="item-right"><span class="badge badge-accent"><i data-lucide="ghost" style="width:12px;height:12px"></i></span></div>
+              </div>
+              <div class="user-item" onclick="activateAvatar('Sergej Seider','Агент')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=12" alt="">
+                <div class="item-info"><div class="item-name">Sergej Seider</div><div class="item-detail" data-i18n="staff.avatar.seider">Агент &bull; 47 рефералов</div></div>
+                <div class="item-right"><span class="badge badge-accent"><i data-lucide="ghost" style="width:12px;height:12px"></i></span></div>
+              </div>
+              <div class="user-item" onclick="activateAvatar('Максим Иванов','Инвестор')">
+                <img class="item-avatar" src="https://i.pravatar.cc/150?img=33" alt="">
+                <div class="item-info"><div class="item-name">Максим Иванов</div><div class="item-detail" data-i18n="staff.avatar.ivanov">Инвестор &bull; &euro;48 200 портфель</div></div>
+                <div class="item-right"><span class="badge badge-accent"><i data-lucide="ghost" style="width:12px;height:12px"></i></span></div>
+              </div>
+
+              <div style="margin-top:24px;padding:16px;background:var(--danger-dim);border:1px solid var(--danger);border-radius:var(--radius-lg)">
+                <div style="font-size:14px;font-weight:700;color:var(--danger);margin-bottom:8px" data-i18n="staff.avatar.restrictions"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px"></i> Ограниченные операции в Avatar Mode</div>
+                <ul class="restricted-list">
+                  <li data-i18n="staff.avatar.noPurchase"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя совершать покупки от имени пользователя</li>
+                  <li data-i18n="staff.avatar.noWithdraw"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя выводить средства</li>
+                  <li data-i18n="staff.avatar.noPassword"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя менять пароль или email</li>
+                  <li data-i18n="staff.avatar.noDelete"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя удалять аккаунт</li>
+                  <li data-i18n="staff.avatar.noKyc"><i data-lucide="ban" style="width:14px;height:14px;color:var(--danger)"></i> Нельзя менять KYC данные</li>
+                </ul>
+              </div>
+
+              <div id="avatarSession" style="display:none;margin-top:16px">
+                <div style="padding:16px;background:var(--accent);color:#fff;border-radius:var(--radius-lg);text-align:center">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:4px" data-i18n="staff.avatar.session"><i data-lucide="ghost" style="width:14px;height:14px;vertical-align:-2px"></i> Активная сессия</div>
+                  <div id="avatarTarget" style="font-size:18px;font-weight:800;margin-bottom:4px"></div>
+                  <div id="avatarRole" style="font-size:12px;opacity:.8;margin-bottom:12px"></div>
+                  <button class="btn" style="background:#fff;color:var(--accent);font-weight:700" onclick="deactivateAvatar()"><i data-lucide="shield" style="width:14px;height:14px;vertical-align:-2px"></i> Вернуться в Staff</button>
+                </div>
+              </div>
+            </main>
+          </div>
+
+        </div>
+      </div>
+      <div class="device-home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- NAV MAP -->
+  <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
+    <div class="nav-map" onclick="event.stopPropagation()">
+      <div class="nav-map-header"><div class="nav-map-title"><i data-lucide="map-pin" style="width:16px;height:16px;vertical-align:-3px"></i> <span data-i18n="nav.map.title">Карта навигации</span></div><button class="nav-map-close" onclick="closeNavMap()">&times;</button></div>
+      <div class="nav-map-body">
+        <div class="nav-map-stats">
+          <div class="nav-map-stat"><div class="nav-map-stat-value">7</div><div class="nav-map-stat-label" data-i18n="nav.map.screens">экранов</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">2</div><div class="nav-map-stat-label" data-i18n="nav.map.paths">полных путей</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">11</div><div class="nav-map-stat-label" data-i18n="nav.map.endpoints">финальных точек</div></div>
+        </div>
+        <div class="nav-map-legend">
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> <span data-i18n="nav.legend.screen">Экран</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot yellow"></span> <span data-i18n="nav.legend.tab">Табы</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> <span data-i18n="nav.legend.endpoint">Финальная точка</span></div>
+        </div>
+        <div class="nav-map-tree">
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info"><span data-i18n="nav.section.tabs">ТАБЫ</span> <span class="section-count">(5)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')"><span class="nav-map-item-icon"><i data-lucide="home" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.staff.dashboard">Главная</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Users','screen-users')"><span class="nav-map-item-icon"><i data-lucide="users" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.staff.users">Пользователи</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('KYC Queue','screen-kyc')"><span class="nav-map-item-icon"><i data-lucide="shield-check" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.staff.kyc">KYC Очередь</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Payment Review','screen-payments')"><span class="nav-map-item-icon"><i data-lucide="credit-card" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.staff.payments">Проверка платежей</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('More','screen-more')"><span class="nav-map-item-icon"><i data-lucide="settings" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.staff.more">Ещё</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+            </div>
+          </div>
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info"><span data-i18n="nav.section.management">УПРАВЛЕНИЕ</span> <span class="section-count">(2)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-agent-apps')"><span class="nav-map-item-icon"><i data-lucide="file-text" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.staff.agent_apps">Заявки агентов</span><span class="level-badge">L1</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-avatar')"><span class="nav-map-item-icon"><i data-lucide="ghost" style="width:14px;height:14px"></i></span><span class="nav-map-item-name" data-i18n="nav.staff.avatar">Режим аватара</span><span class="level-badge">L1</span><span class="status-dot green"></span></div>
+            </div>
+          </div>
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)"><span class="section-info"><span data-i18n="nav.section.endpoints">ФИНАЛЬНЫЕ ТОЧКИ</span> <span class="section-count">(11)</span></span><span class="section-arrow">&#x25BC;</span></div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Профиль пользователя','screen-users')"><span class="nav-map-item-name"><i data-lucide="user" style="width:12px;height:12px;vertical-align:-2px"></i> Профиль пользователя</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('KYC детали','screen-kyc')"><span class="nav-map-item-name"><i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:-2px"></i> KYC детали</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('KYC одобрение','screen-kyc')"><span class="nav-map-item-name"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-2px"></i> KYC одобрение</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('KYC отклонение','screen-kyc')"><span class="nav-map-item-name"><i data-lucide="x" style="width:12px;height:12px;vertical-align:-2px"></i> KYC отклонение</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали платежа','screen-payments')"><span class="nav-map-item-name"><i data-lucide="credit-card" style="width:12px;height:12px;vertical-align:-2px"></i> Детали платежа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Подтверждение платежа','screen-payments')"><span class="nav-map-item-name"><i data-lucide="check" style="width:12px;height:12px;vertical-align:-2px"></i> Подтверждение платежа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Отклонение платежа','screen-payments')"><span class="nav-map-item-name"><i data-lucide="x" style="width:12px;height:12px;vertical-align:-2px"></i> Отклонение платежа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали заявки агента','screen-agent-apps')"><span class="nav-map-item-name"><i data-lucide="file-text" style="width:12px;height:12px;vertical-align:-2px"></i> Детали заявки агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Avatar сессия','screen-avatar')"><span class="nav-map-item-name"><i data-lucide="ghost" style="width:12px;height:12px;vertical-align:-2px"></i> Avatar сессия</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Выход','screen-more')"><span class="nav-map-item-name"><i data-lucide="log-out" style="width:12px;height:12px;vertical-align:-2px"></i> Выход</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Блокировка пользователя','screen-users')"><span class="nav-map-item-name"><i data-lucide="ban" style="width:12px;height:12px;vertical-align:-2px"></i> Блокировка пользователя</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/i18n.js"></script>
+  <script src="../js/shell.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script>/* HANDLERS */
+
+    function filterUsers(btn, role) {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.user-item[data-role]').forEach(item => {
+        item.style.display = (role === 'all' || item.dataset.role === role) ? 'flex' : 'none';
+      });
+    }
+
+    function activateAvatar(name, role) {
+      document.getElementById('avatarSession').style.display = 'block';
+      document.getElementById('avatarTarget').textContent = name;
+      document.getElementById('avatarRole').textContent = '\u0420\u043E\u043B\u044C: ' + role;
+      showToast('Avatar \u0430\u043A\u0442\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u043D: ' + name, 'warning');
+    }
+
+    function deactivateAvatar() {
+      document.getElementById('avatarSession').style.display = 'none';
+      showToast('\u0412\u043E\u0437\u0432\u0440\u0430\u0442 \u0432 Staff \u0440\u0435\u0436\u0438\u043C', 'success');
+    }
+
+    if(typeof lucide!=='undefined') lucide.createIcons();
+  </script>
+</body>
+</html>

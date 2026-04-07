@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME Project Map</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --pm-bg: #0A0A0F;
+      --pm-bg-card: #12121A;
+      --pm-bg-hover: #1A1A25;
+      --pm-border: rgba(255,255,255,0.08);
+      --pm-text: #F0F0F5;
+      --pm-text-secondary: #8888A0;
+      --pm-text-muted: #555570;
+      --pm-orange: #E8651A;
+      --pm-orange-dim: rgba(232,101,26,0.15);
+      --pm-teal: #228B8A;
+      --pm-teal-dim: rgba(34,139,138,0.15);
+      --pm-gold: #EFB44C;
+      --pm-implemented: #4ADE80;
+      --pm-implemented-bg: rgba(74,222,128,0.1);
+      --pm-in-progress: #FBBF24;
+      --pm-in-progress-bg: rgba(251,191,36,0.1);
+      --pm-planned: #9CA3AF;
+      --pm-planned-bg: rgba(156,163,175,0.1);
+      --pm-gap: #F87171;
+      --pm-gap-bg: rgba(248,113,113,0.1);
+      --pm-radius: 12px;
+      --pm-radius-sm: 6px;
+      --pm-font: 'Montserrat', sans-serif;
+      --pm-mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      font-family: var(--pm-font);
+      background: var(--pm-bg);
+      color: var(--pm-text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .pm-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--pm-bg-card);
+      border-bottom: 1px solid var(--pm-border);
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .pm-logo {
+      font-size: 18px; font-weight: 800;
+      background: linear-gradient(135deg, var(--pm-orange), var(--pm-gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      white-space: nowrap;
+    }
+    .pm-stats {
+      display: flex; gap: 20px; font-size: 13px; color: var(--pm-text-secondary);
+    }
+    .pm-stat-num { color: var(--pm-text); font-weight: 700; font-family: var(--pm-mono); }
+    .pm-meta {
+      display: flex; gap: 12px; font-size: 12px; color: var(--pm-text-muted);
+      font-family: var(--pm-mono);
+    }
+    .pm-meta span { padding: 3px 8px; background: rgba(255,255,255,0.04); border-radius: var(--pm-radius-sm); }
+
+    /* ── Filters ── */
+    .pm-filters {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 12px 24px;
+      background: var(--pm-bg-card);
+      border-bottom: 1px solid var(--pm-border);
+      position: sticky; top: 54px; z-index: 99;
+    }
+    .pm-filter-group {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .pm-filter-group label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      color: var(--pm-text-muted); letter-spacing: 0.5px; margin-right: 4px;
+    }
+    .pm-filter-btn {
+      padding: 4px 12px; border-radius: var(--pm-radius-sm);
+      background: transparent; border: 1px solid var(--pm-border);
+      color: var(--pm-text-secondary); cursor: pointer;
+      font-size: 12px; font-family: var(--pm-font);
+      transition: all 0.15s ease;
+    }
+    .pm-filter-btn:hover { background: var(--pm-bg-hover); }
+    .pm-filter-btn.active { background: var(--pm-teal-dim); border-color: var(--pm-teal); color: var(--pm-text); }
+    .pm-filter-btn.st-impl.active { background: var(--pm-implemented-bg); border-color: var(--pm-implemented); color: var(--pm-implemented); }
+    .pm-filter-btn.st-plan.active { background: var(--pm-planned-bg); border-color: var(--pm-planned); color: var(--pm-planned); }
+    .pm-filter-btn.st-gap.active { background: var(--pm-gap-bg); border-color: var(--pm-gap); color: var(--pm-gap); }
+    .pm-search {
+      margin-left: auto;
+      padding: 6px 14px; border-radius: var(--pm-radius-sm);
+      background: rgba(255,255,255,0.04); border: 1px solid var(--pm-border);
+      color: var(--pm-text); font-family: var(--pm-mono); font-size: 13px;
+      width: 240px; outline: none; transition: border-color 0.15s;
+    }
+    .pm-search:focus { border-color: var(--pm-teal); }
+    .pm-search::placeholder { color: var(--pm-text-muted); }
+
+    /* ── Tabs ── */
+    .pm-tabs {
+      display: flex; gap: 0; padding: 0 24px;
+      background: var(--pm-bg-card);
+      border-bottom: 1px solid var(--pm-border);
+      position: sticky; top: 104px; z-index: 98;
+      overflow-x: auto;
+    }
+    .pm-tab {
+      padding: 10px 20px; background: none; border: none;
+      color: var(--pm-text-secondary); font-weight: 600; font-size: 13px;
+      font-family: var(--pm-font);
+      border-bottom: 2px solid transparent; cursor: pointer;
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .pm-tab:hover { color: var(--pm-text); }
+    .pm-tab.active { color: var(--pm-orange); border-bottom-color: var(--pm-orange); }
+
+    /* ── Panels ── */
+    .pm-content { padding: 24px; }
+    .pm-panel { display: none; }
+    .pm-panel.active { display: block; }
+
+    /* ── L0 Diagrams ── */
+    .pm-diagram-section {
+      background: var(--pm-bg-card);
+      border: 1px solid var(--pm-border);
+      border-radius: var(--pm-radius);
+      margin-bottom: 20px; overflow: hidden;
+    }
+    .pm-diagram-title {
+      padding: 14px 18px; font-size: 15px; font-weight: 700;
+      border-bottom: 1px solid var(--pm-border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pm-diagram-title .pm-role-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    }
+    .pm-diagram-body { padding: 18px; overflow-x: auto; }
+    .pm-diagram-body .mermaid { min-width: 600px; }
+
+    /* ── L1 Cards ── */
+    .pm-card {
+      background: var(--pm-bg-card);
+      border: 1px solid var(--pm-border);
+      border-radius: var(--pm-radius);
+      margin-bottom: 10px; overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .pm-card:hover { border-color: rgba(255,255,255,0.14); }
+    .pm-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .pm-card-header:hover { background: var(--pm-bg-hover); }
+    .pm-card-header-left { display: flex; align-items: center; gap: 10px; }
+    .pm-card-role {
+      font-size: 10px; font-weight: 800; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 3px; letter-spacing: 0.8px;
+      font-family: var(--pm-mono);
+    }
+    .pm-card-role.auth { background: var(--pm-implemented-bg); color: var(--pm-implemented); }
+    .pm-card-role.investor { background: var(--pm-orange-dim); color: var(--pm-orange); }
+    .pm-card-role.agent { background: var(--pm-teal-dim); color: var(--pm-teal); }
+    .pm-card-role.company { background: rgba(139,92,246,0.15); color: #A78BFA; }
+    .pm-card-role.staff { background: var(--pm-in-progress-bg); color: var(--pm-in-progress); }
+    .pm-card-title {
+      font-size: 14px; font-weight: 600; font-family: var(--pm-mono);
+    }
+    .pm-card-body { padding: 0 18px 16px; display: none; }
+    .pm-card.open .pm-card-body { display: block; }
+    .pm-card.open { border-color: rgba(255,255,255,0.15); }
+    .pm-section-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      color: var(--pm-text-muted); letter-spacing: 1px;
+      margin: 14px 0 8px; padding-bottom: 4px;
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-score {
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 700;
+      font-family: var(--pm-mono);
+    }
+    .pm-score.green  { background: var(--pm-implemented-bg); color: var(--pm-implemented); }
+    .pm-score.yellow { background: var(--pm-in-progress-bg); color: var(--pm-in-progress); }
+    .pm-score.orange { background: var(--pm-gap-bg); color: var(--pm-gold); }
+    .pm-score.red    { background: var(--pm-gap-bg); color: var(--pm-gap); }
+
+    /* ── Endpoints ── */
+    .pm-endpoint {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 0; font-size: 13px;
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-endpoint:last-child { border-bottom: none; }
+    .pm-status-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .pm-method {
+      font-family: var(--pm-mono); font-weight: 700; font-size: 11px;
+      padding: 2px 6px; border-radius: 3px;
+      min-width: 50px; text-align: center; flex-shrink: 0;
+    }
+    .pm-method.get    { background: var(--pm-teal-dim); color: var(--pm-teal); }
+    .pm-method.post   { background: var(--pm-orange-dim); color: var(--pm-orange); }
+    .pm-method.patch  { background: var(--pm-in-progress-bg); color: var(--pm-in-progress); }
+    .pm-path { font-family: var(--pm-mono); font-size: 12px; color: var(--pm-text-secondary); flex: 1; }
+    .pm-sprint {
+      font-size: 11px; color: var(--pm-text-muted); font-family: var(--pm-mono);
+      background: rgba(255,255,255,0.04); padding: 2px 8px; border-radius: 3px;
+      white-space: nowrap;
+    }
+    .pm-nav-targets { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pm-nav-link {
+      font-size: 12px; font-family: var(--pm-mono);
+      color: var(--pm-teal); text-decoration: none;
+      padding: 3px 10px; border-radius: var(--pm-radius-sm);
+      background: var(--pm-teal-dim); transition: opacity 0.15s;
+    }
+    .pm-nav-link:hover { opacity: 0.8; }
+
+    /* ── L2 Models ── */
+    .pm-model-card {
+      background: var(--pm-bg-card);
+      border: 1px solid var(--pm-border);
+      border-radius: var(--pm-radius);
+      margin-bottom: 16px; overflow: hidden;
+    }
+    .pm-model-header {
+      padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-model-name {
+      font-size: 16px; font-weight: 700; color: var(--pm-orange);
+    }
+    .pm-model-table-name {
+      font-size: 12px; font-family: var(--pm-mono); color: var(--pm-text-muted);
+      background: rgba(255,255,255,0.04); padding: 2px 8px; border-radius: 3px;
+    }
+    .pm-model-file {
+      font-size: 11px; font-family: var(--pm-mono); color: var(--pm-text-muted);
+      margin-left: auto;
+    }
+    .pm-model-status {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 3px;
+    }
+    .pm-model-fields {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .pm-model-fields th {
+      text-align: left; padding: 8px 18px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      color: var(--pm-text-muted); letter-spacing: 0.5px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-model-fields td {
+      padding: 7px 18px; border-bottom: 1px solid var(--pm-border);
+      font-family: var(--pm-mono); font-size: 12px; color: var(--pm-text-secondary);
+    }
+    .pm-model-fields td:first-child { color: var(--pm-text); font-weight: 600; }
+    .pm-model-fields tr:last-child td { border-bottom: none; }
+    .pm-model-usage {
+      padding: 10px 18px; font-size: 12px; color: var(--pm-text-muted);
+      background: rgba(255,255,255,0.02);
+    }
+    .pm-model-usage span { font-weight: 700; color: var(--pm-text-secondary); }
+
+    /* ── Dead-Ends ── */
+    .pm-deadend-section {
+      background: var(--pm-bg-card);
+      border: 1px solid var(--pm-border);
+      border-radius: var(--pm-radius);
+      margin-bottom: 16px; overflow: hidden;
+    }
+    .pm-deadend-section h3 {
+      padding: 14px 18px; font-size: 15px; font-weight: 700;
+      border-bottom: 1px solid var(--pm-border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pm-count {
+      font-size: 12px; font-family: var(--pm-mono);
+      background: var(--pm-gap-bg); color: var(--pm-gap);
+      padding: 2px 8px; border-radius: 10px; font-weight: 700;
+    }
+    .pm-count.green {
+      background: var(--pm-implemented-bg); color: var(--pm-implemented);
+    }
+    .pm-count.neutral {
+      background: var(--pm-planned-bg); color: var(--pm-planned);
+    }
+    .pm-hint {
+      padding: 8px 18px; font-size: 12px; color: var(--pm-text-muted);
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-orphan {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 18px;
+      border-bottom: 1px solid var(--pm-border);
+      font-size: 13px;
+    }
+    .pm-orphan:last-child { border-bottom: none; }
+    .pm-orphan-role {
+      font-size: 10px; font-weight: 800; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 3px; letter-spacing: 0.5px;
+      font-family: var(--pm-mono); min-width: 70px; text-align: center;
+    }
+    .pm-orphan-screen { font-family: var(--pm-mono); font-size: 12px; color: var(--pm-text); flex: 1; }
+    .pm-orphan-blocked { font-size: 11px; color: var(--pm-text-muted); font-family: var(--pm-mono); }
+
+    /* ── Prod-Readiness ── */
+    .pm-ready-group {
+      background: var(--pm-bg-card);
+      border: 1px solid var(--pm-border);
+      border-radius: var(--pm-radius);
+      margin-bottom: 16px; overflow: hidden;
+    }
+    .pm-ready-group h3 {
+      padding: 14px 18px; font-size: 15px; font-weight: 700;
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-ready-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 18px;
+      border-bottom: 1px solid var(--pm-border);
+      font-size: 13px;
+    }
+    .pm-ready-item:last-child { border-bottom: none; }
+    .pm-traffic {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .pm-traffic.green { background: var(--pm-implemented); box-shadow: 0 0 6px var(--pm-implemented); }
+    .pm-traffic.red { background: var(--pm-gap); }
+    .pm-ready-item .pm-card-role { margin-left: 0; }
+    .pm-ready-screen { font-family: var(--pm-mono); font-size: 12px; flex: 1; }
+
+    .pm-flow-section {
+      background: var(--pm-bg-card);
+      border: 1px solid var(--pm-border);
+      border-radius: var(--pm-radius);
+      margin-bottom: 16px; overflow: hidden;
+    }
+    .pm-flow-section h3 {
+      padding: 14px 18px; font-size: 15px; font-weight: 700;
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-flow-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--pm-border);
+    }
+    .pm-flow-item:last-child { border-bottom: none; }
+    .pm-flow-name { font-size: 13px; font-weight: 600; min-width: 200px; }
+    .pm-flow-detail { font-size: 11px; color: var(--pm-text-muted); font-family: var(--pm-mono); min-width: 80px; }
+    .pm-flow-bar {
+      flex: 1; height: 8px; background: rgba(255,255,255,0.06);
+      border-radius: 4px; overflow: hidden;
+    }
+    .pm-flow-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    .pm-flow-fill.green { background: linear-gradient(90deg, var(--pm-teal), var(--pm-implemented)); }
+    .pm-flow-fill.red { background: var(--pm-gap); }
+    .pm-flow-fill.orange { background: linear-gradient(90deg, var(--pm-orange), var(--pm-gold)); }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+    .pm-role-group-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      color: var(--pm-text-muted); letter-spacing: 1px;
+      padding: 12px 18px 4px; margin-top: 4px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .pm-header { flex-direction: column; gap: 8px; text-align: center; }
+      .pm-stats { flex-wrap: wrap; justify-content: center; }
+      .pm-filters { flex-direction: column; align-items: stretch; }
+      .pm-search { width: 100%; margin-left: 0; }
+      .pm-flow-item { flex-wrap: wrap; }
+      .pm-flow-name { min-width: unset; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER BAR -->
+  <header class="pm-header">
+    <div class="pm-logo">CBS HOME Project Map</div>
+    <div class="pm-stats">
+      <span class="pm-stat"><span class="pm-stat-num">35</span> screens</span>
+      <span class="pm-stat"><span class="pm-stat-num">5</span>/<span>91</span> endpoints</span>
+      <span class="pm-stat"><span class="pm-stat-num">5</span>% coverage</span>
+    </div>
+    <div class="pm-meta">
+      <span>Scan: 2026-04-05</span>
+      <span>8acf856</span>
+    </div>
+  </header>
+
+  <!-- FILTER BAR -->
+  <div class="pm-filters">
+    <div class="pm-filter-group">
+      <label>Role:</label>
+      <button class="pm-filter-btn active" data-role="all">All</button>
+      <button class="pm-filter-btn" data-role="auth">Auth</button>
+      <button class="pm-filter-btn" data-role="investor">Investor</button>
+      <button class="pm-filter-btn" data-role="agent">Agent</button>
+      <button class="pm-filter-btn" data-role="company">Company</button>
+      <button class="pm-filter-btn" data-role="staff">Staff</button>
+    </div>
+    <div class="pm-filter-group">
+      <label>Status:</label>
+      <button class="pm-filter-btn st-impl active" data-status="implemented">Implemented</button>
+      <button class="pm-filter-btn st-plan active" data-status="planned">Planned</button>
+      <button class="pm-filter-btn st-gap active" data-status="gap">Gap</button>
+    </div>
+    <input type="text" class="pm-search" placeholder="Search screens, endpoints..." id="searchInput">
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="pm-tabs">
+    <button class="pm-tab active" data-tab="l0">L0 Overview</button>
+    <button class="pm-tab" data-tab="l1">L1 Screens-API</button>
+    <button class="pm-tab" data-tab="l2">L2 Models</button>
+    <button class="pm-tab" data-tab="deadends">Dead-Ends</button>
+    <button class="pm-tab" data-tab="readiness">Prod-Readiness</button>
+  </div>
+
+  <!-- ═══════════ CONTENT PANELS ═══════════ -->
+  <main class="pm-content">
+
+    <!-- ── L0 OVERVIEW ── -->
+    <div class="pm-panel active" id="panel-l0">
+
+      <!-- Auth Flow -->
+      <div class="pm-diagram-section" data-role="auth">
+        <div class="pm-diagram-title">
+          <span class="pm-role-dot" style="background:var(--pm-implemented)"></span>
+          Auth Flow
+        </div>
+        <div class="pm-diagram-body">
+          <pre class="mermaid">
+graph LR
+  a_login["login"]:::st_impl
+  a_reg["register"]:::st_impl
+  a_verify["verify"]:::st_gap
+  a_profile["profile"]:::st_plan
+  a_role["role"]:::st_plan
+  a_kyc["kyc"]:::st_plan
+  a_docs["docs"]:::st_plan
+  a_login --> a_reg
+  a_reg --> a_verify
+  a_verify --> a_profile
+  a_profile --> a_role
+  a_role --> a_kyc
+  a_kyc --> a_docs
+  classDef st_impl fill:#065F46,stroke:#4ADE80,stroke-width:2px,color:#F0F0F5
+  classDef st_plan fill:#374151,stroke:#9CA3AF,stroke-width:2px,color:#F0F0F5
+  classDef st_gap fill:#7F1D1D,stroke:#F87171,stroke-width:2px,color:#F0F0F5
+          </pre>
+        </div>
+      </div>
+
+      <!-- Investor -->
+      <div class="pm-diagram-section" data-role="investor">
+        <div class="pm-diagram-title">
+          <span class="pm-role-dot" style="background:var(--pm-orange)"></span>
+          Investor Role
+        </div>
+        <div class="pm-diagram-body">
+          <pre class="mermaid">
+graph LR
+  subgraph Frontend["Investor Screens"]
+    inv_dash["dashboard"]:::st_plan
+    inv_port["portfolio"]:::st_plan
+    inv_mark["market"]:::st_plan
+    inv_prod["product"]:::st_plan
+    inv_buy["purchase"]:::st_plan
+    inv_inst["installment"]:::st_plan
+    inv_bal["balance"]:::st_plan
+    inv_docs["docs"]:::st_plan
+    inv_set["settings"]:::st_plan
+  end
+  subgraph API["API Modules"]
+    api_dash["dashboard/"]:::st_plan
+    api_port["portfolio/"]:::st_plan
+    api_prod["products/"]:::st_plan
+    api_purch["purchases/"]:::st_plan
+    api_tx["transactions/"]:::st_plan
+    api_pay["payments/"]:::st_plan
+    api_doc["documents/"]:::st_plan
+    api_user["users/"]:::st_plan
+    api_posts["posts/"]:::st_plan
+    api_inst["installments/"]:::st_plan
+  end
+  subgraph Backend["Models"]
+    m_user["User"]:::st_impl
+    m_active["ActiveLedger"]:::st_wip
+    m_passive["PassiveLedger"]:::st_wip
+    m_audit["AuditLog"]:::st_impl
+  end
+  inv_dash --> api_dash
+  inv_dash --> api_port
+  inv_dash --> api_tx
+  inv_dash --> api_posts
+  inv_port --> api_port
+  inv_mark --> api_prod
+  inv_prod --> api_prod
+  inv_buy --> api_purch
+  inv_inst --> api_purch
+  inv_inst --> api_inst
+  inv_bal --> api_tx
+  inv_bal --> api_pay
+  inv_docs --> api_doc
+  inv_set --> api_user
+  api_dash --> m_user
+  api_port --> m_active
+  api_tx --> m_active
+  api_pay --> m_active
+  api_prod --> m_user
+  api_purch --> m_active
+  api_doc --> m_user
+  api_user --> m_user
+  api_posts --> m_user
+
+  classDef st_impl fill:#065F46,stroke:#4ADE80,stroke-width:2px,color:#F0F0F5
+  classDef st_wip fill:#78350F,stroke:#FBBF24,stroke-width:2px,color:#F0F0F5
+  classDef st_plan fill:#374151,stroke:#9CA3AF,stroke-width:2px,color:#F0F0F5
+  classDef st_gap fill:#7F1D1D,stroke:#F87171,stroke-width:2px,color:#F0F0F5
+          </pre>
+        </div>
+      </div>
+
+      <!-- Agent -->
+      <div class="pm-diagram-section" data-role="agent">
+        <div class="pm-diagram-title">
+          <span class="pm-role-dot" style="background:var(--pm-teal)"></span>
+          Agent Role
+        </div>
+        <div class="pm-diagram-body">
+          <pre class="mermaid">
+graph LR
+  subgraph Frontend["Agent Screens"]
+    ag_dash["dashboard"]:::st_plan
+    ag_hub["hub"]:::st_plan
+    ag_ref["referrals"]:::st_plan
+    ag_comm["commissions"]:::st_plan
+    ag_lead["leaderboard"]:::st_plan
+    ag_pass["passive"]:::st_plan
+    ag_set["settings"]:::st_plan
+  end
+  subgraph API["API Modules"]
+    api_dash2["dashboard/"]:::st_plan
+    api_comm["agent/commissions/"]:::st_plan
+    api_ref["referrals/"]:::st_plan
+    api_lead["agent/leaderboard/"]:::st_plan
+    api_tx2["transactions/"]:::st_plan
+    api_wdraw["withdrawals/"]:::st_plan
+    api_user2["users/"]:::st_plan
+  end
+  subgraph Backend["Models"]
+    m_user2["User"]:::st_impl
+    m_active2["ActiveLedger"]:::st_wip
+    m_passive2["PassiveLedger"]:::st_wip
+    m_audit2["AuditLog"]:::st_impl
+  end
+  ag_dash --> api_dash2
+  ag_dash --> api_comm
+  ag_hub --> api_ref
+  ag_hub --> api_lead
+  ag_ref --> api_ref
+  ag_comm --> api_comm
+  ag_lead --> api_lead
+  ag_pass --> api_tx2
+  ag_pass --> api_wdraw
+  ag_set --> api_user2
+  api_dash2 --> m_user2
+  api_comm --> m_active2
+  api_ref --> m_user2
+  api_lead --> m_user2
+  api_tx2 --> m_active2
+  api_wdraw --> m_active2
+  api_user2 --> m_user2
+
+  classDef st_impl fill:#065F46,stroke:#4ADE80,stroke-width:2px,color:#F0F0F5
+  classDef st_wip fill:#78350F,stroke:#FBBF24,stroke-width:2px,color:#F0F0F5
+  classDef st_plan fill:#374151,stroke:#9CA3AF,stroke-width:2px,color:#F0F0F5
+  classDef st_gap fill:#7F1D1D,stroke:#F87171,stroke-width:2px,color:#F0F0F5
+          </pre>
+        </div>
+      </div>
+
+      <!-- Company -->
+      <div class="pm-diagram-section" data-role="company">
+        <div class="pm-diagram-title">
+          <span class="pm-role-dot" style="background:#A78BFA"></span>
+          Company Role
+        </div>
+        <div class="pm-diagram-body">
+          <pre class="mermaid">
+graph LR
+  subgraph Frontend["Company Screens"]
+    co_dash["dashboard"]:::st_plan
+    co_prods["products"]:::st_plan
+    co_edit["product-edit"]:::st_plan
+    co_anal["analytics"]:::st_plan
+    co_set["settings"]:::st_plan
+  end
+  subgraph API["API Modules"]
+    api_dash3["dashboard/"]:::st_plan
+    api_tx3["transactions/"]:::st_plan
+    api_prod3["products/"]:::st_plan
+    api_sprod["staff/products/"]:::st_plan
+    api_port3["portfolio/"]:::st_plan
+    api_lead3["agent/leaderboard/"]:::st_plan
+    api_comp["companies/"]:::st_plan
+    api_scomp["staff/companies/"]:::st_plan
+  end
+  subgraph Backend["Models"]
+    m_user3["User"]:::st_impl
+    m_active3["ActiveLedger"]:::st_wip
+    m_staff3["StaffProfile"]:::st_plan
+    m_audit3["AuditLog"]:::st_impl
+  end
+  co_dash --> api_dash3
+  co_dash --> api_tx3
+  co_prods --> api_prod3
+  co_edit --> api_prod3
+  co_edit --> api_sprod
+  co_anal --> api_port3
+  co_anal --> api_lead3
+  co_set --> api_comp
+  co_set --> api_scomp
+  api_dash3 --> m_user3
+  api_tx3 --> m_active3
+  api_prod3 --> m_user3
+  api_sprod --> m_staff3
+  api_comp --> m_user3
+  api_scomp --> m_staff3
+
+  classDef st_impl fill:#065F46,stroke:#4ADE80,stroke-width:2px,color:#F0F0F5
+  classDef st_wip fill:#78350F,stroke:#FBBF24,stroke-width:2px,color:#F0F0F5
+  classDef st_plan fill:#374151,stroke:#9CA3AF,stroke-width:2px,color:#F0F0F5
+  classDef st_gap fill:#7F1D1D,stroke:#F87171,stroke-width:2px,color:#F0F0F5
+          </pre>
+        </div>
+      </div>
+
+      <!-- Staff -->
+      <div class="pm-diagram-section" data-role="staff">
+        <div class="pm-diagram-title">
+          <span class="pm-role-dot" style="background:var(--pm-in-progress)"></span>
+          Staff Role
+        </div>
+        <div class="pm-diagram-body">
+          <pre class="mermaid">
+graph LR
+  subgraph Frontend["Staff Screens"]
+    st_dash["dashboard"]:::st_plan
+    st_users["users"]:::st_plan
+    st_kyc["kyc"]:::st_plan
+    st_pay["payments"]:::st_plan
+    st_more["more"]:::st_plan
+    st_agent["agent-apps"]:::st_plan
+    st_avatar["avatar"]:::st_plan
+  end
+  subgraph API["API Modules"]
+    api_sdash["staff/dashboard/"]:::st_plan
+    api_susers["staff/users/"]:::st_plan
+    api_skyc["staff/kyc/"]:::st_plan
+    api_phist["payments/"]:::st_plan
+    api_swdraw["staff/withdrawals/"]:::st_plan
+    api_user4["users/"]:::st_plan
+    api_sagent["staff/agent-apps/"]:::st_plan
+    api_savatar["staff/avatar/"]:::st_plan
+  end
+  subgraph Backend["Models"]
+    m_user4["User"]:::st_impl
+    m_staff4["StaffProfile"]:::st_plan
+    m_avatar4["AvatarSession"]:::st_plan
+    m_audit4["AuditLog"]:::st_impl
+  end
+  st_dash --> api_sdash
+  st_users --> api_susers
+  st_kyc --> api_skyc
+  st_pay --> api_phist
+  st_pay --> api_swdraw
+  st_more --> api_user4
+  st_agent --> api_sagent
+  st_avatar --> api_savatar
+  api_sdash --> m_staff4
+  api_susers --> m_user4
+  api_skyc --> m_user4
+  api_phist --> m_user4
+  api_swdraw --> m_user4
+  api_user4 --> m_user4
+  api_sagent --> m_user4
+  api_savatar --> m_avatar4
+
+  classDef st_impl fill:#065F46,stroke:#4ADE80,stroke-width:2px,color:#F0F0F5
+  classDef st_wip fill:#78350F,stroke:#FBBF24,stroke-width:2px,color:#F0F0F5
+  classDef st_plan fill:#374151,stroke:#9CA3AF,stroke-width:2px,color:#F0F0F5
+  classDef st_gap fill:#7F1D1D,stroke:#F87171,stroke-width:2px,color:#F0F0F5
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── L1 SCREENS-API ── -->
+    <div class="pm-panel" id="panel-l1">
+      <!-- Cards are generated by JS -->
+    </div>
+
+    <!-- ── L2 MODELS ── -->
+    <div class="pm-panel" id="panel-l2">
+      <!-- Model cards generated by JS -->
+    </div>
+
+    <!-- ── DEAD-ENDS ── -->
+    <div class="pm-panel" id="panel-deadends">
+      <!-- Generated by JS -->
+    </div>
+
+    <!-- ── PROD-READINESS ── -->
+    <div class="pm-panel" id="panel-readiness">
+      <!-- Generated by JS -->
+    </div>
+
+  </main>
+
+  <script>
+  /* ═══════════════════════════════════════════════════════
+   *  CBS HOME Project Map — Interactive Visualization
+   * ═══════════════════════════════════════════════════════ */
+
+  const PM = {
+    activeTab: 'l0',
+    filters: { role: 'all', statuses: ['implemented','planned','gap'] },
+    searchQuery: '',
+
+    /* ── Screen Data ── */
+    screens: [
+      // Auth
+      { id:'screen-login', role:'auth', name:'screen-login', score:100, status:'implemented',
+        endpoints:[
+          { method:'POST', path:'/auth/email/login', status:'implemented', sprint:'-' },
+          { method:'POST', path:'/auth/telegram', status:'implemented', sprint:'-' }
+        ],
+        nav:['screen-register','screen-verify'] },
+      { id:'screen-register', role:'auth', name:'screen-register', score:100, status:'implemented',
+        endpoints:[
+          { method:'POST', path:'/auth/email/register', status:'implemented', sprint:'-' }
+        ],
+        nav:['screen-login','screen-verify'] },
+      { id:'screen-verify', role:'auth', name:'screen-verify', score:0, status:'gap',
+        endpoints:[
+          { method:'POST', path:'/auth/verify-email', status:'gap', sprint:'-' }
+        ],
+        nav:['screen-profile'] },
+      { id:'screen-profile', role:'auth', name:'screen-profile', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/users/me', status:'planned', sprint:'1.3' },
+          { method:'PATCH', path:'/users/me', status:'planned', sprint:'1.3' }
+        ],
+        nav:['screen-role'] },
+      { id:'screen-role', role:'auth', name:'screen-role', score:0, status:'planned',
+        endpoints:[
+          { method:'PATCH', path:'/users/me', status:'planned', sprint:'1.3' }
+        ],
+        nav:['screen-kyc'] },
+      { id:'screen-kyc-auth', role:'auth', name:'screen-kyc', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/kyc/status', status:'planned', sprint:'2.1' },
+          { method:'POST', path:'/kyc/submit', status:'planned', sprint:'2.1' }
+        ],
+        nav:['screen-docs'] },
+      { id:'screen-docs-auth', role:'auth', name:'screen-docs', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/documents', status:'planned', sprint:'2.2' },
+          { method:'POST', path:'/documents/{id}/sign', status:'planned', sprint:'2.2' }
+        ],
+        nav:[] },
+
+      // Investor
+      { id:'screen-inv-dashboard', role:'investor', name:'screen-dashboard', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/dashboard/summary', status:'planned', sprint:'9.2' },
+          { method:'GET', path:'/portfolio/me', status:'planned', sprint:'9.2' },
+          { method:'GET', path:'/transactions', status:'planned', sprint:'6.4' },
+          { method:'GET', path:'/posts', status:'planned', sprint:'9.1' }
+        ],
+        nav:['screen-portfolio','screen-market','screen-balance'] },
+      { id:'screen-inv-portfolio', role:'investor', name:'screen-portfolio', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/portfolio/me', status:'planned', sprint:'9.2' }
+        ],
+        nav:['screen-product','screen-dashboard'] },
+      { id:'screen-inv-market', role:'investor', name:'screen-market', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/products', status:'planned', sprint:'4.2' }
+        ],
+        nav:['screen-product'] },
+      { id:'screen-inv-product', role:'investor', name:'screen-product', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/products/{id}', status:'planned', sprint:'4.2' }
+        ],
+        nav:['screen-purchase','screen-installment'] },
+      { id:'screen-inv-purchase', role:'investor', name:'screen-purchase', score:0, status:'planned',
+        endpoints:[
+          { method:'POST', path:'/products/{id}/purchase', status:'planned', sprint:'6.1' }
+        ],
+        nav:['screen-portfolio'] },
+      { id:'screen-inv-installment', role:'investor', name:'screen-installment', score:0, status:'planned',
+        endpoints:[
+          { method:'POST', path:'/products/{id}/installment', status:'planned', sprint:'6.2' },
+          { method:'GET', path:'/installments/me', status:'planned', sprint:'6.2' }
+        ],
+        nav:['screen-portfolio'] },
+      { id:'screen-inv-balance', role:'investor', name:'screen-balance', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/transactions', status:'planned', sprint:'6.4' },
+          { method:'GET', path:'/payments/crypto-address/{network}', status:'planned', sprint:'5.2' }
+        ],
+        nav:['screen-dashboard'] },
+      { id:'screen-inv-docs', role:'investor', name:'screen-docs', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/documents', status:'planned', sprint:'2.2' }
+        ],
+        nav:[] },
+      { id:'screen-inv-settings', role:'investor', name:'screen-settings', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/users/me', status:'planned', sprint:'1.3' },
+          { method:'PATCH', path:'/users/me', status:'planned', sprint:'1.3' }
+        ],
+        nav:[] },
+
+      // Agent
+      { id:'screen-ag-dashboard', role:'agent', name:'screen-dashboard', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/dashboard/summary', status:'planned', sprint:'9.2' },
+          { method:'GET', path:'/agent/commissions/me', status:'planned', sprint:'7.3' }
+        ],
+        nav:['screen-hub','screen-commissions'] },
+      { id:'screen-ag-hub', role:'agent', name:'screen-hub', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/referrals/stats/me', status:'planned', sprint:'7.2' },
+          { method:'GET', path:'/agent/leaderboard', status:'planned', sprint:'7.3' }
+        ],
+        nav:['screen-referrals','screen-leaderboard'] },
+      { id:'screen-ag-referrals', role:'agent', name:'screen-referrals', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/referrals/links/me', status:'planned', sprint:'7.2' },
+          { method:'POST', path:'/referrals/links', status:'planned', sprint:'7.2' }
+        ],
+        nav:[] },
+      { id:'screen-ag-commissions', role:'agent', name:'screen-commissions', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/agent/commissions/me', status:'planned', sprint:'7.3' }
+        ],
+        nav:[] },
+      { id:'screen-ag-leaderboard', role:'agent', name:'screen-leaderboard', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/agent/leaderboard', status:'planned', sprint:'7.3' }
+        ],
+        nav:[] },
+      { id:'screen-ag-passive', role:'agent', name:'screen-passive', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/transactions', status:'planned', sprint:'6.4' },
+          { method:'POST', path:'/withdrawals', status:'planned', sprint:'6.3' }
+        ],
+        nav:[] },
+      { id:'screen-ag-settings', role:'agent', name:'screen-settings', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/users/me', status:'planned', sprint:'1.3' },
+          { method:'PATCH', path:'/users/me', status:'planned', sprint:'1.3' }
+        ],
+        nav:[] },
+
+      // Company
+      { id:'screen-co-dashboard', role:'company', name:'screen-dashboard', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/dashboard/summary', status:'planned', sprint:'9.2' },
+          { method:'GET', path:'/transactions', status:'planned', sprint:'6.4' }
+        ],
+        nav:['screen-products','screen-analytics'] },
+      { id:'screen-co-products', role:'company', name:'screen-products', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/products', status:'planned', sprint:'4.2' }
+        ],
+        nav:['screen-product-edit'] },
+      { id:'screen-co-product-edit', role:'company', name:'screen-product-edit', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/products/{id}', status:'planned', sprint:'4.2' },
+          { method:'PATCH', path:'/staff/products/{id}', status:'planned', sprint:'4.2' }
+        ],
+        nav:['screen-products'] },
+      { id:'screen-co-analytics', role:'company', name:'screen-analytics', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/portfolio/me/company/{id}', status:'planned', sprint:'9.2' },
+          { method:'GET', path:'/agent/leaderboard', status:'planned', sprint:'7.3' }
+        ],
+        nav:[] },
+      { id:'screen-co-settings', role:'company', name:'screen-settings', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/companies/{id}', status:'planned', sprint:'4.1' },
+          { method:'PATCH', path:'/staff/companies/{id}', status:'planned', sprint:'4.1' }
+        ],
+        nav:[] },
+
+      // Staff
+      { id:'screen-st-dashboard', role:'staff', name:'screen-dashboard', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/staff/dashboard/stats', status:'planned', sprint:'3.3' }
+        ],
+        nav:['screen-users','screen-kyc','screen-payments'] },
+      { id:'screen-st-users', role:'staff', name:'screen-users', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/staff/users', status:'planned', sprint:'3.3' }
+        ],
+        nav:[] },
+      { id:'screen-st-kyc', role:'staff', name:'screen-kyc', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/staff/kyc/queue', status:'planned', sprint:'3.3' },
+          { method:'POST', path:'/staff/kyc/approve', status:'planned', sprint:'3.3' },
+          { method:'POST', path:'/staff/kyc/reject', status:'planned', sprint:'3.3' }
+        ],
+        nav:[] },
+      { id:'screen-st-payments', role:'staff', name:'screen-payments', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/payments/history', status:'planned', sprint:'5.2' },
+          { method:'POST', path:'/staff/withdrawals/confirm', status:'planned', sprint:'6.3' },
+          { method:'POST', path:'/staff/withdrawals/reject', status:'planned', sprint:'6.3' }
+        ],
+        nav:[] },
+      { id:'screen-st-more', role:'staff', name:'screen-more', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/users/me', status:'planned', sprint:'1.3' }
+        ],
+        nav:[] },
+      { id:'screen-st-agent-apps', role:'staff', name:'screen-agent-apps', score:0, status:'planned',
+        endpoints:[
+          { method:'GET', path:'/staff/agent-applications', status:'planned', sprint:'7.1' },
+          { method:'POST', path:'/staff/agent-applications', status:'planned', sprint:'7.1' }
+        ],
+        nav:[] },
+      { id:'screen-st-avatar', role:'staff', name:'screen-avatar', score:0, status:'planned',
+        endpoints:[
+          { method:'POST', path:'/staff/avatar/start', status:'planned', sprint:'3.2' },
+          { method:'POST', path:'/staff/avatar/end', status:'planned', sprint:'3.2' }
+        ],
+        nav:[] }
+    ],
+
+    /* ── Model Data ── */
+    models: [
+      { name:'User', table:'users', file:'backend/app/modules/users/models.py', status:'implemented',
+        fields:[
+          { col:'id', type:'UUID', nullable:'no', def:'uuid4()' },
+          { col:'email', type:'String(255)', nullable:'no', def:'-' },
+          { col:'hashed_password', type:'String(255)', nullable:'no', def:'-' },
+          { col:'role', type:'String(20)', nullable:'no', def:'investor' },
+          { col:'is_active', type:'Boolean', nullable:'no', def:'true' },
+          { col:'is_verified', type:'Boolean', nullable:'no', def:'false' },
+          { col:'telegram_id', type:'BigInteger', nullable:'yes', def:'null' },
+          { col:'full_name', type:'String(100)', nullable:'yes', def:'null' },
+          { col:'phone', type:'String(20)', nullable:'yes', def:'null' },
+          { col:'avatar_url', type:'String(500)', nullable:'yes', def:'null' },
+          { col:'created_at', type:'DateTime', nullable:'no', def:'now()' },
+          { col:'updated_at', type:'DateTime', nullable:'no', def:'now()' }
+        ],
+        usedBy:['screen-login','screen-register','screen-profile','screen-settings'] },
+      { name:'ActiveLedger', table:'active_ledgers', file:'backend/app/modules/ledgers/models.py', status:'in_progress',
+        fields:[
+          { col:'id', type:'UUID', nullable:'no', def:'uuid4()' },
+          { col:'user_id', type:'UUID FK', nullable:'no', def:'-' },
+          { col:'product_id', type:'UUID FK', nullable:'yes', def:'null' },
+          { col:'amount', type:'Numeric(18,2)', nullable:'no', def:'0' },
+          { col:'currency', type:'String(10)', nullable:'no', def:'USD' },
+          { col:'tx_type', type:'String(30)', nullable:'no', def:'-' },
+          { col:'status', type:'String(20)', nullable:'no', def:'pending' },
+          { col:'created_at', type:'DateTime', nullable:'no', def:'now()' }
+        ],
+        usedBy:['screen-portfolio','screen-balance','screen-purchase'] },
+      { name:'PassiveLedger', table:'passive_ledgers', file:'backend/app/modules/ledgers/models.py', status:'in_progress',
+        fields:[
+          { col:'id', type:'UUID', nullable:'no', def:'uuid4()' },
+          { col:'user_id', type:'UUID FK', nullable:'no', def:'-' },
+          { col:'source_type', type:'String(30)', nullable:'no', def:'-' },
+          { col:'source_id', type:'UUID FK', nullable:'yes', def:'null' },
+          { col:'amount', type:'Numeric(18,2)', nullable:'no', def:'0' },
+          { col:'currency', type:'String(10)', nullable:'no', def:'USD' },
+          { col:'status', type:'String(20)', nullable:'no', def:'pending' },
+          { col:'created_at', type:'DateTime', nullable:'no', def:'now()' }
+        ],
+        usedBy:['screen-commissions','screen-passive'] },
+      { name:'StaffProfile', table:'staff_profiles', file:'backend/app/modules/staff/models.py', status:'planned',
+        fields:[
+          { col:'id', type:'UUID', nullable:'no', def:'uuid4()' },
+          { col:'user_id', type:'UUID FK', nullable:'no', def:'-' },
+          { col:'department', type:'String(50)', nullable:'yes', def:'null' },
+          { col:'permissions', type:'JSON', nullable:'no', def:'{}' },
+          { col:'is_admin', type:'Boolean', nullable:'no', def:'false' },
+          { col:'created_at', type:'DateTime', nullable:'no', def:'now()' }
+        ],
+        usedBy:['screen-st-dashboard','screen-st-users'] },
+      { name:'AvatarSession', table:'avatar_sessions', file:'backend/app/modules/staff/models.py', status:'planned',
+        fields:[
+          { col:'id', type:'UUID', nullable:'no', def:'uuid4()' },
+          { col:'staff_id', type:'UUID FK', nullable:'no', def:'-' },
+          { col:'target_user_id', type:'UUID FK', nullable:'no', def:'-' },
+          { col:'started_at', type:'DateTime', nullable:'no', def:'now()' },
+          { col:'ended_at', type:'DateTime', nullable:'yes', def:'null' },
+          { col:'reason', type:'String(200)', nullable:'yes', def:'null' }
+        ],
+        usedBy:['screen-avatar'] },
+      { name:'AuditLog', table:'audit_logs', file:'backend/app/modules/audit/models.py', status:'implemented',
+        fields:[
+          { col:'id', type:'UUID', nullable:'no', def:'uuid4()' },
+          { col:'user_id', type:'UUID FK', nullable:'yes', def:'null' },
+          { col:'action', type:'String(100)', nullable:'no', def:'-' },
+          { col:'entity_type', type:'String(50)', nullable:'yes', def:'null' },
+          { col:'entity_id', type:'UUID', nullable:'yes', def:'null' },
+          { col:'details', type:'JSON', nullable:'yes', def:'null' },
+          { col:'ip_address', type:'String(45)', nullable:'yes', def:'null' },
+          { col:'created_at', type:'DateTime', nullable:'no', def:'now()' }
+        ],
+        usedBy:['screen-st-dashboard','screen-st-users'] }
+    ],
+
+    /* ── Business Flows ── */
+    flows: [
+      { name:'Investor Onboard', steps:8, done:2, detail:'register -> verify -> profile -> role -> kyc -> docs -> dashboard -> market' },
+      { name:'Investor Purchase', steps:4, done:0, detail:'market -> product -> purchase -> portfolio' },
+      { name:'Agent Earn', steps:4, done:0, detail:'hub -> referrals -> commissions -> passive' },
+      { name:'Staff KYC', steps:3, done:0, detail:'kyc queue -> approve/reject -> notify user' },
+      { name:'Company Manage', steps:3, done:0, detail:'products -> product-edit -> analytics' }
+    ],
+
+    /* ── Init ── */
+    init() {
+      this.renderL1();
+      this.renderL2();
+      this.renderDeadEnds();
+      this.renderReadiness();
+      this.bindEvents();
+    },
+
+    /* ── Event Binding ── */
+    bindEvents() {
+      // Tabs
+      document.querySelectorAll('.pm-tab').forEach(tab => {
+        tab.addEventListener('click', () => this.switchTab(tab.dataset.tab));
+      });
+      // Role filters
+      document.querySelectorAll('.pm-filter-btn[data-role]').forEach(btn => {
+        btn.addEventListener('click', () => this.setRoleFilter(btn.dataset.role));
+      });
+      // Status filters
+      document.querySelectorAll('.pm-filter-btn[data-status]').forEach(btn => {
+        btn.addEventListener('click', () => this.toggleStatusFilter(btn));
+      });
+      // Search
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        this.searchQuery = e.target.value.toLowerCase();
+        this.applyFilters();
+      });
+    },
+
+    /* ── Tab switching ── */
+    switchTab(tabId) {
+      this.activeTab = tabId;
+      document.querySelectorAll('.pm-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + tabId).classList.add('active');
+      document.querySelectorAll('.pm-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('[data-tab="' + tabId + '"]').classList.add('active');
+    },
+
+    /* ── Filters ── */
+    setRoleFilter(role) {
+      this.filters.role = role;
+      document.querySelectorAll('.pm-filter-btn[data-role]').forEach(b => {
+        b.classList.toggle('active', b.dataset.role === role);
+      });
+      this.applyFilters();
+    },
+
+    toggleStatusFilter(btn) {
+      btn.classList.toggle('active');
+      const s = btn.dataset.status;
+      if (btn.classList.contains('active')) {
+        if (!this.filters.statuses.includes(s)) this.filters.statuses.push(s);
+      } else {
+        this.filters.statuses = this.filters.statuses.filter(x => x !== s);
+      }
+      this.applyFilters();
+    },
+
+    applyFilters() {
+      // L1 cards
+      document.querySelectorAll('#panel-l1 .pm-card').forEach(card => {
+        const role = card.dataset.role;
+        const status = card.dataset.status;
+        const text = card.textContent.toLowerCase();
+        const roleOk = this.filters.role === 'all' || role === this.filters.role;
+        const statusOk = this.filters.statuses.includes(status);
+        const searchOk = !this.searchQuery || text.includes(this.searchQuery);
+        card.classList.toggle('hidden', !(roleOk && statusOk && searchOk));
+      });
+      // L0 diagrams
+      document.querySelectorAll('#panel-l0 .pm-diagram-section').forEach(sec => {
+        const role = sec.dataset.role;
+        const roleOk = this.filters.role === 'all' || role === this.filters.role;
+        sec.classList.toggle('hidden', !roleOk);
+      });
+      // Dead-ends orphans
+      document.querySelectorAll('#panel-deadends .pm-orphan').forEach(o => {
+        const role = o.dataset.role;
+        const roleOk = this.filters.role === 'all' || role === this.filters.role;
+        const text = o.textContent.toLowerCase();
+        const searchOk = !this.searchQuery || text.includes(this.searchQuery);
+        o.classList.toggle('hidden', !(roleOk && searchOk));
+      });
+      // Readiness items
+      document.querySelectorAll('#panel-readiness .pm-ready-item').forEach(item => {
+        const role = item.dataset.role;
+        if (!role) return;
+        const roleOk = this.filters.role === 'all' || role === this.filters.role;
+        item.classList.toggle('hidden', !roleOk);
+      });
+    },
+
+    toggleCard(card) {
+      card.classList.toggle('open');
+    },
+
+    getScoreClass(score) {
+      if (score === 100) return 'green';
+      if (score >= 50) return 'yellow';
+      if (score > 0) return 'orange';
+      return 'red';
+    },
+
+    getStatusColor(status) {
+      const map = {
+        'implemented': 'var(--pm-implemented)',
+        'in_progress': 'var(--pm-in-progress)',
+        'planned': 'var(--pm-planned)',
+        'gap': 'var(--pm-gap)'
+      };
+      return map[status] || 'var(--pm-planned)';
+    },
+
+    getModelStatusLabel(status) {
+      const map = { 'implemented':'Implemented', 'in_progress':'In Progress', 'planned':'Planned' };
+      return map[status] || status;
+    },
+
+    getModelStatusStyle(status) {
+      const map = {
+        'implemented': 'background:var(--pm-implemented-bg);color:var(--pm-implemented)',
+        'in_progress': 'background:var(--pm-in-progress-bg);color:var(--pm-in-progress)',
+        'planned': 'background:var(--pm-planned-bg);color:var(--pm-planned)'
+      };
+      return map[status] || '';
+    },
+
+    /* ── Render L1 ── */
+    renderL1() {
+      const container = document.getElementById('panel-l1');
+      let html = '';
+      const roleOrder = ['auth','investor','agent','company','staff'];
+      const grouped = {};
+      roleOrder.forEach(r => grouped[r] = []);
+      this.screens.forEach(s => {
+        if (grouped[s.role]) grouped[s.role].push(s);
+      });
+
+      roleOrder.forEach(role => {
+        html += `<div class="pm-role-group-title">${role.toUpperCase()}</div>`;
+        grouped[role].forEach(s => {
+          const scoreClass = this.getScoreClass(s.score);
+          html += `<div class="pm-card" data-role="${s.role}" data-status="${s.status}" data-screen="${s.name}">
+            <div class="pm-card-header" onclick="PM.toggleCard(this.parentElement)">
+              <div class="pm-card-header-left">
+                <span class="pm-card-role ${s.role}">${s.role.toUpperCase()}</span>
+                <span class="pm-card-title">${s.name}</span>
+              </div>
+              <span class="pm-score ${scoreClass}">${s.score}%</span>
+            </div>
+            <div class="pm-card-body">
+              <div class="pm-section-title">Required Endpoints</div>`;
+          s.endpoints.forEach(ep => {
+            const methodCls = ep.method.toLowerCase();
+            const dotColor = this.getStatusColor(ep.status);
+            const sprintLabel = ep.sprint === '-' ? '' : `<span class="pm-sprint">Sprint ${ep.sprint}</span>`;
+            html += `<div class="pm-endpoint">
+              <span class="pm-status-dot" style="background:${dotColor}"></span>
+              <span class="pm-method ${methodCls}">${ep.method}</span>
+              <span class="pm-path">${ep.path}</span>
+              ${sprintLabel}
+            </div>`;
+          });
+          if (s.nav.length > 0) {
+            html += `<div class="pm-section-title">Navigation</div><div class="pm-nav-targets">`;
+            s.nav.forEach(n => {
+              html += `<a class="pm-nav-link" href="#${n}">${n}</a>`;
+            });
+            html += `</div>`;
+          }
+          html += `</div></div>`;
+        });
+      });
+      container.innerHTML = html;
+    },
+
+    /* ── Render L2 ── */
+    renderL2() {
+      const container = document.getElementById('panel-l2');
+      let html = '';
+      this.models.forEach(m => {
+        html += `<div class="pm-model-card" data-model="${m.name}">
+          <div class="pm-model-header">
+            <span class="pm-model-name">${m.name}</span>
+            <span class="pm-model-table-name">${m.table}</span>
+            <span class="pm-model-status" style="${this.getModelStatusStyle(m.status)}">${this.getModelStatusLabel(m.status)}</span>
+            <span class="pm-model-file">${m.file}</span>
+          </div>
+          <table class="pm-model-fields">
+            <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Default</th></tr></thead>
+            <tbody>`;
+        m.fields.forEach(f => {
+          html += `<tr><td>${f.col}</td><td>${f.type}</td><td>${f.nullable}</td><td>${f.def}</td></tr>`;
+        });
+        html += `</tbody></table>
+          <div class="pm-model-usage"><span>Used by: </span>${m.usedBy.join(', ')}</div>
+        </div>`;
+      });
+      container.innerHTML = html;
+    },
+
+    /* ── Render Dead-Ends ── */
+    renderDeadEnds() {
+      const container = document.getElementById('panel-deadends');
+      const orphans = this.screens.filter(s => s.score === 0);
+      const backed = this.screens.filter(s => s.score === 100);
+
+      let html = '';
+
+      // Fully backed
+      html += `<div class="pm-deadend-section">
+        <h3>Fully Backed Screens <span class="pm-count green">${backed.length}</span></h3>
+        <p class="pm-hint">Screens with 100% API backing -- ready for production</p>`;
+      backed.forEach(s => {
+        html += `<div class="pm-orphan" data-role="${s.role}">
+          <span class="pm-orphan-role" style="${this.getRoleBadgeStyle(s.role)}">${s.role.toUpperCase()}</span>
+          <span class="pm-orphan-screen">${s.name}</span>
+          <span class="pm-score green">100%</span>
+        </div>`;
+      });
+      html += `</div>`;
+
+      // Frontend orphans
+      html += `<div class="pm-deadend-section">
+        <h3>Frontend Orphans <span class="pm-count">${orphans.length}</span></h3>
+        <p class="pm-hint">Screens with 0% API backing -- need backend implementation</p>`;
+      const roleOrder = ['auth','investor','agent','company','staff'];
+      roleOrder.forEach(role => {
+        const items = orphans.filter(s => s.role === role);
+        if (items.length === 0) return;
+        html += `<div class="pm-role-group-title" style="padding:10px 18px 4px;">${role.toUpperCase()} (${items.length})</div>`;
+        items.forEach(s => {
+          const sprint = s.endpoints.length > 0 ? s.endpoints[0].sprint : '-';
+          const blocked = sprint !== '-' ? `Blocked by Sprint ${sprint}` : 'No sprint assigned';
+          html += `<div class="pm-orphan" data-role="${s.role}">
+            <span class="pm-orphan-role" style="${this.getRoleBadgeStyle(s.role)}">${s.role.toUpperCase()}</span>
+            <span class="pm-orphan-screen">${s.name}</span>
+            <span class="pm-orphan-blocked">${blocked}</span>
+          </div>`;
+        });
+      });
+      html += `</div>`;
+
+      // Backend orphans
+      html += `<div class="pm-deadend-section">
+        <h3>Backend Orphans <span class="pm-count neutral">0</span></h3>
+        <p class="pm-hint">Endpoints with no frontend consumer -- none found</p>
+      </div>`;
+
+      // Gap endpoints
+      html += `<div class="pm-deadend-section">
+        <h3>Gap Endpoints <span class="pm-count">1</span></h3>
+        <p class="pm-hint">Endpoints that should exist but are missing from the backend</p>
+        <div class="pm-orphan" data-role="auth">
+          <span class="pm-orphan-role" style="${this.getRoleBadgeStyle('auth')}">AUTH</span>
+          <span class="pm-orphan-screen">POST /auth/verify-email</span>
+          <span class="pm-orphan-blocked">Required by screen-verify</span>
+        </div>
+      </div>`;
+
+      container.innerHTML = html;
+    },
+
+    getRoleBadgeStyle(role) {
+      const styles = {
+        'auth': 'background:var(--pm-implemented-bg);color:var(--pm-implemented)',
+        'investor': 'background:var(--pm-orange-dim);color:var(--pm-orange)',
+        'agent': 'background:var(--pm-teal-dim);color:var(--pm-teal)',
+        'company': 'background:rgba(139,92,246,0.15);color:#A78BFA',
+        'staff': 'background:var(--pm-in-progress-bg);color:var(--pm-in-progress)'
+      };
+      return styles[role] || '';
+    },
+
+    /* ── Render Prod-Readiness ── */
+    renderReadiness() {
+      const container = document.getElementById('panel-readiness');
+      const ready = this.screens.filter(s => s.score === 100);
+      const blocked = this.screens.filter(s => s.score === 0);
+      let html = '';
+
+      // Ready
+      html += `<div class="pm-ready-group">
+        <h3 style="color:var(--pm-implemented)">Ready for Production (${ready.length})</h3>`;
+      ready.forEach(s => {
+        html += `<div class="pm-ready-item" data-role="${s.role}">
+          <span class="pm-traffic green"></span>
+          <span class="pm-card-role ${s.role}">${s.role.toUpperCase()}</span>
+          <span class="pm-ready-screen">${s.name}</span>
+          <span class="pm-score green">100%</span>
+        </div>`;
+      });
+      html += `</div>`;
+
+      // Blocked
+      html += `<div class="pm-ready-group">
+        <h3 style="color:var(--pm-gap)">Blocked (${blocked.length})</h3>`;
+      const roleOrder = ['auth','investor','agent','company','staff'];
+      roleOrder.forEach(role => {
+        const items = blocked.filter(s => s.role === role);
+        if (items.length === 0) return;
+        items.forEach(s => {
+          html += `<div class="pm-ready-item" data-role="${s.role}">
+            <span class="pm-traffic red"></span>
+            <span class="pm-card-role ${s.role}">${s.role.toUpperCase()}</span>
+            <span class="pm-ready-screen">${s.name}</span>
+            <span class="pm-score red">0%</span>
+          </div>`;
+        });
+      });
+      html += `</div>`;
+
+      // Business Flows
+      html += `<div class="pm-flow-section">
+        <h3>Business Flows</h3>`;
+      this.flows.forEach(f => {
+        const pct = Math.round((f.done / f.steps) * 100);
+        const scoreClass = this.getScoreClass(pct);
+        const fillClass = pct >= 50 ? 'green' : pct > 0 ? 'orange' : 'red';
+        html += `<div class="pm-flow-item">
+          <span class="pm-flow-name">${f.name}</span>
+          <span class="pm-flow-detail">${f.done}/${f.steps} steps</span>
+          <div class="pm-flow-bar">
+            <div class="pm-flow-fill ${fillClass}" style="width:${pct}%"></div>
+          </div>
+          <span class="pm-score ${scoreClass}">${pct}%</span>
+        </div>`;
+      });
+      html += `</div>`;
+
+      container.innerHTML = html;
+    }
+  };
+
+  /* ── Mermaid Init ── */
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      darkMode: true,
+      background: '#0A0A0F',
+      primaryColor: '#1A3A3A',
+      primaryTextColor: '#F0F0F5',
+      primaryBorderColor: '#228B8A',
+      secondaryColor: '#1A1A25',
+      secondaryTextColor: '#F0F0F5',
+      secondaryBorderColor: '#E8651A',
+      tertiaryColor: '#12121A',
+      lineColor: '#555570',
+      fontFamily: 'Montserrat, sans-serif',
+      fontSize: '13px',
+      nodeBorder: '2px',
+      clusterBkg: '#12121A',
+      clusterBorder: '#333350'
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => PM.init());
+  </script>
+</body>
+</html>

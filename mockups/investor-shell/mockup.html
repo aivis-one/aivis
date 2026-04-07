@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME Investor — Live Mockup</title>
+  <script>
+    (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/shell.css">
+  <link rel="stylesheet" href="../css/nav-map.css">
+  <style>
+    /* === INVESTOR-SPECIFIC STYLES ONLY === */
+
+    /* ========== NEWS ========== */
+    .news-item {
+      display: flex; gap: 12px; padding: 12px;
+      border-radius: var(--radius-md); cursor: pointer;
+      transition: background 0.2s; border: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .news-item:hover { background: var(--bg-subtle); border-color: var(--primary-light); }
+    .news-badge {
+      font-size: 11px; font-weight: 600; padding: 3px 8px;
+      border-radius: var(--radius-sm); background: var(--bg-elevated);
+      color: var(--primary);
+    }
+    .news-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .news-date { font-size: 12px; color: var(--text-tertiary); }
+
+    /* ========== PRODUCT CARDS ========== */
+    .product-grid { display: flex; flex-direction: column; gap: 12px; }
+    .product-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .product-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+    .product-img {
+      height: 120px; display: flex; align-items: center;
+      justify-content: center; color: #fff; font-size: 40px; position: relative;
+    }
+    .product-img i, .product-img svg { width: 48px; height: 48px; stroke: white; }
+    .product-img::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(transparent 40%, rgba(0,0,0,0.6));
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    .product-img > * {
+      position: relative;
+      z-index: 1;
+    }
+    .product-company {
+      position: absolute; top: 8px; left: 8px;
+      font-size: 11px; font-weight: 600; padding: 3px 8px;
+      border-radius: var(--radius-sm); background: rgba(0, 0, 0, 0.3); color: #fff;
+    }
+    .product-body { padding: 14px; }
+    .product-name { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .product-desc {
+      font-size: 13px; color: var(--text-secondary);
+      margin-bottom: 10px; line-height: 1.4;
+    }
+    .product-meta { display: flex; justify-content: space-between; align-items: center; }
+    .product-price { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .product-units { font-size: 12px; color: var(--text-tertiary); }
+
+    /* ========== PRODUCT DETAIL ========== */
+    .detail-hero {
+      height: 180px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #fff; text-align: center; padding: 20px;
+    }
+    .detail-hero-icon { margin-bottom: 12px; }
+    .detail-hero-icon i, .detail-hero-icon svg { width: 48px; height: 48px; stroke: white; }
+    .detail-hero-title { font-size: 20px; font-weight: 700; }
+    .detail-hero-company { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+    .detail-body { padding: 20px; }
+    .detail-stats {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 20px;
+    }
+    .detail-stat {
+      text-align: center; padding: 12px;
+      background: var(--bg-subtle); border-radius: var(--radius-md);
+    }
+    .detail-stat-value { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .detail-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .detail-section { margin-bottom: 20px; }
+    .detail-section h3 {
+      font-size: 15px; font-weight: 700;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .detail-section p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .detail-actions { display: flex; gap: 12px; }
+
+    /* ========== PURCHASE / INSTALLMENT ========== */
+    .summary-row {
+      display: flex; justify-content: space-between;
+      align-items: center; padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-label { font-size: 14px; color: var(--text-secondary); }
+    .summary-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .summary-total .summary-label,
+    .summary-total .summary-value {
+      font-size: 16px; font-weight: 700; color: var(--primary);
+    }
+    .plan-card {
+      border: 2px solid var(--border); border-radius: var(--radius-lg);
+      padding: 16px; margin-bottom: 12px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .plan-card:hover { border-color: var(--primary-light); }
+    .plan-card.selected {
+      border-color: var(--accent);
+      background: rgba(232, 101, 26, 0.04);
+    }
+    .plan-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .plan-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+    .schedule-table {
+      width: 100%; font-size: 12px;
+      border-collapse: collapse; margin-top: 12px;
+    }
+    .schedule-table th {
+      text-align: left; color: var(--text-tertiary); font-weight: 600;
+      padding: 6px 8px; border-bottom: 1px solid var(--border);
+      font-size: 11px; text-transform: uppercase;
+    }
+    .schedule-table td {
+      padding: 6px 8px; border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    /* ========== DOCUMENTS (investor style) ========== */
+    .doc-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px; border: 1px solid var(--border);
+      border-radius: var(--radius-md); margin-bottom: 8px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .doc-item:hover { border-color: var(--primary-light); background: var(--bg-subtle); }
+    .doc-info { flex: 1; min-width: 0; }
+    .doc-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .doc-meta { font-size: 12px; color: var(--text-tertiary); }
+    .doc-status {
+      font-size: 11px; font-weight: 600;
+      padding: 3px 8px; border-radius: var(--radius-sm);
+      white-space: nowrap;
+    }
+    .doc-status.signed { background: var(--success-dim); color: var(--success); }
+    .doc-status.pending { background: var(--warning-dim); color: var(--warning); }
+
+    /* ========== SETTINGS ========== */
+    .settings-section { margin-bottom: 24px; }
+    .settings-title {
+      font-size: 12px; font-weight: 700; color: var(--text-tertiary);
+      text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 12px;
+    }
+    .settings-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px; border-bottom: 1px solid var(--border);
+    }
+    .settings-item:last-child { border-bottom: none; }
+    .settings-label { font-size: 14px; color: var(--text); }
+    .settings-value { font-size: 13px; color: var(--text-tertiary); }
+    .toggle-switch {
+      width: 44px; height: 24px; background: var(--border);
+      border-radius: 12px; position: relative;
+      cursor: pointer; transition: background 0.2s; border: none;
+    }
+    .toggle-switch::after {
+      content: ''; position: absolute; width: 20px; height: 20px;
+      background: #fff; border-radius: 50%;
+      top: 2px; left: 2px; transition: transform 0.2s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    .toggle-switch.active { background: var(--primary); }
+    .toggle-switch.active::after { transform: translateX(20px); }
+
+    /* ========== PORTFOLIO ========== */
+    .portfolio-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px;
+      margin-bottom: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .portfolio-item:hover { border-color: var(--primary-light); box-shadow: var(--shadow-md); }
+    .portfolio-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 10px;
+    }
+    .portfolio-company { font-size: 15px; font-weight: 700; color: var(--text); }
+    .portfolio-company i, .portfolio-company svg {
+      width: 18px; height: 18px; vertical-align: middle; margin-right: 4px;
+    }
+    .portfolio-change { font-size: 13px; font-weight: 600; }
+    .portfolio-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .portfolio-stat-label { font-size: 11px; color: var(--text-tertiary); }
+    .portfolio-stat-value { font-size: 14px; font-weight: 600; color: var(--text); }
+
+    /* ========== TAB BAR LUCIDE ICONS ========== */
+    .tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
+
+    /* ========== RESPONSIVE (investor-specific) ========== */
+    .device-frame.desktop .product-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+    }
+    .device-frame.tablet .product-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOOLBAR -->
+  <div class="preview-toolbar">
+    <div class="toolbar-left">
+      <div class="project-info">
+        <span class="project-name">CBS HOME Investor v1.5</span>
+        <span class="project-badge">LIVE</span>
+      </div>
+      <a href="../index.html" class="home-btn" title="Hub"><i data-lucide="layout-grid"></i></a>
+    </div>
+    <div class="toolbar-center">
+      <div class="device-switcher">
+        <button class="device-btn active" data-device="phone"><i data-lucide="smartphone" style="width:14px;height:14px"></i> <span class="device-label">Phone</span><span class="device-size">390</span></button>
+        <button class="device-btn" data-device="tablet"><i data-lucide="tablet" style="width:14px;height:14px"></i> <span class="device-label">Tablet</span><span class="device-size">820</span></button>
+        <button class="device-btn" data-device="desktop"><i data-lucide="monitor" style="width:14px;height:14px"></i> <span class="device-label">Desktop</span><span class="device-size">1280</span></button>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
+        <i data-lucide="monitor"></i>
+      </button>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
+        <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+        <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
+      </div>
+      <button class="map-btn" onclick="openNavMap()"><i data-lucide="map-pin" style="width:14px;height:14px"></i> <span class="map-label">Map</span></button>
+      <div class="zoom-control">
+        <button class="zoom-btn" data-zoom="-10">-</button>
+        <span class="zoom-value">100%</span>
+        <button class="zoom-btn" data-zoom="+10">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEVICE FRAME -->
+  <div class="preview-container">
+    <div class="device-frame phone" id="deviceFrame">
+      <div class="device-notch"></div>
+      <div class="device-screen" id="deviceScreen">
+        <div class="mockup-content">
+
+          <!-- ===== SCREEN 1: DASHBOARD ===== -->
+          <div class="screen active" id="screen-dashboard">
+            <header class="app-header">
+              <div class="header-left">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+              <div class="header-right">
+                <button class="notif-btn" onclick="showToast('Uведомления — финальная точка')">
+                  <i data-lucide="bell"></i>
+                  <span class="notif-badge">3</span>
+                </button>
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="S.S.">
+              </div>
+            </header>
+            <main class="main">
+              <!-- Welcome -->
+              <div style="margin-bottom:20px">
+                <span style="font-size:14px;color:var(--text-secondary)" data-i18n="inv.dashboard.welcome">Добро пожаловать,</span>
+                <h2 style="font-size:20px;font-weight:700;color:var(--text)">Sergej Seider</h2>
+              </div>
+
+              <!-- Hero: Portfolio + Dense Dot Chart -->
+              <div class="stat-card wide" onclick="switchTab('screen-portfolio','tab-portfolio')" style="margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div>
+                    <div class="stat-label" data-i18n="inv.dashboard.portfolio">Портфель</div>
+                    <div class="stat-value">€24 750</div>
+                    <div class="stat-change up" data-i18n="inv.dashboard.portfolioChange">+12.4% за месяц</div>
+                  </div>
+                  <div class="chart-timeframe">
+                    <button class="tf-btn" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1w">1Н</button>
+                    <button class="tf-btn active" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1m">1М</button>
+                    <button class="tf-btn" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.3m">3М</button>
+                    <button class="tf-btn" onclick="event.stopPropagation();this.parentElement.querySelector('.active')?.classList.remove('active');this.classList.add('active')" data-i18n="chart.1y">1Г</button>
+                  </div>
+                </div>
+                <div class="dot-chart" id="investorChart"></div>
+                <script>
+                (function(){
+                  var data = [2,3,3,4,3,5,4,6,5,5,6,7,5,6,7,7,8,7,8,8,9,8,9,10];
+                  var rows = 10;
+                  var el = document.getElementById('investorChart');
+                  data.forEach(function(v, i){
+                    var col = document.createElement('div');
+                    col.className = 'dot-col' + (i === data.length - 1 ? ' current' : '');
+                    for (var r = 0; r < rows; r++) {
+                      var d = document.createElement('div');
+                      d.className = r < v ? 'dot' : 'dot empty';
+                      col.appendChild(d);
+                    }
+                    el.appendChild(col);
+                  });
+                })();
+                </script>
+              </div>
+
+              <!-- Balance cards -->
+              <div class="stats-grid">
+                <div class="stat-card" onclick="switchTab('screen-balance','tab-balance')">
+                  <div class="icon-box green"><i data-lucide="wallet"></i></div>
+                  <div class="stat-label" data-i18n="inv.dashboard.activeBalance">Активный баланс</div>
+                  <div class="stat-value">€5 200</div>
+                  <div class="stat-sub" data-i18n="inv.dashboard.confirmed">Подтверждён</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('screen-balance','tab-balance')">
+                  <div class="icon-box blue"><i data-lucide="snowflake"></i></div>
+                  <div class="stat-label" data-i18n="inv.dashboard.frozen">Заморожен</div>
+                  <div class="stat-value">€1 000</div>
+                  <div class="stat-sub" data-i18n="inv.balance.until">До 02.04.2026</div>
+                </div>
+              </div>
+
+              <!-- Last Transactions -->
+              <div class="section-header">
+                <span class="section-title" data-i18n="inv.dashboard.lastOps">Последние операции</span>
+                <button class="section-link" onclick="switchTab('screen-balance','tab-balance')" data-i18n="inv.dashboard.allOps">Все →</button>
+              </div>
+              <div class="tx-list">
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title" data-i18n="inv.tx.deposit">Пополнение USDT (TRC20)</div>
+                    <div class="tx-date" data-i18n="inv.tx.today">Сегодня, 14:23</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum positive">+€1 000</div>
+                    <div class="tx-status frozen" data-i18n="inv.status.frozen">Заморожен</div>
+                  </div>
+                </div>
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box teal"><i data-lucide="shopping-cart"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title" data-i18n="inv.tx.purchaseIpi">Покупка IPI AG</div>
+                    <div class="tx-date">28.03.2026</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum negative">-€5 000</div>
+                    <div class="tx-status confirmed" data-i18n="inv.status.confirmed">Подтверждён</div>
+                  </div>
+                </div>
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title" data-i18n="inv.tx.deposit2">Пополнение USDT (ERC20)</div>
+                    <div class="tx-date">25.03.2026</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum positive">+€10 000</div>
+                    <div class="tx-status confirmed" data-i18n="inv.status.confirmed">Подтверждён</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- News -->
+              <div style="margin-top:24px">
+                <div class="section-header">
+                  <span class="section-title" data-i18n="inv.dashboard.news">Новости</span>
+                </div>
+                <div class="news-item" onclick="showToast('Новость — финальная точка')">
+                  <div><div class="news-badge" data-i18n="inv.news.product">Продукт</div></div>
+                  <div>
+                    <div class="news-title" data-i18n="inv.news.ipiTitle">IPI AG: новый этап строительства</div>
+                    <div class="news-date">29.03.2026</div>
+                  </div>
+                </div>
+                <div class="news-item" onclick="showToast('Новость — финальная точка')">
+                  <div><div class="news-badge" data-i18n="inv.news.platform">Платформа</div></div>
+                  <div>
+                    <div class="news-title" data-i18n="inv.news.installmentTitle">Обновление условий рассрочки</div>
+                    <div class="news-date">26.03.2026</div>
+                  </div>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item active" id="tab-dashboard" onclick="switchTab('screen-dashboard','tab-dashboard')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.home">Главная</span></button>
+              <button class="tab-item" id="tab-portfolio" onclick="switchTab('screen-portfolio','tab-portfolio')"><span class="tab-icon"><i data-lucide="pie-chart"></i></span><span data-i18n="tab.portfolio">Портфель</span></button>
+              <button class="tab-item" id="tab-market" onclick="switchTab('screen-market','tab-market')"><span class="tab-icon"><i data-lucide="shopping-bag"></i></span><span data-i18n="tab.market">Маркет</span></button>
+              <button class="tab-item" id="tab-balance" onclick="switchTab('screen-balance','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.balance">Баланс</span></button>
+              <button class="tab-item" id="tab-more" onclick="switchTab('screen-settings','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 2: PORTFOLIO ===== -->
+          <div class="screen" id="screen-portfolio">
+            <header class="app-header">
+              <div class="header-left">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+                <span class="header-title" data-i18n="tab.portfolio">Портфель</span>
+              </div>
+              <div class="header-right">
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="S.S.">
+              </div>
+            </header>
+            <main class="main">
+              <!-- Balance Card -->
+              <div class="balance-card" style="background:linear-gradient(135deg, var(--primary), var(--primary-light))">
+                <div class="balance-label" data-i18n="inv.portfolio.totalValue">Общая стоимость портфеля</div>
+                <div class="balance-value">€24 750</div>
+                <div class="balance-row">
+                  <div class="balance-sub">
+                    <div class="balance-sub-label" data-i18n="inv.portfolio.products">Продуктов</div>
+                    <div class="balance-sub-value">2</div>
+                  </div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label" data-i18n="inv.portfolio.units">Юнитов</div>
+                    <div class="balance-sub-value">24 750</div>
+                  </div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label" data-i18n="inv.portfolio.profit">Прибыль</div>
+                    <div class="balance-sub-value" style="color:var(--success)">+12.4%</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Holdings -->
+              <div class="portfolio-item" onclick="showToast('Детали по IPI AG — финальная точка')">
+                <div class="portfolio-header">
+                  <span class="portfolio-company"><i data-lucide="building"></i> IPI AG</span>
+                  <span class="portfolio-change" style="color:var(--success)">+15.2%</span>
+                </div>
+                <div class="portfolio-stats">
+                  <div><div class="portfolio-stat-label" data-i18n="inv.portfolio.units">Юнитов</div><div class="portfolio-stat-value">19 750</div></div>
+                  <div><div class="portfolio-stat-label" data-i18n="inv.portfolio.avgPrice">Ср. цена</div><div class="portfolio-stat-value">€0.87</div></div>
+                  <div><div class="portfolio-stat-label" data-i18n="inv.portfolio.value">Стоимость</div><div class="portfolio-stat-value">€19 750</div></div>
+                </div>
+              </div>
+
+              <div class="portfolio-item" onclick="showToast('Детали по Immo-Pro-Invest — финальная точка')">
+                <div class="portfolio-header">
+                  <span class="portfolio-company"><i data-lucide="home"></i> Immo-Pro-Invest</span>
+                  <span class="portfolio-change" style="color:var(--success)">+5.0%</span>
+                </div>
+                <div class="portfolio-stats">
+                  <div><div class="portfolio-stat-label" data-i18n="inv.portfolio.units">Юнитов</div><div class="portfolio-stat-value">5 000</div></div>
+                  <div><div class="portfolio-stat-label" data-i18n="inv.portfolio.avgPrice">Ср. цена</div><div class="portfolio-stat-value">€0.95</div></div>
+                  <div><div class="portfolio-stat-label" data-i18n="inv.portfolio.value">Стоимость</div><div class="portfolio-stat-value">€5 000</div></div>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dashboard')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.home">Главная</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-portfolio','tab-portfolio')"><span class="tab-icon"><i data-lucide="pie-chart"></i></span><span data-i18n="tab.portfolio">Портфель</span></button>
+              <button class="tab-item" onclick="switchTab('screen-market','tab-market')"><span class="tab-icon"><i data-lucide="shopping-bag"></i></span><span data-i18n="tab.market">Маркет</span></button>
+              <button class="tab-item" onclick="switchTab('screen-balance','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.balance">Баланс</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 3: MARKETPLACE ===== -->
+          <div class="screen" id="screen-market">
+            <header class="app-header">
+              <div class="header-left">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+                <span class="header-title" data-i18n="inv.market.title">Маркетплейс</span>
+              </div>
+              <div class="header-right">
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="S.S.">
+              </div>
+            </header>
+            <main class="main">
+              <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px" data-i18n="inv.market.subtitle">Доступные инвестиционные продукты</p>
+              <div class="product-grid">
+                <!-- IPI AG -->
+                <div class="product-card" onclick="showProduct('ipi')">
+                  <div class="product-img" style="background-image:url('../assets/photo-1.jpg');background-size:cover;background-position:center;">
+                    <i data-lucide="building"></i>
+                    <span class="product-company">IPI AG</span>
+                  </div>
+                  <div class="product-body">
+                    <div class="product-name">IPI AG Shares</div>
+                    <div class="product-desc" data-i18n="inv.market.ipiDesc">Инвестиции в строительные проекты IPI AG. Доходность через рост стоимости юнитов.</div>
+                    <div class="product-meta">
+                      <span class="product-price">€1.00 / <span data-i18n="inv.unit">юнит</span></span>
+                      <span class="product-units">500 000 <span data-i18n="inv.available">доступно</span></span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Immo-Pro-Invest -->
+                <div class="product-card" onclick="showProduct('immo')">
+                  <div class="product-img" style="background-image:url('../assets/photo-2.jpg');background-size:cover;background-position:center;">
+                    <i data-lucide="home"></i>
+                    <span class="product-company">Immo-Pro-Invest</span>
+                  </div>
+                  <div class="product-body">
+                    <div class="product-name">Immo-Pro-Invest</div>
+                    <div class="product-desc" data-i18n="inv.market.immoDesc">Инвестиции в недвижимость через Immo-Pro-Invest GmbH. Стабильный рост портфеля.</div>
+                    <div class="product-meta">
+                      <span class="product-price">€1.00 / <span data-i18n="inv.unit">юнит</span></span>
+                      <span class="product-units">300 000 <span data-i18n="inv.available">доступно</span></span>
+                    </div>
+                  </div>
+                </div>
+                <!-- CBS Home Franchise -->
+                <div class="product-card" onclick="showProduct('cbs')">
+                  <div class="product-img" style="background-image:url('../assets/photo-3.jpg');background-size:cover;background-position:center;">
+                    <i data-lucide="factory"></i>
+                    <span class="product-company">CBS Home AG</span>
+                  </div>
+                  <div class="product-body">
+                    <div class="product-name">CBS Home Franchise</div>
+                    <div class="product-desc" data-i18n="inv.market.cbsDesc">Франшиза CBS Home — инновационная строительная технология. Запатентованная система.</div>
+                    <div class="product-meta">
+                      <span class="product-price">€1.00 / <span data-i18n="inv.unit">юнит</span></span>
+                      <span class="product-units">200 000 <span data-i18n="inv.available">доступно</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dashboard')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-portfolio','tab-portfolio')"><span class="tab-icon"><i data-lucide="pie-chart"></i></span><span data-i18n="tab.portfolio">Портфель</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-market','tab-market')"><span class="tab-icon"><i data-lucide="shopping-bag"></i></span><span data-i18n="tab.market">Маркет</span></button>
+              <button class="tab-item" onclick="switchTab('screen-balance','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.balance">Баланс</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 4: PRODUCT DETAIL ===== -->
+          <div class="screen" id="screen-product">
+            <header class="app-header">
+              <div class="header-left">
+                <button class="btn-link" onclick="navigateTo('screen-market')" style="padding:0;font-size:14px">
+                  <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="inv.back">Назад</span>
+                </button>
+              </div>
+              <div class="header-right"></div>
+            </header>
+            <main class="main" style="padding:0">
+              <div class="detail-hero gradient-primary" id="productHero">
+                <div class="detail-hero-icon" id="productIcon"><i data-lucide="building"></i></div>
+                <div class="detail-hero-title" id="productTitle">IPI AG Shares</div>
+                <div class="detail-hero-company" id="productCompany">IPI AG</div>
+              </div>
+              <div class="detail-body">
+                <div class="detail-stats">
+                  <div class="detail-stat">
+                    <div class="detail-stat-value" id="productPrice">€1.00</div>
+                    <div class="detail-stat-label" data-i18n="inv.detail.pricePerUnit">Цена / юнит</div>
+                  </div>
+                  <div class="detail-stat">
+                    <div class="detail-stat-value" id="productAvail">500 000</div>
+                    <div class="detail-stat-label" data-i18n="inv.detail.available">Доступно</div>
+                  </div>
+                  <div class="detail-stat">
+                    <div class="detail-stat-value">+15.2%</div>
+                    <div class="detail-stat-label" data-i18n="inv.detail.sixMonths">За 6 мес</div>
+                  </div>
+                  <div class="detail-stat">
+                    <div class="detail-stat-value">12 450</div>
+                    <div class="detail-stat-label" data-i18n="inv.detail.investors">Инвесторов</div>
+                  </div>
+                </div>
+                <div class="detail-section">
+                  <h3 data-i18n="inv.detail.about">О продукте</h3>
+                  <p id="productDesc" data-i18n="inv.product.desc.ipi">Инвестиционные юниты IPI AG обеспечены портфелем строительных проектов в Германии. Патентованная технология CBS HOME (EP 3 574 160 B1) обеспечивает конкурентное преимущество: строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах.</p>
+                </div>
+                <div class="detail-section">
+                  <h3 data-i18n="inv.detail.bonus">Бонусные юниты</h3>
+                  <p data-i18n="inv.detail.bonusText">При покупке от 5 000 юнитов — бонус +500 юнитов бесплатно.</p>
+                </div>
+                <div class="detail-actions">
+                  <button class="btn btn-primary" onclick="navigateTo('screen-purchase')" data-i18n="inv.detail.buy">Купить</button>
+                  <button class="btn btn-secondary" onclick="navigateTo('screen-installment')" data-i18n="inv.detail.installment">Рассрочка</button>
+                </div>
+              </div>
+            </main>
+          </div>
+
+          <!-- ===== SCREEN 5: PURCHASE ===== -->
+          <div class="screen" id="screen-purchase">
+            <header class="app-header">
+              <div class="header-left">
+                <button class="btn-link" onclick="navigateTo('screen-product')" style="padding:0;font-size:14px">
+                  <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="inv.back">Назад</span>
+                </button>
+              </div>
+              <div class="header-right">
+                <span style="font-size:16px;font-weight:700;color:var(--text)" data-i18n="inv.purchase.title">Покупка юнитов</span>
+              </div>
+            </header>
+            <main class="main">
+              <div class="form-group">
+                <label class="form-label" data-i18n="inv.purchase.product">Продукт</label>
+                <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);font-size:14px;color:var(--text)" data-i18n="inv.purchase.product.ipi">
+                  IPI AG Shares — €1.00 / юнит
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" data-i18n="inv.purchase.quantity">Количество юнитов</label>
+                <input type="number" class="form-input" value="5000" id="purchaseUnits" oninput="updatePurchase()">
+              </div>
+              <div class="form-group">
+                <label class="form-label" data-i18n="inv.purchase.yourBalance">Ваш активный баланс</label>
+                <div style="padding:12px;background:var(--success-dim);border-radius:var(--radius-md);font-size:14px;color:var(--success);font-weight:600">
+                  €5 200 <span data-i18n="inv.available">доступно</span>
+                </div>
+              </div>
+
+              <!-- Summary -->
+              <div style="margin-top:20px;padding:16px;background:var(--bg-subtle);border-radius:var(--radius-lg)">
+                <div class="summary-row">
+                  <span class="summary-label" data-i18n="inv.purchase.units">Юнитов</span>
+                  <span class="summary-value" id="sumUnits">5 000</span>
+                </div>
+                <div class="summary-row">
+                  <span class="summary-label" data-i18n="inv.purchase.pricePerUnit">Цена за юнит</span>
+                  <span class="summary-value">€1.00</span>
+                </div>
+                <div class="summary-row">
+                  <span class="summary-label" data-i18n="inv.purchase.bonus">Бонус</span>
+                  <span class="summary-value" style="color:var(--success)" id="sumBonus" data-i18n="inv.purchase.bonusUnits">+500 юнитов</span>
+                </div>
+                <div class="summary-row summary-total">
+                  <span class="summary-label" data-i18n="inv.purchase.total">Итого</span>
+                  <span class="summary-value" id="sumTotal">€5 000</span>
+                </div>
+              </div>
+
+              <button class="btn btn-primary" style="margin-top:20px" onclick="showToast('Покупка выполнена: 5 500 юнитов IPI AG','success');setTimeout(()=>showToast('Покупка завершена — возврат в портфель'),1500)" data-i18n="inv.purchase.confirmBtn">
+                Подтвердить покупку
+              </button>
+            </main>
+          </div>
+
+          <!-- ===== SCREEN 6: INSTALLMENT ===== -->
+          <div class="screen" id="screen-installment">
+            <header class="app-header">
+              <div class="header-left">
+                <button class="btn-link" onclick="navigateTo('screen-product')" style="padding:0;font-size:14px">
+                  <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="inv.back">Назад</span>
+                </button>
+              </div>
+              <div class="header-right">
+                <span style="font-size:16px;font-weight:700;color:var(--text)" data-i18n="inv.installment.title">Рассрочка</span>
+              </div>
+            </header>
+            <main class="main">
+              <div class="form-group">
+                <label class="form-label" data-i18n="inv.purchase.product">Продукт</label>
+                <div style="padding:12px;background:var(--bg-subtle);border-radius:var(--radius-md);font-size:14px;color:var(--text)" data-i18n="inv.purchase.done.text">
+                  IPI AG Shares — 5 000 юнитов = €5 000
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" data-i18n="inv.installment.choosePlan">Выберите план</label>
+              </div>
+
+              <!-- 6 month plan -->
+              <div class="plan-card selected" onclick="selectPlan(this,'6m')">
+                <div class="plan-title"><i data-lucide="calendar" style="width:16px;height:16px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="inv.installment.6months">6 месяцев</span></div>
+                <div class="plan-desc" data-i18n="inv.installment.6monthsDesc">10% x 5 платежей + 50% финальный. Бонус инвестору при завершении.</div>
+                <table class="schedule-table">
+                  <thead>
+                    <tr><th data-i18n="inv.installment.month">Месяц</th><th data-i18n="inv.installment.amount">Сумма</th><th data-i18n="inv.installment.unitsCol">Юнитов</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td data-i18n="inv.installment.now">1 (сейчас)</td><td>€500</td><td>500</td></tr>
+                    <tr><td>2-5</td><td>€500 x 4</td><td>500 x 4</td></tr>
+                    <tr><td>6</td><td>€2 500</td><td>2 500</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- 12 month plan -->
+              <div class="plan-card" onclick="selectPlan(this,'12m')">
+                <div class="plan-title"><i data-lucide="calendar" style="width:16px;height:16px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="inv.installment.12months">12 месяцев</span></div>
+                <div class="plan-desc" data-i18n="inv.installment.12monthsDesc">5% x 11 платежей + 45% финальный. Увеличенный бонус при завершении.</div>
+                <table class="schedule-table">
+                  <thead>
+                    <tr><th data-i18n="inv.installment.month">Месяц</th><th data-i18n="inv.installment.amount">Сумма</th><th data-i18n="inv.installment.unitsCol">Юнитов</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td data-i18n="inv.installment.now">1 (сейчас)</td><td>€250</td><td>250</td></tr>
+                    <tr><td>2-11</td><td>€250 x 10</td><td>250 x 10</td></tr>
+                    <tr><td>12</td><td>€2 250</td><td>2 250</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="margin-top:16px;padding:12px;background:var(--warning-dim);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary)">
+                <i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;color:var(--warning)"></i>
+                <span data-i18n="inv.installment.notice">Цена фиксируется при оформлении. Первый платёж списывается сразу с активного баланса.</span>
+              </div>
+
+              <button class="btn btn-primary" style="margin-top:16px" onclick="showToast('Рассрочка оформлена: 6 мес','success');setTimeout(()=>showToast('Рассрочка оформлена — первый платёж списан'),1500)" data-i18n="inv.installment.confirmBtn">
+                Оформить рассрочку
+              </button>
+            </main>
+          </div>
+
+          <!-- ===== SCREEN 7: BALANCE ===== -->
+          <div class="screen" id="screen-balance">
+            <header class="app-header">
+              <div class="header-left">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+                <span class="header-title" data-i18n="tab.balance">Баланс</span>
+              </div>
+              <div class="header-right">
+                <img class="header-avatar" src="https://i.pravatar.cc/150?img=12" alt="S.S.">
+              </div>
+            </header>
+            <main class="main">
+              <!-- Active Balance Card -->
+              <div class="balance-card" style="background:linear-gradient(135deg, var(--primary), var(--primary-light))">
+                <div class="balance-label" data-i18n="inv.balance.active">Активный баланс</div>
+                <div class="balance-value">€5 200</div>
+                <div class="balance-row">
+                  <div class="balance-sub">
+                    <div class="balance-sub-label" data-i18n="inv.status.confirmed">Подтверждён</div>
+                    <div class="balance-sub-value">€5 200</div>
+                  </div>
+                  <div class="balance-sub">
+                    <div class="balance-sub-label" data-i18n="inv.status.frozen">Заморожен</div>
+                    <div class="balance-sub-value">€1 000</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Crypto Deposit -->
+              <button class="btn btn-primary btn-sm" style="margin-bottom:20px" onclick="showToast('Crypto deposit — финальная точка')">
+                <i data-lucide="plus" style="width:16px;height:16px"></i> <span data-i18n="inv.balance.deposit">Пополнить (Crypto)</span>
+              </button>
+
+              <!-- Transaction History -->
+              <div class="section-title" data-i18n="inv.balance.history">История операций</div>
+              <div class="tx-list">
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title">USDT TRC20 deposit</div>
+                    <div class="tx-date">01.04.2026, 14:23</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum positive">+€1 000</div>
+                    <div class="tx-status frozen" data-i18n="inv.balance.frozenMin">59 мин</div>
+                  </div>
+                </div>
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box teal"><i data-lucide="shopping-cart"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title" data-i18n="inv.tx.purchaseIpi5k">Покупка IPI AG (5000 юн.)</div>
+                    <div class="tx-date">28.03.2026</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum negative">-€5 000</div>
+                    <div class="tx-status confirmed" data-i18n="inv.status.confirmed">Подтверждён</div>
+                  </div>
+                </div>
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title">USDT ERC20 deposit</div>
+                    <div class="tx-date">25.03.2026</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum positive">+€10 000</div>
+                    <div class="tx-status confirmed" data-i18n="inv.status.confirmed">Подтверждён</div>
+                  </div>
+                </div>
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box teal"><i data-lucide="shopping-cart"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title" data-i18n="inv.tx.purchaseImmo">Покупка Immo-Pro-Invest</div>
+                    <div class="tx-date">20.03.2026</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum negative">-€5 000</div>
+                    <div class="tx-status confirmed" data-i18n="inv.status.confirmed">Подтверждён</div>
+                  </div>
+                </div>
+                <div class="tx-item" onclick="showToast('Детали транзакции — финальная точка')">
+                  <div class="icon-box green"><i data-lucide="arrow-down-circle"></i></div>
+                  <div class="tx-info">
+                    <div class="tx-title" data-i18n="inv.tx.bankTransfer">Банковский перевод</div>
+                    <div class="tx-date">15.03.2026</div>
+                  </div>
+                  <div class="tx-amount">
+                    <div class="tx-sum positive">+€5 200</div>
+                    <div class="tx-status confirmed" data-i18n="inv.status.confirmed">Подтверждён</div>
+                  </div>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dashboard')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-portfolio','tab-portfolio')"><span class="tab-icon"><i data-lucide="pie-chart"></i></span><span data-i18n="tab.portfolio">Портфель</span></button>
+              <button class="tab-item" onclick="switchTab('screen-market','tab-market')"><span class="tab-icon"><i data-lucide="shopping-bag"></i></span><span data-i18n="tab.market">Маркет</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-balance','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.balance">Баланс</span></button>
+              <button class="tab-item" onclick="switchTab('screen-settings','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.more">Ещё</span></button>
+            </nav>
+          </div>
+
+          <!-- ===== SCREEN 8: DOCUMENTS ===== -->
+          <div class="screen" id="screen-docs">
+            <header class="app-header">
+              <div class="header-left">
+                <button class="btn-link" onclick="navigateTo('screen-settings')" style="padding:0;font-size:14px">
+                  <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="inv.back">Назад</span>
+                </button>
+                <span class="header-title" style="margin-left:8px" data-i18n="inv.docs.title">Документы</span>
+              </div>
+            </header>
+            <main class="main">
+              <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
+                <div class="icon-box teal"><i data-lucide="file-text"></i></div>
+                <div class="doc-info">
+                  <div class="doc-title" data-i18n="inv.doc.agreementIpi">Инвестиционное соглашение — IPI AG</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.ipi1">Подписан 28.03.2026 -- 5 000 юнитов</div>
+                </div>
+                <span class="doc-status signed" data-i18n="inv.docs.signed">Подписан</span>
+              </div>
+              <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
+                <div class="icon-box teal"><i data-lucide="file-text"></i></div>
+                <div class="doc-info">
+                  <div class="doc-title" data-i18n="inv.doc.agreementImmo">Инвестиционное соглашение — Immo-Pro-Invest</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.immo1">Подписан 20.03.2026 -- 5 000 юнитов</div>
+                </div>
+                <span class="doc-status signed" data-i18n="inv.docs.signed">Подписан</span>
+              </div>
+              <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
+                <div class="icon-box orange"><i data-lucide="gift"></i></div>
+                <div class="doc-info">
+                  <div class="doc-title" data-i18n="inv.doc.bonusCert">Сертификат бонусных юнитов — IPI AG</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.bonus1">Выдан 28.03.2026 -- 500 юнитов</div>
+                </div>
+                <span class="doc-status signed" data-i18n="inv.docs.issued">Выдан</span>
+              </div>
+              <div class="doc-item" onclick="showToast('Просмотр документа — финальная точка')">
+                <div class="icon-box neutral"><i data-lucide="clipboard-list"></i></div>
+                <div class="doc-info">
+                  <div class="doc-title" data-i18n="inv.doc.userAgreement">Пользовательское соглашение cbshome.org</div>
+                  <div class="doc-meta" data-i18n="inv.doc.meta.agreement1">Подписан 15.03.2026</div>
+                </div>
+                <span class="doc-status signed" data-i18n="inv.docs.signed">Подписан</span>
+              </div>
+            </main>
+          </div>
+
+          <!-- ===== SCREEN 9: SETTINGS ===== -->
+          <div class="screen" id="screen-settings">
+            <header class="app-header">
+              <div class="header-left">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+                <span class="header-title" data-i18n="inv.settings.title">Настройки</span>
+              </div>
+            </header>
+            <main class="main">
+              <!-- Profile Card -->
+              <div style="text-align:center;padding:20px 0">
+                <img src="https://i.pravatar.cc/150?img=12" style="width:72px;height:72px;border-radius:50%;border:3px solid var(--primary-light);margin-bottom:12px" alt="S.S.">
+                <div style="font-size:18px;font-weight:700;color:var(--text)">Sergej Seider</div>
+                <div style="font-size:13px;color:var(--text-secondary)">sergej.seider@cbshome.org</div>
+                <div style="display:inline-block;margin-top:8px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--radius-sm);background:var(--bg-elevated);color:var(--primary)" data-i18n="inv.settings.roleInvestor">Инвестор</div>
+              </div>
+
+              <!-- Profile Section -->
+              <div class="settings-section">
+                <div class="settings-title" data-i18n="inv.settings.profile">Профиль</div>
+                <div class="settings-item">
+                  <span class="settings-label" data-i18n="inv.settings.name">Имя</span>
+                  <span class="settings-value">Sergej Seider</span>
+                </div>
+                <div class="settings-item">
+                  <span class="settings-label">Email</span>
+                  <span class="settings-value">sergej.seider@cbshome.org</span>
+                </div>
+                <div class="settings-item">
+                  <span class="settings-label" data-i18n="inv.settings.phone">Телефон</span>
+                  <span class="settings-value">+49 172 555 1234</span>
+                </div>
+                <div class="settings-item">
+                  <span class="settings-label" data-i18n="inv.settings.country">Страна</span>
+                  <span class="settings-value">Deutschland</span>
+                </div>
+                <div class="settings-item">
+                  <span class="settings-label">KYC</span>
+                  <span class="settings-value" style="color:var(--success);font-weight:600">
+                    <i data-lucide="shield-check" style="width:14px;height:14px;vertical-align:middle;margin-right:2px"></i> <span data-i18n="inv.settings.verified">Верифицирован</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Notifications Section -->
+              <div class="settings-section">
+                <div class="settings-title" data-i18n="inv.settings.notifications">Уведомления</div>
+                <div class="settings-item">
+                  <span class="settings-label" data-i18n="inv.settings.language">Язык</span>
+                  <span class="settings-value">Deutsch</span>
+                </div>
+                <div class="settings-item">
+                  <span class="settings-label" data-i18n="inv.settings.emailNotif">Уведомления Email</span>
+                  <button class="toggle-switch active" onclick="this.classList.toggle('active');showToast(this.classList.contains('active')?'Email уведомления включены':'Email уведомления отключены','info')"></button>
+                </div>
+                <div class="settings-item">
+                  <span class="settings-label" data-i18n="inv.settings.telegramNotif">Уведомления Telegram</span>
+                  <button class="toggle-switch active" onclick="this.classList.toggle('active');showToast(this.classList.contains('active')?'Telegram уведомления включены':'Telegram уведомления отключены','info')"></button>
+                </div>
+              </div>
+
+              <!-- Actions Section -->
+              <div class="settings-section">
+                <div class="settings-title" data-i18n="inv.settings.actions">Действия</div>
+                <div class="settings-item" style="cursor:pointer" onclick="navigateTo('screen-docs')">
+                  <span class="settings-label" style="color:var(--primary);font-weight:600">
+                    <i data-lucide="file-text" style="width:18px;height:18px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="inv.settings.myDocs">Мои документы</span>
+                  </span>
+                  <span class="settings-value">
+                    <i data-lucide="chevron-right" style="width:16px;height:16px"></i>
+                  </span>
+                </div>
+                <div class="settings-item" style="cursor:pointer" onclick="showToast('Заявка на роль агента — финальная точка')">
+                  <span class="settings-label" style="color:var(--accent);font-weight:600">
+                    <i data-lucide="users" style="width:18px;height:18px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="inv.settings.becomeAgent">Стать агентом</span>
+                  </span>
+                  <span class="settings-value">
+                    <i data-lucide="chevron-right" style="width:16px;height:16px"></i>
+                  </span>
+                </div>
+                <div class="settings-item" style="cursor:pointer" onclick="showToast('Выход из аккаунта — финальная точка')">
+                  <span class="settings-label" style="color:var(--danger)">
+                    <i data-lucide="log-out" style="width:18px;height:18px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="inv.settings.logout">Выйти</span>
+                  </span>
+                  <span class="settings-value">
+                    <i data-lucide="chevron-right" style="width:16px;height:16px"></i>
+                  </span>
+                </div>
+              </div>
+            </main>
+            <nav class="tab-bar">
+              <button class="tab-item" onclick="switchTab('screen-dashboard','tab-dashboard')"><span class="tab-icon"><i data-lucide="home"></i></span><span data-i18n="tab.home">Главная</span></button>
+              <button class="tab-item" onclick="switchTab('screen-portfolio','tab-portfolio')"><span class="tab-icon"><i data-lucide="pie-chart"></i></span><span data-i18n="tab.portfolio">Портфель</span></button>
+              <button class="tab-item" onclick="switchTab('screen-market','tab-market')"><span class="tab-icon"><i data-lucide="shopping-bag"></i></span><span data-i18n="tab.market">Маркет</span></button>
+              <button class="tab-item" onclick="switchTab('screen-balance','tab-balance')"><span class="tab-icon"><i data-lucide="wallet"></i></span><span data-i18n="tab.balance">Баланс</span></button>
+              <button class="tab-item active" onclick="switchTab('screen-settings','tab-more')"><span class="tab-icon"><i data-lucide="settings"></i></span><span data-i18n="tab.more">Ещё</span></button>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+      <div class="device-home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- NAV MAP -->
+  <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
+    <div class="nav-map" onclick="event.stopPropagation()">
+      <div class="nav-map-header">
+        <div class="nav-map-title"><i data-lucide="map-pin" style="width:18px;height:18px;vertical-align:middle;margin-right:6px"></i> <span data-i18n="nav.map.title">Карта навигации</span></div>
+        <button class="nav-map-close" onclick="closeNavMap()">&times;</button>
+      </div>
+      <div class="nav-map-body">
+        <div class="nav-map-stats">
+          <div class="nav-map-stat"><div class="nav-map-stat-value">9</div><div class="nav-map-stat-label" data-i18n="nav.map.screens">экранов</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">2</div><div class="nav-map-stat-label" data-i18n="nav.map.paths">полных путей</div></div>
+          <div class="nav-map-stat"><div class="nav-map-stat-value">10</div><div class="nav-map-stat-label" data-i18n="nav.map.endpoints">финальных точек</div></div>
+        </div>
+        <div class="nav-map-legend">
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> <span data-i18n="nav.legend.screen">Экран</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot yellow"></span> <span data-i18n="nav.legend.tab">Табы</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> <span data-i18n="nav.legend.endpoint">Финальная точка</span></div>
+        </div>
+        <div class="nav-map-tree">
+          <!-- TABS Section -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><span data-i18n="nav.section.tabs">ТАБЫ</span> <span class="section-count">(5)</span></span>
+              <span class="section-arrow">&#9660;</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item tab-item" onclick="navMapTab('Dashboard','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.dashboard">Главная</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Portfolio','screen-portfolio')"><span class="nav-map-item-name" data-i18n="nav.inv.portfolio">Портфель</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Marketplace','screen-market')"><span class="nav-map-item-name" data-i18n="nav.inv.marketplace">Маркетплейс</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Balance','screen-balance')"><span class="nav-map-item-name" data-i18n="nav.inv.balance">Баланс</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+              <div class="nav-map-item tab-item" onclick="navMapTab('Settings','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.settings">Настройки</span><span class="level-badge tab">TAB</span><span class="status-dot yellow"></span></div>
+            </div>
+          </div>
+          <!-- PURCHASE Flow -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><span data-i18n="nav.section.purchase">ПОКУПКА</span> <span class="section-count">(5)</span></span>
+              <span class="section-arrow">&#9660;</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-product')"><span class="nav-map-item-name" data-i18n="nav.inv.productDetail">Детали продукта</span><span class="level-badge">L1</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-purchase')"><span class="nav-map-item-name" data-i18n="nav.inv.purchase">&#8627; Покупка</span><span class="level-badge">L2</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Покупка выполнена','screen-purchase')"><span class="nav-map-item-name" data-i18n="nav.inv.purchaseDone">&#8627; Покупка выполнена</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-installment')"><span class="nav-map-item-name" data-i18n="nav.inv.installment">&#8627; Рассрочка</span><span class="level-badge">L2</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Рассрочка оформлена','screen-installment')"><span class="nav-map-item-name" data-i18n="nav.inv.installmentDone">&#8627; Рассрочка оформлена</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+            </div>
+          </div>
+          <!-- DOCUMENTS Flow -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><span data-i18n="nav.section.documents">ДОКУМЕНТЫ</span> <span class="section-count">(2)</span></span>
+              <span class="section-arrow">&#9660;</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')"><span class="nav-map-item-name" data-i18n="nav.inv.documents">Документы</span><span class="level-badge">L1</span><span class="status-dot green"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Просмотр документа','screen-docs')"><span class="nav-map-item-name" data-i18n="nav.inv.docView">&#8627; Просмотр документа</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+            </div>
+          </div>
+          <!-- ENDPOINTS -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><span data-i18n="nav.section.endpoints">ФИНАЛЬНЫЕ ТОЧКИ</span> <span class="section-count">(7)</span></span>
+              <span class="section-arrow">&#9660;</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Уведомления','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.notifications">Уведомления</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали транзакции','screen-balance')"><span class="nav-map-item-name" data-i18n="nav.inv.txDetails">Детали транзакции</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Новость','screen-dashboard')"><span class="nav-map-item-name" data-i18n="nav.inv.newsItem">Новость</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Детали по компании','screen-portfolio')"><span class="nav-map-item-name" data-i18n="nav.inv.companyDetails">Детали по компании</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Пополнение Crypto','screen-balance')"><span class="nav-map-item-name">Пополнение Crypto</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Заявка на роль агента','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.agentRequest">Заявка на роль агента</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+              <div class="nav-map-item endpoint-item" onclick="navMapEndpoint('Выход из аккаунта','screen-settings')"><span class="nav-map-item-name" data-i18n="nav.inv.logout">Выход из аккаунта</span><span class="level-badge end">END</span><span class="status-dot red"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/i18n.js"></script>
+  <script src="../js/shell.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script>
+    /* ========== INVESTOR-SPECIFIC HANDLERS ========== */
+
+    /* --- Product Data --- */
+    const products = {
+      ipi: {
+        icon: 'building',
+        title: 'IPI AG Shares',
+        company: 'IPI AG',
+        price: '\u20AC1.00',
+        avail: '500 000',
+        desc: I18N.t('inv.product.desc.ipi'),
+        gradient: 'gradient-primary',
+        photo: 'photo-1.jpg'
+      },
+      immo: {
+        icon: 'home',
+        title: 'Immo-Pro-Invest',
+        company: 'Immo-Pro-Invest GmbH',
+        price: '\u20AC1.00',
+        avail: '300 000',
+        desc: I18N.t('inv.product.desc.immo'),
+        gradient: 'gradient-deep',
+        photo: 'photo-2.jpg'
+      },
+      cbs: {
+        icon: 'factory',
+        title: 'CBS Home Franchise',
+        company: 'CBS Home AG',
+        price: '\u20AC1.00',
+        avail: '200 000',
+        desc: I18N.t('inv.product.desc.cbs'),
+        gradient: 'gradient-accent',
+        photo: 'photo-3.jpg'
+      }
+    };
+
+    /* --- Show Product Detail --- */
+    function showProduct(id) {
+      const p = products[id];
+      if (!p) return;
+      const hero = document.getElementById('productHero');
+      hero.className = 'detail-hero ' + p.gradient;
+      hero.style.backgroundImage = "url('../assets/" + p.photo + "')";
+      hero.style.backgroundSize = "cover";
+      hero.style.backgroundPosition = "center";
+      document.getElementById('productIcon').innerHTML =
+        '<i data-lucide="' + p.icon + '"></i>';
+      document.getElementById('productTitle').textContent = p.title;
+      document.getElementById('productCompany').textContent = p.company;
+      document.getElementById('productPrice').textContent = p.price;
+      document.getElementById('productAvail').textContent = p.avail;
+      document.getElementById('productDesc').textContent = p.desc;
+      navigateTo('screen-product');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    /* --- Purchase Calculator --- */
+    function updatePurchase() {
+      const u = parseInt(document.getElementById('purchaseUnits').value) || 0;
+      document.getElementById('sumUnits').textContent = u.toLocaleString('de-DE');
+      document.getElementById('sumTotal').textContent =
+        '\u20AC' + u.toLocaleString('de-DE');
+      document.getElementById('sumBonus').textContent =
+        u >= 5000 ? '+' + (Math.floor(u / 5000) * 500) + ' ' + I18N.t('inv.bonusCalc') : I18N.t('inv.bonusNone');
+    }
+
+    /* --- Installment Plan Selection --- */
+    function selectPlan(card, plan) {
+      document.querySelectorAll('.plan-card').forEach(function(c) {
+        c.classList.remove('selected');
+      });
+      card.classList.add('selected');
+    }
+
+    /* --- Nav Map Section Toggle --- */
+    function toggleSection(el) {
+      var content = el.nextElementSibling;
+      var arrow = el.querySelector('.section-arrow');
+      if (content.style.display === 'none') {
+        content.style.display = '';
+        arrow.innerHTML = '&#9660;';
+      } else {
+        content.style.display = 'none';
+        arrow.innerHTML = '&#9654;';
+      }
+    }
+
+    /* --- Init Lucide Icons --- */
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
+</body>
+</html>

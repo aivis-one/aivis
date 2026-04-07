@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME — Live Mockups</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #fff;
+    }
+    .hub { max-width: 1100px; width: 100%; text-align: center; }
+    .hub-logo {
+      display: inline-flex; align-items: center; gap: 12px;
+      margin-bottom: 16px;
+    }
+    .hub-logo-icon {
+      width: 48px; height: 48px; background: #E8651A; color: #fff;
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 24px;
+    }
+    .hub-logo-text { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+    .hub-subtitle {
+      font-size: 15px; color: rgba(255,255,255,0.5);
+      margin-bottom: 48px; font-weight: 400;
+    }
+    .hub-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 48px;
+    }
+    .hub-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 28px 24px;
+      text-decoration: none;
+      color: #fff;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+    .hub-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+      border-color: rgba(232,101,26,0.4);
+      background: rgba(255,255,255,0.08);
+    }
+    .hub-card-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .hub-card-icon svg { width: 24px; height: 24px; }
+    .hub-card-icon.orange { background: rgba(232,101,26,0.15); color: #E8651A; }
+    .hub-card-icon.teal { background: rgba(26,107,106,0.15); color: #2A9B9A; }
+    .hub-card-icon.yellow { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .hub-card-icon.blue { background: rgba(59,130,246,0.15); color: #3b82f6; }
+    .hub-card-icon.green { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .hub-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .hub-card p {
+      font-size: 13px; color: rgba(255,255,255,0.6);
+      line-height: 1.5; margin-bottom: 16px; flex: 1;
+    }
+    .hub-card-meta {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%;
+    }
+    .hub-screens {
+      font-size: 12px; color: rgba(255,255,255,0.4);
+      font-weight: 500;
+    }
+    .hub-badge {
+      font-size: 10px; font-weight: 700; padding: 3px 10px;
+      border-radius: 20px; margin-left: auto;
+    }
+    .hub-badge.flow { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .hub-badge.mobile { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .hub-badge.web { background: rgba(59,130,246,0.2); color: #3b82f6; }
+    .hub-card-arrow {
+      position: absolute; top: 24px; right: 24px;
+      color: rgba(255,255,255,0.2);
+      transition: all 0.3s;
+    }
+    .hub-card-arrow svg { width: 18px; height: 18px; }
+    .hub-card:hover .hub-card-arrow {
+      color: #E8651A; transform: translateX(4px);
+    }
+    .hub-hints {
+      display: flex; justify-content: center; gap: 24px;
+      font-size: 12px; color: rgba(255,255,255,0.3);
+    }
+    .hub-hints span {
+      padding: 4px 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+    }
+    .hub-version {
+      margin-top: 24px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+    }
+    @media (max-width: 640px) {
+      .hub-grid { grid-template-columns: 1fr; }
+      body { padding: 24px 16px; }
+      .hub-logo-text { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hub">
+    <div class="hub-logo">
+      <img src="assets/logo.svg" alt="CBS HOME" style="height:40px;width:auto;">
+    </div>
+    <p class="hub-subtitle">Interactive Mockups · 35 screens · 5 roles</p>
+
+    <div class="hub-grid">
+      <a href="auth-flow/mockup.html" class="hub-card">
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon orange"><i data-lucide="lock-keyhole"></i></span>
+        <h2>Auth Flow</h2>
+        <p>Login, Register, Email Verification, Profile Setup, Role Selection, KYC, Document Signing</p>
+        <div class="hub-card-meta">
+          <span class="hub-screens">7 screens</span>
+          <span class="hub-badge flow">Flow</span>
+        </div>
+      </a>
+
+      <a href="investor-shell/mockup.html" class="hub-card">
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon teal"><i data-lucide="bar-chart-3"></i></span>
+        <h2>Investor</h2>
+        <p>Dashboard, Portfolio, Marketplace, Product Detail, Purchase, Installment, Balance, Documents, Settings</p>
+        <div class="hub-card-meta">
+          <span class="hub-screens">9 screens</span>
+          <span class="hub-badge mobile">Mobile</span>
+        </div>
+      </a>
+
+      <a href="agent-shell/mockup.html" class="hub-card">
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon yellow"><i data-lucide="users"></i></span>
+        <h2>Agent</h2>
+        <p>Agent Hub, Referral Links, Commissions L1/L2/L3, Leaderboard, Passive Balance, Certification</p>
+        <div class="hub-card-meta">
+          <span class="hub-screens">7 screens</span>
+          <span class="hub-badge mobile">Mobile</span>
+        </div>
+      </a>
+
+      <a href="company-shell/mockup.html" class="hub-card">
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon blue"><i data-lucide="building-2"></i></span>
+        <h2>Company</h2>
+        <p>Dashboard, Product Management, Product Edit, Sales Analytics, Revenue Balance, Settings</p>
+        <div class="hub-card-meta">
+          <span class="hub-screens">5 screens</span>
+          <span class="hub-badge web">Web</span>
+        </div>
+      </a>
+
+      <a href="staff-shell/mockup.html" class="hub-card">
+        <span class="hub-card-arrow"><i data-lucide="arrow-right"></i></span>
+        <span class="hub-card-icon green"><i data-lucide="shield-check"></i></span>
+        <h2>Staff</h2>
+        <p>User Management, KYC Queue, Payment Review, Agent Applications, Avatar Mode</p>
+        <div class="hub-card-meta">
+          <span class="hub-screens">7 screens</span>
+          <span class="hub-badge web">Web</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="hub-hints">
+      <span>1/2/3 — devices</span>
+      <span>+/− — zoom</span>
+      <span>M — map</span>
+    </div>
+    <div class="hub-version">v1.8.0 · livemockup-studio · CBS HOME</div>
+  </div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>if(typeof lucide!=='undefined') lucide.createIcons();</script>
+</body>
+</html>

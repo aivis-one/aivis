@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS HOME Auth Flow — Live Mockup</title>
+  <script>
+    (function(){var t=localStorage.getItem('cbs-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('cbs-lang');if(l)document.documentElement.lang=l;})();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%23cc3203'/><text x='50' y='72' font-size='60' font-weight='800' font-family='Arial' fill='white' text-anchor='middle'>U</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/shell.css">
+  <link rel="stylesheet" href="../css/nav-map.css">
+  <style>
+    /* === AUTH-SPECIFIC STYLES ONLY === */
+
+    /* ========== AUTH HEADER ========== */
+    .auth-header {
+      position: sticky; top: 0; z-index: 100; background: var(--bg);
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .auth-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .auth-logo-icon {
+      width: 36px; height: 36px; background: var(--accent); color: white;
+      border-radius: var(--radius-sm); display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 18px;
+    }
+    .auth-logo-text { font-size: 16px; font-weight: 700; color: var(--primary-dark); letter-spacing: 0.5px; }
+
+    /* ========== PROGRESS STEPS ========== */
+    .progress-bar {
+      display: flex; align-items: center; gap: 4px; padding: 12px 20px;
+      background: var(--bg-subtle);
+    }
+    .progress-step {
+      flex: 1; height: 4px; border-radius: 2px; background: var(--border);
+      transition: background 0.3s;
+    }
+    .progress-step.done { background: var(--primary); }
+    .progress-step.active { background: var(--accent); }
+
+    /* ========== AUTH CONTENT ========== */
+    .auth-content {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 32px 24px; overflow-y: auto;
+    }
+    .auth-title { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 8px; text-align: center; }
+    .auth-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; text-align: center; line-height: 1.5; }
+    .auth-form { width: 100%; max-width: 360px; }
+
+    /* ========== ROLE CARDS ========== */
+    .role-cards { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 400px; }
+    .role-card {
+      background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius-lg);
+      padding: 20px; cursor: pointer; transition: all 0.2s; position: relative;
+    }
+    .role-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
+    .role-card.selected { border-color: var(--accent); background: rgba(232,101,26,0.04); box-shadow: var(--shadow-accent-focus); }
+    .role-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .role-card-icon { display: flex; align-items: center; }
+    .role-card-title { font-size: 18px; font-weight: 700; color: var(--text); }
+    .role-card-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+    .role-card-features { display: flex; flex-wrap: wrap; gap: 6px; }
+    .role-feature {
+      font-size: 11px; font-weight: 500; padding: 4px 10px;
+      border-radius: var(--radius-sm); background: var(--bg-elevated);
+      color: var(--primary);
+    }
+    .role-card.selected .role-feature { background: rgba(232,101,26,0.1); color: var(--accent); }
+    .role-card-check {
+      position: absolute; top: 16px; right: 16px; width: 24px; height: 24px;
+      border-radius: 50%; border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; font-size: 14px; color: white;
+    }
+    .role-card.selected .role-card-check { background: var(--accent); border-color: var(--accent); }
+
+    /* ========== EMAIL VERIFY ========== */
+    .verify-icon { display: flex; justify-content: center; margin-bottom: 24px; }
+    .verify-icon svg { width: 64px; height: 64px; }
+    .code-inputs { display: flex; gap: 12px; margin-bottom: 24px; }
+    .code-input {
+      width: 52px; height: 60px; text-align: center; font-size: 24px; font-weight: 700;
+      border: 2px solid var(--border); border-radius: var(--radius-md); font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .code-input:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
+
+    /* ========== KYC STATUS ========== */
+    .kyc-status-card {
+      width: 100%; max-width: 360px; border-radius: var(--radius-lg);
+      padding: 32px 24px; text-align: center; margin-bottom: 24px;
+    }
+    .kyc-status-card.pending { background: var(--warning-dim); border: 1px solid rgba(245,158,11,0.3); }
+    .kyc-status-card.approved { background: var(--success-dim); border: 1px solid rgba(34,197,94,0.3); }
+    .kyc-status-card.rejected { background: var(--danger-dim); border: 1px solid rgba(239,68,68,0.3); }
+    .kyc-icon { display: flex; justify-content: center; margin-bottom: 16px; }
+    .kyc-icon svg { width: 48px; height: 48px; }
+    .kyc-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .kyc-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* ========== DOCUMENTS ========== */
+    .doc-list { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+    .doc-item {
+      display: flex; align-items: flex-start; gap: 14px; padding: 16px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .doc-item:hover { border-color: var(--primary-light); background: var(--bg-elevated); }
+    .doc-checkbox {
+      width: 22px; height: 22px; min-width: 22px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); display: flex; align-items: center;
+      justify-content: center; transition: all 0.2s; margin-top: 2px;
+      cursor: pointer; font-size: 13px; color: white;
+    }
+    .doc-checkbox.checked { background: var(--primary); border-color: var(--primary); }
+    .doc-info { flex: 1; }
+    .doc-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .doc-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+    .doc-required { font-size: 11px; color: var(--danger); font-weight: 500; margin-top: 4px; }
+
+    /* ========== PASSWORD TOGGLE ========== */
+    .input-wrapper { position: relative; }
+    .input-wrapper .form-input { padding-right: 48px; }
+    .toggle-password {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--text-tertiary); padding: 4px; display: flex; align-items: center;
+    }
+    .toggle-password svg { width: 20px; height: 20px; }
+
+    /* ========== CHECKBOX INLINE ========== */
+    .checkbox-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
+    .checkbox-row .checkbox {
+      width: 20px; height: 20px; min-width: 20px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; display: flex;
+      align-items: center; justify-content: center; transition: all 0.2s;
+      font-size: 12px; color: white; margin-top: 2px;
+    }
+    .checkbox-row .checkbox.checked { background: var(--primary); border-color: var(--primary); }
+    .checkbox-row label { font-size: 13px; color: var(--text-secondary); line-height: 1.4; cursor: pointer; }
+    .checkbox-row label a { color: var(--primary); text-decoration: none; }
+    .checkbox-row label a:hover { text-decoration: underline; }
+
+    /* ========== TAB ICON FIX ========== */
+    .tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
+
+    /* ========== RESPONSIVE GRID INSIDE MOCKUP ========== */
+    .device-frame.desktop .role-cards { flex-direction: row; max-width: 800px; }
+    .device-frame.desktop .role-card { flex: 1; }
+    .device-frame.tablet .role-cards { flex-direction: row; flex-wrap: wrap; max-width: 600px; }
+    .device-frame.tablet .role-card { flex: 1; min-width: 250px; }
+    .device-frame.desktop .auth-content { padding: 48px 40px; }
+    .device-frame.tablet .auth-content { padding: 40px 32px; }
+  </style>
+</head>
+<body>
+
+  <!-- ========== TOOLBAR ========== -->
+  <div class="preview-toolbar">
+    <div class="toolbar-left">
+      <div class="project-info">
+        <span class="project-name">CBS HOME Auth v1</span>
+        <span class="project-badge">LIVE</span>
+      </div>
+      <a href="../index.html" class="home-btn" title="Hub"><i data-lucide="layout-grid"></i></a>
+    </div>
+    <div class="toolbar-center">
+      <div class="device-switcher">
+        <button class="device-btn active" data-device="phone">
+          <i data-lucide="smartphone" style="width:16px;height:16px;color:currentColor"></i>
+          <span class="device-label">Phone</span>
+          <span class="device-size">390</span>
+        </button>
+        <button class="device-btn" data-device="tablet">
+          <i data-lucide="tablet" style="width:16px;height:16px;color:currentColor"></i>
+          <span class="device-label">Tablet</span>
+          <span class="device-size">820</span>
+        </button>
+        <button class="device-btn" data-device="desktop">
+          <i data-lucide="monitor" style="width:16px;height:16px;color:currentColor"></i>
+          <span class="device-label">Desktop</span>
+          <span class="device-size">1280</span>
+        </button>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button class="theme-toggle" onclick="ThemeManager.cycle()" title="Theme">
+        <i data-lucide="monitor"></i>
+      </button>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="ru" onclick="I18N.setLocale('ru')">RU</button>
+        <button class="lang-btn" data-lang="en" onclick="I18N.setLocale('en')">EN</button>
+        <button class="lang-btn" data-lang="de" onclick="I18N.setLocale('de')">DE</button>
+      </div>
+      <button class="map-btn" onclick="openNavMap()">
+        <i data-lucide="map-pin" style="width:14px;height:14px;color:currentColor"></i>
+        <span class="map-label">Map</span>
+      </button>
+      <div class="zoom-control">
+        <button class="zoom-btn" data-zoom="-10">−</button>
+        <span class="zoom-value">100%</span>
+        <button class="zoom-btn" data-zoom="+10">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DEVICE FRAME ========== -->
+  <div class="preview-container">
+    <div class="device-frame phone" id="deviceFrame">
+      <div class="device-notch"></div>
+      <div class="device-screen" id="deviceScreen">
+        <div class="mockup-content">
+
+          <!-- ===== SCREEN 1: LOGIN ===== -->
+          <div class="screen active" id="screen-login">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <div style="margin-bottom:24px; text-align:center;">
+                <i data-lucide="lock-keyhole" style="width:48px;height:48px;color:var(--primary)"></i>
+              </div>
+              <h1 class="auth-title" data-i18n="auth.login.title">Вход в аккаунт</h1>
+              <p class="auth-subtitle" data-i18n="auth.login.subtitle">Войдите в CBS HOME для управления инвестициями</p>
+              <div class="auth-form">
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.login.email">Email</label>
+                  <input type="email" class="form-input" placeholder="name@example.com" value="sergej.seider@cbshome.org">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.login.password">Пароль</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Введите пароль" value="password123" data-i18n="auth.login.passPlaceholder" data-i18n-attr="placeholder">
+                    <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
+                      <i data-lucide="eye"></i>
+                    </button>
+                  </div>
+                </div>
+                <div style="text-align:right; margin-bottom:20px;">
+                  <button class="btn-link" type="button" data-i18n="auth.login.forgot" onclick="showToast('Восстановление пароля — финальная точка', 'info')">Забыли пароль?</button>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleLogin()">
+                  <i data-lucide="log-in" style="width:18px;height:18px"></i> <span data-i18n="auth.login.btn">Войти</span>
+                </button>
+
+                <div class="divider"><span data-i18n="auth.login.or">или</span></div>
+
+                <button class="btn btn-telegram" type="button" onclick="showToast('Telegram WebApp — внешний сервис', 'info')">
+                  <i data-lucide="send" style="width:18px;height:18px"></i> <span data-i18n="auth.login.telegram">Войти через Telegram</span>
+                </button>
+
+                <div style="text-align:center; margin-top:24px;">
+                  <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.login.noAccount">Нет аккаунта? </span>
+                  <button class="btn-link" type="button" data-i18n="auth.login.createAccount" onclick="navigateTo('screen-register')">Создать аккаунт</button>
+                </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 2: REGISTER ===== -->
+          <div class="screen" id="screen-register">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+              <button class="btn-link" type="button" onclick="navigateTo('screen-login')">
+                <i data-lucide="arrow-left" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="auth.back">Назад</span>
+              </button>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step active"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title" data-i18n="auth.register.title">Создать аккаунт</h1>
+              <p class="auth-subtitle" data-i18n="auth.register.subtitle">Присоединяйтесь к инвестиционной платформе CBS HOME</p>
+              <div class="auth-form">
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.register.email">Email</label>
+                  <input type="email" class="form-input" placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.register.password">Пароль</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Минимум 8 символов" data-i18n="auth.register.passPlaceholder" data-i18n-attr="placeholder">
+                    <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
+                      <i data-lucide="eye"></i>
+                    </button>
+                  </div>
+                  <div class="form-hint" data-i18n="auth.register.passwordHint">Минимум 8 символов, буквы и цифры</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.register.confirmPassword">Подтверждение пароля</label>
+                  <div class="input-wrapper">
+                    <input type="password" class="form-input" placeholder="Повторите пароль" data-i18n="auth.register.confirmPlaceholder" data-i18n-attr="placeholder">
+                    <button class="toggle-password" type="button" onclick="togglePasswordVisibility(this)">
+                      <i data-lucide="eye"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="checkbox-row">
+                  <div class="checkbox" onclick="toggleCheckbox(this)"></div>
+                  <label onclick="toggleCheckbox(this.previousElementSibling)"><span data-i18n="auth.register.terms">Я принимаю <a href="#" onclick="event.stopPropagation(); showToast('Условия использования — финальная точка', 'info')">условия использования</a> и <a href="#" onclick="event.stopPropagation(); showToast('Политика конфиденциальности — финальная точка', 'info')">политику конфиденциальности</a></span></label>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleRegister()">
+                  <i data-lucide="user-plus" style="width:18px;height:18px"></i> <span data-i18n="auth.register.btn">Создать аккаунт</span>
+                </button>
+
+                <div style="text-align:center; margin-top:24px;">
+                  <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.register.hasAccount">Уже есть аккаунт? </span>
+                  <button class="btn-link" type="button" data-i18n="auth.register.loginLink" onclick="navigateTo('screen-login')">Войти</button>
+                </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 3: EMAIL VERIFICATION ===== -->
+          <div class="screen" id="screen-verify">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <div class="verify-icon">
+                <i data-lucide="mail-check" style="width:64px;height:64px;color:var(--primary)"></i>
+              </div>
+              <h1 class="auth-title" data-i18n="auth.verify.title">Проверьте почту</h1>
+              <p class="auth-subtitle"><span data-i18n="auth.verify.subtitle">Мы отправили код подтверждения на</span><br><strong style="color:var(--text)">sergej.seider@cbshome.org</strong></p>
+              <div class="code-inputs">
+                <input class="code-input" type="text" maxlength="1" value="4">
+                <input class="code-input" type="text" maxlength="1" value="7">
+                <input class="code-input" type="text" maxlength="1" value="2">
+                <input class="code-input" type="text" maxlength="1" value="9">
+                <input class="code-input" type="text" maxlength="1">
+                <input class="code-input" type="text" maxlength="1">
+              </div>
+              <div class="auth-form">
+                <button class="btn btn-primary" type="button" onclick="handleVerify()">
+                  <i data-lucide="check-circle" style="width:18px;height:18px"></i> <span data-i18n="auth.verify.btn">Подтвердить</span>
+                </button>
+                <div style="text-align:center; margin-top:20px;">
+                  <span style="font-size:14px; color:var(--text-secondary);" data-i18n="auth.verify.noCode">Не получили код? </span>
+                  <button class="btn-link" type="button" data-i18n="auth.verify.resend" onclick="showToast('Код отправлен повторно', 'success')">Отправить повторно</button>
+                </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 4: PROFILE SETUP ===== -->
+          <div class="screen" id="screen-profile">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title" data-i18n="auth.profile.title">Данные профиля</h1>
+              <p class="auth-subtitle" data-i18n="auth.profile.subtitle">Заполните информацию для вашего аккаунта</p>
+              <div class="auth-form">
+                <div style="display:flex; gap:12px;">
+                  <div class="form-group" style="flex:1;">
+                    <label class="form-label" data-i18n="auth.profile.firstName">Имя</label>
+                    <input type="text" class="form-input" placeholder="Sergej" value="Sergej">
+                  </div>
+                  <div class="form-group" style="flex:1;">
+                    <label class="form-label" data-i18n="auth.profile.lastName">Фамилия</label>
+                    <input type="text" class="form-input" placeholder="Seider" value="Seider">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.profile.phone">Телефон</label>
+                  <input type="tel" class="form-input" placeholder="+49 XXX XXXXXXXX" value="+49 172 5551234">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.profile.country">Страна</label>
+                  <select class="form-select">
+                    <option value="de" selected>Deutschland</option>
+                    <option value="ch">Schweiz</option>
+                    <option value="at">Osterreich</option>
+                    <option value="ru">Россия</option>
+                    <option value="other">Другая</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" data-i18n="auth.profile.language">Язык интерфейса</label>
+                  <select class="form-select">
+                    <option value="de" selected>Deutsch</option>
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                    <option value="ar">العربية</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleProfile()">
+                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> <span data-i18n="auth.profile.btn">Продолжить</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 5: ROLE SELECTION ===== -->
+          <div class="screen" id="screen-role">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title" data-i18n="auth.role.title">Выберите роль</h1>
+              <p class="auth-subtitle" data-i18n="auth.role.subtitle">Как вы планируете использовать платформу?</p>
+              <div class="role-cards" id="roleCards">
+                <div class="role-card" onclick="selectRole(this, 'Инвестор')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon"><span class="icon-box teal"><i data-lucide="trending-up"></i></span></span>
+                    <span class="role-card-title" data-i18n="auth.role.investor">Инвестор</span>
+                  </div>
+                  <div class="role-card-desc" data-i18n="auth.role.investorDesc">Покупайте продукты, управляйте портфелем и отслеживайте инвестиции</div>
+                  <div class="role-card-features">
+                    <span class="role-feature" data-i18n="auth.role.feat.portfolio">Портфель</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.installments">Рассрочки</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.balance">Баланс</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.documents">Документы</span>
+                  </div>
+                </div>
+                <div class="role-card" onclick="selectRole(this, 'Агент')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon"><span class="icon-box orange"><i data-lucide="users"></i></span></span>
+                    <span class="role-card-title" data-i18n="auth.role.agent">Агент</span>
+                  </div>
+                  <div class="role-card-desc" data-i18n="auth.role.agentDesc">Все возможности инвестора плюс реферальная программа и комиссии</div>
+                  <div class="role-card-features">
+                    <span class="role-feature" data-i18n="auth.role.feat.referrals">Реферальные ссылки</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.commissions">Комиссии L1/L2/L3</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.leaderboard">Лидерборд</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.certification">Сертификация</span>
+                  </div>
+                </div>
+                <div class="role-card" onclick="selectRole(this, 'Компания')">
+                  <div class="role-card-check"></div>
+                  <div class="role-card-header">
+                    <span class="role-card-icon"><span class="icon-box blue"><i data-lucide="building-2"></i></span></span>
+                    <span class="role-card-title" data-i18n="auth.role.company">Компания</span>
+                  </div>
+                  <div class="role-card-desc" data-i18n="auth.role.companyDesc">Размещайте продукты, управляйте продажами и получайте выручку</div>
+                  <div class="role-card-features">
+                    <span class="role-feature" data-i18n="auth.role.feat.products">Продукты</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.analytics">Аналитика</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.revenue">Выручка</span>
+                    <span class="role-feature" data-i18n="auth.role.feat.documents">Документы</span>
+                  </div>
+                </div>
+              </div>
+              <div style="width:100%; max-width:400px; margin-top:24px;">
+                <button class="btn btn-primary" id="roleSubmitBtn" type="button" disabled onclick="handleRoleSelect()" data-i18n="auth.role.btn">Выберите роль</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 6: KYC STATUS ===== -->
+          <div class="screen" id="screen-kyc">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+              <div class="progress-step"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title" data-i18n="auth.kyc.title">Верификация личности</h1>
+              <p class="auth-subtitle" data-i18n="auth.kyc.subtitle">Для работы на платформе необходимо пройти KYC-верификацию</p>
+
+              <div class="kyc-status-card approved">
+                <div class="kyc-icon"><i data-lucide="shield-check" style="width:48px;height:48px;color:var(--success)"></i></div>
+                <div class="kyc-title" style="color:var(--success);" data-i18n="auth.kyc.approved">Верификация пройдена</div>
+                <div class="kyc-text" data-i18n="auth.kyc.approvedText">Ваша личность подтверждена. Вы можете продолжить настройку аккаунта.</div>
+              </div>
+
+              <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:12px;">
+                <button class="btn btn-primary" type="button" onclick="navigateTo('screen-docs')">
+                  <i data-lucide="arrow-right" style="width:18px;height:18px"></i> <span data-i18n="auth.kyc.continue">Продолжить</span>
+                </button>
+                <button class="btn btn-outline" type="button" onclick="showToast('SumSub — внешний сервис верификации', 'info')">
+                  <i data-lucide="refresh-cw" style="width:16px;height:16px"></i> <span data-i18n="auth.kyc.redo">Пройти заново</span>
+                </button>
+              </div>
+
+              <div style="margin-top:32px; width:100%; max-width:360px; padding:16px; background:var(--bg-subtle); border-radius:var(--radius-md);">
+                <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:var(--text);" data-i18n="auth.kyc.statusesTitle">Статусы верификации:</div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--warning);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);" data-i18n="auth.kyc.statusPending">Ожидание — документы на проверке</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--success);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);" data-i18n="auth.kyc.statusApproved">Одобрено — верификация пройдена</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:var(--danger);"></span>
+                    <span style="font-size:13px; color:var(--text-secondary);" data-i18n="auth.kyc.statusRejected">Отклонено — требуется повторная подача</span>
+                  </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SCREEN 7: DOCUMENT SIGNING ===== -->
+          <div class="screen" id="screen-docs">
+            <header class="auth-header">
+              <div class="auth-logo">
+                <img src="../assets/logo.svg" alt="CBS HOME" style="height:28px;width:auto;">
+              </div>
+            </header>
+            <div class="progress-bar">
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step done"></div>
+              <div class="progress-step active"></div>
+            </div>
+            <div class="auth-content">
+              <h1 class="auth-title" data-i18n="auth.docs.title">Подписание документов</h1>
+              <p class="auth-subtitle" data-i18n="auth.docs.subtitle">Ознакомьтесь и подпишите обязательные документы для начала работы</p>
+
+              <div class="doc-list" id="docList">
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title" data-i18n="auth.docs.agreement">Пользовательское соглашение cbshome.org</div>
+                    <div class="doc-desc" data-i18n="auth.docs.agreementDesc">Основные условия использования платформы, права и обязанности сторон</div>
+                    <div class="doc-required" data-i18n="auth.docs.required">Обязательный документ</div>
+                  </div>
+                </div>
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title" data-i18n="auth.docs.privacy">Политика конфиденциальности</div>
+                    <div class="doc-desc" data-i18n="auth.docs.privacyDesc">Порядок обработки, хранения и защиты персональных данных в соответствии с GDPR</div>
+                    <div class="doc-required" data-i18n="auth.docs.required">Обязательный документ</div>
+                  </div>
+                </div>
+                <div class="doc-item" onclick="toggleDoc(this)">
+                  <div class="doc-checkbox"></div>
+                  <div class="doc-info">
+                    <div class="doc-title" data-i18n="auth.docs.consent">Согласие на обработку персональных данных</div>
+                    <div class="doc-desc" data-i18n="auth.docs.consentDesc">Явное согласие на обработку ваших данных для предоставления услуг платформы</div>
+                    <div class="doc-required" data-i18n="auth.docs.required">Обязательный документ</div>
+                </div>
+              </div>
+
+              <div style="width:100%; max-width:400px;">
+                <button class="btn btn-primary" id="signBtn" type="button" disabled onclick="handleSign()">
+                  <i data-lucide="file-signature" style="width:18px;height:18px"></i> <span data-i18n="auth.docs.signBtn">Подписать документы</span>
+                </button>
+                <div style="text-align:center; margin-top:16px;">
+                  <span style="font-size:12px; color:var(--text-tertiary);" data-i18n="auth.docs.signNote">Нажимая «Подписать», вы соглашаетесь с условиями всех перечисленных документов</span>
+                </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="device-home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ========== NAVIGATION MAP ========== -->
+  <div class="nav-map-overlay" id="navMapOverlay" onclick="closeNavMapOnOverlay(event)">
+    <div class="nav-map" onclick="event.stopPropagation()">
+      <div class="nav-map-header">
+        <div class="nav-map-title"><i data-lucide="map-pin" style="width:18px;height:18px;vertical-align:middle;margin-right:6px"></i> <span data-i18n="nav.map.title">Карта навигации</span></div>
+        <button class="nav-map-close" onclick="closeNavMap()">&times;</button>
+      </div>
+      <div class="nav-map-body">
+        <div class="nav-map-stats">
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">7</div>
+            <div class="nav-map-stat-label" data-i18n="nav.map.screens">экранов</div>
+          </div>
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">2</div>
+            <div class="nav-map-stat-label" data-i18n="nav.map.paths">полных путей</div>
+          </div>
+          <div class="nav-map-stat">
+            <div class="nav-map-stat-value">4</div>
+            <div class="nav-map-stat-label" data-i18n="nav.map.endpoints">финальных точек</div>
+          </div>
+        </div>
+
+        <div class="nav-map-legend">
+          <div class="nav-map-legend-item"><span class="legend-dot green"></span> <span data-i18n="nav.legend.screen">Экран</span></div>
+          <div class="nav-map-legend-item"><span class="legend-dot red"></span> <span data-i18n="nav.legend.endpoint">Финальная точка</span></div>
+        </div>
+
+        <div class="nav-map-tree">
+          <!-- Auth Section -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><i data-lucide="lock" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="nav.section.auth">АУТЕНТИФИКАЦИЯ</span> <span class="section-count">(4)</span></span>
+              <span class="section-arrow">&#9660;</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-login')">
+                  <span class="nav-map-item-icon"><i data-lucide="lock-keyhole" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.login">Вход</span>
+                  <span class="level-badge hub">ENTRY</span>
+                  <span class="status-dot green"></span>
+                </div>
+              <div class="nav-map-item screen-item" data-depth="1" onclick="navMapGo('screen-register')">
+                  <span class="nav-map-item-icon"><i data-lucide="user-plus" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.register">Регистрация</span>
+                  <span class="level-badge">L1</span>
+                  <span class="status-dot green"></span>
+                </div>
+              <div class="nav-map-item screen-item" data-depth="2" onclick="navMapGo('screen-verify')">
+                  <span class="nav-map-item-icon"><i data-lucide="mail-check" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.verify">Подтверждение Email</span>
+                  <span class="level-badge">L2</span>
+                  <span class="status-dot green"></span>
+                </div>
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('Telegram WebApp', 'screen-login')">
+                  <span class="nav-map-item-icon"><i data-lucide="send" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.telegram">Вход через Telegram</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('Восстановление пароля', 'screen-login')">
+                  <span class="nav-map-item-icon"><i data-lucide="key-round" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.forgot">Забыли пароль</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+            </div>
+          </div>
+
+          <!-- Onboarding Section -->
+          <div class="nav-map-section">
+            <div class="nav-map-section-title" onclick="toggleSection(this)">
+              <span class="section-info"><i data-lucide="user-check" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i> <span data-i18n="nav.section.onboarding">ОНБОРДИНГ</span> <span class="section-count">(6)</span></span>
+              <span class="section-arrow">&#9660;</span>
+            </div>
+            <div class="nav-map-section-content">
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-profile')">
+                  <span class="nav-map-item-icon"><i data-lucide="user" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.profile">Настройка профиля</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-role')">
+                  <span class="nav-map-item-icon"><i data-lucide="target" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.role">Выбор роли</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-kyc')">
+                  <span class="nav-map-item-icon"><i data-lucide="shield-check" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.kyc">Верификация KYC</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('SumSub Verification', 'screen-kyc')">
+                  <span class="nav-map-item-icon"><i data-lucide="scan-face" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.sumsub">SumSub (внешний)</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+              <div class="nav-map-item screen-item" onclick="navMapGo('screen-docs')">
+                  <span class="nav-map-item-icon"><i data-lucide="file-text" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.docs">Подписание документов</span>
+                  <span class="level-badge">L0</span>
+                  <span class="status-dot green"></span>
+                </div>
+              <div class="nav-map-item endpoint-item" data-depth="1" onclick="navMapEndpoint('Onboarding Complete — переход в кабинет', 'screen-docs')">
+                  <span class="nav-map-item-icon"><i data-lucide="flag" style="width:14px;height:14px"></i></span>
+                  <span class="nav-map-item-name" data-i18n="nav.auth.complete">Онбординг завершён</span>
+                  <span class="level-badge end">END</span>
+                  <span class="status-dot red"></span>
+                </div>
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/i18n.js"></script>
+  <script src="../js/shell.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script>
+    /* ========== AUTH HANDLERS ========== */
+    function handleLogin() {
+      showToast('Вход выполнен', 'success');
+      setTimeout(() => navigateTo('screen-role'), 800);
+    }
+
+    function handleRegister() {
+      showToast('Аккаунт создан', 'success');
+      setTimeout(() => navigateTo('screen-verify'), 800);
+    }
+
+    function handleVerify() {
+      showToast('Email подтверждён', 'success');
+      setTimeout(() => navigateTo('screen-profile'), 800);
+    }
+
+    function handleProfile() {
+      showToast('Профиль сохранён', 'success');
+      setTimeout(() => navigateTo('screen-role'), 800);
+    }
+
+    let selectedRole = null;
+    function selectRole(card, roleName) {
+      document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedRole = roleName;
+      const btn = document.getElementById('roleSubmitBtn');
+      btn.disabled = false;
+      btn.textContent = I18N.t('auth.role.continueAs') + ' ' + roleName;
+    }
+
+    function handleRoleSelect() {
+      if (!selectedRole) return;
+      showToast('Роль выбрана: ' + selectedRole, 'success');
+      setTimeout(() => navigateTo('screen-kyc'), 800);
+    }
+
+    /* ========== DOCUMENT SIGNING ========== */
+    function toggleDoc(item) {
+      const checkbox = item.querySelector('.doc-checkbox');
+      checkbox.classList.toggle('checked');
+      checkbox.innerHTML = checkbox.classList.contains('checked') ? '&#10003;' : '';
+      updateSignBtn();
+    }
+
+    function updateSignBtn() {
+      const allChecked = document.querySelectorAll('.doc-checkbox');
+      const checkedCount = document.querySelectorAll('.doc-checkbox.checked').length;
+      const btn = document.getElementById('signBtn');
+      btn.disabled = checkedCount < allChecked.length;
+      if (checkedCount === allChecked.length) {
+        btn.innerHTML = '<i data-lucide="file-signature" style="width:18px;height:18px"></i> ' + I18N.t('auth.docs.signDocumentsBtn');
+      } else {
+        btn.innerHTML = I18N.t('auth.docs.checkedOf', {checked: checkedCount, total: allChecked.length});
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function handleSign() {
+      showToast('Документы подписаны', 'success');
+      setTimeout(() => showToast('Onboarding завершён — переход в кабинет', 'info'), 1500);
+    }
+
+    /* ========== CHECKBOX ========== */
+    function toggleCheckbox(el) {
+      el.classList.toggle('checked');
+      el.innerHTML = el.classList.contains('checked') ? '&#10003;' : '';
+    }
+
+    /* ========== PASSWORD TOGGLE ========== */
+    function togglePasswordVisibility(btn) {
+      const wrapper = btn.closest('.input-wrapper');
+      const input = wrapper.querySelector('.form-input');
+      const icon = btn.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    /* ========== INIT ========== */
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
+</body>
+</html>
