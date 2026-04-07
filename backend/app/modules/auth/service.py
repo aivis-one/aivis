@@ -3,31 +3,27 @@
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   1. Email registration and login (argon2 password hashing)
-#   2. Telegram user upsert (Sprint 1.2)
-#   3. Manage sessions in Redis (create / get / delete / delete-all)
+#   register_email()        -- create User via email + password
+#   login_email()           -- authenticate by email + password
+#   create_session()        -- Redis session with ZSET index
+#   delete_session()        -- single session logout
+#   delete_all_sessions()   -- logout-all via Lua script
+#   upsert_telegram_user()  -- Telegram WebApp auth (Sprint 1.2)
 #
-# SESSION FORMAT IN REDIS:
-#   Key:   session:{token}
-#   Value: JSON {"user_id": "uuid", "auth_method": "email|telegram", "created_at": "iso"}
-#   TTL:   SESSION_TTL_DAYS (default 30 days)
+# FAILED LOGIN AUDIT (SEC-7):
+#   login_email() records failed attempts in audit_log via a dedicated
+#   session (_audit_login_failure). Required because the caller's session
+#   is rolled back on exception (P-01), which would discard any audit
+#   entries written to the same session.
 #
-# SESSION INDEX:
-#   Key:   user_sessions:{user_id}
-#   Type:  Redis ZSET (Sorted Set), score = creation timestamp
-#   TTL:   Same as session TTL
-#   Purpose: Reverse index for logout-all + concurrent session limit.
-#
-# KNOWN LIMITATION:
-#   Redis session is created before DB commit in the router. If commit
-#   fails, an orphan session key remains in Redis until TTL expires
-#   (30 days). The next request with that token will get 401 (user not
-#   found in DB). Acceptable for MVP -- same pattern as VELO.
+# COMMIT RULE (P-01):
+#   Service never commits or rolls back. Caller manages the transaction.
+#   Exception: _audit_login_failure() uses its own session+commit.
 # =============================================================================
 
 import json
 import secrets
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 import structlog
@@ -39,39 +35,72 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.config import settings
+from app.core.database import get_session_factory
 from app.core.exceptions import ConflictError, ForbiddenError, UnauthorizedError
 from app.core.redis import get_redis
-from app.modules.users.models import User, UserRole
+from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
 logger = structlog.get_logger()
+
+_ph = PasswordHasher()
 
 # Redis key prefixes.
 _SESSION_PREFIX = "session:"
 _USER_SESSIONS_PREFIX = "user_sessions:"
 
-# Password hasher -- singleton, thread-safe.
-_ph = PasswordHasher()
-
 
 # ---------------------------------------------------------------------------
-# Password hashing (argon2)
+# Password helpers
 # ---------------------------------------------------------------------------
 
 
 def hash_password(password: str) -> str:
-    """Hash a plaintext password with argon2id."""
+    """Hash a password using argon2."""
     return _ph.hash(password)
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    """Verify a plaintext password against an argon2 hash.
-
-    Returns True if match, False if mismatch.
-    """
+    """Verify a password against its argon2 hash."""
     try:
         return _ph.verify(password_hash, password)
     except VerifyMismatchError:
         return False
+
+
+# ---------------------------------------------------------------------------
+# Failed login audit (SEC-7)
+# ---------------------------------------------------------------------------
+
+
+async def _audit_login_failure(
+    user_id: UUID,
+    reason: str,
+) -> None:
+    """Record a failed login attempt in audit_log.
+
+    Uses a dedicated session because the caller's session will be
+    rolled back on exception (P-01). This is the only place in
+    auth service that manages its own transaction.
+
+    Silently swallows errors -- audit failure must not block auth flow.
+    """
+    factory = get_session_factory()
+    session = factory()
+    try:
+        await record_audit(
+            session=session,
+            event="user.login_failed",
+            actor_id=user_id,
+            actor_type="user",
+            target_type="user",
+            target_id=user_id,
+            data={"reason": reason},
+        )
+        await session.commit()
+    except Exception:
+        await session.rollback()
+    finally:
+        await session.close()
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +183,10 @@ async def login_email(
     Timing-safe: if email is not found, a dummy argon2 hash is computed
     to prevent email enumeration via response time side-channel.
 
+    Failed login attempts are recorded in audit_log via a dedicated
+    session (SEC-7). Only recorded when a user exists -- unknown email
+    attempts are logged to structlog only (no user entity to reference).
+
     Raises:
         UnauthorizedError: If email not found or password mismatch.
         ForbiddenError: If user account is deactivated.
@@ -174,12 +207,15 @@ async def login_email(
     stored_hash = email_creds.get("password_hash", "")
 
     if not verify_password(password, stored_hash):
+        await _audit_login_failure(user.id, "wrong_password")
         raise UnauthorizedError("Invalid email or password")
 
     if user.role == UserRole.PLATFORM:
+        await _audit_login_failure(user.id, "platform_login_blocked")
         raise UnauthorizedError("Invalid email or password")
 
     if not user.is_active:
+        await _audit_login_failure(user.id, "account_deactivated")
         raise ForbiddenError("Account is deactivated")
 
     await record_audit(
@@ -308,17 +344,22 @@ async def upsert_telegram_user(
                 actor_type="user",
                 target_type="user",
                 target_id=user.id,
-                data={"auth_method": "telegram", "race_resolved": True},
+                data={
+                    "auth_method": "telegram",
+                    "race_resolved": True,
+                },
             )
 
             logger.info(
-                "telegram_user_race_resolved",
+                "telegram_login_race_resolved",
                 user_id=str(user.id),
                 telegram_id=telegram_id,
             )
 
             return user, False
         raise
+
+    await session.refresh(new_user)
 
     await record_audit(
         session=session,
@@ -340,7 +381,7 @@ async def upsert_telegram_user(
 
 
 # ---------------------------------------------------------------------------
-# Session management (Redis)
+# Session management
 # ---------------------------------------------------------------------------
 
 
@@ -448,33 +489,29 @@ async def delete_session(token: str, user_id: UUID | None = None) -> None:
 
 
 async def delete_all_sessions(user_id: UUID) -> int:
-    """Delete all sessions for a user (logout-all). Atomic via Lua script."""
+    """Delete all sessions for a user (logout-all). Atomic via Lua script.
+
+    Returns the number of sessions invalidated.
+
+    Lua script: atomically reads ZSET members, deletes all session keys,
+    then deletes the index key. Runs in a single Redis round-trip.
+    """
     redis = get_redis()
     index_key = f"{_USER_SESSIONS_PREFIX}{user_id}"
-    session_prefix = _SESSION_PREFIX
 
-    lua_script = """
-local index_key = KEYS[1]
-local session_prefix = ARGV[1]
-local tokens = redis.call('ZRANGE', index_key, 0, -1)
-if #tokens == 0 then
-    return 0
-end
-local keys_to_delete = {index_key}
-for _, token in ipairs(tokens) do
-    table.insert(keys_to_delete, session_prefix .. token)
-end
-redis.call('DEL', unpack(keys_to_delete))
-return #tokens
-"""
+    lua = """
+    local members = redis.call('ZRANGE', KEYS[1], 0, -1)
+    local count = #members
+    if count > 0 then
+        local session_keys = {}
+        for i, token in ipairs(members) do
+            session_keys[i] = ARGV[1] .. token
+        end
+        redis.call('DEL', unpack(session_keys))
+    end
+    redis.call('DEL', KEYS[1])
+    return count
+    """
 
-    count = await redis.eval(lua_script, 1, index_key, session_prefix)
-
-    if count:
-        logger.info(
-            "all_sessions_deleted",
-            user_id=str(user_id),
-            count=count,
-        )
-
+    count = await redis.eval(lua, 1, index_key, _SESSION_PREFIX)
     return int(count)

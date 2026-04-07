@@ -15,6 +15,8 @@
 #   Service never commits. Caller (get_db_session) manages the transaction.
 # =============================================================================
 
+from uuid import UUID
+
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -117,7 +119,7 @@ async def get_kyc_status(
 
 
 async def process_webhook(
-    user_id: str,
+    user_id: UUID,
     new_status: str,
     session: AsyncSession,
 ) -> None:

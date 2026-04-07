@@ -9,6 +9,12 @@
 #   POST /api/v1/auth/logout          -- Logout current session
 #   POST /api/v1/auth/logout-all      -- Logout all sessions
 #
+# RATE LIMITING (SEC-5):
+#   Email register and login are rate-limited by IP address.
+#   Uses same config as Telegram auth: auth_rate_limit_max_requests /
+#   auth_rate_limit_window_seconds.
+#   Key: "email_auth:{ip}" -- shared between register and login.
+#
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
 #   automatically after yield.
@@ -21,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.exceptions import BadRequestError
+from app.core.rate_limit import check_rate_limit
 from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.schemas import (
     AuthResponse,
@@ -51,6 +58,22 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from X-Real-IP header (set by Nginx).
+
+    Falls back to request.client.host for dev/test environments.
+    """
+    return (
+        request.headers.get("X-Real-IP")
+        or (request.client.host if request.client else "unknown")
+    )
+
+
+# ---------------------------------------------------------------------------
 # Email Auth (Sprint 1.1)
 # ---------------------------------------------------------------------------
 
@@ -62,9 +85,14 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 )
 async def auth_email_register(
     body: EmailRegisterRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> AuthResponse:
     """Register a new user via email + password."""
+    # Rate limit by IP (SEC-5).
+    ip = _get_client_ip(request)
+    await check_rate_limit(f"email_auth:{ip}")
+
     user = await register_email(body.email, body.password, session)
     token = await create_session(user, auth_method="email")
 
@@ -80,9 +108,14 @@ async def auth_email_register(
 )
 async def auth_email_login(
     body: EmailLoginRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> AuthResponse:
     """Login via email + password."""
+    # Rate limit by IP (SEC-5).
+    ip = _get_client_ip(request)
+    await check_rate_limit(f"email_auth:{ip}")
+
     user = await login_email(body.email, body.password, session)
     token = await create_session(user, auth_method="email")
 

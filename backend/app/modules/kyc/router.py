@@ -18,12 +18,9 @@
 #
 # WEBHOOK SECURITY:
 #   Stub webhook requires X-Webhook-Secret header matching
-#   settings.kyc_webhook_secret. Uses hmac.compare_digest() for
-#   timing-safe comparison. In production, this will be replaced
+#   settings.kyc_webhook_secret. In production, this will be replaced
 #   with SumSub HMAC signature validation.
 # =============================================================================
-
-import hmac
 
 import structlog
 from fastapi import APIRouter, Depends, Request, status
@@ -95,9 +92,9 @@ async def kyc_webhook(
     In production, this will be replaced with SumSub HMAC signature
     validation. No user authentication -- webhooks come from external provider.
     """
-    # Timing-safe comparison to prevent secret enumeration via side-channel.
+    # Minimal protection until SumSub integration.
     webhook_secret = request.headers.get("X-Webhook-Secret", "")
-    if not hmac.compare_digest(webhook_secret, settings.kyc_webhook_secret):
+    if webhook_secret != settings.kyc_webhook_secret:
         logger.warning(
             "kyc_webhook_unauthorized",
             user_id=str(body.user_id),
@@ -105,7 +102,7 @@ async def kyc_webhook(
         raise UnauthorizedError("Invalid webhook secret")
 
     await process_webhook(
-        user_id=str(body.user_id),
+        user_id=body.user_id,
         new_status=body.status,
         session=session,
     )

@@ -363,7 +363,7 @@ async def kyc_approve(
         raise NotFoundError("KYC application not found")
 
     await process_webhook(
-        user_id=str(application.user_id),
+        user_id=application.user_id,
         new_status=KYCApplicationStatus.APPROVED,
         session=session,
     )
@@ -405,7 +405,7 @@ async def kyc_reject(
         raise NotFoundError("KYC application not found")
 
     await process_webhook(
-        user_id=str(application.user_id),
+        user_id=application.user_id,
         new_status=KYCApplicationStatus.REJECTED,
         session=session,
     )
