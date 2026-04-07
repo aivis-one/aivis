@@ -63,6 +63,21 @@ BOT_TOKEN = settings.telegram_bot_token
 _init_data_counter = itertools.count(1)
 
 
+async def _clear_email_rate_limit() -> None:
+    """Clear email auth rate limit key for test environment.
+
+    All test traffic comes from 127.0.0.1 via ASGITransport.
+    Without clearing, rate limit counter accumulates across calls
+    within a single test and blocks auth after 5 requests.
+    """
+    from app.core.redis import get_redis
+    try:
+        redis = get_redis()
+        await redis.delete("email_auth:127.0.0.1")
+    except RuntimeError:
+        pass
+
+
 def auth_headers(token: str) -> dict[str, str]:
     """Build Authorization header dict for test requests."""
     return {"Authorization": f"Bearer {token}"}
@@ -110,7 +125,12 @@ async def register_user(
     email: str = "test@example.com",
     password: str = "testpass123",
 ) -> dict:
-    """Register a user via POST /api/v1/auth/email/register."""
+    """Register a user via POST /api/v1/auth/email/register.
+
+    Clears email rate limit key before each call to prevent
+    test cross-contamination (all tests use 127.0.0.1).
+    """
+    await _clear_email_rate_limit()
     resp = await client.post(
         "/api/v1/auth/email/register",
         json={"email": email, "password": password},
@@ -124,7 +144,12 @@ async def login_user(
     email: str = "test@example.com",
     password: str = "testpass123",
 ) -> dict:
-    """Login a user via POST /api/v1/auth/email/login."""
+    """Login a user via POST /api/v1/auth/email/login.
+
+    Clears email rate limit key before each call to prevent
+    test cross-contamination (all tests use 127.0.0.1).
+    """
+    await _clear_email_rate_limit()
     resp = await client.post(
         "/api/v1/auth/email/login",
         json={"email": email, "password": password},
