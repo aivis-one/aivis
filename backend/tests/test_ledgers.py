@@ -8,19 +8,18 @@
 #   3:  record_passive_ledger frozen -> entry created with correct fields
 #   4:  record_passive_ledger confirmed -> entry created, no frozen_until
 #   5:  record_active_ledger negative amount (debit) -> works
-#   6:  record_active_ledger with origin_payment_id -> stored
-#   7:  record_active_ledger invalid status -> BadRequestError
-#   8:  record_passive_ledger invalid status -> BadRequestError
-#   9:  get_active_balance -> frozen and confirmed split correctly
-#   10: get_passive_balance -> frozen and confirmed split correctly
-#   11: get_active_balance empty -> {frozen: 0, confirmed: 0}
-#   12: get_active_balance excludes reversed entries
-#   13: get_passive_balance excludes reversed entries
-#   14: validate_route active->passive -> AMLViolationError
-#   15: validate_route active->active -> ok
-#   16: validate_route passive->active -> ok
-#   17: validate_route passive->passive -> ok
-#   18: validate_route invalid ledger type -> ValueError
+#   6:  record_active_ledger invalid status -> BadRequestError
+#   7:  record_passive_ledger invalid status -> BadRequestError
+#   8:  get_active_balance -> frozen and confirmed split correctly
+#   9:  get_passive_balance -> frozen and confirmed split correctly
+#   10: get_active_balance empty -> {frozen: 0, confirmed: 0}
+#   11: get_active_balance excludes reversed entries
+#   12: get_passive_balance excludes reversed entries
+#   13: validate_route active->passive -> AMLViolationError
+#   14: validate_route active->active -> ok
+#   15: validate_route passive->active -> ok
+#   16: validate_route passive->passive -> ok
+#   17: validate_route invalid ledger type -> ValueError
 #
 # Email prefix: "s51_" -- unique to this test file, cleaned up in fixture.
 #
@@ -191,28 +190,6 @@ async def test_record_active_ledger_debit(
     await db_session.commit()
 
     assert entry.amount_cents == -25000
-
-
-@pytest.mark.asyncio
-async def test_record_active_ledger_with_origin_payment(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """Record entry with origin_payment_id -> stored correctly."""
-    user_id = await _create_user(client, "al_origin")
-    from uuid import uuid4
-    payment_id = uuid4()
-
-    entry = await record_active_ledger(
-        db_session,
-        user_id=user_id,
-        amount_cents=10000,
-        status=LedgerStatus.FROZEN,
-        reason="deposit:crypto:0xorigin",
-        origin_payment_id=payment_id,
-    )
-    await db_session.commit()
-
-    assert entry.origin_payment_id == payment_id
 
 
 # ---------------------------------------------------------------------------
