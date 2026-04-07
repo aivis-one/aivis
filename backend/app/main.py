@@ -97,8 +97,7 @@ async def _payment_confirmation_worker() -> None:
             break
         except Exception:
             logger.exception("confirmation_worker_error")
-            # Continue running after unexpected errors.
-            await asyncio.sleep(interval)
+            # Continue running -- loop will sleep at the top.
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,8 @@
 # Request/response schemas for payment endpoints.
 #
 # SCHEMAS:
-#   DepositAddressResponse -- GET /payments/crypto-address/{network}
+#   CreateAddressRequest   -- POST /payments/crypto-address
+#   DepositAddressResponse -- POST /payments/crypto-address response
 #   PaymentResponse        -- individual payment in history
 #   PaymentHistoryResponse -- GET /payments/history (paginated)
 #   CryptoWebhookRequest   -- POST /payments/crypto/webhook
@@ -15,6 +16,12 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class CreateAddressRequest(BaseModel):
+    """Request body for creating/getting a crypto deposit address."""
+
+    network: str = Field(..., description="Crypto network: TRC20, ERC20, BEP20, PoS")
 
 
 class DepositAddressResponse(BaseModel):

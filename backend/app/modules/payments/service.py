@@ -13,12 +13,11 @@
 #   External modules use PaymentServiceProtocol only.
 #
 # WEBHOOK FLOW:
-#   1. Validate tx_hash uniqueness (ConflictError on duplicate)
-#   2. Look up CryptoAddress by (to_address, network)
-#   3. Create Payment: status=frozen, frozen_until=now+FREEZING_HOURS_CRYPTO
-#   4. Fill provider_data via set_jsonb()
-#   5. Write active_ledger entry (frozen) via ledger service
-#   6. Audit: payment.crypto_received
+#   1. Look up CryptoAddress by (to_address, network)
+#   2. Create Payment with provider_data in constructor (single flush)
+#   3. tx_hash uniqueness enforced by DB partial unique index (uq_payments_tx_hash)
+#   4. Write active_ledger entry (frozen) via ledger service
+#   5. Audit: payment.crypto_received
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
@@ -216,12 +215,12 @@ async def process_crypto_webhook(
     Creates a Payment (status=frozen) and writes an active_ledger entry.
 
     Flow:
-      1. Validate tx_hash uniqueness
-      2. Look up CryptoAddress by (to_address, network)
-      3. Create Payment with status=frozen, frozen_until
-      4. Fill provider_data
-      5. Write active_ledger entry (frozen)
-      6. Audit event
+      1. Look up CryptoAddress by (to_address, network)
+      2. Create Payment with provider_data (single flush)
+      3. tx_hash uniqueness enforced by partial unique index uq_payments_tx_hash
+         Race condition handled via begin_nested() + IntegrityError (P-05)
+      4. Write active_ledger entry (frozen)
+      5. Audit event
 
     Args:
         body: Parsed webhook payload.
@@ -234,18 +233,7 @@ async def process_crypto_webhook(
         ConflictError: If tx_hash already processed (duplicate webhook).
         NotFoundError: If to_address/network not found in crypto_addresses.
     """
-    # 1. Check for duplicate tx_hash in provider_data.
-    # Use a raw-ish JSONB query to find existing payment with this tx_hash.
-    dup_stmt = select(Payment.id).where(
-        Payment.provider_data["tx_hash"].as_string() == body.tx_hash,
-    )
-    dup_result = await session.execute(dup_stmt)
-    if dup_result.scalar_one_or_none() is not None:
-        raise ConflictError(
-            f"Payment with tx_hash {body.tx_hash!r} already exists"
-        )
-
-    # 2. Look up our deposit address.
+    # 1. Look up our deposit address.
     addr_stmt = select(CryptoAddress).where(
         CryptoAddress.address == body.to_address,
         CryptoAddress.network == body.network,
@@ -261,7 +249,7 @@ async def process_crypto_webhook(
 
     user_id = crypto_addr.user_id
 
-    # 3. Create Payment.
+    # 2. Create Payment with provider_data in constructor (single flush).
     now = datetime.now(UTC)
     frozen_until = now + timedelta(hours=settings.freezing_hours_crypto)
 
@@ -275,24 +263,34 @@ async def process_crypto_webhook(
         provider=provider,
         status=PaymentStatus.FROZEN,
         frozen_until=frozen_until,
+        provider_data={
+            "network": body.network,
+            "to_address": body.to_address,
+            "from_address": body.from_address,
+            "tx_hash": body.tx_hash,
+            "confirmed_block": body.confirmed_block,
+            "amount_crypto": body.amount_crypto,
+            "exchange_rate": body.exchange_rate,
+        },
     )
-    session.add(payment)
-    await session.flush()
 
-    # 4. Fill provider_data via set_jsonb().
-    payment.set_jsonb("provider_data", {
-        "network": body.network,
-        "to_address": body.to_address,
-        "from_address": body.from_address,
-        "tx_hash": body.tx_hash,
-        "confirmed_block": body.confirmed_block,
-        "amount_crypto": body.amount_crypto,
-        "exchange_rate": body.exchange_rate,
-    })
-    await session.flush()
+    # 3. Insert with DB-level tx_hash uniqueness (partial unique index).
+    # begin_nested() = SAVEPOINT -- only rolls back the INSERT on conflict,
+    # outer transaction stays valid for ConflictError response (P-05).
+    try:
+        async with session.begin_nested():
+            session.add(payment)
+            await session.flush()
+    except IntegrityError as exc:
+        if "uq_payments_tx_hash" in str(exc.orig):
+            raise ConflictError(
+                f"Payment with tx_hash {body.tx_hash!r} already exists"
+            ) from exc
+        raise
+
     await session.refresh(payment)
 
-    # 5. Write active_ledger entry.
+    # 4. Write active_ledger entry.
     reason = LedgerReason.DEPOSIT_CRYPTO.format(tx_hash=body.tx_hash)
 
     await record_active_ledger(
@@ -305,7 +303,7 @@ async def process_crypto_webhook(
         origin_payment_id=payment.id,
     )
 
-    # 6. Audit.
+    # 5. Audit.
     await record_audit(
         session=session,
         event="payment.crypto_received",

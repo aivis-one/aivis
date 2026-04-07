@@ -59,7 +59,7 @@ async def _create_user(
 
 
 # ---------------------------------------------------------------------------
-# GET /payments/crypto-address/{network}
+# POST /payments/crypto-address
 # ---------------------------------------------------------------------------
 
 
@@ -70,8 +70,9 @@ async def test_get_crypto_address_new(
     """Get crypto address -> 200, new address created."""
     user_id, token = await _create_user(client, "addr_new")
 
-    resp = await client.get(
-        "/api/v1/payments/crypto-address/TRC20",
+    resp = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "TRC20"},
         headers=auth_headers(token),
     )
     assert resp.status_code == 200
@@ -89,15 +90,17 @@ async def test_get_crypto_address_idempotent(
     """Get crypto address twice for same network -> same address returned."""
     _, token = await _create_user(client, "addr_idem")
 
-    resp1 = await client.get(
-        "/api/v1/payments/crypto-address/ERC20",
+    resp1 = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "ERC20"},
         headers=auth_headers(token),
     )
     assert resp1.status_code == 200
     addr1 = resp1.json()["address"]
 
-    resp2 = await client.get(
-        "/api/v1/payments/crypto-address/ERC20",
+    resp2 = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "ERC20"},
         headers=auth_headers(token),
     )
     assert resp2.status_code == 200
@@ -113,8 +116,9 @@ async def test_get_crypto_address_unsupported_network(
     """Get crypto address for unsupported network -> 400."""
     _, token = await _create_user(client, "addr_bad")
 
-    resp = await client.get(
-        "/api/v1/payments/crypto-address/SOLANA",
+    resp = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "SOLANA"},
         headers=auth_headers(token),
     )
     assert resp.status_code == 400
@@ -134,8 +138,9 @@ async def test_webhook_valid_payload(
     user_id = UUID(user_id_str)
 
     # First, create a deposit address.
-    addr_resp = await client.get(
-        "/api/v1/payments/crypto-address/TRC20",
+    addr_resp = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "TRC20"},
         headers=auth_headers(token),
     )
     to_address = addr_resp.json()["address"]
@@ -216,8 +221,9 @@ async def test_webhook_duplicate_tx_hash(
     _, token = await _create_user(client, "wh_dup")
 
     # Create deposit address.
-    addr_resp = await client.get(
-        "/api/v1/payments/crypto-address/TRC20",
+    addr_resp = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "TRC20"},
         headers=auth_headers(token),
     )
     to_address = addr_resp.json()["address"]
@@ -281,8 +287,9 @@ async def test_payment_history(
     _, token = await _create_user(client, "hist_ok")
 
     # Create address + webhook to have a payment.
-    addr_resp = await client.get(
-        "/api/v1/payments/crypto-address/BEP20",
+    addr_resp = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "BEP20"},
         headers=auth_headers(token),
     )
     to_address = addr_resp.json()["address"]
@@ -345,8 +352,9 @@ async def test_get_payment_by_id(
     _, token = await _create_user(client, "get_pay")
 
     # Create address + webhook.
-    addr_resp = await client.get(
-        "/api/v1/payments/crypto-address/PoS",
+    addr_resp = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "PoS"},
         headers=auth_headers(token),
     )
     to_address = addr_resp.json()["address"]

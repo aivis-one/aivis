@@ -3,8 +3,8 @@
 # =============================================================================
 #
 # ENDPOINTS:
-#   GET /api/v1/payments/crypto-address/{network}  -- get/create deposit address
-#   GET /api/v1/payments/history                    -- payment history (investor)
+#   POST /api/v1/payments/crypto-address       -- get/create deposit address
+#   GET  /api/v1/payments/history              -- payment history (investor)
 #
 # AUTH:
 #   All endpoints require authentication (get_current_user).
@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.dependencies import get_current_user
 from app.modules.payments.schemas import (
+    CreateAddressRequest,
     DepositAddressResponse,
     PaymentHistoryResponse,
     PaymentResponse,
@@ -36,12 +37,12 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
 
-@router.get(
-    "/crypto-address/{network}",
+@router.post(
+    "/crypto-address",
     response_model=DepositAddressResponse,
 )
-async def get_crypto_address(
-    network: str,
+async def create_crypto_address(
+    body: CreateAddressRequest,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ) -> DepositAddressResponse:
@@ -49,7 +50,7 @@ async def get_crypto_address(
 
     Idempotent: returns existing address if one exists for this network.
     """
-    deposit = await get_or_create_deposit_address(user.id, network, session)
+    deposit = await get_or_create_deposit_address(user.id, body.network, session)
     return DepositAddressResponse(
         address=deposit.address,
         network=deposit.network,
