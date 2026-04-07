@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.4
-**Дата:** 5 апреля 2026
+**Версия:** 1.5
+**Дата:** 8 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -1094,32 +1094,46 @@ backend/tests/
 
 ---
 
-### Sprint 5.1: Ledger Service
+### ✅ Sprint 5.1: Ledger Service
 
 **Цель:** Сервис работы с леджерами. Основа всей финансовой системы.
 
 **Задачи:**
-- [ ] `app/modules/ledgers/service.py`:
+- [x] `app/modules/ledgers/service.py`:
   - `record_active_ledger()` — запись в active_ledger
   - `record_passive_ledger()` — запись в passive_ledger
   - `get_active_balance()` — confirmed + frozen отдельно
   - `get_passive_balance()` — confirmed + frozen отдельно
-  - Проверка AML-матрицы маршрутов при каждой записи
-- [ ] `app/modules/ledgers/validators.py` — `validate_route()` (Active -> Passive запрещено)
-- [ ] `tests/test_ledgers.py` — 15 тестов (включая AML-матрицу)
+- [x] `app/modules/ledgers/validators.py` — `validate_route()` (Active -> Passive запрещено)
+- [x] `tests/test_ledgers.py` — 17 тестов (включая AML-матрицу, status validation)
 
-**Инварианты (проверяются в service, не в router):**
-```python
-# AML check перед каждой записью:
-if source_ledger == "active" and target_ledger == "passive":
-    raise AMLViolationError("Active -> Passive route is forbidden")
+**Миграции:** не требуются — таблицы и CHECK-constraints из Phase 0.
+
+**Решения реализации:**
+- P5-01: `validate_route()` — **standalone** функция, НЕ вызывается внутри `record_*()`. Вызывается orchestrator-слоем (transfer service, Phase 6+). Purchase saga НЕ вызывает `validate_route()` — это контролируемая системная операция
+- P5-02: `record_*()` — pure write, без AML-логики. Принимают `status: str`, но валидируют через `_validate_status()` с `_WRITABLE_STATUSES = frozenset({frozen, confirmed})`. Запись `reversed` напрямую запрещена — только через reversal process (Sprint 5.3)
+- P5-03: `_VALID_LEDGER_TYPES = frozenset({"active", "passive"})` — whitelist в `validate_route()`. Неизвестные типы → `ValueError`
+- P5-04: Balance queries: conditional SUM с CASE в одном запросе, `reversed` исключаются, `func.coalesce(..., 0)` для пустых результатов
+- P5-05: `amount_cents=0` допустим — gift-записи используют нулевые суммы (семафор COUNT работает без исключений). Валидация amount — ответственность caller'а (processor)
+- P5-06: Cleanup в `tests/helpers.py` расширен: `ActiveLedger` + `PassiveLedger` удаляются перед удалением пользователей (FK RESTRICT)
+
+**Результат:**
+```
+backend/app/modules/ledgers/
+├── __init__.py
+├── models.py           -- ActiveLedger, PassiveLedger, LedgerStatus (Phase 0)
+├── validators.py       -- validate_route() (standalone AML check)
+└── service.py          -- record_active/passive_ledger, get_active/passive_balance
+
+backend/tests/
+└── test_ledgers.py     -- 17 tests
 ```
 
-**Критерий готовности:** Ledger service работает. AML-матрица проверяется. Нельзя создать запись Active -> Passive.
+**Критерий готовности:** Ledger service работает. AML-матрица проверяется standalone. Status validation не пропускает невалидные значения. 132 теста зелёные.
 
 ---
 
-### Sprint 5.2: Payment Module (закрытый модуль)
+### ✅ Sprint 5.2: Payment Module (закрытый модуль)
 
 **Цель:** Приём входящих платежей инвесторов. Модуль изолирован — внутренняя сложность
 (проверки, фоллбэки провайдеров, retry-логика) скрыта за публичным интерфейсом.
@@ -1148,30 +1162,17 @@ class PaymentServiceProtocol(Protocol):
 Payment:  -- входящие платежи инвесторов только
     id: UUID
     user_id: UUID          -- FK users.id
-    payment_type: enum     -- crypto | bank (розетка)
-    amount_cents: int      -- в USD cents; конвертация на входе
+    amount_cents: int      -- BigInteger, в USD cents
+    currency: str          -- String(10), default "USD"
+    payment_type: enum     -- crypto | bank
+    provider: str          -- String(100): "crypto_usdt_trc20", etc.
     status: enum           -- created | frozen | confirmed | reversed | failed
+    expires_at: datetime   -- nullable, created -> failed если не оплачен
+    frozen_until: datetime -- nullable, заполняется при created -> frozen
     provider_data: JSONB   -- схема зависит от payment_type (валидируется в сервисе)
+    origin_payment_id: UUID -- FK payments.id, nullable (для reversal-цепочки)
     created_at: datetime
     updated_at: datetime
-
--- Структура provider_data для crypto:
--- {
---   "network": "TRC20",
---   "to_address": "TXxx...",    -- наш кошелёк (из crypto_addresses)
---   "from_address": "TYyy...",  -- кошелёк инвестора (из webhook)
---   "tx_hash": "abc123...",     -- из webhook
---   "confirmed_block": 12345678,
---   "amount_crypto": "100.50",
---   "exchange_rate": "1.00"
--- }
---
--- Структура provider_data для bank (розетка):
--- {
---   "bank_name": "...", "iban": "...", "swift": "...",
---   "bank_reference": "...", "sender_name": "...",
---   "receipt_url": "...", "sender_email": "..."
--- }
 
 CryptoAddress:  -- внутренняя таблица модуля payments/
     id: UUID
@@ -1183,22 +1184,79 @@ CryptoAddress:  -- внутренняя таблица модуля payments/
 ```
 
 **Задачи:**
-- [ ] `app/modules/payments/interface.py` — `PaymentServiceProtocol`, `DepositAddress`
-- [ ] `app/modules/payments/models.py` — `Payment`, `CryptoAddress`
-- [ ] `app/modules/payments/service.py` — реализация `PaymentServiceProtocol`
-- [ ] `app/modules/payments/router.py`:
-  - `GET /api/v1/payments/crypto-address/{network}` — получить/создать адрес
+- [x] `app/modules/payments/__init__.py`
+- [x] `app/modules/payments/constants.py` — `PaymentType`, `PaymentStatus`, state machine transitions
+- [x] `app/modules/payments/interface.py` — `PaymentServiceProtocol`, `DepositAddress` (frozen dataclass)
+- [x] `app/modules/payments/models.py` — `Payment` (JSONBMixin), `CryptoAddress`
+- [x] `app/modules/payments/schemas.py` — `CreateAddressRequest`, `DepositAddressResponse`, `PaymentResponse`, `PaymentHistoryResponse`, `CryptoWebhookRequest`
+- [x] `app/modules/payments/service.py` — реализация protocol + webhook processing
+- [x] `app/modules/payments/router.py`:
+  - `POST /api/v1/payments/crypto-address` — получить/создать адрес (body: `{network}`)
   - `GET /api/v1/payments/history` — история платежей инвестора
-- [ ] `app/modules/payments/webhook_router.py`:
+- [x] `app/modules/payments/webhook_router.py`:
   - `POST /api/v1/payments/crypto/webhook` — blockchain webhook
-- [ ] Webhook: Payment `created -> frozen`, дополнение `provider_data` через `set_jsonb()`, запись в active_ledger
-- [ ] `frozen_until = created_at + FREEZING_HOURS_CRYPTO`
-- [ ] `payment_confirmation_worker` — daemon (asyncio.Task в lifespan)
-- [ ] `tests/test_crypto_deposits.py` — 10 тестов
+- [x] Webhook: Payment `created -> frozen`, `provider_data` в конструкторе (single flush), запись в active_ledger
+- [x] `frozen_until = now() + FREEZING_HOURS_CRYPTO`
+- [x] `payment_confirmation_worker` — daemon skeleton (asyncio.Task в lifespan), полная логика в Sprint 5.3
+- [x] `tests/test_crypto_deposits.py` — 10 тестов
+
+**Миграции:**
+- [x] `0007_payments` — таблицы `payments`, `crypto_addresses`, FK `origin_payment_id` на ledger-таблицах
+- [x] `0008_payments_tx_hash_index` — partial unique index `uq_payments_tx_hash` на `provider_data->>'tx_hash'`
 
 **Networks:** TRC20, ERC20, BEP20, PoS (из config)
 
-**Критерий готовности:** Инвестор получает крипто-адрес. Webhook создаёт Payment и запись в active_ledger. Внешняя граница модуля (`PaymentServiceProtocol`) работает корректно.
+**Config (новые настройки):**
+```
+crypto_webhook_secret: str = ""           -- required in production
+confirmation_worker_interval_minutes: int = 5
+```
+
+**Решения реализации:**
+- P5-07: Payment model расширена по CBSHOME-State-Machines.md: `+currency`, `+provider`, `+expires_at`, `+frozen_until`, `+origin_payment_id (FK payments.id)`. `payment_type` (не `method`) — избегает конфликта с HTTP-семантикой
+- P5-08: `POST /api/v1/payments/crypto-address` (не GET) — endpoint создаёт ресурс, HTTP-семантика корректна. Body: `{"network": "TRC20"}`
+- P5-09: Webhook auth — `hmac.compare_digest()` для timing-safe сравнения (SEC-1 fix). Shared secret из `CRYPTO_WEBHOOK_SECRET` config
+- P5-10: tx_hash uniqueness — partial unique index на `(provider_data->>'tx_hash') WHERE NOT NULL`. Race condition обрабатывается через `begin_nested()` + `IntegrityError` catch на `uq_payments_tx_hash` (P-05)
+- P5-11: `provider_data` заполняется в конструкторе Payment перед `session.add()` — один flush вместо двух. `set_jsonb()` не нужен для новых объектов
+- P5-12: Daemon skeleton: пустой loop с `asyncio.sleep(interval)`. Proper `CancelledError` handling в shutdown. Ошибки не вызывают двойной sleep
+- P5-13: `install_cbshome.sh` обновлён: генерация `CRYPTO_WEBHOOK_SECRET` в `.env`
+- P5-14: Idempotent address creation через `begin_nested()` (P-05) на `uq_crypto_addresses_user_network`
+- P5-15: Stub address generation: `CBS_{network}_{uuid4().hex[:16]}`. Реальная интеграция — Phase 2
+
+**Попутные security-фиксы (применены в Sprint 5.2):**
+- P5-SEC-1: `hmac.compare_digest()` для **обоих** webhook'ов (payments + KYC). KYC router обновлён
+- P5-SEC-2: `process_webhook(user_id: str)` → `UUID` в `kyc/service.py`. Callers в `kyc/router.py` и `staff/admin_service.py` обновлены — убраны `str()` обёртки (CRIT-3)
+- P5-SEC-3: Email auth rate limiting: `core/rate_limit.py` — generic INCR+EXPIRE по IP. Применён к `POST /auth/email/register` и `/login`. Shared key `email_auth:{ip}` (SEC-5)
+- P5-SEC-4: Failed login audit: `_audit_login_failure()` в `auth/service.py` — записывает в audit_log через **выделенную сессию** (основная rollback'ится при exception, P-01). Записывается для wrong_password, platform_login_blocked, account_deactivated. User not found — только structlog (SEC-7)
+- P5-SEC-5: `conftest.py` — autouse fixture `clear_rate_limit` + helpers `register_user`/`login_user` очищают rate limit key перед каждым вызовом (все тесты с 127.0.0.1)
+
+**Endpoints:**
+```
+POST /api/v1/payments/crypto-address     -> DepositAddressResponse  (200)
+GET  /api/v1/payments/history            -> PaymentHistoryResponse  (200)
+POST /api/v1/payments/crypto/webhook     -> {"status": "ok", ...}   (200, X-Webhook-Secret)
+```
+
+**Результат:**
+```
+backend/app/modules/payments/
+├── __init__.py
+├── constants.py        -- PaymentType, PaymentStatus, state machine
+├── models.py           -- Payment (JSONBMixin), CryptoAddress
+├── interface.py        -- PaymentServiceProtocol, DepositAddress
+├── schemas.py          -- CreateAddressRequest, DepositAddressResponse, CryptoWebhookRequest, etc.
+├── service.py          -- get_or_create_deposit_address, process_crypto_webhook, list_payments, get_payment
+├── router.py           -- POST /crypto-address, GET /history
+└── webhook_router.py   -- POST /crypto/webhook (hmac.compare_digest)
+
+backend/app/core/
+└── rate_limit.py       -- check_rate_limit() generic INCR+EXPIRE
+
+backend/tests/
+└── test_crypto_deposits.py  -- 10 tests
+```
+
+**Критерий готовности:** Инвестор получает крипто-адрес. Webhook создаёт Payment и запись в active_ledger. tx_hash уникален на уровне БД. Все webhook'ы timing-safe. Email auth rate-limited. Failed login audit записывается. 142 теста зелёные.
 
 ---
 
@@ -1681,13 +1739,13 @@ Event:
 | TD-015 | `app/core/mixins.py` | JSONBMixin.set_jsonb(): уточнить type hint `value: dict` -> `value: dict[str, Any]` | Backlog | ⬜ |
 | TD-016 | `tests/` | Добавить тесты: модели (User, Ledger, Staff), middleware (TraceId), config validation, seed_platform.py идемпотентность | Sprint 1+ | ⬜ |
 | TD-017 | `app/modules/auth/router.py` | Email enumeration: register возвращает 409 для дубликатов. Phase 8: всегда 201, уведомление на email | Phase 8 | ⬜ |
-| TD-018 | `app/modules/auth/` | Rate limiting на email auth endpoints (register + login). Отдельно от TD-008 | Before Prod | ⬜ |
+| TD-018 | `app/modules/auth/` | ~~Rate limiting на email auth endpoints (register + login). Отдельно от TD-008~~ | Before Prod | ✅ Sprint 5.2 (P5-SEC-3) |
 | TD-019 | `app/modules/auth/schemas.py` | Password complexity: добавить требование цифры или mixed case | Before Prod | ⬜ |
 | TD-020 | `app/core/middleware.py`, `app/core/audit.py` | ~~`_USER_AGENT_MAX_LEN = 500` в двух файлах. Вынести в `constants.py`~~ | Backlog | ✅ Phase 2 |
 | TD-021 | `app/modules/auth/` | Password reset flow (forgot password -> email token -> reset) | After MVP | ⬜ |
 | TD-022 | `app/modules/auth/telegram.py` | Generic error messages в production (сейчас details leakируют server time через "auth_date is in the future") | Before Prod | ⬜ |
 | TD-023 | `scripts/seed_platform.py` | `seed --reset` flag не реализован, но присутствует в management script help | Backlog | ⬜ |
-| TD-024 | `app/modules/users/service.py` | Profile JSONB: whitelist допустимых ключей и/или ограничение размера. XSS sanitization на фронте | Before Prod | ⬜ |
+| TD-024 | `app/modules/users/service.py` | Profile JSONB: whitelist допустимых ключей и/или ограничение размера. XSS sanitization на фронте (SEC-8) | Before Prod | ⬜ |
 | TD-025 | `app/modules/documents/` | Проверка наличия подписей при смене роли. Структура готова, логика — при реализации role change (Phase 7) | Phase 7 | ⬜ |
 | TD-026 | `app/modules/documents/` | Версионирование: переподписание при обновлении редакции. Поле `version` заложено, логика определения пользователей без актуальной подписи — после MVP | After MVP | ⬜ |
 | TD-027 | `app/modules/staff/router.py` | Unblock endpoint (`PATCH /staff/users/{id}/unblock`). Сейчас разблокировка только через DB | After MVP | ⬜ |
@@ -1695,6 +1753,9 @@ Event:
 | TD-029 | `companies/`, `products/` | Enum duplication: `CompanyStatus`, `ProductStatus`, `RoadmapItemStatus` определены и в `models.py`, и в `constants.py`. Консолидировать в одном месте | Backlog | ⬜ |
 | TD-030 | `companies/schemas.py` | `CreateCompanyRequest.email` использует `str`, не `EmailStr`. Auth schemas используют `EmailStr` — inconsistency | Backlog | ⬜ |
 | TD-031 | `products/schemas.py` | Social proof `sold_units: int = 0` — заглушка. Реализовать подсчёт из purchases с Redis кэшем (TTL = `SOCIAL_PROOF_CACHE_TTL`) | Sprint 6.1 | ⬜ |
+| TD-032 | `app/core/database.py` | Redis session создаётся ДО DB commit (CRIT-1). Orphan token живёт до TTL (30 дней). Приемлемо для MVP | After MVP | ⬜ |
+| TD-033 | `companies/constants.py` | Float precision в `distribution_config` validation: `total > 1.0` может дать false positive. Рассмотреть `Decimal` или tolerance `1e-9` (MINOR-4) | Backlog | ⬜ |
+| TD-034 | `payments/router.py` | `POST /crypto-address` — заглушка. При интеграции реального провайдера endpoint может измениться (адрес от API / pre-generated pool / hosted page redirect) | Phase 2 | ⬜ |
 
 ---
 
@@ -1702,4 +1763,4 @@ Event:
 
 ---
 
-*Version 1.4 | 2026-04-05 | cbshome Backend TZ — Phase 4 complete*
+*Version 1.5 | 2026-04-08 | cbshome Backend TZ — Sprint 5.2 complete, Sprint 5.3 next*
