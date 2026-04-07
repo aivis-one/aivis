@@ -11,11 +11,17 @@
 # FIXTURES:
 #   client      -- async HTTP client (in-memory, no network)
 #   db_session  -- direct DB session for setup/assertions
+#   clear_rate_limit -- clears email auth rate limit key (autouse)
 #
 # SESSION ISOLATION:
 #   db_session rolls back before closing -- discards any uncommitted state
 #   left by a failing test. Tests that need persistent data call
 #   session.commit() explicitly.
+#
+# RATE LIMIT (SEC-5):
+#   All test requests originate from 127.0.0.1. Without clearing the
+#   rate limit key between tests, the shared counter accumulates across
+#   test boundaries and triggers 400 after 5 requests.
 # =============================================================================
 
 import subprocess
@@ -26,7 +32,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import dispose_engine, get_session_factory
-from app.core.redis import close_redis, init_redis
+from app.core.redis import close_redis, get_redis, init_redis
 from app.main import app
 
 
@@ -78,3 +84,19 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     finally:
         await session.rollback()
         await session.close()
+
+
+@pytest.fixture(autouse=True)
+async def clear_rate_limit() -> None:
+    """Clear email auth rate limit key before each test.
+
+    All test traffic comes from 127.0.0.1 via ASGITransport.
+    Without this, the rate limit counter accumulates across tests
+    and blocks registrations after 5 requests in the same window.
+    """
+    try:
+        redis = get_redis()
+        await redis.delete("email_auth:127.0.0.1")
+    except RuntimeError:
+        # Redis not initialized yet (setup_infrastructure hasn't run).
+        pass
