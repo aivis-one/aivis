@@ -107,4 +107,4 @@ class ReversalResponse(BaseModel):
     total_reversed_cents: int
     active_entries_reversed: int
     passive_entries_reversed: int
-    affected_user_ids: list[str]
+    affected_user_ids: list[UUID]

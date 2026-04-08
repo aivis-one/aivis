@@ -161,5 +161,5 @@ async def reverse_payment(
         "total_reversed_cents": payment.amount_cents,
         "active_entries_reversed": len(active_entries),
         "passive_entries_reversed": len(passive_entries),
-        "affected_user_ids": [str(uid) for uid in affected_user_ids],
+        "affected_user_ids": list(affected_user_ids),
     }
