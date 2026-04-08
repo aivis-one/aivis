@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Schemas (Sprint 5.2)
+# CBSHOME Backend -- Payment Schemas (Sprint 5.2, updated Sprint 5.3)
 # =============================================================================
 #
 # Request/response schemas for payment endpoints.
@@ -10,6 +10,10 @@
 #   PaymentResponse        -- individual payment in history
 #   PaymentHistoryResponse -- GET /payments/history (paginated)
 #   CryptoWebhookRequest   -- POST /payments/crypto/webhook
+#
+# Sprint 5.3:
+#   ReversePaymentRequest  -- POST /staff/payments/{id}/reverse
+#   ReversalResponse       -- reversal result summary
 # =============================================================================
 
 from datetime import datetime
@@ -79,3 +83,28 @@ class CryptoWebhookRequest(BaseModel):
     exchange_rate: str = Field(
         default="1.00", description="Crypto to USD exchange rate"
     )
+
+
+# ---------------------------------------------------------------------------
+# Reversal (Sprint 5.3)
+# ---------------------------------------------------------------------------
+
+
+class ReversePaymentRequest(BaseModel):
+    """Request body for payment reversal (chargeback)."""
+
+    reason: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional reason for the reversal",
+    )
+
+
+class ReversalResponse(BaseModel):
+    """Reversal result summary."""
+
+    payment_id: UUID
+    total_reversed_cents: int
+    active_entries_reversed: int
+    passive_entries_reversed: int
+    affected_user_ids: list[str]

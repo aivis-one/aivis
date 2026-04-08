@@ -23,13 +23,14 @@
 #   staff_products_router  -> /api/v1/staff/products/* (Sprint 4.2)
 #   payments_router        -> /api/v1/payments/* (Sprint 5.2)
 #   payments_webhook_router -> /api/v1/payments/crypto/* (Sprint 5.2)
+#   staff_payments_router  -> /api/v1/staff/payments/* (Sprint 5.3)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start confirmation daemon
 #   shutdown: cancel daemon -> close_redis -> dispose_engine
 #
 # DAEMONS:
-#   payment_confirmation_worker -- skeleton (Sprint 5.2), full logic (Sprint 5.3)
+#   payment_confirmation_worker -- batch confirm frozen entries (Sprint 5.3)
 #
 # MIDDLEWARE (applied in reverse order -- outermost last):
 #   CORSMiddleware -> TraceIdMiddleware
@@ -38,16 +39,17 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import text, update
 from starlette.requests import Request
 
 from app.core.config import APP_VERSION, settings
-from app.core.database import dispose_engine, get_engine
+from app.core.database import dispose_engine, get_engine, get_session_factory
 from app.core.exceptions import CBSError
 from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
@@ -58,7 +60,11 @@ from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.kyc.router import router as kyc_router
+from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
+from app.modules.payments.constants import PaymentStatus
+from app.modules.payments.models import Payment
 from app.modules.payments.router import router as payments_router
+from app.modules.payments.staff_router import router as staff_payments_router
 from app.modules.payments.webhook_router import router as payments_webhook_router
 from app.modules.products.router import router as products_router
 from app.modules.products.staff_router import router as staff_products_router
@@ -71,15 +77,84 @@ logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
-# Payment confirmation daemon (skeleton -- Sprint 5.2, logic -- Sprint 5.3)
+# Payment confirmation daemon (Sprint 5.3)
 # ---------------------------------------------------------------------------
+
+
+async def _run_confirmation_batch() -> None:
+    """Execute one confirmation cycle.
+
+    Batch UPDATE in a single transaction:
+      1. Payment.status frozen -> confirmed WHERE frozen_until <= now()
+      2. ActiveLedger.status frozen -> confirmed WHERE frozen_until <= now()
+      3. PassiveLedger.status frozen -> confirmed WHERE frozen_until <= now()
+
+    Each table is updated independently -- a ledger entry's frozen_until
+    is its own, not inherited from the parent Payment.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        now = datetime.now(UTC)
+
+        # 1. Confirm payments.
+        payment_stmt = (
+            update(Payment)
+            .where(
+                Payment.status == PaymentStatus.FROZEN,
+                Payment.frozen_until <= now,
+            )
+            .values(status=PaymentStatus.CONFIRMED)
+            .returning(Payment.id)
+        )
+        payment_result = await session.execute(payment_stmt)
+        confirmed_payments = len(payment_result.all())
+
+        # 2. Confirm active_ledger entries.
+        active_stmt = (
+            update(ActiveLedger)
+            .where(
+                ActiveLedger.status == LedgerStatus.FROZEN,
+                ActiveLedger.frozen_until <= now,
+            )
+            .values(status=LedgerStatus.CONFIRMED)
+            .returning(ActiveLedger.id)
+        )
+        active_result = await session.execute(active_stmt)
+        confirmed_active = len(active_result.all())
+
+        # 3. Confirm passive_ledger entries.
+        passive_stmt = (
+            update(PassiveLedger)
+            .where(
+                PassiveLedger.status == LedgerStatus.FROZEN,
+                PassiveLedger.frozen_until <= now,
+            )
+            .values(status=LedgerStatus.CONFIRMED)
+            .returning(PassiveLedger.id)
+        )
+        passive_result = await session.execute(passive_stmt)
+        confirmed_passive = len(passive_result.all())
+
+        await session.commit()
+
+        total = confirmed_payments + confirmed_active + confirmed_passive
+        if total > 0:
+            logger.info(
+                "confirmation_batch_completed",
+                payments=confirmed_payments,
+                active_entries=confirmed_active,
+                passive_entries=confirmed_passive,
+            )
+        else:
+            logger.debug("confirmation_worker_tick")
 
 
 async def _payment_confirmation_worker() -> None:
     """Background task: confirm frozen ledger entries and payments.
 
-    Skeleton in Sprint 5.2 -- empty loop with configured interval.
-    Full logic (batch UPDATE frozen -> confirmed) added in Sprint 5.3.
+    Runs every CONFIRMATION_WORKER_INTERVAL_MINUTES. Each cycle selects
+    all frozen entries with expired frozen_until and transitions them
+    to confirmed in a single transaction.
     """
     interval = settings.confirmation_worker_interval_minutes * 60
     logger.info(
@@ -90,8 +165,7 @@ async def _payment_confirmation_worker() -> None:
     while True:
         try:
             await asyncio.sleep(interval)
-            # Sprint 5.3: actual confirmation logic goes here.
-            logger.debug("confirmation_worker_tick")
+            await _run_confirmation_batch()
         except asyncio.CancelledError:
             logger.info("confirmation_worker_stopped")
             break
@@ -135,43 +209,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await close_redis()
     await dispose_engine()
-    logger.info("app_stopped")
 
 
 # ---------------------------------------------------------------------------
-# FastAPI Application
+# Application
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="CBSHOME API",
-    description="Investment platform",
     version=APP_VERSION,
     lifespan=lifespan,
 )
 
-
-# ---------------------------------------------------------------------------
-# Middleware
-# ---------------------------------------------------------------------------
-
-_cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
-_allow_all = _cors_origins == ["*"]
-
+# -- Middleware (applied in reverse order -- outermost last) --
+app.add_middleware(TraceIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=not _allow_all,
+    allow_origins=settings.cors_origins.split(","),
+    allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "X-Trace-ID"],
+    allow_headers=["*"],
 )
 
-app.add_middleware(TraceIdMiddleware)
+
+# -- Exception handler --
+@app.exception_handler(CBSError)
+async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
+    """Map CBSError subclasses to appropriate HTTP status codes."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 
-# ---------------------------------------------------------------------------
-# Routers
-# ---------------------------------------------------------------------------
-
+# -- Routers --
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(kyc_router)
@@ -187,122 +258,75 @@ app.include_router(products_router)
 app.include_router(staff_products_router)
 app.include_router(payments_router)
 app.include_router(payments_webhook_router)
+app.include_router(staff_payments_router)
 
 
-# ---------------------------------------------------------------------------
-# Exception Handlers
-# ---------------------------------------------------------------------------
-
-@app.exception_handler(CBSError)
-async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
-    """Convert CBSError exceptions into proper HTTP JSON responses."""
-    if exc.status_code >= 500:
-        logger.error(
-            "cbs_error",
-            status_code=exc.status_code,
-            code=exc.code,
-            message=exc.message,
-            path=request.url.path,
-        )
-    else:
-        logger.warning(
-            "cbs_error",
-            status_code=exc.status_code,
-            code=exc.code,
-            message=exc.message,
-            path=request.url.path,
-        )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error": exc.code, "message": exc.message},
-    )
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
-    """Catch-all for unexpected exceptions -- return generic 500."""
-    logger.exception(
-        "unhandled_exception",
-        path=request.url.path,
-        method=request.method,
-        exc_type=type(exc).__name__,
-    )
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "internal_error",
-            "message": "An unexpected error occurred",
-        },
-    )
-
-
-# ---------------------------------------------------------------------------
-# Root / Health / Ready
-# ---------------------------------------------------------------------------
+# -- Root endpoints --
 
 
 @app.get("/")
-async def root() -> dict[str, str]:
-    """API info -- name and version."""
+async def root() -> dict:
+    """API identity."""
     return {"name": "CBSHOME API", "version": APP_VERSION}
 
 
 @app.get("/health")
-async def health() -> JSONResponse:
-    """Health check -- DB + Redis connectivity. Always returns 200."""
-    db_ok = True
-    redis_ok = True
+async def health() -> dict:
+    """Health check -- DB + Redis connectivity.
+
+    Always returns 200. Components report their status individually.
+    """
+    db_ok = False
+    redis_ok = False
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
+        db_ok = True
     except Exception:
-        db_ok = False
+        logger.warning("health_check_db_failed")
 
     try:
         redis = get_redis()
         await redis.ping()
+        redis_ok = True
     except Exception:
-        redis_ok = False
+        logger.warning("health_check_redis_failed")
 
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "ok" if (db_ok and redis_ok) else "degraded",
-            "db": "ok" if db_ok else "error",
-            "redis": "ok" if redis_ok else "error",
-        },
-    )
+    return {
+        "status": "healthy" if (db_ok and redis_ok) else "degraded",
+        "db": "ok" if db_ok else "error",
+        "redis": "ok" if redis_ok else "error",
+    }
 
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe -- returns 503 if any dependency is down."""
-    db_ok = True
-    redis_ok = True
+    """Readiness probe -- 503 if degraded."""
+    db_ok = False
+    redis_ok = False
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
+        db_ok = True
     except Exception:
-        db_ok = False
+        pass
 
     try:
         redis = get_redis()
         await redis.ping()
+        redis_ok = True
     except Exception:
-        redis_ok = False
+        pass
 
     all_ok = db_ok and redis_ok
-
     return JSONResponse(
         status_code=200 if all_ok else 503,
         content={
-            "status": "ok" if all_ok else "degraded",
+            "ready": all_ok,
             "db": "ok" if db_ok else "error",
             "redis": "ok" if redis_ok else "error",
         },
