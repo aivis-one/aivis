@@ -209,40 +209,43 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await close_redis()
     await dispose_engine()
+    logger.info("app_stopped")
 
 
 # ---------------------------------------------------------------------------
-# Application
+# FastAPI Application
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="CBSHOME API",
+    description="Investment platform",
     version=APP_VERSION,
     lifespan=lifespan,
 )
 
-# -- Middleware (applied in reverse order -- outermost last) --
-app.add_middleware(TraceIdMiddleware)
+
+# ---------------------------------------------------------------------------
+# Middleware
+# ---------------------------------------------------------------------------
+
+_cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
+_allow_all = _cors_origins == ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=not _allow_all,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "X-Trace-ID"],
 )
 
-
-# -- Exception handler --
-@app.exception_handler(CBSError)
-async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
-    """Map CBSError subclasses to appropriate HTTP status codes."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-    )
+app.add_middleware(TraceIdMiddleware)
 
 
-# -- Routers --
+# ---------------------------------------------------------------------------
+# Routers
+# ---------------------------------------------------------------------------
+
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(kyc_router)
@@ -261,72 +264,120 @@ app.include_router(payments_webhook_router)
 app.include_router(staff_payments_router)
 
 
-# -- Root endpoints --
+# ---------------------------------------------------------------------------
+# Exception Handlers
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(CBSError)
+async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
+    """Convert CBSError exceptions into proper HTTP JSON responses."""
+    if exc.status_code >= 500:
+        logger.error(
+            "cbs_error",
+            status_code=exc.status_code,
+            code=exc.code,
+            message=exc.message,
+            path=request.url.path,
+        )
+    else:
+        logger.warning(
+            "cbs_error",
+            status_code=exc.status_code,
+            code=exc.code,
+            message=exc.message,
+            path=request.url.path,
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.code, "message": exc.message},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """Catch-all for unexpected exceptions -- return generic 500."""
+    logger.exception(
+        "unhandled_exception",
+        path=request.url.path,
+        method=request.method,
+        exc_type=type(exc).__name__,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "internal_error",
+            "message": "An unexpected error occurred",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Root / Health / Ready
+# ---------------------------------------------------------------------------
 
 
 @app.get("/")
-async def root() -> dict:
-    """API identity."""
+async def root() -> dict[str, str]:
+    """API info -- name and version."""
     return {"name": "CBSHOME API", "version": APP_VERSION}
 
 
 @app.get("/health")
-async def health() -> dict:
-    """Health check -- DB + Redis connectivity.
-
-    Always returns 200. Components report their status individually.
-    """
-    db_ok = False
-    redis_ok = False
+async def health() -> JSONResponse:
+    """Health check -- DB + Redis connectivity. Always returns 200."""
+    db_ok = True
+    redis_ok = True
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        db_ok = True
     except Exception:
-        logger.warning("health_check_db_failed")
+        db_ok = False
 
     try:
         redis = get_redis()
         await redis.ping()
-        redis_ok = True
     except Exception:
-        logger.warning("health_check_redis_failed")
+        redis_ok = False
 
-    return {
-        "status": "healthy" if (db_ok and redis_ok) else "degraded",
-        "db": "ok" if db_ok else "error",
-        "redis": "ok" if redis_ok else "error",
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "ok" if (db_ok and redis_ok) else "degraded",
+            "db": "ok" if db_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
+    )
 
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe -- 503 if degraded."""
-    db_ok = False
-    redis_ok = False
+    """Readiness probe -- returns 503 if any dependency is down."""
+    db_ok = True
+    redis_ok = True
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        db_ok = True
     except Exception:
-        pass
+        db_ok = False
 
     try:
         redis = get_redis()
         await redis.ping()
-        redis_ok = True
     except Exception:
-        pass
+        redis_ok = False
 
     all_ok = db_ok and redis_ok
+
     return JSONResponse(
         status_code=200 if all_ok else 503,
         content={
-            "ready": all_ok,
+            "status": "ok" if all_ok else "degraded",
             "db": "ok" if db_ok else "error",
             "redis": "ok" if redis_ok else "error",
         },
