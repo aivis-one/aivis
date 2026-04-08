@@ -15,7 +15,7 @@
 #
 # Email prefix: "s53c_" -- unique to this test file, cleaned up in fixture.
 #
-# NOTE: Tests call _run_confirmation_batch() directly (not the daemon loop).
+# NOTE: Tests call run_confirmation_batch() directly (not the daemon loop).
 #       The function creates its own session, so test db_session must commit
 #       setup data before calling it, then re-query to verify results.
 # =============================================================================
@@ -141,8 +141,8 @@ async def test_confirm_expired_payment_and_active_ledger(
     ledger_id = ledger.id
 
     # Run confirmation batch (uses its own session).
-    from app.main import _run_confirmation_batch
-    await _run_confirmation_batch()
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
 
     # Re-query with test session to verify.
     db_session.expire_all()
@@ -181,8 +181,8 @@ async def test_frozen_future_not_confirmed(
     payment_id = payment.id
     ledger_id = ledger.id
 
-    from app.main import _run_confirmation_batch
-    await _run_confirmation_batch()
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
 
     db_session.expire_all()
 
@@ -214,8 +214,8 @@ async def test_mixed_expiry_only_expired_confirmed(
     expired_id = p_expired.id
     active_id = p_active.id
 
-    from app.main import _run_confirmation_batch
-    await _run_confirmation_batch()
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
 
     db_session.expire_all()
 
@@ -244,8 +244,8 @@ async def test_confirm_expired_passive_ledger(
 
     pl_id = pl.id
 
-    from app.main import _run_confirmation_batch
-    await _run_confirmation_batch()
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
 
     db_session.expire_all()
 
@@ -272,8 +272,8 @@ async def test_already_confirmed_not_touched(
 
     payment_id = payment.id
 
-    from app.main import _run_confirmation_batch
-    await _run_confirmation_batch()
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
 
     db_session.expire_all()
 
@@ -300,8 +300,8 @@ async def test_reversed_not_touched(
 
     payment_id = payment.id
 
-    from app.main import _run_confirmation_batch
-    await _run_confirmation_batch()
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
 
     db_session.expire_all()
 
@@ -316,9 +316,9 @@ async def test_empty_batch_no_errors(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Daemon runs with no frozen entries -> no errors."""
-    from app.main import _run_confirmation_batch
+    from app.modules.payments.confirmation import run_confirmation_batch
     # Should not raise.
-    await _run_confirmation_batch()
+    await run_confirmation_batch()
 
 
 @pytest.mark.asyncio
@@ -349,8 +349,8 @@ async def test_independent_frozen_until_payment_vs_ledger(
     payment_id = payment.id
     ledger_id = ledger.id
 
-    from app.main import _run_confirmation_batch
-    await _run_confirmation_batch()
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
 
     db_session.expire_all()
 

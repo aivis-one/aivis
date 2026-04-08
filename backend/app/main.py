@@ -30,7 +30,7 @@
 #   shutdown: cancel daemon -> close_redis -> dispose_engine
 #
 # DAEMONS:
-#   payment_confirmation_worker -- batch confirm frozen entries (Sprint 5.3)
+#   payment_confirmation_worker -- calls run_confirmation_batch() (Sprint 5.3)
 #
 # MIDDLEWARE (applied in reverse order -- outermost last):
 #   CORSMiddleware -> TraceIdMiddleware
@@ -39,17 +39,16 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text, update
+from sqlalchemy import text
 from starlette.requests import Request
 
 from app.core.config import APP_VERSION, settings
-from app.core.database import dispose_engine, get_engine, get_session_factory
+from app.core.database import dispose_engine, get_engine
 from app.core.exceptions import CBSError
 from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
@@ -60,9 +59,7 @@ from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.kyc.router import router as kyc_router
-from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
-from app.modules.payments.constants import PaymentStatus
-from app.modules.payments.models import Payment
+from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
 from app.modules.payments.webhook_router import router as payments_webhook_router
@@ -81,80 +78,11 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 
-async def _run_confirmation_batch() -> None:
-    """Execute one confirmation cycle.
-
-    Batch UPDATE in a single transaction:
-      1. Payment.status frozen -> confirmed WHERE frozen_until <= now()
-      2. ActiveLedger.status frozen -> confirmed WHERE frozen_until <= now()
-      3. PassiveLedger.status frozen -> confirmed WHERE frozen_until <= now()
-
-    Each table is updated independently -- a ledger entry's frozen_until
-    is its own, not inherited from the parent Payment.
-    """
-    factory = get_session_factory()
-    async with factory() as session:
-        now = datetime.now(UTC)
-
-        # 1. Confirm payments.
-        payment_stmt = (
-            update(Payment)
-            .where(
-                Payment.status == PaymentStatus.FROZEN,
-                Payment.frozen_until <= now,
-            )
-            .values(status=PaymentStatus.CONFIRMED)
-            .returning(Payment.id)
-        )
-        payment_result = await session.execute(payment_stmt)
-        confirmed_payments = len(payment_result.all())
-
-        # 2. Confirm active_ledger entries.
-        active_stmt = (
-            update(ActiveLedger)
-            .where(
-                ActiveLedger.status == LedgerStatus.FROZEN,
-                ActiveLedger.frozen_until <= now,
-            )
-            .values(status=LedgerStatus.CONFIRMED)
-            .returning(ActiveLedger.id)
-        )
-        active_result = await session.execute(active_stmt)
-        confirmed_active = len(active_result.all())
-
-        # 3. Confirm passive_ledger entries.
-        passive_stmt = (
-            update(PassiveLedger)
-            .where(
-                PassiveLedger.status == LedgerStatus.FROZEN,
-                PassiveLedger.frozen_until <= now,
-            )
-            .values(status=LedgerStatus.CONFIRMED)
-            .returning(PassiveLedger.id)
-        )
-        passive_result = await session.execute(passive_stmt)
-        confirmed_passive = len(passive_result.all())
-
-        await session.commit()
-
-        total = confirmed_payments + confirmed_active + confirmed_passive
-        if total > 0:
-            logger.info(
-                "confirmation_batch_completed",
-                payments=confirmed_payments,
-                active_entries=confirmed_active,
-                passive_entries=confirmed_passive,
-            )
-        else:
-            logger.debug("confirmation_worker_tick")
-
-
 async def _payment_confirmation_worker() -> None:
     """Background task: confirm frozen ledger entries and payments.
 
-    Runs every CONFIRMATION_WORKER_INTERVAL_MINUTES. Each cycle selects
-    all frozen entries with expired frozen_until and transitions them
-    to confirmed in a single transaction.
+    Runs every CONFIRMATION_WORKER_INTERVAL_MINUTES. Each cycle delegates
+    to run_confirmation_batch() in payments/confirmation.py.
     """
     interval = settings.confirmation_worker_interval_minutes * 60
     logger.info(
@@ -165,7 +93,7 @@ async def _payment_confirmation_worker() -> None:
     while True:
         try:
             await asyncio.sleep(interval)
-            await _run_confirmation_batch()
+            await run_confirmation_batch()
         except asyncio.CancelledError:
             logger.info("confirmation_worker_stopped")
             break
