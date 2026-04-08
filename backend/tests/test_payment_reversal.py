@@ -11,11 +11,6 @@
 #   6:  Reverse without payment_review permission -> 403
 #
 # Email prefix: "s53r_" -- unique to this test file, cleaned up in fixture.
-#
-# FLOW:
-#   Staff with payment_review calls POST /staff/payments/{id}/reverse.
-#   Service creates mirror ledger entries (confirmed, -amount, reason+":reversal")
-#   and marks originals as reversed.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
@@ -134,7 +129,7 @@ async def test_reverse_frozen_payment(
     assert body["passive_entries_reversed"] == 0
 
     # Verify payment status.
-    await db_session.expire_all()
+    db_session.expire_all()
     p = (await db_session.execute(
         select(Payment).where(Payment.id == payment_id)
     )).scalar_one()
@@ -256,7 +251,6 @@ async def test_reverse_without_permission(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Reverse without payment_review permission -> 403."""
-    # Create admin, then create a staff without payment_review.
     admin_token = await _admin_token(client, db_session)
 
     staff_data = await register_user(

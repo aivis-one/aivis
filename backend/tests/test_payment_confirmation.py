@@ -145,7 +145,7 @@ async def test_confirm_expired_payment_and_active_ledger(
     await _run_confirmation_batch()
 
     # Re-query with test session to verify.
-    await db_session.expire_all()
+    db_session.expire_all()
 
     p = (await db_session.execute(
         select(Payment).where(Payment.id == payment_id)
@@ -184,7 +184,7 @@ async def test_frozen_future_not_confirmed(
     from app.main import _run_confirmation_batch
     await _run_confirmation_batch()
 
-    await db_session.expire_all()
+    db_session.expire_all()
 
     p = (await db_session.execute(
         select(Payment).where(Payment.id == payment_id)
@@ -217,7 +217,7 @@ async def test_mixed_expiry_only_expired_confirmed(
     from app.main import _run_confirmation_batch
     await _run_confirmation_batch()
 
-    await db_session.expire_all()
+    db_session.expire_all()
 
     p1 = (await db_session.execute(
         select(Payment).where(Payment.id == expired_id)
@@ -238,7 +238,6 @@ async def test_confirm_expired_passive_ledger(
     user_id = await _create_user(client, "conf4")
     past = datetime.now(UTC) - timedelta(hours=1)
 
-    # Passive ledger entry (future: created by purchase saga).
     pl = _make_passive_ledger(user_id, frozen_until=past)
     db_session.add(pl)
     await db_session.commit()
@@ -248,7 +247,7 @@ async def test_confirm_expired_passive_ledger(
     from app.main import _run_confirmation_batch
     await _run_confirmation_batch()
 
-    await db_session.expire_all()
+    db_session.expire_all()
 
     entry = (await db_session.execute(
         select(PassiveLedger).where(PassiveLedger.id == pl_id)
@@ -276,7 +275,7 @@ async def test_already_confirmed_not_touched(
     from app.main import _run_confirmation_batch
     await _run_confirmation_batch()
 
-    await db_session.expire_all()
+    db_session.expire_all()
 
     p = (await db_session.execute(
         select(Payment).where(Payment.id == payment_id)
@@ -304,7 +303,7 @@ async def test_reversed_not_touched(
     from app.main import _run_confirmation_batch
     await _run_confirmation_batch()
 
-    await db_session.expire_all()
+    db_session.expire_all()
 
     p = (await db_session.execute(
         select(Payment).where(Payment.id == payment_id)
@@ -353,7 +352,7 @@ async def test_independent_frozen_until_payment_vs_ledger(
     from app.main import _run_confirmation_batch
     await _run_confirmation_batch()
 
-    await db_session.expire_all()
+    db_session.expire_all()
 
     p = (await db_session.execute(
         select(Payment).where(Payment.id == payment_id)
