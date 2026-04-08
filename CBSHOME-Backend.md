@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.5
+**Версия:** 1.6
 **Дата:** 8 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -1260,18 +1260,83 @@ backend/tests/
 
 ---
 
-### Sprint 5.3: Payment Confirmation Daemon + Reversal
+### ✅ Sprint 5.3: Payment Confirmation Daemon + Reversal
 
 **Цель:** Автоматическое подтверждение платежей и механизм чарджбека.
 
 **Задачи:**
-- [ ] `payment_confirmation_worker` — batch UPDATE frozen -> confirmed при `frozen_until <= now()`
-- [ ] Staff endpoint: `POST /api/v1/staff/payments/{id}/reverse` — chargeback reversal
-- [ ] Reversal: зеркальные записи с суффиксом `:reversal`, Payment -> reversed, уведомления
-- [ ] `tests/test_payment_confirmation.py` — 8 тестов
-- [ ] `tests/test_payment_reversal.py` — 6 тестов
+- [x] `app/modules/payments/confirmation.py` — `run_confirmation_batch()`: batch UPDATE frozen -> confirmed для Payment, ActiveLedger, PassiveLedger при `frozen_until <= now()`
+- [x] `main.py` — `_payment_confirmation_worker()` вызывает `run_confirmation_batch()` каждые `CONFIRMATION_WORKER_INTERVAL_MINUTES`
+- [x] `app/modules/payments/reversal.py` — `reverse_payment()`: зеркальные ledger-записи, Payment -> reversed, audit
+- [x] `app/modules/payments/staff_router.py` — `POST /api/v1/staff/payments/{id}/reverse` (permission: `payment_review`)
+- [x] `app/modules/payments/schemas.py` — `+ReversePaymentRequest`, `+ReversalResponse`
+- [x] `tests/test_payment_confirmation.py` — 8 тестов
+- [x] `tests/test_payment_reversal.py` — 6 тестов
 
-**Критерий готовности:** Daemon подтверждает платежи. Staff может сделать chargeback.
+**Миграции:** не требуются — все таблицы из Sprint 5.2.
+
+**Endpoints:**
+```
+POST /api/v1/staff/payments/{id}/reverse  -> ReversalResponse  (200, payment_review)
+```
+
+**Решения реализации:**
+- P5-16: Бизнес-логика confirmation вынесена в `payments/confirmation.py`, не в `main.py` — separation of concerns. `main.py` содержит только daemon loop
+- P5-17: Bulk `update()` для Payment явно передаёт `updated_at=now` — ORM `onupdate=func.now()` не срабатывает при bulk operations
+- P5-18: Каждая таблица (Payment, ActiveLedger, PassiveLedger) подтверждается независимо по своему `frozen_until`. Ledger entry не наследует `frozen_until` от parent Payment
+- P5-19: Reversal создаёт зеркальные записи через `record_active/passive_ledger(status=confirmed, amount=-original)` — полный audit trail, баланс может уйти в минус (user owes platform)
+- P5-20: Оригинальные entries помечаются `status=reversed` через direct ORM update — единственный authorized path обхода `_WRITABLE_STATUSES` guard
+- P5-21: `reversal.py` — отдельный файл (не в `service.py`) — редкая операция, изолированный контракт, отдельные тесты
+- P5-22: `staff_router.py` — в модуле `payments/` (не в `staff/`) — при распиле на микросервисы уходит целиком с модулем. Паттерн аналогичен `companies/staff_router.py`, `products/staff_router.py`
+- P5-23: `ReversalResponse.affected_user_ids: list[UUID]` — Pydantic сериализует. Audit data в JSONB хранит `str(uuid)` (JSONB не сериализует UUID)
+- P5-24: Daemon при ошибке логирует exception и продолжает — следующий tick через `CONFIRMATION_WORKER_INTERVAL_MINUTES` подберёт те же записи (они всё ещё frozen)
+
+**Новые audit events:**
+- `payment.chargeback` — Staff reversal с деталями: total_reversed_cents, entries counts, affected users, reason
+
+**Результат:**
+```
+backend/app/modules/payments/
+├── __init__.py
+├── constants.py        -- PaymentType, PaymentStatus, state machine (Sprint 5.2)
+├── models.py           -- Payment (JSONBMixin), CryptoAddress (Sprint 5.2)
+├── interface.py        -- PaymentServiceProtocol, DepositAddress (Sprint 5.2)
+├── schemas.py          -- +ReversePaymentRequest, +ReversalResponse (Sprint 5.3)
+├── service.py          -- get_or_create_deposit_address, process_crypto_webhook, list_payments, get_payment (Sprint 5.2)
+├── confirmation.py     -- run_confirmation_batch() (Sprint 5.3)
+├── reversal.py         -- reverse_payment() (Sprint 5.3)
+├── router.py           -- POST /crypto-address, GET /history (Sprint 5.2)
+├── staff_router.py     -- POST /staff/payments/{id}/reverse (Sprint 5.3)
+└── webhook_router.py   -- POST /crypto/webhook (Sprint 5.2)
+
+backend/tests/
+├── test_crypto_deposits.py      -- 10 tests (Sprint 5.2)
+├── test_payment_confirmation.py -- 8 tests (Sprint 5.3)
+└── test_payment_reversal.py     -- 6 tests (Sprint 5.3)
+```
+
+**Обновлённые файлы (Sprint 5.3):**
+- `main.py` — `_payment_confirmation_worker()` вызывает `run_confirmation_batch()`, `+staff_payments_router`
+
+**Критерий готовности:** Daemon подтверждает платежи по `frozen_until`. Staff делает chargeback с полным audit trail. 156 тестов зелёные.
+
+---
+
+**Phase 5 завершена.** 4 endpoints (2 investor payments + 1 webhook + 1 staff reversal), 24 теста Phase 5 (+118 Phase 0-4 = 142 Sprint 5.2, 156 Sprint 5.3), 2 миграции (итого 8). AML-матрица standalone. Confirmation daemon. Chargeback reversal.
+
+**Обновлённые файлы (Phase 5 total):**
+- `core/constants.py` — `LedgerReason` registry
+- `core/config.py` — `+crypto_webhook_secret`, `+confirmation_worker_interval_minutes`, `+crypto_networks`, `+freezing_hours_crypto`
+- `core/rate_limit.py` — **новый**: generic INCR+EXPIRE rate limiter
+- `auth/service.py` — `+_audit_login_failure()` (SEC-7)
+- `auth/router.py` — rate limiting на register/login (SEC-5)
+- `kyc/service.py` — `process_webhook(user_id: UUID)` вместо `str` (CRIT-3)
+- `kyc/router.py` — `hmac.compare_digest()` для webhook (SEC-1)
+- `staff/admin_service.py` — убраны `str()` обёртки для KYC calls
+- `main.py` — `+payments_router`, `+payments_webhook_router`, `+staff_payments_router`, confirmation daemon
+- `install_cbshome.sh` — `+CRYPTO_WEBHOOK_SECRET` генерация
+- `tests/helpers.py` — cleanup для Payment, CryptoAddress, ActiveLedger, PassiveLedger
+- `tests/conftest.py` — `+clear_rate_limit` autouse fixture
 
 ---
 
@@ -1756,6 +1821,8 @@ Event:
 | TD-032 | `app/core/database.py` | Redis session создаётся ДО DB commit (CRIT-1). Orphan token живёт до TTL (30 дней). Приемлемо для MVP | After MVP | ⬜ |
 | TD-033 | `companies/constants.py` | Float precision в `distribution_config` validation: `total > 1.0` может дать false positive. Рассмотреть `Decimal` или tolerance `1e-9` (MINOR-4) | Backlog | ⬜ |
 | TD-034 | `payments/router.py` | `POST /crypto-address` — заглушка. При интеграции реального провайдера endpoint может измениться (адрес от API / pre-generated pool / hosted page redirect) | Phase 2 | ⬜ |
+| TD-035 | `payments/reversal.py` | `total_reversed_cents` = `payment.amount_cents`, не сумма ledger entries. Корректно пока 1 entry/payment. Пересмотреть после Phase 6 saga | Phase 6 | ⬜ |
+| TD-036 | `payments/reversal.py` | N+1 flush в loop (каждый `record_*_ledger` делает flush). Приемлемо при 1-3 entries. Оптимизировать если saga создаёт >10 entries на payment | Phase 6 | ⬜ |
 
 ---
 
@@ -1763,4 +1830,4 @@ Event:
 
 ---
 
-*Version 1.5 | 2026-04-08 | cbshome Backend TZ — Sprint 5.2 complete, Sprint 5.3 next*
+*Version 1.6 | 2026-04-08 | cbshome Backend TZ — Phase 5 complete, Phase 6 next*
