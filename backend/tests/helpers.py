@@ -35,6 +35,11 @@
 #   _cleanup_user_related_data() extended with payment table cleanup
 #   (Payment, CryptoAddress). Order: ledger entries first (FK to payments),
 #   then payments, then crypto_addresses.
+#
+# Sprint 6.1:
+#   _cleanup_user_related_data() extended with Purchase cleanup.
+#   Order: purchases before ledger entries (no FK dependency, but
+#   logically purchases reference users/products/companies).
 # =============================================================================
 
 import hashlib
@@ -78,46 +83,14 @@ async def _clear_email_rate_limit() -> None:
         pass
 
 
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
+
+
 def auth_headers(token: str) -> dict[str, str]:
-    """Build Authorization header dict for test requests."""
+    """Build Authorization header dict."""
     return {"Authorization": f"Bearer {token}"}
-
-
-def build_init_data(
-    user_data: dict,
-    bot_token: str = BOT_TOKEN,
-    auth_date: int | None = None,
-) -> str:
-    """Build a valid Telegram initData query string with correct HMAC.
-
-    Includes a unique query_id on every call (via _init_data_counter) so
-    that multiple calls for the same telegram_id within the same second
-    produce different hashes and don't trigger anti-replay protection.
-    """
-    if auth_date is None:
-        auth_date = int(time.time())
-
-    query_id = str(next(_init_data_counter))
-
-    params = {
-        "user": json.dumps(user_data, separators=(",", ":")),
-        "auth_date": str(auth_date),
-        "query_id": query_id,
-    }
-
-    data_check_string = "\n".join(
-        f"{k}={v}" for k, v in sorted(params.items())
-    )
-
-    secret_key = hmac.new(
-        b"WebAppData", bot_token.encode(), hashlib.sha256,
-    ).digest()
-    computed_hash = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256,
-    ).hexdigest()
-
-    params["hash"] = computed_hash
-    return urlencode(params)
 
 
 async def register_user(
@@ -125,17 +98,13 @@ async def register_user(
     email: str = "test@example.com",
     password: str = "testpass123",
 ) -> dict:
-    """Register a user via POST /api/v1/auth/email/register.
-
-    Clears email rate limit key before each call to prevent
-    test cross-contamination (all tests use 127.0.0.1).
-    """
+    """Register a user via email and return the full response body."""
     await _clear_email_rate_limit()
     resp = await client.post(
         "/api/v1/auth/email/register",
         json={"email": email, "password": password},
     )
-    assert resp.status_code == 201, f"Register failed: {resp.status_code} {resp.text}"
+    assert resp.status_code == 201, f"Register failed: {resp.text}"
     return resp.json()
 
 
@@ -144,53 +113,92 @@ async def login_user(
     email: str = "test@example.com",
     password: str = "testpass123",
 ) -> dict:
-    """Login a user via POST /api/v1/auth/email/login.
-
-    Clears email rate limit key before each call to prevent
-    test cross-contamination (all tests use 127.0.0.1).
-    """
+    """Login a user via email and return the full response body."""
     await _clear_email_rate_limit()
     resp = await client.post(
         "/api/v1/auth/email/login",
         json={"email": email, "password": password},
     )
-    assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text}"
+    assert resp.status_code == 200, f"Login failed: {resp.text}"
     return resp.json()
 
 
-async def login_telegram(
-    client: AsyncClient,
+# ---------------------------------------------------------------------------
+# Telegram auth helpers (Sprint 1.2)
+# ---------------------------------------------------------------------------
+
+
+def build_init_data(
     telegram_id: int,
-    first_name: str = "Test",
-    username: str | None = None,
-) -> dict:
-    """Login via POST /api/v1/auth/telegram."""
-    user_data = {"id": telegram_id, "first_name": first_name}
-    if username:
-        user_data["username"] = username
+    *,
+    username: str | None = "testuser",
+    photo_url: str | None = None,
+    language_code: str = "en",
+    auth_date: int | None = None,
+) -> str:
+    """Build a valid signed Telegram initData string.
 
-    init_data = build_init_data(user_data)
-    resp = await client.post(
-        "/api/v1/auth/telegram",
-        json={"init_data": init_data},
+    Uses _init_data_counter for unique query_id to prevent
+    anti-replay rejection in tests.
+    """
+    if auth_date is None:
+        auth_date = int(time.time())
+
+    user_data = {
+        "id": telegram_id,
+        "first_name": "Test",
+        "last_name": "User",
+    }
+    if username is not None:
+        user_data["username"] = username
+    if photo_url is not None:
+        user_data["photo_url"] = photo_url
+    if language_code:
+        user_data["language_code"] = language_code
+
+    counter_val = next(_init_data_counter)
+    query_id = f"test_qid_{telegram_id}_{auth_date}_{counter_val}"
+
+    params = {
+        "user": json.dumps(user_data, separators=(",", ":")),
+        "auth_date": str(auth_date),
+        "query_id": query_id,
+    }
+
+    # Compute hash (matching Telegram's algorithm).
+    data_check_string = "\n".join(
+        f"{k}={params[k]}" for k in sorted(params.keys())
     )
-    assert resp.status_code == 200, f"Telegram login failed: {resp.status_code} {resp.text}"
-    return resp.json()
+
+    secret_key = hmac.new(
+        b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256
+    ).digest()
+
+    computed_hash = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256
+    ).hexdigest()
+
+    params["hash"] = computed_hash
+
+    return urlencode(params)
+
+
+# ---------------------------------------------------------------------------
+# Staff helpers (Sprint 3.1)
+# ---------------------------------------------------------------------------
 
 
 async def create_staff_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    email: str,
+    email: str = "staff@example.com",
     password: str = "testpass123",
 ) -> tuple[dict, str]:
-    """Register a user, promote to staff, create StaffProfile.
+    """Register a user, promote to staff, create StaffProfile with defaults.
 
     Returns (user_data_dict, session_token).
-    StaffProfile created with default permissions.
     """
     data = await register_user(client, email=email, password=password)
-    token = data["session_token"]
     user_id = UUID(data["user"]["id"])
 
     # Promote to staff directly in DB.
@@ -341,6 +349,14 @@ async def _cleanup_user_related_data(
     from app.modules.ledgers.models import ActiveLedger, PassiveLedger
     from app.modules.payments.models import CryptoAddress, Payment
     from app.modules.products.models import Product, ProductInstallment
+    from app.modules.purchases.models import Purchase
+
+    # Sprint 6.1: Purchases by investor_id (FK to users.id).
+    await session.execute(
+        delete(Purchase).where(
+            Purchase.investor_id.in_(user_ids)
+        )
+    )
 
     # Sprint 5.1: Ledger entries (FK to users.id with RESTRICT).
     await session.execute(
@@ -385,6 +401,13 @@ async def _cleanup_user_related_data(
         product_ids = [row[0] for row in prod_result.all()]
 
         if product_ids:
+            # Sprint 6.1: Purchases referencing these products.
+            await session.execute(
+                delete(Purchase).where(
+                    Purchase.product_id.in_(product_ids)
+                )
+            )
+
             # Product installments reference products.
             await session.execute(
                 delete(ProductInstallment).where(

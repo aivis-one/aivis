@@ -1,10 +1,10 @@
 # =============================================================================
-# CBSHOME Backend -- Product Service (Sprint 4.2)
+# CBSHOME Backend -- Product Service (Sprint 4.2 + Sprint 6.1)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   create_product()        -- create Product, copy price from Company
-#   update_product()        -- partial update (name, description, gift_units)
+#   update_product()        -- partial update (name, description, purchase_config)
 #   update_product_status() -- state machine transition
 #   get_product()           -- load Product by id
 #   list_products()         -- paginated list (public: active only)
@@ -14,11 +14,16 @@
 #   delete_installment()    -- soft-delete (is_deleted=True)
 #   cascade_price()         -- update price on products + soft-delete installments
 #
+# Sprint 6.1 CHANGES:
+#   - create_product(): gift_units -> purchase_config
+#   - update_product(): gift_units -> purchase_config (set_jsonb)
+#   - validate_purchase_config() called on save
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
 #
 # JSONB RULE:
-#   plan_config updated via set_jsonb(). Never direct assign.
+#   plan_config and purchase_config updated via set_jsonb(). Never direct assign.
 #
 # PRICE:
 #   Product.price_per_unit_cents is denormalized from Company.
@@ -64,23 +69,29 @@ async def create_product(
     session: AsyncSession,
     *,
     description: str | None = None,
-    gift_units: int = 0,
+    purchase_config: dict | None = None,  # type: ignore[type-arg]
 ) -> Product:
     """Create a new product for a company.
 
     Copies price_per_unit_cents from CompanyProfile.
+    If purchase_config is provided, validates it before saving.
 
     Raises:
         NotFoundError: If company not found.
+        BadRequestError: If purchase_config is invalid.
     """
     company = await get_company(company_id, session)
+
+    if purchase_config is not None:
+        from app.modules.processors.validators import validate_purchase_config
+        validate_purchase_config(purchase_config)
 
     product = Product(
         company_id=company.id,
         name=name,
         description=description,
         units=units,
-        gift_units=gift_units,
+        purchase_config=purchase_config,
         price_per_unit_cents=company.price_per_unit_cents,
         status=ProductStatus.HIDDEN,
     )
@@ -120,12 +131,13 @@ async def update_product(
     *,
     name: str | None = None,
     description=...,
-    gift_units: int | None = None,
+    purchase_config=...,
 ) -> Product:
     """Partial update of product fields.
 
     Raises:
         NotFoundError: If product not found.
+        BadRequestError: If purchase_config is invalid.
     """
     product = await get_product(product_id, session)
 
@@ -139,9 +151,12 @@ async def update_product(
         product.description = description
         changed_fields.append("description")
 
-    if gift_units is not None:
-        product.gift_units = gift_units
-        changed_fields.append("gift_units")
+    if purchase_config is not ...:
+        if purchase_config is not None:
+            from app.modules.processors.validators import validate_purchase_config
+            validate_purchase_config(purchase_config)
+        product.set_jsonb("purchase_config", purchase_config)
+        changed_fields.append("purchase_config")
 
     if changed_fields:
         await session.flush()

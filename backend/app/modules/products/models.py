@@ -1,12 +1,25 @@
 # =============================================================================
-# CBSHOME Backend -- Product Models (Sprint 4.2)
+# CBSHOME Backend -- Product Models (Sprint 4.2 + Sprint 6.1)
 # =============================================================================
 #
 # Product:
 #   Investment package belonging to a Company. Contains units (package
-#   size, immutable), gift_units (bonus on instant purchase), and
-#   price_per_unit_cents (denormalized from Company, cascaded on price
-#   change).
+#   size, immutable) and price_per_unit_cents (denormalized from Company,
+#   cascaded on price change).
+#
+# Sprint 6.1 CHANGES:
+#   - Removed gift_units column (replaced by purchase_config.bonuses[])
+#   - Added purchase_config JSONB column (nullable, fallback to Company)
+#   - Added JSONBMixin for safe purchase_config mutation
+#
+# PURCHASE_CONFIG JSONB (nullable):
+#   {
+#     "distribution": {"company_pct": 0.65, "agent_levels": [0.10, 0.03]},
+#     "bonuses": [{"condition": "always", "bonus_units_percent": 10, ...}]
+#   }
+#   If null -> fallback to Company.distribution_config + no bonuses.
+#   If distribution is null within config -> fallback to Company.
+#   Use set_jsonb("purchase_config", value) for mutations.
 #
 # ProductInstallment:
 #   Installment plan template for a Product. Contains plan_config JSONB
@@ -43,7 +56,7 @@ class ProductStatus(enum.StrEnum):
     ARCHIVED = "archived"
 
 
-class Product(UUIDMixin, TimestampMixin, Base):
+class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     """Investment package belonging to a Company."""
 
     __tablename__ = "products"
@@ -70,18 +83,18 @@ class Product(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
 
-    # -- Bonus units on instant purchase (0 = no bonus) --
-    gift_units: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        server_default="0",
-        nullable=False,
-    )
-
     # -- Denormalized from Company, cascaded on price change --
     price_per_unit_cents: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
+    )
+
+    # -- Purchase configuration (Sprint 6.1) --
+    # Nullable: if null, fallback to Company.distribution_config + no bonuses.
+    # Use set_jsonb("purchase_config", value) for mutations.
+    purchase_config: Mapped[dict | None] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
+        nullable=True,
     )
 
     # -- Status --

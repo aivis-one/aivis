@@ -1,0 +1,519 @@
+# =============================================================================
+# CBSHOME Backend -- Purchase Tests (Sprint 6.1)
+# =============================================================================
+#
+# Tests cover:
+#   1:  PurchaseProcessor SUM=0 invariant (unit test)
+#   2:  PurchaseProcessor company share calculation
+#   3:  GiftProcessor "always" condition
+#   4:  GiftProcessor "portfolio_size_gte" condition met
+#   5:  GiftProcessor "portfolio_size_gte" condition not met
+#   6:  GiftProcessor empty bonuses -> no transactions
+#   7:  ProcessorRegistry runs both processors
+#   8:  validate_purchase_config valid config
+#   9:  validate_purchase_config invalid bonus percent sum > 100
+#   10: validate_purchase_config unknown keys rejected
+#   11: POST /products/{id}/purchase -> 201 (instant buy)
+#   12: POST /products/{id}/purchase insufficient balance -> 400
+#   13: POST /products/{id}/purchase product not active -> 400
+#   14: POST /products/{id}/purchase non-investor -> 403
+#   15: POST /products/{id}/purchase with gift bonus -> 201 + 2 purchases
+#
+# Email prefix: "s61_" -- unique to this test file, cleaned up in fixture.
+# =============================================================================
+
+from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, UTC
+from uuid import UUID
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import BadRequestError
+from app.modules.ledgers.models import ActiveLedger, LedgerStatus
+from app.modules.ledgers.service import record_active_ledger
+from app.modules.processors.base import PurchaseContext
+from app.modules.processors.gift import GiftProcessor
+from app.modules.processors.purchase import PurchaseProcessor
+from app.modules.processors.registry import ProcessorRegistry
+from app.modules.processors.validators import validate_purchase_config
+from app.modules.purchases.models import Purchase
+from tests.helpers import (
+    auth_headers,
+    cleanup_test_users,
+    create_admin_user,
+    register_user,
+)
+
+EMAIL_PREFIX = "s61_"
+
+
+@pytest.fixture(autouse=True)
+async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
+    """Clean test users before and after each test."""
+    await cleanup_test_users(db_session, EMAIL_PREFIX)
+    yield
+    await cleanup_test_users(db_session, EMAIL_PREFIX)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+async def _admin_token(
+    client: AsyncClient, db_session: AsyncSession
+) -> str:
+    """Helper: create admin and return token."""
+    _, token = await create_admin_user(
+        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+    )
+    return token
+
+
+async def _create_company(
+    client: AsyncClient, admin_token: str, suffix: str = "co1"
+) -> dict:
+    """Helper: create a company via staff endpoint."""
+    resp = await client.post(
+        "/api/v1/staff/companies",
+        json={
+            "email": f"{EMAIL_PREFIX}{suffix}@example.com",
+            "password": "companypass123",
+            "name": f"Test Company {suffix}",
+            "description": "A test company",
+            "price_per_unit_cents": 10000,
+            "distribution_config": {
+                "company_pct": 0.65,
+                "agent_levels": [0.10, 0.03, 0.01],
+            },
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 201, f"Create company failed: {resp.text}"
+    return resp.json()
+
+
+async def _create_product(
+    client: AsyncClient,
+    admin_token: str,
+    company_id: str,
+    *,
+    units: int = 100,
+    purchase_config: dict | None = None,
+) -> dict:
+    """Helper: create a product via staff endpoint."""
+    body: dict = {
+        "company_id": company_id,
+        "name": "Test Package",
+        "units": units,
+    }
+    if purchase_config is not None:
+        body["purchase_config"] = purchase_config
+
+    resp = await client.post(
+        "/api/v1/staff/products",
+        json=body,
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 201, f"Create product failed: {resp.text}"
+    return resp.json()
+
+
+async def _activate_product(
+    client: AsyncClient, admin_token: str, product_id: str
+) -> None:
+    """Helper: set product status to active."""
+    resp = await client.patch(
+        f"/api/v1/staff/products/{product_id}/status",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+
+async def _create_investor_with_balance(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    suffix: str = "inv1",
+    balance_cents: int = 2_000_000,
+) -> tuple[str, UUID]:
+    """Helper: create investor, deposit funds, return (token, user_id)."""
+    data = await register_user(
+        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+    )
+    token = data["session_token"]
+    user_id = UUID(data["user"]["id"])
+
+    # Deposit via direct ledger write (simulating confirmed deposit).
+    await record_active_ledger(
+        db_session,
+        user_id=user_id,
+        amount_cents=balance_cents,
+        status=LedgerStatus.CONFIRMED,
+        reason="deposit:crypto:0xtest_s61",
+    )
+    await db_session.commit()
+
+    return token, user_id
+
+
+def _make_context(
+    *,
+    amount_cents: int = 1_000_000,
+    units: int = 100,
+    company_pct: float = 0.65,
+    agent_levels: list[float] | None = None,
+    bonuses: list[dict] | None = None,
+) -> PurchaseContext:
+    """Helper: build a PurchaseContext for unit tests."""
+    from uuid import uuid4
+
+    return PurchaseContext(
+        investor_id=uuid4(),
+        product_id=uuid4(),
+        company_id=uuid4(),
+        company_user_id=uuid4(),
+        platform_user_id=uuid4(),
+        amount_cents=amount_cents,
+        units=units,
+        price_per_unit_cents=amount_cents // units,
+        distribution_config={
+            "company_pct": company_pct,
+            "agent_levels": agent_levels or [0.10, 0.03, 0.01],
+        },
+        purchase_config_bonuses=bonuses or [],
+        origin_payment_id=None,
+        frozen_until=None,
+        agent_chain=[],
+        triggered_at=datetime.now(UTC),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: PurchaseProcessor
+# ---------------------------------------------------------------------------
+
+
+def test_purchase_processor_sum_zero() -> None:
+    """PurchaseProcessor: all entries sum to 0."""
+    ctx = _make_context()
+    processor = PurchaseProcessor()
+    transactions = processor.process(ctx)
+
+    assert len(transactions) == 1
+    txn = transactions[0]
+    assert txn.legal_basis == "sale"
+    assert sum(e.amount_cents for e in txn.entries) == 0
+
+
+def test_purchase_processor_company_share() -> None:
+    """PurchaseProcessor: company gets company_pct share."""
+    ctx = _make_context(amount_cents=100_000, company_pct=0.75)
+    processor = PurchaseProcessor()
+    transactions = processor.process(ctx)
+
+    txn = transactions[0]
+    # Find company credit entry.
+    company_entries = [
+        e for e in txn.entries
+        if e.user_id == ctx.company_user_id and e.amount_cents > 0
+    ]
+    assert len(company_entries) == 1
+    assert company_entries[0].amount_cents == 75_000  # 75% of 100_000
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: GiftProcessor
+# ---------------------------------------------------------------------------
+
+
+def test_gift_processor_always_condition() -> None:
+    """GiftProcessor: 'always' condition triggers bonus."""
+    ctx = _make_context(
+        units=100,
+        bonuses=[{
+            "condition": "always",
+            "bonus_units_percent": 10,
+            "funded_by": "company",
+        }],
+    )
+    processor = GiftProcessor(investor_portfolio_cents=0)
+    transactions = processor.process(ctx)
+
+    assert len(transactions) == 1
+    txn = transactions[0]
+    assert txn.legal_basis == "gift"
+    assert txn.units == 10  # 10% of 100
+    assert sum(e.amount_cents for e in txn.entries) == 0
+
+
+def test_gift_processor_portfolio_gte_met() -> None:
+    """GiftProcessor: portfolio_size_gte condition met -> bonus triggered."""
+    ctx = _make_context(
+        amount_cents=100_000,
+        units=100,
+        bonuses=[{
+            "condition": "portfolio_size_gte",
+            "threshold_cents": 50_000,
+            "bonus_units_percent": 5,
+            "funded_by": "platform",
+        }],
+    )
+    # Portfolio 0 + current purchase 100_000 >= threshold 50_000.
+    processor = GiftProcessor(investor_portfolio_cents=0)
+    transactions = processor.process(ctx)
+
+    assert len(transactions) == 1
+    assert transactions[0].units == 5  # 5% of 100
+
+
+def test_gift_processor_portfolio_gte_not_met() -> None:
+    """GiftProcessor: portfolio_size_gte condition NOT met -> no bonus."""
+    ctx = _make_context(
+        amount_cents=10_000,
+        units=100,
+        bonuses=[{
+            "condition": "portfolio_size_gte",
+            "threshold_cents": 500_000,
+            "bonus_units_percent": 5,
+            "funded_by": "platform",
+        }],
+    )
+    processor = GiftProcessor(investor_portfolio_cents=0)
+    transactions = processor.process(ctx)
+
+    assert len(transactions) == 0
+
+
+def test_gift_processor_empty_bonuses() -> None:
+    """GiftProcessor: no bonuses configured -> empty result."""
+    ctx = _make_context(bonuses=[])
+    processor = GiftProcessor(investor_portfolio_cents=0)
+    transactions = processor.process(ctx)
+
+    assert len(transactions) == 0
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: ProcessorRegistry
+# ---------------------------------------------------------------------------
+
+
+def test_registry_runs_both_processors() -> None:
+    """ProcessorRegistry: runs purchase + gift processors."""
+    ctx = _make_context(
+        units=200,
+        bonuses=[{
+            "condition": "always",
+            "bonus_units_percent": 10,
+            "funded_by": "company",
+        }],
+    )
+    registry = ProcessorRegistry(investor_portfolio_cents=0)
+    transactions = registry.run_all(ctx)
+
+    # 1 sale + 1 gift.
+    assert len(transactions) == 2
+    assert transactions[0].legal_basis == "sale"
+    assert transactions[1].legal_basis == "gift"
+    assert transactions[1].units == 20  # 10% of 200
+
+    # All pass SUM=0.
+    for txn in transactions:
+        assert sum(e.amount_cents for e in txn.entries) == 0
+
+
+# ---------------------------------------------------------------------------
+# Unit tests: validate_purchase_config
+# ---------------------------------------------------------------------------
+
+
+def test_validate_purchase_config_valid() -> None:
+    """Valid purchase_config passes validation."""
+    validate_purchase_config({
+        "distribution": {
+            "company_pct": 0.70,
+            "agent_levels": [0.05],
+        },
+        "bonuses": [
+            {
+                "condition": "always",
+                "bonus_units_percent": 10,
+                "funded_by": "company",
+            },
+        ],
+    })
+
+
+def test_validate_purchase_config_bonus_sum_exceeds_100() -> None:
+    """Bonus percentages summing > 100 -> BadRequestError."""
+    with pytest.raises(BadRequestError, match="exceeds 100"):
+        validate_purchase_config({
+            "bonuses": [
+                {
+                    "condition": "always",
+                    "bonus_units_percent": 60,
+                    "funded_by": "company",
+                },
+                {
+                    "condition": "always",
+                    "bonus_units_percent": 50,
+                    "funded_by": "platform",
+                },
+            ],
+        })
+
+
+def test_validate_purchase_config_unknown_keys() -> None:
+    """Unknown top-level keys -> BadRequestError."""
+    with pytest.raises(BadRequestError, match="unknown keys"):
+        validate_purchase_config({"bonuses": [], "foo": "bar"})
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: POST /products/{id}/purchase
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_purchase_instant_buy(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Investor purchases product -> 201, Purchase created."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, inv_id = await _create_investor_with_balance(
+        client, db_session
+    )
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 201, f"Purchase failed: {resp.text}"
+
+    data = resp.json()
+    assert len(data) >= 1
+    assert data[0]["legal_basis"] == "sale"
+    assert data[0]["units"] == product["units"]
+    assert data[0]["paid_cents"] == product["units"] * product["price_per_unit_cents"]
+
+
+@pytest.mark.asyncio
+async def test_purchase_insufficient_balance(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Purchase with insufficient balance -> 400."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    # Investor with only 100 cents (product costs 100 * 10000 = 1_000_000).
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_broke", balance_cents=100
+    )
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 400
+    assert "Insufficient balance" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_purchase_product_not_active(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Purchase of non-active product -> 400."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    # Product stays hidden (not activated).
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_noact"
+    )
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 400
+    assert "not available" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_purchase_non_investor_forbidden(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Non-investor (staff) cannot purchase -> 403."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    # Admin is staff, not investor.
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_purchase_with_gift_bonus(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Purchase with 'always' bonus -> 201, sale + gift purchases."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(
+        client,
+        admin_token,
+        company["id"],
+        units=100,
+        purchase_config={
+            "bonuses": [
+                {
+                    "condition": "always",
+                    "bonus_units_percent": 10,
+                    "funded_by": "company",
+                },
+            ],
+        },
+    )
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_gift"
+    )
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 201, f"Purchase failed: {resp.text}"
+
+    data = resp.json()
+    assert len(data) == 2
+
+    sale = next(p for p in data if p["legal_basis"] == "sale")
+    gift = next(p for p in data if p["legal_basis"] == "gift")
+
+    assert sale["units"] == 100
+    assert sale["paid_cents"] == 100 * 10000
+    assert gift["units"] == 10  # 10% of 100
+    assert gift["paid_cents"] == 0

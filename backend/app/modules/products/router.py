@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Public Router (Sprint 4.2)
+# CBSHOME Backend -- Product Public Router (Sprint 4.2 + Sprint 6.1)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -8,6 +8,9 @@
 #
 # AUTH:
 #   No authentication required. Public storefront.
+#
+# Sprint 6.1 CHANGES:
+#   - sold_units populated from real Purchase count (TD-031)
 # =============================================================================
 
 from uuid import UUID
@@ -23,6 +26,7 @@ from app.modules.products.schemas import (
     PublicProductResponse,
 )
 from app.modules.products.service import get_product_detail, list_products
+from app.modules.purchases.service import get_sold_units_map
 
 router = APIRouter(prefix="/api/v1/products", tags=["products"])
 
@@ -45,8 +49,19 @@ async def list_products_endpoint(
         page=page,
         per_page=per_page,
     )
+
+    # Fetch sold_units for all products in one query.
+    product_ids = [p.id for p in products]
+    sold_map = await get_sold_units_map(session, product_ids)
+
+    items = []
+    for p in products:
+        resp = PublicProductResponse.model_validate(p)
+        resp.sold_units = sold_map.get(p.id, 0)
+        items.append(resp)
+
     return PublicProductListResponse(
-        items=[PublicProductResponse.model_validate(p) for p in products],
+        items=items,
         total=total,
         page=page,
         per_page=per_page,
@@ -63,7 +78,11 @@ async def get_product_detail_endpoint(
 ) -> PublicProductDetailResponse:
     """Get product detail with installment plans (public)."""
     product, installments = await get_product_detail(product_id, session)
+
+    sold_map = await get_sold_units_map(session, [product.id])
+
     response = PublicProductDetailResponse.model_validate(product)
+    response.sold_units = sold_map.get(product.id, 0)
     response.installments = [
         InstallmentResponse.model_validate(inst) for inst in installments
     ]

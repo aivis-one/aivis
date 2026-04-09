@@ -66,10 +66,14 @@ class LedgerReason:
     GIFT: str = "gift:{type}:{reference_id}"
 
     # ------------------------------------------------------------------
-    # Saga distribution (passive_ledger: +amount per recipient)
+    # Distribution saga (passive_ledger: movement from platform)
     # ------------------------------------------------------------------
     SAGA_COMPANY_REVENUE: str = "saga:company_revenue:{purchase_id}"
     SAGA_PLATFORM_FEE: str = "saga:platform_fee:{purchase_id}"
+
+    # Sprint 6.1: distribution entries created by PurchaseProcessor.
+    DISTRIBUTION_COMPANY: str = "distribution:company:{company_id}:{purchase_id}"
+    PLATFORM_REMAINDER: str = "platform:remainder:{purchase_id}"
 
     # ------------------------------------------------------------------
     # Commissions (passive_ledger: +amount for agent)

@@ -1,22 +1,13 @@
 # =============================================================================
-# CBSHOME Backend -- Product Schemas (Sprint 4.2)
+# CBSHOME Backend -- Product Schemas (Sprint 4.2 + Sprint 6.1)
 # =============================================================================
 #
-# REQUEST SCHEMAS:
-#   CreateProductRequest       -- POST /staff/products
-#   UpdateProductRequest       -- PATCH /staff/products/{id} (partial)
-#   UpdateProductStatusRequest -- PATCH /staff/products/{id}/status
-#   CreateInstallmentRequest   -- POST /staff/products/{id}/installments
-#   UpdateInstallmentRequest   -- PATCH /staff/products/{id}/installments/{inst_id}
-#
-# RESPONSE SCHEMAS:
-#   ProductResponse            -- staff view (includes company_id)
-#   ProductDetailResponse      -- staff view + installments
-#   ProductListResponse        -- paginated list (staff)
-#   PublicProductResponse      -- public storefront (no sensitive data)
-#   PublicProductDetailResponse-- public + installments + sold_units stub
-#   PublicProductListResponse  -- paginated list (public)
-#   InstallmentResponse        -- installment plan template
+# Sprint 6.1 CHANGES:
+#   - Removed gift_units from CreateProductRequest, UpdateProductRequest,
+#     ProductResponse, PublicProductResponse
+#   - Added purchase_config to CreateProductRequest, UpdateProductRequest,
+#     ProductResponse
+#   - PublicProductResponse does NOT expose purchase_config (business-sensitive)
 # =============================================================================
 
 from datetime import datetime
@@ -39,13 +30,13 @@ class CreateProductRequest(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
     units: int = Field(gt=0)
-    gift_units: int = Field(default=0, ge=0)
+    purchase_config: dict | None = None  # type: ignore[type-arg]
 
 
 class UpdateProductRequest(BaseModel):
     """Partial update of product.
 
-    gift_units triggers financial_operations permission check in router.
+    purchase_config triggers financial_operations permission check in router.
     units and company_id are immutable -- not in update schema.
     """
 
@@ -53,7 +44,7 @@ class UpdateProductRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
-    gift_units: int | None = Field(default=None, ge=0)
+    purchase_config: dict | None = None  # type: ignore[type-arg]
 
 
 class UpdateProductStatusRequest(BaseModel):
@@ -109,7 +100,7 @@ class ProductResponse(BaseModel):
     name: str
     description: str | None
     units: int
-    gift_units: int
+    purchase_config: dict | None  # type: ignore[type-arg]
     price_per_unit_cents: int
     status: str
     created_at: datetime
@@ -141,9 +132,8 @@ class PublicProductResponse(BaseModel):
     name: str
     description: str | None
     units: int
-    gift_units: int
     price_per_unit_cents: int
-    sold_units: int = 0  # TODO Sprint 6.1: real count from purchases
+    sold_units: int = 0  # Populated by router from Purchase count (TD-031)
 
 
 class PublicProductDetailResponse(PublicProductResponse):

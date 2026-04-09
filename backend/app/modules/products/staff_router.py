@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Staff Router (Sprint 4.2)
+# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -12,8 +12,11 @@
 #
 # PERMISSIONS:
 #   All endpoints require company_manage.
-#   Create product, gift_units update, and all installment ops also
+#   Create product, purchase_config update, and all installment ops also
 #   require financial_operations.
+#
+# Sprint 6.1 CHANGES:
+#   - gift_units -> purchase_config in create/update endpoints
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit().
@@ -101,7 +104,7 @@ async def create_product_endpoint(
         staff,
         session,
         description=body.description,
-        gift_units=body.gift_units,
+        purchase_config=body.purchase_config,
     )
     return ProductResponse.model_validate(product)
 
@@ -118,11 +121,11 @@ async def update_product_endpoint(
 ) -> ProductResponse:
     """Update product fields.
 
-    If gift_units is in the body, also requires financial_operations.
+    If purchase_config is in the body, also requires financial_operations.
     """
     updates = body.model_dump(exclude_unset=True)
 
-    if "gift_units" in updates:
+    if "purchase_config" in updates:
         await _require_financial_operations(staff, session)
 
     product = await update_product(
@@ -131,7 +134,7 @@ async def update_product_endpoint(
         session,
         name=updates.get("name"),
         description=updates.get("description", ...),
-        gift_units=updates.get("gift_units"),
+        purchase_config=updates.get("purchase_config", ...),
     )
     return ProductResponse.model_validate(product)
 

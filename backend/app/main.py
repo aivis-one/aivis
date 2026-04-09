@@ -24,6 +24,7 @@
 #   payments_router        -> /api/v1/payments/* (Sprint 5.2)
 #   payments_webhook_router -> /api/v1/payments/crypto/* (Sprint 5.2)
 #   staff_payments_router  -> /api/v1/staff/payments/* (Sprint 5.3)
+#   purchases_router       -> /api/v1/products/*/purchase (Sprint 6.1)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start confirmation daemon
@@ -65,6 +66,7 @@ from app.modules.payments.staff_router import router as staff_payments_router
 from app.modules.payments.webhook_router import router as payments_webhook_router
 from app.modules.products.router import router as products_router
 from app.modules.products.staff_router import router as staff_products_router
+from app.modules.purchases.router import router as purchases_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.router import router as staff_users_router
@@ -190,6 +192,7 @@ app.include_router(staff_products_router)
 app.include_router(payments_router)
 app.include_router(payments_webhook_router)
 app.include_router(staff_payments_router)
+app.include_router(purchases_router)
 
 
 # ---------------------------------------------------------------------------
@@ -199,62 +202,28 @@ app.include_router(staff_payments_router)
 @app.exception_handler(CBSError)
 async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
     """Convert CBSError exceptions into proper HTTP JSON responses."""
-    if exc.status_code >= 500:
-        logger.error(
-            "cbs_error",
-            status_code=exc.status_code,
-            code=exc.code,
-            message=exc.message,
-            path=request.url.path,
-        )
-    else:
-        logger.warning(
-            "cbs_error",
-            status_code=exc.status_code,
-            code=exc.code,
-            message=exc.message,
-            path=request.url.path,
-        )
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.code, "message": exc.message},
-    )
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
-    """Catch-all for unexpected exceptions -- return generic 500."""
-    logger.exception(
-        "unhandled_exception",
-        path=request.url.path,
-        method=request.method,
-        exc_type=type(exc).__name__,
-    )
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "internal_error",
-            "message": "An unexpected error occurred",
-        },
+        content={"detail": exc.detail},
     )
 
 
 # ---------------------------------------------------------------------------
-# Root / Health / Ready
+# Root + Health + Ready
 # ---------------------------------------------------------------------------
-
 
 @app.get("/")
-async def root() -> dict[str, str]:
-    """API info -- name and version."""
+async def root() -> dict:
+    """API info."""
     return {"name": "CBSHOME API", "version": APP_VERSION}
 
 
 @app.get("/health")
 async def health() -> JSONResponse:
-    """Health check -- DB + Redis connectivity. Always returns 200."""
+    """Health check -- always returns 200.
+
+    Reports DB and Redis connectivity status.
+    """
     db_ok = True
     redis_ok = True
 
@@ -274,7 +243,7 @@ async def health() -> JSONResponse:
     return JSONResponse(
         status_code=200,
         content={
-            "status": "ok" if (db_ok and redis_ok) else "degraded",
+            "status": "ok",
             "db": "ok" if db_ok else "error",
             "redis": "ok" if redis_ok else "error",
         },
@@ -283,7 +252,7 @@ async def health() -> JSONResponse:
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe -- returns 503 if any dependency is down."""
+    """Readiness probe -- 503 if any dependency is degraded."""
     db_ok = True
     redis_ok = True
 
@@ -301,7 +270,6 @@ async def ready() -> JSONResponse:
         redis_ok = False
 
     all_ok = db_ok and redis_ok
-
     return JSONResponse(
         status_code=200 if all_ok else 503,
         content={
