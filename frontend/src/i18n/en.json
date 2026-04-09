@@ -1,0 +1,22 @@
+{
+  "app": {
+    "name": "CBS HOME"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search",
+    "noResults": "No results found",
+    "yes": "Yes",
+    "no": "No"
+  }
+}

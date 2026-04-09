@@ -1,0 +1,22 @@
+{
+  "app": {
+    "name": "CBS HOME"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "loading": "Laden...",
+    "error": "Etwas ist schiefgelaufen",
+    "retry": "Wiederholen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "confirm": "Bestätigen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "search": "Suche",
+    "noResults": "Keine Ergebnisse gefunden",
+    "yes": "Ja",
+    "no": "Nein"
+  }
+}

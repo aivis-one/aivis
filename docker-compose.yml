@@ -4,9 +4,6 @@
 #
 # Full stack: app + frontend + postgres + redis
 #
-# NOTE: frontend service is disabled until Phase F (frontend sprint).
-# Remove the profile restriction when frontend/Dockerfile exists.
-#
 # Usage:
 #   cbshome update   -- pull, build, migrate, test, restart
 #   cbshome test     -- run tests inside container
@@ -34,16 +31,20 @@ services:
       start_period: 15s
     restart: unless-stopped
 
-  # frontend:  -- disabled until Phase F (frontend/Dockerfile does not exist yet)
-  #   build: ./frontend
-  #   container_name: cbshome-frontend
-  #   ports:
-  #     - "127.0.0.1:3000:3000"
-  #   depends_on:
-  #     app: { condition: service_healthy }
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
-  #   restart: unless-stopped
+  frontend:
+    build: ./frontend
+    container_name: cbshome-frontend
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      app: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
 
   postgres:
     image: postgres:16

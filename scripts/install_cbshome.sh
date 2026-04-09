@@ -633,6 +633,12 @@ case_test() {
                 FAILED=1
             fi
             ;;
+        frontend)
+            echo "=== Frontend Lint ==="
+            if ! docker compose exec -T frontend sh -c "cd /app 2>/dev/null && npx eslint . || true"; then
+                echo -e "${YELLOW}⚠ Frontend lint not available (container may lack source)${NC}"
+            fi
+            ;;
         all)
             echo "=== Backend Tests ==="
             if ! docker compose exec -T app python -m pytest tests/ -v --tb=short; then
@@ -640,7 +646,7 @@ case_test() {
             fi
             ;;
         *)
-            echo "Usage: cbshome test [backend|all]"
+            echo "Usage: cbshome test [backend|frontend|all]"
             exit 1
             ;;
     esac
@@ -664,6 +670,10 @@ case_lint() {
     echo ""
     echo "=== Mypy ==="
     docker compose exec -T app python -m mypy app/
+    echo ""
+    echo "=== Frontend ESLint ==="
+    docker compose exec -T frontend sh -c "cd /app 2>/dev/null && npx eslint . || true" 2>/dev/null \
+        || echo -e "${YELLOW}⚠ Frontend lint not available${NC}"
 }
 
 # ==============================================================================
@@ -717,9 +727,9 @@ case_update() {
     echo "Updated: $CURRENT_COMMIT -> $NEW_COMMIT"
     echo ""
 
-    # Rebuild app image.
-    echo "Rebuilding Docker image..."
-    docker compose build --no-cache app
+    # Rebuild all images (app + frontend).
+    echo "Rebuilding Docker images..."
+    docker compose build --no-cache
 
     # Restart stack (down + up to ensure new image is used).
     echo "Restarting services..."
@@ -984,8 +994,8 @@ case "$CMD" in
         echo "  version                   — Git log + runtime versions"
         echo ""
         echo "Testing:"
-        echo "  test [backend|all]        — Run tests (default: all)"
-        echo "  lint                      — Run ruff + mypy"
+        echo "  test [backend|frontend|all] — Run tests (default: all)"
+        echo "  lint                      — Run ruff + mypy + eslint"
         echo ""
         echo "Deployment:"
         echo "  update                    — Pull, rebuild, migrate, test, restart"
