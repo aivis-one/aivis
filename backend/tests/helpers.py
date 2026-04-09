@@ -129,35 +129,20 @@ async def login_user(
 
 
 def build_init_data(
-    telegram_id: int,
-    *,
-    username: str | None = "testuser",
-    photo_url: str | None = None,
-    language_code: str = "en",
+    user_data: dict,
+    bot_token: str = BOT_TOKEN,
     auth_date: int | None = None,
 ) -> str:
-    """Build a valid signed Telegram initData string.
+    """Build a valid Telegram initData query string with correct HMAC.
 
-    Uses _init_data_counter for unique query_id to prevent
-    anti-replay rejection in tests.
+    Includes a unique query_id on every call (via _init_data_counter) so
+    that multiple calls for the same telegram_id within the same second
+    produce different hashes and don't trigger anti-replay protection.
     """
     if auth_date is None:
         auth_date = int(time.time())
 
-    user_data = {
-        "id": telegram_id,
-        "first_name": "Test",
-        "last_name": "User",
-    }
-    if username is not None:
-        user_data["username"] = username
-    if photo_url is not None:
-        user_data["photo_url"] = photo_url
-    if language_code:
-        user_data["language_code"] = language_code
-
-    counter_val = next(_init_data_counter)
-    query_id = f"test_qid_{telegram_id}_{auth_date}_{counter_val}"
+    query_id = str(next(_init_data_counter))
 
     params = {
         "user": json.dumps(user_data, separators=(",", ":")),
@@ -165,22 +150,39 @@ def build_init_data(
         "query_id": query_id,
     }
 
-    # Compute hash (matching Telegram's algorithm).
     data_check_string = "\n".join(
-        f"{k}={params[k]}" for k in sorted(params.keys())
+        f"{k}={v}" for k, v in sorted(params.items())
     )
 
     secret_key = hmac.new(
-        b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256
+        b"WebAppData", bot_token.encode(), hashlib.sha256,
     ).digest()
-
     computed_hash = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256
+        secret_key, data_check_string.encode(), hashlib.sha256,
     ).hexdigest()
 
     params["hash"] = computed_hash
-
     return urlencode(params)
+
+
+async def login_telegram(
+    client: AsyncClient,
+    telegram_id: int,
+    first_name: str = "Test",
+    username: str | None = None,
+) -> dict:
+    """Login via POST /api/v1/auth/telegram."""
+    user_data = {"id": telegram_id, "first_name": first_name}
+    if username:
+        user_data["username"] = username
+
+    init_data = build_init_data(user_data)
+    resp = await client.post(
+        "/api/v1/auth/telegram",
+        json={"init_data": init_data},
+    )
+    assert resp.status_code == 200, f"Telegram login failed: {resp.status_code} {resp.text}"
+    return resp.json()
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +193,7 @@ def build_init_data(
 async def create_staff_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    email: str = "staff@example.com",
+    email: str,
     password: str = "testpass123",
 ) -> tuple[dict, str]:
     """Register a user, promote to staff, create StaffProfile with defaults.
