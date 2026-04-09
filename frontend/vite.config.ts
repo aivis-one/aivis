@@ -1,18 +1,12 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   plugins: [
     vue(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      manifest: false, // Using public/manifest.json directly
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-      },
-    }),
+    // VitePWA enabled in Sprint F0.4
+    // VitePWA({ ... }),
   ],
   resolve: {
     alias: {
