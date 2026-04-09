@@ -86,7 +86,8 @@
   --telegram-dark: #229ED9;
 }
 
-/* === Dark Mode === */
+/* === Dark Mode (explicit user choice) ===
+   SYNC: keep token values identical with @media (prefers-color-scheme: dark) below */
 [data-theme="dark"] {
   --bg: #0F172A;
   --bg-subtle: #1E293B;
@@ -118,7 +119,8 @@
   --shadow-focus: 0 0 0 3px rgba(251, 146, 60, 0.4);
 }
 
-/* === System preference fallback (no explicit data-theme) === */
+/* === System preference fallback (no explicit data-theme) ===
+   SYNC: keep token values identical with [data-theme="dark"] above */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --bg: #0F172A;

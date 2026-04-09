@@ -5,14 +5,17 @@ import ru from '@/i18n/locales/ru.json'
 import de from '@/i18n/locales/de.json'
 import ar from '@/i18n/locales/ar.json'
 
-const RTL_LOCALES = ['ar']
+export const SUPPORTED_LOCALES = ['en', 'ru', 'de', 'ar'] as const
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
-function detectLocale(): string {
+const RTL_LOCALES: readonly string[] = ['ar']
+
+function detectLocale(): SupportedLocale {
   const stored = localStorage.getItem('cbs-lang')
-  if (stored && ['en', 'ru', 'de', 'ar'].includes(stored)) return stored
+  if (stored && SUPPORTED_LOCALES.includes(stored as SupportedLocale)) return stored as SupportedLocale
 
   const nav = navigator.language?.split('-')[0]
-  if (nav && ['en', 'ru', 'de', 'ar'].includes(nav)) return nav
+  if (nav && SUPPORTED_LOCALES.includes(nav as SupportedLocale)) return nav as SupportedLocale
 
   return 'en'
 }

@@ -3,8 +3,7 @@
    Reset, typography, Google Fonts, RTL, scrollbar
    ============================================================ */
 
-/* === Google Fonts === */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+/* === Google Fonts — loaded via <link> in index.html for performance === */
 
 /* === Reset === */
 *,
