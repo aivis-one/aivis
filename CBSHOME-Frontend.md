@@ -278,21 +278,27 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ---
 
-## PHASE F0: Инфраструктура
+## PHASE F0: Инфраструктура ✅
 
-### F0.1: Инициализация проекта
+### ✅ F0.1: Инициализация проекта
 
 **Цель:** Проект собирается, деплоится на VPS, пустая страница открывается.
 
 **Задачи:**
-- [ ] package.json с TypeScript, Vue Router, Pinia, vue-i18n
-- [ ] Структура папок (src/api, components, views, stores, router, platform, styles, composables, utils, i18n)
-- [ ] ESLint flat config + Prettier (единый стиль кода)
-- [ ] tsconfig.json — strict mode, path aliases (`@/` → `src/`)
-- [ ] vite.config.ts — base path, env переменные
-- [ ] .env.example (`VITE_API_BASE_URL=https://api.cbshome.org`, `VITE_TELEGRAM_BOT_URL=...`)
-- [ ] .gitignore (node_modules, dist, .env)
-- [ ] README.md (команды: install, dev, build, lint)
+- [x] package.json с TypeScript, Vue Router, Pinia, vue-i18n
+- [x] Структура папок (src/api, components, views, stores, router, platform, styles, composables, utils, i18n)
+- [x] ESLint flat config + Prettier (единый стиль кода)
+- [x] tsconfig.json — strict mode, path aliases (`@/` → `src/`)
+- [x] vite.config.ts — base path, env переменные
+- [x] .env.example (`VITE_API_BASE_URL=https://api.cbshome.org`, `VITE_TELEGRAM_BOT_URL=...`)
+- [x] .gitignore (node_modules, dist, .env)
+- [x] README.md (команды: install, dev, build, lint)
+
+**Решения реализации:**
+- Версии deps: caret ranges (`^`) в package.json, детерминизм через `package-lock.json` + `npm ci` в Dockerfile
+- Node 22 LTS (alpine) для билда, nginx:alpine для раздачи
+- `env.d.ts` содержит декларации для `.vue`, `.json` и Vite env
+- Telegram WebApp SDK подключается через `<script>` в index.html (не npm — Telegram не публикует SRI-хеши)
 
 **Результат:**
 ```
@@ -345,12 +351,12 @@ frontend/
 
 ---
 
-### F0.2: Дизайн-система (перенос из мокапов)
+### ✅ F0.2: Дизайн-система (перенос из мокапов)
 
 **Цель:** CSS-переменные и базовые стили из мокапов перенесены в проект. Тёмная тема работает.
 
 **Задачи:**
-- [ ] src/styles/variables.css — полный перенос из mockups/css/variables.css v1.8.0:
+- [x] src/styles/variables.css — полный перенос из mockups/css/variables.css v1.8.0:
   - Orange Triad: `--o-primary: #cc3203`, `--o-accent: #E8651A`, `--o-light: #EFB44C`
   - Teal System: `--t-500` → `--t-950`, tints
   - Semantic aliases: `--primary`, `--accent`, `--bg`, `--text`, `--border`
@@ -359,33 +365,44 @@ frontend/
   - Radius: `--radius-sm` (4px) → `--radius-full` (9999px)
   - `[data-theme="dark"]` — полный набор dark-переменных
   - `@media (prefers-color-scheme: dark)` — system preference fallback
-- [ ] src/styles/global.css:
+- [x] src/styles/global.css:
   - CSS reset
   - Google Fonts: `Montserrat:wght@400;500;600;700;800` + `Noto+Sans+Arabic:wght@400;500;600;700`
   - Base typography: `font-family: var(--font)` (`'Montserrat', system-ui, sans-serif`)
   - RTL base: `[dir="rtl"] { font-family: 'Noto Sans Arabic', 'Montserrat', sans-serif; }`
   - Scrollbar стилизация
-- [ ] main.ts — импорт стилей (variables.css первым, потом global.css)
-- [ ] Theme detection: initial script в index.html (как в мокапах — `localStorage.getItem('cbs-theme')`)
+- [x] main.ts — импорт стилей (variables.css первым, потом global.css, потом telegram.css)
+- [x] Theme detection: initial script в index.html (как в мокапах — `localStorage.getItem('cbs-theme')`)
+
+**Решения реализации:**
+- Dark mode токены дублируются в `[data-theme="dark"]` и `@media (prefers-color-scheme: dark)` — CSS не поддерживает миксины без препроцессора. Блоки связаны комментариями `/* SYNC: ... */`
+- Google Fonts загружаются через `<link>` в index.html (не `@import` в CSS) — избегаем блокирующего каскада запросов
+- `src/styles/telegram.css` — пустой placeholder для Telegram-specific overrides (заполняется в F1.1)
 
 **Критерий готовности:** HomeView.vue использует CSS-переменные. Тёмная тема переключается через `[data-theme="dark"]` на `<html>`.
 
 ---
 
-### F0.3: Docker + деплой на VPS
+### ✅ F0.3: Docker + деплой на VPS
 
 **Цель:** Фронтенд деплоится через `cbshome update`, доступен по HTTPS.
 
 **Задачи:**
-- [ ] frontend/Dockerfile (multi-stage: node:22-alpine build → nginx:alpine serve)
-- [ ] frontend/nginx.conf (внутренний nginx: SPA fallback, gzip, кеш assets, порт 3000)
-- [ ] frontend/.dockerignore
-- [ ] docker-compose.yml — раскомментировать сервис `frontend`:
+- [x] frontend/Dockerfile (multi-stage: node:22-alpine build → nginx:alpine serve)
+- [x] frontend/nginx.conf (внутренний nginx: SPA fallback, gzip, кеш assets, порт 3000)
+- [x] frontend/.dockerignore
+- [x] docker-compose.yml — раскомментировать сервис `frontend`:
   - build: ./frontend, порт 127.0.0.1:3000:3000
   - depends_on: app (condition: service_healthy)
   - healthcheck: `wget -q --spider http://localhost:3000/`
-- [ ] Nginx на хосте: `cbshome.org/*` → frontend:3000
-- [ ] install_cbshome.sh — обновить: два upstream в nginx, `cbshome update` собирает оба сервиса
+- [x] Nginx на хосте: `cbshome.org/*` → frontend:3000
+- [x] install_cbshome.sh — обновить: `cbshome update` собирает оба сервиса, lint/test включают frontend
+
+**Решения реализации:**
+- App healthcheck в docker-compose.yml: `python -c "import urllib.request; urllib.request.urlopen(...)"` вместо `curl` — `python:3.12-slim` не содержит curl. Без этого фикса frontend не стартует (зависит от `condition: service_healthy`)
+- `install_cbshome.sh` изменения: `build --no-cache app` → `build --no-cache` (все сервисы), `case_lint` + `case_test` с секцией frontend
+- nginx.conf: CSP заголовок `frame-ancestors 'self' https://web.telegram.org https://*.telegram.org` вместо `X-Frame-Options: SAMEORIGIN` — последний блокирует Telegram iframe
+- Полный CSP: `default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.cbshome.org`
 
 **Docker-сервисы (после F0.3):**
 ```
@@ -405,38 +422,49 @@ https://api.cbshome.org/*         → cbshome-app:8000
 
 ---
 
-### F0.4: PWA-заготовка
+### ✅ F0.4: PWA-заготовка
 
 **Цель:** Приложение можно добавить на Home Screen.
 
 **Задачи:**
-- [ ] vite-plugin-pwa в vite.config.ts
-- [ ] public/manifest.json (name: "CBS HOME", icons, theme_color: `#1A6B6A`, display: standalone)
-- [ ] Иконки: 192x192, 512x512 (placeholder — заменим на брендинг заказчика)
-- [ ] Service Worker: precache статики (только кеширование, без офлайна)
-- [ ] meta-теги в index.html (apple-mobile-web-app-capable, viewport)
+- [x] vite-plugin-pwa в vite.config.ts
+- [x] public/manifest.json (name: "CBS HOME", icons, theme_color: `#1A6B6A`, display: standalone)
+- [x] Иконки: 192x192, 512x512 (placeholder — заменим на брендинг заказчика)
+- [x] Service Worker: precache статики (только кеширование, без офлайна)
+- [x] meta-теги в index.html (apple-mobile-web-app-capable, viewport)
+
+**Решения реализации:**
+- `vite-plugin-pwa` с `registerType: 'autoUpdate'`, `manifest: false` (используем `public/manifest.json` напрямую)
+- workbox config: `globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']`, `navigateFallback: 'index.html'`, `navigateFallbackDenylist: [/^\/api\//]`
+- Placeholder-иконки: сплошной оранжевый (#cc3203) PNG 192x192 и 512x512
 
 **Критерий готовности:** iPhone Safari → "Добавить на экран" → приложение открывается в standalone-режиме.
 
 ---
 
-### F0.5: i18n каркас
+### ✅ F0.5: i18n каркас
 
 **Цель:** vue-i18n настроен, переключение языков работает, RTL layout переключается.
 
 **Задачи:**
-- [ ] src/i18n/index.ts:
+- [x] src/i18n/index.ts:
   - `createI18n()` с `legacy: false` (Composition API)
   - Locale detection: `localStorage.getItem('cbs-lang')` → `navigator.language` → `'en'` fallback
   - RTL detection: `locale === 'ar'` → `document.documentElement.dir = 'rtl'`, `document.documentElement.lang = 'ar'`
-- [ ] src/i18n/locales/en.json — базовые ключи (app.name, common.save, common.cancel, common.loading...)
-- [ ] src/i18n/locales/ru.json — русские переводы
-- [ ] src/i18n/locales/de.json — немецкие переводы
-- [ ] src/i18n/locales/ar.json — арабские переводы
-- [ ] src/styles/global.css — RTL utilities:
+- [x] src/i18n/locales/en.json — базовые ключи (app.name, common.save, common.cancel, common.loading...)
+- [x] src/i18n/locales/ru.json — русские переводы
+- [x] src/i18n/locales/de.json — немецкие переводы
+- [x] src/i18n/locales/ar.json — арабские переводы
+- [x] src/styles/global.css — RTL utilities:
   - `[dir="rtl"] .mr-auto { margin-right: 0; margin-left: auto; }`
   - `[dir="rtl"]` overrides для flex direction, text-align, padding/margin
-- [ ] main.ts — `app.use(i18n)`
+- [x] main.ts — `app.use(i18n)`
+
+**Решения реализации:**
+- `SUPPORTED_LOCALES = ['en', 'ru', 'de', 'ar'] as const` — единая типизированная константа, экспортируется
+- `SupportedLocale` — union type, выведенный из константы
+- `isSupportedLocale()` — type guard для безопасной проверки locale из localStorage/navigator
+- `applyDir()` — экспортируемая функция для переключения `dir` и `lang` на `<html>`
 
 **Критерий готовности:** `$t('app.name')` рендерит "CBS HOME" на en, "ЦБС ХОУМ" на ru. Переключение на ar → layout зеркалится (RTL).
 
