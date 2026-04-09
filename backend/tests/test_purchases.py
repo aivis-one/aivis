@@ -427,7 +427,7 @@ async def test_purchase_insufficient_balance(
         headers=auth_headers(inv_token),
     )
     assert resp.status_code == 400
-    assert "Insufficient balance" in resp.json()["detail"]
+    assert "Insufficient balance" in resp.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -450,7 +450,7 @@ async def test_purchase_product_not_active(
         headers=auth_headers(inv_token),
     )
     assert resp.status_code == 400
-    assert "not available" in resp.json()["detail"]
+    assert "not available" in resp.json()["message"]
 
 
 @pytest.mark.asyncio

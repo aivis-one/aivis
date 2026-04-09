@@ -204,7 +204,7 @@ async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
     """Convert CBSError exceptions into proper HTTP JSON responses."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"error": exc.code, "message": exc.message},
     )
 
 
@@ -240,10 +240,11 @@ async def health() -> JSONResponse:
     except Exception:
         redis_ok = False
 
+    all_ok = db_ok and redis_ok
     return JSONResponse(
         status_code=200,
         content={
-            "status": "ok",
+            "status": "ok" if all_ok else "degraded",
             "db": "ok" if db_ok else "error",
             "redis": "ok" if redis_ok else "error",
         },

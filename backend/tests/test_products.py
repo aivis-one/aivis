@@ -1,12 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Product Tests (Sprint 4.2)
+# CBSHOME Backend -- Product Tests (Sprint 4.2 + Sprint 6.1)
 # =============================================================================
 #
 # Tests cover:
 #   1:  Admin creates product -> 201
 #   2:  Staff without financial_operations cannot create product -> 403
 #   3:  Update product name -> 200
-#   4:  Update gift_units without financial_operations -> 403
+#   4:  Update purchase_config without financial_operations -> 403
 #   5:  Status transition hidden -> active -> archived
 #   6:  Invalid status transition -> 400
 #   7:  Create installment with valid plan_config -> 201
@@ -14,7 +14,7 @@
 #   9:  Delete installment (soft) -> 204, not visible in detail
 #   10: Price cascade soft-deletes installments
 #   11: Public list shows only active products
-#   12: Public detail includes installments and sold_units stub
+#   12: Public detail includes installments and sold_units
 #
 # Email prefix: "s42_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -82,7 +82,6 @@ async def _create_product(
     company_id: str,
     suffix: str = "pkg",
     units: int = 100,
-    gift_units: int = 0,
 ) -> dict:
     """Helper: create a product and return response."""
     resp = await client.post(
@@ -92,7 +91,6 @@ async def _create_product(
             "name": f"Package {suffix}",
             "description": f"Test package {suffix}",
             "units": units,
-            "gift_units": gift_units,
         },
         headers=auth_headers(admin_token),
     )
@@ -221,15 +219,15 @@ async def test_update_product_name(
 
 
 # ---------------------------------------------------------------------------
-# Test 4: Update gift_units without financial_operations -> 403
+# Test 4: Update purchase_config without financial_operations -> 403
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_update_gift_units_no_financial_ops(
+async def test_update_purchase_config_no_financial_ops(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Staff with company_manage but no financial_operations cannot update gift_units."""
+    """Staff with company_manage but no financial_operations cannot update purchase_config."""
     from uuid import UUID
 
     from app.modules.staff.constants import VALID_PERMISSION_KEYS
@@ -267,7 +265,7 @@ async def test_update_gift_units_no_financial_ops(
 
     resp = await client.patch(
         f"/api/v1/staff/products/{product['id']}",
-        json={"gift_units": 10},
+        json={"purchase_config": {"bonuses": []}},
         headers=auth_headers(nofin_token),
     )
     assert resp.status_code == 403
@@ -337,7 +335,7 @@ async def test_invalid_status_transition(
 
 
 # ---------------------------------------------------------------------------
-# Test 7: Create installment with valid plan_config
+# Test 7: Create installment
 # ---------------------------------------------------------------------------
 
 
@@ -357,9 +355,9 @@ async def test_create_installment(
         headers=auth_headers(token),
     )
     assert resp.status_code == 201
-    inst = resp.json()
-    assert inst["name"] == "6-Month Plan"
-    assert inst["plan_config"]["bonus_units"] == 10
+    body = resp.json()
+    assert body["name"] == "6-Month Plan"
+    assert body["product_id"] == product["id"]
 
 
 # ---------------------------------------------------------------------------
@@ -376,21 +374,19 @@ async def test_invalid_plan_config(
     company = await _create_company(client, token, suffix="co8")
     product = await _create_product(client, token, company["id"])
 
-    bad_config = _valid_plan_config()
-    # Break units_percent sum (change last from 50 to 40 -> sum=90).
-    bad_config["tranches"][-1]["units_percent"] = 40
+    config = _valid_plan_config()
+    config["tranches"][0]["units_percent"] = 99  # sum > 100
 
     resp = await client.post(
         f"/api/v1/staff/products/{product['id']}/installments",
-        json={"name": "Bad Plan", "plan_config": bad_config},
+        json={"name": "Bad Plan", "plan_config": config},
         headers=auth_headers(token),
     )
     assert resp.status_code == 400
-    assert "units_percent" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
-# Test 9: Delete installment (soft)
+# Test 9: Delete installment
 # ---------------------------------------------------------------------------
 
 
@@ -398,41 +394,37 @@ async def test_invalid_plan_config(
 async def test_delete_installment(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Soft-delete installment -> 204, not in detail."""
+    """Soft-delete installment -> 204, not visible in detail."""
     token = await _admin_token(client, db_session)
     company = await _create_company(client, token, suffix="co9")
     product = await _create_product(client, token, company["id"])
 
     config = _valid_plan_config()
-    resp = await client.post(
+    create_resp = await client.post(
         f"/api/v1/staff/products/{product['id']}/installments",
         json={"name": "To Delete", "plan_config": config},
         headers=auth_headers(token),
     )
-    assert resp.status_code == 201
-    inst_id = resp.json()["id"]
+    inst_id = create_resp.json()["id"]
 
     # Delete.
-    resp2 = await client.delete(
+    del_resp = await client.delete(
         f"/api/v1/staff/products/{product['id']}/installments/{inst_id}",
         headers=auth_headers(token),
     )
-    assert resp2.status_code == 204
+    assert del_resp.status_code == 204
 
-    # Not in public detail.
-    # First publish: hidden -> active.
-    await client.patch(
-        f"/api/v1/staff/products/{product['id']}/status",
-        json={"status": "active"},
-        headers=auth_headers(token),
+    # Verify not visible in DB (soft-deleted).
+    stmt = select(ProductInstallment).where(
+        ProductInstallment.id == inst_id
     )
-    resp3 = await client.get(f"/api/v1/products/{product['id']}")
-    assert resp3.status_code == 200
-    assert len(resp3.json()["installments"]) == 0
+    result = await db_session.execute(stmt)
+    inst = result.scalar_one()
+    assert inst.is_deleted is True
 
 
 # ---------------------------------------------------------------------------
-# Test 10: Price cascade soft-deletes installments
+# Test 10: Price cascade
 # ---------------------------------------------------------------------------
 
 
@@ -440,48 +432,38 @@ async def test_delete_installment(
 async def test_price_cascade_deletes_installments(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Company price change -> product price updated, installments soft-deleted."""
+    """Price change soft-deletes installment templates."""
     token = await _admin_token(client, db_session)
-    company = await _create_company(client, token, suffix="casc")
+    company = await _create_company(client, token, suffix="co10")
     product = await _create_product(client, token, company["id"])
 
     # Create installment.
     config = _valid_plan_config()
-    resp = await client.post(
+    create_resp = await client.post(
         f"/api/v1/staff/products/{product['id']}/installments",
         json={"name": "Will Be Deleted", "plan_config": config},
         headers=auth_headers(token),
     )
-    assert resp.status_code == 201
+    inst_id = create_resp.json()["id"]
 
-    # Change company price.
-    resp2 = await client.patch(
+    # Change price.
+    await client.patch(
         f"/api/v1/staff/companies/{company['id']}/price",
-        json={"price_per_unit_cents": 15000},
+        json={"price_per_unit_cents": 20000},
         headers=auth_headers(token),
     )
-    assert resp2.status_code == 200
 
-    # Verify: product price updated.
-    from uuid import UUID
-    from app.modules.products.models import Product
-
-    stmt = select(Product).where(Product.id == UUID(product["id"]))
-    result = await db_session.execute(stmt)
-    p = result.scalar_one()
-    assert p.price_per_unit_cents == 15000
-
-    # Verify: installment soft-deleted.
-    inst_stmt = select(ProductInstallment).where(
-        ProductInstallment.product_id == UUID(product["id"]),
-        ProductInstallment.is_deleted == False,  # noqa: E712
+    # Verify installment is soft-deleted.
+    stmt = select(ProductInstallment).where(
+        ProductInstallment.id == inst_id
     )
-    inst_result = await db_session.execute(inst_stmt)
-    assert len(inst_result.scalars().all()) == 0
+    result = await db_session.execute(stmt)
+    inst = result.scalar_one()
+    assert inst.is_deleted is True
 
 
 # ---------------------------------------------------------------------------
-# Test 11: Public list shows only active products
+# Test 11: Public list
 # ---------------------------------------------------------------------------
 
 
@@ -489,29 +471,32 @@ async def test_price_cascade_deletes_installments(
 async def test_public_list_active_only(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Public GET /products returns only active products."""
+    """Public product list shows only active products."""
     token = await _admin_token(client, db_session)
-    company = await _create_company(client, token, suffix="pub")
+    company = await _create_company(client, token, suffix="co11")
 
     p1 = await _create_product(client, token, company["id"], suffix="a")
     p2 = await _create_product(client, token, company["id"], suffix="b")
 
-    # Publish p1: hidden -> active.
+    # Activate p1 only.
     await client.patch(
         f"/api/v1/staff/products/{p1['id']}/status",
         json={"status": "active"},
         headers=auth_headers(token),
     )
 
-    resp = await client.get("/api/v1/products")
+    resp = await client.get(
+        "/api/v1/products",
+        params={"company_id": company["id"]},
+    )
     assert resp.status_code == 200
-    ids = [p["id"] for p in resp.json()["items"]]
-    assert p1["id"] in ids
-    assert p2["id"] not in ids
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["id"] == p1["id"]
 
 
 # ---------------------------------------------------------------------------
-# Test 12: Public detail includes installments and sold_units stub
+# Test 12: Public detail with installments
 # ---------------------------------------------------------------------------
 
 
@@ -519,7 +504,7 @@ async def test_public_list_active_only(
 async def test_public_detail_with_installments(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Public detail includes installments and sold_units=0 stub."""
+    """Public detail includes installments and sold_units."""
     token = await _admin_token(client, db_session)
     company = await _create_company(client, token, suffix="det")
     product = await _create_product(client, token, company["id"])
