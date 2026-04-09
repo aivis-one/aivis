@@ -10,12 +10,16 @@ export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
 const RTL_LOCALES: readonly string[] = ['ar']
 
+function isSupportedLocale(s: string): s is SupportedLocale {
+  return (SUPPORTED_LOCALES as readonly string[]).includes(s)
+}
+
 function detectLocale(): SupportedLocale {
   const stored = localStorage.getItem('cbs-lang')
-  if (stored && SUPPORTED_LOCALES.includes(stored as SupportedLocale)) return stored as SupportedLocale
+  if (stored && isSupportedLocale(stored)) return stored
 
   const nav = navigator.language?.split('-')[0]
-  if (nav && SUPPORTED_LOCALES.includes(nav as SupportedLocale)) return nav as SupportedLocale
+  if (nav && isSupportedLocale(nav)) return nav
 
   return 'en'
 }

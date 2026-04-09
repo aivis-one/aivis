@@ -7,6 +7,7 @@ import { i18n } from '@/i18n'
 
 import '@/styles/variables.css'
 import '@/styles/global.css'
+import '@/styles/telegram.css'
 
 const app = createApp(App)
 
