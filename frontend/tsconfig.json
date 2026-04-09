@@ -21,10 +21,11 @@
     "types": ["vite/client"]
   },
   "include": [
+    "env.d.ts",
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.vue",
-    "env.d.ts"
+    "src/**/*.json"
   ],
   "exclude": ["node_modules", "dist"]
 }
