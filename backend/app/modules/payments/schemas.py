@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Schemas (Sprint 5.2, updated Sprint 5.3)
+# CBSHOME Backend -- Payment Schemas (Sprint 5.2, updated Sprint 5.3 + 6.1)
 # =============================================================================
 #
 # Request/response schemas for payment endpoints.
@@ -14,12 +14,19 @@
 # Sprint 5.3:
 #   ReversePaymentRequest  -- POST /staff/payments/{id}/reverse
 #   ReversalResponse       -- reversal result summary
+#
+# Sprint 6.1 FIX:
+#   CryptoWebhookRequest.amount_usd_cents -- added upper bound (MAX_DEPOSIT_CENTS)
 # =============================================================================
 
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# Maximum single deposit: $10M (sanity guard against data errors).
+# Adjustable in config if needed for larger deposits.
+MAX_DEPOSIT_CENTS: int = 1_000_000_000
 
 
 class CreateAddressRequest(BaseModel):
@@ -76,7 +83,12 @@ class CryptoWebhookRequest(BaseModel):
     from_address: str = Field(..., description="Sender wallet address")
     tx_hash: str = Field(..., description="Blockchain transaction hash")
     amount_crypto: str = Field(..., description="Amount in crypto units (string)")
-    amount_usd_cents: int = Field(..., gt=0, description="Amount in USD cents")
+    amount_usd_cents: int = Field(
+        ...,
+        gt=0,
+        le=MAX_DEPOSIT_CENTS,
+        description="Amount in USD cents (max $10M per deposit)",
+    )
     confirmed_block: int | None = Field(
         default=None, description="Block number where tx was confirmed"
     )

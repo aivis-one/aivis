@@ -948,11 +948,11 @@ backend/tests/
 **Задачи:**
 - [x] `app/modules/products/models.py` — `Product`, `ProductInstallment`
 - [x] `app/modules/products/constants.py` — `ProductStatus`, `VALID_PRODUCT_STATUS_TRANSITIONS`, `validate_plan_config()`
-- [x] `app/modules/products/schemas.py` — 5 request + 8 response schemas (Public* variants + sold_units stub)
+- [x] `app/modules/products/schemas.py` — 5 request + 8 response schemas (Public* variants + sold_units)
 - [x] `app/modules/products/service.py` — CRUD + `cascade_price()` + installment management
 - [x] Staff endpoints:
   - `POST /api/v1/staff/products` — создать продукт (company_manage + financial_operations)
-  - `PATCH /api/v1/staff/products/{id}` — редактировать (company_manage; + financial_operations если gift_units в body)
+  - `PATCH /api/v1/staff/products/{id}` — редактировать (company_manage; + financial_operations если purchase_config в body)
   - `PATCH /api/v1/staff/products/{id}/status` — изменить статус (company_manage)
   - `POST /api/v1/staff/products/{id}/installments` — добавить план рассрочки (company_manage + financial_operations)
   - `PATCH /api/v1/staff/products/{id}/installments/{inst_id}` — редактировать план (company_manage + financial_operations)
@@ -960,7 +960,7 @@ backend/tests/
 - [x] Public endpoints (витрина):
   - `GET /api/v1/products` — список активных продуктов (+ optional `?company_id=` filter)
   - `GET /api/v1/products/{id}` — детали продукта с планами рассрочки
-- [x] Social proof: `sold_units: int = 0` заглушка в PublicProductResponse (TODO Sprint 6.1)
+- [x] Social proof: ~~`sold_units: int = 0` заглушка~~ → реализован `get_sold_units_map()` в Sprint 6.1
 - [x] Price cascade: `companies/service.py update_price()` → `products/service.py cascade_price()`
 - [x] `tests/test_products.py` — 12 тестов
 
@@ -975,8 +975,8 @@ backend/tests/
 - P4-14: `ProductInstallment` без `updated_at` (по ТЗ). plan_config изменяется через `set_jsonb()`. Soft-delete через `is_deleted: bool`
 - P4-15: `cascade_price()` использует bulk `update()` с явным `updated_at=datetime.now(UTC)` — ORM `onupdate` не срабатывает на bulk operations
 - P4-16: Lazy import `from app.modules.products.service import cascade_price` в `companies/service.py` — избегает circular import
-- P4-17: `gift_units` в body `PATCH /staff/products/{id}` триггерит дополнительную проверку `financial_operations` (аналогично distribution_config в Sprint 4.1)
-- P4-18: `sold_units: int = 0` — заглушка в `PublicProductResponse`. Реальный подсчёт из purchases — Sprint 6.1 с Redis кэшем (`SOCIAL_PROOF_CACHE_TTL`)
+- P4-17: `purchase_config` в body `PATCH /staff/products/{id}` триггерит дополнительную проверку `financial_operations` (аналогично distribution_config в Sprint 4.1)
+- P4-18: ~~`sold_units: int = 0` — заглушка в `PublicProductResponse`. Реальный подсчёт из purchases — Sprint 6.1 с Redis кэшем (`SOCIAL_PROOF_CACHE_TTL`)~~ → Sprint 6.1: реализован прямой COUNT из purchases. Redis кэш — при необходимости (TD-031 закрыт)
 
 **Модели:**
 ```python
@@ -984,7 +984,7 @@ Product:
     id, company_id  -- FK company_profiles.id
     name: String(500), description: String(5000) | None
     units: Integer  -- immutable after creation
-    gift_units: Integer  -- default 0, bonus on instant purchase
+    purchase_config: JSONB | None  -- nullable, fallback to Company.distribution_config (Sprint 6.1)
     price_per_unit_cents: BigInteger  -- denormalized from Company, cascade-updated
     status: String(20)  -- CHECK: active | hidden | archived
     created_at, updated_at
@@ -1042,7 +1042,7 @@ GET    /api/v1/products/{id}                                     -> PublicProduc
 **Матрица permissions:**
 ```
 company_manage                              -> update name/description, status change
-company_manage + financial_operations       -> create product, update gift_units, installment CRUD
+company_manage + financial_operations       -> create product, update purchase_config, installment CRUD
 ```
 
 **Результат:**
@@ -1051,7 +1051,7 @@ backend/app/modules/products/
 ├── __init__.py
 ├── constants.py        -- ProductStatus, validate_plan_config()
 ├── models.py           -- Product, ProductInstallment
-├── schemas.py          -- 5 request + 8 response (Public* + sold_units stub)
+├── schemas.py          -- 5 request + 8 response (Public* + sold_units)
 ├── service.py          -- CRUD + cascade_price() + installment management
 ├── staff_router.py     -- 6 staff endpoints
 └── router.py           -- 2 public endpoints
@@ -1344,7 +1344,7 @@ backend/tests/
 
 ---
 
-### Sprint 6.1: Distribution Engine (processors/)
+### ✅ Sprint 6.1: Distribution Engine (processors/) + Purchase
 
 **Цель:** Самостоятельный модуль распределения денег. Не принадлежит ни Purchase, ни Agent —
 владеет логикой того, как деньги распределяются в момент любой транзакции покупки.
@@ -1362,29 +1362,80 @@ ReferralProcessor и VolumeProcessor добавляются в Sprints 7.2 и 7.
 `None` — валидное состояние, не ошибка.
 
 **Задачи:**
-- [ ] `app/modules/processors/base.py` — `ProcessorProtocol`, `PurchaseContext`, `Transaction`, `LedgerEntry`
-- [ ] `app/modules/processors/purchase.py` — `PurchaseProcessor`
-- [ ] `app/modules/processors/gift.py` — `GiftProcessor`
-- [ ] `app/modules/processors/registry.py` — `ProcessorRegistry` (расширяется в Phase 7)
-- [ ] `app/modules/purchases/models.py` — `Purchase`:
+- [x] `app/modules/processors/base.py` — `ProcessorProtocol`, `PurchaseContext`, `Transaction`, `LedgerEntry`
+- [x] `app/modules/processors/purchase.py` — `PurchaseProcessor`
+- [x] `app/modules/processors/gift.py` — `GiftProcessor`
+- [x] `app/modules/processors/registry.py` — `ProcessorRegistry` (расширяется в Phase 7)
+- [x] `app/modules/processors/validators.py` — `validate_purchase_config()` (distribution + bonuses)
+- [x] `app/modules/purchases/models.py` — `Purchase`
+- [x] `app/modules/purchases/constants.py` — `PurchaseStatus`, `PurchaseLegalBasis`
+- [x] `app/modules/purchases/schemas.py` — `CreatePurchaseRequest`, `PurchaseResponse`, `PurchaseListResponse`
+- [x] `app/modules/purchases/service.py` — `execute_purchase()`, `get_sold_units_map()`, `get_investor_portfolio_cents()`
+- [x] `app/modules/purchases/router.py` — `POST /api/v1/products/{id}/purchase`
+- [x] `app/modules/products/models.py` — `+purchase_config JSONB`, `-gift_units`, `+JSONBMixin`
+- [x] `app/modules/products/schemas.py` — `purchase_config` вместо `gift_units` во всех схемах
+- [x] `app/modules/products/service.py` — `purchase_config` в `create_product()`, `update_product()`
+- [x] `app/modules/products/staff_router.py` — `financial_operations` для `purchase_config`
+- [x] `app/modules/products/router.py` — `sold_units` из `get_sold_units_map()` (TD-031 закрыт)
+- [x] `tests/test_purchases.py` — 15 тестов (7 юнит + 3 валидатор + 5 интеграционных)
+- [x] `tests/test_products.py` — обновлён (`gift_units` → `purchase_config`)
+
+**Миграции:**
+- [x] `0009_purchases` — таблица `purchases` (CHECK constraints), `+purchase_config` JSONB на `products`, `-gift_units`
+
+**Решения реализации:**
+- P6-01: `purchase_config` — JSONB колонка на `Product`, nullable. Если `null` → fallback на `Company.distribution_config` + пустые bonuses в рантайме. Full override: если `purchase_config.distribution` задан — Company-level игнорируется
+- P6-02: `purchase_config.distribution` — формат идентичен `Company.distribution_config`: `{"company_pct": float, "agent_levels": [float, ...]}`. Переиспользуется `validate_distribution_config()`
+- P6-03: `purchase_config.bonuses[]` — массив бонусов. `bonus_units_percent` всегда процент от купленных юнитов, сумма всех ≤ 100%. `funded_by: "company" | "platform"` определяет источник списания
+- P6-04: Старое поле `Product.gift_units` удалено, заменено записью `{"condition": "always", ...}` в `purchase_config.bonuses[]`. Единый механизм через `GiftProcessor`
+- P6-05: `Purchase.document_id` убран из модели — документы о покупке генерируются по запросу с нуля, PDF хранить не нужно
+- P6-06: `agent_chain` — заглушка (пустой список) в Sprint 6.1, реальный резолвинг в Sprint 7.2
+- P6-07: `{purchase_id}` placeholder в reason strings — процессоры не знают ID до записи в БД. `_write_transactions()` заменяет placeholder на реальный UUID после `flush()`
+- P6-08: `pg_advisory_xact_lock(investor_id)` — сериализует покупки одного инвестора. Защита от TOCTOU race condition при параллельных запросах. Автоматически освобождается при commit/rollback
+- P6-09: `_load_company()` проверяет `company.status == active` — защита от покупки продукта архивированной компании
+- P6-10: `sold_units` реализован через прямой `COUNT` из purchases (`get_sold_units_map()` — батчевый запрос для всех продуктов на странице). Redis-кэш — при необходимости (TD-031 переформулирован)
+- P6-11: Процессоры — чистые синхронные функции без I/O. `ProcessorProtocol.process()` → `list[Transaction]`. Инвариант SUM=0 проверяется в `ProcessorRegistry.run_all()`
+- P6-12: `GiftProcessor` считает portfolio_size (`SUM(paid_cents)`) для условия `portfolio_size_gte`. Включает текущую покупку в расчёт. Извлечение в отдельный сервис — позже
+
+**Модели:**
 ```python
-Purchase:
+Purchase:  -- иммутабельно, нет updated_at
     id: UUID
     investor_id: UUID        -- FK users.id
     product_id: UUID         -- FK products.id
     company_id: UUID         -- FK company_profiles.id (денормализовано)
-    legal_basis: enum        -- sale | gift | installment_tranche
-    units: int
-    paid_cents: int          -- 0 для gift
-    price_per_unit_cents: int -- снапшот цены на момент покупки
-    document_id: UUID        -- NOT NULL, PDF генерируется по запросу
-    status: enum             -- active | reversed
-    created_at: datetime
+    legal_basis: String(30)  -- CHECK: sale | gift | installment_tranche
+    units: Integer
+    paid_cents: BigInteger   -- 0 для gift
+    price_per_unit_cents: BigInteger  -- снапшот цены на момент покупки
+    status: String(20)       -- CHECK: active | reversed
+    created_at: DateTime(tz)
     -- agent_id отсутствует: реферальная информация только в ReferralAttribution
+    -- document_id отсутствует: PDF генерируется по запросу
 ```
-- [ ] `app/modules/purchases/service.py` — `execute_purchase()` (валидация SUM=0, атомарная запись)
-- [ ] `POST /api/v1/products/{id}/purchase` — инстант-покупка (body: `{product_installment_id?}`, `{referral_link_id?}`)
-- [ ] `tests/test_purchase_processor.py` — 15 тестов (включая invariant SUM=0)
+
+**Структура `purchase_config` (на Product, nullable):**
+```json
+{
+  "distribution": {
+    "company_pct": 0.65,
+    "agent_levels": [0.10, 0.03, 0.01]
+  },
+  "bonuses": [
+    {
+      "condition": "always",
+      "bonus_units_percent": 10,
+      "funded_by": "company"
+    },
+    {
+      "condition": "portfolio_size_gte",
+      "threshold_cents": 50000,
+      "bonus_units_percent": 5,
+      "funded_by": "platform"
+    }
+  ]
+}
+```
 
 **Инвариант перед записью в БД:**
 ```python
@@ -1392,9 +1443,50 @@ for transaction in transactions:
     assert sum(e.amount_cents for e in transaction.entries) == 0
 ```
 
-**Критерий готовности:** Инвестор покупает продукт. PurchaseProcessor распределяет средства.
-GiftProcessor создаёт бонусные акции. ProcessorRegistry готов к регистрации новых процессоров.
-`Purchase` не содержит `agent_id` — реферальная цепочка только в `ReferralAttribution`.
+**Endpoints:**
+```
+POST /api/v1/products/{id}/purchase  -> list[PurchaseResponse]  (201)
+```
+
+**Новые audit events:**
+- `purchase.created` — инстант-покупка (legal_basis=sale)
+- `purchase.gift_created` — бонусное начисление (legal_basis=gift)
+
+**Результат:**
+```
+backend/app/modules/processors/
+├── __init__.py
+├── base.py             -- ProcessorProtocol, PurchaseContext, Transaction, LedgerEntry
+├── purchase.py         -- PurchaseProcessor (core distribution)
+├── gift.py             -- GiftProcessor (bonus allocations)
+├── registry.py         -- ProcessorRegistry (run_all + SUM=0 invariant)
+└── validators.py       -- validate_purchase_config()
+
+backend/app/modules/purchases/
+├── __init__.py
+├── constants.py        -- PurchaseStatus, PurchaseLegalBasis
+├── models.py           -- Purchase
+├── schemas.py          -- CreatePurchaseRequest, PurchaseResponse, PurchaseListResponse
+├── service.py          -- execute_purchase(), get_sold_units_map(), get_investor_portfolio_cents()
+└── router.py           -- POST /products/{id}/purchase
+
+backend/tests/
+└── test_purchases.py   -- 15 tests
+```
+
+**Обновлённые файлы (Sprint 6.1):**
+- `core/constants.py` — `+DISTRIBUTION_COMPANY`, `+PLATFORM_REMAINDER` в LedgerReason
+- `products/models.py` — `+JSONBMixin`, `+purchase_config JSONB`, `-gift_units`
+- `products/schemas.py` — `purchase_config` вместо `gift_units`
+- `products/service.py` — `purchase_config` в `create_product()`, `update_product()` + `validate_purchase_config()`
+- `products/staff_router.py` — `financial_operations` для `purchase_config`
+- `products/router.py` — `sold_units` из `get_sold_units_map()`
+- `main.py` — `+purchases_router`
+- `migrations/env.py` — `+Purchase` import
+- `tests/helpers.py` — `+Purchase` cleanup в `_cleanup_user_related_data()`
+- `tests/test_products.py` — `gift_units` → `purchase_config`, `+_activate_company` в purchase тестах
+
+**Критерий готовности:** Инвестор покупает продукт. PurchaseProcessor распределяет средства по `distribution_config` (product override или company fallback). GiftProcessor создаёт бонусные акции из `purchase_config.bonuses[]`. ProcessorRegistry готов к регистрации новых процессоров. Advisory lock защищает от двойной траты. Статус компании проверяется при покупке. `sold_units` считается из реальных покупок. 171 тест зелёный.
 
 ---
 
@@ -1817,12 +1909,13 @@ Event:
 | TD-028 | `app/modules/auth/avatar_guard.py` | Применить `@require_not_avatar` к остальным RESTRICTED_OPERATIONS endpoints по мере их создания (create_payment, create_withdrawal и т.д.) | Phase 5+ | ⬜ |
 | TD-029 | `companies/`, `products/` | Enum duplication: `CompanyStatus`, `ProductStatus`, `RoadmapItemStatus` определены и в `models.py`, и в `constants.py`. Консолидировать в одном месте | Backlog | ⬜ |
 | TD-030 | `companies/schemas.py` | `CreateCompanyRequest.email` использует `str`, не `EmailStr`. Auth schemas используют `EmailStr` — inconsistency | Backlog | ⬜ |
-| TD-031 | `products/schemas.py` | Social proof `sold_units: int = 0` — заглушка. Реализовать подсчёт из purchases с Redis кэшем (TTL = `SOCIAL_PROOF_CACHE_TTL`) | Sprint 6.1 | ⬜ |
+| TD-031 | `products/schemas.py` | ~~Social proof `sold_units: int = 0` — заглушка. Реализовать подсчёт из purchases с Redis кэшем~~ → Прямой COUNT реализован в Sprint 6.1 (`get_sold_units_map()`). Redis-кэш — при высокой нагрузке на витрину | Sprint 6.1 | ✅ Sprint 6.1 |
 | TD-032 | `app/core/database.py` | Redis session создаётся ДО DB commit (CRIT-1). Orphan token живёт до TTL (30 дней). Приемлемо для MVP | After MVP | ⬜ |
 | TD-033 | `companies/constants.py` | Float precision в `distribution_config` validation: `total > 1.0` может дать false positive. Рассмотреть `Decimal` или tolerance `1e-9` (MINOR-4) | Backlog | ⬜ |
 | TD-034 | `payments/router.py` | `POST /crypto-address` — заглушка. При интеграции реального провайдера endpoint может измениться (адрес от API / pre-generated pool / hosted page redirect) | Phase 2 | ⬜ |
 | TD-035 | `payments/reversal.py` | `total_reversed_cents` = `payment.amount_cents`, не сумма ledger entries. Корректно пока 1 entry/payment. Пересмотреть после Phase 6 saga | Phase 6 | ⬜ |
 | TD-036 | `payments/reversal.py` | N+1 flush в loop (каждый `record_*_ledger` делает flush). Приемлемо при 1-3 entries. Оптимизировать если saga создаёт >10 entries на payment | Phase 6 | ⬜ |
+| TD-037 | `purchases/router.py` | Нет `idempotency_key` в `CreatePurchaseRequest`. Двойной клик или повторная отправка формы создаст две покупки. Advisory lock не защищает — второй запрос подождёт и выполнится | Backlog | ⬜ |
 
 ---
 
@@ -1830,4 +1923,4 @@ Event:
 
 ---
 
-*Version 1.6 | 2026-04-08 | cbshome Backend TZ — Phase 5 complete, Phase 6 next*
+*Version 1.7 | 2026-04-10 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, Sprint 6.2 next*

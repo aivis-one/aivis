@@ -1,14 +1,13 @@
 # =============================================================================
-# CBSHOME Backend -- Rate Limiting (Sprint 5.2 fix: SEC-5)
+# CBSHOME Backend -- Rate Limiting (Sprint 5.2 fix: SEC-5, fix Sprint 6.1)
 # =============================================================================
 #
-# Generic IP-based rate limiter using Redis INCR + EXPIRE pattern.
-# Extracted from auth/telegram.py to be reusable across auth methods.
+# Generic IP-based rate limiter using Redis.
 #
-# PATTERN:
-#   INCR on first request sets count=1, EXPIRE sets the window.
-#   Subsequent requests within the window increment the counter.
-#   TTL is set only on first increment to avoid resetting the window.
+# Sprint 6.1 FIX:
+#   Replaced non-atomic INCR + EXPIRE with Lua script.
+#   Original pattern: if process crashes between INCR and EXPIRE,
+#   the key lives forever (no TTL). Lua script executes atomically.
 #
 # USAGE:
 #   from app.core.rate_limit import check_rate_limit
@@ -19,12 +18,23 @@ from app.core.config import settings
 from app.core.exceptions import BadRequestError
 from app.core.redis import get_redis
 
+# Lua script: INCR + conditional EXPIRE in one atomic operation.
+# Sets TTL only when counter transitions from 0 to 1 (new window).
+# Returns the current count after increment.
+_RATE_LIMIT_SCRIPT = """
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return count
+"""
+
 
 async def check_rate_limit(key: str) -> None:
     """Check rate limit for the given key.
 
-    Uses Redis INCR + EXPIRE pattern. TTL is set only on the first
-    increment to avoid resetting the window on subsequent requests.
+    Uses Lua script for atomic INCR + EXPIRE. TTL is set only on the
+    first increment to avoid resetting the window on subsequent requests.
 
     Args:
         key: Redis key for rate limiting (e.g. "email_auth:1.2.3.4").
@@ -34,10 +44,12 @@ async def check_rate_limit(key: str) -> None:
     """
     redis = get_redis()
 
-    count = await redis.incr(key)
-    if count == 1:
-        # Set TTL only on first increment -- don't reset the window.
-        await redis.expire(key, settings.auth_rate_limit_window_seconds)
+    count = await redis.eval(
+        _RATE_LIMIT_SCRIPT,
+        1,
+        key,
+        settings.auth_rate_limit_window_seconds,
+    )
 
     if count > settings.auth_rate_limit_max_requests:
         raise BadRequestError(

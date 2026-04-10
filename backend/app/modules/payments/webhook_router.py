@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Webhook Router (Sprint 5.2)
+# CBSHOME Backend -- Payment Webhook Router (Sprint 5.2, fix Sprint 6.1)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -8,12 +8,7 @@
 # AUTH:
 #   Shared secret via X-Webhook-Secret header.
 #   Uses hmac.compare_digest() for timing-safe comparison (TD-SEC1).
-#
-# FLOW:
-#   1. Validate webhook secret (timing-safe)
-#   2. Parse body as CryptoWebhookRequest
-#   3. Delegate to service.process_crypto_webhook()
-#   4. Return payment id + status
+#   Auth check runs as Depends() -- BEFORE body parsing (fix: CRIT-2).
 #
 # COMMIT RULE (P-01):
 #   Router never commits. get_db_session commits after yield.
@@ -36,8 +31,10 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/payments/crypto", tags=["payments-webhook"])
 
 
-def _verify_webhook_secret(request: Request) -> None:
+async def _verify_webhook_secret(request: Request) -> None:
     """Validate X-Webhook-Secret header using timing-safe comparison.
+
+    Used as FastAPI Depends() to run BEFORE body parsing.
 
     Raises:
         UnauthorizedError: If secret is missing or does not match.
@@ -48,18 +45,16 @@ def _verify_webhook_secret(request: Request) -> None:
         raise UnauthorizedError("Invalid webhook secret")
 
 
-@router.post("/webhook")
+@router.post("/webhook", dependencies=[Depends(_verify_webhook_secret)])
 async def crypto_webhook(
     body: CryptoWebhookRequest,
-    request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> dict[str, str]:
     """Process incoming crypto payment webhook.
 
-    Validates shared secret, creates Payment + active_ledger entry.
+    Auth validated via dependency (before body parsing).
+    Creates Payment + active_ledger entry.
     """
-    _verify_webhook_secret(request)
-
     payment = await process_crypto_webhook(body, session)
 
     return {

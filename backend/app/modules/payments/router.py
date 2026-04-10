@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Router (Sprint 5.2)
+# CBSHOME Backend -- Payment Router (Sprint 5.2, fix Sprint 6.1)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -7,7 +7,12 @@
 #   GET  /api/v1/payments/history              -- payment history (investor)
 #
 # AUTH:
-#   All endpoints require authentication (get_current_user).
+#   All endpoints require authentication.
+#
+# Sprint 6.1 FIX (TD-029):
+#   create_crypto_address uses get_current_user_write (not get_current_user)
+#   so auth dependency and endpoint share the same write session.
+#   FastAPI caches Depends within a request -- one DB connection, no merge.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -19,7 +24,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.payments.schemas import (
     CreateAddressRequest,
     DepositAddressResponse,
@@ -43,12 +48,13 @@ router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 )
 async def create_crypto_address(
     body: CreateAddressRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_write),
     session: AsyncSession = Depends(get_db_session),
 ) -> DepositAddressResponse:
     """Get or create a crypto deposit address for the authenticated user.
 
     Idempotent: returns existing address if one exists for this network.
+    Uses write session (TD-029 fix: single session shared with auth).
     """
     deposit = await get_or_create_deposit_address(user.id, body.network, session)
     return DepositAddressResponse(
