@@ -134,6 +134,18 @@ async def _activate_product(
     assert resp.status_code == 200
 
 
+async def _activate_company(
+    client: AsyncClient, admin_token: str, company_id: str
+) -> None:
+    """Helper: set company status to active."""
+    resp = await client.patch(
+        f"/api/v1/staff/companies/{company_id}",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+
 async def _create_investor_with_balance(
     client: AsyncClient,
     db_session: AsyncSession,
@@ -386,6 +398,7 @@ async def test_purchase_instant_buy(
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
     await _activate_product(client, admin_token, product["id"])
 
     inv_token, inv_id = await _create_investor_with_balance(
@@ -414,6 +427,7 @@ async def test_purchase_insufficient_balance(
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
     await _activate_product(client, admin_token, product["id"])
 
     # Investor with only 100 cents (product costs 100 * 10000 = 1_000_000).
@@ -438,7 +452,8 @@ async def test_purchase_product_not_active(
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     product = await _create_product(client, admin_token, company["id"])
-    # Product stays hidden (not activated).
+    # Company active, product stays hidden (not activated).
+    await _activate_company(client, admin_token, company["id"])
 
     inv_token, _ = await _create_investor_with_balance(
         client, db_session, suffix="inv_noact"
@@ -461,6 +476,7 @@ async def test_purchase_non_investor_forbidden(
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
     await _activate_product(client, admin_token, product["id"])
 
     # Admin is staff, not investor.
@@ -494,6 +510,7 @@ async def test_purchase_with_gift_bonus(
             ],
         },
     )
+    await _activate_company(client, admin_token, company["id"])
     await _activate_product(client, admin_token, product["id"])
 
     inv_token, _ = await _create_investor_with_balance(
