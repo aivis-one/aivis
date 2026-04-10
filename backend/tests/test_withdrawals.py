@@ -25,7 +25,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ledgers.constants import LedgerStatus
+from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
 from app.modules.users.models import User
 from app.modules.withdrawals.constants import WithdrawalStatus
