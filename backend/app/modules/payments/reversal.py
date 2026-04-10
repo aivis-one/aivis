@@ -1,10 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Reversal Service (Sprint 5.3, fix review)
+# CBSHOME Backend -- Payment Reversal Service (Sprint 5.3, fix review,
+#                                              updated Sprint 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   reverse_payment() -- chargeback: mark Payment as reversed, create mirror
 #                        ledger entries, mark originals as reversed.
+#                        + write transaction log entries (Sprint 6.4)
 #
 # REVERSAL FLOW (from CBSHOME-Financial-System.md section 5.5):
 #   1. SELECT FOR UPDATE Payment (serialize concurrent reversals)
@@ -17,6 +19,7 @@
 #        UPDATE original -> status=reversed
 #   6. Payment -> status=reversed
 #   7. Audit: payment.chargeback
+#   8. Transaction log: deposit:reversed + reversal:completed (Sprint 6.4)
 #
 # MIRROR ENTRIES:
 #   Created via record_active/passive_ledger() with status=confirmed.
@@ -51,6 +54,8 @@ from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.ledgers.service import record_active_ledger, record_passive_ledger
 from app.modules.payments.constants import PaymentStatus, validate_payment_status_transition
 from app.modules.payments.models import Payment
+from app.modules.transactions.constants import ReferenceType, TransactionType
+from app.modules.transactions.service import record_transaction
 
 logger = structlog.get_logger()
 
@@ -165,6 +170,37 @@ async def reverse_payment(
             "passive_entries_reversed": len(passive_entries),
             "affected_user_ids": [str(uid) for uid in affected_user_ids],
             "reason": reason,
+        },
+    )
+
+    # 9. Transaction log (Sprint 6.4).
+    # deposit:reversed for the payment owner.
+    await record_transaction(
+        session,
+        user_id=payment.user_id,
+        type=TransactionType.DEPOSIT_REVERSED,
+        amount_cents=payment.amount_cents,
+        reference_id=payment_id,
+        reference_type=ReferenceType.PAYMENT,
+        details={
+            "reason": reason,
+            "total_reversed_cents": total_reversed_cents,
+        },
+    )
+
+    # reversal:completed for the staff who performed it.
+    await record_transaction(
+        session,
+        user_id=staff_id,
+        type=TransactionType.REVERSAL_COMPLETED,
+        amount_cents=total_reversed_cents,
+        reference_id=payment_id,
+        reference_type=ReferenceType.PAYMENT,
+        details={
+            "reason": reason,
+            "active_entries_reversed": len(active_entries),
+            "passive_entries_reversed": len(passive_entries),
+            "affected_user_ids": [str(uid) for uid in affected_user_ids],
         },
     )
 

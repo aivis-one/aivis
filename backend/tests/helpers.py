@@ -47,6 +47,9 @@
 #
 # Sprint 6.3:
 #   _cleanup_user_related_data() extended with Withdrawal cleanup.
+#
+# Sprint 6.4:
+#   _cleanup_user_related_data() extended with Transaction cleanup.
 # =============================================================================
 
 import hashlib
@@ -365,7 +368,15 @@ async def _cleanup_user_related_data(
     from app.modules.payments.models import CryptoAddress, Payment
     from app.modules.products.models import Product, ProductInstallment
     from app.modules.purchases.models import Purchase
+    from app.modules.transactions.models import Transaction
     from app.modules.withdrawals.models import Withdrawal
+
+    # Sprint 6.4: Transactions (FK to users.id).
+    await session.execute(
+        delete(Transaction).where(
+            Transaction.user_id.in_(user_ids)
+        )
+    )
 
     # Sprint 6.3: Withdrawals (FK to users.id).
     await session.execute(

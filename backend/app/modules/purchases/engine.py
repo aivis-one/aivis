@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Engine (Sprint 6.2, fix #35)
+# CBSHOME Backend -- Purchase Engine (Sprint 6.2, fix #35, updated Sprint 6.4)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -22,6 +22,12 @@
 #   3. Run ProcessorRegistry -> list[Transaction] (SUM=0 invariant).
 #   4. Write Purchase records + ledger entries atomically.
 #   5. Record audit events.
+#   6. Write transaction log entries (Sprint 6.4).
+#
+# TRANSACTION LOG (Sprint 6.4):
+#   write_transactions() records purchase:completed for SALE,
+#   purchase:gift for GIFT. INSTALLMENT_TRANCHE is handled by
+#   installments/service.py (has plan context for reference_id).
 #
 # COMMIT RULE (P-01):
 #   Engine never commits. Caller (get_db_session) manages the transaction.
@@ -51,8 +57,17 @@ from app.modules.processors.base import PurchaseContext, Transaction
 from app.modules.processors.registry import ProcessorRegistry
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
+from app.modules.transactions.constants import ReferenceType, TransactionType
+from app.modules.transactions.service import record_transaction
 
 logger = structlog.get_logger()
+
+# Mapping from legal_basis to transaction log type.
+# INSTALLMENT_TRANCHE is not here -- handled by installments/service.py.
+_LEGAL_BASIS_TO_TXN_TYPE: dict[str, str] = {
+    PurchaseLegalBasis.SALE: TransactionType.PURCHASE_COMPLETED,
+    PurchaseLegalBasis.GIFT: TransactionType.PURCHASE_GIFT,
+}
 
 
 async def execute(
@@ -169,6 +184,9 @@ async def write_transactions(
     The "{purchase_id}" placeholder in reason strings is replaced with
     the actual Purchase.id after creation.
 
+    Sprint 6.4: writes transaction log entries for SALE and GIFT.
+    INSTALLMENT_TRANCHE is handled by installments/service.py.
+
     Public API: used by engine.execute() and directly by
     installments/service.py complete_plan() for completion bonuses.
     Caller must ensure SUM=0 invariant on each Transaction.
@@ -229,6 +247,27 @@ async def write_transactions(
                     frozen_until=entry.frozen_until,
                     origin_payment_id=entry.origin_payment_id,
                 )
+
+        # Sprint 6.4: Transaction log entry.
+        # INSTALLMENT_TRANCHE is recorded by installments/service.py
+        # which has the plan_id for reference.
+        txn_type = _LEGAL_BASIS_TO_TXN_TYPE.get(txn.legal_basis)
+        if txn_type is not None:
+            await record_transaction(
+                session,
+                user_id=context.investor_id,
+                type=txn_type,
+                amount_cents=-paid_cents if paid_cents > 0 else 0,
+                reference_id=purchase.id,
+                reference_type=ReferenceType.PURCHASE,
+                details={
+                    "product_id": str(context.product_id),
+                    "company_id": str(context.company_id),
+                    "units": txn.units,
+                    "price_per_unit_cents": context.price_per_unit_cents,
+                    "legal_basis": txn.legal_basis,
+                },
+            )
 
         purchases.append(purchase)
 

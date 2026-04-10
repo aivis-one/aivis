@@ -1,34 +1,31 @@
 # =============================================================================
-# CBSHOME Backend -- FastAPI Application Entry Point
+# CBSHOME Backend -- Application Entry Point
 # =============================================================================
 #
-# ENDPOINTS:
-#   GET /        -> API name + version
-#   GET /health  -> DB + Redis connectivity (always 200)
-#   GET /ready   -> Readiness probe (503 if degraded)
-#
 # ROUTERS:
-#   auth_router            -> /api/v1/auth/* (Sprint 1.1+)
-#   users_router           -> /api/v1/users/* (Sprint 1.3, 6.3)
-#   kyc_router             -> /api/v1/kyc/* (Sprint 2.1)
-#   documents_router       -> /api/v1/documents/* (Sprint 2.2)
-#   staff_documents_router -> /api/v1/staff/documents/* (Sprint 2.2)
-#   staff_users_router     -> /api/v1/staff/users/* (Sprint 3.1+3.3)
-#   avatar_router          -> /api/v1/staff/avatar/* (Sprint 3.2)
-#   dashboard_router       -> /api/v1/staff/dashboard/* (Sprint 3.3)
-#   kyc_admin_router       -> /api/v1/staff/kyc/* (Sprint 3.3)
-#   companies_router       -> /api/v1/companies/* (Sprint 4.1)
-#   staff_companies_router -> /api/v1/staff/companies/* (Sprint 4.1)
-#   products_router        -> /api/v1/products/* (Sprint 4.2)
-#   staff_products_router  -> /api/v1/staff/products/* (Sprint 4.2)
-#   payments_router        -> /api/v1/payments/* (Sprint 5.2)
-#   payments_webhook_router -> /api/v1/payments/crypto/* (Sprint 5.2)
-#   staff_payments_router  -> /api/v1/staff/payments/* (Sprint 5.3)
-#   purchases_router       -> /api/v1/products/*/purchase (Sprint 6.1)
-#   installment_create_router -> /api/v1/products/*/installment (Sprint 6.2)
+#   auth_router               -> /api/v1/auth/* (Sprint 1.3)
+#   users_router              -> /api/v1/users/* (Sprint 1.3)
+#   kyc_router                -> /api/v1/kyc/* (Sprint 2.1)
+#   documents_router          -> /api/v1/documents/* (Sprint 2.2)
+#   staff_documents_router    -> /api/v1/staff/documents/* (Sprint 2.2)
+#   staff_users_router        -> /api/v1/staff/users/* (Sprint 3.1)
+#   avatar_router             -> /api/v1/staff/avatar/* (Sprint 3.2)
+#   dashboard_router          -> /api/v1/staff/dashboard/* (Sprint 3.1)
+#   kyc_admin_router          -> /api/v1/staff/kyc/* (Sprint 2.1)
+#   companies_router          -> /api/v1/companies/* (Sprint 4.1)
+#   staff_companies_router    -> /api/v1/staff/companies/* (Sprint 4.1)
+#   products_router           -> /api/v1/products/* (Sprint 4.2)
+#   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
+#   payments_router           -> /api/v1/payments/* (Sprint 5.2)
+#   payments_webhook_router   -> /api/v1/payments/crypto/* (Sprint 5.2)
+#   staff_payments_router     -> /api/v1/staff/payments/* (Sprint 5.3)
+#   purchases_router          -> /api/v1/products/{id}/purchase (Sprint 6.1)
+#   installment_create_router -> /api/v1/installments/* (Sprint 6.2)
 #   installment_query_router  -> /api/v1/installments/* (Sprint 6.2)
 #   withdrawals_router        -> /api/v1/withdrawals/* (Sprint 6.3)
 #   staff_withdrawals_router  -> /api/v1/staff/withdrawals/* (Sprint 6.3)
+#   transactions_router       -> /api/v1/transactions/* (Sprint 6.4)
+#   consistency_router        -> /api/v1/staff/consistency (Sprint 6.4)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -81,6 +78,8 @@ from app.modules.purchases.router import router as purchases_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.router import router as staff_users_router
+from app.modules.transactions.router import router as transactions_router
+from app.modules.staff.consistency.router import router as consistency_router
 from app.modules.users.router import router as users_router
 from app.modules.withdrawals.router import router as withdrawals_router
 from app.modules.withdrawals.staff_router import router as staff_withdrawals_router
@@ -277,6 +276,8 @@ app.include_router(installment_create_router)
 app.include_router(installment_query_router)
 app.include_router(withdrawals_router)
 app.include_router(staff_withdrawals_router)
+app.include_router(transactions_router)
+app.include_router(consistency_router)
 
 
 # ---------------------------------------------------------------------------

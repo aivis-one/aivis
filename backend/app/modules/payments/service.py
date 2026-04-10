@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Service (Sprint 5.2)
+# CBSHOME Backend -- Payment Service (Sprint 5.2, updated Sprint 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -18,6 +18,7 @@
 #   3. tx_hash uniqueness enforced by DB partial unique index (uq_payments_tx_hash)
 #   4. Write active_ledger entry (frozen) via ledger service
 #   5. Audit: payment.crypto_received
+#   6. Transaction log: deposit:received (Sprint 6.4)
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
@@ -45,6 +46,8 @@ from app.modules.payments.constants import PaymentStatus, PaymentType
 from app.modules.payments.interface import DepositAddress
 from app.modules.payments.models import CryptoAddress, Payment
 from app.modules.payments.schemas import CryptoWebhookRequest
+from app.modules.transactions.constants import ReferenceType, TransactionType
+from app.modules.transactions.service import record_transaction
 
 logger = structlog.get_logger()
 
@@ -221,6 +224,7 @@ async def process_crypto_webhook(
          Race condition handled via begin_nested() + IntegrityError (P-05)
       4. Write active_ledger entry (frozen)
       5. Audit event
+      6. Transaction log: deposit:received (Sprint 6.4)
 
     Args:
         body: Parsed webhook payload.
@@ -317,6 +321,21 @@ async def process_crypto_webhook(
             "network": body.network,
             "tx_hash": body.tx_hash,
             "provider": provider,
+        },
+    )
+
+    # 6. Transaction log (Sprint 6.4).
+    await record_transaction(
+        session,
+        user_id=user_id,
+        type=TransactionType.DEPOSIT_RECEIVED,
+        amount_cents=body.amount_usd_cents,
+        reference_id=payment.id,
+        reference_type=ReferenceType.PAYMENT,
+        details={
+            "network": body.network,
+            "tx_hash": body.tx_hash,
+            "from_address": body.from_address,
         },
     )
 

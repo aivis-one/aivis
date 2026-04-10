@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Withdrawal Service (Sprint 6.3)
+# CBSHOME Backend -- Withdrawal Service (Sprint 6.3, updated Sprint 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -23,6 +23,8 @@
 #   - Partial unique index uq_withdrawals_user_active prevents multiple
 #     active withdrawals. IntegrityError caught by constraint name.
 #
+# Sprint 6.4: record_transaction() for all 5 withdrawal lifecycle events.
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages transaction.
 # =============================================================================
@@ -41,6 +43,8 @@ from app.core.constants import LedgerReason
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
+from app.modules.transactions.constants import ReferenceType, TransactionType
+from app.modules.transactions.service import record_transaction
 from app.modules.users.models import User
 from app.modules.withdrawals.constants import (
     WithdrawalStatus,
@@ -160,6 +164,17 @@ async def create_withdrawal(
         data={"amount_cents": amount_cents},
     )
 
+    # -- Transaction log (Sprint 6.4) --
+    await record_transaction(
+        session,
+        user_id=user.id,
+        type=TransactionType.WITHDRAWAL_CREATED,
+        amount_cents=-amount_cents,
+        reference_id=withdrawal.id,
+        reference_type=ReferenceType.WITHDRAWAL,
+        details={"status": "pending"},
+    )
+
     logger.info(
         "withdrawal_created",
         withdrawal_id=str(withdrawal.id),
@@ -232,6 +247,17 @@ async def confirm_withdrawal(
             "amount_cents": withdrawal.amount_cents,
             "user_id": str(withdrawal.user_id),
         },
+    )
+
+    # -- Transaction log (Sprint 6.4) --
+    await record_transaction(
+        session,
+        user_id=withdrawal.user_id,
+        type=TransactionType.WITHDRAWAL_CONFIRMED,
+        amount_cents=-withdrawal.amount_cents,
+        reference_id=withdrawal.id,
+        reference_type=ReferenceType.WITHDRAWAL,
+        details={"staff_id": str(staff.id)},
     )
 
     logger.info(
@@ -314,6 +340,17 @@ async def reject_withdrawal(
         },
     )
 
+    # -- Transaction log (Sprint 6.4) --
+    await record_transaction(
+        session,
+        user_id=withdrawal.user_id,
+        type=TransactionType.WITHDRAWAL_REJECTED,
+        amount_cents=-withdrawal.amount_cents,
+        reference_id=withdrawal.id,
+        reference_type=ReferenceType.WITHDRAWAL,
+        details={"reason": reason, "staff_id": str(staff.id)},
+    )
+
     logger.info(
         "withdrawal_rejected",
         withdrawal_id=str(withdrawal.id),
@@ -368,6 +405,16 @@ async def complete_withdrawal(
         target_type="withdrawal",
         target_id=withdrawal.id,
         data={"amount_cents": withdrawal.amount_cents},
+    )
+
+    # -- Transaction log (Sprint 6.4) --
+    await record_transaction(
+        session,
+        user_id=withdrawal.user_id,
+        type=TransactionType.WITHDRAWAL_COMPLETED,
+        amount_cents=-withdrawal.amount_cents,
+        reference_id=withdrawal.id,
+        reference_type=ReferenceType.WITHDRAWAL,
     )
 
     logger.info(
@@ -436,6 +483,16 @@ async def fail_withdrawal(
         target_type="withdrawal",
         target_id=withdrawal.id,
         data={"amount_cents": withdrawal.amount_cents},
+    )
+
+    # -- Transaction log (Sprint 6.4) --
+    await record_transaction(
+        session,
+        user_id=withdrawal.user_id,
+        type=TransactionType.WITHDRAWAL_FAILED,
+        amount_cents=-withdrawal.amount_cents,
+        reference_id=withdrawal.id,
+        reference_type=ReferenceType.WITHDRAWAL,
     )
 
     logger.info(

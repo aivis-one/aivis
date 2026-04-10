@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35)
+# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35, updated 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -20,6 +20,9 @@
 #   manually-built Transaction objects (fixed bonus, not condition-based).
 #
 # Fix #35: catch InsufficientBalanceError by type, not string match.
+#
+# Sprint 6.4: record_transaction() calls for tranche_paid, completed,
+#   defaulted events.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
@@ -52,6 +55,8 @@ from app.modules.purchases.service import (
     get_investor_portfolio_cents,
     get_platform_user,
 )
+from app.modules.transactions.constants import ReferenceType, TransactionType
+from app.modules.transactions.service import record_transaction
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -310,6 +315,22 @@ async def pay_tranche(
         },
     )
 
+    # Sprint 6.4: Transaction log -- installment:tranche_paid.
+    await record_transaction(
+        session,
+        user_id=plan.investor_id,
+        type=TransactionType.INSTALLMENT_TRANCHE_PAID,
+        amount_cents=-tranche.amount_cents,
+        reference_id=plan.id,
+        reference_type=ReferenceType.INSTALLMENT_PLAN,
+        details={
+            "tranche_number": tranche.number,
+            "product_id": str(plan.product_id),
+            "units_unlocked": tranche.units_unlocked,
+            "purchase_id": str(sale_purchase.id),
+        },
+    )
+
     logger.info(
         "installment_tranche_paid",
         tranche_id=str(tranche.id),
@@ -373,6 +394,21 @@ async def complete_plan(
         data={
             "bonus_units": bonus_units,
             "agent_bonus_units": agent_bonus_units,
+        },
+    )
+
+    # Sprint 6.4: Transaction log -- installment:completed.
+    await record_transaction(
+        session,
+        user_id=plan.investor_id,
+        type=TransactionType.INSTALLMENT_COMPLETED,
+        amount_cents=-plan.total_price_cents,
+        reference_id=plan.id,
+        reference_type=ReferenceType.INSTALLMENT_PLAN,
+        details={
+            "product_id": str(plan.product_id),
+            "total_units": plan.total_units,
+            "bonus_units": bonus_units,
         },
     )
 
@@ -454,6 +490,21 @@ async def default_plan(
             "trigger_tranche_id": str(tranche.id),
             "trigger_tranche_number": tranche.number,
             "cancelled_count": len(remaining),
+        },
+    )
+
+    # Sprint 6.4: Transaction log -- installment:defaulted.
+    await record_transaction(
+        session,
+        user_id=plan.investor_id,
+        type=TransactionType.INSTALLMENT_DEFAULTED,
+        amount_cents=-plan.total_price_cents,
+        reference_id=plan.id,
+        reference_type=ReferenceType.INSTALLMENT_PLAN,
+        details={
+            "trigger_tranche_number": tranche.number,
+            "cancelled_count": len(remaining),
+            "product_id": str(plan.product_id),
         },
     )
 
