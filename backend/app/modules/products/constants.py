@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Constants (Sprint 4.2)
+# CBSHOME Backend -- Product Constants (Sprint 4.2 + Sprint 6.2)
 # =============================================================================
 #
 # PRODUCT STATUS:
@@ -21,6 +21,7 @@
 #     all units_percent > 0
 #     sum(amount_cents) == product.units * company.price_per_unit_cents
 #     sum(units_percent) == 100
+#     sum(units_percent[i] * product_units // 100) == product_units  (Sprint 6.2)
 #     bonus_units >= 0
 #     agent_bonus_units >= 0
 # =============================================================================
@@ -125,6 +126,22 @@ def validate_plan_config(
     if total_pct != 100:
         raise BadRequestError(
             f"plan_config total units_percent ({total_pct}) must equal 100"
+        )
+
+    # -- Sprint 6.2: units_unlocked must decompose exactly --
+    # Each tranche unlocks: units_percent * product_units // 100
+    # The sum of all unlocked units must equal product_units exactly.
+    # This prevents rounding errors when tranches are expanded into
+    # InstallmentTranche records with integer units_unlocked values.
+    total_unlocked = sum(
+        t["units_percent"] * product_units // 100 for t in tranches
+    )
+    if total_unlocked != product_units:
+        raise BadRequestError(
+            f"plan_config units decomposition error: "
+            f"sum(units_percent * {product_units} // 100) = {total_unlocked}, "
+            f"expected {product_units}. "
+            f"Adjust units_percent values to produce exact integer units per tranche"
         )
 
     # -- bonus_units --
