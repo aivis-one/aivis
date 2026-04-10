@@ -34,6 +34,8 @@ from urllib.parse import parse_qs, unquote
 import structlog
 
 from app.core.config import settings
+from app.core.exceptions import BadRequestError
+from app.core.rate_limit import check_rate_limit
 from app.core.redis import get_redis
 
 logger = structlog.get_logger()
@@ -172,9 +174,6 @@ async def check_auth_rate_limit(telegram_id: int) -> None:
     Raises:
         TelegramValidationError: If rate limit is exceeded.
     """
-    from app.core.exceptions import BadRequestError
-    from app.core.rate_limit import check_rate_limit
-
     try:
         await check_rate_limit(f"auth_rate:{telegram_id}")
     except BadRequestError:

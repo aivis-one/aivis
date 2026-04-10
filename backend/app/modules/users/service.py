@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Users Service (Sprint 1.3)
+# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -23,6 +23,10 @@
 #   session.refresh() reloads it to prevent MissingGreenlet when
 #   Pydantic model_validate reads the attribute synchronously.
 #
+# PROFILE KEY WHITELIST (TD-024):
+#   Only allowed keys are accepted in profile JSONB. Prevents mass
+#   assignment of arbitrary keys (e.g. "is_admin", "role", "__proto__").
+#
 # AUDIT:
 #   Profile changes are recorded in audit_log for compliance.
 #   Country and phone changes are especially significant for
@@ -38,6 +42,16 @@ from app.modules.users.models import User
 from app.modules.users.schemas import UserUpdate
 
 logger = structlog.get_logger()
+
+# Whitelist of allowed keys in profile JSONB (TD-024).
+# Any key not in this set is rejected with 400.
+_ALLOWED_PROFILE_KEYS = frozenset({
+    "first_name",
+    "last_name",
+    "country",
+    "phone",
+    "avatar_url",
+})
 
 
 async def update_user(
@@ -59,7 +73,8 @@ async def update_user(
         Updated User object with refreshed attributes.
 
     Raises:
-        BadRequestError: If language is explicitly set to null.
+        BadRequestError: If language is explicitly set to null,
+            or if profile contains unknown keys.
     """
     updates = body.model_dump(exclude_unset=True)
 
@@ -77,8 +92,17 @@ async def update_user(
 
     # Apply profile if provided (merge with existing JSONB).
     if "profile" in updates and updates["profile"] is not None:
+        incoming = updates["profile"]
+
+        # TD-024: reject unknown keys to prevent mass assignment.
+        extra = set(incoming.keys()) - _ALLOWED_PROFILE_KEYS
+        if extra:
+            raise BadRequestError(
+                f"Unknown profile keys: {sorted(extra)}"
+            )
+
         merged = dict(user.profile)
-        merged.update(updates["profile"])
+        merged.update(incoming)
         user.set_jsonb("profile", merged)
 
     await session.flush()
