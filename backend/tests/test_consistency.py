@@ -231,7 +231,8 @@ async def test_s12_gift_with_paid_cents(
     token = await _admin_token(client, db_session)
     user_id, _ = await _create_investor(client, "s12")
 
-    # Raw SQL to bypass FK constraints on product_id/company_id.
+    # Disable FK checks for raw INSERT (no real product/company needed).
+    await db_session.execute(text("SET session_replication_role = 'replica'"))
     await db_session.execute(
         text("""
             INSERT INTO purchases
@@ -243,6 +244,7 @@ async def test_s12_gift_with_paid_cents(
         """),
         {"uid": user_id},
     )
+    await db_session.execute(text("SET session_replication_role = 'origin'"))
     await db_session.commit()
 
     resp = await client.get(
@@ -272,6 +274,8 @@ async def test_is04_paid_tranche_no_purchase(
     token = await _admin_token(client, db_session)
     user_id, _ = await _create_investor(client, "is04")
 
+    # Disable FK checks for raw INSERT (no real product/template needed).
+    await db_session.execute(text("SET session_replication_role = 'replica'"))
     # Reuse user_id as plan_id for easy cleanup.
     await db_session.execute(
         text("""
@@ -295,6 +299,7 @@ async def test_is04_paid_tranche_no_purchase(
         """),
         {"pid": user_id},
     )
+    await db_session.execute(text("SET session_replication_role = 'origin'"))
     await db_session.commit()
 
     resp = await client.get(

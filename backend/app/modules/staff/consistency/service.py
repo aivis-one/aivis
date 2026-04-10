@@ -593,7 +593,7 @@ async def run_all(
                     actor_id=staff_id,
                     actor_type="staff",
                     target_type="semaphore",
-                    target_id=None,
+                    target_id=staff_id,
                     data={
                         "name": result.name,
                         "severity": result.severity,
