@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.6
-**Дата:** 8 апреля 2026
+**Версия:** 1.9
+**Дата:** 11 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -65,7 +65,7 @@ cbshome/
 ```
 - [x] `pyproject.toml` — зависимости, ruff, mypy, pytest конфиг
 - [x] `app/core/config.py` — pydantic-settings, загрузка из .env
-- [x] `app/core/exceptions.py` — `CBSError -> NotFound / Forbidden / Conflict / BadRequest / Unauthorized`
+- [x] `app/core/exceptions.py` — `CBSError -> NotFound / Forbidden / Conflict / BadRequest / Unauthorized / InsufficientBalance(BadRequest)` (Sprint 6.2: `+InsufficientBalanceError`)
 - [x] `app/core/mixins.py` — `UUIDMixin`, `TimestampMixin`, `JSONBMixin` (с `set_jsonb` + `flag_modified`)
 - [x] `app/core/constants.py` — `LedgerReason` (все канонические reasons из Financial System Codex)
 - [x] `tests/conftest.py` — async client fixture
@@ -969,7 +969,7 @@ backend/tests/
 
 **Решения реализации:**
 - P4-10: Price cascade = обновление `price_per_unit_cents` на active/hidden Products + soft-delete всех `ProductInstallment` шаблонов. Staff создаёт новые шаблоны по новой цене. Активные `InstallmentPlan` (Sprint 6.2) не затрагиваются — работают по снапшоту
-- P4-11: `validate_plan_config()` — context-aware: принимает `product_units` и `price_per_unit_cents`. Инварианты: `len(tranches) >= 2`, `sum(amount_cents) == units * price`, `sum(units_percent) == 100`, `bonus_units >= 0`, `agent_bonus_units >= 0`. Unknown keys rejected
+- P4-11: `validate_plan_config()` — context-aware: принимает `product_units` и `price_per_unit_cents`. Инварианты: `len(tranches) >= 2`, `sum(amount_cents) == units * price`, `sum(units_percent) == 100`, `sum(units_percent[i] * product_units // 100) == product_units` (Sprint 6.2: units decomposition check), `bonus_units >= 0`, `agent_bonus_units >= 0`. Unknown keys rejected
 - P4-12: `Product.units` иммутабелен после создания — нет в `UpdateProductRequest`
 - P4-13: `Product.price_per_unit_cents` копируется из Company при создании, обновляется только через cascade. Прямое редактирование запрещено
 - P4-14: `ProductInstallment` без `updated_at` (по ТЗ). plan_config изменяется через `set_jsonb()`. Soft-delete через `is_deleted: bool`
@@ -1525,19 +1525,27 @@ backend/tests/
 
 ---
 
-### Sprint 6.2: Installment Plans
+### ✅ Sprint 6.2: Installment Plans
 
 **Цель:** Покупка продукта в рассрочку.
 
 **Задачи:**
-- [ ] `app/modules/installments/models.py` — `InstallmentPlan`, `InstallmentTranche`
-- [ ] `app/modules/installments/service.py` — `create_plan()`, `pay_tranche()`, `complete_plan()`, `default_plan()`
-- [ ] `app/modules/installments/scheduler.py` — `calculate_due_date()` (february rule)
-- [ ] `installment_payment_worker` — daemon (asyncio.Task в lifespan)
-- [ ] `POST /api/v1/products/{id}/installment` — создать план (body: `{product_installment_id}`)
-- [ ] `GET /api/v1/installments/me` — мои планы
-- [ ] `GET /api/v1/installments/{id}` — детали плана
-- [ ] `tests/test_installments.py` — 20 тестов (включая february rule, default, completion)
+- [x] `app/modules/installments/constants.py` — `InstallmentPlanStatus`, `InstallmentTrancheStatus`, state machine transitions + validators
+- [x] `app/modules/installments/models.py` — `InstallmentPlan`, `InstallmentTranche`
+- [x] `app/modules/installments/scheduler.py` — `calculate_due_date()` (february rule)
+- [x] `app/modules/installments/schemas.py` — `CreateInstallmentPlanRequest`, `InstallmentPlanResponse`, `InstallmentPlanDetailResponse`, `InstallmentTrancheResponse`, `InstallmentPlanListResponse`
+- [x] `app/modules/installments/service.py` — `create_plan()`, `pay_tranche()`, `complete_plan()`, `default_plan()`, `get_investor_plans()`, `get_plan_detail()`
+- [x] `app/modules/installments/router.py` — `POST /products/{id}/installment`, `GET /installments/me`, `GET /installments/{id}`
+- [x] `app/modules/installments/worker.py` — `run_installment_batch()` (due tranche payment + overdue default)
+- [x] `app/modules/purchases/engine.py` — **новый**: shared financial operation core (extracted from `purchases/service.py`)
+- [x] `app/modules/purchases/service.py` — рефакторинг: `execute_purchase()` делегирует в `engine.execute()`, `compute_frozen_context()` публичный
+- [x] `app/modules/products/constants.py` — `validate_plan_config()` расширен: `+units decomposition` check
+- [x] `app/core/exceptions.py` — `+InsufficientBalanceError(BadRequestError)` с `available`/`required` полями
+- [x] `_installment_payment_worker` — daemon (asyncio.Task в lifespan), daily at `INSTALLMENT_WORKER_HOUR`, batch-first
+- [x] `tests/test_installments.py` — 20 тестов (5 scheduler + 2 validator + 4 create_plan + 4 endpoints + 2 pay + 2 complete/default)
+
+**Миграции:**
+- [x] `0010_installments` — таблицы `installment_plans`, `installment_tranches` (CHECK constraints, unique `plan_id+number`)
 
 **Модель `InstallmentPlan`:**
 ```python
@@ -1546,17 +1554,51 @@ InstallmentPlan:
     investor_id: UUID
     product_id: UUID
     product_installment_id: UUID
-    plan_config_snapshot: JSONB  -- копия plan_config на момент создания плана;
-                                 -- изменение ProductInstallment не влияет на активные планы
-    total_price_cents: int       -- денормализовано из снапшота для быстрых проверок
-    status: enum                 -- active | completed | defaulted | cancelled
+    company_id: UUID              -- денормализовано для быстрых запросов
+    plan_config_snapshot: JSONB   -- полная копия plan_config на момент создания
+    total_price_cents: int        -- денормализовано из снапшота
+    total_units: int              -- денормализовано (product.units)
+    price_per_unit_cents: int     -- снапшот цены на момент создания
+    referral_link_id: UUID | None -- Sprint 7.2 stub (nullable)
+    agent_id: UUID | None         -- Sprint 7.x stub (nullable, FK users.id)
+    status: enum                  -- active | completed | defaulted | cancelled
     created_at, completed_at, defaulted_at
 ```
 
+**Модель `InstallmentTranche`:**
+```python
+InstallmentTranche:
+    id: UUID
+    plan_id: UUID                 -- FK installment_plans.id
+    number: int                   -- 1..N (unique per plan)
+    due_date: date                -- с учётом february rule
+    amount_cents: int             -- из snapshot tranches[N].amount_cents
+    units_unlocked: int           -- pre-computed: units_percent * total_units // 100
+    status: enum                  -- scheduled | paid | overdue | defaulted | cancelled
+    paid_at: datetime | None
+    purchase_id: UUID | None      -- FK purchases.id (NOT NULL после оплаты)
+    created_at
+```
+
+**Решения реализации:**
+- P6-13: **engine.py** — общее ядро финансовых операций, вынесено из `purchases/service.py`. `execute()` принимает готовый `PurchaseContext`, выполняет: advisory lock (если `amount_cents > 0`) → balance check → ProcessorRegistry → write transactions → audit. `write_transactions()` — публичная, используется `complete_plan()` для фиксированных бонусов
+- P6-14: **Контекст immutable на входе** — engine никогда не вычисляет `frozen_until`, `distribution_config` и другие поля контекста. Вызывающий код (`execute_purchase()` или `pay_tranche()`) строит полный `PurchaseContext` самостоятельно
+- P6-15: **Условная логика по amount_cents** — `amount_cents > 0`: advisory lock + balance check. `amount_cents == 0`: skip (gift/bonus scenario). Единственное условие, без флагов
+- P6-16: **plan_config_snapshot** — полная копия `ProductInstallment.plan_config` + денормализованные `total_price_cents`, `total_units`, `price_per_unit_cents`. Изменение шаблона не влияет на active планы
+- P6-17: **units_unlocked pre-computed** — вычисляется при создании плана (`units_percent * total_units // 100`), записывается в tranche. `validate_plan_config()` отклоняет конфигурации где `sum(units_unlocked) != total_units` (Sprint 6.2 addition)
+- P6-18: **pay_tranche()** — загружает Product/Company без проверки status (plan переживает архивацию продукта). Distribution_config берётся из текущего состояния product/company, не из снапшота
+- P6-19: **InsufficientBalanceError** — подкласс `BadRequestError` с `available`/`required` полями и `code="insufficient_balance"`. `engine.execute()` бросает, `pay_tranche()` ловит по типу (fix #35: вместо string match)
+- P6-20: **Completion bonuses** — при закрытии плана (все tranches paid): `bonus_units` → investor gift Purchase, `agent_bonus_units` → agent L1 gift Purchase (если `agent_id is not None`). Транзакции строятся вручную (не через ProcessorRegistry) и записываются через `engine.write_transactions()`
+- P6-21: **default_plan()** — overdue tranche → defaulted, remaining scheduled/overdue → cancelled, plan → defaulted. Инвестор сохраняет уже оплаченные акции. Бонусы не начисляются
+- P6-22: **Daemon batch-first** — `run_installment_batch()` вызывается ДО `asyncio.sleep()` (fix #34: аналогично confirmation worker CR-P5-05). Sleep до следующего `INSTALLMENT_WORKER_HOUR`. `timedelta(days=1)` для границ месяцев
+- P6-23: **Worker transaction isolation** — каждый tranche обрабатывается в отдельной DB-транзакции (`session.begin()`). Ошибка одного tranche не откатывает другие. Дедупликация defaults по `plan_id` через `seen_plans: set`
+- P6-24: **Два роутера** — `create_router` (POST `/products/{id}/installment`) и `query_router` (GET `/installments/me`, GET `/installments/{id}`). Разные prefix'ы, оба требуют `role=investor`
+- P6-25: **Дублирование планов разрешено** — инвестор может иметь несколько active планов по одному продукту (разные пакеты: 6 и 12 месяцев). By design, не баг
+
 **Логика `create_plan()`:**
 ```
-1. Загрузить ProductInstallment -> скопировать plan_config в plan_config_snapshot
-2. Валидировать снапшот (PurchaseConfigValidator)
+1. Загрузить Product (must be active) + Company (must be active)
+2. Загрузить ProductInstallment -> скопировать plan_config в plan_config_snapshot
 3. Создать InstallmentPlan (с referral_link_id: UUID | None из запроса)
 4. Развернуть tranches из снапшота в записи InstallmentTranche:
    - tranches[0]: due_date = today, status = scheduled (daemon оплатит сразу)
@@ -1567,7 +1609,59 @@ InstallmentPlan:
    если None, ReferralProcessor не вызывается
 ```
 
-**Критерий готовности:** Инвестор выбирает план по `product_installment_id`. Снапшот фиксируется. Транши разворачиваются из снапшота. Daemon платит транши. Дефолт через 7 дней просрочки. Бонусы из снапшота при закрытии.
+**Endpoints:**
+```
+POST /api/v1/products/{id}/installment  -> InstallmentPlanResponse  (201)
+GET  /api/v1/installments/me            -> InstallmentPlanListResponse  (200)
+GET  /api/v1/installments/{id}          -> InstallmentPlanDetailResponse  (200)
+```
+
+**Новые audit events:**
+- `installment.plan_created` — создание плана с деталями template/tranches
+- `installment.tranche_paid` — оплата транша с purchase_id
+- `installment.tranche_overdue` — недостаточно средств
+- `installment.plan_completed` — все транши оплачены, бонусы начислены
+- `installment.plan_defaulted` — просрочка > INSTALLMENT_DEFAULT_DAYS
+- `installment.bonus_awarded` — бонусные акции при завершении плана
+
+**Результат:**
+```
+backend/app/modules/installments/
+├── __init__.py
+├── constants.py        -- InstallmentPlanStatus, InstallmentTrancheStatus, state machines
+├── models.py           -- InstallmentPlan, InstallmentTranche
+├── schemas.py          -- 1 request + 4 response
+├── scheduler.py        -- calculate_due_date() (february rule)
+├── service.py          -- create_plan, pay_tranche, complete_plan, default_plan, queries
+├── router.py           -- create_router (1 endpoint) + query_router (2 endpoints)
+└── worker.py           -- run_installment_batch() (due payments + defaults)
+
+backend/app/modules/purchases/
+├── engine.py           -- NEW: execute(), write_transactions() (shared core)
+└── service.py          -- REFACTORED: execute_purchase() delegates to engine
+
+backend/tests/
+└── test_installments.py  -- 20 tests
+```
+
+**Обновлённые файлы (Sprint 6.2):**
+- `core/exceptions.py` — `+InsufficientBalanceError(BadRequestError)` с `available`, `required`, `code="insufficient_balance"`
+- `products/constants.py` — `validate_plan_config()` +units decomposition check: `sum(pct * units // 100) == units`
+- `purchases/engine.py` — **новый**: `execute()` + `write_transactions()`, вынесены из service.py
+- `purchases/service.py` — рефакторинг: `execute_purchase()` → context + `engine.execute()`, `_compute_frozen_context()` → `compute_frozen_context()` (публичный)
+- `main.py` — `+_installment_payment_worker()` (batch-first, daily), `+installment_create_router`, `+installment_query_router`
+- `migrations/env.py` — `+InstallmentPlan`, `+InstallmentTranche` import
+- `tests/helpers.py` — `+InstallmentPlan`, `+InstallmentTranche` cleanup в `_cleanup_user_related_data()`
+
+**Фиксы code review (Sprint 6.2):**
+- CR-62-01: `main.py` — installment daemon: `run_installment_batch()` вызывается ДО `asyncio.sleep()` → просроченные транши обрабатываются сразу при старте, не ждут следующего target_hour (fix #34, аналогично CR-P5-05)
+- CR-62-02: `installments/service.py` + `purchases/engine.py` — `InsufficientBalanceError` вместо `BadRequestError` + string match. Engine бросает типизированное исключение, service ловит по типу (fix #35)
+
+**Закрыто code review (Sprint 6.2):**
+- #36 (units_unlocked округление) — false positive: `validate_plan_config()` отклоняет конфигурации с неточным разложением
+- #37 (дублирование планов) — by design: инвестор может иметь несколько планов (6 и 12 месяцев)
+
+**Критерий готовности:** Инвестор выбирает план по `product_installment_id`. Снапшот фиксируется. Транши разворачиваются из снапшота. Daemon платит транши (batch-first). InsufficientBalance → overdue по типу исключения. Дефолт через 7 дней просрочки. Бонусы из снапшота при закрытии. Engine.py переиспользуется instant purchase и tranche payment. 191 тест зелёный.
 
 ---
 
@@ -1962,4 +2056,4 @@ Event:
 
 ---
 
-*Version 1.8 | 2026-04-10 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, code review fixes applied (30/33 closed, 9/10), Sprint 6.2 next*
+*Version 1.9 | 2026-04-11 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, Sprint 6.2 complete (engine.py refactor, installments, daemon batch-first, InsufficientBalanceError), code review fixes applied (32/35 closed, 9/10), Sprint 6.3 next*
