@@ -18,10 +18,11 @@
 #   CBSHOME-Installment.md section 8.
 # =============================================================================
 
+from decimal import Decimal
 from typing import Any
 
 import structlog
-from sqlalchemy import String, case, func, literal_column, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -40,6 +41,19 @@ from app.modules.users.models import User, UserRole
 logger = structlog.get_logger()
 
 
+def _safe_details(details: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Convert Decimal values to int for JSON serialization.
+
+    func.sum() on BigInteger returns Decimal which is not JSON-serializable.
+    """
+    if details is None:
+        return None
+    return {
+        k: int(v) if isinstance(v, Decimal) else v
+        for k, v in details.items()
+    }
+
+
 def _result(
     name: str,
     severity: str,
@@ -51,7 +65,7 @@ def _result(
         name=name,
         status="pass" if passed else "fail",
         severity=severity,
-        details=details,
+        details=_safe_details(details),
     )
 
 

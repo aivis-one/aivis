@@ -21,12 +21,9 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.modules.transactions.constants import TransactionType
-from app.modules.transactions.models import Transaction
 from app.modules.transactions.service import record_transaction
 from tests.helpers import (
     auth_headers,
@@ -48,7 +45,6 @@ async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
 async def _create_user(
     client: AsyncClient, suffix: str
 ) -> tuple[UUID, str]:
-    """Register user, return (user_id, token)."""
     data = await register_user(
         client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
     )
@@ -64,11 +60,9 @@ async def _create_user(
 async def test_transactions_empty(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """GET /transactions -> 200, empty list for new user."""
     _, token = await _create_user(client, "empty")
     resp = await client.get(
-        "/api/v1/transactions",
-        headers=auth_headers(token),
+        "/api/v1/transactions", headers=auth_headers(token),
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -87,10 +81,7 @@ async def test_transactions_empty(
 async def test_transaction_created_on_record(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """record_transaction() creates entry, visible in GET /transactions."""
     user_id, token = await _create_user(client, "rec")
-
-    # Write a transaction directly via service.
     await record_transaction(
         db_session,
         user_id=user_id,
@@ -101,8 +92,7 @@ async def test_transaction_created_on_record(
     await db_session.commit()
 
     resp = await client.get(
-        "/api/v1/transactions",
-        headers=auth_headers(token),
+        "/api/v1/transactions", headers=auth_headers(token),
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -122,21 +112,14 @@ async def test_transaction_created_on_record(
 async def test_transactions_type_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """GET /transactions?type=deposit:received filters correctly."""
     user_id, token = await _create_user(client, "filt")
-
-    # Create two different types.
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.DEPOSIT_RECEIVED,
-        amount_cents=10000,
+        db_session, user_id=user_id,
+        type=TransactionType.DEPOSIT_RECEIVED, amount_cents=10000,
     )
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.WITHDRAWAL_CREATED,
-        amount_cents=-5000,
+        db_session, user_id=user_id,
+        type=TransactionType.WITHDRAWAL_CREATED, amount_cents=-5000,
     )
     await db_session.commit()
 
@@ -145,9 +128,8 @@ async def test_transactions_type_filter(
         headers=auth_headers(token),
     )
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["total"] == 1
-    assert body["items"][0]["type"] == "deposit:received"
+    assert resp.json()["total"] == 1
+    assert resp.json()["items"][0]["type"] == "deposit:received"
 
 
 # ---------------------------------------------------------------------------
@@ -159,19 +141,15 @@ async def test_transactions_type_filter(
 async def test_transactions_date_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """GET /transactions with date_from/date_to filters."""
     user_id, token = await _create_user(client, "date")
-
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.DEPOSIT_RECEIVED,
-        amount_cents=20000,
+        db_session, user_id=user_id,
+        type=TransactionType.DEPOSIT_RECEIVED, amount_cents=20000,
     )
     await db_session.commit()
 
-    # Future date range -> empty.
-    future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+    # Future date range -> empty. Use strftime to avoid timezone suffix.
+    future = (datetime.now(UTC) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
     resp = await client.get(
         f"/api/v1/transactions?date_from={future}",
         headers=auth_headers(token),
@@ -180,7 +158,7 @@ async def test_transactions_date_filter(
     assert resp.json()["total"] == 0
 
     # Past date range -> includes our entry.
-    past = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    past = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
     resp2 = await client.get(
         f"/api/v1/transactions?date_from={past}",
         headers=auth_headers(token),
@@ -198,24 +176,17 @@ async def test_transactions_date_filter(
 async def test_transactions_amount_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """GET /transactions with amount_min/amount_max filters."""
     user_id, token = await _create_user(client, "amt")
-
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.DEPOSIT_RECEIVED,
-        amount_cents=50000,
+        db_session, user_id=user_id,
+        type=TransactionType.DEPOSIT_RECEIVED, amount_cents=50000,
     )
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.WITHDRAWAL_CREATED,
-        amount_cents=-5000,
+        db_session, user_id=user_id,
+        type=TransactionType.WITHDRAWAL_CREATED, amount_cents=-5000,
     )
     await db_session.commit()
 
-    # amount_min=10000 -> only the 50000 entry.
     resp = await client.get(
         "/api/v1/transactions?amount_min=10000",
         headers=auth_headers(token),
@@ -234,21 +205,16 @@ async def test_transactions_amount_filter(
 async def test_transaction_get_by_id(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """GET /transactions/{id} -> 200 with correct data."""
     user_id, token = await _create_user(client, "byid")
-
     txn = await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.PURCHASE_COMPLETED,
-        amount_cents=-30000,
+        db_session, user_id=user_id,
+        type=TransactionType.PURCHASE_COMPLETED, amount_cents=-30000,
         details={"product_id": str(uuid4())},
     )
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/{txn.id}",
-        headers=auth_headers(token),
+        f"/api/v1/transactions/{txn.id}", headers=auth_headers(token),
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -266,21 +232,16 @@ async def test_transaction_get_by_id(
 async def test_transaction_get_other_user(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """GET /transactions/{id} for another user's transaction -> 404."""
     user_id_a, _ = await _create_user(client, "owna")
     _, token_b = await _create_user(client, "ownb")
-
     txn = await record_transaction(
-        db_session,
-        user_id=user_id_a,
-        type=TransactionType.DEPOSIT_RECEIVED,
-        amount_cents=10000,
+        db_session, user_id=user_id_a,
+        type=TransactionType.DEPOSIT_RECEIVED, amount_cents=10000,
     )
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/{txn.id}",
-        headers=auth_headers(token_b),
+        f"/api/v1/transactions/{txn.id}", headers=auth_headers(token_b),
     )
     assert resp.status_code == 404
 
@@ -294,30 +255,21 @@ async def test_transaction_get_other_user(
 async def test_transactions_type_prefix_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """GET /transactions?type=deposit: filters by prefix."""
     user_id, token = await _create_user(client, "pfx")
-
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.DEPOSIT_RECEIVED,
-        amount_cents=10000,
+        db_session, user_id=user_id,
+        type=TransactionType.DEPOSIT_RECEIVED, amount_cents=10000,
     )
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.DEPOSIT_CONFIRMED,
-        amount_cents=10000,
+        db_session, user_id=user_id,
+        type=TransactionType.DEPOSIT_CONFIRMED, amount_cents=10000,
     )
     await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=TransactionType.WITHDRAWAL_CREATED,
-        amount_cents=-5000,
+        db_session, user_id=user_id,
+        type=TransactionType.WITHDRAWAL_CREATED, amount_cents=-5000,
     )
     await db_session.commit()
 
-    # Prefix "deposit:" -> both deposit entries.
     resp = await client.get(
         "/api/v1/transactions?type=deposit:",
         headers=auth_headers(token),
