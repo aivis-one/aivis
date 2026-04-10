@@ -139,7 +139,7 @@ async def test_create_withdrawal_no_payout_details(
         headers=auth_headers(token),
     )
     assert resp.status_code == 400
-    assert "Payout details" in resp.json()["detail"]
+    assert "Payout details" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ async def test_create_withdrawal_insufficient_balance(
         headers=auth_headers(token),
     )
     assert resp.status_code == 400
-    assert "Insufficient" in resp.json()["detail"]
+    assert "Insufficient" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -185,7 +185,7 @@ async def test_create_withdrawal_below_minimum(
         headers=auth_headers(token),
     )
     assert resp.status_code == 400
-    assert "Minimum" in resp.json()["detail"]
+    assert "Minimum" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +208,7 @@ async def test_create_withdrawal_above_maximum(
         headers=auth_headers(token),
     )
     assert resp.status_code == 400
-    assert "Maximum" in resp.json()["detail"]
+    assert "Maximum" in resp.json()["message"]
 
 
 # ---------------------------------------------------------------------------
