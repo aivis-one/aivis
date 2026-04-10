@@ -269,7 +269,7 @@ async def reject_withdrawal(
     # -- Compensating ledger entry (credit back) --
     reversal_reason = (
         LedgerReason.WITHDRAWAL.format(withdrawal_id=withdrawal.id)
-        + LedgerReason.REVERSAL_SUFFIX
+        + ":reversal"
     )
     await record_passive_ledger(
         session,
@@ -397,7 +397,7 @@ async def fail_withdrawal(
     # -- Compensating ledger entry (credit back) --
     reversal_reason = (
         LedgerReason.WITHDRAWAL.format(withdrawal_id=withdrawal.id)
-        + LedgerReason.REVERSAL_SUFFIX
+        + ":reversal"
     )
     await record_passive_ledger(
         session,

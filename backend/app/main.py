@@ -288,58 +288,78 @@ async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
     """Convert CBSError exceptions into proper HTTP JSON responses."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail, "code": exc.code},
+        content={"error": exc.code, "message": exc.message},
     )
 
 
 # ---------------------------------------------------------------------------
-# Health / Readiness
+# Root + Health + Ready
 # ---------------------------------------------------------------------------
 
-
 @app.get("/")
-async def root() -> dict[str, str]:
-    """API identification endpoint."""
-    return {"app": "CBSHOME API", "version": APP_VERSION}
+async def root() -> dict:
+    """API info."""
+    return {"name": "CBSHOME API", "version": APP_VERSION}
 
 
 @app.get("/health")
-async def health() -> dict[str, str | dict[str, str]]:
-    """Health check: DB + Redis connectivity.
+async def health() -> JSONResponse:
+    """Health check -- always returns 200.
 
-    Always returns 200 -- individual service status in body.
+    Reports DB and Redis connectivity status.
     """
-    checks: dict[str, str] = {}
+    db_ok = True
+    redis_ok = True
 
-    # DB
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        checks["db"] = "ok"
-    except Exception as exc:
-        checks["db"] = f"error: {exc}"
+    except Exception:
+        db_ok = False
 
-    # Redis
     try:
         redis = get_redis()
         await redis.ping()
-        checks["redis"] = "ok"
-    except Exception as exc:
-        checks["redis"] = f"error: {exc}"
+    except Exception:
+        redis_ok = False
 
-    return {"status": "ok", "checks": checks}
+    all_ok = db_ok and redis_ok
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "ok" if all_ok else "degraded",
+            "db": "ok" if db_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
+    )
 
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe: 200 if all services up, 503 otherwise."""
-    result = await health()
-    checks = result["checks"]
+    """Readiness probe -- 503 if any dependency is degraded."""
+    db_ok = True
+    redis_ok = True
 
-    all_ok = all(v == "ok" for v in checks.values())  # type: ignore[union-attr]
+    try:
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
 
+    try:
+        redis = get_redis()
+        await redis.ping()
+    except Exception:
+        redis_ok = False
+
+    all_ok = db_ok and redis_ok
     return JSONResponse(
         status_code=200 if all_ok else 503,
-        content=result,
+        content={
+            "status": "ok" if all_ok else "degraded",
+            "db": "ok" if db_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
     )
