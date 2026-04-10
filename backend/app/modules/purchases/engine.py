@@ -8,6 +8,12 @@
 #   Used by both instant purchases (purchases/service.py) and installment
 #   tranche payments (installments/service.py).
 #
+# PUBLIC API:
+#   execute()            -- full flow: lock + balance + registry + write + audit
+#   write_transactions() -- lower-level: write Transaction objects to DB
+#                           Used by complete_plan() for fixed completion bonuses
+#                           that don't go through ProcessorRegistry.
+#
 # ENGINE CONTRACT:
 #   1. Context is immutable on input -- engine never computes frozen_until,
 #      distribution_config, or any other context field. Caller builds it.
@@ -106,7 +112,7 @@ async def execute(
     transactions = registry.run_all(context)
 
     # -- 3. Write to DB --
-    purchases = await _write_transactions(
+    purchases = await write_transactions(
         session=session,
         transactions=transactions,
         context=context,
@@ -146,11 +152,11 @@ async def execute(
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Transaction writer (public -- used by complete_plan for fixed bonuses)
 # ---------------------------------------------------------------------------
 
 
-async def _write_transactions(
+async def write_transactions(
     session: AsyncSession,
     transactions: list[Transaction],
     context: PurchaseContext,
@@ -162,6 +168,10 @@ async def _write_transactions(
 
     The "{purchase_id}" placeholder in reason strings is replaced with
     the actual Purchase.id after creation.
+
+    Public API: used by engine.execute() and directly by
+    installments/service.py complete_plan() for completion bonuses.
+    Caller must ensure SUM=0 invariant on each Transaction.
     """
     purchases: list[Purchase] = []
 
