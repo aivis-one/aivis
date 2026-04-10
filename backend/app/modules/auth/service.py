@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Auth Service
+# CBSHOME Backend -- Auth Service (fix review #9)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -82,7 +82,7 @@ async def _audit_login_failure(
     rolled back on exception (P-01). This is the only place in
     auth service that manages its own transaction.
 
-    Silently swallows errors -- audit failure must not block auth flow.
+    Errors are logged but do not block auth flow.
     """
     factory = get_session_factory()
     session = factory()
@@ -99,6 +99,11 @@ async def _audit_login_failure(
         await session.commit()
     except Exception:
         await session.rollback()
+        logger.error(
+            "audit_login_failure_write_failed",
+            user_id=str(user_id),
+            reason=reason,
+        )
     finally:
         await session.close()
 
