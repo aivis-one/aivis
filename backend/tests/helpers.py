@@ -40,6 +40,10 @@
 #   _cleanup_user_related_data() extended with Purchase cleanup.
 #   Order: purchases before ledger entries (no FK dependency, but
 #   logically purchases reference users/products/companies).
+#
+# Sprint 6.2:
+#   _cleanup_user_related_data() extended with InstallmentPlan/Tranche cleanup.
+#   Order: tranches first (FK to plans + purchases), then plans.
 # =============================================================================
 
 import hashlib
@@ -259,6 +263,11 @@ async def create_admin_user(
     return login_data, login_data["session_token"]
 
 
+# ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+
+
 async def cleanup_test_users(
     session: AsyncSession,
     email_prefix: str,
@@ -347,11 +356,51 @@ async def _cleanup_user_related_data(
         CompanyRoadmapItem,
     )
     from app.modules.documents.models import Document, DocumentSigning
+    from app.modules.installments.models import InstallmentPlan, InstallmentTranche
     from app.modules.kyc.models import KYCApplication
     from app.modules.ledgers.models import ActiveLedger, PassiveLedger
     from app.modules.payments.models import CryptoAddress, Payment
     from app.modules.products.models import Product, ProductInstallment
     from app.modules.purchases.models import Purchase
+
+    # Sprint 6.2: Installment tranches and plans by investor_id.
+    # Tranches first (FK to installment_plans.id and purchases.id).
+    plan_stmt = select(InstallmentPlan.id).where(
+        InstallmentPlan.investor_id.in_(user_ids)
+    )
+    plan_result = await session.execute(plan_stmt)
+    plan_ids = [row[0] for row in plan_result.all()]
+
+    if plan_ids:
+        await session.execute(
+            delete(InstallmentTranche).where(
+                InstallmentTranche.plan_id.in_(plan_ids)
+            )
+        )
+        await session.execute(
+            delete(InstallmentPlan).where(
+                InstallmentPlan.id.in_(plan_ids)
+            )
+        )
+
+    # Also clean plans where agent_id is one of the users.
+    agent_plan_stmt = select(InstallmentPlan.id).where(
+        InstallmentPlan.agent_id.in_(user_ids)
+    )
+    agent_plan_result = await session.execute(agent_plan_stmt)
+    agent_plan_ids = [row[0] for row in agent_plan_result.all()]
+
+    if agent_plan_ids:
+        await session.execute(
+            delete(InstallmentTranche).where(
+                InstallmentTranche.plan_id.in_(agent_plan_ids)
+            )
+        )
+        await session.execute(
+            delete(InstallmentPlan).where(
+                InstallmentPlan.id.in_(agent_plan_ids)
+            )
+        )
 
     # Sprint 6.1: Purchases by investor_id (FK to users.id).
     await session.execute(
@@ -403,6 +452,25 @@ async def _cleanup_user_related_data(
         product_ids = [row[0] for row in prod_result.all()]
 
         if product_ids:
+            # Sprint 6.2: Installment plans/tranches referencing these products.
+            prod_plan_stmt = select(InstallmentPlan.id).where(
+                InstallmentPlan.product_id.in_(product_ids)
+            )
+            prod_plan_result = await session.execute(prod_plan_stmt)
+            prod_plan_ids = [row[0] for row in prod_plan_result.all()]
+
+            if prod_plan_ids:
+                await session.execute(
+                    delete(InstallmentTranche).where(
+                        InstallmentTranche.plan_id.in_(prod_plan_ids)
+                    )
+                )
+                await session.execute(
+                    delete(InstallmentPlan).where(
+                        InstallmentPlan.id.in_(prod_plan_ids)
+                    )
+                )
+
             # Sprint 6.1: Purchases referencing these products.
             await session.execute(
                 delete(Purchase).where(

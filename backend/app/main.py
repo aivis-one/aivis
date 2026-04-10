@@ -25,13 +25,16 @@
 #   payments_webhook_router -> /api/v1/payments/crypto/* (Sprint 5.2)
 #   staff_payments_router  -> /api/v1/staff/payments/* (Sprint 5.3)
 #   purchases_router       -> /api/v1/products/*/purchase (Sprint 6.1)
+#   installment_create_router -> /api/v1/products/*/installment (Sprint 6.2)
+#   installment_query_router  -> /api/v1/installments/* (Sprint 6.2)
 #
 # LIFESPAN:
-#   startup:  setup_logging -> init_redis -> start confirmation daemon
-#   shutdown: cancel daemon -> close_redis -> dispose_engine
+#   startup:  setup_logging -> init_redis -> start daemons
+#   shutdown: cancel daemons -> close_redis -> dispose_engine
 #
 # DAEMONS:
 #   payment_confirmation_worker -- calls run_confirmation_batch() (Sprint 5.3)
+#   installment_payment_worker  -- calls run_installment_batch() (Sprint 6.2)
 #
 # MIDDLEWARE (applied in reverse order -- outermost last):
 #   CORSMiddleware -> TraceIdMiddleware
@@ -40,6 +43,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, UTC
 
 import structlog
 from fastapi import FastAPI
@@ -59,6 +63,11 @@ from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
+from app.modules.installments.router import (
+    create_router as installment_create_router,
+    query_router as installment_query_router,
+)
+from app.modules.installments.worker import run_installment_batch
 from app.modules.kyc.router import router as kyc_router
 from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
@@ -110,6 +119,58 @@ async def _payment_confirmation_worker() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Installment payment daemon (Sprint 6.2)
+# ---------------------------------------------------------------------------
+
+
+async def _installment_payment_worker() -> None:
+    """Background task: pay due tranches and default overdue plans.
+
+    Runs daily at INSTALLMENT_WORKER_HOUR (UTC). Each cycle delegates
+    to run_installment_batch() in installments/worker.py.
+
+    Sleep strategy: calculate seconds until next target hour, sleep,
+    run batch, repeat.
+    """
+    target_hour = settings.installment_worker_hour
+    logger.info(
+        "installment_worker_started",
+        target_hour_utc=target_hour,
+    )
+
+    while True:
+        try:
+            # Calculate sleep until next target hour.
+            now = datetime.now(UTC)
+            next_run = now.replace(
+                hour=target_hour, minute=0, second=0, microsecond=0
+            )
+            if next_run <= now:
+                # Target hour already passed today -- schedule for tomorrow.
+                next_run = next_run + timedelta(days=1)
+
+            sleep_seconds = (next_run - now).total_seconds()
+            logger.info(
+                "installment_worker_sleeping",
+                next_run=next_run.isoformat(),
+                sleep_seconds=int(sleep_seconds),
+            )
+
+            await asyncio.sleep(sleep_seconds)
+
+            # Run batch.
+            await run_installment_batch()
+
+        except asyncio.CancelledError:
+            logger.info("installment_worker_stopped")
+            break
+        except Exception:
+            logger.exception("installment_worker_error")
+            # Sleep 1 hour before retry to avoid tight error loop.
+            await asyncio.sleep(3600)
+
+
+# ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
 
@@ -125,6 +186,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _payment_confirmation_worker(),
         name="payment_confirmation_worker",
     )
+    installment_task = asyncio.create_task(
+        _installment_payment_worker(),
+        name="installment_payment_worker",
+    )
 
     logger.info(
         "app_started",
@@ -137,8 +202,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Stop background daemons.
     confirmation_task.cancel()
+    installment_task.cancel()
     try:
         await confirmation_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await installment_task
     except asyncio.CancelledError:
         pass
 
@@ -198,6 +268,8 @@ app.include_router(payments_router)
 app.include_router(payments_webhook_router)
 app.include_router(staff_payments_router)
 app.include_router(purchases_router)
+app.include_router(installment_create_router)
+app.include_router(installment_query_router)
 
 
 # ---------------------------------------------------------------------------

@@ -48,7 +48,7 @@ from app.modules.payments.models import Payment, CryptoAddress  # noqa: F401
 from app.modules.purchases.models import Purchase  # noqa: F401
 
 # Sprint 6.2: Installments
-# from app.modules.installments.models import InstallmentPlan, InstallmentTranche  # noqa: F401
+from app.modules.installments.models import InstallmentPlan, InstallmentTranche  # noqa: F401
 
 # Sprint 6.3: Withdrawals
 # from app.modules.withdrawals.models import Withdrawal  # noqa: F401
@@ -87,34 +87,30 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
-
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
-    """Run migrations using a live connection."""
+    """Run migrations with a live connection."""
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
     )
-
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_async_migrations() -> None:
     """Create async engine and run migrations."""
-    engine = create_async_engine(settings.database_url)
-
-    async with engine.connect() as connection:
+    connectable = create_async_engine(settings.database_url)
+    async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
-
-    await engine.dispose()
+    await connectable.dispose()
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
+    """Run migrations in 'online' mode with async engine."""
     asyncio.run(run_async_migrations())
 
 
