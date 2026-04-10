@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Engine (Sprint 6.2)
+# CBSHOME Backend -- Purchase Engine (Sprint 6.2, fix #35)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -40,7 +40,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
-from app.core.exceptions import BadRequestError
+from app.core.exceptions import InsufficientBalanceError
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import (
     get_active_balance,
@@ -87,7 +87,7 @@ async def execute(
         List of Purchase records created (sale + optional gifts).
 
     Raises:
-        BadRequestError: Insufficient balance.
+        InsufficientBalanceError: Balance too low for amount_cents.
     """
     # -- 1. Advisory lock + balance check (only when money moves) --
     if context.amount_cents > 0:
@@ -100,9 +100,9 @@ async def execute(
         available = balance["frozen"] + balance["confirmed"]
 
         if available < context.amount_cents:
-            raise BadRequestError(
-                f"Insufficient balance: {available} cents available, "
-                f"{context.amount_cents} cents required"
+            raise InsufficientBalanceError(
+                available=available,
+                required=context.amount_cents,
             )
 
     # -- 2. Run processors --

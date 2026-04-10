@@ -4,14 +4,13 @@
 #
 # HIERARCHY:
 #   CBSError (base)
-#   ├── UnauthorizedError  -> 401
-#   ├── ForbiddenError     -> 403
-#   ├── NotFoundError      -> 404
-#   ├── ConflictError      -> 409
-#   └── BadRequestError    -> 400
-#
-# Special:
-#   AMLViolationError      -> 403 (Active -> Passive ledger route)
+#   ├── UnauthorizedError        -> 401
+#   ├── ForbiddenError           -> 403
+#   ├── NotFoundError            -> 404
+#   ├── ConflictError            -> 409
+#   ├── BadRequestError          -> 400
+#   │   └── InsufficientBalanceError -> 400 (Sprint 6.2)
+#   └── AMLViolationError        -> 403
 #
 # USAGE:
 #   from app.core.exceptions import NotFoundError
@@ -102,6 +101,28 @@ class BadRequestError(CBSError):
         code: str = "bad_request",
     ) -> None:
         super().__init__(message=message, code=code, status_code=400)
+
+
+class InsufficientBalanceError(BadRequestError):
+    """Investor balance too low for the requested operation (HTTP 400).
+
+    Subclass of BadRequestError so existing catch-all handlers still work.
+    Carries available/required amounts for structured error handling.
+
+    Sprint 6.2: introduced to replace string-matching on error messages
+    in installment tranche payment flow.
+    """
+
+    def __init__(self, available: int, required: int) -> None:
+        self.available = available
+        self.required = required
+        super().__init__(
+            message=(
+                f"Insufficient balance: {available} cents available, "
+                f"{required} cents required"
+            ),
+            code="insufficient_balance",
+        )
 
 
 class AMLViolationError(CBSError):

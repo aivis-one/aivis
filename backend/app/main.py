@@ -119,7 +119,7 @@ async def _payment_confirmation_worker() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Installment payment daemon (Sprint 6.2)
+# Installment payment daemon (Sprint 6.2, fix #34)
 # ---------------------------------------------------------------------------
 
 
@@ -129,8 +129,9 @@ async def _installment_payment_worker() -> None:
     Runs daily at INSTALLMENT_WORKER_HOUR (UTC). Each cycle delegates
     to run_installment_batch() in installments/worker.py.
 
-    Sleep strategy: calculate seconds until next target hour, sleep,
-    run batch, repeat.
+    Fix #34: batch runs BEFORE first sleep so any tranches that accumulated
+    during downtime are processed immediately on startup, not deferred to
+    the next scheduled hour.
     """
     target_hour = settings.installment_worker_hour
     logger.info(
@@ -140,6 +141,9 @@ async def _installment_payment_worker() -> None:
 
     while True:
         try:
+            # Batch-first: process accumulated tranches immediately.
+            await run_installment_batch()
+
             # Calculate sleep until next target hour.
             now = datetime.now(UTC)
             next_run = now.replace(
@@ -157,9 +161,6 @@ async def _installment_payment_worker() -> None:
             )
 
             await asyncio.sleep(sleep_seconds)
-
-            # Run batch.
-            await run_installment_batch()
 
         except asyncio.CancelledError:
             logger.info("installment_worker_stopped")

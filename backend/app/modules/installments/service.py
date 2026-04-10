@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Service (Sprint 6.2)
+# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -19,6 +19,8 @@
 #   Completion bonuses are written via engine.write_transactions() with
 #   manually-built Transaction objects (fixed bonus, not condition-based).
 #
+# Fix #35: catch InsufficientBalanceError by type, not string match.
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
 # =============================================================================
@@ -32,7 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.constants import LedgerReason
-from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.exceptions import BadRequestError, InsufficientBalanceError, NotFoundError
 from app.modules.companies.models import CompanyProfile
 from app.modules.installments.constants import (
     InstallmentPlanStatus,
@@ -245,41 +247,39 @@ async def pay_tranche(
         triggered_at=now,
     )
 
-    # -- 5. Execute via engine (catches insufficient balance) --
+    # -- 5. Execute via engine (fix #35: catch by type, not string) --
     try:
         purchases = await engine.execute(context, session)
-    except BadRequestError as exc:
-        if "Insufficient balance" in str(exc):
-            # Mark as overdue (if not already).
-            if tranche.status == InstallmentTrancheStatus.SCHEDULED:
-                validate_tranche_status_transition(
-                    tranche.status, InstallmentTrancheStatus.OVERDUE
-                )
-                tranche.status = InstallmentTrancheStatus.OVERDUE
-                await session.flush()
-
-                await record_audit(
-                    session=session,
-                    event="installment.tranche_overdue",
-                    actor_id=plan.investor_id,
-                    actor_type="system",
-                    target_type="installment_tranche",
-                    target_id=tranche.id,
-                    data={
-                        "plan_id": str(plan.id),
-                        "tranche_number": tranche.number,
-                        "amount_cents": tranche.amount_cents,
-                    },
-                )
-
-            logger.info(
-                "installment_tranche_overdue",
-                tranche_id=str(tranche.id),
-                plan_id=str(plan.id),
-                amount_cents=tranche.amount_cents,
+    except InsufficientBalanceError:
+        # Mark as overdue (if not already).
+        if tranche.status == InstallmentTrancheStatus.SCHEDULED:
+            validate_tranche_status_transition(
+                tranche.status, InstallmentTrancheStatus.OVERDUE
             )
-            return False
-        raise
+            tranche.status = InstallmentTrancheStatus.OVERDUE
+            await session.flush()
+
+            await record_audit(
+                session=session,
+                event="installment.tranche_overdue",
+                actor_id=plan.investor_id,
+                actor_type="system",
+                target_type="installment_tranche",
+                target_id=tranche.id,
+                data={
+                    "plan_id": str(plan.id),
+                    "tranche_number": tranche.number,
+                    "amount_cents": tranche.amount_cents,
+                },
+            )
+
+        logger.info(
+            "installment_tranche_overdue",
+            tranche_id=str(tranche.id),
+            plan_id=str(plan.id),
+            amount_cents=tranche.amount_cents,
+        )
+        return False
 
     # -- 6. Update tranche --
     # Engine returns [sale_purchase]. Take the first (sale) purchase.
