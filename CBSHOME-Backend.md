@@ -142,7 +142,7 @@ User:
     kyc_status: enum  -- not_started | submitted | approved | rejected
     -- kyc_status -- денормализованный кэш KYCApplication.status для hot path
     credentials: JSONB  -- {email: {...}, telegram: {...}, onboarding: {...}}
-    profile: JSONB      -- {first_name, last_name, country, phone, ...}
+    profile: JSONB      -- {first_name, last_name, country, phone, avatar_url} (whitelist enforced, TD-024)
     language: str       -- "en" (default)
     created_at, updated_at
 ```
@@ -379,7 +379,7 @@ backend/tests/
 **Цель:** Вход через Telegram WebApp. Второй auth-метод.
 
 **Задачи:**
-- [x] `app/modules/auth/telegram.py` — валидация initData (HMAC-SHA256), anti-replay (Redis SET NX), rate limiting (INCR + EXPIRE)
+- [x] `app/modules/auth/telegram.py` — валидация initData (HMAC-SHA256), anti-replay (Redis SET NX), rate limiting (делегирует на `core/rate_limit.py` Lua-скрипт)
 - [x] `POST /api/v1/auth/telegram` — upsert юзера при логине
 - [x] Upsert: SELECT + INSERT с SAVEPOINT (P-05) для race condition (ON CONFLICT невозможен на functional JSONB index)
 - [x] Обновление `credentials.telegram` при каждом логине (username, photo_url, language_code)
@@ -389,7 +389,7 @@ backend/tests/
 **Решения реализации:**
 - `telegram.py` — отдельный модуль (валидация + security), `service.py` — бизнес-логика upsert
 - Anti-replay: Redis SET NX с TTL = `auth_init_data_ttl_seconds` (300s)
-- Rate limit: INCR + EXPIRE per telegram_id, `auth_rate_limit_max_requests` (5) за `auth_rate_limit_window_seconds` (60s)
+- Rate limit: ~~INCR + EXPIRE~~ → делегирует на `check_rate_limit()` из `core/rate_limit.py` (атомарный Lua-скрипт). `BadRequestError` оборачивается в `TelegramValidationError` (фикс code review)
 - Clock skew guard: `auth_clock_skew_seconds` (60s) — отклоняет auth_date из далёкого будущего
 - `begin_nested()` (SAVEPOINT) для race condition: INSERT rollback не ломает outer transaction
 - Audit записывается во всех ветках: login, register, race-resolved (с `race_resolved: True`)
@@ -440,7 +440,7 @@ backend/tests/
 - `language: null` rejection в service layer, не в schema validator (не конфликтует с default=None)
 - `session.refresh(user)` после `set_jsonb` + `flush` (MissingGreenlet prevention)
 - TD-029 pattern: `get_current_user_write` + `Depends(get_db_session)` — одна сессия
-- Profile merge: `dict.update()` — shallow merge, корректно для flat profile JSONB
+- Profile merge: `dict.update()` — shallow merge, корректно для flat profile JSONB. `_ALLOWED_PROFILE_KEYS` whitelist: `first_name`, `last_name`, `country`, `phone`, `avatar_url` — неизвестные ключи → `BadRequestError` (TD-024 закрыт, фикс code review)
 - `RESTRICTED_OPERATIONS` как `frozenset` с dev guard (`ValueError` при неизвестной операции)
 - Avatar guard читает из `structlog.contextvars.get_contextvars()` — тот же механизм что middleware
 - Audit: `user.profile_updated` с `data={"fields": [...]}` (без значений — compliance-safe)
@@ -1088,6 +1088,23 @@ backend/tests/
 - `migrations/env.py` — раскомментированы импорты CompanyProfile, CompanyPriceHistory, CompanyRoadmapItem, Product, ProductInstallment
 - `tests/helpers.py` — cleanup для company + product таблиц в `_cleanup_user_related_data()`
 
+**Фиксы code review (Phase 4):**
+- CR-P4-01: Публичные detail endpoints (`GET /companies/{id}`, `GET /products/{id}`) возвращали hidden/archived сущности по UUID → добавлена проверка `status != ACTIVE → NotFoundError` в роутерах (не в сервисах — staff endpoints не затронуты)
+- CR-P4-02: `CreateCompanyRequest.email` — `str` → `EmailStr` (TD-030 закрыт)
+- CR-P4-03: `CompanyStatus`, `RoadmapItemStatus` дублировались в `constants.py` и `models.py` → canonical source в `constants.py`, `models.py` импортирует (TD-029 закрыт). Аналогично `ProductStatus`
+- CR-P4-04: `_require_financial_operations()` дублировалась в `companies/staff_router.py` и `products/staff_router.py` → вынесена в `staff/permissions.py` (`require_permission()`, `require_financial_operations()`)
+
+**Файлы изменённые/созданные (code review Phase 4):**
+- `staff/permissions.py` — **новый**: `require_permission()`, `require_financial_operations()`
+- `companies/models.py` — энумы импортируются из `constants.py`
+- `companies/schemas.py` — `email: EmailStr`
+- `companies/router.py` — `+status check` в detail endpoint
+- `companies/staff_router.py` — `_require_*` → `from staff.permissions import`
+- `products/models.py` — `ProductStatus` импортируется из `constants.py`
+- `products/router.py` — `+status check` в detail endpoint
+- `products/staff_router.py` — `_require_*` → `from staff.permissions import`
+- `tests/test_companies.py` — `test_delete_roadmap_item` активирует компанию перед публичной проверкой
+
 ---
 
 ## PHASE 5: Payments: Ledgers + Crypto
@@ -1226,8 +1243,8 @@ confirmation_worker_interval_minutes: int = 5
 **Попутные security-фиксы (применены в Sprint 5.2):**
 - P5-SEC-1: `hmac.compare_digest()` для **обоих** webhook'ов (payments + KYC). KYC router обновлён
 - P5-SEC-2: `process_webhook(user_id: str)` → `UUID` в `kyc/service.py`. Callers в `kyc/router.py` и `staff/admin_service.py` обновлены — убраны `str()` обёртки (CRIT-3)
-- P5-SEC-3: Email auth rate limiting: `core/rate_limit.py` — generic INCR+EXPIRE по IP. Применён к `POST /auth/email/register` и `/login`. Shared key `email_auth:{ip}` (SEC-5)
-- P5-SEC-4: Failed login audit: `_audit_login_failure()` в `auth/service.py` — записывает в audit_log через **выделенную сессию** (основная rollback'ится при exception, P-01). Записывается для wrong_password, platform_login_blocked, account_deactivated. User not found — только structlog (SEC-7)
+- P5-SEC-3: Email auth rate limiting: `core/rate_limit.py` — ~~generic INCR+EXPIRE по IP~~ → атомарный Lua-скрипт (фикс code review). Применён к `POST /auth/email/register` и `/login`. Shared key `email_auth:{ip}` (SEC-5)
+- P5-SEC-4: Failed login audit: `_audit_login_failure()` в `auth/service.py` — записывает в audit_log через **выделенную сессию** (основная rollback'ится при exception, P-01). Ошибки логируются через `logger.error()` (фикс code review). Записывается для wrong_password, platform_login_blocked, account_deactivated. User not found — только structlog (SEC-7)
 - P5-SEC-5: `conftest.py` — autouse fixture `clear_rate_limit` + helpers `register_user`/`login_user` очищают rate limit key перед каждым вызовом (все тесты с 127.0.0.1)
 
 **Endpoints:**
@@ -1247,10 +1264,10 @@ backend/app/modules/payments/
 ├── schemas.py          -- CreateAddressRequest, DepositAddressResponse, CryptoWebhookRequest, etc.
 ├── service.py          -- get_or_create_deposit_address, process_crypto_webhook, list_payments, get_payment
 ├── router.py           -- POST /crypto-address, GET /history
-└── webhook_router.py   -- POST /crypto/webhook (hmac.compare_digest)
+└── webhook_router.py   -- POST /crypto/webhook (Depends auth, hmac.compare_digest)
 
 backend/app/core/
-└── rate_limit.py       -- check_rate_limit() generic INCR+EXPIRE
+└── rate_limit.py       -- check_rate_limit() atomic Lua script
 
 backend/tests/
 └── test_crypto_deposits.py  -- 10 tests
@@ -1304,7 +1321,7 @@ backend/app/modules/payments/
 ├── schemas.py          -- +ReversePaymentRequest, +ReversalResponse (Sprint 5.3)
 ├── service.py          -- get_or_create_deposit_address, process_crypto_webhook, list_payments, get_payment (Sprint 5.2)
 ├── confirmation.py     -- run_confirmation_batch() (Sprint 5.3)
-├── reversal.py         -- reverse_payment() (Sprint 5.3)
+├── reversal.py         -- reverse_payment() (Sprint 5.3, +FOR UPDATE +total from entries: code review)
 ├── router.py           -- POST /crypto-address, GET /history (Sprint 5.2)
 ├── staff_router.py     -- POST /staff/payments/{id}/reverse (Sprint 5.3)
 └── webhook_router.py   -- POST /crypto/webhook (Sprint 5.2)
@@ -1327,16 +1344,34 @@ backend/tests/
 **Обновлённые файлы (Phase 5 total):**
 - `core/constants.py` — `LedgerReason` registry
 - `core/config.py` — `+crypto_webhook_secret`, `+confirmation_worker_interval_minutes`, `+crypto_networks`, `+freezing_hours_crypto`
-- `core/rate_limit.py` — **новый**: generic INCR+EXPIRE rate limiter
-- `auth/service.py` — `+_audit_login_failure()` (SEC-7)
+- `core/rate_limit.py` — **новый**: ~~generic INCR+EXPIRE~~ → атомарный Lua-скрипт (фикс code review)
+- `auth/service.py` — `+_audit_login_failure()` (SEC-7), `+logger.error` в except (фикс code review)
 - `auth/router.py` — rate limiting на register/login (SEC-5)
 - `kyc/service.py` — `process_webhook(user_id: UUID)` вместо `str` (CRIT-3)
 - `kyc/router.py` — `hmac.compare_digest()` для webhook (SEC-1)
 - `staff/admin_service.py` — убраны `str()` обёртки для KYC calls
-- `main.py` — `+payments_router`, `+payments_webhook_router`, `+staff_payments_router`, confirmation daemon
+- `main.py` — `+payments_router`, `+payments_webhook_router`, `+staff_payments_router`, confirmation daemon (batch-first, фикс code review)
 - `install_cbshome.sh` — `+CRYPTO_WEBHOOK_SECRET` генерация
 - `tests/helpers.py` — cleanup для Payment, CryptoAddress, ActiveLedger, PassiveLedger
 - `tests/conftest.py` — `+clear_rate_limit` autouse fixture
+
+**Фиксы code review (Phase 5):**
+- CR-P5-01: `webhook_router.py` — `_verify_webhook_secret` переведён в `async def` + `dependencies=[Depends()]` на роуте → auth выполняется ДО парсинга body. Добавлен guard `not provided` против пустого `X-Webhook-Secret` header
+- CR-P5-02: `rate_limit.py` — INCR+EXPIRE заменены на Lua-скрипт `_RATE_LIMIT_SCRIPT` → атомарное выполнение через `redis.eval()`. Если процесс падает — ключ не повисает без TTL
+- CR-P5-03: `payments/router.py` — `create_crypto_address`: `get_current_user` → `get_current_user_write` → auth и endpoint используют одну write-сессию (TD-029 паттерн)
+- CR-P5-04: `payments/schemas.py` — `amount_usd_cents`: добавлено `le=MAX_DEPOSIT_CENTS` ($10M = 1_000_000_000 cents). Sanity guard от ошибок провайдера
+- CR-P5-05: `main.py` — confirmation worker: `run_confirmation_batch()` вызывается ДО `asyncio.sleep()` → frozen entries подтверждаются сразу при старте, не через 5 минут. `asyncio.sleep(interval)` добавлен в `except` блок для предотвращения tight error loop
+- CR-P5-06: `payments/reversal.py` — `get_payment()` → `SELECT ... WITH FOR UPDATE` → сериализует concurrent reversals. `total_reversed_cents` считается из `sum(abs(entry.amount_cents))` по реальным entries, а не `payment.amount_cents` (TD-035 закрыт)
+
+**Файлы изменённые (code review Phase 5):**
+- `core/rate_limit.py` — Lua-скрипт
+- `payments/webhook_router.py` — Depends auth + empty guard
+- `payments/router.py` — `get_current_user_write`
+- `payments/schemas.py` — `le=MAX_DEPOSIT_CENTS`
+- `payments/reversal.py` — `FOR UPDATE` + total from entries
+- `main.py` — worker batch-first
+- `auth/service.py` — `logger.error` в `_audit_login_failure`
+- `auth/telegram.py` — делегирует на `check_rate_limit()`, импорты на уровне модуля
 
 ---
 
@@ -1902,20 +1937,24 @@ Event:
 | TD-021 | `app/modules/auth/` | Password reset flow (forgot password -> email token -> reset) | After MVP | ⬜ |
 | TD-022 | `app/modules/auth/telegram.py` | Generic error messages в production (сейчас details leakируют server time через "auth_date is in the future") | Before Prod | ⬜ |
 | TD-023 | `scripts/seed_platform.py` | `seed --reset` flag не реализован, но присутствует в management script help | Backlog | ⬜ |
-| TD-024 | `app/modules/users/service.py` | Profile JSONB: whitelist допустимых ключей и/или ограничение размера. XSS sanitization на фронте (SEC-8) | Before Prod | ⬜ |
+| TD-024 | `app/modules/users/service.py` | ~~Profile JSONB: whitelist допустимых ключей~~ → `_ALLOWED_PROFILE_KEYS = frozenset({first_name, last_name, country, phone, avatar_url})`. Неизвестные ключи → `BadRequestError`. XSS sanitization на фронте (SEC-8) — отдельно | Before Prod | ✅ Code review |
 | TD-025 | `app/modules/documents/` | Проверка наличия подписей при смене роли. Структура готова, логика — при реализации role change (Phase 7) | Phase 7 | ⬜ |
 | TD-026 | `app/modules/documents/` | Версионирование: переподписание при обновлении редакции. Поле `version` заложено, логика определения пользователей без актуальной подписи — после MVP | After MVP | ⬜ |
 | TD-027 | `app/modules/staff/router.py` | Unblock endpoint (`PATCH /staff/users/{id}/unblock`). Сейчас разблокировка только через DB | After MVP | ⬜ |
 | TD-028 | `app/modules/auth/avatar_guard.py` | Применить `@require_not_avatar` к остальным RESTRICTED_OPERATIONS endpoints по мере их создания (create_payment, create_withdrawal и т.д.) | Phase 5+ | ⬜ |
-| TD-029 | `companies/`, `products/` | Enum duplication: `CompanyStatus`, `ProductStatus`, `RoadmapItemStatus` определены и в `models.py`, и в `constants.py`. Консолидировать в одном месте | Backlog | ⬜ |
-| TD-030 | `companies/schemas.py` | `CreateCompanyRequest.email` использует `str`, не `EmailStr`. Auth schemas используют `EmailStr` — inconsistency | Backlog | ⬜ |
+| TD-029 | `companies/`, `products/` | ~~Enum duplication: `CompanyStatus`, `ProductStatus`, `RoadmapItemStatus` определены и в `models.py`, и в `constants.py`~~ → canonical source в `constants.py`, `models.py` импортирует | Backlog | ✅ Code review |
+| TD-030 | `companies/schemas.py` | ~~`CreateCompanyRequest.email` использует `str`, не `EmailStr`~~ → заменено на `EmailStr` | Backlog | ✅ Code review |
 | TD-031 | `products/schemas.py` | ~~Social proof `sold_units: int = 0` — заглушка. Реализовать подсчёт из purchases с Redis кэшем~~ → Прямой COUNT реализован в Sprint 6.1 (`get_sold_units_map()`). Redis-кэш — при высокой нагрузке на витрину | Sprint 6.1 | ✅ Sprint 6.1 |
 | TD-032 | `app/core/database.py` | Redis session создаётся ДО DB commit (CRIT-1). Orphan token живёт до TTL (30 дней). Приемлемо для MVP | After MVP | ⬜ |
 | TD-033 | `companies/constants.py` | Float precision в `distribution_config` validation: `total > 1.0` может дать false positive. Рассмотреть `Decimal` или tolerance `1e-9` (MINOR-4) | Backlog | ⬜ |
 | TD-034 | `payments/router.py` | `POST /crypto-address` — заглушка. При интеграции реального провайдера endpoint может измениться (адрес от API / pre-generated pool / hosted page redirect) | Phase 2 | ⬜ |
-| TD-035 | `payments/reversal.py` | `total_reversed_cents` = `payment.amount_cents`, не сумма ledger entries. Корректно пока 1 entry/payment. Пересмотреть после Phase 6 saga | Phase 6 | ⬜ |
+| TD-035 | `payments/reversal.py` | ~~`total_reversed_cents` = `payment.amount_cents`, не сумма ledger entries~~ → считается из `sum(abs(entry.amount_cents))` по реальным reversed entries. `SELECT FOR UPDATE` для concurrent reversal protection | Phase 6 | ✅ Code review |
 | TD-036 | `payments/reversal.py` | N+1 flush в loop (каждый `record_*_ledger` делает flush). Приемлемо при 1-3 entries. Оптимизировать если saga создаёт >10 entries на payment | Phase 6 | ⬜ |
 | TD-037 | `purchases/router.py` | Нет `idempotency_key` в `CreatePurchaseRequest`. Двойной клик или повторная отправка формы создаст две покупки. Advisory lock не защищает — второй запрос подождёт и выполнится | Backlog | ⬜ |
+| TD-038 | `purchases/service.py` | Нет KYC-проверки перед покупкой. `execute_purchase()` не проверяет `investor.kyc_status`. Compliance gap для AML — бизнес-решение заказчика | Before Prod | ⬜ |
+| TD-039 | `payments/`, `ledgers/` | Partial indexes на `(status, frozen_until) WHERE status='frozen'` для confirmation daemon. При росте данных `WHERE status='frozen' AND frozen_until <= now()` будет деградировать | Before Prod | ⬜ |
+| TD-040 | `tests/conftest.py` | Тесты без транзакционной изоляции — `db_session` делает rollback в finally, но тесты с `commit()` оставляют данные. Нет SAVEPOINT-обёртки между тестами | Backlog | ⬜ |
+| TD-041 | `main.py` | CORS `allow_methods=["*"]` — избыточно для финансовой платформы. Ограничить до `["GET", "POST", "PATCH", "DELETE", "OPTIONS"]` | Before Prod | ⬜ |
 
 ---
 
@@ -1923,4 +1962,4 @@ Event:
 
 ---
 
-*Version 1.7 | 2026-04-10 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, Sprint 6.2 next*
+*Version 1.8 | 2026-04-10 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, code review fixes applied (30/33 closed, 9/10), Sprint 6.2 next*
