@@ -10,17 +10,17 @@
 #
 # EXECUTE_PURCHASE FLOW:
 #   1. Load Product (must be active)
-#   2. Load CompanyProfile + Company User
+#   2. Load CompanyProfile (must be active) + Company User
 #   3. Load Platform user
-#   4. Check investor active balance >= amount
-#   5. Compute frozen_until (MAX from frozen active entries)
-#   6. Resolve distribution_config (product override or company fallback)
-#   7. Build PurchaseContext
-#   8. Run ProcessorRegistry -> list[Transaction]
-#   9. Verify SUM=0 invariant (done inside registry)
-#   10. Write Purchase records + ledger entries atomically
-#   11. Record audit events
-#   12. Return list of PurchaseResponse
+#   4. Advisory lock per investor (TOCTOU protection)
+#   5. Check investor active balance >= amount
+#   6. Compute frozen_until (MAX from frozen active entries)
+#   7. Resolve distribution_config (product override or company fallback)
+#   8. Build PurchaseContext
+#   9. Run ProcessorRegistry -> list[Transaction]
+#   10. Verify SUM=0 invariant (done inside registry)
+#   11. Write Purchase records + ledger entries atomically
+#   12. Record audit events
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -35,7 +35,7 @@ from datetime import datetime, UTC
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -229,7 +229,13 @@ async def execute_purchase(
     # -- 3. Load Platform user --
     platform_user = await get_platform_user(session)
 
-    # -- 4. Check balance --
+    # -- 4. Advisory lock: serialize purchases per investor (TOCTOU fix) --
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": investor.id.int & 0x7FFFFFFFFFFFFFFF},
+    )
+
+    # -- 5. Check balance --
     amount_cents = product.units * product.price_per_unit_cents
     balance = await get_active_balance(session, investor.id)
     available = balance["frozen"] + balance["confirmed"]
@@ -240,19 +246,19 @@ async def execute_purchase(
             f"{amount_cents} cents required"
         )
 
-    # -- 5. Compute frozen context --
+    # -- 6. Compute frozen context --
     frozen_until, origin_payment_id = await _compute_frozen_context(
         session, investor.id
     )
 
-    # -- 6. Resolve configs --
+    # -- 7. Resolve configs --
     dist_config = _resolve_distribution_config(product, company)
     bonuses = _resolve_bonuses(product)
 
-    # -- 7. Portfolio for gift conditions --
+    # -- 8. Portfolio for gift conditions --
     portfolio_cents = await get_investor_portfolio_cents(session, investor.id)
 
-    # -- 8. Build context --
+    # -- 9. Build context --
     context = PurchaseContext(
         investor_id=investor.id,
         product_id=product.id,
@@ -270,20 +276,20 @@ async def execute_purchase(
         triggered_at=now,
     )
 
-    # -- 9. Run processors --
+    # -- 10. Run processors --
     registry = ProcessorRegistry(
         investor_portfolio_cents=portfolio_cents,
     )
     transactions = registry.run_all(context)
 
-    # -- 10. Write to DB --
+    # -- 11. Write to DB --
     purchases = await _write_transactions(
         session=session,
         transactions=transactions,
         context=context,
     )
 
-    # -- 11. Audit --
+    # -- 12. Audit --
     for purchase in purchases:
         await record_audit(
             session=session,
@@ -343,13 +349,18 @@ async def _load_product(
 async def _load_company(
     company_id: UUID, session: AsyncSession
 ) -> CompanyProfile:
-    """Load company profile."""
+    """Load company profile and validate it is active."""
     stmt = select(CompanyProfile).where(CompanyProfile.id == company_id)
     result = await session.execute(stmt)
     company = result.scalar_one_or_none()
 
     if company is None:
         raise NotFoundError("Company not found")
+
+    if company.status != CompanyStatus.ACTIVE:
+        raise BadRequestError(
+            f"Company is not active (status={company.status})"
+        )
 
     return company
 

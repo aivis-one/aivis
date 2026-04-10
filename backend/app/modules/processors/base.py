@@ -30,7 +30,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Protocol
 from uuid import UUID
 
@@ -85,7 +85,7 @@ class PurchaseContext:
     origin_payment_id: UUID | None
     frozen_until: datetime | None
     agent_chain: list[UUID] = field(default_factory=list)  # stub in 6.1
-    triggered_at: datetime = field(default_factory=datetime.now)
+    triggered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class ProcessorProtocol(Protocol):

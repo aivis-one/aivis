@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
+from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import get_current_user_write
 from app.modules.purchases.schemas import (
     CreatePurchaseRequest,
@@ -51,7 +52,6 @@ async def purchase_product(
     Requires: authenticated investor.
     """
     if user.role != UserRole.INVESTOR:
-        from app.core.exceptions import ForbiddenError
         raise ForbiddenError("Only investors can purchase products")
 
     purchases = await execute_purchase(
