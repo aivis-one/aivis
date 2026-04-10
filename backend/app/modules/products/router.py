@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Public Router (Sprint 4.2 + Sprint 6.1)
+# CBSHOME Backend -- Product Public Router (Sprint 4.2 + Sprint 6.1, fix Phase 4)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -11,6 +11,11 @@
 #
 # Sprint 6.1 CHANGES:
 #   - sold_units populated from real Purchase count (TD-031)
+#
+# Phase 4 FIX:
+#   Detail endpoint returns 404 for non-active products.
+#   Previously returned hidden/archived products by UUID,
+#   leaking sold_units data for unpublished products.
 # =============================================================================
 
 from uuid import UUID
@@ -19,6 +24,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.exceptions import NotFoundError
+from app.modules.products.constants import ProductStatus
 from app.modules.products.schemas import (
     InstallmentResponse,
     PublicProductDetailResponse,
@@ -76,8 +83,15 @@ async def get_product_detail_endpoint(
     product_id: UUID,
     session: AsyncSession = Depends(get_db_reader),
 ) -> PublicProductDetailResponse:
-    """Get product detail with installment plans (public)."""
+    """Get product detail with installment plans (public).
+
+    Returns 404 for non-active products (hidden/archived).
+    """
     product, installments = await get_product_detail(product_id, session)
+
+    # Public endpoint: only active products are visible.
+    if product.status != ProductStatus.ACTIVE:
+        raise NotFoundError("Product not found")
 
     sold_map = await get_sold_units_map(session, [product.id])
 

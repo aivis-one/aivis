@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Models (Sprint 4.1)
+# CBSHOME Backend -- Company Models (Sprint 4.1, fix Phase 4)
 # =============================================================================
 #
 # CompanyProfile:
@@ -24,9 +24,12 @@
 # PRICE:
 #   price_per_unit_cents uses BigInteger (64-bit) -- project standard
 #   for all monetary values.
+#
+# ENUMS:
+#   CompanyStatus and RoadmapItemStatus are canonical in constants.py.
+#   Imported here for model defaults and type hints.
 # =============================================================================
 
-import enum
 from datetime import date, datetime
 from uuid import UUID
 
@@ -36,22 +39,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 from app.core.mixins import JSONBMixin, TimestampMixin, UUIDMixin
-
-
-class CompanyStatus(enum.StrEnum):
-    """Company profile lifecycle status."""
-
-    ACTIVE = "active"
-    HIDDEN = "hidden"
-    ARCHIVED = "archived"
-
-
-class RoadmapItemStatus(enum.StrEnum):
-    """Company roadmap item status."""
-
-    PLANNED = "planned"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+from app.modules.companies.constants import CompanyStatus, RoadmapItemStatus
 
 
 class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
@@ -141,18 +129,15 @@ class CompanyPriceHistory(UUIDMixin, Base):
         nullable=False,
         index=True,
     )
-
     price_per_unit_cents: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
     )
-
     changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
-
     changed_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
@@ -160,13 +145,16 @@ class CompanyPriceHistory(UUIDMixin, Base):
 
     def __repr__(self) -> str:
         return (
-            f"<CompanyPriceHistory company={self.company_id} "
+            f"<CompanyPriceHistory company_id={self.company_id} "
             f"price={self.price_per_unit_cents}>"
         )
 
 
 class CompanyRoadmapItem(UUIDMixin, TimestampMixin, Base):
-    """Company roadmap milestone. Soft-delete via is_deleted flag."""
+    """Ordered roadmap milestone for a company.
+
+    Soft-deleted via is_deleted flag. order controls display sequence.
+    """
 
     __tablename__ = "company_roadmap_items"
 
@@ -175,36 +163,30 @@ class CompanyRoadmapItem(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-
     title: Mapped[str] = mapped_column(
         String(500),
         nullable=False,
     )
-
     description: Mapped[str | None] = mapped_column(
         String(5000),
         nullable=True,
     )
-
     target_date: Mapped[date | None] = mapped_column(
         Date,
         nullable=True,
     )
-
     status: Mapped[str] = mapped_column(
         String(20),
         default=RoadmapItemStatus.PLANNED,
         server_default=RoadmapItemStatus.PLANNED.value,
         nullable=False,
     )
-
     order: Mapped[int] = mapped_column(
         Integer,
         default=0,
         server_default="0",
         nullable=False,
     )
-
     is_deleted: Mapped[bool] = mapped_column(
         Boolean,
         default=False,

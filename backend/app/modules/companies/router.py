@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Public Router (Sprint 4.1)
+# CBSHOME Backend -- Company Public Router (Sprint 4.1, fix Phase 4)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -8,6 +8,10 @@
 #
 # AUTH:
 #   No authentication required. Public storefront.
+#
+# Phase 4 FIX:
+#   Detail endpoint returns 404 for non-active companies.
+#   Previously returned hidden/archived companies by UUID.
 # =============================================================================
 
 from uuid import UUID
@@ -16,6 +20,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.exceptions import NotFoundError
+from app.modules.companies.constants import CompanyStatus
 from app.modules.companies.schemas import (
     PublicCompanyDetailResponse,
     PublicCompanyListResponse,
@@ -59,8 +65,16 @@ async def get_company_detail_endpoint(
     company_id: UUID,
     session: AsyncSession = Depends(get_db_reader),
 ) -> PublicCompanyDetailResponse:
-    """Get company detail with roadmap items (public)."""
+    """Get company detail with roadmap items (public).
+
+    Returns 404 for non-active companies (hidden/archived).
+    """
     profile, roadmap_items = await get_company_detail(company_id, session)
+
+    # Public endpoint: only active companies are visible.
+    if profile.status != CompanyStatus.ACTIVE:
+        raise NotFoundError("Company not found")
+
     response = PublicCompanyDetailResponse.model_validate(profile)
     response.roadmap = [
         RoadmapItemResponse.model_validate(item) for item in roadmap_items

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Staff Router (Sprint 4.1)
+# CBSHOME Backend -- Company Staff Router (Sprint 4.1, fix Phase 4)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -16,6 +16,10 @@
 #   Create, price change, and distribution_config update also require
 #   financial_operations permission.
 #
+# Phase 4 FIX:
+#   _require_permission / _require_financial_operations extracted to
+#   staff/permissions.py (was duplicated in products/staff_router.py).
+#
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
 #   automatically after yield.
@@ -28,7 +32,6 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
-from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import (
     get_current_user_write,
     require_staff_permission,
@@ -57,42 +60,12 @@ from app.modules.companies.service import (
     update_roadmap_item,
 )
 from app.modules.staff.constants import is_admin
-from app.modules.staff.service import get_effective_permissions, get_staff_profile
+from app.modules.staff.permissions import require_financial_operations
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1/staff/companies", tags=["staff-companies"])
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-async def _require_permission(
-    staff: User,
-    permission: str,
-    session: AsyncSession,
-) -> None:
-    """Check that staff has a specific permission.
-
-    Raises ForbiddenError if permission is missing.
-    """
-    profile = await get_staff_profile(staff.id, session)
-    if not profile:
-        raise ForbiddenError("Staff profile not found")
-    effective = get_effective_permissions(profile)
-    if not effective.get(permission, False):
-        raise ForbiddenError(f"Permission '{permission}' required")
-
-
-async def _require_financial_operations(
-    staff: User,
-    session: AsyncSession,
-) -> None:
-    """Check that staff has financial_operations permission."""
-    await _require_permission(staff, "financial_operations", session)
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +87,7 @@ async def create_company_endpoint(
 
     Requires: company_manage + financial_operations.
     """
-    await _require_financial_operations(staff, session)
+    await require_financial_operations(staff, session)
 
     profile = await create_company(body, staff, session)
     return CompanyResponse.model_validate(profile)
@@ -136,7 +109,7 @@ async def update_company_endpoint(
     """
     updates = body.model_dump(exclude_unset=True)
     if "distribution_config" in updates:
-        await _require_financial_operations(staff, session)
+        await require_financial_operations(staff, session)
 
     profile = await update_company(company_id, body, staff, session)
     return CompanyResponse.model_validate(profile)
@@ -157,7 +130,7 @@ async def update_price_endpoint(
     Requires: company_manage + financial_operations.
     Cascades to active/hidden products.
     """
-    await _require_financial_operations(staff, session)
+    await require_financial_operations(staff, session)
 
     profile = await update_price(company_id, body.price_per_unit_cents, staff, session)
     return CompanyResponse.model_validate(profile)

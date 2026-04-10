@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Schemas (Sprint 4.1)
+# CBSHOME Backend -- Company Schemas (Sprint 4.1, fix Phase 4)
 # =============================================================================
 #
 # REQUEST SCHEMAS:
@@ -16,12 +16,15 @@
 #   CompanyListResponse       -- paginated list
 #   RoadmapItemResponse       -- single roadmap item
 #   PriceHistoryResponse      -- single price change record
+#
+# Phase 4 FIX:
+#   CreateCompanyRequest.email uses EmailStr (was: str)
 # =============================================================================
 
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # ---------------------------------------------------------------------------
@@ -35,7 +38,7 @@ class CreateCompanyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # User credentials for the company account.
-    email: str = Field(min_length=3, max_length=255)
+    email: EmailStr = Field(min_length=3, max_length=255)
     password: str = Field(min_length=8, max_length=128)
 
     # Company profile.

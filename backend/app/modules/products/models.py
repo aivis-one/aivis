@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Models (Sprint 4.2 + Sprint 6.1)
+# CBSHOME Backend -- Product Models (Sprint 4.2 + Sprint 6.1, fix Phase 4)
 # =============================================================================
 #
 # Product:
@@ -29,14 +29,11 @@
 #   into InstallmentPlan (Sprint 6.2) -- changes to the template do not
 #   affect active plans.
 #
-# PRICE CASCADE (from companies/service.py):
-#   When Company price changes:
-#   1. Product.price_per_unit_cents updated for active/hidden products
-#   2. All ProductInstallment for those products soft-deleted
-#   3. Staff creates new installment templates for new price
+# ENUMS:
+#   ProductStatus is canonical in constants.py.
+#   Imported here for model defaults and type hints.
 # =============================================================================
 
-import enum
 from datetime import datetime
 from uuid import UUID
 
@@ -46,14 +43,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 from app.core.mixins import JSONBMixin, TimestampMixin, UUIDMixin
-
-
-class ProductStatus(enum.StrEnum):
-    """Product lifecycle status."""
-
-    ACTIVE = "active"
-    HIDDEN = "hidden"
-    ARCHIVED = "archived"
+from app.modules.products.constants import ProductStatus
 
 
 class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):

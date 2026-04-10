@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1)
+# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1, fix Phase 4)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -15,8 +15,9 @@
 #   Create product, purchase_config update, and all installment ops also
 #   require financial_operations.
 #
-# Sprint 6.1 CHANGES:
-#   - gift_units -> purchase_config in create/update endpoints
+# Phase 4 FIX:
+#   _require_financial_operations extracted to staff/permissions.py
+#   (was duplicated in companies/staff_router.py).
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit().
@@ -29,7 +30,6 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
-from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import require_staff_permission
 from app.modules.products.schemas import (
     CreateInstallmentRequest,
@@ -50,30 +50,12 @@ from app.modules.products.service import (
     update_product,
     update_product_status,
 )
-from app.modules.staff.service import get_effective_permissions, get_staff_profile
+from app.modules.staff.permissions import require_financial_operations
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1/staff/products", tags=["staff-products"])
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-async def _require_financial_operations(
-    staff: User,
-    session: AsyncSession,
-) -> None:
-    """Check that staff has financial_operations permission."""
-    profile = await get_staff_profile(staff.id, session)
-    if not profile:
-        raise ForbiddenError("Staff profile not found")
-    effective = get_effective_permissions(profile)
-    if not effective.get("financial_operations", False):
-        raise ForbiddenError("Permission 'financial_operations' required")
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +77,7 @@ async def create_product_endpoint(
 
     Requires: company_manage + financial_operations.
     """
-    await _require_financial_operations(staff, session)
+    await require_financial_operations(staff, session)
 
     product = await create_product(
         body.company_id,
@@ -126,7 +108,7 @@ async def update_product_endpoint(
     updates = body.model_dump(exclude_unset=True)
 
     if "purchase_config" in updates:
-        await _require_financial_operations(staff, session)
+        await require_financial_operations(staff, session)
 
     product = await update_product(
         product_id,
@@ -176,7 +158,7 @@ async def create_installment_endpoint(
 
     Requires: company_manage + financial_operations.
     """
-    await _require_financial_operations(staff, session)
+    await require_financial_operations(staff, session)
 
     installment = await create_installment(
         product_id, body.name, body.plan_config, staff, session
@@ -199,7 +181,7 @@ async def update_installment_endpoint(
 
     Requires: company_manage + financial_operations.
     """
-    await _require_financial_operations(staff, session)
+    await require_financial_operations(staff, session)
 
     updates = body.model_dump(exclude_unset=True)
 
@@ -228,6 +210,6 @@ async def delete_installment_endpoint(
 
     Requires: company_manage + financial_operations.
     """
-    await _require_financial_operations(staff, session)
+    await require_financial_operations(staff, session)
 
     await delete_installment(product_id, installment_id, staff, session)
