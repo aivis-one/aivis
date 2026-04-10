@@ -16,8 +16,12 @@
 #   - reject/fail: record_passive_ledger(+amount, confirmed) -- compensating
 #
 # CONCURRENCY:
-#   Partial unique index uq_withdrawals_user_active prevents multiple
-#   active withdrawals. IntegrityError caught by constraint name.
+#   - create: pg_advisory_xact_lock(user_id) serializes with purchases
+#     (same lock_id as engine.py) -- prevents double-spend race condition
+#   - confirm/reject/complete/fail: SELECT FOR UPDATE on Withdrawal row
+#     serializes concurrent staff actions on the same withdrawal
+#   - Partial unique index uq_withdrawals_user_active prevents multiple
+#     active withdrawals. IntegrityError caught by constraint name.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages transaction.
@@ -27,7 +31,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,8 +66,12 @@ async def create_withdrawal(
     Guards:
       - payout_details must be configured
       - amount within MIN/MAX bounds
-      - confirmed passive balance >= amount
+      - confirmed passive balance >= amount (under advisory lock)
       - no other active withdrawal (DB constraint)
+
+    Concurrency: pg_advisory_xact_lock serializes with purchases
+    (same lock_id as engine.py) to prevent double-spend when a
+    purchase and withdrawal race on the same user's balance.
 
     Args:
         user: Authenticated user.
@@ -91,6 +99,13 @@ async def create_withdrawal(
         raise BadRequestError(
             f"Maximum withdrawal is {settings.max_withdrawal_cents} cents"
         )
+
+    # -- Advisory lock: serialize with purchases on same user --
+    lock_id = user.id.int & 0x7FFFFFFFFFFFFFFF
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": lock_id},
+    )
 
     # -- Guard: confirmed passive balance --
     balance = await get_passive_balance(session, user.id)
@@ -171,6 +186,8 @@ async def confirm_withdrawal(
     stub). When a real provider is integrated, processing will be triggered
     by the provider push.
 
+    Uses SELECT FOR UPDATE to serialize concurrent staff actions.
+
     Args:
         withdrawal_id: Withdrawal to confirm.
         staff: Staff user performing the action.
@@ -183,7 +200,7 @@ async def confirm_withdrawal(
         NotFoundError: Withdrawal not found.
         BadRequestError: Invalid status transition.
     """
-    withdrawal = await _load_withdrawal(withdrawal_id, session)
+    withdrawal = await _load_withdrawal(withdrawal_id, session, for_update=True)
 
     # -- Transition: pending -> confirmed --
     validate_withdrawal_status_transition(
@@ -240,6 +257,7 @@ async def reject_withdrawal(
     """Staff rejects withdrawal: pending -> rejected + compensating entry.
 
     Compensating passive_ledger credit restores the debited amount.
+    Uses SELECT FOR UPDATE to serialize concurrent staff actions.
 
     Args:
         withdrawal_id: Withdrawal to reject.
@@ -254,7 +272,7 @@ async def reject_withdrawal(
         NotFoundError: Withdrawal not found.
         BadRequestError: Invalid status transition.
     """
-    withdrawal = await _load_withdrawal(withdrawal_id, session)
+    withdrawal = await _load_withdrawal(withdrawal_id, session, for_update=True)
 
     # -- Transition: pending -> rejected --
     validate_withdrawal_status_transition(
@@ -318,7 +336,7 @@ async def complete_withdrawal(
     """Mark withdrawal as completed: processing -> completed.
 
     Called by payment provider webhook or system process after
-    payout is confirmed.
+    payout is confirmed. Uses SELECT FOR UPDATE to serialize.
 
     Args:
         withdrawal_id: Withdrawal to complete.
@@ -331,7 +349,7 @@ async def complete_withdrawal(
         NotFoundError: Withdrawal not found.
         BadRequestError: Invalid status transition.
     """
-    withdrawal = await _load_withdrawal(withdrawal_id, session)
+    withdrawal = await _load_withdrawal(withdrawal_id, session, for_update=True)
 
     validate_withdrawal_status_transition(
         withdrawal.status, WithdrawalStatus.COMPLETED
@@ -372,6 +390,7 @@ async def fail_withdrawal(
     """Mark withdrawal as failed: processing -> failed + compensating entry.
 
     Called by payment provider webhook when payout is rejected.
+    Uses SELECT FOR UPDATE to serialize.
 
     Args:
         withdrawal_id: Withdrawal to fail.
@@ -384,7 +403,7 @@ async def fail_withdrawal(
         NotFoundError: Withdrawal not found.
         BadRequestError: Invalid status transition.
     """
-    withdrawal = await _load_withdrawal(withdrawal_id, session)
+    withdrawal = await _load_withdrawal(withdrawal_id, session, for_update=True)
 
     validate_withdrawal_status_transition(
         withdrawal.status, WithdrawalStatus.FAILED
@@ -485,9 +504,19 @@ async def get_withdrawal(
 async def _load_withdrawal(
     withdrawal_id: UUID,
     session: AsyncSession,
+    for_update: bool = False,
 ) -> Withdrawal:
-    """Load withdrawal by ID or raise NotFoundError."""
+    """Load withdrawal by ID or raise NotFoundError.
+
+    Args:
+        withdrawal_id: Withdrawal UUID.
+        session: Active DB session.
+        for_update: If True, use SELECT FOR UPDATE to serialize
+            concurrent mutations on the same row.
+    """
     stmt = select(Withdrawal).where(Withdrawal.id == withdrawal_id)
+    if for_update:
+        stmt = stmt.with_for_update()
     result = await session.execute(stmt)
     withdrawal = result.scalar_one_or_none()
 
