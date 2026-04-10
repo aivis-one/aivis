@@ -378,7 +378,12 @@ async def test_delete_roadmap_item(
     )
     assert resp2.status_code == 204
 
-    # Verify not in detail.
+    # Verify not in detail (activate company first -- public endpoint requires active).
+    await client.patch(
+        f"/api/v1/staff/companies/{company['id']}",
+        json={"status": "active"},
+        headers=auth_headers(token),
+    )
     resp3 = await client.get(f"/api/v1/companies/{company['id']}")
     assert resp3.status_code == 200
     assert len(resp3.json()["roadmap"]) == 0
