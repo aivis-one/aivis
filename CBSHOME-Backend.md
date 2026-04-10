@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 1.9
+**Версия:** 2.0
 **Дата:** 11 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -1665,20 +1665,118 @@ backend/tests/
 
 ---
 
-### Sprint 6.3: Withdrawals
+### ✅ Sprint 6.3: Withdrawals
 
 **Цель:** Вывод средств с passive_ledger.
 
 **Задачи:**
-- [ ] `app/modules/withdrawals/models.py` — `Withdrawal`
-- [ ] `app/modules/withdrawals/service.py` — `create_withdrawal()`, `confirm_withdrawal()`, `reject_withdrawal()`
-- [ ] `POST /api/v1/withdrawals` — запрос на вывод (confirmed passive_balance >= amount)
-- [ ] `GET /api/v1/withdrawals/me` — история выводов
-- [ ] Staff: `POST /api/v1/staff/withdrawals/{id}/confirm`
-- [ ] Staff: `POST /api/v1/staff/withdrawals/{id}/reject`
-- [ ] `tests/test_withdrawals.py` — 10 тестов
+- [x] `app/modules/withdrawals/__init__.py`
+- [x] `app/modules/withdrawals/constants.py` — `WithdrawalStatus`, `ACTIVE_WITHDRAWAL_STATUSES`, state machine transitions + validator
+- [x] `app/modules/withdrawals/models.py` — `Withdrawal` (partial unique index: one active per user)
+- [x] `app/modules/withdrawals/schemas.py` — `CreateWithdrawalRequest`, `RejectWithdrawalRequest`, `WithdrawalResponse`, `WithdrawalListResponse`
+- [x] `app/modules/withdrawals/service.py` — `create_withdrawal()`, `confirm_withdrawal()`, `reject_withdrawal()`, `complete_withdrawal()`, `fail_withdrawal()`, `get_my_withdrawals()`, `get_withdrawal()`
+- [x] `app/modules/withdrawals/router.py` — `POST /api/v1/withdrawals`, `GET /api/v1/withdrawals/me`
+- [x] `app/modules/withdrawals/staff_router.py` — `POST /api/v1/staff/withdrawals/{id}/confirm`, `POST /api/v1/staff/withdrawals/{id}/reject`
+- [x] `app/modules/users/models.py` — `+payout_details: JSONB nullable`
+- [x] `app/modules/users/schemas.py` — `+UpdatePayoutDetailsRequest`, `+PayoutDetailsResponse`, `+payout_details` в `UserResponse`
+- [x] `app/modules/users/service.py` — `+update_payout_details()`
+- [x] `app/modules/users/router.py` — `+GET /api/v1/users/me/payout-details`, `+PUT /api/v1/users/me/payout-details`
+- [x] `tests/test_withdrawals.py` — 10 тестов
 
-**Критерий готовности:** Агент/компания запрашивает вывод. Staff подтверждает.
+**Миграции:**
+- [x] `0011_withdrawals` — таблица `withdrawals` (CHECK constraints, partial unique index `uq_withdrawals_user_active`), `+payout_details JSONB` на `users`
+
+**Модель `Withdrawal`:**
+```python
+Withdrawal:
+    id: UUID
+    user_id: UUID                 -- FK users.id
+    amount_cents: int             -- BigInteger, CHECK > 0
+    status: enum                  -- pending | confirmed | processing | completed | rejected | failed
+    payout_details_snapshot: JSONB -- snapshot User.payout_details на момент создания
+    rejection_reason: str | None  -- обязательно при rejected
+    created_at, confirmed_at, processing_at, completed_at, rejected_at, failed_at
+```
+
+**State machine (CBSHOME-State-Machines.md section 4, extended):**
+```
+pending    -> confirmed   (Staff: approved)
+pending    -> rejected    (Staff: declined with reason)
+confirmed  -> processing  (system: pushed to payment provider)
+processing -> completed   (system/webhook: payout confirmed)
+processing -> failed      (system/webhook: payout rejected)
+```
+Terminal: `completed`, `rejected`, `failed`.
+
+**Решения реализации:**
+- P6-26: **Instant debit** — при создании withdrawal passive_ledger дебетуется сразу (`record_passive_ledger(-amount, confirmed)`). При reject/fail — компенсирующая запись (`+amount, confirmed, reason + ":reversal"`). Предотвращает "размножение" денег при ожидании подтверждения
+- P6-27: **Partial unique index** — `uq_withdrawals_user_active ON (user_id) WHERE status IN ('pending', 'confirmed', 'processing')`. DB-level гарантия: один активный withdrawal на пользователя. IntegrityError ловится по constraint name → `ConflictError`
+- P6-28: **Advisory lock** — `pg_advisory_xact_lock(user.id.int & 0x7FFFFFFFFFFFFFFF)` перед проверкой баланса. Тот же lock_id что в `engine.py` — сериализует withdrawal с purchases одного пользователя. Предотвращает race condition при параллельной покупке и выводе (code review fix #38)
+- P6-29: **SELECT FOR UPDATE** — `_load_withdrawal(..., for_update=True)` на всех мутирующих операциях (confirm, reject, complete, fail). Query-методы используют default `for_update=False`. Сериализует concurrent staff actions (code review fix)
+- P6-30: **Payout details snapshot** — `User.payout_details` копируется в `Withdrawal.payout_details_snapshot` при создании. Изменение details после создания не влияет на pending withdrawal
+- P6-31: **Payout details endpoint** — отдельный `PUT /users/me/payout-details` (не через `PATCH /users/me`). Финансовые реквизиты — чувствительные данные: отдельный audit event `user.payout_details_updated`, future: KYC required, rate limit, 2FA
+- P6-32: **Payout details free-form JSONB** — без whitelist (в отличие от profile TD-024). Валидация конкретных методов при интеграции платёжного провайдера. Audit: `data={}` — financial details не логируются
+- P6-33: **MVP confirm flow** — `pending → confirmed → processing` в одном действии. При интеграции реального провайдера: confirmed → processing будет отдельным шагом (push в API платёжки)
+- P6-34: **Guards** — payout_details configured, MIN/MAX_WITHDRAWAL_CENTS, confirmed passive balance >= amount
+- P6-35: **Permission** — `payment_review` для staff confirm/reject (аналогично `staff/payments/{id}/reverse`)
+
+**Config (новые настройки):**
+```
+min_withdrawal_cents: int = 1000       -- $10.00
+max_withdrawal_cents: int = 10000000   -- $100,000.00
+```
+
+**Endpoints:**
+```
+-- User endpoints:
+POST /api/v1/withdrawals                          -> WithdrawalResponse      (201)
+GET  /api/v1/withdrawals/me                        -> WithdrawalListResponse  (200)
+GET  /api/v1/users/me/payout-details               -> PayoutDetailsResponse   (200)
+PUT  /api/v1/users/me/payout-details               -> PayoutDetailsResponse   (200)
+
+-- Staff endpoints:
+POST /api/v1/staff/withdrawals/{id}/confirm        -> WithdrawalResponse      (200)
+POST /api/v1/staff/withdrawals/{id}/reject         -> WithdrawalResponse      (200)
+```
+
+**Новые audit events:**
+- `withdrawal.created` — запрос на вывод с amount_cents
+- `withdrawal.confirmed` — Staff approve + amount + user_id
+- `withdrawal.rejected` — Staff reject + reason + amount + user_id
+- `withdrawal.completed` — system/webhook payout confirmed
+- `withdrawal.failed` — system/webhook payout rejected
+- `user.payout_details_updated` — обновление реквизитов выплат (data={} — sensitive)
+
+**Результат:**
+```
+backend/app/modules/withdrawals/
+├── __init__.py
+├── constants.py        -- WithdrawalStatus, ACTIVE_WITHDRAWAL_STATUSES, state machine
+├── models.py           -- Withdrawal (partial unique index)
+├── schemas.py          -- 2 request + 2 response
+├── service.py          -- create, confirm, reject, complete, fail, queries
+├── router.py           -- 2 user endpoints
+└── staff_router.py     -- 2 staff endpoints
+
+backend/tests/
+└── test_withdrawals.py -- 10 tests
+```
+
+**Обновлённые файлы (Sprint 6.3):**
+- `core/config.py` — `+min_withdrawal_cents`, `+max_withdrawal_cents`
+- `users/models.py` — `+payout_details: JSONB nullable`
+- `users/schemas.py` — `+UpdatePayoutDetailsRequest`, `+PayoutDetailsResponse`, `+payout_details` в `UserResponse`
+- `users/service.py` — `+update_payout_details()`
+- `users/router.py` — `+GET/PUT /me/payout-details`
+- `main.py` — `+withdrawals_router`, `+staff_withdrawals_router`
+- `migrations/env.py` — `+Withdrawal` import
+- `tests/helpers.py` — `+Withdrawal` cleanup в `_cleanup_user_related_data()`
+
+**Фиксы code review (Sprint 6.3):**
+- CR-63-01: `service.py` — advisory lock `pg_advisory_xact_lock(user.id.int & 0x7FFFFFFFFFFFFFFF)` перед проверкой баланса в `create_withdrawal()`. Тот же lock_id что в `engine.py` — сериализует withdrawal с purchases (fix #38)
+- CR-63-02: `service.py` — `_load_withdrawal()` получил `for_update: bool = False`. Все 4 мутирующих метода используют `for_update=True`. Сериализует concurrent staff actions
+
+**Критерий готовности:** Любой User с confirmed passive balance и payout_details запрашивает вывод. Staff подтверждает/отклоняет. Instant debit при создании + компенсация при reject/fail. Advisory lock сериализует с purchases. Partial unique index — один active withdrawal. 201 тест зелёный.
 
 ---
 
@@ -2056,4 +2154,4 @@ Event:
 
 ---
 
-*Version 1.9 | 2026-04-11 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, Sprint 6.2 complete (engine.py refactor, installments, daemon batch-first, InsufficientBalanceError), code review fixes applied (32/35 closed, 9/10), Sprint 6.3 next*
+*Version 2.0 | 2026-04-11 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, Sprint 6.2 complete, Sprint 6.3 complete (withdrawals, payout_details, advisory lock, FOR UPDATE), code review fixes applied (33/36 closed, 9/10), Sprint 6.4 next*
