@@ -51,7 +51,7 @@ from app.modules.purchases.models import Purchase  # noqa: F401
 from app.modules.installments.models import InstallmentPlan, InstallmentTranche  # noqa: F401
 
 # Sprint 6.3: Withdrawals
-# from app.modules.withdrawals.models import Withdrawal  # noqa: F401
+from app.modules.withdrawals.models import Withdrawal  # noqa: F401
 
 # Sprint 7.1: Agent Applications
 # from app.modules.agent_applications.models import AgentApplication  # noqa: F401

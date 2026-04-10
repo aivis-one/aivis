@@ -1,9 +1,10 @@
 # =============================================================================
-# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024)
+# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024, Sprint 6.3)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   update_user() -- partial profile update via PATCH /users/me
+#   update_user()           -- partial profile update via PATCH /users/me
+#   update_payout_details() -- set withdrawal payment methods (Sprint 6.3)
 #
 # PARTIAL UPDATE STRATEGY:
 #   Uses Pydantic model_dump(exclude_unset=True) to distinguish between
@@ -32,6 +33,8 @@
 #   Country and phone changes are especially significant for
 #   financial platform AML/KYC requirements.
 # =============================================================================
+
+from typing import Any
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -125,6 +128,52 @@ async def update_user(
         "user_profile_updated",
         user_id=str(user.id),
         fields=list(updates.keys()),
+    )
+
+    return user
+
+
+# ---------------------------------------------------------------------------
+# Payout details (Sprint 6.3)
+# ---------------------------------------------------------------------------
+
+
+async def update_payout_details(
+    user: User,
+    payout_details: dict[str, Any],
+    session: AsyncSession,
+) -> User:
+    """Replace user's payout details (withdrawal payment methods).
+
+    Full replacement -- not merge. Previous value is overwritten.
+    Does NOT commit -- caller manages transaction (P-01).
+
+    Args:
+        user: User object bound to write session.
+        payout_details: New payout details dict.
+        session: Write session.
+
+    Returns:
+        Updated User with refreshed attributes.
+    """
+    user.set_jsonb("payout_details", payout_details)
+
+    await session.flush()
+    await session.refresh(user)
+
+    await record_audit(
+        session=session,
+        event="user.payout_details_updated",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={},  # No values logged -- financial details are sensitive.
+    )
+
+    logger.info(
+        "payout_details_updated",
+        user_id=str(user.id),
     )
 
     return user

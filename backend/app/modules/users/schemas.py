@@ -19,6 +19,8 @@
 #     - Field not in request body -> not in model_dump(exclude_unset=True)
 #     - Field set to null in JSON -> present with value None
 #   Service layer rejects explicit null for NOT NULL DB columns (language).
+#
+# Sprint 6.3: payout_details schemas for withdrawal payment methods.
 # =============================================================================
 
 from datetime import datetime
@@ -41,6 +43,7 @@ class UserResponse(BaseModel):
     onboarding_step: str
     kyc_status: str
     profile: dict[str, Any]
+    payout_details: dict[str, Any] | None = None
     language: str
     created_at: datetime
     updated_at: datetime | None = None
@@ -62,3 +65,26 @@ class UserUpdate(BaseModel):
 
     profile: dict[str, Any] | None = Field(default=None)
     language: str | None = Field(default=None, min_length=1, max_length=10)
+
+
+# ---------------------------------------------------------------------------
+# Payout details (Sprint 6.3)
+# ---------------------------------------------------------------------------
+
+
+class UpdatePayoutDetailsRequest(BaseModel):
+    """PUT /api/v1/users/me/payout-details -- set withdrawal payment methods.
+
+    Free-form JSONB. Validation of specific methods (crypto, IBAN, etc.)
+    will be added in future sprints when payment provider is integrated.
+    """
+
+    payout_details: dict[str, Any]
+
+
+class PayoutDetailsResponse(BaseModel):
+    """Response for GET /api/v1/users/me/payout-details."""
+
+    payout_details: dict[str, Any] | None = None
+
+    model_config = {"from_attributes": True}

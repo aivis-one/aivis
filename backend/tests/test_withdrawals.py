@@ -1,0 +1,403 @@
+# =============================================================================
+# CBSHOME Backend -- Withdrawal Tests (Sprint 6.3)
+# =============================================================================
+#
+# Tests cover:
+#   1:  Create withdrawal -> 201, passive balance debited
+#   2:  Create withdrawal without payout_details -> 400
+#   3:  Create withdrawal insufficient balance -> 400
+#   4:  Create withdrawal below minimum -> 400
+#   5:  Create withdrawal above maximum -> 400
+#   6:  Create second withdrawal while first pending -> 409
+#   7:  Staff confirm -> 200, status=processing (MVP)
+#   8:  Staff reject -> 200, passive balance restored
+#   9:  List my withdrawals -> 200
+#   10: Fail withdrawal -> passive balance restored
+#
+# Email prefix: "s63_" -- unique to this test file, cleaned up in fixture.
+# =============================================================================
+
+from collections.abc import AsyncGenerator
+from uuid import UUID
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.ledgers.constants import LedgerStatus
+from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
+from app.modules.users.models import User
+from app.modules.withdrawals.constants import WithdrawalStatus
+from app.modules.withdrawals.models import Withdrawal
+from app.modules.withdrawals.service import fail_withdrawal
+from tests.helpers import (
+    auth_headers,
+    cleanup_test_users,
+    create_admin_user,
+    register_user,
+)
+
+EMAIL_PREFIX = "s63_"
+
+
+@pytest.fixture(autouse=True)
+async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
+    """Clean test users before and after each test."""
+    await cleanup_test_users(db_session, EMAIL_PREFIX)
+    yield
+    await cleanup_test_users(db_session, EMAIL_PREFIX)
+
+
+async def _create_user_with_balance(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    suffix: str,
+    balance_cents: int = 100000,
+    with_payout_details: bool = True,
+) -> tuple[UUID, str]:
+    """Register user, set payout_details, credit passive balance.
+
+    Returns (user_id, session_token).
+    """
+    data = await register_user(
+        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+    )
+    token = data["session_token"]
+    user_id = UUID(data["user"]["id"])
+
+    # Set payout_details on user.
+    if with_payout_details:
+        stmt = select(User).where(User.id == user_id)
+        result = await db_session.execute(stmt)
+        user = result.scalar_one()
+        user.set_jsonb("payout_details", {"method": "crypto", "address": "TXyz123"})
+        await db_session.flush()
+
+    # Credit passive balance.
+    if balance_cents > 0:
+        await record_passive_ledger(
+            db_session,
+            user_id=user_id,
+            amount_cents=balance_cents,
+            status=LedgerStatus.CONFIRMED,
+            reason="test:credit",
+        )
+
+    await db_session.commit()
+    return user_id, token
+
+
+# ---------------------------------------------------------------------------
+# 1. Create withdrawal -> 201
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """User creates withdrawal -> 201, passive balance debited."""
+    user_id, token = await _create_user_with_balance(
+        client, db_session, "w1", balance_cents=50000
+    )
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["status"] == WithdrawalStatus.PENDING
+    assert body["amount_cents"] == 20000
+    assert body["user_id"] == str(user_id)
+    assert body["payout_details_snapshot"]["method"] == "crypto"
+
+    # Passive balance should be reduced.
+    balance = await get_passive_balance(db_session, user_id)
+    assert balance["confirmed"] == 30000
+
+
+# ---------------------------------------------------------------------------
+# 2. No payout_details -> 400
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal_no_payout_details(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """User without payout_details -> 400."""
+    _, token = await _create_user_with_balance(
+        client, db_session, "w2", with_payout_details=False
+    )
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 10000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 400
+    assert "Payout details" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# 3. Insufficient balance -> 400
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal_insufficient_balance(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Withdrawal exceeding confirmed passive balance -> 400."""
+    _, token = await _create_user_with_balance(
+        client, db_session, "w3", balance_cents=5000
+    )
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 10000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 400
+    assert "Insufficient" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# 4. Below minimum -> 400
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal_below_minimum(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Amount below MIN_WITHDRAWAL_CENTS -> 400."""
+    _, token = await _create_user_with_balance(
+        client, db_session, "w4", balance_cents=100000
+    )
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 100},  # Below $10 default minimum
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 400
+    assert "Minimum" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# 5. Above maximum -> 400
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal_above_maximum(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Amount above MAX_WITHDRAWAL_CENTS -> 400."""
+    _, token = await _create_user_with_balance(
+        client, db_session, "w5", balance_cents=99999999
+    )
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 99999999},  # Above $100k default maximum
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 400
+    assert "Maximum" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# 6. Duplicate active withdrawal -> 409
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal_duplicate(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Second withdrawal while first is pending -> 409."""
+    _, token = await _create_user_with_balance(
+        client, db_session, "w6", balance_cents=100000
+    )
+
+    resp1 = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 10000},
+        headers=auth_headers(token),
+    )
+    assert resp1.status_code == 201
+
+    resp2 = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 10000},
+        headers=auth_headers(token),
+    )
+    assert resp2.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# 7. Staff confirm -> processing (MVP)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_staff_confirm_withdrawal(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Staff confirms withdrawal -> status=processing."""
+    _, token = await _create_user_with_balance(
+        client, db_session, "w7", balance_cents=50000
+    )
+    _, admin_token = await create_admin_user(
+        client, db_session, email=f"{EMAIL_PREFIX}admin7@example.com"
+    )
+
+    # Create withdrawal.
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201
+    withdrawal_id = resp.json()["id"]
+
+    # Staff confirm.
+    resp2 = await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+    body = resp2.json()
+    assert body["status"] == WithdrawalStatus.PROCESSING
+    assert body["confirmed_at"] is not None
+    assert body["processing_at"] is not None
+
+
+# ---------------------------------------------------------------------------
+# 8. Staff reject -> balance restored
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_staff_reject_withdrawal(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Staff rejects withdrawal -> balance restored via compensating entry."""
+    user_id, token = await _create_user_with_balance(
+        client, db_session, "w8", balance_cents=50000
+    )
+    _, admin_token = await create_admin_user(
+        client, db_session, email=f"{EMAIL_PREFIX}admin8@example.com"
+    )
+
+    # Create withdrawal.
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201
+    withdrawal_id = resp.json()["id"]
+
+    # Verify balance reduced.
+    balance_before = await get_passive_balance(db_session, user_id)
+    assert balance_before["confirmed"] == 30000
+
+    # Staff reject.
+    resp2 = await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/reject",
+        json={"reason": "Invalid bank details"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+    body = resp2.json()
+    assert body["status"] == WithdrawalStatus.REJECTED
+    assert body["rejection_reason"] == "Invalid bank details"
+
+    # Balance restored.
+    db_session.expire_all()
+    balance_after = await get_passive_balance(db_session, user_id)
+    assert balance_after["confirmed"] == 50000
+
+
+# ---------------------------------------------------------------------------
+# 9. List my withdrawals -> 200
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_my_withdrawals(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /withdrawals/me returns user's withdrawal history."""
+    _, token = await _create_user_with_balance(
+        client, db_session, "w9", balance_cents=100000
+    )
+
+    # Create a withdrawal.
+    await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 10000},
+        headers=auth_headers(token),
+    )
+
+    resp = await client.get(
+        "/api/v1/withdrawals/me",
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["amount_cents"] == 10000
+
+
+# ---------------------------------------------------------------------------
+# 10. Fail withdrawal -> balance restored
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_fail_withdrawal_restores_balance(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Failed withdrawal (provider reject) -> compensating entry restores balance."""
+    user_id, token = await _create_user_with_balance(
+        client, db_session, "w10", balance_cents=50000
+    )
+    _, admin_token = await create_admin_user(
+        client, db_session, email=f"{EMAIL_PREFIX}admin10@example.com"
+    )
+
+    # Create and confirm withdrawal.
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    withdrawal_id = UUID(resp.json()["id"])
+
+    await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+
+    # Simulate provider failure via service call.
+    await fail_withdrawal(withdrawal_id, db_session)
+    await db_session.commit()
+
+    # Verify status.
+    db_session.expire_all()
+    stmt = select(Withdrawal).where(Withdrawal.id == withdrawal_id)
+    result = await db_session.execute(stmt)
+    w = result.scalar_one()
+    assert w.status == WithdrawalStatus.FAILED
+
+    # Balance restored.
+    balance = await get_passive_balance(db_session, user_id)
+    assert balance["confirmed"] == 50000

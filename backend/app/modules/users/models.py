@@ -19,9 +19,10 @@
 #   Blocked from login in get_current_user() dependency.
 #
 # JSONB COLUMNS:
-#   credentials -- auth data: {email: {...}, telegram: {...}, onboarding: {...}}
-#   profile     -- personal data: {first_name, last_name, country, phone, ...}
-#   Both columns use JSONBMixin.set_jsonb() for safe mutation.
+#   credentials    -- auth data: {email: {...}, telegram: {...}, onboarding: {...}}
+#   profile        -- personal data: {first_name, last_name, country, phone, ...}
+#   payout_details -- withdrawal payment methods: free-form JSONB (Sprint 6.3)
+#   All JSONB columns use JSONBMixin.set_jsonb() for safe mutation.
 #
 # KYC STATUS:
 #   kyc_status is a denormalized cache of KYCApplication.status.
@@ -131,6 +132,15 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         default=dict,
         server_default="{}",
         nullable=False,
+    )
+
+    # -- Payout details (Sprint 6.3) --
+    # Free-form JSONB with user's withdrawal payment methods.
+    # Snapshot-copied into Withdrawal.payout_details_snapshot at creation.
+    # Use set_jsonb("payout_details", value) for mutations.
+    payout_details: Mapped[dict | None] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
+        nullable=True,
     )
 
     # -- Locale --

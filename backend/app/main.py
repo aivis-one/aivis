@@ -9,7 +9,7 @@
 #
 # ROUTERS:
 #   auth_router            -> /api/v1/auth/* (Sprint 1.1+)
-#   users_router           -> /api/v1/users/* (Sprint 1.3)
+#   users_router           -> /api/v1/users/* (Sprint 1.3, 6.3)
 #   kyc_router             -> /api/v1/kyc/* (Sprint 2.1)
 #   documents_router       -> /api/v1/documents/* (Sprint 2.2)
 #   staff_documents_router -> /api/v1/staff/documents/* (Sprint 2.2)
@@ -27,6 +27,8 @@
 #   purchases_router       -> /api/v1/products/*/purchase (Sprint 6.1)
 #   installment_create_router -> /api/v1/products/*/installment (Sprint 6.2)
 #   installment_query_router  -> /api/v1/installments/* (Sprint 6.2)
+#   withdrawals_router        -> /api/v1/withdrawals/* (Sprint 6.3)
+#   staff_withdrawals_router  -> /api/v1/staff/withdrawals/* (Sprint 6.3)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -80,6 +82,8 @@ from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.router import router as staff_users_router
 from app.modules.users.router import router as users_router
+from app.modules.withdrawals.router import router as withdrawals_router
+from app.modules.withdrawals.staff_router import router as staff_withdrawals_router
 
 logger = structlog.get_logger()
 
@@ -271,6 +275,8 @@ app.include_router(staff_payments_router)
 app.include_router(purchases_router)
 app.include_router(installment_create_router)
 app.include_router(installment_query_router)
+app.include_router(withdrawals_router)
+app.include_router(staff_withdrawals_router)
 
 
 # ---------------------------------------------------------------------------
@@ -282,78 +288,58 @@ async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
     """Convert CBSError exceptions into proper HTTP JSON responses."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.code, "message": exc.message},
+        content={"detail": exc.detail, "code": exc.code},
     )
 
 
 # ---------------------------------------------------------------------------
-# Root + Health + Ready
+# Health / Readiness
 # ---------------------------------------------------------------------------
 
+
 @app.get("/")
-async def root() -> dict:
-    """API info."""
-    return {"name": "CBSHOME API", "version": APP_VERSION}
+async def root() -> dict[str, str]:
+    """API identification endpoint."""
+    return {"app": "CBSHOME API", "version": APP_VERSION}
 
 
 @app.get("/health")
-async def health() -> JSONResponse:
-    """Health check -- always returns 200.
+async def health() -> dict[str, str | dict[str, str]]:
+    """Health check: DB + Redis connectivity.
 
-    Reports DB and Redis connectivity status.
+    Always returns 200 -- individual service status in body.
     """
-    db_ok = True
-    redis_ok = True
+    checks: dict[str, str] = {}
 
+    # DB
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception:
-        db_ok = False
+        checks["db"] = "ok"
+    except Exception as exc:
+        checks["db"] = f"error: {exc}"
 
+    # Redis
     try:
         redis = get_redis()
         await redis.ping()
-    except Exception:
-        redis_ok = False
+        checks["redis"] = "ok"
+    except Exception as exc:
+        checks["redis"] = f"error: {exc}"
 
-    all_ok = db_ok and redis_ok
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "ok" if all_ok else "degraded",
-            "db": "ok" if db_ok else "error",
-            "redis": "ok" if redis_ok else "error",
-        },
-    )
+    return {"status": "ok", "checks": checks}
 
 
 @app.get("/ready")
 async def ready() -> JSONResponse:
-    """Readiness probe -- 503 if any dependency is degraded."""
-    db_ok = True
-    redis_ok = True
+    """Readiness probe: 200 if all services up, 503 otherwise."""
+    result = await health()
+    checks = result["checks"]
 
-    try:
-        engine = get_engine()
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-    except Exception:
-        db_ok = False
+    all_ok = all(v == "ok" for v in checks.values())  # type: ignore[union-attr]
 
-    try:
-        redis = get_redis()
-        await redis.ping()
-    except Exception:
-        redis_ok = False
-
-    all_ok = db_ok and redis_ok
     return JSONResponse(
         status_code=200 if all_ok else 503,
-        content={
-            "status": "ok" if all_ok else "degraded",
-            "db": "ok" if db_ok else "error",
-            "redis": "ok" if redis_ok else "error",
-        },
+        content=result,
     )

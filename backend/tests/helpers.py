@@ -44,6 +44,9 @@
 # Sprint 6.2:
 #   _cleanup_user_related_data() extended with InstallmentPlan/Tranche cleanup.
 #   Order: tranches first (FK to plans + purchases), then plans.
+#
+# Sprint 6.3:
+#   _cleanup_user_related_data() extended with Withdrawal cleanup.
 # =============================================================================
 
 import hashlib
@@ -362,6 +365,14 @@ async def _cleanup_user_related_data(
     from app.modules.payments.models import CryptoAddress, Payment
     from app.modules.products.models import Product, ProductInstallment
     from app.modules.purchases.models import Purchase
+    from app.modules.withdrawals.models import Withdrawal
+
+    # Sprint 6.3: Withdrawals (FK to users.id).
+    await session.execute(
+        delete(Withdrawal).where(
+            Withdrawal.user_id.in_(user_ids)
+        )
+    )
 
     # Sprint 6.2: Installment tranches and plans by investor_id.
     # Tranches first (FK to installment_plans.id and purchases.id).

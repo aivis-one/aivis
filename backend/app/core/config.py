@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     installment_default_days: int = 7
     installment_worker_hour: int = 3
 
+    # -- Withdrawals (Sprint 6.3) --
+    min_withdrawal_cents: int = 1000       # $10.00
+    max_withdrawal_cents: int = 10000000   # $100,000.00
+
     # -- Agent --
     agent_application_cooldown_days: int = 30
 
