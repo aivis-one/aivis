@@ -498,28 +498,23 @@ async def is_05(session: AsyncSession) -> SemaphoreResult:
 
 async def is_06(session: AsyncSession) -> SemaphoreResult:
     """IS-06: No active plans where all tranches are paid (should be completed)."""
-    # Active plans.
-    active_plans_stmt = (
-        select(InstallmentPlan.id)
-        .where(InstallmentPlan.status == InstallmentPlanStatus.ACTIVE)
-    )
-    active_result = await session.execute(active_plans_stmt)
-    active_plan_ids = [row[0] for row in active_result.all()]
-
-    stuck = 0
-    for plan_id in active_plan_ids:
-        unpaid_stmt = (
-            select(func.count())
-            .select_from(InstallmentTranche)
-            .where(
-                InstallmentTranche.plan_id == plan_id,
-                InstallmentTranche.status != InstallmentTrancheStatus.PAID,
+    # Single query: active plans with zero unpaid tranches.
+    stmt = (
+        select(func.count())
+        .select_from(
+            select(InstallmentPlan.id)
+            .outerjoin(
+                InstallmentTranche,
+                (InstallmentTranche.plan_id == InstallmentPlan.id)
+                & (InstallmentTranche.status != InstallmentTrancheStatus.PAID),
             )
+            .where(InstallmentPlan.status == InstallmentPlanStatus.ACTIVE)
+            .group_by(InstallmentPlan.id)
+            .having(func.count(InstallmentTranche.id) == 0)
+            .subquery()
         )
-        unpaid = (await session.execute(unpaid_stmt)).scalar_one()
-        if unpaid == 0:
-            stuck += 1
-
+    )
+    stuck = (await session.execute(stmt)).scalar_one()
     return _result(
         "IS-06", "high", stuck == 0,
         {"active_plans_fully_paid": stuck},

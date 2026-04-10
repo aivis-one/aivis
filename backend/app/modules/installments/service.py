@@ -57,7 +57,7 @@ from app.modules.purchases.service import (
 )
 from app.modules.transactions.constants import ReferenceType, TransactionType
 from app.modules.transactions.service import record_transaction
-from app.modules.users.models import User
+from app.modules.users.models import KYCStatus, User
 
 logger = structlog.get_logger()
 
@@ -97,6 +97,12 @@ async def create_plan(
     """
     now = datetime.now(UTC)
     today = now.date()
+
+    # -- KYC guard (TD-038) --
+    if investor.kyc_status != KYCStatus.APPROVED:
+        raise BadRequestError(
+            "KYC verification required before installment purchase"
+        )
 
     # -- 1. Load Product (must be active for new plans) --
     product = await _load_product_active(product_id, session)

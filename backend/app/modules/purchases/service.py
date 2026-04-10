@@ -16,6 +16,7 @@
 #   the same engine with a differently-built context.
 #
 # EXECUTE_PURCHASE FLOW (after refactor):
+#   0. KYC guard (TD-038)
 #   1. Load Product (must be active)
 #   2. Load CompanyProfile (must be active) + Company User
 #   3. Load Platform user
@@ -51,7 +52,7 @@ from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.purchases import engine
-from app.modules.users.models import User, UserRole
+from app.modules.users.models import KYCStatus, User, UserRole
 
 logger = structlog.get_logger()
 
@@ -276,10 +277,16 @@ async def execute_purchase(
         List of Purchase records created (sale + optional gifts).
 
     Raises:
-        BadRequestError: Insufficient balance, product not active, etc.
+        BadRequestError: Insufficient balance, product not active, KYC not approved.
         NotFoundError: Product or company not found.
     """
     now = datetime.now(UTC)
+
+    # -- 0. KYC guard (TD-038) --
+    if investor.kyc_status != KYCStatus.APPROVED:
+        raise BadRequestError(
+            "KYC verification required before purchase"
+        )
 
     # -- 1. Load Product (must be active) --
     product = await _load_product(product_id, session)

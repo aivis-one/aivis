@@ -19,6 +19,7 @@
 #   9:  create_plan template not found -> 404
 #   10: create_plan template wrong product -> 400
 #   11: create_plan product not active -> 400
+#   11b: create_plan without KYC -> 400
 #
 #   -- Integration: endpoints --
 #   12: POST /products/{id}/installment -> 201
@@ -206,6 +207,14 @@ async def _create_investor_with_balance(
     )
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
+
+    # Approve KYC (TD-038: required for installment purchase).
+    from app.modules.users.models import User as UserModel
+    stmt = select(UserModel).where(UserModel.id == user_id)
+    result = await db_session.execute(stmt)
+    user_obj = result.scalar_one()
+    user_obj.kyc_status = "approved"
+    await db_session.flush()
 
     await record_active_ledger(
         db_session,
@@ -416,6 +425,46 @@ async def test_create_plan_product_not_active(
     inv_user = await db_session.get(User, inv_id)
 
     with pytest.raises(BadRequestError, match="not available for purchase"):
+        await create_plan(
+            product_id=UUID(product["id"]),
+            product_installment_id=UUID(template["id"]),
+            investor=inv_user,
+            session=db_session,
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_plan_no_kyc(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """create_plan without KYC approval -> BadRequestError."""
+    from app.modules.users.models import User
+
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+    template = await _create_installment_template(
+        client, admin_token, product["id"]
+    )
+
+    # Investor WITHOUT kyc — just register + fund, no kyc_status change.
+    data = await register_user(
+        client, email=f"{EMAIL_PREFIX}nokyc@example.com"
+    )
+    inv_id = UUID(data["user"]["id"])
+    await record_active_ledger(
+        db_session,
+        user_id=inv_id,
+        amount_cents=2_000_000,
+        status=LedgerStatus.CONFIRMED,
+        reason="deposit:crypto:0xtest_nokyc",
+    )
+    await db_session.commit()
+
+    inv_user = await db_session.get(User, inv_id)
+    with pytest.raises(BadRequestError, match="KYC"):
         await create_plan(
             product_id=UUID(product["id"]),
             product_installment_id=UUID(template["id"]),

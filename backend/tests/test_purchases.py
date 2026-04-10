@@ -17,7 +17,8 @@
 #   12: POST /products/{id}/purchase insufficient balance -> 400
 #   13: POST /products/{id}/purchase product not active -> 400
 #   14: POST /products/{id}/purchase non-investor -> 403
-#   15: POST /products/{id}/purchase with gift bonus -> 201 + 2 purchases
+#   15: POST /products/{id}/purchase without KYC -> 400
+#   16: POST /products/{id}/purchase with gift bonus -> 201 + 2 purchases
 #
 # Email prefix: "s61_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -40,6 +41,7 @@ from app.modules.processors.purchase import PurchaseProcessor
 from app.modules.processors.registry import ProcessorRegistry
 from app.modules.processors.validators import validate_purchase_config
 from app.modules.purchases.models import Purchase
+from app.modules.users.models import User
 from tests.helpers import (
     auth_headers,
     cleanup_test_users,
@@ -158,6 +160,13 @@ async def _create_investor_with_balance(
     )
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
+
+    # Approve KYC (TD-038: required for purchase).
+    stmt = select(User).where(User.id == user_id)
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.kyc_status = "approved"
+    await db_session.flush()
 
     # Deposit via direct ledger write (simulating confirmed deposit).
     await record_active_ledger(
@@ -486,6 +495,41 @@ async def test_purchase_non_investor_forbidden(
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_purchase_no_kyc(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Purchase without KYC approval -> 400."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    # Investor WITHOUT kyc_status=approved (skip helper, do manually).
+    data = await register_user(
+        client, email=f"{EMAIL_PREFIX}nokyc@example.com"
+    )
+    token = data["session_token"]
+    user_id = UUID(data["user"]["id"])
+    await record_active_ledger(
+        db_session,
+        user_id=user_id,
+        amount_cents=2_000_000,
+        status=LedgerStatus.CONFIRMED,
+        reason="deposit:crypto:0xtest_nokyc",
+    )
+    await db_session.commit()
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 400
+    assert "KYC" in resp.json()["message"]
 
 
 @pytest.mark.asyncio
