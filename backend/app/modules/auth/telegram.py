@@ -1,11 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Telegram Auth (Sprint 1.2)
+# CBSHOME Backend -- Telegram Auth (Sprint 1.2, fix review)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   1. Validate Telegram WebApp initData (HMAC-SHA256)
 #   2. Anti-replay protection (Redis SET NX)
-#   3. Rate limiting per telegram_id (Redis INCR + EXPIRE)
+#   3. Rate limiting per telegram_id (delegates to core rate_limit)
 #
 # TELEGRAM initData VALIDATION:
 #   Telegram sends a query string signed with HMAC-SHA256.
@@ -20,8 +20,8 @@
 #
 # RATE LIMITING (CRITICAL-4 from VELO):
 #   Max auth_rate_limit_max_requests per auth_rate_limit_window_seconds
-#   per telegram_id. Uses INCR + EXPIRE pattern (TTL set only on first
-#   increment to avoid resetting the window).
+#   per telegram_id. Delegates to atomic Lua-based check_rate_limit()
+#   from core/rate_limit.py.
 #   Key: auth_rate:{telegram_id}
 # =============================================================================
 
@@ -162,8 +162,9 @@ async def check_init_data_replay(init_data: str) -> None:
 async def check_auth_rate_limit(telegram_id: int) -> None:
     """Rate limit auth attempts per telegram_id.
 
-    Uses Redis INCR + EXPIRE pattern. TTL is set only on the first
-    increment to avoid resetting the window on subsequent requests.
+    Delegates to the atomic Lua-based check_rate_limit() from core.
+    Wraps BadRequestError into TelegramValidationError for consistency
+    with Telegram auth error handling.
 
     Args:
         telegram_id: Telegram user ID (from validated initData).
@@ -171,15 +172,12 @@ async def check_auth_rate_limit(telegram_id: int) -> None:
     Raises:
         TelegramValidationError: If rate limit is exceeded.
     """
-    redis = get_redis()
-    rate_key = f"auth_rate:{telegram_id}"
+    from app.core.exceptions import BadRequestError
+    from app.core.rate_limit import check_rate_limit
 
-    count = await redis.incr(rate_key)
-    if count == 1:
-        # Set TTL only on first increment -- don't reset the window.
-        await redis.expire(rate_key, settings.auth_rate_limit_window_seconds)
-
-    if count > settings.auth_rate_limit_max_requests:
+    try:
+        await check_rate_limit(f"auth_rate:{telegram_id}")
+    except BadRequestError:
         raise TelegramValidationError(
             "Too many auth attempts. Please try again later."
         )

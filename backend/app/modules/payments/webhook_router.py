@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Webhook Router (Sprint 5.2, fix Sprint 6.1)
+# CBSHOME Backend -- Payment Webhook Router (Sprint 5.2, fix Phase 5 + review)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -9,6 +9,7 @@
 #   Shared secret via X-Webhook-Secret header.
 #   Uses hmac.compare_digest() for timing-safe comparison (TD-SEC1).
 #   Auth check runs as Depends() -- BEFORE body parsing (fix: CRIT-2).
+#   Empty secret guard -- rejects if header or config is empty string.
 #
 # COMMIT RULE (P-01):
 #   Router never commits. get_db_session commits after yield.
@@ -35,13 +36,15 @@ async def _verify_webhook_secret(request: Request) -> None:
     """Validate X-Webhook-Secret header using timing-safe comparison.
 
     Used as FastAPI Depends() to run BEFORE body parsing.
+    Rejects empty secrets to prevent bypass when CRYPTO_WEBHOOK_SECRET=""
+    (compare_digest("", "") == True).
 
     Raises:
-        UnauthorizedError: If secret is missing or does not match.
+        UnauthorizedError: If secret is missing, empty, or does not match.
     """
     provided = request.headers.get("X-Webhook-Secret", "")
 
-    if not hmac.compare_digest(provided, settings.crypto_webhook_secret):
+    if not provided or not hmac.compare_digest(provided, settings.crypto_webhook_secret):
         raise UnauthorizedError("Invalid webhook secret")
 
 

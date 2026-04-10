@@ -76,7 +76,7 @@ logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
-# Payment confirmation daemon (Sprint 5.3)
+# Payment confirmation daemon (Sprint 5.3, fix review)
 # ---------------------------------------------------------------------------
 
 
@@ -85,6 +85,10 @@ async def _payment_confirmation_worker() -> None:
 
     Runs every CONFIRMATION_WORKER_INTERVAL_MINUTES. Each cycle delegates
     to run_confirmation_batch() in payments/confirmation.py.
+
+    Review fix: batch runs BEFORE sleep so frozen entries that are already
+    past their frozen_until are confirmed immediately on startup, not after
+    waiting one full interval.
     """
     interval = settings.confirmation_worker_interval_minutes * 60
     logger.info(
@@ -94,14 +98,15 @@ async def _payment_confirmation_worker() -> None:
 
     while True:
         try:
-            await asyncio.sleep(interval)
             await run_confirmation_batch()
+            await asyncio.sleep(interval)
         except asyncio.CancelledError:
             logger.info("confirmation_worker_stopped")
             break
         except Exception:
             logger.exception("confirmation_worker_error")
-            # Continue running -- loop will sleep at the top.
+            # Sleep before retry to avoid tight error loop.
+            await asyncio.sleep(interval)
 
 
 # ---------------------------------------------------------------------------
