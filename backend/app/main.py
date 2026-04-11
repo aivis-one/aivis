@@ -27,6 +27,7 @@
 #   transactions_router       -> /api/v1/transactions/* (Sprint 6.4)
 #   consistency_router        -> /api/v1/staff/consistency (Sprint 6.4)
 #   agent_applications_router -> /api/v1/agent-applications/* (Sprint 7.1)
+#   staff_agent_applications_router -> /api/v1/staff/agent-applications/* (Sprint 7.1)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -59,6 +60,7 @@ from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
 from app.modules.agent_applications.router import router as agent_applications_router
+from app.modules.agent_applications.staff_router import router as staff_agent_applications_router
 from app.modules.auth.router import router as auth_router
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
@@ -281,6 +283,7 @@ app.include_router(staff_withdrawals_router)
 app.include_router(transactions_router)
 app.include_router(consistency_router)
 app.include_router(agent_applications_router)
+app.include_router(staff_agent_applications_router)
 
 
 # ---------------------------------------------------------------------------

@@ -50,6 +50,9 @@
 #
 # Sprint 6.4:
 #   _cleanup_user_related_data() extended with Transaction cleanup.
+#
+# Sprint 7.1:
+#   _cleanup_user_related_data() extended with AgentApplication cleanup.
 # =============================================================================
 
 import hashlib
@@ -356,6 +359,7 @@ async def _cleanup_user_related_data(
     Called by cleanup_test_users and cleanup_telegram_test_users
     before deleting users.
     """
+    from app.modules.agent_applications.models import AgentApplication
     from app.modules.companies.models import (
         CompanyPriceHistory,
         CompanyProfile,
@@ -370,6 +374,14 @@ async def _cleanup_user_related_data(
     from app.modules.purchases.models import Purchase
     from app.modules.transactions.models import Transaction
     from app.modules.withdrawals.models import Withdrawal
+
+    # Sprint 7.1: Agent applications (FK to users.id via user_id and reviewed_by).
+    await session.execute(
+        delete(AgentApplication).where(
+            AgentApplication.user_id.in_(user_ids)
+            | AgentApplication.reviewed_by.in_(user_ids)
+        )
+    )
 
     # Sprint 6.4: Transactions (FK to users.id).
     await session.execute(
