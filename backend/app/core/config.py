@@ -92,6 +92,12 @@ class Settings(BaseSettings):
     # -- Notifications --
     notification_max_delivery_attempts: int = 3
 
+    # -- Volume Bonuses (Sprint 7.3) --
+    volume_bonus_monthly_percent: float = 2.0
+    volume_bonus_quarterly_percent: float = 1.0
+    leaderboard_top_monthly: int = 20
+    leaderboard_top_quarterly: int = 10
+
     # -- Computed properties --
 
     @property

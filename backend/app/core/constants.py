@@ -83,6 +83,13 @@ class LedgerReason:
     COMMISSION: str = "commission:l{level}:{agent_id}:{purchase_id}"
 
     # ------------------------------------------------------------------
+    # Volume Bonuses (passive_ledger: +amount for agent)
+    # Sprint 7.3: monthly/quarterly bonus pool distribution.
+    # ------------------------------------------------------------------
+    VOLUME_BONUS_MONTHLY: str = "volume_bonus:monthly:{payout_id}"
+    VOLUME_BONUS_QUARTERLY: str = "volume_bonus:quarterly:{payout_id}"
+
+    # ------------------------------------------------------------------
     # Transfers (inter-ledger / inter-user)
     # ------------------------------------------------------------------
     TRANSFER_OUT: str = "transfer:out:{transfer_id}"

@@ -1,0 +1,470 @@
+# =============================================================================
+# CBSHOME Backend -- Leaderboard & Volume Worker (Sprint 7.3)
+# =============================================================================
+#
+# RESPONSIBILITIES:
+#   run_leaderboard_update()  -- refresh leaderboard snapshots (every 60 min)
+#   run_monthly_payout()      -- distribute monthly bonus pool (once per month)
+#   run_quarterly_payout()    -- distribute quarterly bonus pool (once per quarter)
+#
+# Called by asyncio.Task in main.py lifespan. Each function uses its own
+# session -- failure in one does not block others.
+#
+# LEADERBOARD UPDATE:
+#   1. Aggregate volumes: SUM(paid_cents) from Purchase via ReferralAttribution
+#      for current month, excluding gift purchases.
+#   2. DELETE existing non-final snapshots for current period.
+#   3. INSERT new ranked snapshots.
+#
+# PAYOUT:
+#   1. Check if payout already exists for previous period (idempotency).
+#   2. Compute pool: SUM(paid_cents) all purchases in period * percent.
+#   3. Read latest snapshot, take top-N.
+#   4. Mark snapshot as final.
+#   5. Call VolumeProcessor.distribute_pool() for pure calculation.
+#   6. Write VolumePayout + PassiveLedger entries.
+#
+# SESSION MANAGEMENT:
+#   Each operation uses get_session_factory() -- same pattern as
+#   confirmation_worker and installment_worker.
+# =============================================================================
+
+from datetime import date, datetime, UTC
+from uuid import UUID
+
+import structlog
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.audit import record_audit
+from app.core.config import settings
+from app.core.constants import LedgerReason
+from app.core.database import get_session_factory
+from app.modules.commissions.constants import PeriodType
+from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout
+from app.modules.ledgers.models import LedgerStatus, PassiveLedger
+from app.modules.ledgers.service import record_passive_ledger
+from app.modules.processors.volume import AgentRank, VolumeProcessor
+from app.modules.purchases.models import Purchase
+from app.modules.purchases.constants import PurchaseLegalBasis
+from app.modules.referrals.models import ReferralAttribution, ReferralLink
+from app.modules.users.models import User, UserRole
+
+logger = structlog.get_logger()
+
+_volume_processor = VolumeProcessor()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _current_month_start() -> date:
+    """First day of current month."""
+    now = datetime.now(UTC)
+    return date(now.year, now.month, 1)
+
+
+def _previous_month_start() -> date:
+    """First day of previous month."""
+    now = datetime.now(UTC)
+    if now.month == 1:
+        return date(now.year - 1, 12, 1)
+    return date(now.year, now.month - 1, 1)
+
+
+def _current_quarter_start() -> date:
+    """First day of current quarter."""
+    now = datetime.now(UTC)
+    q_month = ((now.month - 1) // 3) * 3 + 1
+    return date(now.year, q_month, 1)
+
+
+def _previous_quarter_start() -> date:
+    """First day of previous quarter."""
+    current = _current_quarter_start()
+    if current.month == 1:
+        return date(current.year - 1, 10, 1)
+    return date(current.year, current.month - 3, 1)
+
+
+def _next_period_start(period_start: date, period_type: str) -> date:
+    """First day of the period AFTER period_start."""
+    if period_type == PeriodType.MONTHLY:
+        if period_start.month == 12:
+            return date(period_start.year + 1, 1, 1)
+        return date(period_start.year, period_start.month + 1, 1)
+    else:
+        # Quarterly.
+        if period_start.month == 10:
+            return date(period_start.year + 1, 1, 1)
+        return date(period_start.year, period_start.month + 3, 1)
+
+
+async def _get_platform_user_id(session: AsyncSession) -> UUID:
+    """Load Platform user ID."""
+    stmt = select(User.id).where(User.role == UserRole.PLATFORM)
+    result = await session.execute(stmt)
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise RuntimeError("Platform user not found")
+    return row
+
+
+async def _aggregate_agent_volumes(
+    session: AsyncSession,
+    period_start: date,
+    period_end: date,
+) -> list[AgentRank]:
+    """Aggregate sales volume per agent for a given period.
+
+    Volume = SUM(paid_cents) of purchases attributed to agent's referral
+    links, excluding gift purchases. Only active agents included.
+
+    Returns list sorted by volume DESC with assigned ranks.
+    """
+    # Subquery: purchases in period with referral attribution to a link.
+    stmt = (
+        select(
+            ReferralLink.agent_id,
+            func.coalesce(func.sum(Purchase.paid_cents), 0).label("volume"),
+        )
+        .select_from(Purchase)
+        .join(
+            ReferralAttribution,
+            ReferralAttribution.purchase_id == Purchase.id,
+        )
+        .join(
+            ReferralLink,
+            ReferralAttribution.referral_link_id == ReferralLink.id,
+        )
+        .join(
+            User,
+            ReferralLink.agent_id == User.id,
+        )
+        .where(
+            Purchase.created_at >= period_start,
+            Purchase.created_at < period_end,
+            Purchase.legal_basis != PurchaseLegalBasis.GIFT,
+            Purchase.status == "active",
+            User.role == UserRole.AGENT,
+            User.is_active.is_(True),
+            ReferralAttribution.referral_link_id.is_not(None),
+        )
+        .group_by(ReferralLink.agent_id)
+        .order_by(func.sum(Purchase.paid_cents).desc())
+    )
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    agents: list[AgentRank] = []
+    for rank_idx, row in enumerate(rows, start=1):
+        volume = int(row.volume)
+        if volume <= 0:
+            continue
+        agents.append(AgentRank(
+            agent_id=row.agent_id,
+            rank=rank_idx,
+            volume_cents=volume,
+        ))
+
+    return agents
+
+
+async def _get_total_purchases_cents(
+    session: AsyncSession,
+    period_start: date,
+    period_end: date,
+) -> int:
+    """SUM(paid_cents) for all purchases in period (excluding gifts)."""
+    stmt = (
+        select(func.coalesce(func.sum(Purchase.paid_cents), 0))
+        .where(
+            Purchase.created_at >= period_start,
+            Purchase.created_at < period_end,
+            Purchase.legal_basis != PurchaseLegalBasis.GIFT,
+            Purchase.status == "active",
+        )
+    )
+    result = await session.execute(stmt)
+    return int(result.scalar_one())
+
+
+# ---------------------------------------------------------------------------
+# Leaderboard update (every 60 min)
+# ---------------------------------------------------------------------------
+
+
+async def run_leaderboard_update() -> None:
+    """Refresh leaderboard snapshots for current month.
+
+    Deletes non-final snapshots and inserts fresh ones.
+    """
+    factory = get_session_factory()
+
+    async with factory() as session:
+        try:
+            period_start = _current_month_start()
+            period_end = _next_period_start(period_start, PeriodType.MONTHLY)
+            now = datetime.now(UTC)
+
+            agents = await _aggregate_agent_volumes(
+                session, period_start, period_end,
+            )
+
+            # Delete existing non-final snapshots for current month.
+            await session.execute(
+                delete(LeaderboardSnapshot).where(
+                    LeaderboardSnapshot.period_type == PeriodType.MONTHLY,
+                    LeaderboardSnapshot.period_start == period_start,
+                    LeaderboardSnapshot.is_final.is_(False),
+                )
+            )
+
+            # Insert fresh snapshots.
+            for agent in agents:
+                snapshot = LeaderboardSnapshot(
+                    agent_id=agent.agent_id,
+                    rank=agent.rank,
+                    volume_cents=agent.volume_cents,
+                    period_type=PeriodType.MONTHLY,
+                    period_start=period_start,
+                    snapshot_at=now,
+                    is_final=False,
+                )
+                session.add(snapshot)
+
+            await session.commit()
+
+            logger.info(
+                "leaderboard_updated",
+                period_start=period_start.isoformat(),
+                agents_count=len(agents),
+            )
+
+        except Exception:
+            await session.rollback()
+            logger.exception("leaderboard_update_error")
+            raise
+
+
+# ---------------------------------------------------------------------------
+# Monthly payout
+# ---------------------------------------------------------------------------
+
+
+async def run_monthly_payout() -> None:
+    """Distribute monthly volume bonus pool if due.
+
+    Triggers once when current month != previous snapshot month.
+    Idempotent: skips if VolumePayout already exists for the period.
+    """
+    previous_start = _previous_month_start()
+    current_start = _current_month_start()
+
+    # Only trigger if we've crossed into a new month.
+    if current_start == previous_start:
+        return
+
+    factory = get_session_factory()
+
+    async with factory() as session:
+        try:
+            await _distribute_pool(
+                session=session,
+                period_type=PeriodType.MONTHLY,
+                period_start=previous_start,
+                period_end=current_start,
+                bonus_percent=settings.volume_bonus_monthly_percent,
+                top_n=settings.leaderboard_top_monthly,
+            )
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            logger.exception("monthly_payout_error")
+            raise
+
+
+# ---------------------------------------------------------------------------
+# Quarterly payout
+# ---------------------------------------------------------------------------
+
+
+async def run_quarterly_payout() -> None:
+    """Distribute quarterly volume bonus pool if due.
+
+    Triggers once when current quarter != previous quarter.
+    Idempotent: skips if VolumePayout already exists for the period.
+    """
+    previous_start = _previous_quarter_start()
+    current_start = _current_quarter_start()
+
+    # Only trigger if we've crossed into a new quarter.
+    if current_start == previous_start:
+        return
+
+    factory = get_session_factory()
+
+    async with factory() as session:
+        try:
+            await _distribute_pool(
+                session=session,
+                period_type=PeriodType.QUARTERLY,
+                period_start=previous_start,
+                period_end=current_start,
+                bonus_percent=settings.volume_bonus_quarterly_percent,
+                top_n=settings.leaderboard_top_quarterly,
+            )
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            logger.exception("quarterly_payout_error")
+            raise
+
+
+# ---------------------------------------------------------------------------
+# Shared payout logic
+# ---------------------------------------------------------------------------
+
+
+async def _distribute_pool(
+    session: AsyncSession,
+    period_type: str,
+    period_start: date,
+    period_end: date,
+    bonus_percent: float,
+    top_n: int,
+) -> None:
+    """Distribute volume bonus pool for a closed period.
+
+    Idempotent: checks if payout already exists before proceeding.
+    """
+    # -- 1. Idempotency check --
+    existing_stmt = (
+        select(func.count())
+        .select_from(VolumePayout)
+        .where(
+            VolumePayout.period_type == period_type,
+            VolumePayout.period_start == period_start,
+        )
+    )
+    existing_count = (await session.execute(existing_stmt)).scalar_one()
+    if existing_count > 0:
+        logger.info(
+            "volume_payout_already_exists",
+            period_type=period_type,
+            period_start=period_start.isoformat(),
+        )
+        return
+
+    # -- 2. Compute pool --
+    total_purchases = await _get_total_purchases_cents(
+        session, period_start, period_end,
+    )
+    pool_cents = round(total_purchases * bonus_percent / 100)
+
+    if pool_cents <= 0:
+        logger.info(
+            "volume_payout_empty_pool",
+            period_type=period_type,
+            period_start=period_start.isoformat(),
+            total_purchases=total_purchases,
+        )
+        return
+
+    # -- 3. Get ranked agents --
+    agents = await _aggregate_agent_volumes(session, period_start, period_end)
+    top_agents = agents[:top_n]
+
+    if not top_agents:
+        logger.info(
+            "volume_payout_no_agents",
+            period_type=period_type,
+            period_start=period_start.isoformat(),
+        )
+        return
+
+    # -- 4. Mark snapshots as final --
+    from sqlalchemy import update
+
+    await session.execute(
+        update(LeaderboardSnapshot)
+        .where(
+            LeaderboardSnapshot.period_type == period_type,
+            LeaderboardSnapshot.period_start == period_start,
+            LeaderboardSnapshot.is_final.is_(False),
+        )
+        .values(is_final=True)
+    )
+
+    # -- 5. Get platform user --
+    platform_user_id = await _get_platform_user_id(session)
+
+    # -- 6. Calculate distribution (pure logic) --
+    transactions = _volume_processor.distribute_pool(
+        agents_ranked=top_agents,
+        pool_cents=pool_cents,
+        platform_user_id=platform_user_id,
+        period_type=period_type,
+    )
+
+    # -- 7. Write VolumePayout + PassiveLedger --
+    reason_template = (
+        LedgerReason.VOLUME_BONUS_MONTHLY
+        if period_type == PeriodType.MONTHLY
+        else LedgerReason.VOLUME_BONUS_QUARTERLY
+    )
+
+    for txn, agent in zip(transactions, top_agents):
+        # Create VolumePayout record.
+        payout = VolumePayout(
+            agent_id=agent.agent_id,
+            period_type=period_type,
+            period_start=period_start,
+            amount_cents=abs(txn.entries[0].amount_cents),  # Platform debit = agent credit
+            rank=agent.rank,
+            volume_cents=agent.volume_cents,
+            pool_total_cents=pool_cents,
+        )
+        session.add(payout)
+        await session.flush()
+
+        # Replace {payout_id} placeholder in reason.
+        reason = reason_template.format(payout_id=str(payout.id))
+
+        # Write ledger entries.
+        for entry in txn.entries:
+            await record_passive_ledger(
+                session,
+                user_id=entry.user_id,
+                amount_cents=entry.amount_cents,
+                status=LedgerStatus.CONFIRMED,
+                reason=reason,
+            )
+
+    # -- 8. Audit --
+    await record_audit(
+        session=session,
+        event=f"volume_bonus.{period_type}_distributed",
+        actor_id=platform_user_id,
+        actor_type="system",
+        target_type="volume_payout",
+        target_id=platform_user_id,
+        data={
+            "period_type": period_type,
+            "period_start": period_start.isoformat(),
+            "pool_total_cents": pool_cents,
+            "agents_count": len(transactions),
+            "total_purchases_cents": total_purchases,
+        },
+    )
+
+    logger.info(
+        "volume_payout_distributed",
+        period_type=period_type,
+        period_start=period_start.isoformat(),
+        pool_cents=pool_cents,
+        agents_count=len(transactions),
+    )

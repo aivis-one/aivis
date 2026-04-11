@@ -53,6 +53,9 @@
 #
 # Sprint 7.1:
 #   _cleanup_user_related_data() extended with AgentApplication cleanup.
+#
+# Sprint 7.3:
+#   _cleanup_user_related_data() extended with LeaderboardSnapshot + VolumePayout cleanup.
 # =============================================================================
 
 import hashlib
@@ -380,6 +383,20 @@ async def _cleanup_user_related_data(
         delete(AgentApplication).where(
             AgentApplication.user_id.in_(user_ids)
             | AgentApplication.reviewed_by.in_(user_ids)
+        )
+    )
+
+    # Sprint 7.3: Volume payouts and leaderboard snapshots (FK to users.id).
+    from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout
+
+    await session.execute(
+        delete(VolumePayout).where(
+            VolumePayout.agent_id.in_(user_ids)
+        )
+    )
+    await session.execute(
+        delete(LeaderboardSnapshot).where(
+            LeaderboardSnapshot.agent_id.in_(user_ids)
         )
     )
 

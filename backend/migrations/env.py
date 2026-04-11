@@ -63,7 +63,7 @@ from app.modules.agent_applications.models import AgentApplication  # noqa: F401
 from app.modules.referrals.models import ReferralLink, ReferralAttribution  # noqa: F401
 
 # Sprint 7.3: Commissions
-# from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout  # noqa: F401
+from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout  # noqa: F401
 
 # Sprint 8.1: Notifications
 # from app.modules.notifications.models import Notification, NotificationDelivery  # noqa: F401

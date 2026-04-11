@@ -28,6 +28,8 @@
 #   consistency_router        -> /api/v1/staff/consistency (Sprint 6.4)
 #   agent_applications_router -> /api/v1/agent-applications/* (Sprint 7.1)
 #   staff_agent_applications_router -> /api/v1/staff/agent-applications/* (Sprint 7.1)
+#   referrals_router          -> /api/v1/referrals/* (Sprint 7.2)
+#   commissions_router        -> /api/v1/agent/* (Sprint 7.3)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -36,6 +38,7 @@
 # DAEMONS:
 #   payment_confirmation_worker -- calls run_confirmation_batch() (Sprint 5.3)
 #   installment_payment_worker  -- calls run_installment_batch() (Sprint 6.2)
+#   leaderboard_worker          -- calls run_leaderboard_update() + payouts (Sprint 7.3)
 #
 # MIDDLEWARE (applied in reverse order -- outermost last):
 #   CORSMiddleware -> TraceIdMiddleware
@@ -61,6 +64,12 @@ from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
 from app.modules.agent_applications.router import router as agent_applications_router
 from app.modules.agent_applications.staff_router import router as staff_agent_applications_router
+from app.modules.commissions.router import router as commissions_router
+from app.modules.commissions.worker import (
+    run_leaderboard_update,
+    run_monthly_payout,
+    run_quarterly_payout,
+)
 from app.modules.referrals.router import router as referrals_router
 from app.modules.auth.router import router as auth_router
 from app.modules.companies.router import router as companies_router
@@ -180,6 +189,36 @@ async def _installment_payment_worker() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Leaderboard + volume bonus daemon (Sprint 7.3)
+# ---------------------------------------------------------------------------
+
+
+async def _leaderboard_worker() -> None:
+    """Background task: update leaderboard + distribute volume bonuses.
+
+    Runs every 60 minutes. Each cycle:
+    1. Update leaderboard snapshots (current month).
+    2. Check if monthly payout is due -> distribute.
+    3. Check if quarterly payout is due -> distribute.
+    """
+    logger.info("leaderboard_worker_started")
+
+    while True:
+        try:
+            await run_leaderboard_update()
+            await run_monthly_payout()
+            await run_quarterly_payout()
+            await asyncio.sleep(3600)  # 60 minutes
+        except asyncio.CancelledError:
+            logger.info("leaderboard_worker_stopped")
+            break
+        except Exception:
+            logger.exception("leaderboard_worker_error")
+            # Sleep before retry to avoid tight error loop.
+            await asyncio.sleep(3600)
+
+
+# ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
 
@@ -199,6 +238,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _installment_payment_worker(),
         name="installment_payment_worker",
     )
+    leaderboard_task = asyncio.create_task(
+        _leaderboard_worker(),
+        name="leaderboard_worker",
+    )
 
     logger.info(
         "app_started",
@@ -212,12 +255,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Stop background daemons.
     confirmation_task.cancel()
     installment_task.cancel()
+    leaderboard_task.cancel()
     try:
         await confirmation_task
     except asyncio.CancelledError:
         pass
     try:
         await installment_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await leaderboard_task
     except asyncio.CancelledError:
         pass
 
@@ -286,6 +334,7 @@ app.include_router(consistency_router)
 app.include_router(agent_applications_router)
 app.include_router(staff_agent_applications_router)
 app.include_router(referrals_router)
+app.include_router(commissions_router)
 
 
 # ---------------------------------------------------------------------------
