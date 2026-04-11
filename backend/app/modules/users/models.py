@@ -18,6 +18,11 @@
 #   the single source of truth. Created once by seed_platform.py.
 #   Blocked from login in get_current_user() dependency.
 #
+# REFERRED_BY (Sprint 7.2):
+#   Every user has a referrer. Default = Platform user (self-referencing
+#   for Platform itself). Set once at registration, immutable after.
+#   Agent chain for commission calculation walks up this field.
+#
 # JSONB COLUMNS:
 #   credentials    -- auth data: {email: {...}, telegram: {...}, onboarding: {...}}
 #   profile        -- personal data: {first_name, last_name, country, phone, ...}
@@ -35,7 +40,7 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -108,6 +113,16 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         default=KYCStatus.NOT_STARTED,
         server_default=KYCStatus.NOT_STARTED.value,
         nullable=False,
+    )
+
+    # -- Referrer (Sprint 7.2) --
+    # Every user has a referrer. Platform user references itself.
+    # Investors/agents set at registration, immutable after.
+    # Commission chain walks up this field (max depth = len(agent_levels)).
+    referred_by: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
 
     # -- Auth credentials (JSONB sandbox) --

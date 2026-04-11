@@ -16,6 +16,10 @@
 #   is rolled back on exception (P-01), which would discard any audit
 #   entries written to the same session.
 #
+# REFERRAL (Sprint 7.2):
+#   Every new user gets referred_by = platform_user_id by default.
+#   Full referral_code resolution will be added in Batch 2.
+#
 # COMMIT RULE (P-01):
 #   Service never commits or rolls back. Caller manages the transaction.
 #   Exception: _audit_login_failure() uses its own session+commit.
@@ -65,6 +69,19 @@ def verify_password(password: str, password_hash: str) -> bool:
         return _ph.verify(password_hash, password)
     except VerifyMismatchError:
         return False
+
+
+# ---------------------------------------------------------------------------
+# Platform user helper (Sprint 7.2)
+# ---------------------------------------------------------------------------
+
+
+async def _get_platform_user_id(session: AsyncSession) -> UUID:
+    """Return the Platform user's UUID. Cached per-request via SELECT."""
+    stmt = select(User.id).where(User.role == UserRole.PLATFORM)
+    result = await session.execute(stmt)
+    platform_id = result.scalar_one()
+    return platform_id
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +140,8 @@ async def register_email(
     Creates a User with role=investor, stores hashed password and
     email verification token in credentials JSONB.
 
+    referred_by defaults to Platform user (Sprint 7.2).
+
     Does NOT commit or rollback -- caller (get_db_session) manages
     the transaction lifecycle (P-01).
 
@@ -133,8 +152,12 @@ async def register_email(
     password_hashed = hash_password(password)
     email_token = secrets.token_urlsafe(32)
 
+    # Sprint 7.2: default referrer is Platform.
+    platform_id = await _get_platform_user_id(session)
+
     user = User(
         role=UserRole.INVESTOR,
+        referred_by=platform_id,
         credentials={
             "email": {
                 "email": email_lower,
@@ -316,9 +339,14 @@ async def upsert_telegram_user(
     # Step 2: New user -- create with role=investor.
     # Use begin_nested() (SAVEPOINT) so that IntegrityError from race
     # condition only rolls back the INSERT, not the outer transaction (P-05).
+
+    # Sprint 7.2: default referrer is Platform.
+    platform_id = await _get_platform_user_id(session)
+
     lang = (telegram_user.get("language_code") or "en")[:2] or "en"
     new_user = User(
         role=UserRole.INVESTOR,
+        referred_by=platform_id,
         credentials={"telegram": telegram_creds},
         language=lang,
     )

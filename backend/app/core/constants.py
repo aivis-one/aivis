@@ -41,8 +41,8 @@ class LedgerReason:
 
     Example:
         reason = LedgerReason.DEPOSIT_CRYPTO.format(tx_hash="0xabc...")
-        reason = LedgerReason.COMMISSION_L1.format(
-            agent_id=str(agent_id), purchase_id=str(purchase_id)
+        reason = LedgerReason.COMMISSION.format(
+            level=1, agent_id=str(agent_id), purchase_id=str(purchase_id)
         )
     """
 
@@ -77,10 +77,10 @@ class LedgerReason:
 
     # ------------------------------------------------------------------
     # Commissions (passive_ledger: +amount for agent)
+    # Sprint 7.2: parametric -- level is 1-based index (L1, L2, L3, ...).
+    # Supports arbitrary depth via len(agent_levels) in distribution_config.
     # ------------------------------------------------------------------
-    COMMISSION_L1: str = "commission:l1:{agent_id}:{purchase_id}"
-    COMMISSION_L2: str = "commission:l2:{agent_id}:{purchase_id}"
-    COMMISSION_L3: str = "commission:l3:{agent_id}:{purchase_id}"
+    COMMISSION: str = "commission:l{level}:{agent_id}:{purchase_id}"
 
     # ------------------------------------------------------------------
     # Transfers (inter-ledger / inter-user)
@@ -97,3 +97,4 @@ class LedgerReason:
     # Chargebacks / Reversals
     # ------------------------------------------------------------------
     CHARGEBACK: str = "chargeback:{payment_id}"
+    REVERSAL_SUFFIX: str = ":reversal"

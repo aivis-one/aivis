@@ -11,6 +11,7 @@
 #   - Identified by role=platform (no is_system field)
 #   - Never logs in (blocked in get_current_user() dependency)
 #   - Never appears in user lists (filtered by role=platform)
+#   - referred_by = self (Platform is its own referrer)
 #
 # USAGE:
 #   python scripts/seed_platform.py          -- idempotent, safe to re-run
@@ -21,6 +22,7 @@
 import asyncio
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 # Ensure app package is importable when running as standalone script.
 _backend_dir = Path(__file__).resolve().parent.parent
@@ -72,12 +74,17 @@ async def seed_platform() -> None:
                 warn(f"Platform user already exists: {existing.id}")
                 return
 
+            # Pre-generate UUID so referred_by can reference self.
+            platform_id = uuid4()
+
             # Create Platform user.
             platform = User(
+                id=platform_id,
                 role=UserRole.PLATFORM,
                 is_active=True,
                 onboarding_step=OnboardingStep.ROLE_SELECTED,
                 kyc_status=KYCStatus.APPROVED,
+                referred_by=platform_id,
                 credentials={},
                 profile={"first_name": "Platform", "last_name": "System"},
                 language="en",
