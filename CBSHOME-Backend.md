@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.0
+**Версия:** 2.1
 **Дата:** 11 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -1780,19 +1780,146 @@ backend/tests/
 
 ---
 
-### Sprint 6.4: Transaction History + Semaphores
+### ✅ Sprint 6.4: Transaction History + Semaphores
 
 **Цель:** История операций и семафоры консистентности.
 
 **Задачи:**
-- [ ] `GET /api/v1/transactions` — история (фильтры: тип, статус, дата, сумма; пагинация 20)
-- [ ] `GET /api/v1/transactions/{id}` — детали транзакции
-- [ ] `app/modules/admin/consistency/service.py` — все семафоры S-01..S-15 + IS-01..IS-06
-- [ ] `GET /api/v1/staff/consistency` — запуск семафоров
-- [ ] `tests/test_transactions.py` — 8 тестов
-- [ ] `tests/test_consistency.py` — 10 тестов
+- [x] `app/modules/transactions/__init__.py`
+- [x] `app/modules/transactions/constants.py` — `TransactionType` (14 типов, формат `{entity}:{event}`), `ReferenceType`
+- [x] `app/modules/transactions/models.py` — `Transaction` (иммутабельная, BigInteger, JSONBMixin, индексы на user_created/reference/type)
+- [x] `app/modules/transactions/schemas.py` — `TransactionResponse`, `TransactionListResponse`
+- [x] `app/modules/transactions/service.py` — `record_transaction()`, `list_transactions()`, `get_transaction()`
+- [x] `app/modules/transactions/router.py` — `GET /transactions`, `GET /transactions/{id}`
+- [x] `app/modules/staff/consistency/__init__.py`
+- [x] `app/modules/staff/consistency/schemas.py` — `SemaphoreResult`, `ConsistencyResponse`
+- [x] `app/modules/staff/consistency/service.py` — 18 семафоров (S-01..S-13 без S-07 + IS-01..IS-06) + `run_all()` + `_safe_details()` (Decimal→int)
+- [x] `app/modules/staff/consistency/router.py` — `GET /staff/consistency` (financial_operations)
+- [x] Интеграция `record_transaction()` в payments/service, payments/confirmation, payments/reversal, purchases/engine, installments/service, withdrawals/service
+- [x] `tests/test_transactions.py` — 8 тестов
+- [x] `tests/test_consistency.py` — 10 тестов
 
-**Критерий готовности:** Инвестор видит историю операций с реальными ценами покупки. Все семафоры зелёные.
+**Миграции:**
+- [x] `0012_transactions` — таблица `transactions` + CHECK constraints на type/reference_type
+
+**Модель `Transaction`:**
+```python
+Transaction:  -- иммутабельная, нет updated_at
+    id: UUID
+    user_id: UUID         -- FK users.id
+    type: String(50)      -- CHECK: 14 типов (deposit:received, purchase:completed, etc.)
+    amount_cents: BigInteger
+    reference_id: UUID | None   -- связанная сущность (payment_id, plan_id, etc.)
+    reference_type: String(30) | None  -- CHECK: payment | purchase | installment_plan | withdrawal
+    details: JSONB | None       -- дополнительные данные (network, tx_hash, etc.)
+    created_at: DateTime(tz)
+    -- Индексы: (user_id, created_at DESC), (reference_id, reference_type), (type)
+```
+
+**14 типов событий (TransactionType):**
+```
+deposit:received, deposit:confirmed, deposit:reversed
+purchase:completed, purchase:gift
+installment:tranche_paid, installment:completed, installment:defaulted
+withdrawal:created, withdrawal:confirmed, withdrawal:rejected, withdrawal:completed, withdrawal:failed
+reversal:completed
+```
+
+**18 семафоров:**
+```
+S-01: SUM(all ledger entries) = 0
+S-02: COUNT(purchase ledger entries) = COUNT(purchases)
+S-03: SUM(paid_cents) = ABS(SUM(active debits by purchases))
+S-04: No active_ledger entries for company users
+S-05: No users with negative confirmed active balance
+S-06: No users with negative confirmed passive balance
+S-08: No confirmed entries linked to reversed Payments
+S-09: Reversal entry count matches reversed original count
+S-10: SUM(tranches.amount_cents) = plan.total_price_cents per plan
+S-11: Platform passive balance >= 0
+S-12: All gift purchases have paid_cents = 0
+S-13: SUM(purchase units) by company >= 0
+IS-01: Alias of S-10
+IS-02: SUM(units_unlocked of paid tranches) + bonus = total_units per completed plan
+IS-03: No scheduled tranches for defaulted/cancelled plans
+IS-04: Each paid tranche has purchase_id NOT NULL
+IS-05: COUNT(paid tranches) = COUNT(installment_tranche purchases) per plan
+IS-06: No active plans where all tranches are paid (should be completed)
+```
+
+**Решения реализации:**
+- P6-36: **Transaction = иммутабельный event log.** Каждая строка = один факт, никаких UPDATE. Тип формата `{entity}:{event}`. Сумма всегда заполняется для удобства фронта. Группировка lifecycle по `reference_id + reference_type`
+- P6-37: **Event-log таблица вместо UNION query** — простой SELECT с фильтрами vs монструозный UNION из 5 таблиц. Запись в той же DB-транзакции что и основная операция
+- P6-38: **Семафоры в `staff/consistency/`** (не `admin/consistency/`), permission `financial_operations`. S-07 убран (документы генерируются по запросу, нет document_id на Purchase). S-14/S-15 убраны как дубли IS-01/IS-06
+- P6-39: **`_safe_details()`** — конвертирует `Decimal → int` перед записью в audit JSONB (func.sum на BigInteger возвращает Decimal, не JSON-сериализуемый)
+- P6-40: **Type prefix filter** — `GET /transactions?type=deposit:` фильтрует по `.startswith()`, `type=deposit:received` по `==`. SQLAlchemy, не raw SQL — безопасно
+- P6-41: **IS-06 single query** — outerjoin + HAVING count(unpaid) == 0 вместо N+1 цикла по active plans. O(1) запросов
+- P6-42: **IS-02 single query** — outerjoin + HAVING с JSONB `.as_integer()` для `bonus_units` из snapshot. O(1) запросов
+- P6-43: **KYC guard (TD-038)** — `investor.kyc_status != KYCStatus.APPROVED` → `BadRequestError` в `execute_purchase()` и `create_plan()` перед step 1. Enum-based, не строковое сравнение. Worker `pay_tranche()` не проверяет — KYC валидирован при `create_plan()`
+- P6-44: **Worker UTC date** — `date.today()` → `datetime.now(UTC).date()` в worker.py. Консистентность с `create_plan()` и `calculate_due_date()`
+- P6-45: **Confirmation RETURNING** — bulk UPDATE в confirmation.py расширен: `RETURNING user_id, amount_cents` для записи Transaction без extra query
+
+**Endpoints:**
+```
+GET  /api/v1/transactions          -> TransactionListResponse  (200, user-scoped)
+GET  /api/v1/transactions/{id}     -> TransactionResponse      (200, ownership guard)
+GET  /api/v1/staff/consistency     -> ConsistencyResponse      (200, financial_operations)
+```
+
+**Новые audit events:**
+- `consistency.semaphore_failed` — семафор не прошёл (target_id=staff_id, severity + details в data)
+
+**Результат:**
+```
+backend/app/modules/transactions/
+├── __init__.py
+├── constants.py        -- TransactionType (14 types), ReferenceType
+├── models.py           -- Transaction (immutable event log)
+├── schemas.py          -- TransactionResponse, TransactionListResponse
+├── service.py          -- record_transaction, list_transactions, get_transaction
+└── router.py           -- GET /transactions, GET /transactions/{id}
+
+backend/app/modules/staff/consistency/
+├── __init__.py
+├── schemas.py          -- SemaphoreResult, ConsistencyResponse
+├── service.py          -- 18 semaphores + run_all() + _safe_details()
+└── router.py           -- GET /staff/consistency
+
+backend/tests/
+├── test_transactions.py    -- 8 tests
+└── test_consistency.py     -- 10 tests
+```
+
+**Обновлённые файлы (Sprint 6.4):**
+- `payments/service.py` — `+record_transaction()` (deposit:received)
+- `payments/confirmation.py` — RETURNING расширен, `+record_transaction()` bulk (deposit:confirmed)
+- `payments/reversal.py` — `+record_transaction()` (deposit:reversed, reversal:completed)
+- `purchases/engine.py` — `+_LEGAL_BASIS_TO_TXN_TYPE` mapping, `+record_transaction()` (purchase:completed, purchase:gift)
+- `purchases/service.py` — `+KYCStatus` import, `+KYC guard` в execute_purchase() (TD-038)
+- `installments/service.py` — `+KYCStatus` import, `+KYC guard` в create_plan() (TD-038), `+record_transaction()` (tranche_paid, completed, defaulted)
+- `installments/worker.py` — `date.today()` → `datetime.now(UTC).date()`
+- `withdrawals/service.py` — `+record_transaction()` (created, confirmed, rejected, completed, failed)
+- `main.py` — `+transactions_router`, `+consistency_router`
+- `migrations/env.py` — `+Transaction` import
+- `tests/helpers.py` — `+Transaction` cleanup в `_cleanup_user_related_data()`
+- `tests/test_purchases.py` — `+kyc_status=approved` в helper, `+test_purchase_no_kyc` (16 тестов)
+- `tests/test_installments.py` — `+kyc_status=approved` в helper, `+test_create_plan_no_kyc` (21 тест)
+
+**Фиксы code review (Sprint 6.4):**
+- CR-64-01: `consistency/service.py` — `_safe_details()` конвертирует Decimal→int для JSONB сериализации
+- CR-64-02: `consistency/service.py` — `target_id=staff_id` вместо `None` в record_audit (audit_log.target_id NOT NULL)
+- CR-64-03: `test_consistency.py` — `SET session_replication_role = 'replica'` для обхода FK constraints при инъекции тестовых нарушений
+- CR-64-04: `test_consistency.py` — тесты не предполагают чистую БД, проверяют конкретный семафор
+- CR-64-05: `test_transactions.py` — `strftime()` вместо `isoformat()` для date query params (timezone suffix)
+- CR-64-06: IS-06 N+1 → single query с outerjoin + HAVING
+- CR-64-07: IS-02 N+1 → single query с outerjoin + JSONB `.as_integer()`
+- CR-64-08: worker.py — `date.today()` → `datetime.now(UTC).date()` (timezone consistency)
+
+**Критерий готовности:** Инвестор видит историю операций с фильтрами. 18 семафоров работают. KYC guard на покупке и рассрочке. 221 тест зелёный.
+
+---
+
+**Phase 6 завершена.** 10 endpoints (1 purchase + 3 installments + 6 withdrawals/payout + 2 transactions + 1 consistency), 66 тестов Phase 6 (+156 Phase 0-5 = 221 total), 4 миграции (итого 12). Distribution Engine, installment plans, withdrawals, transaction history, 18 consistency semaphores. KYC guard на всех покупках.
 
 ---
 
@@ -2143,10 +2270,13 @@ Event:
 | TD-035 | `payments/reversal.py` | ~~`total_reversed_cents` = `payment.amount_cents`, не сумма ledger entries~~ → считается из `sum(abs(entry.amount_cents))` по реальным reversed entries. `SELECT FOR UPDATE` для concurrent reversal protection | Phase 6 | ✅ Code review |
 | TD-036 | `payments/reversal.py` | N+1 flush в loop (каждый `record_*_ledger` делает flush). Приемлемо при 1-3 entries. Оптимизировать если saga создаёт >10 entries на payment | Phase 6 | ⬜ |
 | TD-037 | `purchases/router.py` | Нет `idempotency_key` в `CreatePurchaseRequest`. Двойной клик или повторная отправка формы создаст две покупки. Advisory lock не защищает — второй запрос подождёт и выполнится | Backlog | ⬜ |
-| TD-038 | `purchases/service.py` | Нет KYC-проверки перед покупкой. `execute_purchase()` не проверяет `investor.kyc_status`. Compliance gap для AML — бизнес-решение заказчика | Before Prod | ⬜ |
+| TD-038 | `purchases/service.py`, `installments/service.py` | ~~Нет KYC-проверки перед покупкой~~ → KYC guard: `investor.kyc_status != KYCStatus.APPROVED` → `BadRequestError` в `execute_purchase()` и `create_plan()`. Worker `pay_tranche()` не проверяет — KYC валидирован при создании плана | Before Prod | ✅ Sprint 6.4 |
 | TD-039 | `payments/`, `ledgers/` | Partial indexes на `(status, frozen_until) WHERE status='frozen'` для confirmation daemon. При росте данных `WHERE status='frozen' AND frozen_until <= now()` будет деградировать | Before Prod | ⬜ |
 | TD-040 | `tests/conftest.py` | Тесты без транзакционной изоляции — `db_session` делает rollback в finally, но тесты с `commit()` оставляют данные. Нет SAVEPOINT-обёртки между тестами | Backlog | ⬜ |
 | TD-041 | `main.py` | CORS `allow_methods=["*"]` — избыточно для финансовой платформы. Ограничить до `["GET", "POST", "PATCH", "DELETE", "OPTIONS"]` | Before Prod | ⬜ |
+| TD-042 | `installments/worker.py` | Worker race condition: `session.get()` без `FOR UPDATE` → при горизонтальном масштабировании возможна double-payment / double-default. Single-instance VPS + status check guard пока достаточно | Before Scale | ⬜ |
+| TD-043 | `withdrawals/service.py` | Проверить необходимость `begin_nested()` в `create_withdrawal()` при concurrent создании (partial unique index может не защитить от TOCTOU) | Backlog | ⬜ |
+| TD-044 | `core/config.py` | `telegram_bot_token` не имеет production enforcement (в отличие от `kyc_webhook_secret`, `crypto_webhook_secret`). Добавить `ValueError` при пустом в prod | Before Prod | ⬜ |
 
 ---
 
@@ -2154,4 +2284,4 @@ Event:
 
 ---
 
-*Version 2.0 | 2026-04-11 | cbshome Backend TZ — Phase 5 complete, Sprint 6.1 complete, Sprint 6.2 complete, Sprint 6.3 complete (withdrawals, payout_details, advisory lock, FOR UPDATE), code review fixes applied (33/36 closed, 9/10), Sprint 6.4 next*
+*Version 2.1 | 2026-04-11 | cbshome Backend TZ — Phase 5 complete, Phase 6 complete (purchases, installments, withdrawals, transactions, consistency semaphores), TD-038 closed (KYC guard), IS-02/IS-06 N+1 fixed, worker UTC date fixed, code review 9/10 (33/38 closed), Sprint 7.1 next*
