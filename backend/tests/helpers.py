@@ -436,6 +436,18 @@ async def _cleanup_user_related_data(
             )
         )
 
+    # Sprint 7.2: Referral attributions (FK to purchases -- must go before purchases).
+    from app.modules.referrals.models import ReferralAttribution, ReferralLink
+
+    purchase_ids_for_attr = select(Purchase.id).where(
+        Purchase.investor_id.in_(user_ids)
+    )
+    await session.execute(
+        delete(ReferralAttribution).where(
+            ReferralAttribution.purchase_id.in_(purchase_ids_for_attr)
+        )
+    )
+
     # Sprint 6.1: Purchases by investor_id (FK to users.id).
     await session.execute(
         delete(Purchase).where(
@@ -504,6 +516,16 @@ async def _cleanup_user_related_data(
                         InstallmentPlan.id.in_(prod_plan_ids)
                     )
                 )
+
+            # Sprint 7.2: Referral attributions for product-based purchases.
+            prod_purchase_ids = select(Purchase.id).where(
+                Purchase.product_id.in_(product_ids)
+            )
+            await session.execute(
+                delete(ReferralAttribution).where(
+                    ReferralAttribution.purchase_id.in_(prod_purchase_ids)
+                )
+            )
 
             # Sprint 6.1: Purchases referencing these products.
             await session.execute(
@@ -596,5 +618,12 @@ async def _cleanup_user_related_data(
     await session.execute(
         delete(KYCApplication).where(
             KYCApplication.user_id.in_(user_ids)
+        )
+    )
+
+    # Sprint 7.2: Referral links (FK to users.id via agent_id).
+    await session.execute(
+        delete(ReferralLink).where(
+            ReferralLink.agent_id.in_(user_ids)
         )
     )
