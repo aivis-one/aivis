@@ -147,7 +147,7 @@ async def _aggregate_agent_volumes(
             ReferralAttribution.referral_link_id.is_not(None),
         )
         .group_by(ReferralLink.agent_id)
-        .order_by(func.sum(Purchase.paid_cents).desc())
+        .order_by(func.sum(Purchase.paid_cents).desc(), ReferralLink.agent_id)
     )
 
     result = await session.execute(stmt)
@@ -299,7 +299,7 @@ async def run_monthly_payout() -> None:
                 period_type=PeriodType.MONTHLY,
                 period_start=previous_start,
                 period_end=current_start,
-                bonus_percent=settings.volume_bonus_monthly_percent,
+                bonus_bp=settings.volume_bonus_monthly_bp,
                 top_n=settings.leaderboard_top_monthly,
             )
             await session.commit()
@@ -336,7 +336,7 @@ async def run_quarterly_payout() -> None:
                 period_type=PeriodType.QUARTERLY,
                 period_start=previous_start,
                 period_end=current_start,
-                bonus_percent=settings.volume_bonus_quarterly_percent,
+                bonus_bp=settings.volume_bonus_quarterly_bp,
                 top_n=settings.leaderboard_top_quarterly,
             )
             await session.commit()
@@ -356,13 +356,16 @@ async def _distribute_pool(
     period_type: str,
     period_start: date,
     period_end: date,
-    bonus_percent: float,
+    bonus_bp: int,
     top_n: int,
 ) -> None:
     """Distribute volume bonus pool for a closed period.
 
     Concurrency-safe via advisory lock. Idempotent via existing check.
     Reads agent ranking from LeaderboardSnapshot (not re-aggregated).
+
+    Args:
+        bonus_bp: Bonus percentage in basis points (200 = 2.00%).
     """
     # -- 0. Advisory lock -- serialize concurrent workers
     lock_key = hash((period_type, str(period_start))) & 0x7FFFFFFFFFFFFFFF
@@ -393,7 +396,7 @@ async def _distribute_pool(
     total_purchases = await _get_total_purchases_cents(
         session, period_start, period_end,
     )
-    pool_cents = round(total_purchases * bonus_percent / 100)
+    pool_cents = total_purchases * bonus_bp // 10_000
 
     if pool_cents <= 0:
         logger.info(
@@ -450,8 +453,21 @@ async def _distribute_pool(
         .values(is_final=True)
     )
 
-    # -- 5. Get platform user --
+    # -- 5. Get platform user + balance check --
     platform_user_id = await _get_platform_user_id(session)
+
+    from app.modules.ledgers.service import get_passive_balance
+    platform_balance = await get_passive_balance(session, platform_user_id)
+    available = platform_balance["confirmed"] + platform_balance["frozen"]
+    if available < pool_cents:
+        logger.warning(
+            "volume_payout_insufficient_platform_balance",
+            period_type=period_type,
+            period_start=period_start.isoformat(),
+            pool_cents=pool_cents,
+            available=available,
+        )
+        return
 
     # -- 6. Calculate distribution (pure logic) --
     transactions = _volume_processor.distribute_pool(

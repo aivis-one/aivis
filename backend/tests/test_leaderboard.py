@@ -728,7 +728,7 @@ async def test_quarterly_payout_basic(
             period_type=PeriodType.QUARTERLY,
             period_start=prev_q_start,
             period_end=q_start,
-            bonus_percent=1.0,
+            bonus_bp=100,
             top_n=10,
         )
         await session.commit()

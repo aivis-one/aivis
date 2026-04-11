@@ -93,8 +93,9 @@ class Settings(BaseSettings):
     notification_max_delivery_attempts: int = 3
 
     # -- Volume Bonuses (Sprint 7.3) --
-    volume_bonus_monthly_percent: float = 2.0
-    volume_bonus_quarterly_percent: float = 1.0
+    # Basis points: 200 = 2.00%, 100 = 1.00%.
+    volume_bonus_monthly_bp: int = 200
+    volume_bonus_quarterly_bp: int = 100
     leaderboard_top_monthly: int = 20
     leaderboard_top_quarterly: int = 10
     leaderboard_worker_interval_minutes: int = 60
