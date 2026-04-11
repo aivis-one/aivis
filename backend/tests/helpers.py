@@ -162,29 +162,47 @@ def build_init_data(
     if auth_date is None:
         auth_date = int(time.time())
 
-    counter = next(_init_data_counter)
-    query_id = f"test-query-{auth_date}-{counter}"
+    query_id = str(next(_init_data_counter))
 
-    data_pairs = {
+    params = {
         "user": json.dumps(user_data, separators=(",", ":")),
         "auth_date": str(auth_date),
         "query_id": query_id,
     }
 
-    # HMAC-SHA256 as per Telegram specification.
-    secret_key = hmac.new(
-        b"WebAppData", bot_token.encode(), hashlib.sha256
-    ).digest()
-
     data_check_string = "\n".join(
-        f"{k}={v}" for k, v in sorted(data_pairs.items())
+        f"{k}={v}" for k, v in sorted(params.items())
     )
-    calculated_hash = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256
+
+    secret_key = hmac.new(
+        b"WebAppData", bot_token.encode(), hashlib.sha256,
+    ).digest()
+    computed_hash = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256,
     ).hexdigest()
 
-    data_pairs["hash"] = calculated_hash
-    return urlencode(data_pairs)
+    params["hash"] = computed_hash
+    return urlencode(params)
+
+
+async def login_telegram(
+    client: AsyncClient,
+    telegram_id: int,
+    first_name: str = "Test",
+    username: str | None = None,
+) -> dict:
+    """Login via POST /api/v1/auth/telegram."""
+    user_data = {"id": telegram_id, "first_name": first_name}
+    if username:
+        user_data["username"] = username
+
+    init_data = build_init_data(user_data)
+    resp = await client.post(
+        "/api/v1/auth/telegram",
+        json={"init_data": init_data},
+    )
+    assert resp.status_code == 200, f"Telegram login failed: {resp.status_code} {resp.text}"
+    return resp.json()
 
 
 # ---------------------------------------------------------------------------
@@ -195,10 +213,10 @@ def build_init_data(
 async def create_staff_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    email: str = "staff@example.com",
+    email: str,
     password: str = "testpass123",
 ) -> tuple[dict, str]:
-    """Register a user and promote to staff with default permissions.
+    """Register a user, promote to staff, create StaffProfile with defaults.
 
     Returns (user_data_dict, session_token).
     """
