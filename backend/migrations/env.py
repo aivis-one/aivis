@@ -57,7 +57,7 @@ from app.modules.withdrawals.models import Withdrawal  # noqa: F401
 from app.modules.transactions.models import Transaction  # noqa: F401
 
 # Sprint 7.1: Agent Applications
-# from app.modules.agent_applications.models import AgentApplication  # noqa: F401
+from app.modules.agent_applications.models import AgentApplication  # noqa: F401
 
 # Sprint 7.2: Referrals
 # from app.modules.referrals.models import ReferralLink, ReferralAttribution  # noqa: F401
