@@ -1,23 +1,26 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Tests (Sprint 8.1)
+# CBSHOME Backend -- Notification Tests (Sprint 8.1, fix review)
 # =============================================================================
 #
 # Tests cover:
 #   1:  create_notification -> Notification in DB with correct fields
 #   2:  create_notification default channels -> ["in_app"]
 #   3:  create_notification custom channels -> stored in action_data
-#   4:  resolve_notification user target -> 1 delivery
-#   5:  resolve_notification role target -> N deliveries
-#   6:  resolve_notification all target -> all active non-platform users
-#   7:  resolve_notification inactive user -> 0 deliveries
-#   8:  resolve_notification unknown target_type -> 0 deliveries, status=failed
-#   9:  deliver_notification with StubFormatter -> all deliveries sent
-#   10: rollup_notification all sent -> notification status=sent
-#   11: rollup_notification all failed -> notification status=failed
-#   12: rollup_notification mix -> notification status=partial_sent
-#   13: rollup_notification with pending -> stays processing
-#   14: process_pending_notifications full pipeline -> end-to-end
-#   15: cleanup_expired_notifications -> expired+sent deleted
+#   4:  create_notification invalid type -> BadRequestError
+#   5:  create_notification invalid channel -> BadRequestError
+#   6:  resolve_notification user target -> 1 delivery
+#   7:  resolve_notification role target -> N deliveries
+#   8:  resolve_notification all target -> all active non-platform users
+#   9:  resolve_notification inactive user -> 0 deliveries
+#   10: deliver_notification with StubFormatter -> all deliveries sent
+#   11: rollup all sent -> notification status=sent
+#   12: rollup all failed -> notification status=failed
+#   13: rollup mix -> notification status=partial_sent
+#   14: rollup with pending -> stays processing
+#   15: process_pending_notifications full pipeline -> end-to-end
+#   16: cleanup_expired_notifications -> expired+sent deleted
+#   17: retry: PROCESSING notification re-processed on next cycle
+#   18: scheduled future notification -> not processed yet
 #
 # Email prefix: "s81n_" -- unique to this test file.
 # =============================================================================
@@ -31,6 +34,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import BadRequestError
 from app.modules.notifications.constants import (
     DeliveryChannel,
     DeliveryStatus,
@@ -52,7 +56,6 @@ from app.modules.notifications.service import (
 from tests.helpers import (
     auth_headers,
     cleanup_test_users,
-    create_admin_user,
     register_user,
 )
 
@@ -73,7 +76,6 @@ async def _cleanup_notifications(session: AsyncSession) -> None:
     """Delete all test notifications (by title prefix)."""
     from sqlalchemy import delete
 
-    # Find test notifications.
     stmt = select(Notification.id).where(
         Notification.title.startswith("Test:")
     )
@@ -180,7 +182,50 @@ async def test_create_notification_custom_channels(
 
 
 # ---------------------------------------------------------------------------
-# 4: resolve user target
+# 4: invalid type -> BadRequestError
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_notification_invalid_type(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Invalid notification type -> BadRequestError."""
+    with pytest.raises(BadRequestError, match="Invalid notification type"):
+        await create_notification(
+            db_session,
+            type="unknown_type",
+            title="Test: invalid type",
+            body="body",
+            target_type=TargetType.ALL,
+            target_value="*",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 5: invalid channel -> BadRequestError
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_notification_invalid_channel(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Invalid channel -> BadRequestError."""
+    with pytest.raises(BadRequestError, match="Invalid channels"):
+        await create_notification(
+            db_session,
+            type=NotificationType.SYSTEM,
+            title="Test: invalid channel",
+            body="body",
+            target_type=TargetType.ALL,
+            target_value="*",
+            channels=["sms"],
+        )
+
+
+# ---------------------------------------------------------------------------
+# 6: resolve user target
 # ---------------------------------------------------------------------------
 
 
@@ -211,7 +256,7 @@ async def test_resolve_user_target(
 
 
 # ---------------------------------------------------------------------------
-# 5: resolve role target
+# 7: resolve role target
 # ---------------------------------------------------------------------------
 
 
@@ -236,13 +281,12 @@ async def test_resolve_role_target(
     deliveries = await resolve_notification(db_session, notif)
     await db_session.commit()
 
-    # At least our 2 test investors (could be more from other tests).
     assert len(deliveries) >= 2
     assert notif.status == NotificationStatus.PROCESSING
 
 
 # ---------------------------------------------------------------------------
-# 6: resolve all target
+# 8: resolve all target
 # ---------------------------------------------------------------------------
 
 
@@ -267,7 +311,7 @@ async def test_resolve_all_target(
     await db_session.commit()
 
     assert len(deliveries) >= 1
-    # Verify no platform user in deliveries.
+
     from app.modules.users.models import User, UserRole
     platform_stmt = select(User.id).where(User.role == UserRole.PLATFORM)
     platform_result = await db_session.execute(platform_stmt)
@@ -278,7 +322,7 @@ async def test_resolve_all_target(
 
 
 # ---------------------------------------------------------------------------
-# 7: resolve inactive user -> 0
+# 9: resolve inactive user -> 0
 # ---------------------------------------------------------------------------
 
 
@@ -289,7 +333,6 @@ async def test_resolve_inactive_user(
     """Inactive user not resolved."""
     user_id, _ = await _create_investor(client, "inactive1")
 
-    # Deactivate user.
     from app.modules.users.models import User
     stmt = select(User).where(User.id == user_id)
     result = await db_session.execute(stmt)
@@ -315,34 +358,7 @@ async def test_resolve_inactive_user(
 
 
 # ---------------------------------------------------------------------------
-# 8: unknown target_type -> 0 deliveries, failed
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_resolve_unknown_target_type(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """Unknown target_type -> no deliveries, status=failed."""
-    notif = await create_notification(
-        db_session,
-        type=NotificationType.SYSTEM,
-        title="Test: unknown target",
-        body="body",
-        target_type="department",
-        target_value="dept:engineering",
-    )
-    await db_session.commit()
-
-    deliveries = await resolve_notification(db_session, notif)
-    await db_session.commit()
-
-    assert len(deliveries) == 0
-    assert notif.status == NotificationStatus.FAILED
-
-
-# ---------------------------------------------------------------------------
-# 9: deliver with StubFormatter -> all sent
+# 10: deliver with StubFormatter -> all sent
 # ---------------------------------------------------------------------------
 
 
@@ -379,7 +395,7 @@ async def test_deliver_stub_formatter(
 
 
 # ---------------------------------------------------------------------------
-# 10: rollup all sent -> sent
+# 11: rollup all sent -> sent
 # ---------------------------------------------------------------------------
 
 
@@ -409,7 +425,7 @@ async def test_rollup_all_sent(
 
 
 # ---------------------------------------------------------------------------
-# 11: rollup all failed -> failed
+# 12: rollup all failed -> failed
 # ---------------------------------------------------------------------------
 
 
@@ -433,7 +449,6 @@ async def test_rollup_all_failed(
     await resolve_notification(db_session, notif)
     await db_session.commit()
 
-    # Manually set delivery to failed.
     stmt = select(NotificationDelivery).where(
         NotificationDelivery.notification_id == notif.id
     )
@@ -449,7 +464,7 @@ async def test_rollup_all_failed(
 
 
 # ---------------------------------------------------------------------------
-# 12: rollup mix -> partial_sent
+# 13: rollup mix -> partial_sent
 # ---------------------------------------------------------------------------
 
 
@@ -474,7 +489,6 @@ async def test_rollup_partial_sent(
     await resolve_notification(db_session, notif)
     await db_session.commit()
 
-    # Set one to sent, one to failed.
     stmt = select(NotificationDelivery).where(
         NotificationDelivery.notification_id == notif.id
     ).order_by(NotificationDelivery.channel)
@@ -493,7 +507,7 @@ async def test_rollup_partial_sent(
 
 
 # ---------------------------------------------------------------------------
-# 13: rollup with pending -> stays processing
+# 14: rollup with pending -> stays processing
 # ---------------------------------------------------------------------------
 
 
@@ -517,7 +531,6 @@ async def test_rollup_with_pending_stays_processing(
     await resolve_notification(db_session, notif)
     await db_session.commit()
 
-    # Don't deliver -- delivery stays pending.
     await rollup_notification(db_session, notif)
     await db_session.commit()
 
@@ -525,7 +538,7 @@ async def test_rollup_with_pending_stays_processing(
 
 
 # ---------------------------------------------------------------------------
-# 14: process_pending_notifications end-to-end
+# 15: process_pending_notifications end-to-end
 # ---------------------------------------------------------------------------
 
 
@@ -546,26 +559,28 @@ async def test_process_pending_full_pipeline(
     )
     await db_session.commit()
 
-    processed = await process_pending_notifications(db_session)
-    await db_session.commit()
+    # Processor manages its own sessions.
+    processed = await process_pending_notifications()
 
     assert processed >= 1
 
-    # Reload notification.
-    await db_session.refresh(notif)
-    assert notif.status == NotificationStatus.SENT
+    # Reload notification in our session.
+    await db_session.expire_all()
+    stmt = select(Notification).where(Notification.id == notif.id)
+    result = await db_session.execute(stmt)
+    refreshed = result.scalar_one()
+    assert refreshed.status == NotificationStatus.SENT
 
-    # Check delivery exists and is sent.
-    stmt = select(NotificationDelivery).where(
+    stmt2 = select(NotificationDelivery).where(
         NotificationDelivery.notification_id == notif.id
     )
-    result = await db_session.execute(stmt)
-    delivery = result.scalar_one()
+    result2 = await db_session.execute(stmt2)
+    delivery = result2.scalar_one()
     assert delivery.status == DeliveryStatus.SENT
 
 
 # ---------------------------------------------------------------------------
-# 15: cleanup_expired_notifications
+# 16: cleanup_expired_notifications
 # ---------------------------------------------------------------------------
 
 
@@ -576,7 +591,6 @@ async def test_cleanup_expired_notifications(
     """Expired + sent notifications are deleted by cleanup."""
     user_id, _ = await _create_investor(client, "expire1")
 
-    # Create an already-expired notification.
     notif = await create_notification(
         db_session,
         type=NotificationType.SYSTEM,
@@ -588,23 +602,106 @@ async def test_cleanup_expired_notifications(
     )
     await db_session.commit()
 
-    # Process it (will be marked expired by processor since expiry_at < now).
-    await process_pending_notifications(db_session)
-    await db_session.commit()
+    # Processor expires it (expiry_at < now, status=pending).
+    await process_pending_notifications()
 
     # Verify it's expired.
-    await db_session.refresh(notif)
-    assert notif.status == NotificationStatus.EXPIRED
+    await db_session.expire_all()
+    stmt = select(Notification).where(Notification.id == notif.id)
+    result = await db_session.execute(stmt)
+    refreshed = result.scalar_one()
+    assert refreshed.status == NotificationStatus.EXPIRED
 
     notif_id = notif.id
 
     # Cleanup should delete it.
-    deleted = await cleanup_expired_notifications(db_session)
-    await db_session.commit()
+    deleted = await cleanup_expired_notifications()
 
     assert deleted >= 1
 
     # Verify it's gone.
-    stmt = select(Notification).where(Notification.id == notif_id)
+    await db_session.expire_all()
+    stmt2 = select(Notification).where(Notification.id == notif_id)
+    result2 = await db_session.execute(stmt2)
+    assert result2.scalar_one_or_none() is None
+
+
+# ---------------------------------------------------------------------------
+# 17: retry -- PROCESSING notification re-processed
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_retry_processing_notification(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """PROCESSING notification with pending deliveries is retried."""
+    user_id, _ = await _create_investor(client, "retry1")
+
+    notif = await create_notification(
+        db_session,
+        type=NotificationType.SYSTEM,
+        title="Test: retry processing",
+        body="retry me",
+        target_type=TargetType.USER,
+        target_value=f"user:{user_id}",
+    )
+    await db_session.commit()
+
+    # Resolve but don't deliver -- simulate partial failure.
+    await resolve_notification(db_session, notif)
+    notif.status = NotificationStatus.PROCESSING
+    await db_session.commit()
+
+    # Delivery is still PENDING. Processor should pick it up.
+    processed = await process_pending_notifications()
+
+    assert processed >= 1
+
+    # Verify notification is now SENT.
+    await db_session.expire_all()
+    stmt = select(Notification).where(Notification.id == notif.id)
     result = await db_session.execute(stmt)
-    assert result.scalar_one_or_none() is None
+    refreshed = result.scalar_one()
+    assert refreshed.status == NotificationStatus.SENT
+
+    # Verify delivery is SENT.
+    stmt2 = select(NotificationDelivery).where(
+        NotificationDelivery.notification_id == notif.id
+    )
+    result2 = await db_session.execute(stmt2)
+    delivery = result2.scalar_one()
+    assert delivery.status == DeliveryStatus.SENT
+
+
+# ---------------------------------------------------------------------------
+# 18: scheduled future notification -> not processed yet
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scheduled_future_not_processed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Notification scheduled in the future -> not processed yet."""
+    user_id, _ = await _create_investor(client, "future1")
+
+    notif = await create_notification(
+        db_session,
+        type=NotificationType.NEWS,
+        title="Test: future scheduled",
+        body="coming soon",
+        target_type=TargetType.USER,
+        target_value=f"user:{user_id}",
+        scheduled_at=datetime.now(UTC) + timedelta(hours=1),
+    )
+    await db_session.commit()
+
+    processed = await process_pending_notifications()
+
+    # Should not be processed.
+    await db_session.expire_all()
+    stmt = select(Notification).where(Notification.id == notif.id)
+    result = await db_session.execute(stmt)
+    refreshed = result.scalar_one()
+    assert refreshed.status == NotificationStatus.PENDING

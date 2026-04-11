@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Processor (Sprint 8.1)
+# CBSHOME Backend -- Notification Processor (Sprint 8.1, fix review)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -11,12 +11,25 @@
 #   Cleanup: delete expired notifications that have been delivered.
 #
 # CALLED BY:
-#   worker.py (run_notification_batch) -- each notification processed
-#   in its own session/transaction.
+#   worker.py (run_notification_batch).
 #
-# EXPIRE LOGIC:
-#   Notifications with expiry_at < now() are marked expired BEFORE
-#   the pipeline runs. This prevents delivering stale notifications.
+# SESSION MANAGEMENT (fix review):
+#   Each notification is processed in its own session/transaction.
+#   Failure on one notification does not roll back others.
+#   Uses get_session_factory() -- same pattern as installment_worker.
+#
+# CONCURRENCY (fix review):
+#   SELECT ... FOR UPDATE SKIP LOCKED prevents double-processing
+#   when multiple worker instances run concurrently.
+#
+# RETRY (fix review):
+#   Selects both PENDING and PROCESSING notifications. PROCESSING
+#   notifications have deliveries that may still be PENDING (failed
+#   delivery with attempts < max). resolve_notification is idempotent --
+#   skips resolve if deliveries already exist.
+#
+# EXPIRE LOGIC (fix review):
+#   Expires both PENDING and PROCESSING notifications past expiry_at.
 # =============================================================================
 
 from datetime import datetime, UTC
@@ -25,6 +38,7 @@ import structlog
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import get_session_factory
 from app.modules.notifications.constants import DeliveryStatus, NotificationStatus
 from app.modules.notifications.models import Notification, NotificationDelivery
 from app.modules.notifications.service import (
@@ -36,80 +50,114 @@ from app.modules.notifications.service import (
 logger = structlog.get_logger()
 
 
-async def process_pending_notifications(session: AsyncSession) -> int:
-    """Process all pending notifications that are ready to send.
+async def process_pending_notifications() -> int:
+    """Process all pending/processing notifications that are ready.
 
+    Each notification is processed in its own session/transaction.
     Pipeline per notification: resolve -> deliver -> rollup.
-
-    Args:
-        session: Active DB session (caller commits per notification).
 
     Returns:
         Number of notifications processed.
     """
+    factory = get_session_factory()
     now = datetime.now(UTC)
 
-    # -- Step 0: Expire overdue notifications --
-    expire_stmt = (
-        update(Notification)
-        .where(
-            Notification.status == NotificationStatus.PENDING,
-            Notification.expiry_at.isnot(None),
-            Notification.expiry_at < now,
-        )
-        .values(status=NotificationStatus.EXPIRED)
-    )
-    expire_result = await session.execute(expire_stmt)
-    expired_count = expire_result.rowcount  # type: ignore[assignment]
-    if expired_count:
-        logger.info("notifications_expired", count=expired_count)
+    # -- Step 0: Expire overdue notifications (own session) --
+    async with factory() as session:
+        try:
+            expire_stmt = (
+                update(Notification)
+                .where(
+                    Notification.status.in_([
+                        NotificationStatus.PENDING,
+                        NotificationStatus.PROCESSING,
+                    ]),
+                    Notification.expiry_at.isnot(None),
+                    Notification.expiry_at < now,
+                )
+                .values(status=NotificationStatus.EXPIRED)
+            )
+            expire_result = await session.execute(expire_stmt)
+            expired_count = expire_result.rowcount  # type: ignore[assignment]
+            if expired_count:
+                logger.info("notifications_expired", count=expired_count)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            logger.exception("notification_expire_error")
 
-    # -- Step 1: Find pending notifications ready to process --
-    stmt = (
-        select(Notification)
-        .where(
-            Notification.status == NotificationStatus.PENDING,
-            Notification.scheduled_at <= now,
+    # -- Step 1: Collect IDs of notifications to process --
+    async with factory() as session:
+        stmt = (
+            select(Notification.id)
+            .where(
+                Notification.status.in_([
+                    NotificationStatus.PENDING,
+                    NotificationStatus.PROCESSING,
+                ]),
+                Notification.scheduled_at <= now,
+            )
+            .order_by(Notification.priority, Notification.scheduled_at)
         )
-        .order_by(Notification.priority, Notification.scheduled_at)
-    )
-    result = await session.execute(stmt)
-    notifications = list(result.scalars().all())
+        result = await session.execute(stmt)
+        notification_ids = [row[0] for row in result.all()]
 
-    if not notifications:
+    if not notification_ids:
         return 0
 
+    # -- Step 2: Process each notification in its own session --
     processed = 0
-    for notification in notifications:
-        try:
-            # resolve
-            await resolve_notification(session, notification)
+    for notif_id in notification_ids:
+        async with factory() as session:
+            try:
+                # Lock the notification row (skip if another worker has it).
+                lock_stmt = (
+                    select(Notification)
+                    .where(Notification.id == notif_id)
+                    .with_for_update(skip_locked=True)
+                )
+                lock_result = await session.execute(lock_stmt)
+                notification = lock_result.scalar_one_or_none()
 
-            # deliver
-            await deliver_notification(session, notification)
+                if notification is None:
+                    # Another worker is processing this one.
+                    continue
 
-            # rollup
-            await rollup_notification(session, notification)
+                # Skip if status changed since our initial query.
+                if notification.status not in (
+                    NotificationStatus.PENDING,
+                    NotificationStatus.PROCESSING,
+                ):
+                    continue
 
-            processed += 1
-        except Exception:
-            logger.exception(
-                "notification_pipeline_error",
-                notification_id=str(notification.id),
-            )
-            notification.status = NotificationStatus.FAILED
+                # resolve (idempotent -- skips if deliveries exist)
+                await resolve_notification(session, notification)
 
-    await session.flush()
+                # deliver
+                await deliver_notification(session, notification)
+
+                # rollup
+                await rollup_notification(session, notification)
+
+                await session.commit()
+                processed += 1
+
+            except Exception:
+                await session.rollback()
+                logger.exception(
+                    "notification_pipeline_error",
+                    notification_id=str(notif_id),
+                )
 
     logger.info(
         "notifications_processed",
-        total=len(notifications),
+        total=len(notification_ids),
         processed=processed,
     )
     return processed
 
 
-async def cleanup_expired_notifications(session: AsyncSession) -> int:
+async def cleanup_expired_notifications() -> int:
     """Delete expired notifications that have been fully delivered.
 
     Removes notifications where:
@@ -118,30 +166,36 @@ async def cleanup_expired_notifications(session: AsyncSession) -> int:
 
     Deliveries are CASCADE-deleted automatically.
 
-    Args:
-        session: Active DB session (caller commits).
-
     Returns:
         Number of notifications deleted.
     """
+    factory = get_session_factory()
     now = datetime.now(UTC)
 
-    stmt = (
-        delete(Notification)
-        .where(
-            Notification.expiry_at.isnot(None),
-            Notification.expiry_at < now,
-            Notification.status.in_([
-                NotificationStatus.SENT,
-                NotificationStatus.PARTIAL_SENT,
-                NotificationStatus.EXPIRED,
-            ]),
-        )
-    )
-    result = await session.execute(stmt)
-    deleted = result.rowcount  # type: ignore[assignment]
+    async with factory() as session:
+        try:
+            stmt = (
+                delete(Notification)
+                .where(
+                    Notification.expiry_at.isnot(None),
+                    Notification.expiry_at < now,
+                    Notification.status.in_([
+                        NotificationStatus.SENT,
+                        NotificationStatus.PARTIAL_SENT,
+                        NotificationStatus.EXPIRED,
+                    ]),
+                )
+            )
+            result = await session.execute(stmt)
+            deleted = result.rowcount  # type: ignore[assignment]
 
-    if deleted:
-        logger.info("notifications_cleaned_up", count=deleted)
+            if deleted:
+                logger.info("notifications_cleaned_up", count=deleted)
 
-    return deleted
+            await session.commit()
+            return deleted
+
+        except Exception:
+            await session.rollback()
+            logger.exception("notification_cleanup_error")
+            return 0

@@ -1,28 +1,32 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Service (Sprint 8.1)
+# CBSHOME Backend -- Notification Service (Sprint 8.1, fix review)
 # =============================================================================
 #
 # RESPONSIBILITY:
 #   Business logic for creating and processing notifications.
 #
 # FUNCTIONS:
-#   create_notification()   -- create a Notification record
+#   create_notification()   -- create a Notification record (with validation)
 #   resolve_notification()  -- expand targets into NotificationDelivery rows
 #   deliver_notification()  -- call formatters for pending deliveries
 #   rollup_notification()   -- update Notification.status from delivery statuses
+#
+# FIX REVIEW:
+#   - create_notification validates type, target_type, channels against enums
+#   - resolve_notification is idempotent (skips if deliveries already exist)
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
 # =============================================================================
 
 from datetime import datetime, UTC
-from uuid import UUID
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.exceptions import BadRequestError
 from app.modules.notifications.constants import (
     DeliveryChannel,
     DeliveryStatus,
@@ -35,6 +39,11 @@ from app.modules.notifications.models import Notification, NotificationDelivery
 from app.modules.notifications.resolver import resolve_targets
 
 logger = structlog.get_logger()
+
+# Valid enum values for input validation.
+_VALID_TYPES = frozenset(e.value for e in NotificationType)
+_VALID_TARGET_TYPES = frozenset(e.value for e in TargetType)
+_VALID_CHANNELS = frozenset(e.value for e in DeliveryChannel)
 
 
 async def create_notification(
@@ -68,9 +77,32 @@ async def create_notification(
 
     Returns:
         The created Notification (flushed, not committed).
+
+    Raises:
+        BadRequestError: On invalid type, target_type, or channel values.
     """
+    # -- Validate enum values --
+    if type not in _VALID_TYPES:
+        raise BadRequestError(
+            f"Invalid notification type: {type}. "
+            f"Valid: {', '.join(sorted(_VALID_TYPES))}"
+        )
+
+    if target_type not in _VALID_TARGET_TYPES:
+        raise BadRequestError(
+            f"Invalid target_type: {target_type}. "
+            f"Valid: {', '.join(sorted(_VALID_TARGET_TYPES))}"
+        )
+
     if channels is None:
         channels = [DeliveryChannel.IN_APP]
+
+    invalid_channels = set(channels) - _VALID_CHANNELS
+    if invalid_channels:
+        raise BadRequestError(
+            f"Invalid channels: {invalid_channels}. "
+            f"Valid: {', '.join(sorted(_VALID_CHANNELS))}"
+        )
 
     if scheduled_at is None:
         scheduled_at = datetime.now(UTC)
@@ -91,7 +123,6 @@ async def create_notification(
     await session.flush()
 
     # Store channels in action_data for resolve stage.
-    # This avoids adding a separate column -- channels are immutable after creation.
     if notification.action_data is None:
         notification.action_data = {"_channels": channels}
     else:
@@ -114,6 +145,9 @@ async def resolve_notification(
 ) -> list[NotificationDelivery]:
     """Expand notification targets into NotificationDelivery rows.
 
+    Idempotent: if deliveries already exist (PROCESSING retry),
+    skips resolve and returns existing deliveries.
+
     Transitions notification status: pending -> processing.
 
     Args:
@@ -121,9 +155,24 @@ async def resolve_notification(
         notification: The notification to resolve.
 
     Returns:
-        List of created NotificationDelivery objects.
+        List of NotificationDelivery objects (created or existing).
     """
-    # Resolve target users.
+    # -- Idempotency: check if already resolved --
+    existing_stmt = select(func.count()).where(
+        NotificationDelivery.notification_id == notification.id,
+    )
+    existing_result = await session.execute(existing_stmt)
+    existing_count = existing_result.scalar_one()
+
+    if existing_count > 0:
+        # Already resolved -- return existing deliveries.
+        stmt = select(NotificationDelivery).where(
+            NotificationDelivery.notification_id == notification.id,
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    # -- Resolve target users --
     user_ids = await resolve_targets(
         session,
         notification.target_type,
@@ -236,7 +285,6 @@ async def rollup_notification(
     statuses = {row[0] for row in result.all()}
 
     if not statuses:
-        # No deliveries at all -- should not happen after resolve.
         notification.status = NotificationStatus.FAILED
         return
 
