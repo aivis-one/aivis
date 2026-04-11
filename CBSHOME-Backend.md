@@ -144,6 +144,7 @@ User:
     credentials: JSONB  -- {email: {...}, telegram: {...}, onboarding: {...}}
     profile: JSONB      -- {first_name, last_name, country, phone, avatar_url} (whitelist enforced, TD-024)
     language: str       -- "en" (default)
+    referred_by: UUID   -- FK users.id (self-ref, NOT NULL, default=platform_id)
     created_at, updated_at
 ```
 
@@ -1392,9 +1393,9 @@ ReferralProcessor и VolumeProcessor добавляются в Sprints 7.2 и 7.
 При рассрочке `PurchaseContext` получает данные конкретного транша из снапшота `plan_config`,
 а не из `ProductInstallment` напрямую — изменение плана не влияет на активные рассрочки.
 
-`PurchaseContext` содержит `referral_link_id: UUID | None`. Если `None` — покупка органическая,
-`ReferralProcessor` не вызывается, Platform получает полный остаток по `distribution_config`.
-`None` — валидное состояние, не ошибка.
+`PurchaseContext` содержит `agent_chain: list[UUID]` (resolved via `get_agent_chain()` в Sprint 7.2).
+Если `agent_chain` пуст — покупка органическая, `ReferralProcessor` возвращает пустой список,
+Platform получает полный остаток по `distribution_config`. Пустая цепочка — валидное состояние, не ошибка.
 
 **Задачи:**
 - [x] `app/modules/processors/base.py` — `ProcessorProtocol`, `PurchaseContext`, `Transaction`, `LedgerEntry`
@@ -1424,7 +1425,7 @@ ReferralProcessor и VolumeProcessor добавляются в Sprints 7.2 и 7.
 - P6-03: `purchase_config.bonuses[]` — массив бонусов. `bonus_units_percent` всегда процент от купленных юнитов, сумма всех ≤ 100%. `funded_by: "company" | "platform"` определяет источник списания
 - P6-04: Старое поле `Product.gift_units` удалено, заменено записью `{"condition": "always", ...}` в `purchase_config.bonuses[]`. Единый механизм через `GiftProcessor`
 - P6-05: `Purchase.document_id` убран из модели — документы о покупке генерируются по запросу с нуля, PDF хранить не нужно
-- P6-06: `agent_chain` — заглушка (пустой список) в Sprint 6.1, реальный резолвинг в Sprint 7.2
+- P6-06: `agent_chain` — заглушка (пустой список) в Sprint 6.1, ✅ реальный резолвинг через `get_agent_chain()` в Sprint 7.2
 - P6-07: `{purchase_id}` placeholder в reason strings — процессоры не знают ID до записи в БД. `_write_transactions()` заменяет placeholder на реальный UUID после `flush()`
 - P6-08: `pg_advisory_xact_lock(investor_id)` — сериализует покупки одного инвестора. Защита от TOCTOU race condition при параллельных запросах. Автоматически освобождается при commit/rollback
 - P6-09: `_load_company()` проверяет `company.status == active` — защита от покупки продукта архивированной компании
@@ -1494,6 +1495,7 @@ backend/app/modules/processors/
 ├── base.py             -- ProcessorProtocol, PurchaseContext, Transaction, LedgerEntry
 ├── purchase.py         -- PurchaseProcessor (core distribution)
 ├── gift.py             -- GiftProcessor (bonus allocations)
+├── referral.py         -- ReferralProcessor (agent commissions L1/L2/L3, Sprint 7.2)
 ├── registry.py         -- ProcessorRegistry (run_all + SUM=0 invariant)
 └── validators.py       -- validate_purchase_config()
 
@@ -1559,7 +1561,7 @@ InstallmentPlan:
     total_price_cents: int        -- денормализовано из снапшота
     total_units: int              -- денормализовано (product.units)
     price_per_unit_cents: int     -- снапшот цены на момент создания
-    referral_link_id: UUID | None -- Sprint 7.2 stub (nullable)
+    referral_link_id: UUID | None -- FK referral_links.id (resolved in Sprint 7.2)
     agent_id: UUID | None         -- Sprint 7.x stub (nullable, FK users.id)
     status: enum                  -- active | completed | defaulted | cancelled
     created_at, completed_at, defaulted_at
@@ -2030,50 +2032,143 @@ backend/tests/
 
 ---
 
-### Sprint 7.2: Referral Links + Commissions
+### ✅ Sprint 7.2: Referral Links + Commissions
 
 **Цель:** Реферальные ссылки и комиссионная цепочка L1/L2/L3.
 
 **Задачи:**
-- [ ] `app/modules/referrals/models.py` — `ReferralLink`, `ReferralAttribution`
-- [ ] `app/modules/referrals/service.py` — `create_link()`, `resolve_attribution()`, `get_agent_chain()`
-- [ ] `app/modules/processors/referral.py` — `ReferralProcessor` (расширение Distribution Engine из Sprint 6.1)
-- [ ] Зарегистрировать `ReferralProcessor` в `ProcessorRegistry`
-- [ ] STOP-механика: 4-е звено цепочки становится корневым
-- [ ] `POST /api/v1/referrals/links` — создать реферальную ссылку (только agent)
-- [ ] `GET /api/v1/referrals/links/me` — мои ссылки
-- [ ] `GET /api/v1/referrals/stats/me` — статистика по ссылкам
-- [ ] `tests/test_referrals.py` — 15 тестов (включая STOP-механику, органические покупки)
+- [x] `app/modules/referrals/models.py` — `ReferralLink`, `ReferralAttribution`
+- [x] `app/modules/referrals/service.py` — `create_link()`, `resolve_referral_code()`, `get_agent_chain()`, `create_attribution()`, `validate_referral_link_id()`
+- [x] `app/modules/referrals/schemas.py` — `ReferralLinkResponse`, `ReferralLinkListResponse`, `ReferralStatsResponse`
+- [x] `app/modules/referrals/router.py` — 3 agent endpoints
+- [x] `app/modules/processors/referral.py` — `ReferralProcessor` (расширение Distribution Engine из Sprint 6.1)
+- [x] Зарегистрировать `ReferralProcessor` в `ProcessorRegistry`
+- [x] STOP-механика: глубина цепочки ограничена `len(agent_levels)` из `distribution_config`
+- [x] `POST /api/v1/referrals/links` — создать реферальную ссылку (только agent)
+- [x] `GET /api/v1/referrals/links/me` — мои ссылки
+- [x] `GET /api/v1/referrals/stats/me` — статистика по ссылкам
+- [x] `tests/test_referrals.py` — 15 тестов (L1/L2/L3 цепочки, органический путь, stop-mechanic, атрибуция, permissions)
 
 **Модели:**
 ```python
 ReferralLink:
     id: UUID
     agent_id: UUID   -- FK users.id (role=agent)
-    code: str        -- unique
+    code: str        -- unique, 8 chars via secrets.token_urlsafe(6)
+    is_active: bool  -- default True; деактивация отключает resolve
     created_at: datetime
 
 ReferralAttribution:
     id: UUID
-    purchase_id: UUID             -- FK purchases.id
+    purchase_id: UUID             -- FK purchases.id; UNIQUE (одна атрибуция на покупку)
     referral_link_id: UUID | None -- FK referral_links.id; NULL = органический трафик
     created_at: datetime
-    -- Создаётся для КАЖДОЙ покупки, включая органические (referral_link_id=NULL)
-    -- Это обеспечивает полный аудит: каждая покупка имеет attribution-запись
+    -- Для инстант-покупок: создаётся для каждой покупки
+    -- Для рассрочки: создаётся ТОЛЬКО для первого транша (одна на план)
 ```
 
-**Логика `resolve_attribution(referral_link_id)`:**
+**User.referred_by:**
 ```
-if referral_link_id is None:
-    -> вернуть пустую цепочку агентов
-    -> ReferralProcessor не вызывается
-    -> Platform получает полный остаток по distribution_config
-else:
-    -> загрузить ReferralLink -> get_agent_chain() -> вернуть L1/L2/L3
-    -> ReferralProcessor начисляет комиссии по цепочке
+User.referred_by: UUID -- FK users.id (self-ref, NOT NULL)
+  - Устанавливается при регистрации (register_email / upsert_telegram_user)
+  - referral_code в запросе → resolve → agent_id
+  - Невалидный/отсутствующий код → fallback на platform_id (молча)
+  - Иммутабельный после регистрации
+  - Platform user: referred_by = self.id (self-ref)
 ```
 
-**Критерий готовности:** Агент создаёт реферальные ссылки. При покупке по ссылке — комиссии L1/L2/L3 начисляются через ReferralProcessor. Органические покупки (без ссылки) корректно обрабатываются: Platform получает полный остаток, `ReferralAttribution` создаётся с `referral_link_id=NULL`.
+**Логика комиссий:**
+```
+get_agent_chain(investor_id):
+  Обход User.referred_by вверх с:
+  - cycle detection (seen set)
+  - stop при role=platform (root)
+  - stop при role!=agent или is_active=False
+  - stop при len(agent_levels) исчерпан
+  Возвращает [L1_agent_id, L2_agent_id, L3_agent_id]
+
+ReferralProcessor.process():
+  zip(agent_chain, agent_levels) → одна Transaction на уровень
+  Platform passive_ledger: -commission_cents
+  Agent passive_ledger: +commission_cents
+  commission_cents = round(pct * amount)  -- banker's rounding
+```
+
+**Endpoints:**
+```
+-- Agent endpoints:
+POST /api/v1/referrals/links     -> ReferralLinkResponse      (201)
+GET  /api/v1/referrals/links/me  -> ReferralLinkListResponse  (200)
+GET  /api/v1/referrals/stats/me  -> ReferralStatsResponse     (200)
+```
+
+**Новые audit events:**
+- `referral.link_created` — агент создал реферальную ссылку
+
+**Результат:**
+```
+backend/app/modules/referrals/
+├── __init__.py
+├── models.py           -- ReferralLink, ReferralAttribution
+├── service.py          -- resolve_referral_code, create_link, get_agent_chain, create_attribution, validate_referral_link_id, get_my_links, get_my_stats
+├── schemas.py          -- ReferralLinkResponse, ReferralLinkListResponse, ReferralStatsResponse
+└── router.py           -- 3 agent endpoints
+
+backend/app/modules/processors/
+└── referral.py         -- ReferralProcessor (agent commissions)
+
+backend/tests/
+└── test_referrals.py   -- 15 tests
+```
+
+**Обновлённые файлы (Sprint 7.2):**
+- `core/constants.py` — `COMMISSION = "commission:l{level}:{agent_id}:{purchase_id}"` (параметрический, заменил L1/L2/L3)
+- `users/models.py` — `+referred_by` (FK self, NOT NULL, ForeignKey import)
+- `auth/schemas.py` — `+referral_code: str | None` на `EmailRegisterRequest`, `TelegramAuthRequest`
+- `auth/service.py` — `+_resolve_referrer()`, `+get_platform_user_id()`, referral_code в register/upsert
+- `auth/router.py` — passes `body.referral_code` to service
+- `companies/service.py` — `+referred_by=platform_id` в create_company (User creation)
+- `purchases/service.py` — `+get_agent_chain()`, `+create_attribution()`, `+validate_referral_link_id()`
+- `installments/service.py` — `+agent_chain`, `+create_attribution` (tranche.number == 1 only)
+- `processors/registry.py` — `+ReferralProcessor` в `run_all()`
+- `scripts/seed_platform.py` — pre-generate UUID: `id=platform_id, referred_by=platform_id`
+- `migrations/env.py` — `+ReferralLink`, `+ReferralAttribution` imports
+- `main.py` — `+referrals_router`
+- `tests/helpers.py` — `+ReferralAttribution/ReferralLink` cleanup (FK ordering)
+
+**Решения реализации (Sprint 7.2):**
+- P7-01: **Platform как Default Referrer** — каждый user имеет `referred_by` NOT NULL, дефолт = Platform user. Platform user self-references (`referred_by = self.id`). Устраняет NULL handling
+- P7-02: **Referral resolved at registration** — `referral_code` добавлен в `EmailRegisterRequest` / `TelegramAuthRequest`. Резолвится ПЕРВЫМ в `register_email()` / `upsert_telegram_user()`. Невалидные коды молча fallback на Platform — никогда не блокируют регистрацию
+- P7-03: **Параметрические комиссии** — одна константа `COMMISSION` с плейсхолдерами `{level}`, `{agent_id}`, `{purchase_id}`. `agent_levels` list в `distribution_config` управляет глубиной — добавление 4-го уровня = добавить процент в список
+- P7-04: **Agent chain из User.referred_by** — не из ReferralAttribution. `get_agent_chain(investor_id)` обходит `referred_by` вверх, останавливается на Platform или `len(agent_levels)`. Cycle detection через `seen` set
+- P7-05: **Атрибуция per plan, not per tranche** — для рассрочки `create_attribution()` только при `tranche.number == 1`. Статистика отражает бизнес-решения (конверсии), не финансовые транзакции
+- P7-06: **N+1 оптимизация** — `current = referrer` reuse в `get_agent_chain()`. `max_depth + 1` запросов вместо `2 * max_depth`
+- P7-07: **Banker's rounding** — `round()` вместо `int()` в `PurchaseProcessor` и `ReferralProcessor`. Стандарт для финансовых вычислений
+- P7-08: **begin_nested в create_attribution** — SAVEPOINT для UNIQUE constraint на `purchase_id`. При дубликате (retry) — silent skip, outer transaction preserved
+
+**Фиксы code review (Sprint 7.2):**
+- CR-72-01: `processors/referral.py` — `round()` вместо `int()` в расчёте комиссий (float-truncation fix)
+- CR-72-02: `processors/purchase.py` — `round()` вместо `int()` в расчёте доли компании (float-truncation fix)
+- CR-72-03: `referrals/service.py` — cycle detection (`seen` set) в `get_agent_chain()` (double-commission prevention)
+- CR-72-04: `referrals/models.py` — UNIQUE constraint на `referral_attributions.purchase_id` (migration 0015)
+- CR-72-05: `referrals/service.py` — `validate_referral_link_id()` (analytics pollution prevention)
+- CR-72-06: `referrals/models.py` — `is_active` flag на `ReferralLink` (link deactivation, migration 0015)
+- CR-72-07: `referrals/service.py` — `begin_nested()` в `create_attribution()` (UNIQUE + P-01 compliant)
+- CR-72-08: `installments/service.py` — атрибуция только для первого транша (`tranche.number == 1`)
+- CR-72-09: `referrals/service.py` — N+1 fix: `current = referrer` reuse в `get_agent_chain()`
+
+**Фиксы предупреждений (Sprint 7.2):**
+- CR-72-10: `installments/service.py` — units truncation fix: последний транш = `total_units - sum(previous)` (TD-046)
+- CR-72-11: `withdrawals/service.py` — `begin_nested()` в `create_withdrawal()` (TD-043)
+- CR-72-12: `auth/service.py` — `ForbiddenError` → `UnauthorizedError` для деактивированных аккаунтов (TD-047, account leak)
+- CR-72-13: `core/config.py` — production validation для `telegram_bot_token` (TD-044)
+- CR-72-14: `pyproject.toml` — `filterwarnings` для pydantic-settings UserWarning
+
+**Миграции (Sprint 7.2):**
+- `2026_04_11_0014_referrals.py` — tables: referral_links, referral_attributions, users.referred_by (nullable → backfill → NOT NULL)
+- `2026_04_11_0015_referrals_td.py` — UNIQUE на attribution.purchase_id, is_active на referral_links
+
+**Критерий готовности:** Агент создаёт реферальные ссылки. При покупке по ссылке — комиссии L1/L2/L3 начисляются через ReferralProcessor. Органические покупки корректно обрабатываются. 250 тестов зелёные, 0 warnings, 0 критических issues, 0 предупреждений.
 
 ---
 
@@ -2358,15 +2453,16 @@ Event:
 | TD-040 | `tests/conftest.py` | Тесты без транзакционной изоляции — `db_session` делает rollback в finally, но тесты с `commit()` оставляют данные. Нет SAVEPOINT-обёртки между тестами | Backlog | ⬜ |
 | TD-041 | `main.py` | CORS `allow_methods=["*"]` — избыточно для финансовой платформы. Ограничить до `["GET", "POST", "PATCH", "DELETE", "OPTIONS"]` | Before Prod | ⬜ |
 | TD-042 | `installments/worker.py` | ~~Worker race condition: `session.get()` без `FOR UPDATE`~~ → `_load_tranche_for_update()` / `_load_plan_for_update()` с `SELECT ... FOR UPDATE`. Сериализует concurrent worker instances | Before Scale | ✅ Sprint 7.1 |
-| TD-043 | `withdrawals/service.py` | Проверить необходимость `begin_nested()` в `create_withdrawal()` при concurrent создании (partial unique index может не защитить от TOCTOU). Code review #7 подтверждает | Backlog | ⬜ |
-| TD-044 | `core/config.py` | `telegram_bot_token` не имеет production enforcement (в отличие от `kyc_webhook_secret`, `crypto_webhook_secret`). Добавить `ValueError` при пустом в prod. Code review #9 подтверждает | Before Prod | ⬜ |
-| TD-045 | `processors/purchase.py` | Float-truncation в доле компании: `int(pct * amount)` теряет точность. Рассмотреть integer arithmetic или `Decimal`. Code review #4 | Backlog | ⬜ |
-| TD-046 | `installments/service.py` | Усечение units без компенсации в последнем транше: `units_percent * total_units // 100` может терять остаток. `validate_plan_config()` ловит несовпадение, но проблема архитектурная. Code review #5 | Backlog | ⬜ |
-| TD-047 | `auth/service.py` | Утечка существования аккаунта через разные коды ошибок (403 vs 401) при login. Timing-safe hash уже есть, но HTTP status отличается. Code review #8 | Before Prod | ⬜ |
+| TD-043 | `withdrawals/service.py` | ~~Отсутствие `begin_nested()` в `create_withdrawal()`~~ → обёрнуто в `begin_nested()` + `IntegrityError` catch. Savepoint preserves outer transaction (P-01 compliant) | Backlog | ✅ Sprint 7.2 |
+| TD-044 | `core/config.py` | ~~`telegram_bot_token` не имеет production enforcement~~ → `ValueError` при `telegram_bot_token in ("", "TEST")` в production, аналогично `secret_key` / `kyc_webhook_secret` | Before Prod | ✅ Sprint 7.2 |
+| TD-045 | `processors/purchase.py` | ~~Float-truncation в доле компании: `int(pct * amount)`~~ → `round(pct * amount)` (banker's rounding). Аналогичный фикс в `processors/referral.py` | Backlog | ✅ Sprint 7.2 |
+| TD-046 | `installments/service.py` | ~~Units truncation без компенсации в последнем транше~~ → последний транш = `total_units - sum(previous)`. Гарантирует `sum(units_unlocked) == total_units` даже если `validate_plan_config()` пропустит edge case | Backlog | ✅ Sprint 7.2 |
+| TD-047 | `auth/service.py` | ~~Утечка существования аккаунта через 403 vs 401~~ → деактивированный аккаунт возвращает `UnauthorizedError("Invalid email or password")` (тот же код и сообщение что для неверного пароля). Timing-safe hash сохранён | Before Prod | ✅ Sprint 7.2 |
 | TD-048 | `installments/service.py` | Двойная запись суммы в transaction log при завершении плана: `installment:completed` дублирует сумму уже записанную по отдельным `installment:tranche_paid`. Code review #10 | Backlog | ⬜ |
 | TD-049 | `migrations/` | Отсутствующие CHECK-ограничения в некоторых миграциях, композитные индексы для оптимизации. Code review 🟢 | Backlog | ⬜ |
 | TD-050 | `payments/webhook_router.py` | Webhook: 409 для дубликата → рассмотреть 200 (идемпотентность). `max_length` на полях вебхука. Code review 🟢 | Backlog | ⬜ |
 | TD-051 | `payments/confirmation.py` | Лимит батча в confirmation worker — без LIMIT при большом объёме frozen entries может быть long-running transaction. Code review 🟢 | Before Scale | ⬜ |
+| TD-052 | `referrals/service.py` | Self-referral prevention: агент теоретически может зарегистрировать второй аккаунт по своему реферальному коду и генерировать комиссии. Техническая проверка (email uniqueness) не покрывает — это антифрод бизнес-логика (multi-account detection). Code review 🟢 Sprint 7.2 | After MVP | ⬜ |
 
 ---
 
@@ -2374,4 +2470,4 @@ Event:
 
 ---
 
-*Version 2.2 | 2026-04-11 | cbshome Backend TZ — Phase 6 complete, Sprint 7.1 complete (agent applications, 5 endpoints, 14 tests, 1 migration), TD-042 closed (worker FOR UPDATE), 235 tests total, Sprint 7.2 next*
+*Version 2.3 | 2026-04-11 | cbshome Backend TZ — Phase 6 complete, Sprint 7.1 complete, Sprint 7.2 complete (referral links, commissions L1/L2/L3, 15 referral tests, 2 migrations), TD-042..TD-047 closed, 250 tests total, 0 warnings, Sprint 7.3 next*
