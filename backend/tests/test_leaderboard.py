@@ -159,6 +159,69 @@ def test_volume_processor_sum_zero_invariant() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Shared helpers for integration tests (create real company + product)
+# ---------------------------------------------------------------------------
+
+
+async def _admin_token(
+    client: AsyncClient, db_session: AsyncSession
+) -> str:
+    """Create admin user, return token."""
+    from tests.helpers import create_admin_user
+    _, token = await create_admin_user(
+        client, db_session,
+        email=f"{EMAIL_PREFIX}admin@example.com",
+    )
+    return token
+
+
+async def _create_company_and_product(
+    client: AsyncClient,
+    admin_token: str,
+    suffix: str = "co1",
+) -> tuple[UUID, UUID]:
+    """Create company + product + activate. Returns (company_id, product_id)."""
+    resp = await client.post(
+        "/api/v1/staff/companies",
+        json={
+            "name": f"TestCo {suffix}",
+            "email": f"{EMAIL_PREFIX}{suffix}@example.com",
+            "password": "testpass123",
+            "price_per_unit_cents": 500,
+            "distribution_config": {
+                "company_pct": 0.75,
+                "agent_levels": [0.10, 0.03, 0.01],
+            },
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 201, f"Company create failed: {resp.text}"
+    company_id = resp.json()["id"]
+
+    await client.patch(
+        f"/api/v1/staff/companies/{company_id}",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+
+    resp2 = await client.post(
+        "/api/v1/staff/products",
+        json={"company_id": company_id, "name": f"Prod {suffix}", "units": 100},
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 201, f"Product create failed: {resp2.text}"
+    product_id = resp2.json()["id"]
+
+    await client.patch(
+        f"/api/v1/staff/products/{product_id}/status",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+
+    return UUID(company_id), UUID(product_id)
+
+
+# ---------------------------------------------------------------------------
 # 4: run_leaderboard_update -- writes snapshot
 # ---------------------------------------------------------------------------
 
@@ -168,9 +231,15 @@ async def test_leaderboard_update_writes_snapshot(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """run_leaderboard_update aggregates volumes and writes snapshots."""
+    admin_tk = await _admin_token(client, db_session)
+    company_id, product_id = await _create_company_and_product(
+        client, admin_tk, suffix="lb4",
+    )
+
     agent_id, _ = await _create_user(client, "agent1")
     await _promote_to_agent(db_session, agent_id)
     inv_id, _ = await _create_user(client, "inv1")
+    await db_session.commit()
 
     # Create referral link for agent.
     link = ReferralLink(agent_id=agent_id, code="LB_TEST1")
@@ -180,8 +249,8 @@ async def test_leaderboard_update_writes_snapshot(
     # Create a purchase attributed to agent's link.
     purchase = Purchase(
         investor_id=inv_id,
-        product_id=uuid4(),
-        company_id=uuid4(),
+        product_id=product_id,
+        company_id=company_id,
         legal_basis=PurchaseLegalBasis.SALE,
         units=100,
         paid_cents=50_000,
@@ -228,11 +297,17 @@ async def test_monthly_payout_distributes_pool(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """run_monthly_payout distributes bonus pool to top agents."""
+    admin_tk = await _admin_token(client, db_session)
+    company_id, product_id = await _create_company_and_product(
+        client, admin_tk, suffix="lb5",
+    )
+
     agent_id, _ = await _create_user(client, "agent_pay")
     await _promote_to_agent(db_session, agent_id)
     inv_id, _ = await _create_user(client, "inv_pay")
 
     platform_id = await _get_platform_user_id(db_session)
+    await db_session.commit()
 
     # Create referral link.
     link = ReferralLink(agent_id=agent_id, code="PAY_TST1")
@@ -248,8 +323,8 @@ async def test_monthly_payout_distributes_pool(
 
     purchase = Purchase(
         investor_id=inv_id,
-        product_id=uuid4(),
-        company_id=uuid4(),
+        product_id=product_id,
+        company_id=company_id,
         legal_basis=PurchaseLegalBasis.SALE,
         units=100,
         paid_cents=100_000,
