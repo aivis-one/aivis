@@ -52,7 +52,9 @@ from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.purchases import engine
+from app.modules.referrals.service import create_attribution, get_agent_chain
 from app.modules.users.models import KYCStatus, User, UserRole
+
 
 logger = structlog.get_logger()
 
@@ -326,7 +328,11 @@ async def execute_purchase(
         purchase_config_bonuses=bonuses,
         origin_payment_id=origin_payment_id,
         frozen_until=frozen_until,
-        agent_chain=[],  # Stub in Sprint 6.1
+        agent_chain=await get_agent_chain(
+            investor.id,
+            session,
+            max_depth=len(dist_config.get("agent_levels", [])),
+        ),  # Stub in Sprint 6.1
         triggered_at=now,
     )
 
@@ -336,6 +342,12 @@ async def execute_purchase(
         session,
         investor_portfolio_cents=portfolio_cents,
     )
+
+    # Sprint 7.2: record referral attribution.
+    sale_purchase = next(
+        (p for p in purchases if p.legal_basis != "gift"), purchases[0]
+    )
+    await create_attribution(sale_purchase.id, referral_link_id, session)
 
     logger.info(
         "purchase_executed",

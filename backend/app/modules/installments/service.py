@@ -50,6 +50,7 @@ from app.modules.installments.scheduler import calculate_due_date
 from app.modules.processors.base import LedgerEntry, PurchaseContext, Transaction
 from app.modules.products.models import Product, ProductInstallment
 from app.modules.purchases import engine
+from app.modules.referrals.service import create_attribution, get_agent_chain
 from app.modules.purchases.service import (
     compute_frozen_context,
     get_investor_portfolio_cents,
@@ -254,7 +255,11 @@ async def pay_tranche(
         purchase_config_bonuses=[],  # No per-tranche bonuses
         origin_payment_id=origin_payment_id,
         frozen_until=frozen_until,
-        agent_chain=[],  # Sprint 7.x stub
+        agent_chain=await get_agent_chain(
+            plan.investor_id,
+            session,
+            max_depth=len(dist_config.get("agent_levels", [])),
+        ),  # Sprint 7.x stub
         triggered_at=now,
     )
 
@@ -335,6 +340,11 @@ async def pay_tranche(
             "units_unlocked": tranche.units_unlocked,
             "purchase_id": str(sale_purchase.id),
         },
+    )
+
+    # Sprint 7.2: record referral attribution.
+    await create_attribution(
+        sale_purchase.id, plan.referral_link_id, session
     )
 
     logger.info(

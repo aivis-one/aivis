@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Processor Registry (Sprint 6.1)
+# CBSHOME Backend -- Processor Registry (Sprint 6.1, Sprint 7.2)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -23,6 +23,7 @@
 from app.modules.processors.base import PurchaseContext, Transaction
 from app.modules.processors.gift import GiftProcessor
 from app.modules.processors.purchase import PurchaseProcessor
+from app.modules.processors.referral import ReferralProcessor
 
 
 class ProcessorRegistry:
@@ -33,6 +34,7 @@ class ProcessorRegistry:
         self._gift = GiftProcessor(
             investor_portfolio_cents=investor_portfolio_cents,
         )
+        self._referral = ReferralProcessor()
 
     def run_all(self, context: PurchaseContext) -> list[Transaction]:
         """Execute all processors and return combined transactions.
@@ -50,6 +52,10 @@ class ProcessorRegistry:
         # 2. Gift bonuses (if configured).
         if context.purchase_config_bonuses:
             transactions.extend(self._gift.process(context))
+
+        # 3. Referral commissions (Sprint 7.2).
+        if context.agent_chain:
+            transactions.extend(self._referral.process(context))
 
         # Validate invariant.
         for txn in transactions:
