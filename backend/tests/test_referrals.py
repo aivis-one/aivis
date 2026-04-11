@@ -136,12 +136,20 @@ async def _create_company_and_product(
     assert resp2.status_code == 201, f"Product create failed: {resp2.text}"
     product_id = resp2.json()["id"]
 
-    # Activate product.
-    await client.patch(
+    # Activate product (draft -> hidden -> active).
+    resp3 = await client.patch(
+        f"/api/v1/staff/products/{product_id}",
+        json={"status": "hidden"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp3.status_code == 200, f"Product hide failed: {resp3.text}"
+
+    resp4 = await client.patch(
         f"/api/v1/staff/products/{product_id}",
         json={"status": "active"},
         headers=auth_headers(admin_token),
     )
+    assert resp4.status_code == 200, f"Product activate failed: {resp4.text}"
 
     return UUID(product_id)
 
