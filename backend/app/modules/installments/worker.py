@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Worker (Sprint 6.2)
+# CBSHOME Backend -- Installment Worker (Sprint 6.2, fix TD-042)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -14,12 +14,17 @@
 #   Each tranche/default is processed in its own session+transaction.
 #   Failure on one tranche does not roll back others.
 #   Uses get_session_factory() -- same pattern as confirmation worker.
+#
+# TD-042 FIX:
+#   session.get() replaced with SELECT ... FOR UPDATE to serialize
+#   concurrent worker instances (prevents double-payment / double-default).
 # =============================================================================
 
 from datetime import date, datetime, timedelta, UTC
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_session_factory
@@ -46,6 +51,34 @@ async def run_installment_batch() -> None:
 
     # -- Phase 2: Default overdue plans --
     await _process_defaults(today)
+
+
+async def _load_tranche_for_update(
+    session: AsyncSession,
+    tranche_id,
+) -> InstallmentTranche | None:
+    """Load tranche with FOR UPDATE lock."""
+    stmt = (
+        select(InstallmentTranche)
+        .where(InstallmentTranche.id == tranche_id)
+        .with_for_update()
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def _load_plan_for_update(
+    session: AsyncSession,
+    plan_id,
+) -> InstallmentPlan | None:
+    """Load plan with FOR UPDATE lock."""
+    stmt = (
+        select(InstallmentPlan)
+        .where(InstallmentPlan.id == plan_id)
+        .with_for_update()
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 async def _process_due_tranches(today: date) -> None:
@@ -88,9 +121,9 @@ async def _process_due_tranches(today: date) -> None:
         try:
             async with factory() as session:
                 async with session.begin():
-                    # Reload tranche and plan within this transaction.
-                    tranche = await session.get(InstallmentTranche, row.id)
-                    plan = await session.get(InstallmentPlan, row.plan_id)
+                    # Reload tranche and plan with FOR UPDATE (TD-042).
+                    tranche = await _load_tranche_for_update(session, row.id)
+                    plan = await _load_plan_for_update(session, row.plan_id)
 
                     if tranche is None or plan is None:
                         continue
@@ -171,8 +204,9 @@ async def _process_defaults(today: date) -> None:
         try:
             async with factory() as session:
                 async with session.begin():
-                    tranche = await session.get(InstallmentTranche, row.id)
-                    plan = await session.get(InstallmentPlan, row.plan_id)
+                    # Reload with FOR UPDATE (TD-042).
+                    tranche = await _load_tranche_for_update(session, row.id)
+                    plan = await _load_plan_for_update(session, row.plan_id)
 
                     if tranche is None or plan is None:
                         continue
