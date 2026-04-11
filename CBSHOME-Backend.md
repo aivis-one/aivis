@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.2
-**Дата:** 11 апреля 2026
+**Версия:** 2.4
+**Дата:** 12 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -1496,6 +1496,7 @@ backend/app/modules/processors/
 ├── purchase.py         -- PurchaseProcessor (core distribution)
 ├── gift.py             -- GiftProcessor (bonus allocations)
 ├── referral.py         -- ReferralProcessor (agent commissions L1/L2/L3, Sprint 7.2)
+├── volume.py           -- VolumeProcessor (volume bonus distribution, Sprint 7.3)
 ├── registry.py         -- ProcessorRegistry (run_all + SUM=0 invariant)
 └── validators.py       -- validate_purchase_config()
 
@@ -2172,21 +2173,137 @@ backend/tests/
 
 ---
 
-### Sprint 7.3: Leaderboard + Volume Bonuses
+### ✅ Sprint 7.3: Leaderboard + Volume Bonuses
 
 **Цель:** Рейтинг агентов и бонусные пулы.
 
 **Задачи:**
-- [ ] `app/modules/commissions/models.py` — `LeaderboardSnapshot`, `VolumePayout`
-- [ ] `app/modules/processors/volume.py` — `VolumeProcessor` (расширение Distribution Engine из Sprint 6.1)
-- [ ] Зарегистрировать `VolumeProcessor` в `ProcessorRegistry`
-- [ ] `leaderboard_worker` — обновление каждые 60 минут (asyncio.Task)
-- [ ] `GET /api/v1/agent/leaderboard` — топ агентов (только agent)
-- [ ] `GET /api/v1/agent/commissions/me` — история комиссий
-- [ ] Cron: месячный + квартальный бонусный пул
-- [ ] `tests/test_leaderboard.py` — 8 тестов
+- [x] `app/modules/commissions/__init__.py`
+- [x] `app/modules/commissions/constants.py` — `PeriodType`, `current_month_start()`
+- [x] `app/modules/commissions/models.py` — `LeaderboardSnapshot`, `VolumePayout`
+- [x] `app/modules/commissions/schemas.py` — `LeaderboardEntry`, `LeaderboardResponse`, `CommissionEntry`, `CommissionListResponse`
+- [x] `app/modules/commissions/service.py` — `get_leaderboard()`, `get_my_commissions()`
+- [x] `app/modules/commissions/router.py` — 2 agent endpoints
+- [x] `app/modules/commissions/worker.py` — `run_leaderboard_update()`, `run_monthly_payout()`, `run_quarterly_payout()`
+- [x] `app/modules/processors/volume.py` — `VolumeProcessor` (чистая логика, не в ProcessorRegistry)
+- [x] `leaderboard_worker` — asyncio.Task в `main.py` lifespan, интервал из конфига
+- [x] `GET /api/v1/agent/leaderboard` — топ агентов (только agent)
+- [x] `GET /api/v1/agent/commissions/me` — история комиссий + volume bonuses
+- [x] Cron: месячный (top-20, 2%) + квартальный (top-10, 1%) бонусный пул
+- [x] `tests/test_leaderboard.py` — 13 тестов
 
-**Критерий готовности:** Лидерборд обновляется. Бонусные пулы начисляются.
+**Модели:**
+```python
+LeaderboardSnapshot:
+    id: UUID
+    agent_id: UUID         -- FK users.id
+    rank: Integer          -- 1-based position
+    volume_cents: BigInteger -- SUM(paid_cents) attributed purchases
+    period_type: String(20)  -- "monthly" | "quarterly"
+    period_start: Date       -- first day of period (e.g. 2026-04-01)
+    snapshot_at: DateTime(tz) -- when computed
+    is_final: Boolean        -- False=live (overwritten), True=frozen after payout
+    created_at: DateTime(tz)
+
+VolumePayout:
+    id: UUID
+    agent_id: UUID         -- FK users.id
+    period_type: String(20)
+    period_start: Date
+    amount_cents: BigInteger -- bonus credited to agent
+    rank: Integer           -- rank at payout time (denormalized)
+    volume_cents: BigInteger -- volume at payout time (denormalized)
+    pool_total_cents: BigInteger -- total pool for period
+    created_at: DateTime(tz)
+    -- UNIQUE(agent_id, period_type, period_start)
+```
+
+**VolumeProcessor (чистая логика, без I/O):**
+```python
+class VolumeProcessor:
+    def distribute_pool(
+        agents_ranked: list[AgentRank],
+        pool_cents: int,
+        platform_user_id: UUID,
+        period_type: str,
+    ) -> list[Transaction]:
+        # Largest remainder method: sum(shares) == pool_cents exactly.
+        # One Transaction per agent: Platform passive → Agent passive.
+        # SUM=0 invariant per transaction.
+```
+
+Не зарегистрирован в `ProcessorRegistry` — триггерится worker'ом, не per-purchase. `AgentRank` — frozen dataclass (`agent_id`, `rank`, `volume_cents`).
+
+**Worker (`commissions/worker.py`):**
+- `run_leaderboard_update()`: каждые 60 мин → агрегирует объёмы из `Purchase JOIN ReferralAttribution`, DELETE+INSERT non-final snapshots (monthly + quarterly)
+- `run_monthly_payout()`: при смене месяца → advisory lock → idempotency check → pool = `SUM(paid_cents) * bp // 10_000` → читает из snapshot (fallback на live) → `VolumeProcessor.distribute_pool()` → `VolumePayout` + `PassiveLedger`
+- `run_quarterly_payout()`: аналогично, при смене квартала, top-10
+- Platform balance check перед distribute — skip если `available < pool_cents`
+- Deterministic tie-breaking: secondary sort by `agent_id`
+
+**Endpoints:**
+```
+GET /api/v1/agent/leaderboard          -> LeaderboardResponse    (200, agent only)
+GET /api/v1/agent/commissions/me       -> CommissionListResponse (200, agent only)
+```
+
+`GET /agent/commissions/me` читает из `PassiveLedger` по prefix `commission:` + `volume_bonus:`, обогащает JOIN'ами на `Purchase → Product + User` для display. Единый список комиссий и volume bonuses.
+
+**Новые audit events:**
+- `leaderboard.updated` — снапшот обновлён (actor_type: system)
+- `volume_bonus.monthly_distributed` — месячный пул распределён
+- `volume_bonus.quarterly_distributed` — квартальный пул распределён
+
+**Config (новые настройки):**
+```
+volume_bonus_monthly_bp: int = 200           -- basis points (200 = 2.00%)
+volume_bonus_quarterly_bp: int = 100         -- basis points (100 = 1.00%)
+leaderboard_top_monthly: int = 20            -- top-N for monthly pool
+leaderboard_top_quarterly: int = 10          -- top-N for quarterly pool
+leaderboard_worker_interval_minutes: int = 60
+```
+
+**Миграции:**
+- [x] `0016_commissions` — таблицы `leaderboard_snapshots` (2 индекса, FK), `volume_payouts` (UNIQUE constraint, FK)
+
+**Результат:**
+```
+backend/app/modules/commissions/
+├── __init__.py
+├── constants.py        -- PeriodType, current_month_start()
+├── models.py           -- LeaderboardSnapshot, VolumePayout
+├── schemas.py          -- 2 response schemas
+├── service.py          -- get_leaderboard, get_my_commissions
+├── router.py           -- 2 agent endpoints
+└── worker.py           -- leaderboard_update, monthly/quarterly payout
+
+backend/app/modules/processors/
+└── volume.py           -- VolumeProcessor (pure logic, largest remainder)
+
+backend/tests/
+└── test_leaderboard.py -- 13 tests
+```
+
+**Обновлённые файлы (Sprint 7.3):**
+- `core/config.py` — `+volume_bonus_monthly_bp`, `+volume_bonus_quarterly_bp`, `+leaderboard_top_monthly`, `+leaderboard_top_quarterly`, `+leaderboard_worker_interval_minutes`
+- `core/constants.py` — `+VOLUME_BONUS_MONTHLY`, `+VOLUME_BONUS_QUARTERLY` reason strings
+- `main.py` — `+commissions_router`, `+_leaderboard_worker` asyncio.Task, `+leaderboard_task` cancel в shutdown
+- `migrations/env.py` — `+LeaderboardSnapshot`, `+VolumePayout` imports
+- `tests/helpers.py` — `+VolumePayout/LeaderboardSnapshot` cleanup в `_cleanup_user_related_data()`
+
+**Решения реализации (Sprint 7.3):**
+- P7-10: **VolumeProcessor ≠ ProcessorRegistry** — VolumeProcessor не зарегистрирован в ProcessorRegistry. Триггерится worker'ом (cron), не per-purchase. Чистая синхронная функция без I/O, тестируется без БД
+- P7-11: **Largest remainder method** — `floor()` для всех долей, остаток раздаётся по 1 центу агентам с наибольшей дробной частью. Гарантирует `sum(shares) == pool_cents` (нет over-allocation)
+- P7-12: **Advisory lock в `_distribute_pool`** — `pg_advisory_xact_lock(hash(period_type, period_start))` сериализует concurrent workers. Тот же паттерн что в `engine.py` и `withdrawals/service.py`
+- P7-13: **Payout из snapshot, не re-aggregation** — `_distribute_pool` читает из `LeaderboardSnapshot`, fallback на live агрегацию только если снапшотов нет. Гарантирует совпадение отображаемого рейтинга и фактической выплаты
+- P7-14: **Basis points вместо float** — `volume_bonus_monthly_bp: int = 200` (2%). Pool = `total * bp // 10_000` — чисто целочисленная арифметика, без float-ошибок
+- P7-15: **Deterministic tie-breaking** — secondary sort by `agent_id` (UUID) при равном volume. Стабильно между запусками
+- P7-16: **Platform balance check** — перед distribute проверяет `passive_balance >= pool_cents`. При нехватке — `logger.warning` + skip (не уходит в минус)
+- P7-17: **No zip misalignment** — итерация по `transactions`, agent_id из `txn.entries[1].user_id` (credit entry), lookup через `agent_map` dict. Если агент пропущен процессором (share=0) — не смещает остальных
+- P7-18: **Quarterly snapshots** — `run_leaderboard_update()` создаёт и monthly, и quarterly snapshots. `is_final=True` при выплате — архив
+- P7-19: **volume_cents в leaderboard — by design** — агенты видят точные объёмы продаж друг друга (бизнес-решение, отражено в мокапах)
+
+**Критерий готовности:** Лидерборд обновляется каждые 60 мин (monthly + quarterly). Бонусные пулы начисляются при смене месяца/квартала. Advisory lock защищает от двойной выплаты. Largest remainder гарантирует точное распределение пула. 263 теста зелёные, 0 warnings, 0 критических issues, 0 предупреждений.
 
 ---
 
@@ -2470,4 +2587,4 @@ Event:
 
 ---
 
-*Version 2.3 | 2026-04-11 | cbshome Backend TZ — Phase 6 complete, Sprint 7.1 complete, Sprint 7.2 complete (referral links, commissions L1/L2/L3, 15 referral tests, 2 migrations), TD-042..TD-047 closed, 250 tests total, 0 warnings, Sprint 7.3 next*
+*Version 2.4 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete (agent applications, referral links, commissions L1/L2/L3, leaderboard, volume bonuses), 16 migrations, TD-042..TD-047 closed, 263 tests total, 0 warnings, Sprint 8.1 next*

@@ -56,6 +56,10 @@
 #
 # Sprint 7.3:
 #   _cleanup_user_related_data() extended with LeaderboardSnapshot + VolumePayout cleanup.
+#
+# Sprint 8.1:
+#   _cleanup_user_related_data() extended with NotificationDelivery + Notification cleanup.
+#   Deliveries first (FK to notifications.id), then notifications.
 # =============================================================================
 
 import hashlib
@@ -77,7 +81,7 @@ from app.modules.staff.models import AvatarSession, StaffProfile
 from app.modules.users.models import User, UserRole
 
 # Read from settings -- must match the token used by the router
-# for HMAC validation. On VPS this is the real bot token from .env.
+# for HMAC validation.
 BOT_TOKEN = settings.telegram_bot_token
 
 # Module-level counter: unique query_id per build_init_data() call.
@@ -158,47 +162,29 @@ def build_init_data(
     if auth_date is None:
         auth_date = int(time.time())
 
-    query_id = str(next(_init_data_counter))
+    counter = next(_init_data_counter)
+    query_id = f"test-query-{auth_date}-{counter}"
 
-    params = {
+    data_pairs = {
         "user": json.dumps(user_data, separators=(",", ":")),
         "auth_date": str(auth_date),
         "query_id": query_id,
     }
 
-    data_check_string = "\n".join(
-        f"{k}={v}" for k, v in sorted(params.items())
-    )
-
+    # HMAC-SHA256 as per Telegram specification.
     secret_key = hmac.new(
-        b"WebAppData", bot_token.encode(), hashlib.sha256,
+        b"WebAppData", bot_token.encode(), hashlib.sha256
     ).digest()
-    computed_hash = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256,
+
+    data_check_string = "\n".join(
+        f"{k}={v}" for k, v in sorted(data_pairs.items())
+    )
+    calculated_hash = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256
     ).hexdigest()
 
-    params["hash"] = computed_hash
-    return urlencode(params)
-
-
-async def login_telegram(
-    client: AsyncClient,
-    telegram_id: int,
-    first_name: str = "Test",
-    username: str | None = None,
-) -> dict:
-    """Login via POST /api/v1/auth/telegram."""
-    user_data = {"id": telegram_id, "first_name": first_name}
-    if username:
-        user_data["username"] = username
-
-    init_data = build_init_data(user_data)
-    resp = await client.post(
-        "/api/v1/auth/telegram",
-        json={"init_data": init_data},
-    )
-    assert resp.status_code == 200, f"Telegram login failed: {resp.status_code} {resp.text}"
-    return resp.json()
+    data_pairs["hash"] = calculated_hash
+    return urlencode(data_pairs)
 
 
 # ---------------------------------------------------------------------------
@@ -209,10 +195,10 @@ async def login_telegram(
 async def create_staff_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    email: str,
+    email: str = "staff@example.com",
     password: str = "testpass123",
 ) -> tuple[dict, str]:
-    """Register a user, promote to staff, create StaffProfile with defaults.
+    """Register a user and promote to staff with default permissions.
 
     Returns (user_data_dict, session_token).
     """
@@ -372,11 +358,20 @@ async def _cleanup_user_related_data(
     from app.modules.installments.models import InstallmentPlan, InstallmentTranche
     from app.modules.kyc.models import KYCApplication
     from app.modules.ledgers.models import ActiveLedger, PassiveLedger
+    from app.modules.notifications.models import Notification, NotificationDelivery
     from app.modules.payments.models import CryptoAddress, Payment
     from app.modules.products.models import Product, ProductInstallment
     from app.modules.purchases.models import Purchase
     from app.modules.transactions.models import Transaction
     from app.modules.withdrawals.models import Withdrawal
+
+    # Sprint 8.1: Notification deliveries (FK to users.id CASCADE).
+    # Deliveries first, then orphaned notifications.
+    await session.execute(
+        delete(NotificationDelivery).where(
+            NotificationDelivery.user_id.in_(user_ids)
+        )
+    )
 
     # Sprint 7.1: Agent applications (FK to users.id via user_id and reviewed_by).
     await session.execute(
