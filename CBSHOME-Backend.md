@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.4
+**Версия:** 2.5
 **Дата:** 12 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -2311,18 +2311,22 @@ backend/tests/
 
 ---
 
-### Sprint 8.1: Notification Models + Processor
+### ✅ Sprint 8.1: Notification Models + Processor
 
 **Цель:** Двухуровневая архитектура уведомлений.
 
 **Задачи:**
-- [ ] `app/modules/notifications/models.py` — `Notification`, `NotificationDelivery`
-- [ ] `app/modules/notifications/service.py` — `create_notification()`, `resolve_notification()`
-- [ ] `app/modules/notifications/processor.py` — трёхстадийный pipeline (resolve -> deliver -> rollup)
-- [ ] `app/modules/notifications/formatters.py` — `ChannelFormatter` Protocol + `StubFormatter`
-- [ ] Background worker в lifespan
-- [ ] Cron очистка: удалять `expiry_at < now()` у доставленных
-- [ ] `tests/test_notifications.py` — 15 тестов
+- [x] `app/modules/notifications/__init__.py`
+- [x] `app/modules/notifications/constants.py` — `NotificationStatus`, `DeliveryStatus`, `DeliveryChannel`, `NotificationType`, `TargetType`
+- [x] `app/modules/notifications/models.py` — `Notification`, `NotificationDelivery`
+- [x] `app/modules/notifications/resolver.py` — `resolve_targets()` с registry по target_type
+- [x] `app/modules/notifications/formatters.py` — `ChannelFormatter` Protocol + `StubFormatter`
+- [x] `app/modules/notifications/service.py` — `create_notification()`, `resolve_notification()`, `deliver_notification()`, `rollup_notification()`
+- [x] `app/modules/notifications/processor.py` — трёхстадийный pipeline (resolve -> deliver -> rollup), per-notification session, FOR UPDATE SKIP LOCKED
+- [x] `app/modules/notifications/worker.py` — `run_notification_batch()`
+- [x] Background worker `_notification_worker` в `main.py` lifespan
+- [x] Cron очистка: `cleanup_expired_notifications()` удаляет `expiry_at < now()` у доставленных (hard-delete, CASCADE на deliveries)
+- [x] `tests/test_notifications.py` — 18 тестов
 
 **Модели:**
 ```python
@@ -2333,11 +2337,11 @@ Notification:  -- channel-agnostic, одна запись на событие
     body: str
     target_type: str   -- user | role | all
     target_value: str  -- user:<uuid> | role:agent | *
-    action_data: JSONB | None  -- {"action": "open_purchase", "params": {"id": "uuid"}}
+    action_data: JSONB | None  -- {"action": "open_purchase", "params": {"id": "uuid"}, "_channels": ["in_app"]}
     priority: int      -- default 5 (1=highest)
     scheduled_at: datetime
     expiry_at: datetime | None
-    status: enum       -- pending | processing | sent | failed | expired
+    status: enum       -- pending | processing | sent | partial_sent | failed | expired
     created_at: datetime
 
 NotificationDelivery:  -- одна запись на получателя на канал
@@ -2354,6 +2358,7 @@ NotificationDelivery:  -- одна запись на получателя на �
     attempts: int      -- default 0
     error_message: str | None
     created_at: datetime
+    -- UNIQUE(notification_id, user_id, channel)
 ```
 
 **Архитектура pipeline:**
@@ -2363,7 +2368,81 @@ deliver:  NotificationDelivery -> ChannelFormatter -> внешний серви�
 rollup:   NotificationDelivery statuses -> Notification.status
 ```
 
-**Критерий готовности:** Уведомления создаются и обрабатываются процессором.
+**Resolver (`notifications/resolver.py`):**
+- `resolve_targets(session, target_type, target_value)` -> `list[UUID]`
+- Registry `_RESOLVERS`: `user` -> `_resolve_user()`, `role` -> `_resolve_role()`, `all` -> `_resolve_all()`
+- Только `is_active=True`, исключая `role=platform`
+- Расширяемый: новые target types добавляются в `_RESOLVERS` dict
+
+**Formatters (`notifications/formatters.py`):**
+- `ChannelFormatter` Protocol: `async deliver(notification, delivery) -> bool`
+- `StubFormatter`: логирует и возвращает True (Sprint 8.2: TelegramFormatter, EmailFormatter)
+- `get_formatter(channel)` — registry с fallback на StubFormatter
+
+**Service (`notifications/service.py`):**
+- `create_notification()` — валидация type/target_type/channels против enum frozenset, channels хранятся в `action_data["_channels"]`
+- `resolve_notification()` — идемпотентен: если deliveries уже существуют (retry), пропускает resolve
+- `deliver_notification()` — вызывает formatter для каждой pending delivery, increment attempts, max_attempts из config
+- `rollup_notification()` — all sent -> sent, all failed -> failed, mix -> partial_sent, any pending -> stays processing
+
+**Processor (`notifications/processor.py`):**
+- `process_pending_notifications()` — выбирает PENDING + PROCESSING (retry), per-notification session, FOR UPDATE SKIP LOCKED
+- `cleanup_expired_notifications()` — DELETE WHERE expiry_at < now AND status IN (sent, partial_sent, expired)
+- Expire query ловит и PENDING, и PROCESSING (застрявшие не накапливаются)
+
+**Worker (`notifications/worker.py`):**
+- `run_notification_batch()` — orchestrator: process_pending + cleanup
+- Processor управляет сессиями, worker просто вызывает
+
+**Rollup статусы (расширение ТЗ):**
+- `partial_sent` — добавлен для диагностики: mix sent + failed deliveries
+
+**Endpoints:** Нет (Sprint 8.3)
+
+**Config (новые настройки):**
+```
+notification_max_delivery_attempts: int = 3
+notification_worker_interval_minutes: int = 1
+```
+
+**Миграции:**
+- [x] `0017_notifications` — таблицы `notifications` (3 индекса), `notification_deliveries` (4 индекса, 2 FK CASCADE)
+- [x] `0018_notifications_constraints` — fix JSON→JSONB (`action_data`, `channel_options`), CHECK constraints на status/type/channel, UNIQUE на `(notification_id, user_id, channel)`
+- [x] `0019_notifications_target_type` — CHECK constraint на `target_type`
+
+**Результат:**
+```
+backend/app/modules/notifications/
+├── __init__.py
+├── constants.py        -- NotificationStatus, DeliveryStatus, DeliveryChannel, NotificationType, TargetType
+├── models.py           -- Notification, NotificationDelivery
+├── resolver.py         -- resolve_targets (registry pattern)
+├── formatters.py       -- ChannelFormatter Protocol, StubFormatter, get_formatter()
+├── service.py          -- create, resolve (idempotent), deliver, rollup
+├── processor.py        -- pipeline orchestrator (per-notification session, FOR UPDATE SKIP LOCKED)
+└── worker.py           -- run_notification_batch (calls processor)
+
+backend/tests/
+└── test_notifications.py -- 18 tests
+```
+
+**Обновлённые файлы (Sprint 8.1):**
+- `core/config.py` — `+notification_worker_interval_minutes` (секция Notifications обновлена)
+- `main.py` — `+notification_worker` import, `+_notification_worker` asyncio.Task, `+notification_task` cancel в shutdown
+- `migrations/env.py` — `+Notification`, `+NotificationDelivery` imports (раскомментированы)
+- `tests/helpers.py` — `+NotificationDelivery` cleanup в `_cleanup_user_related_data()`
+
+**Решения реализации (Sprint 8.1):**
+- P8-01: **Channels в action_data** — `_channels` хранится в `action_data` JSONB вместо отдельной колонки. Channels immutable после создания, internal key контролируется только `create_notification()`. Отдельная колонка = миграция + ArrayType ради теоретической чистоты. Пересмотреть в Sprint 8.2 если понадобится (TD-053)
+- P8-02: **Hard-delete в cleanup** — `DELETE FROM notifications` удаляет expired+delivered уведомления. Уведомления ≠ финансовые данные. Все события логируются через structlog. Soft-delete = `is_deleted` фильтр в каждом запросе + захламление таблицы (TD-054)
+- P8-03: **Formatter timeouts** — StubFormatter мгновенный, таймаут бессмысленен. Sprint 8.2: `asyncio.wait_for(formatter.deliver(...), timeout=30)` при реальных TelegramFormatter/EmailFormatter (TD-055)
+- P8-04: **Per-notification session** — каждое уведомление обрабатывается в своей сессии/транзакции. Сбой на #5 не откатывает #1-4. Паттерн из installment_worker (TD-042)
+- P8-05: **FOR UPDATE SKIP LOCKED** — предотвращает double-processing при multi-worker. Второй worker пропускает заблокированные строки → `scalar_one_or_none()` = None → continue
+- P8-06: **Retry через PENDING + PROCESSING** — processor выбирает оба статуса. PROCESSING = delivery с attempts < max ещё PENDING. `resolve_notification` идемпотентен (проверяет existing deliveries)
+- P8-07: **Expiry ловит PROCESSING** — expire query фильтрует PENDING + PROCESSING. Застрявшие PROCESSING-уведомления протухнут, не накопятся
+- P8-08: **Валидация в create_notification** — type, target_type, channels проверяются против frozenset из enum values. `BadRequestError` с информативным сообщением вместо IntegrityError (500)
+
+**Критерий готовности:** Уведомления создаются, обрабатываются pipeline (resolve → deliver → rollup). Retry работает для PROCESSING. FOR UPDATE SKIP LOCKED защищает от double-delivery. Валидация на уровне сервиса + CHECK constraints на уровне БД. 281 тест зелёный, 0 warnings, 0 критических issues, 0 предупреждений.
 
 ---
 
@@ -2533,7 +2612,7 @@ Event:
 | TD-003 | `kyc/` | Реальная SumSub интеграция | Phase 2 | ⬜ |
 | TD-004 | `payments/` | Fiat on-ramp (Moonpay/Transak) | Phase 2 | ⬜ |
 | TD-005 | `documents/` | DocuSign e-signature | Phase 2 | ⬜ |
-| TD-006 | `notifications/` | Cron для expiration waitlist | After MVP | ⬜ |
+| TD-006 | `notifications/` | ~~Cron для expiration waitlist~~ → `cleanup_expired_notifications()` в notification worker. Hard-delete expired+delivered, CASCADE на deliveries | After MVP | ✅ Sprint 8.1 |
 | TD-007 | `tests/` | Cleanup fixtures через ORM вместо raw SQL | Backlog | ⬜ |
 | TD-008 | Все роутеры | Rate limiting (slowapi) | Before Prod | ⬜ |
 | TD-009 | `transactions/` | Экспорт в CSV/XLSX | Phase 2 | ⬜ |
@@ -2580,6 +2659,9 @@ Event:
 | TD-050 | `payments/webhook_router.py` | Webhook: 409 для дубликата → рассмотреть 200 (идемпотентность). `max_length` на полях вебхука. Code review 🟢 | Backlog | ⬜ |
 | TD-051 | `payments/confirmation.py` | Лимит батча в confirmation worker — без LIMIT при большом объёме frozen entries может быть long-running transaction. Code review 🟢 | Before Scale | ⬜ |
 | TD-052 | `referrals/service.py` | Self-referral prevention: агент теоретически может зарегистрировать второй аккаунт по своему реферальному коду и генерировать комиссии. Техническая проверка (email uniqueness) не покрывает — это антифрод бизнес-логика (multi-account detection). Code review 🟢 Sprint 7.2 | After MVP | ⬜ |
+| TD-053 | `notifications/service.py` | Channels хранятся в `action_data["_channels"]` вместо отдельной колонки. Работает, но хрупко — нет DB-level валидации. Пересмотреть при реализации Sprint 8.2 если создаст проблемы | Sprint 8.2 | ⬜ |
+| TD-054 | `notifications/processor.py` | Hard-delete в `cleanup_expired_notifications()`. Уведомления ≠ финансовые данные, structlog достаточен для audit. Рассмотреть soft-delete если потребуется аналитика по уведомлениям | Backlog | ⬜ |
+| TD-055 | `notifications/formatters.py` | Нет таймаутов для `formatter.deliver()`. StubFormatter мгновенный. При реальных formatters (Sprint 8.2) добавить `asyncio.wait_for(..., timeout=30)` | Sprint 8.2 | ⬜ |
 
 ---
 
@@ -2587,4 +2669,4 @@ Event:
 
 ---
 
-*Version 2.4 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete (agent applications, referral links, commissions L1/L2/L3, leaderboard, volume bonuses), 16 migrations, TD-042..TD-047 closed, 263 tests total, 0 warnings, Sprint 8.1 next*
+*Version 2.5 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Sprint 8.1 complete (notification models, processor, resolver, formatters, worker, 3 migrations 0017-0019, 18 tests), 19 migrations, TD-053..TD-055 added, 281 tests total, 0 warnings, Sprint 8.2 next*
