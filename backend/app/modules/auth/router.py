@@ -15,6 +15,10 @@
 #   auth_rate_limit_window_seconds.
 #   Key: "email_auth:{ip}" -- shared between register and login.
 #
+# REFERRAL (Sprint 7.2):
+#   referral_code is passed from request body to service layer.
+#   Resolution happens in service -- router just forwards.
+#
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
 #   automatically after yield.
@@ -93,7 +97,12 @@ async def auth_email_register(
     ip = _get_client_ip(request)
     await check_rate_limit(f"email_auth:{ip}")
 
-    user = await register_email(body.email, body.password, session)
+    user = await register_email(
+        body.email,
+        body.password,
+        session,
+        referral_code=body.referral_code,
+    )
     token = await create_session(user, auth_method="email")
 
     return AuthResponse(
@@ -176,7 +185,11 @@ async def auth_telegram(
         raise BadRequestError(str(exc)) from exc
 
     # Step 4: Upsert user (flush inside service, not here).
-    user, _is_new = await upsert_telegram_user(telegram_user, session)
+    user, _is_new = await upsert_telegram_user(
+        telegram_user,
+        session,
+        referral_code=body.referral_code,
+    )
 
     # Step 5: Create Redis session.
     token = await create_session(user, auth_method="telegram")

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Auth Service (fix review #9)
+# CBSHOME Backend -- Auth Service (Sprint 7.2)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -17,8 +17,9 @@
 #   entries written to the same session.
 #
 # REFERRAL (Sprint 7.2):
-#   Every new user gets referred_by = platform_user_id by default.
-#   Full referral_code resolution will be added in Batch 2.
+#   referral_code is resolved FIRST at registration. Valid code ->
+#   referred_by = agent_id. Invalid/missing -> referred_by = platform_id.
+#   Silent fallback, never blocks registration.
 #
 # COMMIT RULE (P-01):
 #   Service never commits or rolls back. Caller manages the transaction.
@@ -77,11 +78,50 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 async def get_platform_user_id(session: AsyncSession) -> UUID:
-    """Return the Platform user's UUID. Cached per-request via SELECT."""
+    """Return the Platform user's UUID."""
     stmt = select(User.id).where(User.role == UserRole.PLATFORM)
     result = await session.execute(stmt)
     platform_id = result.scalar_one()
     return platform_id
+
+
+# ---------------------------------------------------------------------------
+# Referral resolution helper (Sprint 7.2)
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_referrer(
+    referral_code: str | None,
+    session: AsyncSession,
+) -> UUID:
+    """Resolve referral_code to a referrer UUID.
+
+    Returns agent_id if code is valid, platform_id otherwise.
+    Never raises -- silent fallback to Platform.
+    """
+    platform_id = await get_platform_user_id(session)
+
+    if not referral_code:
+        return platform_id
+
+    # Lazy import to avoid circular dependency.
+    from app.modules.referrals.service import resolve_referral_code
+
+    agent_id = await resolve_referral_code(referral_code, session)
+
+    if agent_id is None:
+        logger.debug(
+            "referral_code_fallback_to_platform",
+            code=referral_code,
+        )
+        return platform_id
+
+    logger.info(
+        "referral_code_resolved",
+        code=referral_code,
+        agent_id=str(agent_id),
+    )
+    return agent_id
 
 
 # ---------------------------------------------------------------------------
@@ -134,13 +174,16 @@ async def register_email(
     email: str,
     password: str,
     session: AsyncSession,
+    *,
+    referral_code: str | None = None,
 ) -> User:
     """Register a new user via email + password.
 
     Creates a User with role=investor, stores hashed password and
     email verification token in credentials JSONB.
 
-    referred_by defaults to Platform user (Sprint 7.2).
+    referral_code is resolved FIRST: valid code -> referred_by = agent_id,
+    invalid/missing -> referred_by = platform_id. Never blocks registration.
 
     Does NOT commit or rollback -- caller (get_db_session) manages
     the transaction lifecycle (P-01).
@@ -152,12 +195,12 @@ async def register_email(
     password_hashed = hash_password(password)
     email_token = secrets.token_urlsafe(32)
 
-    # Sprint 7.2: default referrer is Platform.
-    platform_id = await get_platform_user_id(session)
+    # Sprint 7.2: resolve referrer FIRST -- agents' bread and butter.
+    referred_by = await _resolve_referrer(referral_code, session)
 
     user = User(
         role=UserRole.INVESTOR,
-        referred_by=platform_id,
+        referred_by=referred_by,
         credentials={
             "email": {
                 "email": email_lower,
@@ -189,13 +232,18 @@ async def register_email(
         actor_type="user",
         target_type="user",
         target_id=user.id,
-        data={"auth_method": "email"},
+        data={
+            "auth_method": "email",
+            "referral_code": referral_code,
+            "referred_by": str(referred_by),
+        },
     )
 
     logger.info(
         "user_registered",
         user_id=str(user.id),
         auth_method="email",
+        referred_by=str(referred_by),
     )
 
     return user
@@ -269,12 +317,17 @@ async def login_email(
 async def upsert_telegram_user(
     telegram_user: dict,
     session: AsyncSession,
+    *,
+    referral_code: str | None = None,
 ) -> tuple[User, bool]:
     """Create or update user on Telegram login.
 
     Lookup by credentials->'telegram'->>'id' via functional index.
     If found -- update credentials.telegram via set_jsonb().
     If not found -- create new User with role=investor.
+
+    referral_code is only used for NEW users (is_new=True).
+    Existing users keep their original referred_by.
 
     Race condition (two simultaneous first logins) is handled via
     begin_nested() (SAVEPOINT) + IntegrityError catch + retry SELECT.
@@ -340,13 +393,13 @@ async def upsert_telegram_user(
     # Use begin_nested() (SAVEPOINT) so that IntegrityError from race
     # condition only rolls back the INSERT, not the outer transaction (P-05).
 
-    # Sprint 7.2: default referrer is Platform.
-    platform_id = await get_platform_user_id(session)
+    # Sprint 7.2: resolve referrer for new user.
+    referred_by = await _resolve_referrer(referral_code, session)
 
     lang = (telegram_user.get("language_code") or "en")[:2] or "en"
     new_user = User(
         role=UserRole.INVESTOR,
-        referred_by=platform_id,
+        referred_by=referred_by,
         credentials={"telegram": telegram_creds},
         language=lang,
     )
@@ -401,13 +454,18 @@ async def upsert_telegram_user(
         actor_type="user",
         target_type="user",
         target_id=new_user.id,
-        data={"auth_method": "telegram"},
+        data={
+            "auth_method": "telegram",
+            "referral_code": referral_code,
+            "referred_by": str(referred_by),
+        },
     )
 
     logger.info(
         "telegram_user_created",
         user_id=str(new_user.id),
         telegram_id=telegram_id,
+        referred_by=str(referred_by),
     )
 
     return new_user, True

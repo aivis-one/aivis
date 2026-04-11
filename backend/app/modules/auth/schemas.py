@@ -6,6 +6,7 @@
 #
 # Sprint 1.1: EmailRegisterRequest, EmailLoginRequest, AuthResponse
 # Sprint 1.2: TelegramAuthRequest
+# Sprint 7.2: +referral_code on register + telegram requests
 # =============================================================================
 
 from pydantic import BaseModel, EmailStr, Field
@@ -31,6 +32,12 @@ class EmailRegisterRequest(BaseModel):
         max_length=128,
         description="Password (min 8 characters)",
     )
+    # Sprint 7.2: optional referral code from agent link.
+    referral_code: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Referral code from agent link (optional)",
+    )
 
 
 class EmailLoginRequest(BaseModel):
@@ -52,6 +59,12 @@ class TelegramAuthRequest(BaseModel):
         ...,
         min_length=1,
         description="Raw initData string from Telegram WebApp",
+    )
+    # Sprint 7.2: optional referral code from agent link.
+    referral_code: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Referral code from agent link (optional)",
     )
 
 
