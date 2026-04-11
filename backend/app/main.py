@@ -26,6 +26,7 @@
 #   staff_withdrawals_router  -> /api/v1/staff/withdrawals/* (Sprint 6.3)
 #   transactions_router       -> /api/v1/transactions/* (Sprint 6.4)
 #   consistency_router        -> /api/v1/staff/consistency (Sprint 6.4)
+#   agent_applications_router -> /api/v1/agent-applications/* (Sprint 7.1)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -57,6 +58,7 @@ from app.core.exceptions import CBSError
 from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
+from app.modules.agent_applications.router import router as agent_applications_router
 from app.modules.auth.router import router as auth_router
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
@@ -77,9 +79,9 @@ from app.modules.products.staff_router import router as staff_products_router
 from app.modules.purchases.router import router as purchases_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
+from app.modules.staff.consistency.router import router as consistency_router
 from app.modules.staff.router import router as staff_users_router
 from app.modules.transactions.router import router as transactions_router
-from app.modules.staff.consistency.router import router as consistency_router
 from app.modules.users.router import router as users_router
 from app.modules.withdrawals.router import router as withdrawals_router
 from app.modules.withdrawals.staff_router import router as staff_withdrawals_router
@@ -278,6 +280,7 @@ app.include_router(withdrawals_router)
 app.include_router(staff_withdrawals_router)
 app.include_router(transactions_router)
 app.include_router(consistency_router)
+app.include_router(agent_applications_router)
 
 
 # ---------------------------------------------------------------------------
@@ -289,78 +292,77 @@ async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
     """Convert CBSError exceptions into proper HTTP JSON responses."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.code, "message": exc.message},
+        content={"detail": exc.detail},
     )
 
 
 # ---------------------------------------------------------------------------
-# Root + Health + Ready
+# Health + Root
 # ---------------------------------------------------------------------------
 
-@app.get("/")
+
+@app.get("/", tags=["health"])
 async def root() -> dict:
-    """API info."""
-    return {"name": "CBSHOME API", "version": APP_VERSION}
+    """API info endpoint."""
+    return {
+        "name": "CBSHOME API",
+        "version": APP_VERSION,
+        "status": "running",
+    }
 
 
-@app.get("/health")
-async def health() -> JSONResponse:
-    """Health check -- always returns 200.
+@app.get("/health", tags=["health"])
+async def health() -> dict:
+    """Health check -- DB + Redis."""
+    result: dict = {"status": "ok", "checks": {}}
 
-    Reports DB and Redis connectivity status.
-    """
-    db_ok = True
-    redis_ok = True
-
+    # DB check.
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception:
-        db_ok = False
+        result["checks"]["database"] = "ok"
+    except Exception as e:
+        result["status"] = "degraded"
+        result["checks"]["database"] = str(e)
 
+    # Redis check.
     try:
         redis = get_redis()
         await redis.ping()
-    except Exception:
-        redis_ok = False
+        result["checks"]["redis"] = "ok"
+    except Exception as e:
+        result["status"] = "degraded"
+        result["checks"]["redis"] = str(e)
 
-    all_ok = db_ok and redis_ok
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "ok" if all_ok else "degraded",
-            "db": "ok" if db_ok else "error",
-            "redis": "ok" if redis_ok else "error",
-        },
-    )
+    return result
 
 
-@app.get("/ready")
+@app.get("/ready", tags=["health"])
 async def ready() -> JSONResponse:
-    """Readiness probe -- 503 if any dependency is degraded."""
-    db_ok = True
-    redis_ok = True
+    """Readiness probe -- returns 503 if any dependency is down."""
+    checks: dict = {}
+    all_ok = True
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception:
-        db_ok = False
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = str(e)
+        all_ok = False
 
     try:
         redis = get_redis()
         await redis.ping()
-    except Exception:
-        redis_ok = False
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = str(e)
+        all_ok = False
 
-    all_ok = db_ok and redis_ok
+    status_code = 200 if all_ok else 503
     return JSONResponse(
-        status_code=200 if all_ok else 503,
-        content={
-            "status": "ok" if all_ok else "degraded",
-            "db": "ok" if db_ok else "error",
-            "redis": "ok" if redis_ok else "error",
-        },
+        status_code=status_code,
+        content={"status": "ok" if all_ok else "degraded", "checks": checks},
     )
