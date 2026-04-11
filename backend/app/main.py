@@ -292,77 +292,78 @@ async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
     """Convert CBSError exceptions into proper HTTP JSON responses."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"error": exc.code, "message": exc.message},
     )
 
 
 # ---------------------------------------------------------------------------
-# Health + Root
+# Root + Health + Ready
 # ---------------------------------------------------------------------------
 
-
-@app.get("/", tags=["health"])
+@app.get("/")
 async def root() -> dict:
-    """API info endpoint."""
-    return {
-        "name": "CBSHOME API",
-        "version": APP_VERSION,
-        "status": "running",
-    }
+    """API info."""
+    return {"name": "CBSHOME API", "version": APP_VERSION}
 
 
-@app.get("/health", tags=["health"])
-async def health() -> dict:
-    """Health check -- DB + Redis."""
-    result: dict = {"status": "ok", "checks": {}}
+@app.get("/health")
+async def health() -> JSONResponse:
+    """Health check -- always returns 200.
 
-    # DB check.
-    try:
-        engine = get_engine()
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        result["checks"]["database"] = "ok"
-    except Exception as e:
-        result["status"] = "degraded"
-        result["checks"]["database"] = str(e)
-
-    # Redis check.
-    try:
-        redis = get_redis()
-        await redis.ping()
-        result["checks"]["redis"] = "ok"
-    except Exception as e:
-        result["status"] = "degraded"
-        result["checks"]["redis"] = str(e)
-
-    return result
-
-
-@app.get("/ready", tags=["health"])
-async def ready() -> JSONResponse:
-    """Readiness probe -- returns 503 if any dependency is down."""
-    checks: dict = {}
-    all_ok = True
+    Reports DB and Redis connectivity status.
+    """
+    db_ok = True
+    redis_ok = True
 
     try:
         engine = get_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        checks["database"] = "ok"
-    except Exception as e:
-        checks["database"] = str(e)
-        all_ok = False
+    except Exception:
+        db_ok = False
 
     try:
         redis = get_redis()
         await redis.ping()
-        checks["redis"] = "ok"
-    except Exception as e:
-        checks["redis"] = str(e)
-        all_ok = False
+    except Exception:
+        redis_ok = False
 
-    status_code = 200 if all_ok else 503
+    all_ok = db_ok and redis_ok
     return JSONResponse(
-        status_code=status_code,
-        content={"status": "ok" if all_ok else "degraded", "checks": checks},
+        status_code=200,
+        content={
+            "status": "ok" if all_ok else "degraded",
+            "db": "ok" if db_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
+    )
+
+
+@app.get("/ready")
+async def ready() -> JSONResponse:
+    """Readiness probe -- 503 if any dependency is degraded."""
+    db_ok = True
+    redis_ok = True
+
+    try:
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+
+    try:
+        redis = get_redis()
+        await redis.ping()
+    except Exception:
+        redis_ok = False
+
+    all_ok = db_ok and redis_ok
+    return JSONResponse(
+        status_code=200 if all_ok else 503,
+        content={
+            "status": "ok" if all_ok else "degraded",
+            "db": "ok" if db_ok else "error",
+            "redis": "ok" if redis_ok else "error",
+        },
     )
