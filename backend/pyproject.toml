@@ -90,3 +90,6 @@ asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 pythonpath = ["."]
 cache_dir = "/tmp/.pytest_cache"
+filterwarnings = [
+    "ignore:A custom validator is returning a value other than `self`:UserWarning:pydantic_settings",
+]
