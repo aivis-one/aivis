@@ -130,10 +130,11 @@ async def create_withdrawal(
         status=WithdrawalStatus.PENDING,
         payout_details_snapshot=payout_snapshot,
     )
-    session.add(withdrawal)
 
     try:
-        await session.flush()
+        async with session.begin_nested():
+            session.add(withdrawal)
+            await session.flush()
     except IntegrityError as exc:
         if "uq_withdrawals_user_active" in str(exc.orig):
             raise ConflictError(

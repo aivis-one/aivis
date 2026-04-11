@@ -154,7 +154,15 @@ async def create_plan(
         else:
             due = calculate_due_date(today, number - 1)
 
-        units_unlocked = tranche_cfg["units_percent"] * total_units // 100
+        if number == len(tranches_config):
+            # Last tranche gets remainder to prevent truncation loss.
+            already_unlocked = sum(
+                tranches_config[j]["units_percent"] * total_units // 100
+                for j in range(i)
+            )
+            units_unlocked = total_units - already_unlocked
+        else:
+            units_unlocked = tranche_cfg["units_percent"] * total_units // 100
 
         tranche = InstallmentTranche(
             plan_id=plan.id,

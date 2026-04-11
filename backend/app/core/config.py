@@ -155,16 +155,24 @@ class Settings(BaseSettings):
                     "KYC_WEBHOOK_SECRET is required in production."
                 )
 
-        # -- crypto_webhook_secret (Sprint 5.2) --
-        if not self.crypto_webhook_secret:
-            if is_dev:
-                self.crypto_webhook_secret = "dev-crypto-webhook-secret"
-            else:
-                raise ValueError(
-                    "CRYPTO_WEBHOOK_SECRET is required in production."
-                )
+            # -- crypto_webhook_secret (Sprint 5.2) --
+            if not self.crypto_webhook_secret:
+                if is_dev:
+                    self.crypto_webhook_secret = "dev-crypto-webhook-secret"
+                else:
+                    raise ValueError(
+                        "CRYPTO_WEBHOOK_SECRET is required in production."
+                    )
 
-        return self
+            # -- telegram_bot_token --
+            if self.telegram_bot_token in ("", "TEST"):
+                if not is_dev:
+                    raise ValueError(
+                        "TELEGRAM_BOT_TOKEN must be set to a real token "
+                        "in production (not 'TEST')."
+                    )
+
+            return self
 
     model_config = SettingsConfigDict(
         env_file=".env",

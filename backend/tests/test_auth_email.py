@@ -148,7 +148,7 @@ async def test_login_blocked_user(
         "/api/v1/auth/email/login",
         json={"email": email, "password": "testpass123"},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 @pytest.mark.asyncio

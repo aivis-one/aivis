@@ -41,7 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.config import settings
 from app.core.database import get_session_factory
-from app.core.exceptions import ConflictError, ForbiddenError, UnauthorizedError
+from app.core.exceptions import ConflictError, UnauthorizedError
 from app.core.redis import get_redis
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
@@ -264,8 +264,7 @@ async def login_email(
     attempts are logged to structlog only (no user entity to reference).
 
     Raises:
-        UnauthorizedError: If email not found or password mismatch.
-        ForbiddenError: If user account is deactivated.
+        UnauthorizedError: If email not found, password mismatch, or account deactivated.
     """
     email_lower = email.strip().lower()
 
@@ -292,7 +291,7 @@ async def login_email(
 
     if not user.is_active:
         await _audit_login_failure(user.id, "account_deactivated")
-        raise ForbiddenError("Account is deactivated")
+        raise UnauthorizedError("Invalid email or password")
 
     await record_audit(
         session=session,
