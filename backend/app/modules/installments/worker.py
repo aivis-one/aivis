@@ -16,7 +16,7 @@
 #   Uses get_session_factory() -- same pattern as confirmation worker.
 # =============================================================================
 
-from datetime import datetime, timedelta, UTC
+from datetime import date, datetime, timedelta, UTC
 
 import structlog
 from sqlalchemy import select
@@ -48,7 +48,7 @@ async def run_installment_batch() -> None:
     await _process_defaults(today)
 
 
-async def _process_due_tranches(today) -> None:
+async def _process_due_tranches(today: date) -> None:
     """Find and pay tranches that are due today or earlier."""
     factory = get_session_factory()
 
@@ -129,7 +129,7 @@ async def _process_due_tranches(today) -> None:
     )
 
 
-async def _process_defaults(today) -> None:
+async def _process_defaults(today: date) -> None:
     """Find overdue tranches past the grace period and default their plans."""
     factory = get_session_factory()
     default_cutoff = today - timedelta(days=settings.installment_default_days)

@@ -12,6 +12,7 @@
 #   - On reject: cooldown_until = now() + AGENT_APPLICATION_COOLDOWN_DAYS.
 #   - rejection_reason is required for reject.
 #   - State machine transitions validated via constants.validate_transition().
+#   - SELECT FOR UPDATE on application to serialize concurrent staff actions.
 #   - Service never commits (P-01).
 # =============================================================================
 
@@ -66,9 +67,11 @@ async def agent_application_approve(
     # Validate state transition.
     validate_transition(application.status, AgentApplicationStatus.APPROVED)
 
+    now = datetime.now(UTC)
+
     # Update application.
     application.status = AgentApplicationStatus.APPROVED
-    application.reviewed_at = datetime.now(UTC)
+    application.reviewed_at = now
     application.reviewed_by = staff.id
 
     # Change user role to agent.
@@ -122,13 +125,15 @@ async def agent_application_reject(
     # Validate state transition.
     validate_transition(application.status, AgentApplicationStatus.REJECTED)
 
+    now = datetime.now(UTC)
+
     # Update application.
     application.status = AgentApplicationStatus.REJECTED
     application.rejection_reason = reason
-    application.cooldown_until = datetime.now(UTC) + timedelta(
+    application.cooldown_until = now + timedelta(
         days=settings.agent_application_cooldown_days
     )
-    application.reviewed_at = datetime.now(UTC)
+    application.reviewed_at = now
     application.reviewed_by = staff.id
 
     await session.flush()
@@ -164,8 +169,12 @@ async def _load_application(
     application_id: UUID,
     session: AsyncSession,
 ) -> AgentApplication:
-    """Load application by ID or raise NotFoundError."""
-    stmt = select(AgentApplication).where(AgentApplication.id == application_id)
+    """Load application by ID with FOR UPDATE or raise NotFoundError."""
+    stmt = (
+        select(AgentApplication)
+        .where(AgentApplication.id == application_id)
+        .with_for_update()
+    )
     result = await session.execute(stmt)
     application = result.scalar_one_or_none()
 

@@ -15,6 +15,8 @@
 #   10: Submit during cooldown -> 400
 #   11: Submit after cooldown expires -> 201
 #   12: Already approved user submits again -> 400 (role is agent)
+#   13: Reject already-approved application -> 400 (invalid transition)
+#   14: Approve already-rejected application -> 400 (invalid transition)
 #
 # Email prefix: "s71_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -434,3 +436,71 @@ async def test_approved_user_submits_again(
     )
     assert resp.status_code == 400
     assert "investor" in resp.json()["message"].lower()
+
+
+# ---------------------------------------------------------------------------
+# 13: Reject already-approved application
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reject_already_approved(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Reject an already-approved application -> 400 (invalid transition)."""
+    admin_token = await _admin_token(client, db_session)
+    _, inv_token = await _create_investor(client, "rejappr")
+
+    # Submit and approve.
+    submit_resp = await client.post(
+        "/api/v1/agent-applications",
+        headers=auth_headers(inv_token),
+    )
+    app_id = submit_resp.json()["id"]
+
+    await client.post(
+        f"/api/v1/staff/agent-applications/{app_id}/approve",
+        headers=auth_headers(admin_token),
+    )
+
+    # Try to reject -> invalid transition (approved is terminal).
+    resp = await client.post(
+        f"/api/v1/staff/agent-applications/{app_id}/reject",
+        json={"reason": "Changed my mind"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# 14: Approve already-rejected application
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_approve_already_rejected(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Approve an already-rejected application -> 400 (invalid transition)."""
+    admin_token = await _admin_token(client, db_session)
+    _, inv_token = await _create_investor(client, "apprrej")
+
+    # Submit and reject.
+    submit_resp = await client.post(
+        "/api/v1/agent-applications",
+        headers=auth_headers(inv_token),
+    )
+    app_id = submit_resp.json()["id"]
+
+    await client.post(
+        f"/api/v1/staff/agent-applications/{app_id}/reject",
+        json={"reason": "No"},
+        headers=auth_headers(admin_token),
+    )
+
+    # Try to approve -> invalid transition (rejected is terminal per row).
+    resp = await client.post(
+        f"/api/v1/staff/agent-applications/{app_id}/approve",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 400

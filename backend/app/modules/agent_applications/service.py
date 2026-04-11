@@ -12,12 +12,14 @@
 #   - Cooldown enforced: if latest rejected application has
 #     cooldown_until > now(), submission is blocked.
 #   - Service never commits (P-01).
+#   - begin_nested() + IntegrityError catch for concurrent submission race.
 # =============================================================================
 
 from datetime import datetime, UTC
 
 import structlog
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -82,14 +84,21 @@ async def submit_application(
                 f"Please try again later."
             )
 
-    # -- Create application --
+    # -- Create application with SAVEPOINT for race condition --
     application = AgentApplication(
         user_id=user.id,
         status=AgentApplicationStatus.PENDING,
     )
     session.add(application)
 
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            await session.flush()
+    except IntegrityError as exc:
+        if "uq_agent_applications_user_pending" in str(exc.orig):
+            raise ConflictError("Agent application already pending")
+        raise
+
     await session.refresh(application)
 
     await record_audit(
