@@ -20,6 +20,12 @@
 #     - max_depth exhausted (driven by len(agent_levels))
 #     - user is_active == False (chain broken)
 #     - role != agent (non-agent in chain skipped, chain broken)
+#     - cycle detected (seen set prevents infinite loops)
+#
+# N+1 OPTIMIZATION:
+#   First query loads investor. Each subsequent iteration reuses the
+#   previous referrer object, loading only the next referrer.
+#   Total: max_depth + 1 queries instead of 2 * max_depth.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
@@ -51,8 +57,8 @@ async def resolve_referral_code(
 ) -> UUID | None:
     """Resolve a referral code to the owning agent's UUID.
 
-    Returns None if code not found, agent inactive, or agent role changed.
-    Caller should fall back to platform_id on None.
+    Returns None if code not found, link deactivated, agent inactive,
+    or agent role changed. Caller should fall back to platform_id on None.
     """
     stmt = (
         select(ReferralLink)
@@ -63,6 +69,11 @@ async def resolve_referral_code(
 
     if link is None:
         logger.debug("referral_code_not_found", code=code)
+        return None
+
+    # Check link is active.
+    if not link.is_active:
+        logger.debug("referral_link_deactivated", code=code)
         return None
 
     # Verify agent is still valid.
@@ -79,6 +90,29 @@ async def resolve_referral_code(
         return None
 
     return link.agent_id
+
+
+# ---------------------------------------------------------------------------
+# Referral link validation
+# ---------------------------------------------------------------------------
+
+
+async def validate_referral_link_id(
+    referral_link_id: UUID,
+    session: AsyncSession,
+) -> UUID | None:
+    """Validate that a referral_link_id exists and is active.
+
+    Returns the validated UUID if valid, None otherwise.
+    Prevents analytics pollution from fabricated UUIDs.
+    """
+    stmt = select(ReferralLink.id).where(
+        ReferralLink.id == referral_link_id,
+        ReferralLink.is_active == True,  # noqa: E712
+    )
+    result = await session.execute(stmt)
+    link_id = result.scalar_one_or_none()
+    return link_id
 
 
 # ---------------------------------------------------------------------------
@@ -176,21 +210,34 @@ async def get_agent_chain(
     """Walk User.referred_by chain upward, collecting agent UUIDs.
 
     Returns list of 0..max_depth agent UUIDs: [L1, L2, L3, ...].
-    Stops when Platform is reached, max_depth exhausted, or chain broken
-    (non-agent role or inactive user).
+    Stops when Platform is reached, max_depth exhausted, cycle detected,
+    or chain broken (non-agent role or inactive user).
+
+    N+1 optimized: reuses previous referrer object as current user
+    for the next iteration. Total queries: max_depth + 1 (worst case).
     """
     chain: list[UUID] = []
-    current_id = investor_id
+    seen: set[UUID] = set()
+
+    # Load investor to get first referred_by.
+    stmt = select(User).where(User.id == investor_id)
+    result = await session.execute(stmt)
+    current = result.scalar_one_or_none()
+
+    if current is None:
+        return chain
 
     for _ in range(max_depth):
-        stmt = select(User).where(User.id == current_id)
-        result = await session.execute(stmt)
-        current_user = result.scalar_one_or_none()
+        referrer_id = current.referred_by
 
-        if current_user is None:
+        # Cycle detection.
+        if referrer_id in seen:
+            logger.warning(
+                "referral_chain_cycle_detected",
+                investor_id=str(investor_id),
+                cycle_at=str(referrer_id),
+            )
             break
-
-        referrer_id = current_user.referred_by
 
         # Load referrer.
         ref_stmt = select(User).where(User.id == referrer_id)
@@ -208,8 +255,9 @@ async def get_agent_chain(
         if referrer.role != UserRole.AGENT or not referrer.is_active:
             break
 
+        seen.add(referrer.id)
         chain.append(referrer.id)
-        current_id = referrer.id
+        current = referrer  # Reuse for next iteration (N+1 fix).
 
     return chain
 
@@ -223,17 +271,30 @@ async def create_attribution(
     purchase_id: UUID,
     referral_link_id: UUID | None,
     session: AsyncSession,
-) -> ReferralAttribution:
+) -> ReferralAttribution | None:
     """Record purchase-to-referral-link attribution.
 
     Created for every purchase. referral_link_id=None for organic.
+    purchase_id is unique -- duplicate attributions are silently skipped
+    via SAVEPOINT (begin_nested) to preserve outer transaction (P-01).
     """
     attribution = ReferralAttribution(
         purchase_id=purchase_id,
         referral_link_id=referral_link_id,
     )
-    session.add(attribution)
-    await session.flush()
+
+    try:
+        async with session.begin_nested():
+            session.add(attribution)
+            await session.flush()
+    except IntegrityError:
+        # Duplicate attribution (retry scenario) -- skip silently.
+        # Savepoint rolled back, outer transaction still valid.
+        logger.debug(
+            "referral_attribution_duplicate",
+            purchase_id=str(purchase_id),
+        )
+        return None
 
     return attribution
 

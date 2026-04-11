@@ -19,8 +19,8 @@
 #   distributed until ReferralProcessor runs.
 #
 # ROUNDING:
-#   All amounts computed via int(pct * amount_cents). Rounding errors
-#   stay on the Platform -- this is intentional and documented.
+#   All amounts computed via round(pct * amount_cents). Banker's rounding
+#   ensures fair distribution. Any sub-cent remainder stays on Platform.
 #
 # INVARIANT:
 #   SUM(entries.amount_cents) == 0 for the returned Transaction.
@@ -45,7 +45,7 @@ class PurchaseProcessor:
         amount = context.amount_cents
         dist = context.distribution_config
         company_pct = dist["company_pct"]
-        company_share = int(company_pct * amount)
+        company_share = round(company_pct * amount)
 
         # Placeholder purchase_id for reason strings.
         # Real UUID is assigned by execute_purchase() after processing.

@@ -342,10 +342,11 @@ async def pay_tranche(
         },
     )
 
-    # Sprint 7.2: record referral attribution.
-    await create_attribution(
-        sale_purchase.id, plan.referral_link_id, session
-    )
+    # Sprint 7.2: record referral attribution (one per plan, first tranche only).
+    if tranche.number == 1:
+        await create_attribution(
+            sale_purchase.id, plan.referral_link_id, session
+        )
 
     logger.info(
         "installment_tranche_paid",

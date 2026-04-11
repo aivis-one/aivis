@@ -52,7 +52,11 @@ from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.purchases import engine
-from app.modules.referrals.service import create_attribution, get_agent_chain
+from app.modules.referrals.service import (
+    create_attribution,
+    get_agent_chain,
+    validate_referral_link_id,
+)
 from app.modules.users.models import KYCStatus, User, UserRole
 
 
@@ -343,11 +347,16 @@ async def execute_purchase(
         investor_portfolio_cents=portfolio_cents,
     )
 
-    # Sprint 7.2: record referral attribution.
+    # Sprint 7.2: validate referral_link_id and record attribution.
+    validated_link_id = None
+    if referral_link_id is not None:
+        validated_link_id = await validate_referral_link_id(
+            referral_link_id, session
+        )
     sale_purchase = next(
         (p for p in purchases if p.legal_basis != "gift"), purchases[0]
     )
-    await create_attribution(sale_purchase.id, referral_link_id, session)
+    await create_attribution(sale_purchase.id, validated_link_id, session)
 
     logger.info(
         "purchase_executed",

@@ -15,7 +15,9 @@
 #
 # RULES:
 #   - ReferralLink.code is unique (partial retry on collision).
+#   - ReferralLink.is_active can be set to False to disable a link.
 #   - ReferralAttribution is immutable (no updated_at).
+#   - ReferralAttribution.purchase_id is unique (one attribution per purchase).
 #   - referral_link_id=NULL means organic purchase (no referral link used).
 #   - Agent hierarchy lives in User.referred_by, not here.
 # =============================================================================
@@ -23,7 +25,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -47,6 +49,14 @@ class ReferralLink(UUIDMixin, Base):
         nullable=False,
     )
 
+    # Allows deactivation of compromised or retired links.
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        nullable=False,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -56,7 +66,7 @@ class ReferralLink(UUIDMixin, Base):
     def __repr__(self) -> str:
         return (
             f"<ReferralLink id={self.id} agent={self.agent_id} "
-            f"code={self.code}>"
+            f"code={self.code} active={self.is_active}>"
         )
 
 
@@ -64,6 +74,7 @@ class ReferralAttribution(UUIDMixin, Base):
     """Immutable record linking a purchase to its referral source.
 
     Created for every purchase. referral_link_id=NULL for organic traffic.
+    purchase_id is unique -- one attribution per purchase.
     """
 
     __tablename__ = "referral_attributions"
@@ -71,7 +82,7 @@ class ReferralAttribution(UUIDMixin, Base):
     purchase_id: Mapped[UUID] = mapped_column(
         ForeignKey("purchases.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
+        unique=True,
     )
 
     referral_link_id: Mapped[UUID | None] = mapped_column(

@@ -20,6 +20,10 @@
 #   agent_chain=[] -> process() returns [] -> no commissions.
 #   Platform keeps full remainder. This is the organic purchase path.
 #
+# ROUNDING:
+#   All amounts computed via round(pct * amount_cents). Banker's rounding
+#   ensures fair distribution. Any sub-cent remainder stays on Platform.
+#
 # INVARIANT:
 #   Each returned Transaction has SUM(entries) = 0.
 #   One Transaction per commission level (easier to reverse individually).
@@ -55,7 +59,7 @@ class ReferralProcessor:
         for level_idx, (agent_id, pct) in enumerate(
             zip(context.agent_chain, agent_levels), start=1
         ):
-            commission_cents = int(pct * amount)
+            commission_cents = round(pct * amount)
             if commission_cents <= 0:
                 continue
 
