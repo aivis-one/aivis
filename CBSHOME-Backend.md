@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.1
+**Версия:** 2.2
 **Дата:** 11 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -1927,23 +1927,106 @@ backend/tests/
 
 ---
 
-### Sprint 7.1: Agent Application
+### ✅ Sprint 7.1: Agent Application
 
 **Цель:** Заявка на роль агента.
 
 **Задачи:**
-- [ ] `app/modules/agent_applications/models.py` — `AgentApplication`
-- [ ] `app/modules/agent_applications/service.py` — `submit_application()`, `approve()`, `reject()`
-- [ ] `POST /api/v1/agent-applications` — подать заявку (только investor)
-- [ ] `GET /api/v1/agent-applications/me` — история заявок
-- [ ] Staff: `GET /api/v1/staff/agent-applications` — очередь
-- [ ] Staff: `POST /api/v1/staff/agent-applications/{id}/approve`
-- [ ] Staff: `POST /api/v1/staff/agent-applications/{id}/reject`
-- [ ] При approve: `user.role = agent` + агентский пакет документов
-- [ ] Cooldown: `cooldown_until = now() + AGENT_APPLICATION_COOLDOWN_DAYS`
-- [ ] `tests/test_agent_applications.py` — 12 тестов
+- [x] `app/modules/agent_applications/__init__.py`
+- [x] `app/modules/agent_applications/models.py` — `AgentApplication`
+- [x] `app/modules/agent_applications/constants.py` — `AgentApplicationStatus` (StrEnum), `VALID_TRANSITIONS`, `validate_transition()`
+- [x] `app/modules/agent_applications/schemas.py` — `AgentApplicationResponse`, `AgentApplicationListResponse`, `RejectRequest`
+- [x] `app/modules/agent_applications/service.py` — `submit_application()`, `get_my_applications()`
+- [x] `app/modules/agent_applications/staff_service.py` — `agent_application_queue()`, `agent_application_approve()`, `agent_application_reject()`
+- [x] `app/modules/agent_applications/router.py` — 2 investor endpoints
+- [x] `app/modules/agent_applications/staff_router.py` — 3 staff endpoints
+- [x] `POST /api/v1/agent-applications` — подать заявку (только investor)
+- [x] `GET /api/v1/agent-applications/me` — история заявок
+- [x] Staff: `GET /api/v1/staff/agent-applications` — очередь
+- [x] Staff: `POST /api/v1/staff/agent-applications/{id}/approve`
+- [x] Staff: `POST /api/v1/staff/agent-applications/{id}/reject`
+- [x] При approve: `user.role = agent` (немедленно)
+- [x] Cooldown: `cooldown_until = now() + AGENT_APPLICATION_COOLDOWN_DAYS`
+- [x] `tests/test_agent_applications.py` — 14 тестов (12 base + 2 invalid transitions)
 
-**Критерий готовности:** Инвестор подаёт заявку. Staff одобряет/отклоняет. Роль меняется автоматически.
+**Миграции:**
+- [x] `0013_agent_applications` — таблица `agent_applications` (CHECK constraint на status, partial unique index `uq_agent_applications_user_pending`)
+
+**Модель `AgentApplication`:**
+```python
+AgentApplication:
+    id: UUID (UUIDMixin)
+    user_id: UUID             -- FK users.id, indexed
+    status: String(20)        -- CHECK: pending | approved | rejected
+    rejection_reason: Text    -- nullable
+    cooldown_until: DateTime(tz) -- nullable, set on rejection
+    reviewed_at: DateTime(tz) -- nullable
+    reviewed_by: UUID         -- FK users.id, nullable
+    created_at, updated_at    -- TimestampMixin
+```
+
+**Решения реализации:**
+- P7-01: `created_at` из `TimestampMixin` = момент подачи. Отдельного `submitted_at` нет — аналогично KYC
+- P7-02: Staff endpoints в модуле `agent_applications/` (staff_service.py, staff_router.py), не в `staff/admin_*` — паттерн из documents, companies, products, payments
+- P7-03: `begin_nested()` + `IntegrityError` catch по constraint `uq_agent_applications_user_pending` — защита от race condition при concurrent submission (P-05 паттерн)
+- P7-04: `SELECT ... FOR UPDATE` в `_load_application()` — сериализует concurrent approve/reject двумя staff одновременно
+- P7-05: Единый `datetime.now(UTC)` в approve и reject — `cooldown_until` и `reviewed_at` гарантированно совпадают
+- P7-06: Rejected — терминальный per row. Повторная подача = новая строка AgentApplication после cooldown
+- P7-07: Role guard в service: только `user.role == investor` может подать заявку
+- P7-08: `rejection_reason` обязателен при reject (Pydantic `min_length=1`)
+
+**Config (существующие настройки, добавлены ранее):**
+```
+agent_application_cooldown_days: int = 30
+```
+
+**Endpoints:**
+```
+-- Investor endpoints:
+POST /api/v1/agent-applications     -> AgentApplicationResponse      (201)
+GET  /api/v1/agent-applications/me  -> AgentApplicationListResponse  (200)
+
+-- Staff endpoints:
+GET  /api/v1/staff/agent-applications              -> list[AgentApplicationResponse]  (200)
+POST /api/v1/staff/agent-applications/{id}/approve  -> 204
+POST /api/v1/staff/agent-applications/{id}/reject   -> 204 (body: {reason})
+```
+
+**Новые audit events:**
+- `agent_application.submitted` — инвестор подал заявку
+- `agent_application.approved` — Staff одобрил, роль изменена на agent
+- `agent_application.rejected` — Staff отклонил, cooldown установлен
+
+**Результат:**
+```
+backend/app/modules/agent_applications/
+├── __init__.py
+├── constants.py        -- AgentApplicationStatus, VALID_TRANSITIONS, validate_transition()
+├── models.py           -- AgentApplication
+├── schemas.py          -- AgentApplicationResponse, AgentApplicationListResponse, RejectRequest
+├── service.py          -- submit_application, get_my_applications
+├── staff_service.py    -- agent_application_queue, approve, reject
+├── router.py           -- 2 investor endpoints
+└── staff_router.py     -- 3 staff endpoints
+
+backend/tests/
+└── test_agent_applications.py  -- 14 tests
+```
+
+**Обновлённые файлы (Sprint 7.1):**
+- `main.py` — `+agent_applications_router`, `+staff_agent_applications_router`
+- `migrations/env.py` — раскомментирован импорт `AgentApplication`
+- `tests/helpers.py` — `+AgentApplication` cleanup в `_cleanup_user_related_data()`
+- `installments/worker.py` — `+date` import, `+type annotations` restored, `+SELECT FOR UPDATE` (TD-042 fix)
+
+**Фиксы code review (Sprint 7.1):**
+- CR-71-01: `service.py` — `begin_nested()` + `IntegrityError` catch на `uq_agent_applications_user_pending` (race condition fix)
+- CR-71-02: `staff_service.py` — `SELECT FOR UPDATE` в `_load_application()` (concurrent approve/reject serialization)
+- CR-71-03: `staff_service.py` — единый `datetime.now(UTC)` в reject (было два вызова)
+- CR-71-04: `installments/worker.py` — `session.get()` → `SELECT FOR UPDATE` через `_load_tranche_for_update()` / `_load_plan_for_update()` (TD-042 fix: double-payment / double-default race condition)
+- CR-71-05: `installments/worker.py` — `from datetime import date` + type annotations `today: date` restored
+
+**Критерий готовности:** Инвестор подаёт заявку. Staff одобряет/отклоняет. Роль меняется автоматически. 235 тестов зелёные.
 
 ---
 
@@ -2274,9 +2357,16 @@ Event:
 | TD-039 | `payments/`, `ledgers/` | Partial indexes на `(status, frozen_until) WHERE status='frozen'` для confirmation daemon. При росте данных `WHERE status='frozen' AND frozen_until <= now()` будет деградировать | Before Prod | ⬜ |
 | TD-040 | `tests/conftest.py` | Тесты без транзакционной изоляции — `db_session` делает rollback в finally, но тесты с `commit()` оставляют данные. Нет SAVEPOINT-обёртки между тестами | Backlog | ⬜ |
 | TD-041 | `main.py` | CORS `allow_methods=["*"]` — избыточно для финансовой платформы. Ограничить до `["GET", "POST", "PATCH", "DELETE", "OPTIONS"]` | Before Prod | ⬜ |
-| TD-042 | `installments/worker.py` | Worker race condition: `session.get()` без `FOR UPDATE` → при горизонтальном масштабировании возможна double-payment / double-default. Single-instance VPS + status check guard пока достаточно | Before Scale | ⬜ |
-| TD-043 | `withdrawals/service.py` | Проверить необходимость `begin_nested()` в `create_withdrawal()` при concurrent создании (partial unique index может не защитить от TOCTOU) | Backlog | ⬜ |
-| TD-044 | `core/config.py` | `telegram_bot_token` не имеет production enforcement (в отличие от `kyc_webhook_secret`, `crypto_webhook_secret`). Добавить `ValueError` при пустом в prod | Before Prod | ⬜ |
+| TD-042 | `installments/worker.py` | ~~Worker race condition: `session.get()` без `FOR UPDATE`~~ → `_load_tranche_for_update()` / `_load_plan_for_update()` с `SELECT ... FOR UPDATE`. Сериализует concurrent worker instances | Before Scale | ✅ Sprint 7.1 |
+| TD-043 | `withdrawals/service.py` | Проверить необходимость `begin_nested()` в `create_withdrawal()` при concurrent создании (partial unique index может не защитить от TOCTOU). Code review #7 подтверждает | Backlog | ⬜ |
+| TD-044 | `core/config.py` | `telegram_bot_token` не имеет production enforcement (в отличие от `kyc_webhook_secret`, `crypto_webhook_secret`). Добавить `ValueError` при пустом в prod. Code review #9 подтверждает | Before Prod | ⬜ |
+| TD-045 | `processors/purchase.py` | Float-truncation в доле компании: `int(pct * amount)` теряет точность. Рассмотреть integer arithmetic или `Decimal`. Code review #4 | Backlog | ⬜ |
+| TD-046 | `installments/service.py` | Усечение units без компенсации в последнем транше: `units_percent * total_units // 100` может терять остаток. `validate_plan_config()` ловит несовпадение, но проблема архитектурная. Code review #5 | Backlog | ⬜ |
+| TD-047 | `auth/service.py` | Утечка существования аккаунта через разные коды ошибок (403 vs 401) при login. Timing-safe hash уже есть, но HTTP status отличается. Code review #8 | Before Prod | ⬜ |
+| TD-048 | `installments/service.py` | Двойная запись суммы в transaction log при завершении плана: `installment:completed` дублирует сумму уже записанную по отдельным `installment:tranche_paid`. Code review #10 | Backlog | ⬜ |
+| TD-049 | `migrations/` | Отсутствующие CHECK-ограничения в некоторых миграциях, композитные индексы для оптимизации. Code review 🟢 | Backlog | ⬜ |
+| TD-050 | `payments/webhook_router.py` | Webhook: 409 для дубликата → рассмотреть 200 (идемпотентность). `max_length` на полях вебхука. Code review 🟢 | Backlog | ⬜ |
+| TD-051 | `payments/confirmation.py` | Лимит батча в confirmation worker — без LIMIT при большом объёме frozen entries может быть long-running transaction. Code review 🟢 | Before Scale | ⬜ |
 
 ---
 
@@ -2284,4 +2374,4 @@ Event:
 
 ---
 
-*Version 2.1 | 2026-04-11 | cbshome Backend TZ — Phase 5 complete, Phase 6 complete (purchases, installments, withdrawals, transactions, consistency semaphores), TD-038 closed (KYC guard), IS-02/IS-06 N+1 fixed, worker UTC date fixed, code review 9/10 (33/38 closed), Sprint 7.1 next*
+*Version 2.2 | 2026-04-11 | cbshome Backend TZ — Phase 6 complete, Sprint 7.1 complete (agent applications, 5 endpoints, 14 tests, 1 migration), TD-042 closed (worker FOR UPDATE), 235 tests total, Sprint 7.2 next*
