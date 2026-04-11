@@ -66,7 +66,7 @@ from app.modules.referrals.models import ReferralLink, ReferralAttribution  # no
 from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout  # noqa: F401
 
 # Sprint 8.1: Notifications
-# from app.modules.notifications.models import Notification, NotificationDelivery  # noqa: F401
+from app.modules.notifications.models import Notification, NotificationDelivery  # noqa: F401
 
 # Sprint 9.1: Posts
 # from app.modules.posts.models import Post, PostDismiss, Event  # noqa: F401
@@ -95,16 +95,19 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection):
-    """Run migrations with the given connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
+    """Run migrations with a live connection."""
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_async_migrations() -> None:
-    """Run migrations in an async context."""
+    """Create async engine and run migrations."""
     connectable = create_async_engine(settings.database_url)
 
     async with connectable.connect() as connection:
@@ -113,12 +116,7 @@ async def run_async_migrations() -> None:
     await connectable.dispose()
 
 
-def run_migrations_online() -> None:
-    """Run migrations with a live connection."""
-    asyncio.run(run_async_migrations())
-
-
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    asyncio.run(run_async_migrations())

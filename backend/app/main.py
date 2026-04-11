@@ -2,31 +2,33 @@
 # CBSHOME Backend -- Application Entry Point
 # =============================================================================
 #
+# FastAPI application with lifespan-managed background daemons.
+#
 # ROUTERS:
-#   auth_router               -> /api/v1/auth/* (Sprint 1.3)
+#   auth_router               -> /api/v1/auth/* (Sprint 1.1, 1.2)
 #   users_router              -> /api/v1/users/* (Sprint 1.3)
 #   kyc_router                -> /api/v1/kyc/* (Sprint 2.1)
 #   documents_router          -> /api/v1/documents/* (Sprint 2.2)
 #   staff_documents_router    -> /api/v1/staff/documents/* (Sprint 2.2)
 #   staff_users_router        -> /api/v1/staff/users/* (Sprint 3.1)
 #   avatar_router             -> /api/v1/staff/avatar/* (Sprint 3.2)
-#   dashboard_router          -> /api/v1/staff/dashboard/* (Sprint 3.1)
-#   kyc_admin_router          -> /api/v1/staff/kyc/* (Sprint 2.1)
+#   dashboard_router          -> /api/v1/staff/dashboard/* (Sprint 3.3)
+#   kyc_admin_router          -> /api/v1/staff/kyc/* (Sprint 3.3)
 #   companies_router          -> /api/v1/companies/* (Sprint 4.1)
 #   staff_companies_router    -> /api/v1/staff/companies/* (Sprint 4.1)
 #   products_router           -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
-#   payments_router           -> /api/v1/payments/* (Sprint 5.2)
-#   payments_webhook_router   -> /api/v1/payments/crypto/* (Sprint 5.2)
+#   payments_router           -> /api/v1/payments/* (Sprint 5.1)
+#   payments_webhook_router   -> /api/v1/payments/webhooks/* (Sprint 5.2)
 #   staff_payments_router     -> /api/v1/staff/payments/* (Sprint 5.3)
-#   purchases_router          -> /api/v1/products/{id}/purchase (Sprint 6.1)
+#   purchases_router          -> /api/v1/purchases/* (Sprint 6.1)
 #   installment_create_router -> /api/v1/installments/* (Sprint 6.2)
 #   installment_query_router  -> /api/v1/installments/* (Sprint 6.2)
 #   withdrawals_router        -> /api/v1/withdrawals/* (Sprint 6.3)
 #   staff_withdrawals_router  -> /api/v1/staff/withdrawals/* (Sprint 6.3)
 #   transactions_router       -> /api/v1/transactions/* (Sprint 6.4)
 #   consistency_router        -> /api/v1/staff/consistency (Sprint 6.4)
-#   agent_applications_router -> /api/v1/agent-applications/* (Sprint 7.1)
+#   agent_applications_router -> /api/v1/agent/* (Sprint 7.1)
 #   staff_agent_applications_router -> /api/v1/staff/agent-applications/* (Sprint 7.1)
 #   referrals_router          -> /api/v1/referrals/* (Sprint 7.2)
 #   commissions_router        -> /api/v1/agent/* (Sprint 7.3)
@@ -39,6 +41,7 @@
 #   payment_confirmation_worker -- calls run_confirmation_batch() (Sprint 5.3)
 #   installment_payment_worker  -- calls run_installment_batch() (Sprint 6.2)
 #   leaderboard_worker          -- calls run_leaderboard_update() + payouts (Sprint 7.3)
+#   notification_worker         -- calls run_notification_batch() (Sprint 8.1)
 #
 # MIDDLEWARE (applied in reverse order -- outermost last):
 #   CORSMiddleware -> TraceIdMiddleware
@@ -82,6 +85,7 @@ from app.modules.installments.router import (
 )
 from app.modules.installments.worker import run_installment_batch
 from app.modules.kyc.router import router as kyc_router
+from app.modules.notifications.worker import run_notification_batch
 from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
@@ -218,6 +222,38 @@ async def _leaderboard_worker() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Notification daemon (Sprint 8.1)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_worker() -> None:
+    """Background task: process pending notifications.
+
+    Runs every NOTIFICATION_WORKER_INTERVAL_MINUTES. Each cycle:
+    1. Process pending notifications (resolve -> deliver -> rollup).
+    2. Cleanup expired delivered notifications.
+
+    Batch-first: process immediately on startup.
+    """
+    interval = settings.notification_worker_interval_minutes * 60
+    logger.info(
+        "notification_worker_started",
+        interval_minutes=settings.notification_worker_interval_minutes,
+    )
+
+    while True:
+        try:
+            await run_notification_batch()
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            logger.info("notification_worker_stopped")
+            break
+        except Exception:
+            logger.exception("notification_worker_error")
+            await asyncio.sleep(interval)
+
+
+# ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
 
@@ -241,6 +277,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _leaderboard_worker(),
         name="leaderboard_worker",
     )
+    notification_task = asyncio.create_task(
+        _notification_worker(),
+        name="notification_worker",
+    )
 
     logger.info(
         "app_started",
@@ -255,6 +295,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     confirmation_task.cancel()
     installment_task.cancel()
     leaderboard_task.cancel()
+    notification_task.cancel()
     try:
         await confirmation_task
     except asyncio.CancelledError:
@@ -265,6 +306,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         pass
     try:
         await leaderboard_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await notification_task
     except asyncio.CancelledError:
         pass
 
