@@ -76,7 +76,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-async def _get_platform_user_id(session: AsyncSession) -> UUID:
+async def get_platform_user_id(session: AsyncSession) -> UUID:
     """Return the Platform user's UUID. Cached per-request via SELECT."""
     stmt = select(User.id).where(User.role == UserRole.PLATFORM)
     result = await session.execute(stmt)
@@ -153,7 +153,7 @@ async def register_email(
     email_token = secrets.token_urlsafe(32)
 
     # Sprint 7.2: default referrer is Platform.
-    platform_id = await _get_platform_user_id(session)
+    platform_id = await get_platform_user_id(session)
 
     user = User(
         role=UserRole.INVESTOR,
@@ -341,7 +341,7 @@ async def upsert_telegram_user(
     # condition only rolls back the INSERT, not the outer transaction (P-05).
 
     # Sprint 7.2: default referrer is Platform.
-    platform_id = await _get_platform_user_id(session)
+    platform_id = await get_platform_user_id(session)
 
     lang = (telegram_user.get("language_code") or "en")[:2] or "en"
     new_user = User(

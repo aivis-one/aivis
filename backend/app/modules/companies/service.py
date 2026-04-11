@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
-from app.modules.auth.service import hash_password
+from app.modules.auth.service import hash_password, get_platform_user_id
 from app.modules.companies.constants import (
     VALID_COMPANY_STATUS_TRANSITIONS,
     validate_distribution_config,
@@ -78,6 +78,9 @@ async def create_company(
     # Validate distribution_config.
     validate_distribution_config(body.distribution_config)
 
+    # Sprint 7.2: default referrer is Platform.
+    platform_id = await get_platform_user_id(session)
+
     # Create User with role=company.
     password_hash = hash_password(body.password)
     company_user = User(
@@ -85,6 +88,7 @@ async def create_company(
         is_active=True,
         onboarding_step=OnboardingStep.ROLE_SELECTED,
         kyc_status=KYCStatus.NOT_STARTED,
+        referred_by=platform_id,
         credentials={
             "email": {
                 "email": body.email.lower().strip(),
