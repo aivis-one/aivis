@@ -11,7 +11,8 @@
 #
 # DISTRIBUTION:
 #   Each agent receives: pool_cents * (agent_volume / total_volume).
-#   Banker's rounding (round()). Any sub-cent remainder stays on Platform.
+#   Largest remainder method ensures sum(shares) == pool_cents exactly.
+#   No over-allocation or under-allocation of the pool.
 #
 # INVARIANT:
 #   Each returned Transaction has SUM(entries) = 0.
@@ -76,11 +77,29 @@ class VolumeProcessor:
             else LedgerReason.VOLUME_BONUS_QUARTERLY
         )
 
+        # Largest remainder method: guarantees sum(shares) == pool_cents.
+        raw = [
+            (agent, pool_cents * agent.volume_cents / total_volume)
+            for agent in agents_ranked
+        ]
+        floors = [(agent, int(r)) for agent, r in raw]
+        remainder = pool_cents - sum(f for _, f in floors)
+        # Sort by fractional part descending, distribute remainder cents.
+        indexed = sorted(
+            enumerate(floors),
+            key=lambda x: -(raw[x[0]][1] - x[1][1]),
+        )
+        shares: list[tuple[AgentRank, int]] = []
+        for i, (idx, (agent, floor_val)) in enumerate(indexed):
+            share = floor_val + (1 if i < remainder else 0)
+            shares.append((agent, share))
+        # Restore original order.
+        shares.sort(key=lambda x: x[0].rank)
+
         pid = "{payout_id}"
         transactions: list[Transaction] = []
 
-        for agent in agents_ranked:
-            share = round(pool_cents * agent.volume_cents / total_volume)
+        for agent, share in shares:
             if share <= 0:
                 continue
 

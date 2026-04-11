@@ -33,14 +33,14 @@ from datetime import date, datetime, UTC
 from uuid import UUID
 
 import structlog
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.config import settings
 from app.core.constants import LedgerReason
 from app.core.database import get_session_factory
-from app.modules.commissions.constants import PeriodType
+from app.modules.commissions.constants import PeriodType, current_month_start
 from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout
 from app.modules.ledgers.models import LedgerStatus, PassiveLedger
 from app.modules.ledgers.service import record_passive_ledger
@@ -58,12 +58,6 @@ _volume_processor = VolumeProcessor()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _current_month_start() -> date:
-    """First day of current month."""
-    now = datetime.now(UTC)
-    return date(now.year, now.month, 1)
 
 
 def _previous_month_start() -> date:
@@ -198,7 +192,7 @@ async def _get_total_purchases_cents(
 
 
 async def run_leaderboard_update() -> None:
-    """Refresh leaderboard snapshots for current month.
+    """Refresh leaderboard snapshots for current month and quarter.
 
     Deletes non-final snapshots and inserts fresh ones.
     """
@@ -206,42 +200,70 @@ async def run_leaderboard_update() -> None:
 
     async with factory() as session:
         try:
-            period_start = _current_month_start()
-            period_end = _next_period_start(period_start, PeriodType.MONTHLY)
             now = datetime.now(UTC)
 
-            agents = await _aggregate_agent_volumes(
-                session, period_start, period_end,
+            # -- Monthly snapshot --
+            m_start = current_month_start()
+            m_end = _next_period_start(m_start, PeriodType.MONTHLY)
+
+            agents_monthly = await _aggregate_agent_volumes(
+                session, m_start, m_end,
             )
 
-            # Delete existing non-final snapshots for current month.
             await session.execute(
                 delete(LeaderboardSnapshot).where(
                     LeaderboardSnapshot.period_type == PeriodType.MONTHLY,
-                    LeaderboardSnapshot.period_start == period_start,
+                    LeaderboardSnapshot.period_start == m_start,
                     LeaderboardSnapshot.is_final.is_(False),
                 )
             )
 
-            # Insert fresh snapshots.
-            for agent in agents:
-                snapshot = LeaderboardSnapshot(
+            for agent in agents_monthly:
+                session.add(LeaderboardSnapshot(
                     agent_id=agent.agent_id,
                     rank=agent.rank,
                     volume_cents=agent.volume_cents,
                     period_type=PeriodType.MONTHLY,
-                    period_start=period_start,
+                    period_start=m_start,
                     snapshot_at=now,
                     is_final=False,
+                ))
+
+            # -- Quarterly snapshot --
+            q_start = _current_quarter_start()
+            q_end = _next_period_start(q_start, PeriodType.QUARTERLY)
+
+            agents_quarterly = await _aggregate_agent_volumes(
+                session, q_start, q_end,
+            )
+
+            await session.execute(
+                delete(LeaderboardSnapshot).where(
+                    LeaderboardSnapshot.period_type == PeriodType.QUARTERLY,
+                    LeaderboardSnapshot.period_start == q_start,
+                    LeaderboardSnapshot.is_final.is_(False),
                 )
-                session.add(snapshot)
+            )
+
+            for agent in agents_quarterly:
+                session.add(LeaderboardSnapshot(
+                    agent_id=agent.agent_id,
+                    rank=agent.rank,
+                    volume_cents=agent.volume_cents,
+                    period_type=PeriodType.QUARTERLY,
+                    period_start=q_start,
+                    snapshot_at=now,
+                    is_final=False,
+                ))
 
             await session.commit()
 
             logger.info(
                 "leaderboard_updated",
-                period_start=period_start.isoformat(),
-                agents_count=len(agents),
+                monthly_start=m_start.isoformat(),
+                monthly_count=len(agents_monthly),
+                quarterly_start=q_start.isoformat(),
+                quarterly_count=len(agents_quarterly),
             )
 
         except Exception:
@@ -262,7 +284,7 @@ async def run_monthly_payout() -> None:
     Idempotent: skips if VolumePayout already exists for the period.
     """
     previous_start = _previous_month_start()
-    current_start = _current_month_start()
+    current_start = current_month_start()
 
     # Only trigger if we've crossed into a new month.
     if current_start == previous_start:
@@ -339,9 +361,17 @@ async def _distribute_pool(
 ) -> None:
     """Distribute volume bonus pool for a closed period.
 
-    Idempotent: checks if payout already exists before proceeding.
+    Concurrency-safe via advisory lock. Idempotent via existing check.
+    Reads agent ranking from LeaderboardSnapshot (not re-aggregated).
     """
-    # -- 1. Idempotency check --
+    # -- 0. Advisory lock -- serialize concurrent workers
+    lock_key = hash((period_type, str(period_start))) & 0x7FFFFFFFFFFFFFFF
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": lock_key},
+    )
+
+    # -- 1. Idempotency check (safe under advisory lock) --
     existing_stmt = (
         select(func.count())
         .select_from(VolumePayout)
@@ -374,9 +404,32 @@ async def _distribute_pool(
         )
         return
 
-    # -- 3. Get ranked agents --
-    agents = await _aggregate_agent_volumes(session, period_start, period_end)
-    top_agents = agents[:top_n]
+    # -- 3. Read ranked agents from snapshot (not re-aggregated) --
+    snapshot_stmt = (
+        select(LeaderboardSnapshot)
+        .where(
+            LeaderboardSnapshot.period_type == period_type,
+            LeaderboardSnapshot.period_start == period_start,
+        )
+        .order_by(LeaderboardSnapshot.rank)
+        .limit(top_n)
+    )
+    snapshot_result = await session.execute(snapshot_stmt)
+    snapshots = list(snapshot_result.scalars().all())
+
+    if not snapshots:
+        # No snapshots -- fall back to live aggregation.
+        agents = await _aggregate_agent_volumes(session, period_start, period_end)
+        top_agents = agents[:top_n]
+    else:
+        top_agents = [
+            AgentRank(
+                agent_id=s.agent_id,
+                rank=s.rank,
+                volume_cents=s.volume_cents,
+            )
+            for s in snapshots
+        ]
 
     if not top_agents:
         logger.info(
@@ -387,8 +440,6 @@ async def _distribute_pool(
         return
 
     # -- 4. Mark snapshots as final --
-    from sqlalchemy import update
-
     await session.execute(
         update(LeaderboardSnapshot)
         .where(
@@ -411,21 +462,29 @@ async def _distribute_pool(
     )
 
     # -- 7. Write VolumePayout + PassiveLedger --
+    # Build agent lookup for mapping txn -> agent data.
+    agent_map = {a.agent_id: a for a in top_agents}
+
     reason_template = (
         LedgerReason.VOLUME_BONUS_MONTHLY
         if period_type == PeriodType.MONTHLY
         else LedgerReason.VOLUME_BONUS_QUARTERLY
     )
 
-    for txn, agent in zip(transactions, top_agents):
+    # Iterate transactions (not zip with top_agents -- H-1 fix).
+    # Extract agent_id from credit entry (entries[1].user_id).
+    for txn in transactions:
+        agent_id = txn.entries[1].user_id  # Credit entry = agent.
+        agent_data = agent_map[agent_id]
+
         # Create VolumePayout record.
         payout = VolumePayout(
-            agent_id=agent.agent_id,
+            agent_id=agent_id,
             period_type=period_type,
             period_start=period_start,
-            amount_cents=abs(txn.entries[0].amount_cents),  # Platform debit = agent credit
-            rank=agent.rank,
-            volume_cents=agent.volume_cents,
+            amount_cents=txn.entries[1].amount_cents,
+            rank=agent_data.rank,
+            volume_cents=agent_data.volume_cents,
             pool_total_cents=pool_cents,
         )
         session.add(payout)

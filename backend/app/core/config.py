@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     volume_bonus_quarterly_percent: float = 1.0
     leaderboard_top_monthly: int = 20
     leaderboard_top_quarterly: int = 10
+    leaderboard_worker_interval_minutes: int = 60
 
     # -- Computed properties --
 

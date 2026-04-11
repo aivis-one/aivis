@@ -208,14 +208,13 @@ async def _leaderboard_worker() -> None:
             await run_leaderboard_update()
             await run_monthly_payout()
             await run_quarterly_payout()
-            await asyncio.sleep(3600)  # 60 minutes
+            await asyncio.sleep(settings.leaderboard_worker_interval_minutes * 60)
         except asyncio.CancelledError:
             logger.info("leaderboard_worker_stopped")
             break
         except Exception:
             logger.exception("leaderboard_worker_error")
-            # Sleep before retry to avoid tight error loop.
-            await asyncio.sleep(3600)
+            await asyncio.sleep(settings.leaderboard_worker_interval_minutes * 60)
 
 
 # ---------------------------------------------------------------------------

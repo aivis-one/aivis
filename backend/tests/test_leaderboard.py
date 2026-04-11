@@ -11,6 +11,11 @@
 #   6:  GET /agent/leaderboard -- returns ranked agents, 200
 #   7:  GET /agent/commissions/me -- returns commissions + volume bonuses
 #   8:  GET /agent/leaderboard -- investor gets 403
+#   9:  VolumeProcessor -- sum(distributed) == pool_cents exactly
+#   10: VolumeProcessor -- zero-share agent, no misalignment
+#   11: Monthly payout idempotency -- second call is no-op
+#   12: Quarterly payout -- basic distribution
+#   13: GET /agent/commissions/me -- investor gets 403
 #
 # Email prefix: "s73_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -21,7 +26,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.commissions.constants import PeriodType
@@ -496,6 +501,265 @@ async def test_leaderboard_investor_gets_403(
 
     resp = await client.get(
         "/api/v1/agent/leaderboard",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# 9: VolumeProcessor -- sum(distributed) == pool_cents exactly
+# ---------------------------------------------------------------------------
+
+
+def test_volume_processor_exact_pool_distribution() -> None:
+    """Largest remainder method: sum of all shares == pool_cents exactly."""
+    platform_id = uuid4()
+    agents = [
+        AgentRank(agent_id=uuid4(), rank=1, volume_cents=33_333),
+        AgentRank(agent_id=uuid4(), rank=2, volume_cents=33_333),
+        AgentRank(agent_id=uuid4(), rank=3, volume_cents=33_334),
+    ]
+
+    processor = VolumeProcessor()
+    transactions = processor.distribute_pool(
+        agents_ranked=agents,
+        pool_cents=10_000,
+        platform_user_id=platform_id,
+        period_type="monthly",
+    )
+
+    total_distributed = sum(
+        txn.entries[1].amount_cents for txn in transactions
+    )
+    assert total_distributed == 10_000
+
+
+# ---------------------------------------------------------------------------
+# 10: VolumeProcessor -- zero-share agent skipped, no misalignment
+# ---------------------------------------------------------------------------
+
+
+def test_volume_processor_zero_share_no_misalignment() -> None:
+    """Agent with tiny volume gets 0 share; other agents get correct amounts."""
+    platform_id = uuid4()
+    agent_big = AgentRank(agent_id=uuid4(), rank=1, volume_cents=999_999)
+    agent_tiny = AgentRank(agent_id=uuid4(), rank=2, volume_cents=1)
+
+    processor = VolumeProcessor()
+    transactions = processor.distribute_pool(
+        agents_ranked=[agent_big, agent_tiny],
+        pool_cents=100,
+        platform_user_id=platform_id,
+        period_type="monthly",
+    )
+
+    # All transactions should credit the correct agent.
+    for txn in transactions:
+        credit_entry = txn.entries[1]  # Agent credit.
+        debit_entry = txn.entries[0]   # Platform debit.
+        assert credit_entry.amount_cents == -debit_entry.amount_cents
+        assert credit_entry.amount_cents > 0
+
+
+# ---------------------------------------------------------------------------
+# 11: Monthly payout idempotency -- second call is no-op
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_monthly_payout_idempotent(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Calling run_monthly_payout twice does not create duplicate payouts."""
+    admin_tk = await _admin_token(client, db_session)
+    company_id, product_id = await _create_company_and_product(
+        client, admin_tk, suffix="lb_idem",
+    )
+
+    agent_id, _ = await _create_user(client, "agent_idem")
+    await _promote_to_agent(db_session, agent_id)
+    inv_id, _ = await _create_user(client, "inv_idem")
+    platform_id = await _get_platform_user_id(db_session)
+    await db_session.commit()
+
+    link = ReferralLink(agent_id=agent_id, code="IDEM_T1")
+    db_session.add(link)
+    await db_session.flush()
+
+    now = datetime.now(UTC)
+    if now.month == 1:
+        prev_dt = datetime(now.year - 1, 12, 15, tzinfo=UTC)
+    else:
+        prev_dt = datetime(now.year, now.month - 1, 15, tzinfo=UTC)
+
+    purchase = Purchase(
+        investor_id=inv_id,
+        product_id=product_id,
+        company_id=company_id,
+        legal_basis=PurchaseLegalBasis.SALE,
+        units=100,
+        paid_cents=50_000,
+        price_per_unit_cents=500,
+        status="active",
+    )
+    db_session.add(purchase)
+    await db_session.flush()
+
+    from sqlalchemy import update as sa_update
+    await db_session.execute(
+        sa_update(Purchase)
+        .where(Purchase.id == purchase.id)
+        .values(created_at=prev_dt)
+    )
+
+    attribution = ReferralAttribution(
+        purchase_id=purchase.id,
+        referral_link_id=link.id,
+    )
+    db_session.add(attribution)
+
+    await record_passive_ledger(
+        db_session,
+        user_id=platform_id,
+        amount_cents=1_000_000,
+        status=LedgerStatus.CONFIRMED,
+        reason="test:platform_seed_idem",
+    )
+    await db_session.commit()
+
+    from app.modules.commissions.worker import run_monthly_payout
+
+    # First call -- should create payout.
+    await run_monthly_payout()
+
+    # Second call -- should be no-op.
+    await run_monthly_payout()
+
+    # Verify only ONE payout exists.
+    db_session.expire_all()
+    stmt = select(func.count()).select_from(VolumePayout).where(
+        VolumePayout.agent_id == agent_id
+    )
+    count = (await db_session.execute(stmt)).scalar_one()
+    assert count == 1
+
+
+# ---------------------------------------------------------------------------
+# 12: Quarterly payout basic
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_quarterly_payout_basic(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """run_quarterly_payout distributes quarterly bonus pool."""
+    from app.modules.commissions.worker import (
+        _distribute_pool,
+        _current_quarter_start,
+        _previous_quarter_start,
+    )
+    from app.core.database import get_session_factory
+
+    admin_tk = await _admin_token(client, db_session)
+    company_id, product_id = await _create_company_and_product(
+        client, admin_tk, suffix="lb_q",
+    )
+
+    agent_id, _ = await _create_user(client, "agent_q")
+    await _promote_to_agent(db_session, agent_id)
+    inv_id, _ = await _create_user(client, "inv_q")
+    platform_id = await _get_platform_user_id(db_session)
+    await db_session.commit()
+
+    # Determine previous quarter dates.
+    now = datetime.now(UTC)
+    q_start = _current_quarter_start()
+    if q_start.month == 1:
+        prev_q_start = date(q_start.year - 1, 10, 1)
+    else:
+        prev_q_start = date(q_start.year, q_start.month - 3, 1)
+    prev_q_mid = datetime(prev_q_start.year, prev_q_start.month, 15, tzinfo=UTC)
+
+    link = ReferralLink(agent_id=agent_id, code="QRTR_T1")
+    db_session.add(link)
+    await db_session.flush()
+
+    purchase = Purchase(
+        investor_id=inv_id,
+        product_id=product_id,
+        company_id=company_id,
+        legal_basis=PurchaseLegalBasis.SALE,
+        units=100,
+        paid_cents=200_000,
+        price_per_unit_cents=2000,
+        status="active",
+    )
+    db_session.add(purchase)
+    await db_session.flush()
+
+    from sqlalchemy import update as sa_update
+    await db_session.execute(
+        sa_update(Purchase)
+        .where(Purchase.id == purchase.id)
+        .values(created_at=prev_q_mid)
+    )
+
+    attribution = ReferralAttribution(
+        purchase_id=purchase.id,
+        referral_link_id=link.id,
+    )
+    db_session.add(attribution)
+
+    await record_passive_ledger(
+        db_session,
+        user_id=platform_id,
+        amount_cents=5_000_000,
+        status=LedgerStatus.CONFIRMED,
+        reason="test:platform_seed_q",
+    )
+    await db_session.commit()
+
+    # Use _distribute_pool directly to test quarterly logic.
+    factory = get_session_factory()
+    async with factory() as session:
+        await _distribute_pool(
+            session=session,
+            period_type=PeriodType.QUARTERLY,
+            period_start=prev_q_start,
+            period_end=q_start,
+            bonus_percent=1.0,
+            top_n=10,
+        )
+        await session.commit()
+
+    # Verify payout.
+    db_session.expire_all()
+    stmt = select(VolumePayout).where(
+        VolumePayout.agent_id == agent_id,
+        VolumePayout.period_type == PeriodType.QUARTERLY,
+    )
+    result = await db_session.execute(stmt)
+    payouts = list(result.scalars().all())
+
+    assert len(payouts) == 1
+    assert payouts[0].amount_cents == 2_000  # 200_000 * 1% = 2_000
+
+
+# ---------------------------------------------------------------------------
+# 13: GET /agent/commissions/me -- investor gets 403
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_commissions_me_investor_gets_403(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /agent/commissions/me returns 403 for investor."""
+    _, inv_token = await _create_user(client, "inv_cm403")
+
+    resp = await client.get(
+        "/api/v1/agent/commissions/me",
         headers=auth_headers(inv_token),
     )
     assert resp.status_code == 403

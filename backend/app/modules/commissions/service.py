@@ -23,7 +23,8 @@ import structlog
 from sqlalchemy import func, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.commissions.constants import PeriodType
+from app.core.config import settings
+from app.modules.commissions.constants import PeriodType, current_month_start
 from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout
 from app.modules.commissions.schemas import (
     CommissionEntry,
@@ -47,12 +48,6 @@ _COMMISSION_RE = re.compile(
 _VOLUME_BONUS_RE = re.compile(
     r"^volume_bonus:(monthly|quarterly):([0-9a-f-]+)$"
 )
-
-
-def _get_current_month_start() -> date:
-    """Return first day of current month."""
-    now = datetime.now(UTC)
-    return date(now.year, now.month, 1)
 
 
 def _extract_name(user: User) -> str:
@@ -81,7 +76,7 @@ async def get_leaderboard(
     Returns ranked agents with names. Highlights current agent.
     Falls back to empty list if no snapshot exists yet.
     """
-    period_start = _get_current_month_start()
+    period_start = current_month_start()
 
     # Load snapshot entries with agent users.
     stmt = (
@@ -92,6 +87,7 @@ async def get_leaderboard(
             LeaderboardSnapshot.period_start == period_start,
         )
         .order_by(LeaderboardSnapshot.rank)
+        .limit(settings.leaderboard_top_monthly)
     )
     result = await session.execute(stmt)
     rows = result.all()
@@ -197,8 +193,8 @@ async def get_my_commissions(
                     _purchase, product, investor = row
                     investor_name = _extract_name(investor)
                     product_name = product.name
-            except (ValueError, Exception):
-                # Invalid UUID or missing purchase -- skip enrichment.
+            except ValueError:
+                # Invalid UUID in reason string -- skip enrichment.
                 pass
 
             items.append(CommissionEntry(
@@ -227,7 +223,7 @@ async def get_my_commissions(
                 payout = payout_result.scalar_one_or_none()
                 if payout:
                     rank = payout.rank
-            except (ValueError, Exception):
+            except ValueError:
                 pass
 
             items.append(CommissionEntry(
