@@ -61,6 +61,7 @@ from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
 from app.modules.agent_applications.router import router as agent_applications_router
 from app.modules.agent_applications.staff_router import router as staff_agent_applications_router
+from app.modules.referrals.router import router as referrals_router
 from app.modules.auth.router import router as auth_router
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
@@ -284,6 +285,7 @@ app.include_router(transactions_router)
 app.include_router(consistency_router)
 app.include_router(agent_applications_router)
 app.include_router(staff_agent_applications_router)
+app.include_router(referrals_router)
 
 
 # ---------------------------------------------------------------------------
