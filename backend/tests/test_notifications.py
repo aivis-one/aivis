@@ -559,6 +559,8 @@ async def test_process_pending_full_pipeline(
     )
     await db_session.commit()
 
+    notif_id = notif.id
+
     # Processor manages its own sessions.
     processed = await process_pending_notifications()
 
@@ -566,13 +568,13 @@ async def test_process_pending_full_pipeline(
 
     # Reload notification in our session.
     db_session.expire_all()
-    stmt = select(Notification).where(Notification.id == notif.id)
+    stmt = select(Notification).where(Notification.id == notif_id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
     assert refreshed.status == NotificationStatus.SENT
 
     stmt2 = select(NotificationDelivery).where(
-        NotificationDelivery.notification_id == notif.id
+        NotificationDelivery.notification_id == notif_id
     )
     result2 = await db_session.execute(stmt2)
     delivery = result2.scalar_one()
@@ -602,17 +604,17 @@ async def test_cleanup_expired_notifications(
     )
     await db_session.commit()
 
+    notif_id = notif.id
+
     # Processor expires it (expiry_at < now, status=pending).
     await process_pending_notifications()
 
     # Verify it's expired.
     db_session.expire_all()
-    stmt = select(Notification).where(Notification.id == notif.id)
+    stmt = select(Notification).where(Notification.id == notif_id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
     assert refreshed.status == NotificationStatus.EXPIRED
-
-    notif_id = notif.id
 
     # Cleanup should delete it.
     deleted = await cleanup_expired_notifications()
@@ -653,6 +655,8 @@ async def test_retry_processing_notification(
     notif.status = NotificationStatus.PROCESSING
     await db_session.commit()
 
+    notif_id = notif.id
+
     # Delivery is still PENDING. Processor should pick it up.
     processed = await process_pending_notifications()
 
@@ -660,14 +664,14 @@ async def test_retry_processing_notification(
 
     # Verify notification is now SENT.
     db_session.expire_all()
-    stmt = select(Notification).where(Notification.id == notif.id)
+    stmt = select(Notification).where(Notification.id == notif_id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
     assert refreshed.status == NotificationStatus.SENT
 
     # Verify delivery is SENT.
     stmt2 = select(NotificationDelivery).where(
-        NotificationDelivery.notification_id == notif.id
+        NotificationDelivery.notification_id == notif_id
     )
     result2 = await db_session.execute(stmt2)
     delivery = result2.scalar_one()
@@ -697,11 +701,12 @@ async def test_scheduled_future_not_processed(
     )
     await db_session.commit()
 
+    notif_id = notif.id
     processed = await process_pending_notifications()
 
     # Should not be processed.
     db_session.expire_all()
-    stmt = select(Notification).where(Notification.id == notif.id)
+    stmt = select(Notification).where(Notification.id == notif_id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
     assert refreshed.status == NotificationStatus.PENDING
