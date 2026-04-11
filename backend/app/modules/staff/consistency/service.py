@@ -381,33 +381,42 @@ async def is_01(session: AsyncSession) -> SemaphoreResult:
 
 async def is_02(session: AsyncSession) -> SemaphoreResult:
     """IS-02: For completed plans, SUM(units_unlocked of paid tranches) + bonus = total_units."""
-    # Get completed plans with their total_units and snapshot bonus_units.
-    plans_stmt = (
-        select(InstallmentPlan)
+    # Single query: completed plans where paid_units + bonus != total_units.
+    bonus_expr = func.coalesce(
+        InstallmentPlan.plan_config_snapshot["bonus_units"].as_integer(),
+        0,
+    )
+    mismatch_stmt = (
+        select(func.count())
+        .select_from(
+            select(InstallmentPlan.id)
+            .outerjoin(
+                InstallmentTranche,
+                (InstallmentTranche.plan_id == InstallmentPlan.id)
+                & (InstallmentTranche.status == InstallmentTrancheStatus.PAID),
+            )
+            .where(InstallmentPlan.status == InstallmentPlanStatus.COMPLETED)
+            .group_by(InstallmentPlan.id)
+            .having(
+                func.coalesce(func.sum(InstallmentTranche.units_unlocked), 0)
+                + bonus_expr
+                != InstallmentPlan.total_units
+            )
+            .subquery()
+        )
+    )
+    mismatched = (await session.execute(mismatch_stmt)).scalar_one()
+
+    count_stmt = (
+        select(func.count())
+        .select_from(InstallmentPlan)
         .where(InstallmentPlan.status == InstallmentPlanStatus.COMPLETED)
     )
-    plans_result = await session.execute(plans_stmt)
-    plans = list(plans_result.scalars().all())
-
-    mismatched = 0
-    for plan in plans:
-        # Sum units_unlocked from paid tranches.
-        units_stmt = select(
-            func.coalesce(func.sum(InstallmentTranche.units_unlocked), 0)
-        ).where(
-            InstallmentTranche.plan_id == plan.id,
-            InstallmentTranche.status == InstallmentTrancheStatus.PAID,
-        )
-        paid_units = (await session.execute(units_stmt)).scalar_one()
-
-        bonus = plan.plan_config_snapshot.get("bonus_units", 0)
-
-        if paid_units + bonus != plan.total_units:
-            mismatched += 1
+    completed_count = (await session.execute(count_stmt)).scalar_one()
 
     return _result(
         "IS-02", "critical", mismatched == 0,
-        {"completed_plans_checked": len(plans), "mismatched": mismatched},
+        {"completed_plans_checked": completed_count, "mismatched": mismatched},
     )
 
 
