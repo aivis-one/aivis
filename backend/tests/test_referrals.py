@@ -136,16 +136,16 @@ async def _create_company_and_product(
     assert resp2.status_code == 201, f"Product create failed: {resp2.text}"
     product_id = resp2.json()["id"]
 
-    # Activate product (draft -> hidden -> active).
+    # Activate product (draft -> hidden -> active via /status endpoint).
     resp3 = await client.patch(
-        f"/api/v1/staff/products/{product_id}",
+        f"/api/v1/staff/products/{product_id}/status",
         json={"status": "hidden"},
         headers=auth_headers(admin_token),
     )
     assert resp3.status_code == 200, f"Product hide failed: {resp3.text}"
 
     resp4 = await client.patch(
-        f"/api/v1/staff/products/{product_id}",
+        f"/api/v1/staff/products/{product_id}/status",
         json={"status": "active"},
         headers=auth_headers(admin_token),
     )
