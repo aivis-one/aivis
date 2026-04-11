@@ -565,7 +565,7 @@ async def test_process_pending_full_pipeline(
     assert processed >= 1
 
     # Reload notification in our session.
-    await db_session.expire_all()
+    db_session.expire_all()
     stmt = select(Notification).where(Notification.id == notif.id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
@@ -606,7 +606,7 @@ async def test_cleanup_expired_notifications(
     await process_pending_notifications()
 
     # Verify it's expired.
-    await db_session.expire_all()
+    db_session.expire_all()
     stmt = select(Notification).where(Notification.id == notif.id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
@@ -620,7 +620,7 @@ async def test_cleanup_expired_notifications(
     assert deleted >= 1
 
     # Verify it's gone.
-    await db_session.expire_all()
+    db_session.expire_all()
     stmt2 = select(Notification).where(Notification.id == notif_id)
     result2 = await db_session.execute(stmt2)
     assert result2.scalar_one_or_none() is None
@@ -659,7 +659,7 @@ async def test_retry_processing_notification(
     assert processed >= 1
 
     # Verify notification is now SENT.
-    await db_session.expire_all()
+    db_session.expire_all()
     stmt = select(Notification).where(Notification.id == notif.id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
@@ -700,7 +700,7 @@ async def test_scheduled_future_not_processed(
     processed = await process_pending_notifications()
 
     # Should not be processed.
-    await db_session.expire_all()
+    db_session.expire_all()
     stmt = select(Notification).where(Notification.id == notif.id)
     result = await db_session.execute(stmt)
     refreshed = result.scalar_one()
