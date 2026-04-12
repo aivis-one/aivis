@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.5
+**Версия:** 2.6
 **Дата:** 12 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -2446,20 +2446,116 @@ backend/tests/
 
 ---
 
-### Sprint 8.2: Email + Telegram Formatters
+### ✅ Sprint 8.2: Email + Telegram Formatters
 
 **Цель:** Реальная доставка уведомлений.
 
 **Задачи:**
-- [ ] `app/modules/notifications/templates/` — en.yaml (все типы)
-- [ ] `app/modules/notifications/template_engine.py` — SafeDict, YAML loading, language fallback
-- [ ] `app/modules/notifications/formatters.py` — `TelegramFormatter` (aiogram, send-only), `EmailFormatter` (EMAP + Mailgun fallback)
-- [ ] Lazy init: real token -> real formatter, fake -> StubFormatter
-- [ ] Permanent failure handling (bot blocked -> immediate failed, attempts не растут)
-- [ ] `POST /api/v1/staff/notifications/templates/reload` — Staff reload templates
-- [ ] `tests/test_notification_delivery.py` — 12 тестов
+- [x] `app/modules/notifications/templates/en.yaml` — шаблоны для 5 типов × 2 канала (telegram + email)
+- [x] `app/modules/notifications/template_engine.py` — SafeDict, YAML loading, language fallback, path traversal protection
+- [x] `app/modules/notifications/formatters.py` — `TelegramFormatter` (aiogram, send-only), `EmailFormatter` (SMTP primary + Mailgun fallback, high-secured domains)
+- [x] Lazy init: real token/host -> real formatter, TEST/empty -> StubFormatter
+- [x] Permanent failure handling (bot blocked -> immediate failed, attempts не растут)
+- [x] Concurrent delivery: `asyncio.gather` + `Semaphore(20)` (broadcast safety)
+- [x] `POST /api/v1/staff/notifications/templates/reload` — Staff reload templates (translation_edit permission)
+- [x] `tests/test_notification_delivery.py` — 18 тестов
+- [x] Mail server: Postfix + OpenDKIM в `install_cbshome.sh`
+- [x] Config: EMAP удалён, SMTP + Mailgun fallback, `high_secured_domains`
+- [x] Security: `_sanitize_error()`, `_mask_email()`, `lang.isalnum()` path traversal protection
+- [x] Bug fix: `config.py` validator indentation (crypto/telegram/return вынесены на верхний уровень)
 
-**Критерий готовности:** Уведомления приходят в Telegram и email.
+**Архитектура доставки:**
+```
+EmailFormatter:
+  recipient domain in high_secured_domains → Mailgun only
+  recipient domain NOT in list → SMTP → fallback Mailgun
+
+TelegramFormatter:
+  user.credentials["telegram"]["id"] → aiogram Bot.send_message()
+  403 Forbidden / chat not found → PermanentDeliveryError (no retry)
+```
+
+**Template Engine:**
+- `SafeDict` — `str.format_map()` без KeyError на отсутствующих переменных
+- YAML-шаблоны: `{type}.{channel}.{field}` (e.g. `transaction.email.subject`)
+- Language fallback: запрошенный → `en` → raw fallback string
+- `lang.isalnum()` — защита от path traversal
+- Module-level cache + staff reload endpoint
+
+**Concurrent Delivery (review fix):**
+- `asyncio.gather` + `Semaphore(20)` вместо sequential loop
+- External API calls (aiogram, aiosmtplib, httpx) идут параллельно
+- SQLAlchemy session не шарится между корутинами
+- `_DeliveryOutcome` — результат применяется к delivery объектам последовательно после gather
+- 1000 users × 30s timeout ÷ 20 concurrent = 25 мин worst case (vs 8.3 часов sequential)
+
+**Mail Server (install_cbshome.sh):**
+- Postfix: send-only, `inet_interfaces = all` (UFW блокирует 25 снаружи), Docker subnet `172.16.0.0/12` в mynetworks
+- OpenDKIM: 2048-bit DKIM key, milter integration, автогенерация + вывод TXT-записи
+- `DEBIAN_FRONTEND=noninteractive` + `debconf-set-selections` перед установкой
+- Docker: `extra_hosts: host.docker.internal:host-gateway`, `SMTP_HOST=host.docker.internal`
+
+**Config (изменения):**
+```
+# Удалено
+emap_api_key (EMAP убран полностью)
+
+# Добавлено
+smtp_host: str = "host.docker.internal"
+smtp_port: int = 25
+smtp_user: str = ""
+smtp_password: str = ""
+smtp_from_email: str = "noreply@mail.cbshome.org"
+smtp_use_tls: bool = False
+high_secured_domains: str = ""  # comma-separated
+
+# Изменено
+mailgun_domain: str = "mail.cbshome.org"  # was ""
+```
+
+**Endpoints:**
+```
+POST /api/v1/staff/notifications/templates/reload -> 204 (translation_edit permission)
+```
+
+**Результат:**
+```
+backend/app/modules/notifications/
+├── __init__.py
+├── constants.py        -- NotificationStatus, DeliveryStatus, DeliveryChannel, NotificationType, TargetType
+├── models.py           -- Notification, NotificationDelivery
+├── resolver.py         -- resolve_targets (registry pattern)
+├── formatters.py       -- ChannelFormatter, StubFormatter, TelegramFormatter, EmailFormatter, _mask_email, _sanitize_error
+├── template_engine.py  -- SafeDict, load/reload/render, YAML cache
+├── service.py          -- create, resolve, deliver (gather+semaphore), rollup, _DeliveryOutcome
+├── processor.py        -- pipeline orchestrator (per-notification session, FOR UPDATE SKIP LOCKED)
+├── staff_router.py     -- POST /templates/reload
+├── worker.py           -- run_notification_batch (calls processor)
+└── templates/
+    └── en.yaml         -- 5 types × 2 channels (telegram body, email subject+body)
+
+backend/tests/
+├── test_notifications.py          -- 18 tests (Sprint 8.1)
+└── test_notification_delivery.py  -- 18 tests (Sprint 8.2)
+```
+
+**Обновлённые файлы (Sprint 8.2):**
+- `core/config.py` — EMAP удалён, +SMTP settings, +high_secured_domains, +high_secured_domain_list property, validator indentation fix
+- `main.py` — +staff_notifications_router import + include
+- `pyproject.toml` — +aiosmtplib
+- `.env.example` — EMAP удалён, +SMTP settings, +HIGH_SECURED_DOMAINS
+- `docker-compose.yml` — +extra_hosts для app service (Docker→host Postfix)
+- `scripts/install_cbshome.sh` — EMAP удалён, +MAIL_DOMAIN, +Postfix/OpenDKIM section, +SMTP .env template
+
+**Решения реализации (Sprint 8.2):**
+- P8-09: **SMTP primary, Mailgun fallback** — собственный Postfix на хосте (не в контейнере). Docker→host через `host.docker.internal:host-gateway`. High-secured domains (немецкие провайдеры) → Mailgun напрямую
+- P8-10: **Concurrent delivery** — `asyncio.gather` + `Semaphore(20)`. Formatter.deliver() не трогает SQLAlchemy session — только внешние API calls. Результаты применяются последовательно. TD-057 для dedicated delivery worker при 10K+ юзеров
+- P8-11: **PermanentDeliveryError** — bot blocked (403), chat not found, no credentials → immediate FAILED, attempts не инкрементируются. Transient errors → retry до max_attempts
+- P8-12: **Template engine** — `str.format_map(SafeDict)`, no SSTI risk. `yaml.safe_load()`. `lang.isalnum()` prevents path traversal
+- P8-13: **Error sanitization** — `_sanitize_error()` обрезает после password/token/secret. `_mask_email()` маскирует PII в логах
+- P8-14: **Config validator fix** — crypto_webhook_secret, telegram_bot_token, return self вынесены из `if not kyc_webhook_secret` на верхний уровень. Pydantic warning устранён
+
+**Критерий готовности:** Уведомления приходят в Telegram и email. SMTP + Mailgun fallback. Postfix + OpenDKIM автоматически настраиваются при установке. 299 тестов зелёных, 0 warnings, 0 критических issues, 0 предупреждений.
 
 ---
 
@@ -2659,9 +2755,12 @@ Event:
 | TD-050 | `payments/webhook_router.py` | Webhook: 409 для дубликата → рассмотреть 200 (идемпотентность). `max_length` на полях вебхука. Code review 🟢 | Backlog | ⬜ |
 | TD-051 | `payments/confirmation.py` | Лимит батча в confirmation worker — без LIMIT при большом объёме frozen entries может быть long-running transaction. Code review 🟢 | Before Scale | ⬜ |
 | TD-052 | `referrals/service.py` | Self-referral prevention: агент теоретически может зарегистрировать второй аккаунт по своему реферальному коду и генерировать комиссии. Техническая проверка (email uniqueness) не покрывает — это антифрод бизнес-логика (multi-account detection). Code review 🟢 Sprint 7.2 | After MVP | ⬜ |
-| TD-053 | `notifications/service.py` | Channels хранятся в `action_data["_channels"]` вместо отдельной колонки. Работает, но хрупко — нет DB-level валидации. Пересмотреть при реализации Sprint 8.2 если создаст проблемы | Sprint 8.2 | ⬜ |
+| TD-053 | `notifications/service.py` | Channels хранятся в `action_data["_channels"]` вместо отдельной колонки. Пересмотрено в Sprint 8.2 — проблем не создало, оставлено as-is. Нет DB-level валидации, но channels immutable и контролируются только `create_notification()` | Backlog | ⬜ |
 | TD-054 | `notifications/processor.py` | Hard-delete в `cleanup_expired_notifications()`. Уведомления ≠ финансовые данные, structlog достаточен для audit. Рассмотреть soft-delete если потребуется аналитика по уведомлениям | Backlog | ⬜ |
-| TD-055 | `notifications/formatters.py` | Нет таймаутов для `formatter.deliver()`. StubFormatter мгновенный. При реальных formatters (Sprint 8.2) добавить `asyncio.wait_for(..., timeout=30)` | Sprint 8.2 | ⬜ |
+| TD-055 | `notifications/formatters.py` | ~~Нет таймаутов для `formatter.deliver()`~~ → `asyncio.wait_for(..., timeout=30)` в `deliver_notification()`. Concurrent delivery через `asyncio.gather` + `Semaphore(20)` | Sprint 8.2 | ✅ Sprint 8.2 |
+| TD-056 | `notifications/formatters.py` | Email обязательность: юзер без email в credentials → delivery FAILED + `PermanentDeliveryError`. Enforcement на уровне onboarding (запрет продолжения без email) — отдельный спринт | Phase 9 | ⬜ |
+| TD-057 | `notifications/service.py` | Dedicated delivery worker для масштабирования broadcast. Текущий `asyncio.gather` + `Semaphore(20)` — 25 мин worst case на 1000 юзеров. При 10K+ нужен отдельный worker с `FOR UPDATE SKIP LOCKED` на deliveries | Before Scale | ⬜ |
+| TD-058 | `commissions/worker.py` | Leaderboard `run_leaderboard_update()` без advisory lock. При multi-instance deployment возможна двойная обработка. Monthly/quarterly payout имеют advisory lock, update — нет | Before Scale | ⬜ |
 
 ---
 
@@ -2669,4 +2768,4 @@ Event:
 
 ---
 
-*Version 2.5 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Sprint 8.1 complete (notification models, processor, resolver, formatters, worker, 3 migrations 0017-0019, 18 tests), 19 migrations, TD-053..TD-055 added, 281 tests total, 0 warnings, Sprint 8.2 next*
+*Version 2.6 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 (Sprint 8.1 + 8.2) complete. Sprint 8.2: TelegramFormatter, EmailFormatter (SMTP+Mailgun), template engine, staff reload endpoint, Postfix+OpenDKIM in install script, concurrent delivery (gather+semaphore), config validator fix. 19 migrations, TD-053..TD-058 (TD-055 closed), 299 tests total, 0 warnings, Sprint 8.3 next*
