@@ -38,7 +38,9 @@ from app.modules.notifications.constants import (
     TargetType,
 )
 from app.modules.notifications.formatters import (
+    ChannelFormatter,
     PermanentDeliveryError,
+    _sanitize_error,
     get_formatter,
 )
 from app.modules.notifications.models import Notification, NotificationDelivery
@@ -54,6 +56,9 @@ _VALID_CHANNELS = frozenset(e.value for e in DeliveryChannel)
 
 # Timeout for a single formatter.deliver() call (TD-055).
 _DELIVER_TIMEOUT_SECONDS = 30
+
+# Max concurrent formatter.deliver() calls per notification (broadcast safety).
+_MAX_CONCURRENT_DELIVERIES = 20
 
 
 async def create_notification(
@@ -235,11 +240,12 @@ async def deliver_notification(
 ) -> None:
     """Deliver pending deliveries for a notification via channel formatters.
 
-    Sprint 8.2 changes:
+    Sprint 8.2:
       - Batch-loads User objects for credentials and language.
-      - Passes User to formatter.deliver().
+      - Concurrent delivery via asyncio.gather + Semaphore (max 20).
       - asyncio.wait_for with timeout (TD-055).
       - PermanentDeliveryError -> immediate FAILED, no attempts increment.
+      - Error messages sanitized to prevent credential leaks.
 
     Args:
         session: Active DB session (caller commits).
@@ -263,10 +269,13 @@ async def deliver_notification(
         u.id: u for u in user_result.scalars().all()
     }
 
+    # -- Concurrent delivery via gather + semaphore --
+    semaphore = asyncio.Semaphore(_MAX_CONCURRENT_DELIVERIES)
+    tasks = []
+
     for delivery in deliveries:
         user = users_by_id.get(delivery.user_id)
         if user is None:
-            # User deleted between resolve and deliver.
             delivery.status = DeliveryStatus.FAILED
             delivery.error_message = "User not found"
             logger.warning(
@@ -277,59 +286,98 @@ async def deliver_notification(
             continue
 
         formatter = get_formatter(delivery.channel)
+        tasks.append(
+            _deliver_single(semaphore, formatter, notification, delivery, user)
+        )
 
+    if tasks:
+        results = await asyncio.gather(*tasks)
+
+        # Apply results to delivery objects (sequential, session-safe).
+        max_attempts = settings.notification_max_delivery_attempts
+        for delivery, outcome in results:
+            if outcome.permanent:
+                delivery.status = DeliveryStatus.FAILED
+                delivery.error_message = outcome.error
+            elif outcome.success:
+                delivery.attempts += 1
+                delivery.status = DeliveryStatus.SENT
+                delivery.sent_at = datetime.now(UTC)
+            else:
+                delivery.attempts += 1
+                delivery.error_message = outcome.error
+                if delivery.attempts >= max_attempts:
+                    delivery.status = DeliveryStatus.FAILED
+
+    await session.flush()
+
+
+class _DeliveryOutcome:
+    """Result of a single delivery attempt."""
+
+    __slots__ = ("success", "permanent", "error")
+
+    def __init__(
+        self,
+        *,
+        success: bool = False,
+        permanent: bool = False,
+        error: str | None = None,
+    ) -> None:
+        self.success = success
+        self.permanent = permanent
+        self.error = error
+
+
+async def _deliver_single(
+    semaphore: asyncio.Semaphore,
+    formatter: ChannelFormatter,
+    notification: Notification,
+    delivery: NotificationDelivery,
+    user: User,
+) -> tuple[NotificationDelivery, _DeliveryOutcome]:
+    """Deliver a single notification with concurrency control.
+
+    Runs formatter.deliver() under semaphore with timeout.
+    Does NOT touch SQLAlchemy session -- only external API calls.
+    Returns (delivery, outcome) for the caller to apply to the session.
+    """
+    async with semaphore:
         try:
             success = await asyncio.wait_for(
                 formatter.deliver(notification, delivery, user),
                 timeout=_DELIVER_TIMEOUT_SECONDS,
             )
-            delivery.attempts += 1
+            return delivery, _DeliveryOutcome(success=success)
         except PermanentDeliveryError as exc:
-            # Permanent failure -- mark as failed immediately,
-            # do NOT increment attempts (no point retrying).
-            delivery.status = DeliveryStatus.FAILED
-            delivery.error_message = str(exc)[:2000]
             logger.warning(
                 "delivery_permanent_failure",
                 delivery_id=str(delivery.id),
                 channel=delivery.channel,
                 error=str(exc)[:200],
             )
-            continue
-        except asyncio.TimeoutError:
-            # Timeout -- transient, increment attempts.
-            delivery.attempts += 1
-            delivery.error_message = (
-                f"Timeout after {_DELIVER_TIMEOUT_SECONDS}s"
+            return delivery, _DeliveryOutcome(
+                permanent=True, error=_sanitize_error(exc),
             )
-            success = False
+        except asyncio.TimeoutError:
             logger.warning(
                 "delivery_timeout",
                 delivery_id=str(delivery.id),
                 channel=delivery.channel,
                 timeout=_DELIVER_TIMEOUT_SECONDS,
             )
+            return delivery, _DeliveryOutcome(
+                error=f"Timeout after {_DELIVER_TIMEOUT_SECONDS}s",
+            )
         except Exception as exc:
-            # Unexpected error -- transient, increment attempts.
-            delivery.attempts += 1
-            delivery.error_message = str(exc)[:2000]
-            success = False
             logger.exception(
                 "delivery_error",
                 delivery_id=str(delivery.id),
                 channel=delivery.channel,
             )
-
-        if success:
-            delivery.status = DeliveryStatus.SENT
-            delivery.sent_at = datetime.now(UTC)
-        elif delivery.status != DeliveryStatus.FAILED:
-            # Transient failure -- check max attempts.
-            max_attempts = settings.notification_max_delivery_attempts
-            if delivery.attempts >= max_attempts:
-                delivery.status = DeliveryStatus.FAILED
-
-    await session.flush()
+            return delivery, _DeliveryOutcome(
+                error=_sanitize_error(exc),
+            )
 
 
 async def rollup_notification(

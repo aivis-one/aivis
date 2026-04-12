@@ -58,6 +58,11 @@ def load_templates(lang: str) -> dict:
     if lang in _cache:
         return _cache[lang]
 
+    # Sanitize lang to prevent path traversal (e.g. "../../etc/passwd").
+    if not lang.isalnum():
+        logger.warning("invalid_lang_code", lang=lang)
+        lang = "en"
+
     yaml_path = _TEMPLATES_DIR / f"{lang}.yaml"
     if not yaml_path.exists():
         logger.warning("template_file_not_found", lang=lang, path=str(yaml_path))

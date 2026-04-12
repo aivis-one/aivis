@@ -231,7 +231,7 @@ class EmailFormatter:
         except Exception as smtp_exc:
             logger.warning(
                 "smtp_failed_fallback_mailgun",
-                recipient=recipient,
+                recipient=_mask_email(recipient),
                 error=str(smtp_exc)[:200],
             )
             return await self._send_mailgun(recipient, subject, body)
@@ -265,7 +265,7 @@ class EmailFormatter:
 
         await aiosmtplib.send(msg, **kwargs)
 
-        logger.info("email_sent_smtp", recipient=recipient, subject=subject)
+        logger.info("email_sent_smtp", recipient=_mask_email(recipient), subject=subject)
         return True
 
     async def _send_mailgun(
@@ -294,10 +294,10 @@ class EmailFormatter:
                 },
             )
 
-        if resp.status_code == 200:
+        if resp.status_code in (200, 202):
             logger.info(
                 "email_sent_mailgun",
-                recipient=recipient,
+                recipient=_mask_email(recipient),
                 subject=subject,
             )
             return True
@@ -315,20 +315,43 @@ class EmailFormatter:
 # ---------------------------------------------------------------------------
 
 
+def _mask_email(email: str) -> str:
+    """Mask email for logging: 'user@example.com' -> 'u***@example.com'."""
+    if "@" not in email:
+        return "***"
+    local, domain = email.rsplit("@", 1)
+    if len(local) <= 1:
+        return f"***@{domain}"
+    return f"{local[0]}***@{domain}"
+
+
+def _sanitize_error(exc: Exception) -> str:
+    """Sanitize exception message to remove potential secrets."""
+    msg = str(exc)
+    # Truncate after sensitive keywords to avoid leaking credentials.
+    for keyword in ("password", "token", "secret", "api_key", "apikey"):
+        idx = msg.lower().find(keyword)
+        if idx != -1:
+            msg = msg[:idx] + f"[{keyword} redacted]"
+            break
+    return msg[:2000]
+
+
 def _build_variables(notification: Notification) -> dict:
     """Build template variables from notification fields and action_data.
 
-    Merges title, body, and any non-internal keys from action_data.
+    action_data keys are merged first, then title/body override on top
+    to prevent action_data from overwriting core notification fields.
     """
-    variables: dict = {
-        "title": notification.title,
-        "body": notification.body,
-    }
+    variables: dict = {}
     if notification.action_data:
         for key, value in notification.action_data.items():
             # Skip internal keys (prefixed with underscore).
             if not key.startswith("_"):
                 variables[key] = value
+    # Core fields always win over action_data.
+    variables["title"] = notification.title
+    variables["body"] = notification.body
     return variables
 
 
