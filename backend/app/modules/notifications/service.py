@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Service (Sprint 8.1, fix review)
+# CBSHOME Backend -- Notification Service (Sprint 8.1 + 8.2)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -11,15 +11,18 @@
 #   deliver_notification()  -- call formatters for pending deliveries
 #   rollup_notification()   -- update Notification.status from delivery statuses
 #
-# FIX REVIEW:
-#   - create_notification validates type, target_type, channels against enums
-#   - resolve_notification is idempotent (skips if deliveries already exist)
+# SPRINT 8.2:
+#   - deliver_notification batch-loads Users for credentials + language
+#   - asyncio.wait_for timeout on formatter.deliver() (TD-055)
+#   - PermanentDeliveryError -> immediate FAILED without incrementing attempts
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
 # =============================================================================
 
+import asyncio
 from datetime import datetime, UTC
+from uuid import UUID
 
 import structlog
 from sqlalchemy import func, select
@@ -34,9 +37,13 @@ from app.modules.notifications.constants import (
     NotificationType,
     TargetType,
 )
-from app.modules.notifications.formatters import get_formatter
+from app.modules.notifications.formatters import (
+    PermanentDeliveryError,
+    get_formatter,
+)
 from app.modules.notifications.models import Notification, NotificationDelivery
 from app.modules.notifications.resolver import resolve_targets
+from app.modules.users.models import User
 
 logger = structlog.get_logger()
 
@@ -44,6 +51,9 @@ logger = structlog.get_logger()
 _VALID_TYPES = frozenset(e.value for e in NotificationType)
 _VALID_TARGET_TYPES = frozenset(e.value for e in TargetType)
 _VALID_CHANNELS = frozenset(e.value for e in DeliveryChannel)
+
+# Timeout for a single formatter.deliver() call (TD-055).
+_DELIVER_TIMEOUT_SECONDS = 30
 
 
 async def create_notification(
@@ -225,6 +235,12 @@ async def deliver_notification(
 ) -> None:
     """Deliver pending deliveries for a notification via channel formatters.
 
+    Sprint 8.2 changes:
+      - Batch-loads User objects for credentials and language.
+      - Passes User to formatter.deliver().
+      - asyncio.wait_for with timeout (TD-055).
+      - PermanentDeliveryError -> immediate FAILED, no attempts increment.
+
     Args:
         session: Active DB session (caller commits).
         notification: The notification whose deliveries to process.
@@ -236,15 +252,67 @@ async def deliver_notification(
     result = await session.execute(stmt)
     deliveries = list(result.scalars().all())
 
+    if not deliveries:
+        return
+
+    # -- Batch load users for all pending deliveries --
+    user_ids: set[UUID] = {d.user_id for d in deliveries}
+    user_stmt = select(User).where(User.id.in_(user_ids))
+    user_result = await session.execute(user_stmt)
+    users_by_id: dict[UUID, User] = {
+        u.id: u for u in user_result.scalars().all()
+    }
+
     for delivery in deliveries:
+        user = users_by_id.get(delivery.user_id)
+        if user is None:
+            # User deleted between resolve and deliver.
+            delivery.status = DeliveryStatus.FAILED
+            delivery.error_message = "User not found"
+            logger.warning(
+                "delivery_user_not_found",
+                delivery_id=str(delivery.id),
+                user_id=str(delivery.user_id),
+            )
+            continue
+
         formatter = get_formatter(delivery.channel)
-        delivery.attempts += 1
 
         try:
-            success = await formatter.deliver(notification, delivery)
-        except Exception as exc:
-            success = False
+            success = await asyncio.wait_for(
+                formatter.deliver(notification, delivery, user),
+                timeout=_DELIVER_TIMEOUT_SECONDS,
+            )
+        except PermanentDeliveryError as exc:
+            # Permanent failure -- mark as failed immediately,
+            # do NOT increment attempts (no point retrying).
+            delivery.status = DeliveryStatus.FAILED
             delivery.error_message = str(exc)[:2000]
+            logger.warning(
+                "delivery_permanent_failure",
+                delivery_id=str(delivery.id),
+                channel=delivery.channel,
+                error=str(exc)[:200],
+            )
+            continue
+        except asyncio.TimeoutError:
+            # Timeout -- transient, increment attempts.
+            delivery.attempts += 1
+            delivery.error_message = (
+                f"Timeout after {_DELIVER_TIMEOUT_SECONDS}s"
+            )
+            success = False
+            logger.warning(
+                "delivery_timeout",
+                delivery_id=str(delivery.id),
+                channel=delivery.channel,
+                timeout=_DELIVER_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            # Unexpected error -- transient, increment attempts.
+            delivery.attempts += 1
+            delivery.error_message = str(exc)[:2000]
+            success = False
             logger.exception(
                 "delivery_error",
                 delivery_id=str(delivery.id),
@@ -254,7 +322,8 @@ async def deliver_notification(
         if success:
             delivery.status = DeliveryStatus.SENT
             delivery.sent_at = datetime.now(UTC)
-        else:
+        elif delivery.status != DeliveryStatus.FAILED:
+            # Transient failure -- check max attempts.
             max_attempts = settings.notification_max_delivery_attempts
             if delivery.attempts >= max_attempts:
                 delivery.status = DeliveryStatus.FAILED

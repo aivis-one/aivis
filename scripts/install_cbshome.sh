@@ -15,9 +15,10 @@
 #   8.  Prompt for sensitive secrets (bot token, API keys)
 #   9.  Configure Nginx reverse proxy (api.cbshome.org, cbshome.org)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
-#   11. Start Docker stack -> healthcheck -> migrations -> seed Platform user
-#   12. Create `cbshome` management script -> symlink /usr/local/bin/cbshome
-#   13. Set up backup cron (4 AM daily, 7-day rotation)
+#   11. Install and configure mail server (Postfix + OpenDKIM)
+#   12. Start Docker stack -> healthcheck -> migrations -> seed Platform user
+#   13. Create `cbshome` management script -> symlink /usr/local/bin/cbshome
+#   14. Set up backup cron (4 AM daily, 7-day rotation)
 #
 # USAGE:
 #   curl -fsSL https://raw.githubusercontent.com/aivis-one/cbshome/main/scripts/install_cbshome.sh | bash
@@ -39,6 +40,7 @@ GITHUB_REPO="aivis-one/cbshome"
 DEPLOY_USER="cbshome"
 API_DOMAIN="api.cbshome.org"
 FRONTEND_DOMAIN="cbshome.org"
+MAIL_DOMAIN="mail.cbshome.org"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
 
@@ -192,6 +194,10 @@ apt-get install -y \
     dnsutils \
     software-properties-common \
     python3-certbot-nginx \
+    postfix \
+    opendkim \
+    opendkim-tools \
+    mailutils \
     > /dev/null 2>&1
 
 success "Base packages installed"
@@ -377,10 +383,16 @@ KYC_WEBHOOK_SECRET=${KYC_SECRET}
 # -- Crypto Webhook --
 CRYPTO_WEBHOOK_SECRET=${CRYPTO_SECRET}
 
-# -- Email --
-EMAP_API_KEY=PLACEHOLDER
+# -- Email (SMTP primary, Mailgun fallback) --
+SMTP_HOST=localhost
+SMTP_PORT=25
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=noreply@${MAIL_DOMAIN}
+SMTP_USE_TLS=false
 MAILGUN_API_KEY=PLACEHOLDER
-MAILGUN_DOMAIN=
+MAILGUN_DOMAIN=${MAIL_DOMAIN}
+HIGH_SECURED_DOMAINS=t-online.de,web.de,online.de,kabelmail.de,kabelbw.de,gmx.de,arcor.de
 
 # -- Crypto --
 CRYPTO_NETWORKS=TRC20,ERC20,BEP20,PoS
@@ -417,7 +429,6 @@ prompt_secret() {
 prompt_secret "TELEGRAM_BOT_TOKEN" "Telegram Bot Token"
 prompt_secret "SUMSUB_API_KEY"     "SumSub API Key (optional)"
 prompt_secret "SUMSUB_SECRET_KEY"  "SumSub Secret Key (optional)"
-prompt_secret "EMAP_API_KEY"       "EMAP API Key (optional)"
 prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (optional)"
 
 chmod 600 "$ENV_FILE"
@@ -493,6 +504,114 @@ if ! echo "$CURRENT_CRON" | grep -qF "$RENEWAL_JOB"; then
     (echo "$CURRENT_CRON"; echo "$RENEWAL_JOB") | crontab - || true
 fi
 success "SSL auto-renewal cron set (3 AM daily)"
+
+# ==============================================================================
+# MAIL SERVER (Postfix + OpenDKIM)
+# ==============================================================================
+
+section "Mail Server"
+
+DKIM_SELECTOR="cbshome"
+DKIM_DIR="/etc/opendkim/keys/${MAIL_DOMAIN}"
+
+# -- Postfix: send-only configuration --
+log "Configuring Postfix..."
+
+# Prevent interactive prompts from Postfix.
+debconf-set-selections <<< "postfix postfix/mailname string ${MAIL_DOMAIN}"
+debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+
+postconf -e "myhostname = ${MAIL_DOMAIN}"
+postconf -e "myorigin = ${MAIL_DOMAIN}"
+postconf -e "inet_interfaces = loopback-only"
+postconf -e "mydestination = localhost"
+postconf -e "mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128"
+postconf -e "relay_domains ="
+postconf -e "default_transport = smtp"
+postconf -e "smtp_tls_security_level = may"
+postconf -e "smtp_tls_loglevel = 1"
+
+# Connect Postfix to OpenDKIM milter.
+postconf -e "milter_protocol = 6"
+postconf -e "milter_default_action = accept"
+postconf -e "smtpd_milters = unix:/run/opendkim/opendkim.sock"
+postconf -e "non_smtpd_milters = unix:/run/opendkim/opendkim.sock"
+
+success "Postfix configured (send-only via localhost)"
+
+# -- OpenDKIM: generate key and configure --
+log "Configuring OpenDKIM..."
+
+mkdir -p "$DKIM_DIR"
+
+# Generate DKIM key pair if not already present.
+if [ ! -f "${DKIM_DIR}/${DKIM_SELECTOR}.private" ]; then
+    opendkim-genkey -b 2048 -d "$MAIL_DOMAIN" -D "$DKIM_DIR" \
+        -s "$DKIM_SELECTOR" -v > /dev/null 2>&1
+    success "DKIM key pair generated (2048-bit)"
+else
+    success "DKIM key pair already exists"
+fi
+
+chown -R opendkim:opendkim /etc/opendkim
+chmod 600 "${DKIM_DIR}/${DKIM_SELECTOR}.private"
+
+# OpenDKIM main config.
+cat > /etc/opendkim.conf << DKIM_CONF
+Syslog          yes
+SyslogSuccess   yes
+LogWhy          yes
+
+Mode            s
+Canonicalization relaxed/simple
+Domain          ${MAIL_DOMAIN}
+Selector        ${DKIM_SELECTOR}
+KeyFile         ${DKIM_DIR}/${DKIM_SELECTOR}.private
+
+Socket          local:/run/opendkim/opendkim.sock
+PidFile         /run/opendkim/opendkim.pid
+
+UMask           007
+UserID          opendkim
+
+OversignHeaders From
+DKIM_CONF
+
+# Ensure socket directory exists with correct permissions.
+mkdir -p /run/opendkim
+chown opendkim:postfix /run/opendkim
+chmod 750 /run/opendkim
+
+# Add postfix to opendkim group so it can access the socket.
+usermod -aG opendkim postfix
+
+# Enable and start services.
+systemctl enable opendkim > /dev/null 2>&1
+systemctl enable postfix  > /dev/null 2>&1
+systemctl restart opendkim
+systemctl restart postfix
+success "OpenDKIM + Postfix running"
+
+# -- Print DKIM DNS record for the user to add --
+echo ""
+echo -e "${YELLOW}${BOLD}ACTION REQUIRED -- Add DKIM DNS record:${NC}"
+echo ""
+echo "Type: TXT"
+echo "Name: ${DKIM_SELECTOR}._domainkey.${MAIL_DOMAIN}"
+echo "Value:"
+echo ""
+echo -e "${CYAN}"
+# Extract the public key from the .txt file generated by opendkim-genkey.
+cat "${DKIM_DIR}/${DKIM_SELECTOR}.txt"
+echo -e "${NC}"
+echo ""
+echo "Add this TXT record in your DNS settings, then verify with:"
+echo "  opendkim-testkey -d ${MAIL_DOMAIN} -s ${DKIM_SELECTOR} -vvv"
+echo ""
+echo "Press ENTER to continue..."
+read -r
+
+success "Mail server setup complete"
 
 # ==============================================================================
 # START DOCKER STACK
@@ -823,10 +942,13 @@ case_backup() {
     echo "Creating backup..."
 
     # Dump database.
-    docker compose exec -T postgres pg_dump         -U cbshome cbshome > "/tmp/cbshome_db_${TIMESTAMP}.sql"
+    docker compose exec -T postgres pg_dump \
+        -U cbshome cbshome > "/tmp/cbshome_db_${TIMESTAMP}.sql"
 
     # Archive DB dump + .env.
-    tar -czf "$BACKUP_FILE"         -C /tmp "cbshome_db_${TIMESTAMP}.sql"         -C "$COMPOSE_DIR/backend" ".env"
+    tar -czf "$BACKUP_FILE" \
+        -C /tmp "cbshome_db_${TIMESTAMP}.sql" \
+        -C "$COMPOSE_DIR/backend" ".env"
 
     rm -f "/tmp/cbshome_db_${TIMESTAMP}.sql"
 
@@ -1051,6 +1173,8 @@ echo -e "${YELLOW}NEXT STEPS:${NC}"
 echo "1. Edit $INSTALL_BASE/repo/backend/.env"
 echo "   -- Set TELEGRAM_BOT_TOKEN (if not done)"
 echo "   -- Set SUMSUB_API_KEY / SUMSUB_SECRET_KEY"
-echo "   -- Set EMAP_API_KEY / MAILGUN_API_KEY"
-echo "2. Run: cbshome restart app"
+echo "   -- Set MAILGUN_API_KEY (if not done)"
+echo "2. Add DKIM DNS record (printed above during mail setup)"
+echo "3. Verify DKIM: opendkim-testkey -d ${MAIL_DOMAIN} -s cbshome -vvv"
+echo "4. Run: cbshome restart app"
 echo ""

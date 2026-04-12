@@ -57,10 +57,16 @@ class Settings(BaseSettings):
     # In production, replace with SumSub signature validation.
     kyc_webhook_secret: str = ""
 
-    # -- Email (EMAP primary, Mailgun fallback) --
-    emap_api_key: str = "TEST"
+    # -- Email (SMTP primary, Mailgun fallback) --
+    smtp_host: str = "localhost"
+    smtp_port: int = 25
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@mail.cbshome.org"
+    smtp_use_tls: bool = False
     mailgun_api_key: str = "TEST"
-    mailgun_domain: str = ""
+    mailgun_domain: str = "mail.cbshome.org"
+    high_secured_domains: str = ""
 
     # -- Crypto payments --
     crypto_networks: str = "TRC20,ERC20,BEP20,PoS"
@@ -112,6 +118,11 @@ class Settings(BaseSettings):
     def crypto_network_list(self) -> list[str]:
         """Parsed list of crypto networks from comma-separated string."""
         return [n.strip() for n in self.crypto_networks.split(",") if n.strip()]
+
+    @property
+    def high_secured_domain_list(self) -> list[str]:
+        """Parsed list of high-secured email domains (Mailgun-only delivery)."""
+        return [d.strip().lower() for d in self.high_secured_domains.split(",") if d.strip()]
 
     @model_validator(mode="after")
     def _validate(self) -> "Settings":

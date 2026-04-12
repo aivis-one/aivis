@@ -1,0 +1,85 @@
+# =============================================================================
+# CBSHOME Backend -- Notification Templates (English)
+# =============================================================================
+#
+# Structure: {notification_type}.{channel}.{field}
+#   telegram: body only (plain text, Telegram MarkdownV2 not used for safety)
+#   email:    subject + body (plain text, HTML templates are future scope)
+#
+# Variables use Python str.format_map syntax: {variable_name}
+# SafeDict ensures missing variables render as "{variable_name}" not KeyError.
+#
+# Sprint 8.2
+# =============================================================================
+
+system:
+  telegram:
+    body: "{title}\n\n{body}"
+  email:
+    subject: "CBSHOME: {title}"
+    body: |
+      {title}
+
+      {body}
+
+      --
+      CBSHOME Platform
+
+transaction:
+  telegram:
+    body: "Transaction: {title}\n\n{body}\n\nAmount: ${amount}"
+  email:
+    subject: "CBSHOME Transaction: {title}"
+    body: |
+      {title}
+
+      {body}
+
+      Amount: ${amount}
+
+      --
+      CBSHOME Platform
+
+commission:
+  telegram:
+    body: "Commission earned!\n\n{body}\n\nAmount: ${amount}"
+  email:
+    subject: "CBSHOME: Commission Earned"
+    body: |
+      {title}
+
+      {body}
+
+      Commission amount: ${amount}
+
+      --
+      CBSHOME Platform
+
+news:
+  telegram:
+    body: "{title}\n\n{body}"
+  email:
+    subject: "CBSHOME News: {title}"
+    body: |
+      {title}
+
+      {body}
+
+      --
+      CBSHOME Platform
+
+installment:
+  telegram:
+    body: "Installment update: {title}\n\n{body}\n\nAmount: ${amount}\nDue: {due_date}"
+  email:
+    subject: "CBSHOME Installment: {title}"
+    body: |
+      {title}
+
+      {body}
+
+      Amount due: ${amount}
+      Due date: {due_date}
+
+      --
+      CBSHOME Platform

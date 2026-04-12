@@ -32,6 +32,7 @@
 #   staff_agent_applications_router -> /api/v1/staff/agent-applications/* (Sprint 7.1)
 #   referrals_router          -> /api/v1/referrals/* (Sprint 7.2)
 #   commissions_router        -> /api/v1/agent/* (Sprint 7.3)
+#   staff_notifications_router -> /api/v1/staff/notifications/* (Sprint 8.2)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -85,6 +86,7 @@ from app.modules.installments.router import (
 )
 from app.modules.installments.worker import run_installment_batch
 from app.modules.kyc.router import router as kyc_router
+from app.modules.notifications.staff_router import router as staff_notifications_router
 from app.modules.notifications.worker import run_notification_batch
 from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
@@ -379,6 +381,7 @@ app.include_router(agent_applications_router)
 app.include_router(staff_agent_applications_router)
 app.include_router(referrals_router)
 app.include_router(commissions_router)
+app.include_router(staff_notifications_router)
 
 
 # ---------------------------------------------------------------------------
