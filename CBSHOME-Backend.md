@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.7
+**Версия:** 2.8
 **Дата:** 12 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -2745,17 +2745,93 @@ backend/tests/
 
 ---
 
-### Sprint 9.2: Dashboard + Portfolio Endpoints
+### ✅ Sprint 9.2: Dashboard + Portfolio + Certificates
 
-**Цель:** Агрегированные данные для главного экрана.
+**Цель:** Агрегированные данные для главного экрана + сертификаты покупок.
 
 **Задачи:**
-- [ ] `GET /api/v1/dashboard/summary` — виджет портфеля (активы, суммы, по компаниям)
-- [ ] `GET /api/v1/portfolio/me` — детальный портфель инвестора
-- [ ] `GET /api/v1/portfolio/me/company/{id}` — позиция по компании (количество акций, средняя цена, история)
-- [ ] `tests/test_dashboard.py` — 8 тестов
+- [x] `app/modules/dashboard/` — модуль Dashboard (schemas, service, router)
+- [x] `app/modules/portfolio/` — модуль Portfolio (schemas, service, router)
+- [x] `app/modules/purchases/certificate_service.py` — генерация HTML/PDF сертификатов
+- [x] `app/modules/purchases/certificate_router.py` — 2 endpoints (view + email)
+- [x] `app/modules/purchases/templates/certificate.html` — Jinja2 шаблон
+- [x] `app/core/email.py` — утилита отправки email (извлечено из formatters.py)
+- [x] `tests/test_dashboard.py` — 11 тестов
+- [x] Refactor: `notifications/formatters.py` — EmailFormatter делегирует в `core/email.py`
+- [x] `pyproject.toml` — +jinja2, +xhtml2pdf
+- [x] `Dockerfile` — +gcc/pkg-config/libcairo2-dev (builder), +libcairo2 (runtime)
 
-**Критерий готовности:** Фронт получает данные для Dashboard и портфеля.
+**Dashboard endpoint:**
+- `GET /api/v1/dashboard/summary` — active_balance (frozen/confirmed), passive_balance (frozen/confirmed), total_invested_cents, total_units, current_value_cents, companies_count, companies[] (company_id, company_name, logo_url, total_units, invested_cents, current_value_cents)
+
+**Portfolio endpoints:**
+- `GET /api/v1/portfolio/me` — позиции по компаниям (company_id, company_name, logo_url, total_units, sale_units, gift_units, total_paid_cents, avg_price_cents, current_price_cents, current_value_cents, purchases_count). Без пагинации (компаний мало), сортировка по current_value DESC
+- `GET /api/v1/portfolio/me/company/{id}` — flat aggregate + пагинированный список purchases (id, product_id, legal_basis, units, paid_cents, price_per_unit_cents, status, created_at)
+
+**Certificate endpoints:**
+- `GET /api/v1/purchases/{id}/certificate` — HTML-страница сертификата (Content-Type: text/html). Фронт показывает в iframe, пользователь сохраняет как PDF через Ctrl+P
+- `POST /api/v1/purchases/{id}/certificate/email` — генерирует PDF (xhtml2pdf), отправляет на email инвестора через SMTP/Mailgun. Rate-limited per user
+
+**Endpoints:**
+```
+GET  /api/v1/dashboard/summary                  -> DashboardSummaryResponse  (200)
+GET  /api/v1/portfolio/me                        -> PortfolioResponse         (200)
+GET  /api/v1/portfolio/me/company/{id}           -> CompanyPositionDetailResponse (200)
+GET  /api/v1/purchases/{id}/certificate          -> HTMLResponse              (200)
+POST /api/v1/purchases/{id}/certificate/email    -> 204
+```
+
+**Результат:**
+```
+backend/app/core/
+└── email.py                -- send_smtp, send_mailgun, build_message, send_email, mask_email
+
+backend/app/modules/dashboard/
+├── __init__.py
+├── schemas.py              -- BalanceResponse, CompanySummaryResponse, DashboardSummaryResponse
+├── service.py              -- get_dashboard_summary (ledger balances + purchase aggregation)
+└── router.py               -- 1 endpoint (investor_dashboard_router)
+
+backend/app/modules/portfolio/
+├── __init__.py
+├── schemas.py              -- CompanyPositionResponse, PortfolioResponse, PurchaseItemResponse, CompanyPositionDetailResponse
+├── service.py              -- get_portfolio, get_company_position (conditional SUM, case expressions)
+└── router.py               -- 2 endpoints (portfolio_router)
+
+backend/app/modules/purchases/
+├── certificate_service.py  -- load_certificate_data (single JOIN), render_certificate_html, generate_certificate_pdf, send_certificate_email
+├── certificate_router.py   -- 2 endpoints (certificate_router)
+└── templates/
+    └── certificate.html    -- Jinja2 шаблон (A4 landscape, заглушки для seal/signature)
+
+backend/tests/
+└── test_dashboard.py       -- 11 tests
+```
+
+**Обновлённые файлы (Sprint 9.2):**
+- `notifications/formatters.py` — рефакторинг: `_send_smtp`, `_send_mailgun`, `_mask_email` извлечены в `core/email.py`. EmailFormatter делегирует, сохраняя __init__ params (тесты не сломаны)
+- `pyproject.toml` — +`jinja2>=3.1.0,<4.0`, +`xhtml2pdf>=0.2.13,<1.0`
+- `Dockerfile` — builder: +gcc, pkg-config, libcairo2-dev (для pycairo). runtime: +libcairo2
+- `main.py` — +investor_dashboard_router, +portfolio_router, +certificate_router
+
+**Решения реализации (Sprint 9.2):**
+- P9-20: **Два модуля** — dashboard и portfolio разделены (разные экраны на фронте, разная скорость изменений). Оба read-only, без миграций
+- P9-21: **avg_price_cents** — `round(SUM(paid_cents) / SUM(units WHERE legal_basis='sale'))`. Gift units не участвуют. Если sale_units=0 → avg_price=0. Banker's rounding для точности
+- P9-22: **current_value_cents** — `total_units × company.price_per_unit_cents` (текущая цена компании, не цена покупки). JOIN с CompanyProfile в каждом запросе
+- P9-23: **Доступ без проверки роли** — `get_current_user` без role guard. Агенты тоже могут иметь покупки. Пустой портфель → пустой ответ, не 403
+- P9-24: **Сертификат HTML** — Jinja2 с `autoescape=True` (XSS protection). xhtml2pdf для PDF (CSS 2.1, без системных зависимостей кроме libcairo2). Заглушки для печати/подписи компании (будут при доработке CompanyProfile)
+- P9-25: **Два endpoint для сертификата** — GET возвращает HTML (браузер → Ctrl+P → PDF), POST отправляет PDF на email. Серверная генерация PDF только для email (не на каждый просмотр)
+- P9-26: **core/email.py рефакторинг** — SMTP/Mailgun логика извлечена из EmailFormatter для переиспользования. `send_email()` — convenience wrapper читающий settings. EmailFormatter вызывает `send_smtp()`/`send_mailgun()` с явным конфигом (тесты сохранены)
+- P9-27: **Certificate rate limit** — `check_rate_limit(f"cert_email:{user.id}")` на POST endpoint. Тот же Redis Lua script что и auth (5 req / 60s per user)
+- P9-28: **Single JOIN в load_certificate_data** — `select(Purchase, User, CompanyProfile, Product).join(...).join(...).join(...)` вместо 4 последовательных SELECT
+- P9-29: **CertificateData без User** — хранит `investor_name: str` и `investor_email: str | None` вместо полного User объекта. Credentials (password_hash) не задерживаются в памяти
+- P9-30: **Avatar compatibility** — `get_current_user` возвращает target user в avatar mode. Проверка `purchase.investor_id == user_id` работает автоматически. Не нужен отдельный avatar guard
+
+**Критерий готовности:** Фронт получает данные для Dashboard и портфеля. Инвестор просматривает сертификат в HTML и получает PDF на email. 330 тестов зелёных, 0 warnings, 0 критических issues, 0 предупреждений.
+
+---
+
+**Phase 9 завершена.** 16 endpoints (11 posts/events + 5 dashboard/portfolio/certificate), 23 теста Phase 9 (+307 Phase 0-8 = 330 total), 1 миграция (итого 22). CMS (posts/events), investor dashboard, portfolio, certificates (HTML+PDF+email), core/email.py refactor.
 
 ---
 
@@ -2772,7 +2848,6 @@ backend/tests/
 - [ ] `app/modules/ai_trainer/interface.py` — `AITrainerProtocol`
 - [ ] `app/modules/payments/providers/interface.py` — `PaymentProviderProtocol` (fiat)
 - [ ] `app/modules/auto_translate/interface.py` — `AutoTranslateProtocol`
-- [ ] `app/modules/certificates/interface.py` — `CertificateServiceProtocol`
 - [ ] `GET /api/v1/transactions/export` — заглушка (501 Not Implemented)
 
 **Критерий готовности:** Все интерфейсы определены. Вызов любой заглушки возвращает корректный stub-ответ.
@@ -2812,7 +2887,7 @@ backend/tests/
 | TD-007 | `tests/` | Cleanup fixtures через ORM вместо raw SQL | Backlog | ⬜ |
 | TD-008 | Все роутеры | Rate limiting (slowapi) | Before Prod | ⬜ |
 | TD-009 | `transactions/` | Экспорт в CSV/XLSX | Phase 2 | ⬜ |
-| TD-010 | `certificates/` | PDF генерация сертификатов | Phase 2 | ⬜ |
+| TD-010 | `purchases/` | ~~PDF генерация сертификатов~~ → HTML-просмотр + PDF-генерация (xhtml2pdf) + email отправка. `core/email.py` для SMTP/Mailgun, rate limit на email endpoint | Phase 2 | ✅ Sprint 9.2 |
 | TD-011 | `app/core/database.py` | Lazy singleton race condition при concurrent startup — теоретический, asyncio single-threaded, но задокументировать | Backlog | ⬜ |
 | TD-012 | `audit_log` | Партиционирование по `created_at` (range partitioning) для long-term performance | Before Prod | ⬜ |
 | TD-013 | `app/modules/ledgers/models.py` | LedgerMixin: вынести общие поля ActiveLedger/PassiveLedger в `_LedgerBase` (Abstract) | Backlog | ⬜ |
@@ -2868,4 +2943,4 @@ backend/tests/
 
 ---
 
-*Version 2.7 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 complete, Phase 9 (Sprint 9.1) complete. Sprint 8.3: Notification REST endpoints (read_at, inbox index, _channels filter). Sprint 9.1: Posts+Events CMS (soft delete, content_manage, SAVEPOINT dismiss, URL/tag/date validation, optional auth). 22 migrations, TD-053..TD-058 (TD-055 closed), 319 tests total, 0 warnings, Sprint 9.2 next*
+*Version 2.8 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 complete, Phase 9 complete. Sprint 9.2: Dashboard+Portfolio+Certificates (core/email.py refactor, xhtml2pdf, Jinja2 templates, rate limit, single JOIN). 22 migrations, TD-010 closed, TD-053..TD-058 (TD-055 closed), 330 tests total, 0 warnings, Phase 10 next*
