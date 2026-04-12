@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Constants (Sprint 3.1, updated Sprint 4.1)
+# CBSHOME Backend -- Staff Constants (Sprint 3.1, updated Sprint 4.1, 9.1)
 # =============================================================================
 #
 # DEFAULT_STAFF_PERMISSIONS:
@@ -20,6 +20,9 @@
 #   and roadmap items. Financial operations on companies (create,
 #   price change, distribution_config update) also require
 #   financial_operations permission.
+#
+# Sprint 9.1:
+#   Added content_manage permission. Controls CRUD on posts and events.
 # =============================================================================
 
 # Default permissions for newly created staff.
@@ -33,6 +36,7 @@ DEFAULT_STAFF_PERMISSIONS: dict[str, bool] = {
     "agent_application_review": True,
     "translation_edit": False,
     "company_manage": True,
+    "content_manage": True,
 }
 
 # All valid permission keys. Used for request validation.
