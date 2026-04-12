@@ -1,10 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Transaction Router (Sprint 6.4)
+# CBSHOME Backend -- Transaction Router (Sprint 6.4, Sprint 10.1)
 # =============================================================================
 #
 # ENDPOINTS:
-#   GET /api/v1/transactions      -- paginated event log with filters
-#   GET /api/v1/transactions/{id} -- single event details
+#   GET /api/v1/transactions        -- paginated event log with filters
+#   GET /api/v1/transactions/export -- stub (501 Not Implemented) Sprint 10.1
+#   GET /api/v1/transactions/{id}   -- single event details
 #
 # AUTH:
 #   All endpoints require authenticated user. Each user sees only
@@ -23,10 +24,11 @@
 # =============================================================================
 
 from datetime import datetime
+from typing import Never
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
@@ -76,6 +78,23 @@ async def list_user_transactions(
         page=page,
         per_page=per_page,
     )
+
+
+# ---------------------------------------------------------------------------
+# Export stub (Sprint 10.1) -- must be BEFORE /{transaction_id} to avoid
+# FastAPI matching "export" as a UUID path parameter.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/export")
+async def export_transactions(
+    user: User = Depends(get_current_user),
+) -> Never:
+    """Export transaction history as CSV/XLSX (stub).
+
+    Not implemented in MVP. See TD-009 for Phase 2 implementation.
+    """
+    raise HTTPException(status_code=501, detail="Not Implemented")
 
 
 @router.get(
