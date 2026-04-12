@@ -8,8 +8,8 @@
 #   3:  GET /dashboard/summary -- two companies, companies list
 #   4:  GET /dashboard/summary -- unauthorized -> 401
 #   5:  GET /portfolio/me -- empty -> empty positions
-#   6:  GET /portfolio/me -- sale + gift -> correct avg_price
-#   7:  GET /portfolio/me/company/{id} -- aggregate + paginated purchases
+#   6:  GET /portfolio/me -- sale purchase -> correct avg_price
+#   7:  GET /portfolio/me/company/{id} -- flat aggregate + paginated purchases
 #   8:  GET /portfolio/me/company/{id} -- no purchases -> 404
 #   9:  GET /purchases/{id}/certificate -- 200 HTML with investor name
 #   10: GET /purchases/{id}/certificate -- other user -> 404
@@ -274,14 +274,13 @@ async def test_dashboard_summary_with_purchase(
     # 50 units * 10000 cents = 500_000 invested.
     assert body["total_invested_cents"] == 500_000
     assert body["total_units"] == 50
-    # current_value = units * company current price.
     assert body["current_value_cents"] == 50 * 10000
     assert body["companies_count"] == 1
     assert len(body["companies"]) == 1
 
     co = body["companies"][0]
     assert co["company_id"] == company["id"]
-    assert co["company_name"] == f"Test Company co1"
+    assert co["company_name"] == "Test Company co1"
     assert co["total_units"] == 50
     assert co["invested_cents"] == 500_000
 
@@ -364,7 +363,6 @@ async def test_portfolio_me_empty(
     assert resp.status_code == 200
     body = resp.json()
     assert body["positions"] == []
-    assert body["total_positions"] == 0
 
 
 @pytest.mark.asyncio
@@ -388,14 +386,14 @@ async def test_portfolio_me_with_avg_price(
     assert resp.status_code == 200
     body = resp.json()
 
-    assert body["total_positions"] == 1
+    assert len(body["positions"]) == 1
     pos = body["positions"][0]
     assert pos["company_id"] == company["id"]
     assert pos["total_units"] == 100
     assert pos["sale_units"] == 100
     assert pos["gift_units"] == 0
     assert pos["total_paid_cents"] == 100 * 10000
-    # avg_price = SUM(paid_cents) / SUM(sale_units) = 1_000_000 / 100 = 10000.
+    # avg_price = SUM(paid_cents) / SUM(sale_units) = 1_000_000 / 100.
     assert pos["avg_price_cents"] == 10000
     assert pos["current_price_cents"] == 10000
     assert pos["current_value_cents"] == 100 * 10000
@@ -406,7 +404,7 @@ async def test_portfolio_me_with_avg_price(
 async def test_portfolio_company_detail(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Portfolio company detail -> aggregate + paginated purchases."""
+    """Portfolio company detail -> flat aggregate + paginated purchases."""
     admin_token = await _admin_token(client, db_session)
     inv_token, inv_id, company, product, purchases = (
         await _setup_company_product_purchase(
@@ -423,20 +421,21 @@ async def test_portfolio_company_detail(
     assert resp.status_code == 200
     body = resp.json()
 
-    # Position aggregate.
-    pos = body["position"]
-    assert pos["company_id"] == company["id"]
-    assert pos["total_units"] == 50
-    assert pos["current_price_cents"] == 20000
+    # Flat position fields (no nested "position" object).
+    assert body["company_id"] == company["id"]
+    assert body["total_units"] == 50
+    assert body["current_price_cents"] == 20000
 
-    # Paginated purchases.
-    assert body["total_purchases"] >= 1
+    # Paginated purchases (field is "total", not "total_purchases").
+    assert body["total"] >= 1
     assert len(body["purchases"]) >= 1
     assert body["page"] == 1
 
+    # PurchaseItemResponse has no product_name.
     p = body["purchases"][0]
     assert p["units"] == 50
-    assert p["product_name"] == "Test Package"
+    assert "id" in p
+    assert "legal_basis" in p
 
 
 @pytest.mark.asyncio
