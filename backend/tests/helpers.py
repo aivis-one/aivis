@@ -60,6 +60,11 @@
 # Sprint 8.1:
 #   _cleanup_user_related_data() extended with NotificationDelivery + Notification cleanup.
 #   Deliveries first (FK to notifications.id), then notifications.
+#
+# Sprint 9.1:
+#   _cleanup_user_related_data() extended with PostDismiss + Post + Event cleanup.
+#   Dismissals first (FK to posts.id), then posts by created_by, then posts
+#   by owner_id (inside company block), then events by created_by.
 # =============================================================================
 
 import hashlib
@@ -378,10 +383,30 @@ async def _cleanup_user_related_data(
     from app.modules.ledgers.models import ActiveLedger, PassiveLedger
     from app.modules.notifications.models import Notification, NotificationDelivery
     from app.modules.payments.models import CryptoAddress, Payment
+    from app.modules.posts.models import Event, Post, PostDismiss
     from app.modules.products.models import Product, ProductInstallment
     from app.modules.purchases.models import Purchase
     from app.modules.transactions.models import Transaction
     from app.modules.withdrawals.models import Withdrawal
+
+    # Sprint 9.1: Post dismissals, posts, events (FK to users.id RESTRICT).
+    # Dismissals by user (CASCADE, but explicit for safety).
+    await session.execute(
+        delete(PostDismiss).where(PostDismiss.user_id.in_(user_ids))
+    )
+    # Dismissals for posts created by these users.
+    user_post_ids = select(Post.id).where(Post.created_by.in_(user_ids))
+    await session.execute(
+        delete(PostDismiss).where(PostDismiss.post_id.in_(user_post_ids))
+    )
+    # Posts created by these users (created_by RESTRICT).
+    await session.execute(
+        delete(Post).where(Post.created_by.in_(user_ids))
+    )
+    # Events created by these users (created_by RESTRICT).
+    await session.execute(
+        delete(Event).where(Event.created_by.in_(user_ids))
+    )
 
     # Sprint 8.1: Notification deliveries (FK to users.id CASCADE).
     # Deliveries first, then orphaned notifications.
@@ -588,6 +613,18 @@ async def _cleanup_user_related_data(
             delete(CompanyPriceHistory).where(
                 CompanyPriceHistory.company_id.in_(company_ids)
             )
+        )
+        # Sprint 9.1: Posts owned by these companies (owner_id RESTRICT).
+        company_post_ids = select(Post.id).where(
+            Post.owner_id.in_(company_ids)
+        )
+        await session.execute(
+            delete(PostDismiss).where(
+                PostDismiss.post_id.in_(company_post_ids)
+            )
+        )
+        await session.execute(
+            delete(Post).where(Post.owner_id.in_(company_ids))
         )
         # Company profiles reference users.
         await session.execute(
