@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Service (Sprint 8.1 + 8.2)
+# CBSHOME Backend -- Notification Service (Sprint 8.1 + 8.2 + 8.3)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -16,6 +16,12 @@
 #   - asyncio.wait_for timeout on formatter.deliver() (TD-055)
 #   - PermanentDeliveryError -> immediate FAILED without incrementing attempts
 #
+# SPRINT 8.3 (REST endpoints):
+#   list_user_deliveries()  -- paginated sent deliveries with notification data
+#   get_unread_count()      -- count of unread sent deliveries
+#   mark_delivery_read()    -- mark single delivery as read (idempotent)
+#   mark_all_read()         -- mark all sent deliveries as read
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
 # =============================================================================
@@ -25,11 +31,11 @@ from datetime import datetime, UTC
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import BadRequestError
+from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.notifications.constants import (
     DeliveryChannel,
     DeliveryStatus,
@@ -428,3 +434,179 @@ async def rollup_notification(
         notification_id=str(notification.id),
         status=notification.status,
     )
+
+
+# ---------------------------------------------------------------------------
+# REST endpoint functions (Sprint 8.3)
+# ---------------------------------------------------------------------------
+
+
+async def list_user_deliveries(
+    session: AsyncSession,
+    user_id: UUID,
+    *,
+    page: int = 1,
+    per_page: int = 20,
+    type_filter: str | None = None,
+    channel_filter: str | None = None,
+) -> tuple[list[dict], int]:
+    """List sent deliveries for a user with parent notification data.
+
+    Only deliveries with status=sent are returned (user sees only
+    what was actually delivered). Results enriched with title, body,
+    type, action_data, priority from the parent Notification via JOIN.
+
+    Args:
+        session: Active DB session (read-only).
+        user_id: Authenticated user ID.
+        page: Page number (1-based).
+        per_page: Items per page.
+        type_filter: Filter by Notification.type (exact match).
+        channel_filter: Filter by NotificationDelivery.channel (exact match).
+
+    Returns:
+        (items, total) where items are dicts matching NotificationDeliveryResponse.
+    """
+    # Base conditions: user's sent deliveries.
+    conditions = [
+        NotificationDelivery.user_id == user_id,
+        NotificationDelivery.status == DeliveryStatus.SENT,
+    ]
+
+    # Optional filters (require JOIN on Notification).
+    if type_filter:
+        conditions.append(Notification.type == type_filter)
+    if channel_filter:
+        conditions.append(NotificationDelivery.channel == channel_filter)
+
+    # Count total.
+    count_stmt = (
+        select(func.count())
+        .select_from(NotificationDelivery)
+        .join(Notification, NotificationDelivery.notification_id == Notification.id)
+        .where(*conditions)
+    )
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    # Fetch page with JOIN.
+    stmt = (
+        select(NotificationDelivery, Notification)
+        .join(Notification, NotificationDelivery.notification_id == Notification.id)
+        .where(*conditions)
+        .order_by(NotificationDelivery.sent_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    # Build response dicts from (delivery, notification) tuples.
+    items: list[dict] = []
+    for delivery, notification in rows:
+        items.append({
+            "id": delivery.id,
+            "channel": delivery.channel,
+            "status": delivery.status,
+            "read_at": delivery.read_at,
+            "sent_at": delivery.sent_at,
+            "created_at": delivery.created_at,
+            "type": notification.type,
+            "title": notification.title,
+            "body": notification.body,
+            "action_data": notification.action_data,
+            "priority": notification.priority,
+        })
+
+    return items, total
+
+
+async def get_unread_count(
+    session: AsyncSession,
+    user_id: UUID,
+) -> int:
+    """Count unread sent deliveries for badge counter.
+
+    Unread = status=sent AND read_at IS NULL.
+
+    Args:
+        session: Active DB session (read-only).
+        user_id: Authenticated user ID.
+
+    Returns:
+        Number of unread deliveries.
+    """
+    stmt = (
+        select(func.count())
+        .select_from(NotificationDelivery)
+        .where(
+            NotificationDelivery.user_id == user_id,
+            NotificationDelivery.status == DeliveryStatus.SENT,
+            NotificationDelivery.read_at.is_(None),
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one()
+
+
+async def mark_delivery_read(
+    session: AsyncSession,
+    user_id: UUID,
+    delivery_id: UUID,
+) -> None:
+    """Mark a single delivery as read (idempotent).
+
+    Sets read_at to now if not already set. Does nothing if already read.
+
+    Args:
+        session: Active DB session (caller commits).
+        user_id: Authenticated user ID (ownership guard).
+        delivery_id: Delivery UUID.
+
+    Raises:
+        NotFoundError: If delivery not found or belongs to another user.
+    """
+    stmt = select(NotificationDelivery).where(
+        NotificationDelivery.id == delivery_id,
+        NotificationDelivery.user_id == user_id,
+    )
+    result = await session.execute(stmt)
+    delivery = result.scalar_one_or_none()
+
+    if delivery is None:
+        raise NotFoundError("Notification not found")
+
+    # Idempotent: skip if already read.
+    if delivery.read_at is not None:
+        return
+
+    delivery.read_at = datetime.now(UTC)
+    await session.flush()
+
+
+async def mark_all_read(
+    session: AsyncSession,
+    user_id: UUID,
+) -> int:
+    """Mark all sent deliveries as read for a user.
+
+    Only updates deliveries with status=sent AND read_at IS NULL.
+
+    Args:
+        session: Active DB session (caller commits).
+        user_id: Authenticated user ID.
+
+    Returns:
+        Number of deliveries marked as read.
+    """
+    stmt = (
+        update(NotificationDelivery)
+        .where(
+            NotificationDelivery.user_id == user_id,
+            NotificationDelivery.status == DeliveryStatus.SENT,
+            NotificationDelivery.read_at.is_(None),
+        )
+        .values(read_at=datetime.now(UTC))
+    )
+    result = await session.execute(stmt)
+    await session.flush()
+    return result.rowcount
