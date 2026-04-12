@@ -24,7 +24,6 @@
 # =============================================================================
 
 from datetime import datetime
-from typing import Never
 from uuid import UUID
 
 import structlog
@@ -86,10 +85,10 @@ async def list_user_transactions(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/export")
+@router.get("/export", response_model=None)
 async def export_transactions(
     user: User = Depends(get_current_user),
-) -> Never:
+) -> None:
     """Export transaction history as CSV/XLSX (stub).
 
     Not implemented in MVP. See TD-009 for Phase 2 implementation.
