@@ -606,7 +606,12 @@ async def test_deliver_timeout_increments_attempts(
 async def test_deliver_user_not_found(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Delivery for deleted user -> FAILED with 'User not found'."""
+    """Delivery for missing user -> FAILED with 'User not found'.
+
+    FK CASCADE prevents deleting a user while keeping their deliveries,
+    so we test this path by mocking the batch user load to return
+    an empty dict while deliveries exist.
+    """
     user_id, _ = await _create_investor(client, "gone1")
 
     notif = await create_notification(
@@ -623,12 +628,31 @@ async def test_deliver_user_not_found(
     await resolve_notification(db_session, notif)
     await db_session.commit()
 
-    # Delete the user after resolve but before deliver.
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
+    # Patch User query to return empty — simulates user deleted
+    # between resolve and deliver (without FK CASCADE removing deliveries).
+    from sqlalchemy import select as sa_select
 
-    await deliver_notification(db_session, notif)
+    original_execute = db_session.execute
+
+    _call_count = 0
+
+    async def _fake_execute(stmt, *args, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal _call_count
+        _call_count += 1
+        # Call 1: select deliveries (let through).
+        # Call 2: select users (return empty).
+        if _call_count == 2:
+            fake_stmt = sa_select(User).where(
+                User.id == UUID("00000000-0000-0000-0000-000000000000")
+            )
+            return await original_execute(fake_stmt, *args, **kwargs)
+        return await original_execute(stmt, *args, **kwargs)
+
+    with patch.object(db_session, "execute", side_effect=_fake_execute):
+        await deliver_notification(db_session, notif)
     await db_session.commit()
 
+    # Re-read delivery with real execute.
     stmt = select(NotificationDelivery).where(
         NotificationDelivery.notification_id == notif.id,
     )
