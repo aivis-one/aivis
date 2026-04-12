@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.6
+**Версия:** 2.7
 **Дата:** 12 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -2559,18 +2559,54 @@ backend/tests/
 
 ---
 
-### Sprint 8.3: Notification REST Endpoints
+### ✅ Sprint 8.3: Notification REST Endpoints
 
 **Цель:** API для управления уведомлениями на фронте.
 
 **Задачи:**
-- [ ] `GET /api/v1/notifications` — список доставок текущего юзера (пагинация 20, фильтры по type/channel)
-- [ ] `GET /api/v1/notifications/unread-count` — badge counter (deliveries где status=sent AND не прочитано)
-- [ ] `POST /api/v1/notifications/{delivery_id}/read` — отметить delivery прочитанной
-- [ ] `POST /api/v1/notifications/read-all` — отметить все delivery текущего юзера прочитанными
-- [ ] `tests/test_notification_endpoints.py` — 8 тестов
+- [x] `GET /api/v1/notifications` — список доставок текущего юзера (пагинация 20, фильтры по type/channel)
+- [x] `GET /api/v1/notifications/unread-count` — badge counter (deliveries где status=sent AND не прочитано)
+- [x] `POST /api/v1/notifications/{delivery_id}/read` — отметить delivery прочитанной
+- [x] `POST /api/v1/notifications/read-all` — отметить все delivery текущего юзера прочитанными
+- [x] `tests/test_notification_endpoints.py` — 8 тестов
 
-**Критерий готовности:** Фронт работает с `NotificationDelivery`, а не с `Notification` напрямую.
+**Endpoints:**
+```
+GET  /api/v1/notifications                -> NotificationListResponse  (200)
+GET  /api/v1/notifications/unread-count   -> UnreadCountResponse       (200)
+POST /api/v1/notifications/{id}/read      -> 204
+POST /api/v1/notifications/read-all       -> ReadAllResponse           (200)
+```
+
+**Миграции:**
+- [x] `0020_delivery_read_at` — `read_at: DateTime(timezone=True)` на `notification_deliveries`
+- [x] `0021_delivery_inbox_index` — partial composite index `ix_deliveries_user_inbox` на `(user_id, status, read_at, sent_at DESC) WHERE status = 'sent'`
+
+**Результат:**
+```
+backend/app/modules/notifications/
+├── schemas.py          -- NotificationDeliveryResponse, NotificationListResponse, UnreadCountResponse, ReadAllResponse (NEW)
+├── router.py           -- 4 public endpoints (NEW)
+├── service.py          -- +list_user_deliveries, get_unread_count, mark_delivery_read, mark_all_read
+└── models.py           -- +read_at on NotificationDelivery
+
+backend/tests/
+└── test_notification_endpoints.py -- 8 tests (NEW)
+```
+
+**Обновлённые файлы (Sprint 8.3):**
+- `main.py` — +notifications_router import + include
+- `models.py` — +read_at field на NotificationDelivery
+
+**Решения реализации (Sprint 8.3):**
+- P8-15: **read_at для прочтения** — `DateTime(timezone=True), nullable=True`. NULL = unread. Нет отдельного `is_read` boolean — timestamp информативнее и однозначен
+- P8-16: **JOIN для обогащения** — `list_user_deliveries` делает `select(NotificationDelivery, Notification).join()` для получения title/body/type/priority из parent Notification. Response собирается из dict, не из ORM напрямую
+- P8-17: **`_channels` фильтрация** — `action_data` в ответе фильтрует ключи с `_` префиксом: `{k: v for k, v in items() if not k.startswith("_")} or None`. Предотвращает утечку internal routing metadata на фронт
+- P8-18: **Partial inbox index** — `WHERE status = 'sent'` покрывает все три горячих паттерна: list, unread-count, mark-all-read. `sent_at DESC` для ORDER BY без дополнительного sort
+- P8-19: **mark_all_read атомарный UPDATE** — `UPDATE ... WHERE user_id=? AND status='sent' AND read_at IS NULL`. Возвращает `rowcount` для фронта (badge обнуление без дополнительного запроса)
+- P8-20: **mark_delivery_read идемпотентный** — 204 и для уже прочитанных, и для только что отмеченных. 404 если delivery не существует или чужая (IDOR guard: `WHERE id=? AND user_id=?`)
+
+**Критерий готовности:** Фронт работает с `NotificationDelivery`, а не с `Notification` напрямую. 307 тестов зелёных, 0 warnings, 0 критических issues, 0 предупреждений.
 
 ---
 
@@ -2578,7 +2614,7 @@ backend/tests/
 
 ---
 
-### Sprint 9.1: Posts + Events
+### ✅ Sprint 9.1: Posts + Events
 
 **Цель:** Единый модуль контента для платформы и компаний.
 
@@ -2588,60 +2624,124 @@ backend/tests/
 так и от имени конкретной компании.
 
 **Задачи:**
-- [ ] `app/modules/posts/models.py` — `Post`, `PostDismiss`, `Event`
-- [ ] `app/modules/posts/service.py` — CRUD + баннерная логика + dismiss
-- [ ] Public endpoints:
+- [x] `app/modules/posts/constants.py` — `OwnerType` (platform, company)
+- [x] `app/modules/posts/models.py` — `Post`, `PostDismiss`, `Event`
+- [x] `app/modules/posts/schemas.py` — 8 schemas (Create/Update/Response для Post и Event, List responses)
+- [x] `app/modules/posts/service.py` — CRUD + баннерная логика + dismiss (11 функций)
+- [x] Public endpoints:
   - `GET /api/v1/posts` — лента постов (фильтры: `owner_type`, `company_id`, `tag`)
   - `GET /api/v1/posts/{id}` — детали поста
   - `GET /api/v1/events` — список событий
-  - `GET /api/v1/events/upcoming` — ближайшие 30 дней
+  - `GET /api/v1/events/upcoming` — ближайшие 30 дней (limit 100)
   - `POST /api/v1/posts/{id}/dismiss` — закрыть баннер
-- [ ] Staff endpoints:
+- [x] Staff endpoints:
   - `POST /api/v1/staff/posts` — создать пост (платформа или от имени компании)
-  - `PUT /api/v1/staff/posts/{id}` — редактировать
-  - `DELETE /api/v1/staff/posts/{id}` — удалить
+  - `PATCH /api/v1/staff/posts/{id}` — редактировать (partial update)
+  - `DELETE /api/v1/staff/posts/{id}` — soft-delete
   - `POST /api/v1/staff/events` — создать событие
-  - `PUT /api/v1/staff/events/{id}` — редактировать
-  - `DELETE /api/v1/staff/events/{id}` — удалить
-- [ ] `tests/test_posts.py` — 12 тестов
+  - `PATCH /api/v1/staff/events/{id}` — редактировать (partial update)
+  - `DELETE /api/v1/staff/events/{id}` — soft-delete
+- [x] `staff/constants.py` — `+content_manage: True` permission
+- [x] `tests/test_posts.py` — 12 тестов
 
 **Модели:**
 ```python
 Post:
     id: UUID
-    owner_type: enum  -- platform | company
-    owner_id: UUID | None  -- NULL если platform, company_profiles.id если company
-    title: str
-    body: str         -- markdown или HTML
-    cover_url: str | None
-    tags: JSONB       -- ["investment", "growth"] -- массив строк
-    is_banner: bool   -- показывать как баннер на главной
+    owner_type: str          -- CHECK: platform | company
+    owner_id: UUID | None    -- NULL если platform, FK company_profiles.id RESTRICT если company
+    title: str(500)
+    body: str(50000)         -- markdown или HTML
+    cover_url: str | None    -- validated: http:// or https:// only
+    tags: JSONB              -- ["investment", "growth"] -- массив строк, max 50 chars per tag
+    is_banner: bool          -- показывать как баннер на главной
     is_published: bool
-    published_at: datetime | None
-    created_by: UUID  -- staff_id
+    published_at: datetime | None  -- set on publish transition
+    created_by: UUID         -- FK users.id RESTRICT (staff_id)
+    is_deleted: bool         -- soft delete
     created_at, updated_at
 
-PostDismiss:          -- факт закрытия баннера конкретным юзером
+PostDismiss:                 -- факт закрытия баннера конкретным юзером
     id: UUID
-    post_id: UUID     -- FK posts.id CASCADE
-    user_id: UUID     -- FK users.id CASCADE
+    post_id: UUID            -- FK posts.id CASCADE
+    user_id: UUID            -- FK users.id CASCADE
     dismissed_at: datetime
+    UNIQUE(post_id, user_id)
 
 Event:
     id: UUID
-    title: str
-    description: str | None
-    cover_url: str | None
+    title: str(500)
+    description: str(5000) | None
+    cover_url: str | None    -- validated: http:// or https://
     starts_at: datetime
-    ends_at: datetime | None
-    location: str | None
-    url: str | None   -- ссылка на регистрацию или трансляцию
+    ends_at: datetime | None -- validated: ends_at > starts_at
+    location: str(500) | None
+    url: str(2000) | None    -- validated: http:// or https://
     is_published: bool
-    created_by: UUID  -- staff_id
+    created_by: UUID         -- FK users.id RESTRICT (staff_id)
+    is_deleted: bool         -- soft delete
     created_at, updated_at
 ```
 
-**Критерий готовности:** Staff создаёт посты платформы и постит от имени компаний. Инвесторы видят единую ленту с фильтрацией. Баннеры закрываются и не показываются повторно.
+**Endpoints:**
+```
+-- Public (get_optional_user — anonymous allowed):
+GET  /api/v1/posts                -> PostListResponse      (200)
+GET  /api/v1/posts/{id}           -> PostResponse           (200)
+GET  /api/v1/events               -> EventListResponse      (200)
+GET  /api/v1/events/upcoming      -> list[EventResponse]    (200)
+
+-- Public (auth required):
+POST /api/v1/posts/{id}/dismiss   -> 204
+
+-- Staff (content_manage permission):
+POST   /api/v1/staff/posts        -> PostResponse           (201)
+PATCH  /api/v1/staff/posts/{id}   -> PostResponse           (200)
+DELETE /api/v1/staff/posts/{id}   -> 204
+POST   /api/v1/staff/events       -> EventResponse          (201)
+PATCH  /api/v1/staff/events/{id}  -> EventResponse          (200)
+DELETE /api/v1/staff/events/{id}  -> 204
+```
+
+**Миграции:**
+- [x] `0022_posts` — таблицы `posts` (3 индекса, CHECK owner_type, 2 FK RESTRICT), `post_dismissals` (UNIQUE, 2 FK CASCADE), `events` (1 индекс, 1 FK RESTRICT)
+
+**Результат:**
+```
+backend/app/modules/posts/
+├── __init__.py
+├── constants.py        -- OwnerType (platform, company)
+├── models.py           -- Post (JSONBMixin), PostDismiss, Event
+├── schemas.py          -- 8 schemas (Literal owner_type, URL validators, tag constraints, date validator)
+├── service.py          -- 11 functions (CRUD posts + events, dismiss, list, upcoming)
+├── router.py           -- 5 public endpoints (posts_router + events_router)
+└── staff_router.py     -- 6 staff endpoints (staff_posts_router + staff_events_router)
+
+backend/tests/
+└── test_posts.py       -- 12 tests
+```
+
+**Обновлённые файлы (Sprint 9.1):**
+- `staff/constants.py` — `+content_manage: True` в DEFAULT_STAFF_PERMISSIONS
+- `main.py` — +posts_router, events_router, staff_posts_router, staff_events_router
+- `migrations/env.py` — +Post, PostDismiss, Event imports (раскомментированы)
+- `tests/helpers.py` — +PostDismiss, Post, Event cleanup в `_cleanup_user_related_data()` (два места: по created_by + по owner_id в company block)
+
+**Решения реализации (Sprint 9.1):**
+- P9-01: **Soft delete** — `is_deleted: bool` вместо hard delete. Все запросы фильтруют `is_deleted.is_(False)`. Staff DELETE → `is_deleted = True`. Посты — user-facing content, удаление необратимо
+- P9-02: **PATCH вместо PUT** — partial update с `exclude_unset=True`, единообразно с остальным проектом. Позволяет точечные операции: "опубликовать", "снять баннер", "поменять заголовок"
+- P9-03: **get_optional_user на публичных endpoints** — анонимный доступ разрешён (незалогиненные видят новости). `is_dismissed` = False для анонимов, LEFT JOIN PostDismiss для авторизованных
+- P9-04: **Dismiss SAVEPOINT** — `async with session.begin_nested()` + INSERT + flush. IntegrityError на UNIQUE → только savepoint откатывается, outer transaction intact. Паттерн из payments/withdrawals
+- P9-05: **content_manage permission** — новый ключ в DEFAULT_STAFF_PERMISSIONS. Existing admins автоматически получают (get_effective_permissions мержит с дефолтами). Без миграции на StaffProfile
+- P9-06: **Literal owner_type** — Pydantic `Literal["platform", "company"]` вместо str + service validation. 422 вместо 400 — стандартное Pydantic-поведение
+- P9-07: **URL validation** — shared `_validate_url()` field_validator на cover_url и event.url. `startswith(("http://", "https://"))` — блокирует `javascript:`, `data:` XSS-векторы
+- P9-08: **Tag constraints** — `Annotated[str, Field(max_length=50)]` per tag. Защита от oversized tags и `<script>` injection (длина ограничена)
+- P9-09: **Date validation** — `model_validator(mode="after")`: `ends_at > starts_at` на Create. На Update — только если оба поля предоставлены (partial update может менять только одно)
+- P9-10: **Tag filter** — JSONB `@>` operator: `Post.tags.op("@>")(json.dumps([tag]))`. Один тег — exact match в массиве
+- P9-11: **published_at transition** — устанавливается при первом is_published=True (и в create, и в update). Не сбрасывается при unpublish
+- P9-12: **list_upcoming_events limit(100)** — safety cap на unbounded query (30 дней). Prevents DoS через массовое создание событий
+
+**Критерий готовности:** Staff создаёт посты платформы и постит от имени компаний. Инвесторы видят единую ленту с фильтрацией. Баннеры закрываются и не показываются повторно. Анонимные пользователи видят published посты. 319 тестов зелёных, 0 warnings, 0 критических issues, 0 предупреждений.
 
 ---
 
@@ -2768,4 +2868,4 @@ Event:
 
 ---
 
-*Version 2.6 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 (Sprint 8.1 + 8.2) complete. Sprint 8.2: TelegramFormatter, EmailFormatter (SMTP+Mailgun), template engine, staff reload endpoint, Postfix+OpenDKIM in install script, concurrent delivery (gather+semaphore), config validator fix. 19 migrations, TD-053..TD-058 (TD-055 closed), 299 tests total, 0 warnings, Sprint 8.3 next*
+*Version 2.7 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 complete, Phase 9 (Sprint 9.1) complete. Sprint 8.3: Notification REST endpoints (read_at, inbox index, _channels filter). Sprint 9.1: Posts+Events CMS (soft delete, content_manage, SAVEPOINT dismiss, URL/tag/date validation, optional auth). 22 migrations, TD-053..TD-058 (TD-055 closed), 319 tests total, 0 warnings, Sprint 9.2 next*
