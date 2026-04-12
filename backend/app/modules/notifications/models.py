@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Models (Sprint 8.1)
+# CBSHOME Backend -- Notification Models (Sprint 8.1, Sprint 8.3)
 # =============================================================================
 #
 # TWO-LEVEL ARCHITECTURE:
@@ -25,6 +25,10 @@
 # CASCADE:
 #   NotificationDelivery.notification_id -> CASCADE delete.
 #   NotificationDelivery.user_id -> CASCADE delete (user removed = deliveries removed).
+#
+# Sprint 8.3:
+#   NotificationDelivery.read_at -- timestamp when user marked delivery as read.
+#   NULL = unread, non-NULL = read. Used by REST endpoints for badge counter.
 # =============================================================================
 
 from datetime import datetime
@@ -155,6 +159,12 @@ class NotificationDelivery(UUIDMixin, Base):
     )
 
     sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Sprint 8.3: read tracking for REST endpoints.
+    read_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
