@@ -16,6 +16,11 @@
 #   app/modules/purchases/templates/certificate.html (Jinja2).
 #   Placeholder graphics for seal, signature, background.
 #
+# REVIEW FIXES (Sprint 9.2):
+#   - Single JOIN query instead of 4 sequential SELECTs
+#   - CertificateData stores investor_name/email, not full User object
+#     (avoids holding credentials/password_hash in memory)
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Read-only queries only.
 # =============================================================================
@@ -58,70 +63,17 @@ _LEGAL_BASIS_DISPLAY = {
 
 @dataclass
 class CertificateData:
-    """All data needed to render a certificate."""
+    """All data needed to render a certificate.
+
+    Stores extracted investor_name/email instead of full User
+    to avoid holding credentials (password_hash) in memory.
+    """
 
     purchase: Purchase
-    investor: User
+    investor_name: str
+    investor_email: str | None
     company: CompanyProfile
     product: Product
-
-
-async def load_certificate_data(
-    purchase_id: UUID,
-    user_id: UUID,
-    session: AsyncSession,
-) -> CertificateData:
-    """Load purchase and related entities, verify ownership.
-
-    Raises:
-        NotFoundError: Purchase not found or not owned by user.
-    """
-    # Load purchase.
-    stmt = select(Purchase).where(Purchase.id == purchase_id)
-    result = await session.execute(stmt)
-    purchase = result.scalar_one_or_none()
-
-    if purchase is None:
-        raise NotFoundError("Purchase not found")
-
-    if purchase.investor_id != user_id:
-        raise NotFoundError("Purchase not found")
-
-    if purchase.status != PurchaseStatus.ACTIVE:
-        raise NotFoundError("Purchase not found")
-
-    # Load investor user.
-    inv_stmt = select(User).where(User.id == purchase.investor_id)
-    inv_result = await session.execute(inv_stmt)
-    investor = inv_result.scalar_one_or_none()
-
-    if investor is None:
-        raise NotFoundError("Investor not found")
-
-    # Load company.
-    comp_stmt = select(CompanyProfile).where(
-        CompanyProfile.id == purchase.company_id
-    )
-    comp_result = await session.execute(comp_stmt)
-    company = comp_result.scalar_one_or_none()
-
-    if company is None:
-        raise NotFoundError("Company not found")
-
-    # Load product.
-    prod_stmt = select(Product).where(Product.id == purchase.product_id)
-    prod_result = await session.execute(prod_stmt)
-    product = prod_result.scalar_one_or_none()
-
-    if product is None:
-        raise NotFoundError("Product not found")
-
-    return CertificateData(
-        purchase=purchase,
-        investor=investor,
-        company=company,
-        product=product,
-    )
 
 
 def _extract_investor_name(user: User) -> str:
@@ -135,11 +87,56 @@ def _extract_investor_name(user: User) -> str:
 
     # Fallback to email prefix.
     email_creds = (user.credentials or {}).get("email", {})
-    email = email_creds.get("email", "")
-    if email and "@" in email:
-        return email.split("@")[0]
+    email_addr = email_creds.get("email", "")
+    if email_addr and "@" in email_addr:
+        return email_addr.split("@")[0]
 
     return "Investor"
+
+
+def _extract_investor_email(user: User) -> str | None:
+    """Extract email address from User.credentials JSONB."""
+    email_creds = (user.credentials or {}).get("email", {})
+    return email_creds.get("email")
+
+
+async def load_certificate_data(
+    purchase_id: UUID,
+    user_id: UUID,
+    session: AsyncSession,
+) -> CertificateData:
+    """Load purchase and related entities in a single JOIN, verify ownership.
+
+    Raises:
+        NotFoundError: Purchase not found or not owned by user.
+    """
+    stmt = (
+        select(Purchase, User, CompanyProfile, Product)
+        .join(User, Purchase.investor_id == User.id)
+        .join(CompanyProfile, Purchase.company_id == CompanyProfile.id)
+        .join(Product, Purchase.product_id == Product.id)
+        .where(
+            Purchase.id == purchase_id,
+            Purchase.investor_id == user_id,
+            Purchase.status == PurchaseStatus.ACTIVE,
+        )
+    )
+
+    result = await session.execute(stmt)
+    row = result.one_or_none()
+
+    if row is None:
+        raise NotFoundError("Purchase not found")
+
+    purchase, investor, company, product = row
+
+    return CertificateData(
+        purchase=purchase,
+        investor_name=_extract_investor_name(investor),
+        investor_email=_extract_investor_email(investor),
+        company=company,
+        product=product,
+    )
 
 
 def _format_cents(cents: int) -> str:
@@ -157,12 +154,11 @@ def render_certificate_html(data: CertificateData) -> str:
     """Render certificate HTML from template and purchase data."""
     template = _jinja_env.get_template("certificate.html")
 
-    investor_name = _extract_investor_name(data.investor)
     legal_basis = data.purchase.legal_basis
     now = datetime.now(UTC)
 
     context = {
-        "investor_name": investor_name,
+        "investor_name": data.investor_name,
         "company_name": data.company.name,
         "company_logo_url": data.company.logo_url,
         "product_name": data.product.name,
@@ -211,20 +207,17 @@ async def send_certificate_email(
     Raises:
         BadRequestError: If investor has no email.
     """
-    email_creds = (data.investor.credentials or {}).get("email", {})
-    recipient = email_creds.get("email")
-
-    if not recipient:
+    if not data.investor_email:
         raise BadRequestError("Investor has no email address")
 
     cert_number = _short_id(data.purchase.id)
     filename = f"certificate_{cert_number}.pdf"
 
     success = await send_email(
-        recipient=recipient,
+        recipient=data.investor_email,
         subject=f"Investment Certificate — {cert_number}",
         body=(
-            f"Dear {_extract_investor_name(data.investor)},\n\n"
+            f"Dear {data.investor_name},\n\n"
             f"Please find your investment certificate attached.\n\n"
             f"Certificate: {cert_number}\n"
             f"Company: {data.company.name}\n"
@@ -239,10 +232,6 @@ async def send_certificate_email(
         logger.info(
             "certificate_email_sent",
             purchase_id=str(data.purchase.id),
-            recipient_masked=recipient.split("@")[0][0] + "***@"
-            + recipient.split("@")[1]
-            if "@" in recipient
-            else "***",
         )
     else:
         logger.error(

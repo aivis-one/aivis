@@ -39,7 +39,7 @@ def _compute_avg_price(total_paid_cents: int, sale_units: int) -> int:
     """
     if sale_units <= 0:
         return 0
-    return total_paid_cents // sale_units
+    return round(total_paid_cents / sale_units)
 
 
 async def get_portfolio(

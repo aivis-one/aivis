@@ -17,6 +17,7 @@
 # EMAIL:
 #   POST generates PDF via xhtml2pdf, sends to investor's email via
 #   core/email with full SMTP/Mailgun/high-secured routing.
+#   Rate-limited per user to prevent SMTP abuse and inbox flooding.
 #
 # COMMIT RULE (P-01):
 #   Read-only endpoints use get_db_reader. POST /email does not
@@ -31,6 +32,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.rate_limit import check_rate_limit
 from app.modules.auth.dependencies import get_current_user
 from app.modules.purchases.certificate_service import (
     generate_certificate_pdf,
@@ -78,7 +80,11 @@ async def email_certificate(
     Generates PDF from HTML template via xhtml2pdf, then sends
     via SMTP/Mailgun with the full routing logic (high-secured
     domains, fallback).
+
+    Rate-limited to prevent SMTP abuse and Mailgun billing spikes.
     """
+    await check_rate_limit(f"cert_email:{user.id}")
+
     data = await load_certificate_data(purchase_id, user.id, session)
     html = render_certificate_html(data)
     pdf_bytes = generate_certificate_pdf(html)
