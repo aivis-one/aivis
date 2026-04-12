@@ -283,6 +283,7 @@ async def deliver_notification(
                 formatter.deliver(notification, delivery, user),
                 timeout=_DELIVER_TIMEOUT_SECONDS,
             )
+            delivery.attempts += 1
         except PermanentDeliveryError as exc:
             # Permanent failure -- mark as failed immediately,
             # do NOT increment attempts (no point retrying).

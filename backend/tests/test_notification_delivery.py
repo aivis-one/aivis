@@ -109,11 +109,7 @@ def _make_user_stub(
     telegram_id: int | None = None,
     language: str = "en",
 ) -> User:
-    """Create a minimal User-like object for formatter unit tests.
-
-    Does NOT touch the database. Uses MagicMock with spec=User
-    to satisfy the formatter interface.
-    """
+    """Create a minimal User-like object for formatter unit tests."""
     user = MagicMock(spec=User)
     user.id = user_id or UUID("00000000-0000-0000-0000-000000000001")
     user.language = language
@@ -214,7 +210,6 @@ async def test_render_language_fallback(
         lang="xx",
         variables={"title": "Alert", "body": "Something happened"},
     )
-    # Should render English template, not raw fallback.
     assert "Alert" in result
     assert "system.telegram.body" not in result
 
@@ -226,8 +221,6 @@ async def test_reload_templates_clears_cache(
     """reload_templates() clears cache so next load reads from disk."""
     load_templates("en")
     reload_templates()
-    # After reload, cache is empty -- next load should re-read.
-    # We verify by loading again (no error, data present).
     templates = load_templates("en")
     assert "system" in templates
 
@@ -287,7 +280,7 @@ async def test_telegram_formatter_no_credentials(
     formatter = TelegramFormatter.__new__(TelegramFormatter)
     formatter._bot = AsyncMock()
 
-    user = _make_user_stub()  # No telegram_id.
+    user = _make_user_stub()
     notif = _make_notification_stub()
     delivery = _make_delivery_stub(channel="telegram")
 
@@ -397,7 +390,6 @@ async def test_email_formatter_high_secured_domain(
             result = await formatter.deliver(notif, delivery, user)
 
         assert result is True
-        # SMTP should NOT be called -- Mailgun directly.
         mock_smtp.assert_not_called()
 
 
@@ -417,7 +409,7 @@ async def test_email_formatter_no_credentials(
         mailgun_domain="mail.cbshome.org",
     )
 
-    user = _make_user_stub(telegram_id=12345)  # No email.
+    user = _make_user_stub(telegram_id=12345)
     notif = _make_notification_stub()
     delivery = _make_delivery_stub(channel="email")
 
@@ -435,7 +427,6 @@ async def test_staff_reload_templates_success(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """POST /staff/notifications/templates/reload -> 204 with admin."""
-    # Admin has all permissions True, including translation_edit.
     _, token = await create_admin_user(
         client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
     )
@@ -452,7 +443,6 @@ async def test_staff_reload_templates_forbidden(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """POST /staff/notifications/templates/reload -> 403 without translation_edit."""
-    # Default staff has translation_edit=False.
     _, token = await create_staff_user(
         client, db_session, email=f"{EMAIL_PREFIX}staff@example.com"
     )
@@ -491,7 +481,7 @@ async def test_deliver_notification_with_user_load(
         title="Test: delivery integration",
         body="Hello",
         target_type=TargetType.USER,
-        target_value=str(user_id),
+        target_value=f"user:{user_id}",
         channels=[DeliveryChannel.IN_APP],
     )
     await db_session.commit()
@@ -528,7 +518,7 @@ async def test_deliver_permanent_failure_no_attempts_increment(
         title="Test: permanent fail",
         body="Hello",
         target_type=TargetType.USER,
-        target_value=str(user_id),
+        target_value=f"user:{user_id}",
         channels=[DeliveryChannel.TELEGRAM],
     )
     await db_session.commit()
@@ -536,8 +526,7 @@ async def test_deliver_permanent_failure_no_attempts_increment(
     await resolve_notification(db_session, notif)
     await db_session.commit()
 
-    # User registered via email -- no telegram credentials.
-    # TelegramFormatter will raise PermanentDeliveryError.
+    # Mock formatter that raises PermanentDeliveryError.
     with patch(
         "app.modules.notifications.service.get_formatter"
     ) as mock_get:
@@ -577,7 +566,7 @@ async def test_deliver_timeout_increments_attempts(
         title="Test: timeout",
         body="Hello",
         target_type=TargetType.USER,
-        target_value=str(user_id),
+        target_value=f"user:{user_id}",
         channels=[DeliveryChannel.IN_APP],
     )
     await db_session.commit()
@@ -626,7 +615,7 @@ async def test_deliver_user_not_found(
         title="Test: user gone",
         body="Hello",
         target_type=TargetType.USER,
-        target_value=str(user_id),
+        target_value=f"user:{user_id}",
         channels=[DeliveryChannel.IN_APP],
     )
     await db_session.commit()
