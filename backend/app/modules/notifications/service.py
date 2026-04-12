@@ -513,7 +513,10 @@ async def list_user_deliveries(
             "type": notification.type,
             "title": notification.title,
             "body": notification.body,
-            "action_data": notification.action_data,
+            "action_data": {
+                k: v for k, v in (notification.action_data or {}).items()
+                if not k.startswith("_")
+            } or None,
             "priority": notification.priority,
         })
 
