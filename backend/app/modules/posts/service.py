@@ -180,6 +180,7 @@ async def update_post(
             setattr(post, field, value)
 
     await session.flush()
+    await session.refresh(post)
 
     await record_audit(
         session=session,
@@ -490,6 +491,7 @@ async def update_event(
         setattr(event, field, value)
 
     await session.flush()
+    await session.refresh(event)
 
     await record_audit(
         session=session,
