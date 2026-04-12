@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.8
+**Версия:** 2.9
 **Дата:** 12 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -2839,18 +2839,55 @@ backend/tests/
 
 ---
 
-### Sprint 10.1: Розетки (Protocol-only)
+### ✅ Sprint 10.1: Розетки (Protocol-only)
 
 **Цель:** Заглушки для будущих фич. Интерфейс определён, логика не реализована.
 
 **Задачи:**
-- [ ] `app/modules/tokens/interface.py` — `TokenServiceProtocol`
-- [ ] `app/modules/ai_trainer/interface.py` — `AITrainerProtocol`
-- [ ] `app/modules/payments/providers/interface.py` — `PaymentProviderProtocol` (fiat)
-- [ ] `app/modules/auto_translate/interface.py` — `AutoTranslateProtocol`
-- [ ] `GET /api/v1/transactions/export` — заглушка (501 Not Implemented)
+- [x] `app/modules/tokens/__init__.py` + `app/modules/tokens/interface.py` — `TokenServiceProtocol`, stub dataclasses `TokenIssuance`, `TokenHolding`
+- [x] `app/modules/ai_trainer/__init__.py` + `app/modules/ai_trainer/interface.py` — `AITrainerProtocol`, stub dataclasses `TrainingQuestion`, `EvaluationResult`
+- [x] `app/modules/payments/providers/__init__.py` + `app/modules/payments/providers/interface.py` — `PaymentProviderProtocol`, stub dataclasses `PaymentIntent`, `ProviderPaymentStatus`
+- [x] `app/modules/auto_translate/__init__.py` + `app/modules/auto_translate/interface.py` — `AutoTranslateProtocol`
+- [x] `GET /api/v1/transactions/export` — заглушка (501 Not Implemented)
 
-**Критерий готовности:** Все интерфейсы определены. Вызов любой заглушки возвращает корректный stub-ответ.
+**Решения реализации:**
+- P10-01: **Stub dataclasses `frozen=True`** — по паттерну `DepositAddress` из `payments/interface.py`. Чистые type-контракты без I/O и state
+- P10-02: **`ProviderPaymentStatus`** — намеренно НЕ `PaymentStatus`, чтобы не коллидировать с `payments/constants.py:PaymentStatus` (lifecycle states). Задокументировано в docstring
+- P10-03: **`AutoTranslateProtocol`** — минимальная сигнатура `translate(text, source_lang, target_lang) -> str`. Расширится в Phase 2 при реальной интеграции
+- P10-04: **Export endpoint перед `/{transaction_id}`** — иначе FastAPI матчит "export" как UUID path parameter. `response_model=None` + `raise HTTPException(501)` (не через `CBSError` — это инфраструктурный сигнал, не бизнес-ошибка)
+- P10-05: **`main.py` не изменён** — новые модули не имеют роутеров, export endpoint живёт в уже подключённом `transactions_router`
+
+**Endpoints:**
+```
+GET /api/v1/transactions/export  -> HTTPException(501, "Not Implemented")  (requires auth)
+```
+
+**Результат:**
+```
+backend/app/modules/tokens/
+├── __init__.py
+└── interface.py        -- TokenServiceProtocol, TokenIssuance, TokenHolding
+
+backend/app/modules/ai_trainer/
+├── __init__.py
+└── interface.py        -- AITrainerProtocol, TrainingQuestion, EvaluationResult
+
+backend/app/modules/payments/providers/
+├── __init__.py
+└── interface.py        -- PaymentProviderProtocol, PaymentIntent, ProviderPaymentStatus
+
+backend/app/modules/auto_translate/
+├── __init__.py
+└── interface.py        -- AutoTranslateProtocol
+
+backend/app/modules/transactions/
+└── router.py           -- +GET /export (501 stub)
+```
+
+**Обновлённые файлы (Sprint 10.1):**
+- `transactions/router.py` — `+HTTPException` import, `+GET /export` endpoint (перед `/{transaction_id}`)
+
+**Критерий готовности:** Все интерфейсы определены. `GET /transactions/export` возвращает 501. 330 тестов зелёных, 0 warnings, 0 критических issues, 0 предупреждений.
 
 ---
 
@@ -2886,7 +2923,7 @@ backend/tests/
 | TD-006 | `notifications/` | ~~Cron для expiration waitlist~~ → `cleanup_expired_notifications()` в notification worker. Hard-delete expired+delivered, CASCADE на deliveries | After MVP | ✅ Sprint 8.1 |
 | TD-007 | `tests/` | Cleanup fixtures через ORM вместо raw SQL | Backlog | ⬜ |
 | TD-008 | Все роутеры | Rate limiting (slowapi) | Before Prod | ⬜ |
-| TD-009 | `transactions/` | Экспорт в CSV/XLSX | Phase 2 | ⬜ |
+| TD-009 | `transactions/` | ~~Экспорт в CSV/XLSX~~ → `GET /transactions/export` stub (501 Not Implemented) создан в Sprint 10.1. Реальная реализация CSV/XLSX | Phase 2 | ⬜ |
 | TD-010 | `purchases/` | ~~PDF генерация сертификатов~~ → HTML-просмотр + PDF-генерация (xhtml2pdf) + email отправка. `core/email.py` для SMTP/Mailgun, rate limit на email endpoint | Phase 2 | ✅ Sprint 9.2 |
 | TD-011 | `app/core/database.py` | Lazy singleton race condition при concurrent startup — теоретический, asyncio single-threaded, но задокументировать | Backlog | ⬜ |
 | TD-012 | `audit_log` | Партиционирование по `created_at` (range partitioning) для long-term performance | Before Prod | ⬜ |
@@ -2943,4 +2980,4 @@ backend/tests/
 
 ---
 
-*Version 2.8 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 complete, Phase 9 complete. Sprint 9.2: Dashboard+Portfolio+Certificates (core/email.py refactor, xhtml2pdf, Jinja2 templates, rate limit, single JOIN). 22 migrations, TD-010 closed, TD-053..TD-058 (TD-055 closed), 330 tests total, 0 warnings, Phase 10 next*
+*Version 2.9 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 complete, Phase 9 complete, Sprint 10.1 complete. Sprint 10.1: Protocol stubs (tokens, ai_trainer, providers, auto_translate) + transactions/export 501. 22 migrations, TD-009 stub created, 330 tests total, 0 warnings, Sprint 10.2 next*
