@@ -69,7 +69,7 @@ from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout  # 
 from app.modules.notifications.models import Notification, NotificationDelivery  # noqa: F401
 
 # Sprint 9.1: Posts
-# from app.modules.posts.models import Post, PostDismiss, Event  # noqa: F401
+from app.modules.posts.models import Post, PostDismiss, Event  # noqa: F401
 
 # ---------------------------------------------------------------------------
 

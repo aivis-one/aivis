@@ -34,6 +34,10 @@
 #   commissions_router        -> /api/v1/agent/* (Sprint 7.3)
 #   notifications_router      -> /api/v1/notifications/* (Sprint 8.3)
 #   staff_notifications_router -> /api/v1/staff/notifications/* (Sprint 8.2)
+#   posts_router              -> /api/v1/posts/* (Sprint 9.1)
+#   events_router             -> /api/v1/events/* (Sprint 9.1)
+#   staff_posts_router        -> /api/v1/staff/posts/* (Sprint 9.1)
+#   staff_events_router       -> /api/v1/staff/events/* (Sprint 9.1)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -94,6 +98,8 @@ from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
 from app.modules.payments.webhook_router import router as payments_webhook_router
+from app.modules.posts.router import events_router, posts_router
+from app.modules.posts.staff_router import staff_events_router, staff_posts_router
 from app.modules.products.router import router as products_router
 from app.modules.products.staff_router import router as staff_products_router
 from app.modules.purchases.router import router as purchases_router
@@ -385,6 +391,10 @@ app.include_router(referrals_router)
 app.include_router(commissions_router)
 app.include_router(notifications_router)
 app.include_router(staff_notifications_router)
+app.include_router(posts_router)
+app.include_router(events_router)
+app.include_router(staff_posts_router)
+app.include_router(staff_events_router)
 
 
 # ---------------------------------------------------------------------------
