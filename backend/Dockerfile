@@ -12,6 +12,9 @@
 #
 # PYTHONPATH=/app ensures `from app.core.config import settings` works
 # everywhere: uvicorn, alembic, pytest -- without `pip install -e .`.
+#
+# Sprint 9.2: pycairo (via xhtml2pdf -> svglib -> rlpycairo) requires
+# C compiler + cairo headers at build time, and libcairo2 at runtime.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -20,6 +23,14 @@
 FROM python:3.12-slim AS builder
 
 WORKDIR /build
+
+# Build deps for pycairo (C compiler, cairo headers, pkg-config).
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        pkg-config \
+        libcairo2-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
 
@@ -33,6 +44,11 @@ RUN python -m venv /opt/venv && \
 FROM python:3.12-slim AS runtime
 
 WORKDIR /app
+
+# Runtime dep for pycairo (shared library only, no headers).
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends libcairo2 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Non-root user for security.
 RUN groupadd --gid 1000 cbshome && \
