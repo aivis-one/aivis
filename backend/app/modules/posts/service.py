@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Posts Service (Sprint 9.1)
+# CBSHOME Backend -- Posts Service (Sprint 9.1, review fixes)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -19,7 +19,12 @@
 #     update_event()           -- partial update (PATCH)
 #     delete_event()           -- soft delete (is_deleted=True)
 #     list_events()            -- published events (paginated)
-#     list_upcoming_events()   -- next 30 days (no pagination)
+#     list_upcoming_events()   -- next 30 days (LIMIT 100)
+#
+# REVIEW FIXES:
+#   - dismiss_post: begin_nested() SAVEPOINT instead of session.rollback()
+#   - list_upcoming_events: .limit(100) safety cap
+#   - owner_type validation moved to Pydantic Literal (schema layer)
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
@@ -50,8 +55,6 @@ from app.modules.posts.schemas import (
 
 logger = structlog.get_logger()
 
-_VALID_OWNER_TYPES = frozenset(e.value for e in OwnerType)
-
 
 # ---------------------------------------------------------------------------
 # Posts
@@ -65,10 +68,11 @@ async def create_post(
 ) -> Post:
     """Create a new post (platform or company).
 
-    Validates owner_type and owner_id consistency:
+    Validates owner_id consistency:
       - platform -> owner_id must be None
       - company  -> owner_id must reference an existing CompanyProfile
 
+    owner_type is validated by Pydantic Literal in schema.
     Sets published_at when is_published=True.
 
     Args:
@@ -80,14 +84,9 @@ async def create_post(
         The created Post (flushed, not committed).
 
     Raises:
-        BadRequestError: Invalid owner_type or missing/invalid owner_id.
+        BadRequestError: Missing/invalid owner_id for owner_type.
+        NotFoundError: Company not found for company posts.
     """
-    if body.owner_type not in _VALID_OWNER_TYPES:
-        raise BadRequestError(
-            f"Invalid owner_type: {body.owner_type}. "
-            f"Valid: {', '.join(sorted(_VALID_OWNER_TYPES))}"
-        )
-
     if body.owner_type == OwnerType.PLATFORM and body.owner_id is not None:
         raise BadRequestError(
             "owner_id must be null for platform posts"
@@ -375,6 +374,8 @@ async def dismiss_post(
     """Dismiss a post for the current user (idempotent).
 
     Creates a PostDismiss record. If already dismissed, does nothing.
+    Uses SAVEPOINT (begin_nested) so IntegrityError doesn't roll back
+    the outer transaction.
 
     Args:
         session: Active DB session (caller commits).
@@ -394,18 +395,18 @@ async def dismiss_post(
     if count == 0:
         raise NotFoundError("Post not found")
 
-    # Idempotent: try INSERT, ignore UNIQUE violation.
+    # Idempotent: SAVEPOINT + INSERT, ignore UNIQUE violation.
     dismiss = PostDismiss(
         post_id=post_id,
         user_id=user_id,
     )
-    session.add(dismiss)
-
     try:
-        await session.flush()
+        async with session.begin_nested():
+            session.add(dismiss)
+            await session.flush()
     except IntegrityError:
-        # Already dismissed -- rollback the failed flush, continue.
-        await session.rollback()
+        # Already dismissed -- SAVEPOINT rolled back, outer txn intact.
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -578,10 +579,10 @@ async def list_upcoming_events(
 ) -> list[Event]:
     """List published events starting within the next 30 days.
 
-    No pagination -- returns all upcoming events sorted by starts_at ASC.
+    Safety cap: max 100 results to prevent unbounded queries.
 
     Returns:
-        List of upcoming events.
+        List of upcoming events sorted by starts_at ASC.
     """
     now = datetime.now(UTC)
     cutoff = now + timedelta(days=30)
@@ -595,6 +596,7 @@ async def list_upcoming_events(
             Event.starts_at <= cutoff,
         )
         .order_by(Event.starts_at.asc())
+        .limit(100)
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
