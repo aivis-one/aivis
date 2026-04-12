@@ -38,6 +38,8 @@
 #   events_router             -> /api/v1/events/* (Sprint 9.1)
 #   staff_posts_router        -> /api/v1/staff/posts/* (Sprint 9.1)
 #   staff_events_router       -> /api/v1/staff/events/* (Sprint 9.1)
+#   investor_dashboard_router -> /api/v1/dashboard/* (Sprint 9.2)
+#   portfolio_router          -> /api/v1/portfolio/* (Sprint 9.2)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -79,6 +81,7 @@ from app.modules.commissions.worker import (
     run_monthly_payout,
     run_quarterly_payout,
 )
+from app.modules.dashboard.router import router as investor_dashboard_router
 from app.modules.referrals.router import router as referrals_router
 from app.modules.auth.router import router as auth_router
 from app.modules.companies.router import router as companies_router
@@ -98,6 +101,7 @@ from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
 from app.modules.payments.webhook_router import router as payments_webhook_router
+from app.modules.portfolio.router import router as portfolio_router
 from app.modules.posts.router import events_router, posts_router
 from app.modules.posts.staff_router import staff_events_router, staff_posts_router
 from app.modules.products.router import router as products_router
@@ -395,6 +399,8 @@ app.include_router(posts_router)
 app.include_router(events_router)
 app.include_router(staff_posts_router)
 app.include_router(staff_events_router)
+app.include_router(investor_dashboard_router)
+app.include_router(portfolio_router)
 
 
 # ---------------------------------------------------------------------------
