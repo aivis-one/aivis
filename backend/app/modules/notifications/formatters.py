@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Formatters (Sprint 8.1 + 8.2)
+# CBSHOME Backend -- Notification Formatters (Sprint 8.1 + 8.2, refactor 9.2)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -9,7 +9,12 @@
 #   ChannelFormatter -- Protocol defining the deliver interface.
 #   StubFormatter    -- Default implementation that always succeeds (logs only).
 #   TelegramFormatter -- aiogram Bot.send_message (Sprint 8.2).
-#   EmailFormatter   -- aiosmtplib (SMTP) + httpx (Mailgun fallback) (Sprint 8.2).
+#   EmailFormatter   -- delegates to core/email.py (Sprint 9.2 refactor).
+#
+# SPRINT 9.2 REFACTOR:
+#   EmailFormatter._send_smtp and _send_mailgun moved to app/core/email.py
+#   for reuse by certificate_service. EmailFormatter keeps its __init__ params
+#   and passes them to core/email functions (test compatibility preserved).
 #
 # LAZY INIT:
 #   _init_formatters() is called once on first get_formatter() call.
@@ -25,12 +30,12 @@
 #   get_formatter(channel) returns the appropriate formatter instance.
 # =============================================================================
 
-from email.message import EmailMessage
 from typing import Protocol
 
 import structlog
 
 from app.core.config import settings
+from app.core.email import build_message, mask_email, send_mailgun, send_smtp
 from app.modules.notifications.constants import DeliveryChannel
 from app.modules.notifications.models import Notification, NotificationDelivery
 from app.modules.notifications.template_engine import render
@@ -156,6 +161,9 @@ class EmailFormatter:
 
     High-secured domains (configured in settings) go directly to Mailgun,
     bypassing SMTP. All other domains try SMTP first, then Mailgun on failure.
+
+    Sprint 9.2: low-level sending delegated to app.core.email for reuse.
+    __init__ params preserved for test compatibility.
     """
 
     def __init__(
@@ -223,106 +231,51 @@ class EmailFormatter:
 
         if domain in high_secured:
             # High-secured domain -> Mailgun only.
-            return await self._send_mailgun(recipient, subject, body)
+            return await send_mailgun(
+                from_email=self._from_email,
+                recipient=recipient,
+                subject=subject,
+                body=body,
+                api_key=self._mailgun_api_key,
+                domain=self._mailgun_domain,
+            )
 
         # Normal domain -> SMTP primary, Mailgun fallback.
         try:
-            return await self._send_smtp(recipient, subject, body)
+            msg = build_message(
+                from_email=self._from_email,
+                recipient=recipient,
+                subject=subject,
+                body=body,
+            )
+            await send_smtp(
+                msg,
+                hostname=self._smtp_host,
+                port=self._smtp_port,
+                use_tls=self._use_tls,
+                username=self._smtp_user,
+                password=self._smtp_password,
+            )
+            return True
         except Exception as smtp_exc:
             logger.warning(
                 "smtp_failed_fallback_mailgun",
-                recipient=_mask_email(recipient),
+                recipient=mask_email(recipient),
                 error=str(smtp_exc)[:200],
             )
-            return await self._send_mailgun(recipient, subject, body)
-
-    async def _send_smtp(
-        self,
-        recipient: str,
-        subject: str,
-        body: str,
-    ) -> bool:
-        """Send email via local SMTP (Postfix)."""
-        import aiosmtplib
-
-        msg = EmailMessage()
-        msg["From"] = self._from_email
-        msg["To"] = recipient
-        msg["Subject"] = subject
-        msg.set_content(body)
-
-        kwargs: dict = {
-            "hostname": self._smtp_host,
-            "port": self._smtp_port,
-        }
-
-        if self._use_tls:
-            kwargs["start_tls"] = True
-
-        if self._smtp_user:
-            kwargs["username"] = self._smtp_user
-            kwargs["password"] = self._smtp_password
-
-        await aiosmtplib.send(msg, **kwargs)
-
-        logger.info("email_sent_smtp", recipient=_mask_email(recipient), subject=subject)
-        return True
-
-    async def _send_mailgun(
-        self,
-        recipient: str,
-        subject: str,
-        body: str,
-    ) -> bool:
-        """Send email via Mailgun HTTP API."""
-        import httpx
-
-        if not self._mailgun_api_key or self._mailgun_api_key == "TEST":
-            logger.error("mailgun_not_configured")
-            return False
-
-        url = f"https://api.mailgun.net/v3/{self._mailgun_domain}/messages"
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                url,
-                auth=("api", self._mailgun_api_key),
-                data={
-                    "from": self._from_email,
-                    "to": [recipient],
-                    "subject": subject,
-                    "text": body,
-                },
-            )
-
-        if resp.status_code in (200, 202):
-            logger.info(
-                "email_sent_mailgun",
-                recipient=_mask_email(recipient),
+            return await send_mailgun(
+                from_email=self._from_email,
+                recipient=recipient,
                 subject=subject,
+                body=body,
+                api_key=self._mailgun_api_key,
+                domain=self._mailgun_domain,
             )
-            return True
-
-        logger.error(
-            "mailgun_send_failed",
-            status=resp.status_code,
-            body=resp.text[:500],
-        )
-        return False
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _mask_email(email: str) -> str:
-    """Mask email for logging: 'user@example.com' -> 'u***@example.com'."""
-    if "@" not in email:
-        return "***"
-    local, domain = email.rsplit("@", 1)
-    if len(local) <= 1:
-        return f"***@{domain}"
-    return f"{local[0]}***@{domain}"
 
 
 def _sanitize_error(exc: Exception) -> str:

@@ -40,6 +40,7 @@
 #   staff_events_router       -> /api/v1/staff/events/* (Sprint 9.1)
 #   investor_dashboard_router -> /api/v1/dashboard/* (Sprint 9.2)
 #   portfolio_router          -> /api/v1/portfolio/* (Sprint 9.2)
+#   certificate_router        -> /api/v1/purchases/* (Sprint 9.2)
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -107,6 +108,7 @@ from app.modules.posts.staff_router import staff_events_router, staff_posts_rout
 from app.modules.products.router import router as products_router
 from app.modules.products.staff_router import router as staff_products_router
 from app.modules.purchases.router import router as purchases_router
+from app.modules.purchases.certificate_router import router as certificate_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.consistency.router import router as consistency_router
@@ -401,6 +403,7 @@ app.include_router(staff_posts_router)
 app.include_router(staff_events_router)
 app.include_router(investor_dashboard_router)
 app.include_router(portfolio_router)
+app.include_router(certificate_router)
 
 
 # ---------------------------------------------------------------------------
