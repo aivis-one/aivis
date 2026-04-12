@@ -194,10 +194,6 @@ apt-get install -y \
     dnsutils \
     software-properties-common \
     python3-certbot-nginx \
-    postfix \
-    opendkim \
-    opendkim-tools \
-    mailutils \
     > /dev/null 2>&1
 
 success "Base packages installed"
@@ -384,7 +380,7 @@ KYC_WEBHOOK_SECRET=${KYC_SECRET}
 CRYPTO_WEBHOOK_SECRET=${CRYPTO_SECRET}
 
 # -- Email (SMTP primary, Mailgun fallback) --
-SMTP_HOST=localhost
+SMTP_HOST=host.docker.internal
 SMTP_PORT=25
 SMTP_USER=
 SMTP_PASSWORD=
@@ -519,13 +515,23 @@ log "Configuring Postfix..."
 
 # Prevent interactive prompts from Postfix.
 debconf-set-selections <<< "postfix postfix/mailname string ${MAIL_DOMAIN}"
-debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+debconf-set-selections <<< "postfix postfix/main_mailer_type string Internet Site"
+
+# Install mail packages (after debconf preseeding to avoid interactive dialogs).
+log "Installing Postfix + OpenDKIM..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    postfix \
+    opendkim \
+    opendkim-tools \
+    mailutils \
+    > /dev/null 2>&1
+success "Mail packages installed"
 
 postconf -e "myhostname = ${MAIL_DOMAIN}"
 postconf -e "myorigin = ${MAIL_DOMAIN}"
-postconf -e "inet_interfaces = loopback-only"
+postconf -e "inet_interfaces = all"
 postconf -e "mydestination = localhost"
-postconf -e "mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128"
+postconf -e "mynetworks = 127.0.0.0/8 172.16.0.0/12 [::ffff:127.0.0.0]/104 [::1]/128"
 postconf -e "relay_domains ="
 postconf -e "default_transport = smtp"
 postconf -e "smtp_tls_security_level = may"

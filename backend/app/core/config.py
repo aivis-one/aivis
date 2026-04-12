@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     kyc_webhook_secret: str = ""
 
     # -- Email (SMTP primary, Mailgun fallback) --
-    smtp_host: str = "localhost"
+    smtp_host: str = "host.docker.internal"
     smtp_port: int = 25
     smtp_user: str = ""
     smtp_password: str = ""
