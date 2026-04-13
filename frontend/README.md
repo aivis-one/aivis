@@ -41,7 +41,7 @@ cbshome status
 
 Copy `.env.example` to `.env` and configure:
 
-| Variable                | Description                                      |
-| ----------------------- | ------------------------------------------------ |
-| `VITE_API_BASE_URL`     | Backend API URL (e.g. `https://api.cbshome.org`) |
-| `VITE_TELEGRAM_BOT_URL` | Telegram bot deep link                           |
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_BASE_URL` | Backend API URL (e.g. `https://api.cbshome.org`) |
+| `VITE_TELEGRAM_BOT_URL` | Telegram bot deep link |
