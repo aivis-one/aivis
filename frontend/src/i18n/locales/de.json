@@ -18,5 +18,242 @@
     "noResults": "Keine Ergebnisse gefunden",
     "yes": "Ja",
     "no": "Nein"
+  },
+  "nav": {
+    "home": "Startseite",
+    "portfolio": "Portfolio",
+    "balance": "Guthaben",
+    "documents": "Dokumente",
+    "settings": "Einstellungen",
+    "hub": "Hub",
+    "commissions": "Provisionen",
+    "passive": "Passiv",
+    "products": "Produkte",
+    "analytics": "Analytik",
+    "users": "Benutzer",
+    "kyc": "KYC",
+    "payments": "Zahlungen",
+    "more": "Mehr"
+  },
+  "auth": {
+    "back": "Zurück",
+    "login": {
+      "title": "Willkommen zurück",
+      "subtitle": "Melden Sie sich bei Ihrem CBS HOME Konto an",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "passPlaceholder": "Passwort eingeben",
+      "forgot": "Passwort vergessen?",
+      "btn": "Anmelden",
+      "or": "oder",
+      "telegram": "Mit Telegram fortfahren",
+      "noAccount": "Kein Konto? ",
+      "createAccount": "Konto erstellen"
+    },
+    "register": {
+      "title": "Konto erstellen",
+      "subtitle": "Treten Sie der CBS HOME Investmentplattform bei",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "passPlaceholder": "Passwort erstellen",
+      "passwordHint": "Mindestens 8 Zeichen, Buchstaben und Zahlen",
+      "confirmPassword": "Passwort bestätigen",
+      "confirmPlaceholder": "Passwort wiederholen",
+      "terms": "Ich akzeptiere die Nutzungsbedingungen und Datenschutzrichtlinie",
+      "btn": "Konto erstellen",
+      "hasAccount": "Bereits ein Konto? ",
+      "loginLink": "Anmelden"
+    },
+    "verify": {
+      "title": "E-Mail prüfen",
+      "subtitle": "Wir haben einen Bestätigungscode an Ihre E-Mail gesendet",
+      "btn": "Bestätigen",
+      "noCode": "Code nicht erhalten? ",
+      "resend": "Erneut senden"
+    }
+  },
+  "onboarding": {
+    "title": "Einrichtung abschließen",
+    "subtitle": "Einige Schritte zum Starten",
+    "progress": "Schritt {current} von {total}",
+    "steps": {
+      "profile_filled": "Profil vervollständigen",
+      "kyc_submitted": "Identität verifizieren",
+      "documents_signed": "Dokumente unterzeichnen",
+      "completed": "Fertig!"
+    },
+    "actions": {
+      "go_to_profile": "Profil bearbeiten",
+      "go_to_kyc": "Verifizierung starten",
+      "go_to_documents": "Dokumente anzeigen",
+      "continue": "Zum Dashboard"
+    },
+    "status": {
+      "complete": "Abgeschlossen",
+      "current": "In Bearbeitung",
+      "pending": "Ausstehend"
+    },
+    "success": {
+      "title": "Alles erledigt!",
+      "message": "Ihre Kontoeinrichtung ist abgeschlossen. Willkommen!"
+    }
+  },
+  "shared": {
+    "toast": {
+      "close": "Schließen"
+    },
+    "fileUpload": {
+      "dragDrop": "Dateien hierher ziehen oder",
+      "browse": "durchsuchen",
+      "invalidSize": "Dateigröße überschreitet das Maximum",
+      "invalidType": "Dateityp wird nicht unterstützt",
+      "remove": "Datei entfernen"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "edit": "Profil bearbeiten",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "phone": "Telefon",
+    "bio": "Über mich",
+    "country": "Land",
+    "city": "Stadt",
+    "language": "Sprache",
+    "timezone": "Zeitzone",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "updated": "Profil erfolgreich aktualisiert",
+    "avatar": "Profilfoto",
+    "changeAvatar": "Foto ändern",
+    "removeAvatar": "Foto entfernen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "appearance": "Erscheinungsbild",
+    "theme": "Design",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "System",
+    "language": "Sprache",
+    "notifications": "Benachrichtigungen",
+    "notificationsEmail": "E-Mail-Benachrichtigungen",
+    "notificationsPush": "Push-Benachrichtigungen",
+    "notificationsSms": "SMS-Benachrichtigungen",
+    "saved": "Einstellungen gespeichert"
+  },
+  "kyc": {
+    "banner": {
+      "title_none": "Identitätsverifizierung abschließen",
+      "title_pending": "Ihre Dokumente werden geprüft",
+      "title_approved": "Identität verifiziert",
+      "title_rejected": "Verifizierung erfordert Aufmerksamkeit",
+      "cta_start": "KYC starten",
+      "cta_resubmit": "Erneut einreichen",
+      "cta_view_status": "Status anzeigen"
+    },
+    "upload": {
+      "title": "Dokumente hochladen",
+      "select_type": "Dokumenttyp",
+      "types": {
+        "passport": "Reisepass",
+        "national_id": "Personalausweis",
+        "drivers_license": "Führerschein",
+        "utility_bill": "Versorgungsrechnung",
+        "bank_statement": "Kontoauszug"
+      },
+      "hint": "Laden Sie ein klares Foto oder Scan hoch",
+      "min_docs": "Mindestens 1 Ausweisdokument und 1 Adressnachweis erforderlich",
+      "delete_confirm": "Dieses Dokument entfernen?"
+    },
+    "form": {
+      "step1_title": "Persönliche Daten",
+      "step2_title": "Dokumente",
+      "step3_title": "Überprüfung",
+      "step4_title": "Bestätigung",
+      "field_full_name": "Vollständiger Name",
+      "field_date_of_birth": "Geburtsdatum",
+      "field_nationality": "Staatsangehörigkeit",
+      "field_address": "Adresse",
+      "field_tax_id": "Steuer-ID",
+      "next": "Weiter",
+      "back": "Zurück",
+      "submit": "KYC einreichen",
+      "review_confirm": "Bitte überprüfen Sie Ihre Daten und bestätigen Sie"
+    },
+    "status": {
+      "title": "KYC-Status",
+      "timeline_submitted": "Eingereicht",
+      "timeline_review": "In Prüfung",
+      "timeline_approved": "Genehmigt",
+      "timeline_rejected": "Abgelehnt",
+      "rejection_reason": "Ablehnungsgrund",
+      "resubmit": "Erneut beantragen",
+      "verified_on": "Verifiziert am"
+    }
+  },
+  "documents": {
+    "title": "Dokumente",
+    "empty": "Noch keine Dokumente",
+    "loading": "Dokumente werden geladen...",
+    "filter": {
+      "type": "Typ",
+      "status": "Status",
+      "all": "Alle"
+    },
+    "type": {
+      "contract": "Vertrag",
+      "agreement": "Vereinbarung",
+      "disclosure": "Offenlegung",
+      "report": "Bericht",
+      "receipt": "Quittung"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "pending_signature": "Unterschrift ausstehend",
+      "signed": "Unterzeichnet",
+      "expired": "Abgelaufen",
+      "rejected": "Abgelehnt"
+    },
+    "detail": {
+      "title": "Dokumentdetails",
+      "type": "Typ",
+      "status": "Status",
+      "created": "Erstellt",
+      "updated": "Aktualisiert",
+      "signed": "Unterzeichnet",
+      "expires": "Läuft ab",
+      "fileSize": "Dateigröße",
+      "download": "Herunterladen",
+      "sign": "Dokument unterzeichnen",
+      "back": "Zurück zu Dokumenten"
+    },
+    "sign": {
+      "title": "Dokument unterzeichnen",
+      "agreement": "Ich habe die Bedingungen gelesen und stimme zu",
+      "signature": "Vollständiger Name (Unterschrift)",
+      "signaturePlaceholder": "Geben Sie Ihren vollständigen Namen ein",
+      "submit": "Unterzeichnen",
+      "success": "Dokument erfolgreich unterzeichnet",
+      "error": "Dokument konnte nicht unterzeichnet werden",
+      "back": "Zurück zum Dokument"
+    },
+    "pagination": {
+      "prev": "Zurück",
+      "next": "Weiter",
+      "page": "Seite {page} von {total}"
+    }
+  },
+  "errors": {
+    "network": "Verbindungsfehler. Bitte überprüfen Sie Ihre Internetverbindung.",
+    "timeout": "Zeitüberschreitung. Bitte versuchen Sie es erneut.",
+    "server": "Serverfehler. Bitte versuchen Sie es später.",
+    "retry": "Wiederholen"
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich",
+    "minLength": "Mindestens {min} Zeichen",
+    "passwordMismatch": "Passwörter stimmen nicht überein",
+    "termsRequired": "Sie müssen die Bedingungen akzeptieren"
   }
 }

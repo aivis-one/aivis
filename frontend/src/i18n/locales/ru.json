@@ -18,5 +18,242 @@
     "noResults": "Ничего не найдено",
     "yes": "Да",
     "no": "Нет"
+  },
+  "nav": {
+    "home": "Главная",
+    "portfolio": "Портфель",
+    "balance": "Баланс",
+    "documents": "Документы",
+    "settings": "Настройки",
+    "hub": "Хаб",
+    "commissions": "Комиссии",
+    "passive": "Пассивный",
+    "products": "Продукты",
+    "analytics": "Аналитика",
+    "users": "Пользователи",
+    "kyc": "KYC",
+    "payments": "Платежи",
+    "more": "Ещё"
+  },
+  "auth": {
+    "back": "Назад",
+    "login": {
+      "title": "С возвращением",
+      "subtitle": "Войдите в свой аккаунт CBS HOME",
+      "email": "Email",
+      "password": "Пароль",
+      "passPlaceholder": "Введите пароль",
+      "forgot": "Забыли пароль?",
+      "btn": "Войти",
+      "or": "или",
+      "telegram": "Продолжить через Telegram",
+      "noAccount": "Нет аккаунта? ",
+      "createAccount": "Создать аккаунт"
+    },
+    "register": {
+      "title": "Создать аккаунт",
+      "subtitle": "Присоединяйтесь к инвестиционной платформе CBS HOME",
+      "email": "Email",
+      "password": "Пароль",
+      "passPlaceholder": "Придумайте пароль",
+      "passwordHint": "Минимум 8 символов, буквы и цифры",
+      "confirmPassword": "Подтвердите пароль",
+      "confirmPlaceholder": "Повторите пароль",
+      "terms": "Я принимаю Условия использования и Политику конфиденциальности",
+      "btn": "Создать аккаунт",
+      "hasAccount": "Уже есть аккаунт? ",
+      "loginLink": "Войти"
+    },
+    "verify": {
+      "title": "Проверьте почту",
+      "subtitle": "Мы отправили код подтверждения на вашу почту",
+      "btn": "Подтвердить",
+      "noCode": "Не получили код? ",
+      "resend": "Отправить снова"
+    }
+  },
+  "onboarding": {
+    "title": "Завершите настройку",
+    "subtitle": "Несколько шагов для начала",
+    "progress": "Шаг {current} из {total}",
+    "steps": {
+      "profile_filled": "Заполните профиль",
+      "kyc_submitted": "Подтвердите личность",
+      "documents_signed": "Подпишите документы",
+      "completed": "Готово!"
+    },
+    "actions": {
+      "go_to_profile": "Редактировать профиль",
+      "go_to_kyc": "Начать верификацию",
+      "go_to_documents": "Документы",
+      "continue": "Перейти к панели"
+    },
+    "status": {
+      "complete": "Выполнено",
+      "current": "В процессе",
+      "pending": "Ожидает"
+    },
+    "success": {
+      "title": "Всё готово!",
+      "message": "Настройка аккаунта завершена. Добро пожаловать!"
+    }
+  },
+  "shared": {
+    "toast": {
+      "close": "Закрыть"
+    },
+    "fileUpload": {
+      "dragDrop": "Перетащите файлы сюда или",
+      "browse": "выберите",
+      "invalidSize": "Размер файла превышает допустимый",
+      "invalidType": "Тип файла не поддерживается",
+      "remove": "Удалить файл"
+    }
+  },
+  "profile": {
+    "title": "Профиль",
+    "edit": "Редактировать профиль",
+    "firstName": "Имя",
+    "lastName": "Фамилия",
+    "phone": "Телефон",
+    "bio": "О себе",
+    "country": "Страна",
+    "city": "Город",
+    "language": "Язык",
+    "timezone": "Часовой пояс",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "updated": "Профиль обновлён",
+    "avatar": "Фото профиля",
+    "changeAvatar": "Изменить фото",
+    "removeAvatar": "Удалить фото"
+  },
+  "settings": {
+    "title": "Настройки",
+    "appearance": "Внешний вид",
+    "theme": "Тема",
+    "themeLight": "Светлая",
+    "themeDark": "Тёмная",
+    "themeSystem": "Системная",
+    "language": "Язык",
+    "notifications": "Уведомления",
+    "notificationsEmail": "Уведомления по email",
+    "notificationsPush": "Push-уведомления",
+    "notificationsSms": "SMS-уведомления",
+    "saved": "Настройки сохранены"
+  },
+  "kyc": {
+    "banner": {
+      "title_none": "Пройдите верификацию личности",
+      "title_pending": "Ваши документы на рассмотрении",
+      "title_approved": "Личность подтверждена",
+      "title_rejected": "Верификация требует внимания",
+      "cta_start": "Начать KYC",
+      "cta_resubmit": "Отправить повторно",
+      "cta_view_status": "Посмотреть статус"
+    },
+    "upload": {
+      "title": "Загрузка документов",
+      "select_type": "Тип документа",
+      "types": {
+        "passport": "Паспорт",
+        "national_id": "Удостоверение личности",
+        "drivers_license": "Водительское удостоверение",
+        "utility_bill": "Счёт за коммунальные услуги",
+        "bank_statement": "Банковская выписка"
+      },
+      "hint": "Загрузите чёткое фото или скан",
+      "min_docs": "Необходим минимум 1 документ удостоверяющий личность и 1 подтверждение адреса",
+      "delete_confirm": "Удалить этот документ?"
+    },
+    "form": {
+      "step1_title": "Личные данные",
+      "step2_title": "Документы",
+      "step3_title": "Проверка",
+      "step4_title": "Подтверждение",
+      "field_full_name": "Полное имя",
+      "field_date_of_birth": "Дата рождения",
+      "field_nationality": "Гражданство",
+      "field_address": "Адрес",
+      "field_tax_id": "ИНН",
+      "next": "Далее",
+      "back": "Назад",
+      "submit": "Отправить KYC",
+      "review_confirm": "Проверьте данные и подтвердите отправку"
+    },
+    "status": {
+      "title": "Статус KYC",
+      "timeline_submitted": "Отправлено",
+      "timeline_review": "На рассмотрении",
+      "timeline_approved": "Одобрено",
+      "timeline_rejected": "Отклонено",
+      "rejection_reason": "Причина отклонения",
+      "resubmit": "Подать заявку повторно",
+      "verified_on": "Подтверждено"
+    }
+  },
+  "documents": {
+    "title": "Документы",
+    "empty": "Документов пока нет",
+    "loading": "Загрузка документов...",
+    "filter": {
+      "type": "Тип",
+      "status": "Статус",
+      "all": "Все"
+    },
+    "type": {
+      "contract": "Контракт",
+      "agreement": "Соглашение",
+      "disclosure": "Раскрытие информации",
+      "report": "Отчёт",
+      "receipt": "Квитанция"
+    },
+    "status": {
+      "draft": "Черновик",
+      "pending_signature": "Ожидает подписи",
+      "signed": "Подписан",
+      "expired": "Истёк",
+      "rejected": "Отклонён"
+    },
+    "detail": {
+      "title": "Детали документа",
+      "type": "Тип",
+      "status": "Статус",
+      "created": "Создан",
+      "updated": "Обновлён",
+      "signed": "Подписан",
+      "expires": "Истекает",
+      "fileSize": "Размер файла",
+      "download": "Скачать",
+      "sign": "Подписать документ",
+      "back": "К списку документов"
+    },
+    "sign": {
+      "title": "Подписание документа",
+      "agreement": "Я прочитал и согласен с условиями",
+      "signature": "Полное имя (подпись)",
+      "signaturePlaceholder": "Введите полное имя",
+      "submit": "Подписать",
+      "success": "Документ успешно подписан",
+      "error": "Не удалось подписать документ",
+      "back": "Назад к документу"
+    },
+    "pagination": {
+      "prev": "Назад",
+      "next": "Далее",
+      "page": "Страница {page} из {total}"
+    }
+  },
+  "errors": {
+    "network": "Ошибка соединения. Проверьте интернет.",
+    "timeout": "Время запроса истекло. Попробуйте снова.",
+    "server": "Ошибка сервера. Попробуйте позже.",
+    "retry": "Повторить"
+  },
+  "validation": {
+    "required": "Это поле обязательно",
+    "minLength": "Минимум {min} символов",
+    "passwordMismatch": "Пароли не совпадают",
+    "termsRequired": "Необходимо принять условия"
   }
 }

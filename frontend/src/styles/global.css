@@ -22,7 +22,7 @@ html {
 
 body {
   font-family: var(--font);
-  font-size: 15px;
+  font-size: var(--text-md);
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
@@ -63,16 +63,16 @@ ol {
 }
 
 /* === RTL === */
-[dir="rtl"] {
+[dir='rtl'] {
   font-family: 'Noto Sans Arabic', 'Montserrat', sans-serif;
 }
 
-[dir="rtl"] .ml-auto {
+[dir='rtl'] .ml-auto {
   margin-left: 0;
   margin-right: auto;
 }
 
-[dir="rtl"] .mr-auto {
+[dir='rtl'] .mr-auto {
   margin-right: 0;
   margin-left: auto;
 }

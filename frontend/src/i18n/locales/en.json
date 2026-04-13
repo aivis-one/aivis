@@ -18,5 +18,242 @@
     "noResults": "No results found",
     "yes": "Yes",
     "no": "No"
+  },
+  "nav": {
+    "home": "Home",
+    "portfolio": "Portfolio",
+    "balance": "Balance",
+    "documents": "Documents",
+    "settings": "Settings",
+    "hub": "Hub",
+    "commissions": "Commissions",
+    "passive": "Passive",
+    "products": "Products",
+    "analytics": "Analytics",
+    "users": "Users",
+    "kyc": "KYC",
+    "payments": "Payments",
+    "more": "More"
+  },
+  "auth": {
+    "back": "Back",
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your CBS HOME account",
+      "email": "Email",
+      "password": "Password",
+      "passPlaceholder": "Enter password",
+      "forgot": "Forgot password?",
+      "btn": "Sign in",
+      "or": "or",
+      "telegram": "Continue with Telegram",
+      "noAccount": "Don't have an account? ",
+      "createAccount": "Create account"
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Join the CBS HOME investment platform",
+      "email": "Email",
+      "password": "Password",
+      "passPlaceholder": "Create password",
+      "passwordHint": "Minimum 8 characters, letters and numbers",
+      "confirmPassword": "Confirm password",
+      "confirmPlaceholder": "Repeat password",
+      "terms": "I accept the Terms of Service and Privacy Policy",
+      "btn": "Create account",
+      "hasAccount": "Already have an account? ",
+      "loginLink": "Sign in"
+    },
+    "verify": {
+      "title": "Check your email",
+      "subtitle": "We sent a verification code to your email",
+      "btn": "Confirm",
+      "noCode": "Didn't receive the code? ",
+      "resend": "Resend"
+    }
+  },
+  "onboarding": {
+    "title": "Complete Your Setup",
+    "subtitle": "A few steps to get started",
+    "progress": "Step {current} of {total}",
+    "steps": {
+      "profile_filled": "Complete Your Profile",
+      "kyc_submitted": "Verify Your Identity",
+      "documents_signed": "Sign Documents",
+      "completed": "All Done!"
+    },
+    "actions": {
+      "go_to_profile": "Edit Profile",
+      "go_to_kyc": "Start Verification",
+      "go_to_documents": "View Documents",
+      "continue": "Go to Dashboard"
+    },
+    "status": {
+      "complete": "Completed",
+      "current": "In Progress",
+      "pending": "Pending"
+    },
+    "success": {
+      "title": "You're All Set!",
+      "message": "Your account setup is complete. Welcome aboard!"
+    }
+  },
+  "shared": {
+    "toast": {
+      "close": "Close"
+    },
+    "fileUpload": {
+      "dragDrop": "Drag and drop files here or",
+      "browse": "browse",
+      "invalidSize": "File size exceeds the maximum allowed",
+      "invalidType": "File type is not supported",
+      "remove": "Remove file"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "edit": "Edit Profile",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone",
+    "bio": "Bio",
+    "country": "Country",
+    "city": "City",
+    "language": "Language",
+    "timezone": "Timezone",
+    "save": "Save",
+    "cancel": "Cancel",
+    "updated": "Profile updated successfully",
+    "avatar": "Profile Photo",
+    "changeAvatar": "Change Photo",
+    "removeAvatar": "Remove Photo"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "language": "Language",
+    "notifications": "Notifications",
+    "notificationsEmail": "Email Notifications",
+    "notificationsPush": "Push Notifications",
+    "notificationsSms": "SMS Notifications",
+    "saved": "Settings saved"
+  },
+  "kyc": {
+    "banner": {
+      "title_none": "Complete your identity verification",
+      "title_pending": "Your documents are being reviewed",
+      "title_approved": "Identity verified",
+      "title_rejected": "Verification requires attention",
+      "cta_start": "Start KYC",
+      "cta_resubmit": "Resubmit",
+      "cta_view_status": "View Status"
+    },
+    "upload": {
+      "title": "Upload Documents",
+      "select_type": "Document Type",
+      "types": {
+        "passport": "Passport",
+        "national_id": "National ID",
+        "drivers_license": "Driver's License",
+        "utility_bill": "Utility Bill",
+        "bank_statement": "Bank Statement"
+      },
+      "hint": "Upload a clear photo or scan",
+      "min_docs": "At least 1 ID document and 1 proof of address required",
+      "delete_confirm": "Remove this document?"
+    },
+    "form": {
+      "step1_title": "Personal Information",
+      "step2_title": "Documents",
+      "step3_title": "Review",
+      "step4_title": "Confirm & Submit",
+      "field_full_name": "Full Name",
+      "field_date_of_birth": "Date of Birth",
+      "field_nationality": "Nationality",
+      "field_address": "Address",
+      "field_tax_id": "Tax ID",
+      "next": "Next",
+      "back": "Back",
+      "submit": "Submit KYC",
+      "review_confirm": "Please review your information and confirm submission"
+    },
+    "status": {
+      "title": "KYC Status",
+      "timeline_submitted": "Submitted",
+      "timeline_review": "Under Review",
+      "timeline_approved": "Approved",
+      "timeline_rejected": "Rejected",
+      "rejection_reason": "Rejection Reason",
+      "resubmit": "Resubmit Application",
+      "verified_on": "Verified on"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "empty": "No documents yet",
+    "loading": "Loading documents...",
+    "filter": {
+      "type": "Type",
+      "status": "Status",
+      "all": "All"
+    },
+    "type": {
+      "contract": "Contract",
+      "agreement": "Agreement",
+      "disclosure": "Disclosure",
+      "report": "Report",
+      "receipt": "Receipt"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending_signature": "Pending Signature",
+      "signed": "Signed",
+      "expired": "Expired",
+      "rejected": "Rejected"
+    },
+    "detail": {
+      "title": "Document Details",
+      "type": "Type",
+      "status": "Status",
+      "created": "Created",
+      "updated": "Updated",
+      "signed": "Signed",
+      "expires": "Expires",
+      "fileSize": "File Size",
+      "download": "Download",
+      "sign": "Sign Document",
+      "back": "Back to Documents"
+    },
+    "sign": {
+      "title": "Sign Document",
+      "agreement": "I have read and agree to the terms",
+      "signature": "Full Name (Signature)",
+      "signaturePlaceholder": "Enter your full name",
+      "submit": "Sign",
+      "success": "Document signed successfully",
+      "error": "Failed to sign document",
+      "back": "Back to Document"
+    },
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {total}"
+    }
+  },
+  "errors": {
+    "network": "Connection error. Please check your internet.",
+    "timeout": "Request timed out. Please try again.",
+    "server": "Server error. Please try again later.",
+    "retry": "Retry"
+  },
+  "validation": {
+    "required": "This field is required",
+    "minLength": "Minimum {min} characters",
+    "passwordMismatch": "Passwords do not match",
+    "termsRequired": "You must accept the terms"
   }
 }
