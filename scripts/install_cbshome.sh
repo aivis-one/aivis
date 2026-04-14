@@ -628,7 +628,7 @@ section "Docker Stack"
 cd "$INSTALL_BASE/repo"
 log "Building Docker images (this may take a few minutes)..."
 docker builder prune -f > /dev/null 2>&1 || true
-docker compose build --no-cache 2>&1 || { error "Docker build failed. Check output above."; }
+docker compose build 2>&1 || { error "Docker build failed. Check output above."; }
 docker compose up -d 2>&1 || { error "Docker compose up failed. Check output above."; }
 log "Waiting for app to be healthy..."
 
@@ -854,7 +854,7 @@ case_update() {
 
     # Rebuild all images (app + frontend).
     echo "Rebuilding Docker images..."
-    docker compose build --no-cache
+    docker compose build
 
     # Restart stack (down + up to ensure new image is used).
     echo "Restarting services..."
