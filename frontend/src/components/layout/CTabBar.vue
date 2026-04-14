@@ -2,7 +2,7 @@
 // Bottom tab bar from mockups/css/components.css .tab-bar.
 // Renders TabItem[] with Lucide icons, highlights active route.
 
-import { computed, type Component } from 'vue'
+import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -55,69 +55,29 @@ function navigate(tab: TabItem): void {
 
 <style scoped>
 .c-tabbar {
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-around;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
+  position: sticky; bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: space-around;
+  background: var(--bg); border-top: 1px solid var(--border);
   padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
   z-index: 100;
 }
-
 .c-tabbar__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  min-width: 56px;
-  min-height: 44px;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s;
-  border: none;
-  background: none;
-  font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 12px; min-width: 56px; min-height: 44px;
+  color: var(--text-tertiary); font-size: 10px; font-weight: 500;
+  cursor: pointer; transition: color 0.2s;
+  border: none; background: none; font-family: inherit;
   position: relative;
 }
-
-.c-tabbar__item:hover {
-  color: var(--primary-light);
-}
-
-.c-tabbar__item--active {
-  color: var(--primary);
-}
-
+.c-tabbar__item:hover { color: var(--primary-light); }
+.c-tabbar__item--active { color: var(--primary); }
 .c-tabbar__item--active::after {
-  content: '';
-  position: absolute;
+  content: ''; position: absolute;
   bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
+  left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
 }
-
-.c-tabbar__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.c-tabbar__label {
-  line-height: 1;
-}
-
-/* RTL support */
-[dir="rtl"] .c-tabbar {
-  direction: rtl;
-}
+.c-tabbar__icon { display: flex; align-items: center; justify-content: center; }
+.c-tabbar__label { line-height: 1; }
+[dir="rtl"] .c-tabbar { direction: rtl; }
 </style>

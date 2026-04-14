@@ -3,10 +3,10 @@
 // Shows logo + title on the left, optional back button, right slot.
 
 import { useRouter } from 'vue-router'
-import { ChevronLeft, Bell } from 'lucide-vue-next'
+import { ChevronLeft } from 'lucide-vue-next'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     title?: string
     showBack?: boolean
@@ -43,43 +43,15 @@ function goBack(): void {
 
 <style scoped>
 .c-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--bg);
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100; background: var(--bg);
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
 }
-
-.c-header__left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.c-header__title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--primary-dark);
-}
-
+.c-header__left { display: flex; align-items: center; gap: 10px; }
+.c-header__title { font-size: 16px; font-weight: 700; color: var(--primary-dark); }
 .c-header__back {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text);
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  margin-left: -4px;
+  background: none; border: none; cursor: pointer; color: var(--text);
+  padding: 4px; display: flex; align-items: center; margin-left: -4px;
 }
-
-.c-header__right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.c-header__right { display: flex; align-items: center; gap: 8px; }
 </style>
