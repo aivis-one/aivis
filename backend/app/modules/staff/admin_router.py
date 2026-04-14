@@ -1,12 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Admin Router (Sprint 3.3)
+# CBSHOME Backend -- Admin Router (Sprint 3.3, G5 fix)
 # =============================================================================
 #
 # ENDPOINTS:
 #   GET  /api/v1/staff/dashboard/stats  -- platform statistics (any staff)
 #   GET  /api/v1/staff/kyc/queue        -- pending KYC applications (kyc_approve)
 #   POST /api/v1/staff/kyc/{id}/approve -- approve KYC (kyc_approve)
-#   POST /api/v1/staff/kyc/{id}/reject  -- reject KYC (kyc_approve)
+#   POST /api/v1/staff/kyc/{id}/reject  -- reject KYC (kyc_approve, optional reason)
 #
 # AUTH:
 #   Dashboard: any staff (get_current_staff).
@@ -28,6 +28,7 @@ from app.modules.auth.dependencies import get_current_staff, require_staff_permi
 from app.modules.staff.admin_schemas import (
     DashboardStatsResponse,
     KYCQueueItem,
+    KYCRejectRequest,
 )
 from app.modules.staff.admin_service import (
     dashboard_stats,
@@ -103,8 +104,9 @@ async def kyc_approve_endpoint(
 )
 async def kyc_reject_endpoint(
     application_id: UUID,
+    body: KYCRejectRequest,
     staff: User = Depends(require_staff_permission("kyc_approve")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Reject a KYC application. Requires kyc_approve permission."""
-    await kyc_reject(application_id, staff, session)
+    await kyc_reject(application_id, staff, session, reason=body.reason)

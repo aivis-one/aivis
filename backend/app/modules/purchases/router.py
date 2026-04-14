@@ -1,12 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Router (Sprint 6.1)
+# CBSHOME Backend -- Purchase Router (Sprint 6.1, G3 fix)
 # =============================================================================
 #
 # ENDPOINTS:
 #   POST /api/v1/products/{id}/purchase -- instant purchase
 #
 # AUTH:
-#   Requires authenticated investor (role=investor).
+#   Requires authenticated buyer (role=investor or role=agent).
 #
 # COMMIT RULE (P-01):
 #   Router never calls session.commit(). get_db_session manages it.
@@ -32,6 +32,9 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1/products", tags=["purchases"])
 
+# Roles allowed to purchase products (investors and agents).
+_BUYER_ROLES = {UserRole.INVESTOR, UserRole.AGENT}
+
 
 @router.post(
     "/{product_id}/purchase",
@@ -49,10 +52,10 @@ async def purchase_product(
     Returns list of Purchase records: one for the sale, plus any
     gift allocations triggered by purchase_config.bonuses[].
 
-    Requires: authenticated investor.
+    Requires: authenticated investor or agent.
     """
-    if user.role != UserRole.INVESTOR:
-        raise ForbiddenError("Only investors can purchase products")
+    if user.role not in _BUYER_ROLES:
+        raise ForbiddenError("Only investors and agents can purchase products")
 
     purchases = await execute_purchase(
         product_id=product_id,

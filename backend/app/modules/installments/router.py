@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Router (Sprint 6.2)
+# CBSHOME Backend -- Installment Router (Sprint 6.2, G4 fix)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -8,7 +8,7 @@
 #   GET  /api/v1/installments/{id}         -- plan detail with tranches
 #
 # AUTH:
-#   All endpoints require authenticated investor (role=investor).
+#   All endpoints require authenticated buyer (role=investor or role=agent).
 #
 # COMMIT RULE (P-01):
 #   Router never calls session.commit(). get_db_session manages it.
@@ -44,11 +44,14 @@ logger = structlog.get_logger()
 create_router = APIRouter(prefix="/api/v1/products", tags=["installments"])
 query_router = APIRouter(prefix="/api/v1/installments", tags=["installments"])
 
+# Roles allowed to create and manage installment plans.
+_BUYER_ROLES = {UserRole.INVESTOR, UserRole.AGENT}
 
-def _require_investor(user: User) -> None:
-    """Raise ForbiddenError if user is not an investor."""
-    if user.role != UserRole.INVESTOR:
-        raise ForbiddenError("Only investors can manage installment plans")
+
+def _require_buyer(user: User) -> None:
+    """Raise ForbiddenError if user is not a buyer (investor or agent)."""
+    if user.role not in _BUYER_ROLES:
+        raise ForbiddenError("Only investors and agents can manage installment plans")
 
 
 # ---------------------------------------------------------------------------
@@ -73,9 +76,9 @@ async def create_installment_plan(
     snapshot-copied, tranches are expanded. First tranche is paid
     by the daemon (not immediately).
 
-    Requires: authenticated investor.
+    Requires: authenticated investor or agent.
     """
-    _require_investor(user)
+    _require_buyer(user)
 
     plan = await create_plan(
         product_id=product_id,
@@ -103,8 +106,8 @@ async def list_my_plans(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
 ) -> InstallmentPlanListResponse:
-    """List installment plans for the authenticated investor."""
-    _require_investor(user)
+    """List installment plans for the authenticated buyer."""
+    _require_buyer(user)
 
     plans, total = await get_investor_plans(
         investor_id=user.id,
@@ -139,7 +142,7 @@ async def get_plan_detail_endpoint(
 
     Only accessible by the plan owner.
     """
-    _require_investor(user)
+    _require_buyer(user)
 
     plan, tranches = await get_plan_detail(
         plan_id=plan_id,

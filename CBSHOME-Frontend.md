@@ -1,18 +1,17 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 1.0
-**Дата:** 8 апреля 2026
-**Статус:** Draft
+**Версия:** 2.0
+**Дата:** 14 апреля 2026
+**Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
 **Зависимости (читать перед работой):**
 - `CBSHOME-Design-Document.md` — Конституция v1.5
-- `CBSHOME-Backend.md` — Backend ТЗ v1.5
+- `CBSHOME-Backend.md` — Backend ТЗ v2.9
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
 - `CBSHOME-Installment.md` — механика рассрочки
 - `mockups/` — UI-прототипы (auth-flow, investor-shell, agent-shell, company-shell, staff-shell)
-- `mockups/project-map/manifest.yaml` — screen→endpoint маппинг
 
 ---
 
@@ -54,12 +53,33 @@
 
 | Роль | Shell | Tab Bar | Доступ |
 |------|-------|---------|--------|
-| `investor` | InvestorShell | Главная, Портфель, Баланс, Документы, Настройки | Витрина, покупка, рассрочка, active balance |
-| `agent` | AgentShell | Главная, Hub, Комиссии, Пассив, Настройки | Всё инвесторское + реферальные ссылки, комиссии L1/L2/L3, лидерборд |
-| `company` | CompanyShell | Главная, Продукты, Аналитика, Настройки | Управление продуктами, аналитика продаж, passive balance |
+| `investor` | InvestorShell | Главная, Портфель, Маркет, Баланс, Ещё | Витрина, покупка, рассрочка, active balance |
+| `agent` | AgentShell | Главная, Hub, Комиссии, Баланс, Ещё | Всё инвесторское + реферальные ссылки, комиссии L1/L2/L3, лидерборд |
+| `company` | CompanyShell | Главная, Продукты, Аналитика, Баланс, Настройки | Управление продуктами, аналитика продаж, passive balance |
 | `staff` | StaffShell | Главная, Юзеры, KYC, Платежи, Ещё | Управление всеми пользователями, KYC-очередь, аватаринг |
 
 Agent имеет доступ ко всем инвесторским экранам (он тоже инвестор). Переключение через навигацию, не отдельное приложение.
+
+**"Ещё" (More)** — отдельный экран MoreView с навигацией к: Documents, Settings, Notifications, и ролеспецифичные пункты (Agent Application для investor, Leaderboard для agent).
+
+### 1.5. UserResponse — структура ответа бэкенда
+
+```typescript
+interface UserResponse {
+  id: string             // UUID
+  role: string           // 'investor' | 'agent' | 'company' | 'staff' | 'platform'
+  is_active: boolean
+  onboarding_step: string
+  kyc_status: string     // 'none' | 'submitted' | 'approved' | 'rejected'
+  profile: Record<string, any>  // JSONB: first_name, last_name, country, phone...
+  payout_details: Record<string, any> | null
+  language: string       // 'en' | 'ru' | 'de' | 'ar'
+  created_at: string
+  updated_at: string | null
+}
+```
+
+Поля `email`, `telegram_id` — внутри `credentials` JSONB, который НЕ возвращается (содержит password hash). Staff видит email через `GET /staff/users/{id}`.
 
 ---
 
@@ -73,7 +93,7 @@ Agent имеет доступ ко всем инвесторским экран�
 | Роутинг | Vue Router | 4.x | Role-based guards |
 | Стейт | Pinia | latest | Реактивные хранилища |
 | HTTP | Fetch (обёртка) | native | Запросы к API (CORS → api.cbshome.org) |
-| i18n | vue-i18n | latest | en/ru/de/ar + RTL |
+| i18n | vue-i18n | v10 | en/ru/de/ar + RTL |
 | PWA | vite-plugin-pwa | latest | Manifest + Service Worker |
 | Стили | Свой CSS | — | Дизайн-система из мокапов (variables.css v1.8.0) |
 | Линтинг | ESLint + Prettier | latest | Качество кода |
@@ -113,7 +133,7 @@ cbshome/                              -- GitHub repo root (существует)
 │   │   │   ├── types.ts              -- TypeScript-интерфейсы (все типы API)
 │   │   │   ├── utils.ts              -- Shared helpers (buildQuery)
 │   │   │   ├── auth.ts               -- POST /auth/email/*, POST /auth/telegram
-│   │   │   ├── users.ts              -- GET/PATCH /users/me
+│   │   │   ├── users.ts              -- GET/PATCH /users/me, payout-details
 │   │   │   ├── kyc.ts                -- KYC submit, status
 │   │   │   ├── documents.ts          -- Documents list, sign
 │   │   │   ├── products.ts           -- Products list, detail
@@ -123,8 +143,14 @@ cbshome/                              -- GitHub repo root (существует)
 │   │   │   ├── commissions.ts        -- Commission history, leaderboard
 │   │   │   ├── companies.ts          -- Company profile, products
 │   │   │   ├── withdrawals.ts        -- Withdrawal request, history
-│   │   │   ├── notifications.ts      -- Notification list, read
+│   │   │   ├── notifications.ts      -- Notification list, read, unread-count
 │   │   │   ├── posts.ts              -- Posts feed, dismiss
+│   │   │   ├── events.ts             -- Events list, upcoming
+│   │   │   ├── dashboard.ts          -- GET /dashboard/summary
+│   │   │   ├── portfolio.ts          -- GET /portfolio/me, company detail
+│   │   │   ├── certificates.ts       -- GET/POST /purchases/{id}/certificate
+│   │   │   ├── transactions.ts       -- GET /transactions
+│   │   │   ├── agent-apps.ts         -- POST /agent-applications, GET .../me
 │   │   │   └── admin.ts              -- Staff endpoints
 │   │   │
 │   │   ├── components/               -- Переиспользуемые UI-компоненты
@@ -144,10 +170,12 @@ cbshome/                              -- GitHub repo root (существует)
 │   │   ├── stores/                   -- Pinia хранилища
 │   │   │   ├── auth.ts               -- user, token, role, isAuthenticated
 │   │   │   ├── products.ts           -- list, filters, selected
+│   │   │   ├── dashboard.ts          -- investor dashboard summary
 │   │   │   ├── portfolio.ts          -- investor portfolio
-│   │   │   ├── balance.ts            -- active_balance, passive_balance
+│   │   │   ├── balance.ts            -- active_balance, passive_balance (from dashboard)
 │   │   │   ├── agent.ts              -- referrals, commissions, leaderboard
 │   │   │   ├── company.ts            -- company profile, products
+│   │   │   ├── transactions.ts       -- transaction history with filters
 │   │   │   └── notifications.ts      -- unread count, list
 │   │   │
 │   │   ├── router/                   -- Vue Router
@@ -285,158 +313,53 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 **Цель:** Проект собирается, деплоится на VPS, пустая страница открывается.
 
 **Задачи:**
-- [x] package.json с TypeScript, Vue Router, Pinia, vue-i18n
-- [x] Структура папок (src/api, components, views, stores, router, platform, styles, composables, utils, i18n)
-- [x] ESLint flat config + Prettier (единый стиль кода)
-- [x] tsconfig.json — strict mode, path aliases (`@/` → `src/`)
-- [x] vite.config.ts — base path, env переменные
-- [x] .env.example (`VITE_API_BASE_URL=https://api.cbshome.org`, `VITE_TELEGRAM_BOT_URL=...`)
-- [x] .gitignore (node_modules, dist, .env)
-- [x] README.md (команды: install, dev, build, lint)
+- [x] `npm create vite@latest frontend -- --template vue-ts`
+- [x] Установка зависимостей: vue-router, pinia, vue-i18n
+- [x] vite.config.ts: `server.host: '0.0.0.0'`, `server.port: 3000`, `resolve.alias: {'@': '/src'}`
+- [x] tsconfig.json: `strict: true`, `paths: {"@/*": ["./src/*"]}`
+- [x] ESLint flat config + Prettier (.prettierrc)
+- [x] .env.example: `VITE_API_BASE_URL=https://api.cbshome.org`
+- [x] .gitignore: node_modules, dist, .env
 
-**Решения реализации:**
-- Версии deps: caret ranges (`^`) в package.json, детерминизм через `package-lock.json` + `npm ci` в Dockerfile
-- Node 22 LTS (alpine) для билда, nginx:alpine для раздачи
-- `env.d.ts` содержит декларации для `.vue`, `.json` и Vite env
-- Telegram WebApp SDK подключается через `<script>` в index.html (не npm — Telegram не публикует SRI-хеши)
-
-**Результат:**
-```
-frontend/
-├── src/
-│   ├── App.vue                -- Корневой компонент (<RouterView />)
-│   ├── main.ts                -- createApp + router + pinia + i18n + стили
-│   ├── router/
-│   │   └── index.ts           -- / → HomeView, catch-all → /
-│   ├── views/
-│   │   ├── HomeView.vue       -- Плейсхолдер (лого + "CBS HOME" + v0.1.0)
-│   │   ├── auth/.gitkeep
-│   │   ├── investor/.gitkeep
-│   │   ├── agent/.gitkeep
-│   │   ├── company/.gitkeep
-│   │   └── staff/.gitkeep
-│   ├── styles/
-│   │   ├── variables.css      -- Дизайн-токены из mockups/css/variables.css (1:1)
-│   │   └── global.css         -- CSS reset + typography + Google Fonts + RTL base
-│   ├── i18n/
-│   │   ├── index.ts           -- vue-i18n setup
-│   │   └── locales/
-│   │       ├── en.json        -- {}
-│   │       ├── ru.json        -- {}
-│   │       ├── de.json        -- {}
-│   │       └── ar.json        -- {}
-│   ├── api/.gitkeep
-│   ├── components/{ui,layout,shared}/.gitkeep
-│   ├── stores/.gitkeep
-│   ├── platform/.gitkeep
-│   ├── composables/.gitkeep
-│   └── utils/.gitkeep
-├── public/
-│   ├── icons/favicon.svg
-│   └── assets/logo.svg
-├── index.html                 -- Telegram SDK script + PWA meta-теги
-├── vite.config.ts
-├── tsconfig.json
-├── eslint.config.js
-├── .prettierrc
-├── package.json
-├── package-lock.json          -- Для детерминированных билдов (npm ci)
-├── env.d.ts                   -- TypeScript декларации для .vue и Vite env
-├── .env.example
-├── .gitignore
-└── README.md
-```
-
-**Критерий готовности:** `npm run build` проходит, `npm run lint` без ошибок.
+**Критерий готовности:** `npm run dev` → localhost:3000 показывает пустую страницу.
 
 ---
 
-### ✅ F0.2: Дизайн-система (перенос из мокапов)
+### ✅ F0.2: Docker + Nginx
 
-**Цель:** CSS-переменные и базовые стили из мокапов перенесены в проект. Тёмная тема работает.
+**Цель:** Фронтенд собирается в Docker, раздаётся через Nginx.
 
 **Задачи:**
-- [x] src/styles/variables.css — полный перенос из mockups/css/variables.css v1.8.0:
-  - Orange Triad: `--o-primary: #cc3203`, `--o-accent: #E8651A`, `--o-light: #EFB44C`
-  - Teal System: `--t-500` → `--t-950`, tints
-  - Semantic aliases: `--primary`, `--accent`, `--bg`, `--text`, `--border`
-  - Shadows: `--shadow-sm` → `--shadow-xl`, `--shadow-focus`
-  - Spacing: 8px base system (`--space-xs` → `--space-4xl`)
-  - Radius: `--radius-sm` (4px) → `--radius-full` (9999px)
-  - `[data-theme="dark"]` — полный набор dark-переменных
-  - `@media (prefers-color-scheme: dark)` — system preference fallback
-- [x] src/styles/global.css:
-  - CSS reset
-  - Google Fonts: `Montserrat:wght@400;500;600;700;800` + `Noto+Sans+Arabic:wght@400;500;600;700`
-  - Base typography: `font-family: var(--font)` (`'Montserrat', system-ui, sans-serif`)
-  - RTL base: `[dir="rtl"] { font-family: 'Noto Sans Arabic', 'Montserrat', sans-serif; }`
-  - Scrollbar стилизация
-- [x] main.ts — импорт стилей (variables.css первым, потом global.css, потом telegram.css)
-- [x] Theme detection: initial script в index.html (как в мокапах — `localStorage.getItem('cbs-theme')`)
+- [x] Dockerfile: multi-stage (node:22-alpine build → nginx:alpine serve)
+- [x] nginx.conf: SPA fallback, gzip, cache headers, CSP с Telegram SDK, health check `/health`
+- [x] docker-compose.yml: сервис `frontend` с build context `./frontend`
+- [x] `install_cbshome.sh`: Nginx-блок для `cbshome.org` → `localhost:3000`
 
-**Решения реализации:**
-- Dark mode токены дублируются в `[data-theme="dark"]` и `@media (prefers-color-scheme: dark)` — CSS не поддерживает миксины без препроцессора. Блоки связаны комментариями `/* SYNC: ... */`
-- Google Fonts загружаются через `<link>` в index.html (не `@import` в CSS) — избегаем блокирующего каскада запросов
-- `src/styles/telegram.css` — пустой placeholder для Telegram-specific overrides (заполняется в F1.1)
-
-**Критерий готовности:** HomeView.vue использует CSS-переменные. Тёмная тема переключается через `[data-theme="dark"]` на `<html>`.
+**Критерий готовности:** `docker compose up frontend` → cbshome.org отдаёт SPA.
 
 ---
 
-### ✅ F0.3: Docker + деплой на VPS
+### ✅ F0.3: Стили (дизайн-токены)
 
-**Цель:** Фронтенд деплоится через `cbshome update`, доступен по HTTPS.
+**Цель:** CSS-переменные из мокапов подключены, темизация работает.
 
 **Задачи:**
-- [x] frontend/Dockerfile (multi-stage: node:22-alpine build → nginx:alpine serve)
-- [x] frontend/nginx.conf (внутренний nginx: SPA fallback, gzip, кеш assets, порт 3000)
-- [x] frontend/.dockerignore
-- [x] docker-compose.yml — раскомментировать сервис `frontend`:
-  - build: ./frontend, порт 127.0.0.1:3000:3000
-  - depends_on: app (condition: service_healthy)
-  - healthcheck: `wget -q --spider http://localhost:3000/`
-- [x] Nginx на хосте: `cbshome.org/*` → frontend:3000
-- [x] install_cbshome.sh — обновить: `cbshome update` собирает оба сервиса, lint/test включают frontend
+- [x] src/styles/variables.css — скопирован из `mockups/css/variables.css` 1:1
+- [x] src/styles/global.css — reset, Google Fonts (Montserrat + Noto Sans Arabic), base styles
+- [x] Тёмная тема: `[data-theme="dark"]` переопределяет переменные (из mockups)
+- [x] RTL: `[dir="rtl"]` базовые overrides
 
-**Решения реализации:**
-- App healthcheck в docker-compose.yml: `python -c "import urllib.request; urllib.request.urlopen(...)"` вместо `curl` — `python:3.12-slim` не содержит curl. Без этого фикса frontend не стартует (зависит от `condition: service_healthy`)
-- `install_cbshome.sh` изменения: `build --no-cache app` → `build --no-cache` (все сервисы), `case_lint` + `case_test` с секцией frontend
-- nginx.conf: CSP заголовок `frame-ancestors 'self' https://web.telegram.org https://*.telegram.org` вместо `X-Frame-Options: SAMEORIGIN` — последний блокирует Telegram iframe
-- Полный CSP: `default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.cbshome.org`
-
-**Docker-сервисы (после F0.3):**
-```
-cbshome-app        → 127.0.0.1:8000  (FastAPI)
-cbshome-frontend   → 127.0.0.1:3000  (Nginx + Vue SPA)
-cbshome-postgres   → internal only
-cbshome-redis      → internal only
-```
-
-**Маршрутизация (Nginx на хосте):**
-```
-https://cbshome.org/*             → cbshome-frontend:3000
-https://api.cbshome.org/*         → cbshome-app:8000
-```
-
-**Критерий готовности:** `curl https://cbshome.org/` → HTML-страница с "CBS HOME".
+**Критерий готовности:** CSS-переменные доступны, тема переключается.
 
 ---
 
-### ✅ F0.4: PWA-заготовка
+### ✅ F0.4: PWA-манифест
 
-**Цель:** Приложение можно добавить на Home Screen.
+**Цель:** Приложение устанавливается на Home Screen.
 
 **Задачи:**
-- [x] vite-plugin-pwa в vite.config.ts
-- [x] public/manifest.json (name: "CBS HOME", icons, theme_color: `#1A6B6A`, display: standalone)
-- [x] Иконки: 192x192, 512x512 (placeholder — заменим на брендинг заказчика)
-- [x] Service Worker: precache статики (только кеширование, без офлайна)
-- [x] meta-теги в index.html (apple-mobile-web-app-capable, viewport)
-
-**Решения реализации:**
-- `vite-plugin-pwa` с `registerType: 'autoUpdate'`, `manifest: false` (используем `public/manifest.json` напрямую)
-- workbox config: `globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']`, `navigateFallback: 'index.html'`, `navigateFallbackDenylist: [/^\/api\//]`
-- Placeholder-иконки: сплошной оранжевый (#cc3203) PNG 192x192 и 512x512
+- [x] vite-plugin-pwa: `registerType: 'autoUpdate'`, `workbox.globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']`, `navigateFallback: 'index.html'`, `navigateFallbackDenylist: [/^\/api\//]`
+- [x] Placeholder-иконки: сплошной оранжевый (#cc3203) PNG 192x192 и 512x512
 
 **Критерий готовности:** iPhone Safari → "Добавить на экран" → приложение открывается в standalone-режиме.
 
@@ -447,26 +370,13 @@ https://api.cbshome.org/*         → cbshome-app:8000
 **Цель:** vue-i18n настроен, переключение языков работает, RTL layout переключается.
 
 **Задачи:**
-- [x] src/i18n/index.ts:
-  - `createI18n()` с `legacy: false` (Composition API)
-  - Locale detection: `localStorage.getItem('cbs-lang')` → `navigator.language` → `'en'` fallback
-  - RTL detection: `locale === 'ar'` → `document.documentElement.dir = 'rtl'`, `document.documentElement.lang = 'ar'`
-- [x] src/i18n/locales/en.json — базовые ключи (app.name, common.save, common.cancel, common.loading...)
-- [x] src/i18n/locales/ru.json — русские переводы
-- [x] src/i18n/locales/de.json — немецкие переводы
-- [x] src/i18n/locales/ar.json — арабские переводы
-- [x] src/styles/global.css — RTL utilities:
-  - `[dir="rtl"] .mr-auto { margin-right: 0; margin-left: auto; }`
-  - `[dir="rtl"]` overrides для flex direction, text-align, padding/margin
-- [x] main.ts — `app.use(i18n)`
+- [x] src/i18n/index.ts: `createI18n()` с `legacy: false` (Composition API)
+- [x] Locale detection: `localStorage.getItem('cbs-lang')` → `navigator.language` → `'en'` fallback
+- [x] RTL detection: `locale === 'ar'` → `document.documentElement.dir = 'rtl'`
+- [x] Базовые ключи во всех 4 локалях (en, ru, de, ar)
+- [x] main.ts: `app.use(i18n)`
 
-**Решения реализации:**
-- `SUPPORTED_LOCALES = ['en', 'ru', 'de', 'ar'] as const` — единая типизированная константа, экспортируется
-- `SupportedLocale` — union type, выведенный из константы
-- `isSupportedLocale()` — type guard для безопасной проверки locale из localStorage/navigator
-- `applyDir()` — экспортируемая функция для переключения `dir` и `lang` на `<html>`
-
-**Критерий готовности:** `$t('app.name')` рендерит "CBS HOME" на en, "ЦБС ХОУМ" на ru. Переключение на ar → layout зеркалится (RTL).
+**Критерий готовности:** `$t('app.name')` рендерит "CBS HOME" на en. Переключение на ar → RTL.
 
 ---
 
@@ -486,11 +396,13 @@ https://api.cbshome.org/*         → cbshome-app:8000
   - `showBackButton(cb) / hideBackButton()` — `WebApp.BackButton` с onClick/offClick cleanup
   - `close()` — `WebApp.close()`
   - `getStorageDriver()` → `'sessionStorage'`
+  - `getStartParam()` → `WebApp.initDataUnsafe?.start_param || null` (для referral_code)
 - [ ] src/platform/standalone.ts — полноценная standalone-реализация:
   - `getInitData()` → `null`
-  - `hapticFeedback()` → `console.debug` (no-op)
+  - `hapticFeedback()` → no-op
   - `showBackButton(cb)` → `window.history.back()` fallback
   - `getStorageDriver()` → `'localStorage'`
+  - `getStartParam()` → `null`
 - [ ] src/platform/index.ts — автодетект по `window.Telegram?.WebApp`, экспорт singleton `platform`
 
 **Критерий готовности:** `platform.name === 'telegram'` в Telegram, `platform.name === 'standalone'` в браузере.
@@ -504,7 +416,7 @@ https://api.cbshome.org/*         → cbshome-app:8000
 **Задачи:**
 - [ ] src/api/client.ts:
   - `BASE_URL` из `import.meta.env.VITE_API_BASE_URL` (e.g. `https://api.cbshome.org`)
-  - Обёртка над fetch: `get<T>()`, `post<T>()`, `patch<T>()`, `delete()`
+  - Обёртка над fetch: `get<T>()`, `post<T>()`, `patch<T>()`, `put<T>()`, `delete()`
   - `credentials: 'include'` — CORS with credentials
   - Авто-подстановка `Authorization: Bearer {token}` через модульный `_token`
   - Обработка 401 → callback `_onUnauthorized()` → auth store очищает сессию
@@ -514,30 +426,28 @@ https://api.cbshome.org/*         → cbshome-app:8000
   - `AbortController` + 15s timeout → `ApiTimeoutError`
   - `Accept-Language` header из текущей vue-i18n locale
 - [ ] src/api/types.ts — TypeScript-интерфейсы:
-  - `EmailRegisterRequest`, `EmailLoginRequest`, `TelegramAuthRequest`, `AuthResponse`
-  - `UserResponse`, `UserUpdate`, `UserRole` (`investor | agent | company | staff | platform`)
-  - `PaginatedResponse<T>` (generic)
+  - `EmailRegisterRequest { email, password, referral_code? }` — referral_code: string | null
+  - `EmailLoginRequest { email, password }`
+  - `TelegramAuthRequest { init_data, referral_code? }` — referral_code: string | null
+  - `AuthResponse { user: UserResponse, session_token: string }`
+  - `UserResponse` (см. раздел 1.5)
+  - `UserUpdate { profile?, language? }`
+  - `PaginatedResponse<T> { items: T[], total, page, per_page }`
   - `ApiError` (string | ValidationError[])
 
 **Экспорты client.ts:**
 ```typescript
-// Error classes
 export class ApiResponseError extends Error { status: number; detail: string }
 export class ApiNetworkError extends Error {}
 export class ApiTimeoutError extends Error {}
-
-// Token management (decoupled from Pinia)
 export function setAuthToken(token: string | null): void
 export function getAuthToken(): string | null
-
-// 401 callback registration
 export function setOnUnauthorized(cb: () => void): void
-
-// HTTP methods
 export const api = {
   get<T>(path: string): Promise<T>,
   post<T>(path: string, body?: unknown): Promise<T>,
   patch<T>(path: string, body?: unknown): Promise<T>,
+  put<T>(path: string, body?: unknown): Promise<T>,
   delete(path: string): Promise<void>,
 }
 ```
@@ -558,21 +468,26 @@ export const api = {
   - `token: string | null`
   - `loading: boolean`
   - `isAuthenticated: boolean` (computed: `!!token && !!user`)
-  - `role: UserRole | null` (computed из `user.role ?? null` — `null` для неавторизованных)
+  - `role: UserRole | null` (computed из `user.role ?? null`)
   - `loginViaEmail(email, password)` — POST /auth/email/login → set token + user
-  - `registerViaEmail(email, password)` — POST /auth/email/register → set token + user
-  - `loginViaTelegram(initData)` — POST /auth/telegram → set token + user
+  - `registerViaEmail(email, password, referral_code?)` — POST /auth/email/register → set token + user
+  - `loginViaTelegram(initData, referral_code?)` — POST /auth/telegram → set token + user
   - `restoreSession()` — storage → set token → GET /users/me → set user
   - `fetchMe()` — GET /users/me (обновление профиля)
   - `logout()` — POST /auth/logout + очистка store
   - Персистенция token в storage (driver из `platform.getStorageDriver()`) под ключом `cbs_token`
   - Регистрация `_onUnauthorized` callback в API client
+- [ ] Referral code handling:
+  - При первом визите: сохранить `?ref=` из URL или `platform.getStartParam()` в `sessionStorage('cbs_referral_code')`
+  - Передать в `registerViaEmail()` и `loginViaTelegram()`
+  - Очистить после успешной регистрации
 - [ ] src/composables/useAuth.ts — объединяет platform + auth store:
   - `initAuth()` — вызывается один раз из App.vue `onMounted`:
     1. `platform.init()`
-    2. `authStore.restoreSession()` — если сохранённый токен валиден → готово
-    3. Если Telegram: `platform.getInitData()` → `authStore.loginViaTelegram(initData)`
-    4. Если standalone и нет токена → показать LoginView
+    2. Сохранить referral code если есть
+    3. `authStore.restoreSession()` — если сохранённый токен валиден → готово
+    4. Если Telegram: `platform.getInitData()` → `authStore.loginViaTelegram(initData, referral_code)`
+    5. Если standalone и нет токена → показать LoginView
   - Module-level refs `isReady`, `isStandalone`
   - `waitUntilReady()` — Promise.race(isReady watcher, 10s timeout) для router guards
 - [ ] src/views/auth/LoginView.vue:
@@ -594,7 +509,7 @@ export const api = {
 
 **Зависимость от бэкенда:** POST /auth/email/register, POST /auth/email/login, POST /auth/telegram, POST /auth/logout, GET /users/me. Phase 1 ✅.
 
-**Критерий готовности:** Юзер входит через email/password в браузере. Юзер автоматически авторизован в Telegram WebApp.
+**Критерий готовности:** Юзер входит через email/password в браузере. Юзер автоматически авторизован в Telegram WebApp. Referral code сохраняется и передаётся при регистрации.
 
 ---
 
@@ -673,8 +588,10 @@ export const api = {
 /investor/purchase/:id     → PurchaseView
 /investor/installment/:id  → InstallmentView
 /investor/balance          → BalanceView
+/investor/transactions     → TransactionsView
 /investor/docs             → InvestorDocsView
 /investor/settings         → InvestorSettingsView
+/investor/more             → InvestorMoreView
 
 -- Agent (extends investor) --
 /agent/dashboard           → AgentDashboardView
@@ -682,8 +599,11 @@ export const api = {
 /agent/referrals           → ReferralsView
 /agent/commissions         → CommissionsView
 /agent/leaderboard         → LeaderboardView
-/agent/passive             → PassiveBalanceView
+/agent/balance             → BalanceView (passive + active)
+/agent/market              → MarketView
+/agent/portfolio           → PortfolioView
 /agent/settings            → AgentSettingsView
+/agent/more                → AgentMoreView
 -- Agent также имеет доступ к /investor/* экранам (market, product, purchase...)
 
 -- Company --
@@ -691,6 +611,7 @@ export const api = {
 /company/products          → CompanyProductsView
 /company/products/:id      → CompanyProductEditView
 /company/analytics         → CompanyAnalyticsView
+/company/balance           → CompanyBalanceView
 /company/settings          → CompanySettingsView
 
 -- Staff --
@@ -713,13 +634,13 @@ export const api = {
   - `roleGuard('staff')` — role не staff → redirect по роли
   - `onboardingGuard` — onboarding не завершён → /onboarding/*
 
-- [ ] Tab bar конфигурация по ролям (src/router/tabs.ts):
+- [ ] Tab bar конфигурация по ролям (src/router/tabs.ts) — **из мокапов (источник истины)**:
 
 | Роль | Таб 1 | Таб 2 | Таб 3 | Таб 4 | Таб 5 |
 |------|-------|-------|-------|-------|-------|
-| investor | Главная | Портфель | Баланс | Документы | Настройки |
-| agent | Главная | Hub | Комиссии | Пассив | Настройки |
-| company | Главная | Продукты | Аналитика | Настройки | — |
+| investor | Главная | Портфель | Маркет | Баланс | Ещё |
+| agent | Главная | Hub | Комиссии | Баланс | Ещё |
+| company | Главная | Продукты | Аналитика | Баланс | Настройки |
 | staff | Главная | Юзеры | KYC | Платежи | Ещё |
 
 **Зависимость от бэкенда:** GET /api/v1/users/me (role). Phase 1 ✅.
@@ -735,8 +656,9 @@ export const api = {
 **Задачи:**
 - [ ] src/views/auth/VerifyEmailView.vue:
   - Code input (6 цифр, из мокапа auth-flow/screen-verify)
-  - POST /api/v1/auth/verify-email
-  - Resend button с cooldown timer
+  - **⚠️ BACKEND GAP:** `POST /api/v1/auth/verify-email` не реализован
+  - **Стратегия:** Показать экран, при отправке кода — skip (заглушка "Verified"). Email verification не блокирует регистрацию (блокирует только покупку до kyc_status=approved)
+  - Resend button с cooldown timer (готов к интеграции)
 - [ ] src/views/auth/OnboardingProfileView.vue:
   - Имя, фамилия, страна, телефон
   - PATCH /api/v1/users/me
@@ -745,14 +667,16 @@ export const api = {
   - Каждая карточка: иконка, название, описание, feature-чипы
   - PATCH /api/v1/users/me (role selection)
 - [ ] src/views/auth/OnboardingKYCView.vue:
-  - POST /api/v1/kyc/submit (заглушка)
-  - Статус из GET /api/v1/kyc/status
+  - POST /api/v1/kyc/submit → KYCSubmitResponse { id, status, created_at }
+  - Статус из GET /api/v1/kyc/status → { kyc_status, application_id, application_status }
 - [ ] src/views/auth/OnboardingDocsView.vue:
   - Список документов для подписания
-  - GET /api/v1/documents, POST /api/v1/documents/{id}/sign
-- [ ] Onboarding guard: проверяет `user.credentials.onboarding.step` и редиректит на нужный шаг
+  - GET /api/v1/documents → list[DocumentResponse] (filtered by role)
+  - GET /api/v1/documents/{id} → DocumentResponse (с is_signed flag)
+  - POST /api/v1/documents/{id}/sign → DocumentSigningResponse
+- [ ] Onboarding guard: проверяет `user.onboarding_step` и редиректит на нужный шаг
 
-**Зависимость от бэкенда:** POST /auth/verify-email (gap — нужна реализация), PATCH /users/me (Phase 1.3 ✅), KYC (Phase 2.1 ✅), Documents (Phase 2.2 ✅).
+**Зависимость от бэкенда:** PATCH /users/me (✅), KYC (✅), Documents (✅). Verify-email — gap.
 
 **Критерий готовности:** Новый юзер проходит полный онбординг от регистрации до готовности.
 
@@ -766,9 +690,14 @@ export const api = {
 
 **Задачи:**
 - [ ] src/views/staff/StaffDashboardView.vue:
-  - GET /api/v1/staff/dashboard/stats
-  - Карточки: users_count, pending_kyc, pending_payments, pending_agent_apps
-  - CStatCard с CIconBox, алертовый баннер если pending_kyc > 0
+  - GET /api/v1/staff/dashboard/stats → DashboardStatsResponse:
+    - `total_users: number`
+    - `users_by_role: Record<string, number>` — { investor: 5, agent: 2, ... }
+    - `pending_kyc_count: number`
+    - `active_avatar_sessions: number`
+  - CStatCard: total_users, pending_kyc_count, active_avatar_sessions
+  - Чипы/мини-таблица: users_by_role breakdown
+  - Алертовый баннер если pending_kyc_count > 0
   - Навигационные ссылки: в юзеры → /staff/users, в KYC → /staff/kyc
 
 **Зависимость от бэкенда:** GET /api/v1/staff/dashboard/stats. Phase 3.3 ✅.
@@ -783,15 +712,16 @@ export const api = {
 
 **Задачи:**
 - [ ] src/views/staff/StaffUsersView.vue:
-  - GET /api/v1/staff/users — список юзеров с пагинацией
-  - Фильтры: role, kyc_status, search (имя/email)
+  - GET /api/v1/staff/users — список юзеров с пагинацией (?role=, ?page=, ?per_page=)
   - Каждый item: аватар, имя, email, роль (CBadge), kyc_status, дата регистрации
+  - Platform user скрыт (бэкенд исключает из списка)
   - Клик → detail sheet или modal:
-    - PATCH /api/v1/staff/users/{id}/block — блокировка
-    - POST /api/v1/staff/users/{id}/promote — промоция в staff (с permission matrix)
-  - Platform user не отображается в списке (скрыт)
+    - GET /api/v1/staff/users/{id} → UserDetailResponse
+    - PATCH /api/v1/staff/users/{id}/block — блокировка (body: `{ reason? }`, permission: `user_block`)
+    - POST /api/v1/staff/users — создать staff (body: `{ user_id }`, только Admin)
+    - PATCH /api/v1/staff/users/{id}/permissions — обновить permissions (только Admin)
 
-**Зависимость от бэкенда:** GET /api/v1/staff/users, PATCH /staff/users/{id}/block, POST /staff/users/{id}/promote. Phase 3.1 ✅.
+**Зависимость от бэкенда:** Phase 3.1 ✅.
 
 **Критерий готовности:** Staff видит всех юзеров, может заблокировать и промоутить.
 
@@ -803,50 +733,57 @@ export const api = {
 
 **Задачи:**
 - [ ] src/views/staff/StaffKYCView.vue:
-  - GET /api/v1/staff/kyc/queue — очередь (pending first)
-  - Каждый item: аватар, имя, дата подачи
+  - GET /api/v1/staff/kyc/queue → list[KYCQueueItem] (permission: `kyc_approve`)
+  - Каждый item: аватар, имя, дата подачи, статус
   - Действия:
     - POST /api/v1/staff/kyc/{id}/approve — одобрить
-    - POST /api/v1/staff/kyc/{id}/reject — отклонить (с полем причины)
+    - POST /api/v1/staff/kyc/{id}/reject — отклонить
+    - **⚠️ BACKEND GAP:** KYC reject не принимает reason (в отличие от Agent Application reject). Пока без поля причины
   - Double-submit guard
   - Toast: "KYC одобрен" / "KYC отклонён"
   - `error` ref + CEmptyState с кнопкой "Повторить" при ошибке загрузки
 
-**Зависимость от бэкенда:** Staff KYC endpoints. Phase 3.3 ✅.
+**Зависимость от бэкенда:** Phase 3.3 ✅.
 
 **Критерий готовности:** Staff одобряет и отклоняет KYC-заявки.
 
 ---
 
-### F3.4: Платежи + Аватаринг
+### F3.4: Платежи + Аватаринг + Agent Apps
 
-**Цель:** Staff видит историю платежей и может входить под другим пользователем.
+**Цель:** Staff видит историю платежей, может входить под другим пользователем, управляет заявками агентов.
 
 **Задачи:**
 - [ ] src/views/staff/StaffPaymentsView.vue:
-  - GET /api/v1/payments/history — список платежей
-  - Фильтры: status, user, дата
-  - Каждый item: сумма, тип (crypto/bank), статус (CBadge), дата
-  - Staff-действия (Sprint 5.3, 6.3 — когда бэкенд готов):
-    - POST /api/v1/staff/payments/{id}/reverse — chargeback
-    - POST /api/v1/staff/withdrawals/{id}/confirm — одобрить вывод
-    - POST /api/v1/staff/withdrawals/{id}/reject — отклонить вывод
+  - **⚠️ BACKEND GAP:** Нет `GET /staff/payments` (list all payments). Варианты: (a) аватаринг, (b) будущий endpoint бэка
+  - MVP: CEmptyState или базовый список через аватаринг
+  - Staff-действие:
+    - POST /api/v1/staff/payments/{id}/reverse — chargeback (permission: `payment_review`, body: `{ reason? }`)
+  - Withdrawals:
+    - POST /api/v1/staff/withdrawals/{id}/confirm — одобрить (permission: `payment_review`)
+    - POST /api/v1/staff/withdrawals/{id}/reject — отклонить (permission: `payment_review`, body: `{ reason }`)
 - [ ] src/views/staff/StaffMoreView.vue:
   - Профиль staff (аватар, имя, роль)
   - Навигация: Agent Apps → /staff/agent-apps, Avatar → /staff/avatar
 - [ ] src/views/staff/StaffAvatarView.vue:
-  - POST /api/v1/staff/avatar/start — начать сессию (user_id input)
+  - POST /api/v1/staff/avatar/start — начать сессию (body: `{ target_user_id }`, permission: `avatar_mode`)
+    - Ответ: `{ avatar_session_id, session_token }` — новый токен для работы под юзером
   - POST /api/v1/staff/avatar/end — завершить сессию
-  - Баннер "Вы работаете под пользователем X" когда avatar active
+  - GET /api/v1/staff/avatar/active — проверка активной сессии (для восстановления после reload)
+  - **Механика фронта:**
+    1. Сохранить оригинальный staff token в отдельную переменную
+    2. Переключить API client на avatar token
+    3. Показать оверлей-баннер "Avatar mode: {user_name} — Return to your account"
+    4. При "Return" → POST /staff/avatar/end + восстановить оригинальный token
+  - При reload → GET /staff/avatar/active → если есть active session, показать баннер
 - [ ] src/views/staff/StaffAgentAppsView.vue:
-  - GET /api/v1/staff/agent-applications — список заявок
-  - POST /api/v1/staff/agent-applications/{id}/approve — одобрить
-  - POST /api/v1/staff/agent-applications/{id}/reject — отклонить (с причиной)
-  - **Зависимость:** Sprint 7.1 (не реализован) — показывать CEmptyState до готовности бэкенда
+  - GET /api/v1/staff/agent-applications — список заявок (permission: `agent_application_review`)
+  - POST /api/v1/staff/agent-applications/{id}/approve — одобрить → 204
+  - POST /api/v1/staff/agent-applications/{id}/reject — отклонить (body: `{ reason }`) → 204
 
-**Зависимость от бэкенда:** Payments history (Phase 5.2 ✅), Avatar (Phase 3.2 ✅), Agent apps (Phase 7.1 — план).
+**Зависимость от бэкенда:** Payments (Phase 5.2 ✅), Avatar (Phase 3.2 ✅), Agent apps (Phase 7.1 ✅), Withdrawals (Phase 6.3 ✅).
 
-**Критерий готовности:** Staff видит платежи, может аватариться. Agent apps — заглушка до Sprint 7.1.
+**Критерий готовности:** Staff может аватариться, управлять agent apps. Payments — частично (gap list all).
 
 ---
 
@@ -863,25 +800,25 @@ export const api = {
   - `filters: { company_id? }`
   - `loading: boolean`
   - `fetchProducts()` — GET /api/v1/products с фильтрами и пагинацией
-- [ ] src/api/products.ts — типизированные методы API
+- [ ] src/api/products.ts — типизированные методы:
+  - GET /api/v1/products → PublicProductListResponse `{ items, total, page, per_page }`
+  - GET /api/v1/products/{id} → PublicProductDetailResponse (includes installments)
+  - GET /api/v1/companies → PublicCompanyListResponse (для фильтра по компании)
 - [ ] src/components/shared/ProductCard.vue:
   - Карточка продукта (из мокапа investor-shell/screen-market):
     - Обложка, название, компания
-    - Цена за юнит, статус
-    - Бейдж типа
+    - Цена за юнит (`price_per_unit_cents`), `sold_units`
   - Клик → /investor/products/:id
 - [ ] src/views/investor/MarketView.vue:
   - Список продуктов
-  - Фильтр по компании
+  - Фильтр по компании (из GET /api/v1/companies)
   - Бесконечный скролл (usePagination)
 - [ ] src/views/investor/ProductDetailView.vue:
-  - GET /api/v1/products/{id}
-  - Полная информация: описание, компания, цена, юниты, планы рассрочки
+  - GET /api/v1/products/{id} → описание, компания, цена, юниты, планы рассрочки (installments[])
   - Кнопка "Купить" → /investor/purchase/:id
   - Кнопка "Рассрочка" → /investor/installment/:id
-  - Документация компании, roadmap
 
-**Зависимость от бэкенда:** GET /api/v1/products, GET /api/v1/products/{id}. Phase 4.2 ✅.
+**Зависимость от бэкенда:** GET /products (Phase 4.2 ✅), GET /companies (Phase 4.1 ✅).
 
 **Критерий готовности:** Инвестор видит витрину, открывает карточку продукта с полной информацией.
 
@@ -891,20 +828,24 @@ export const api = {
 
 **Цель:** Инвестор покупает продукт (инстант или рассрочка).
 
+**⚠️ BACKEND GAP:** Purchase и Installment endpoints проверяют `role == investor` → 403 для агентов. Ожидает фикс бэка: `role in (investor, agent)`.
+
 **Задачи:**
 - [ ] src/views/investor/PurchaseView.vue:
   - Подтверждение покупки: продукт, сумма, баланс
-  - POST /api/v1/products/{id}/purchase
-  - Обработка ошибок: недостаточно средств (→ предложить пополнить), KYC не пройден
+  - POST /api/v1/products/{id}/purchase → body: `{ referral_link_id? }`
+  - Response: `list[PurchaseResponse]` — массив (sale + gift purchases)
+  - Обработка ошибок: недостаточно средств, KYC не пройден (403)
   - Success: toast + redirect на портфель
 - [ ] src/views/investor/InstallmentView.vue:
-  - Выбор плана рассрочки из списка ProductInstallment
-  - Отображение: число траншей, сумма каждого, бонусные юниты
-  - POST /api/v1/products/{id}/installment (body: `{product_installment_id}`)
-  - GET /api/v1/installments/me — мои планы рассрочки
-  - Детали плана: транши с датами и статусами
+  - Выбор плана рассрочки из списка installments (из ProductDetailResponse)
+  - Отображение: число траншей, сумма каждого, бонусные юниты (из plan_config)
+  - POST /api/v1/products/{id}/installment → body: `{ product_installment_id, referral_link_id? }`
+  - Response: InstallmentPlanResponse
+  - GET /api/v1/installments/me → мои планы рассрочки (paginated)
+  - GET /api/v1/installments/{id} → детали плана с траншами (InstallmentPlanDetailResponse)
 
-**Зависимость от бэкенда:** Purchase (Sprint 6.1 — план), Installments (Sprint 6.2 — план).
+**Зависимость от бэкенда:** Purchase (Sprint 6.1 ✅), Installments (Sprint 6.2 ✅).
 
 **Критерий готовности:** Инвестор покупает продукт и оформляет рассрочку.
 
@@ -918,18 +859,26 @@ export const api = {
 - [ ] src/stores/balance.ts (Pinia):
   - `active_confirmed: number` (cents)
   - `active_frozen: number` (cents)
-  - `refresh()` — GET /api/v1/ledgers/active/balance (или из users/me)
+  - `passive_confirmed: number` (cents)
+  - `passive_frozen: number` (cents)
+  - `refresh()` — GET /api/v1/dashboard/summary → берём active_balance и passive_balance
 - [ ] src/views/investor/BalanceView.vue:
   - Active balance: confirmed (зелёный) + frozen (серый, если > 0)
   - Кнопка "Пополнить" → крипто-адрес
-  - Сеть: TRC-20 USDT (из мокапа investor-shell/screen-balance)
-  - GET /api/v1/payments/crypto-address/{network} → QR-код + адрес + кнопка "Скопировать"
-  - История транзакций: GET /api/v1/transactions (когда Sprint 6.4 готов)
-  - Каждая транзакция: сумма, тип, статус (CBadge), дата
+  - POST /api/v1/payments/crypto-address → body: `{ network: "TRC20" }` → `{ address, network, user_id }`
+  - QR-код генерируется на фронте из address
+  - Кнопка "Скопировать адрес"
+  - История платежей: GET /api/v1/payments/history → PaymentHistoryResponse (paginated)
+  - Каждый платёж: amount_cents, payment_type, status (CBadge), created_at
+- [ ] src/views/investor/TransactionsView.vue:
+  - GET /api/v1/transactions → TransactionListResponse (paginated)
+  - Фильтры: type, date_from, date_to, amount_min, amount_max
+  - GET /api/v1/transactions/{id} → детали транзакции
+  - Каждая транзакция: тип, сумма, статус, дата
 
-**Зависимость от бэкенда:** Crypto address (Sprint 5.2 ✅), Transactions (Sprint 6.4 — план).
+**Зависимость от бэкенда:** Dashboard (Sprint 9.2 ✅), Crypto address (Sprint 5.2 ✅), Payments (Sprint 5.2 ✅), Transactions (Sprint 6.4 ✅).
 
-**Критерий готовности:** Инвестор видит баланс, получает крипто-адрес для пополнения.
+**Критерий готовности:** Инвестор видит баланс, получает крипто-адрес для пополнения, видит историю.
 
 ---
 
@@ -939,29 +888,44 @@ export const api = {
 
 **Задачи:**
 - [ ] src/views/investor/InvestorDashboardView.vue:
-  - Приветствие с именем
+  - GET /api/v1/dashboard/summary → DashboardSummaryResponse:
+    - `active_balance: { frozen, confirmed }`
+    - `passive_balance: { frozen, confirmed }`
+    - `total_invested_cents, total_units, current_value_cents`
+    - `companies_count, companies[]`
   - Виджет портфеля: общая стоимость, количество продуктов
   - Виджет баланса: active balance
-  - Последние новости (GET /api/v1/posts — когда Sprint 9.1 готов)
+  - Последние новости (GET /api/v1/posts)
   - Quick actions: Пополнить, Витрина
 - [ ] src/views/investor/PortfolioView.vue:
-  - GET /api/v1/portfolio/me — список позиций по компаниям
-  - Каждая позиция: компания, количество юнитов, текущая стоимость
-  - Клик → детали по компании
+  - GET /api/v1/portfolio/me → PortfolioResponse
+  - Каждая позиция: company_name, total_units, invested_cents, current_value_cents, avg_price_cents
+  - Клик → CompanyPositionView
+- [ ] src/views/investor/CompanyPositionView.vue:
+  - GET /api/v1/portfolio/me/company/{id} → CompanyPositionDetailResponse
+  - Flat aggregate + пагинированный список покупок
+  - Кнопка "Сертификат" на каждой покупке:
+    - GET /api/v1/purchases/{id}/certificate → HTML (показать в iframe)
+    - POST /api/v1/purchases/{id}/certificate/email → отправить PDF на email
 - [ ] src/views/investor/InvestorDocsView.vue:
-  - GET /api/v1/documents — список документов
+  - GET /api/v1/documents → список документов
   - Статус подписания (signed / pending)
   - POST /api/v1/documents/{id}/sign
 - [ ] src/views/investor/InvestorSettingsView.vue:
-  - Профиль: аватар, имя, email, роль
+  - Профиль: аватар, имя, роль
   - PATCH /api/v1/users/me — редактирование
   - Переключение языка (en/ru/de/ar)
   - Переключение темы (light/dark)
-  - Кнопка "Стать агентом" (если роль = investor, KYC approved)
+  - Кнопка "Стать агентом" (если роль = investor, KYC approved):
+    - POST /api/v1/agent-applications → подать заявку
+    - GET /api/v1/agent-applications/me → статус заявки
+    - Cooldown 30 дней после отклонения (показать таймер)
+- [ ] src/views/investor/InvestorMoreView.vue:
+  - Навигация к: Documents, Settings, Notifications, Agent Application
 
-**Зависимость от бэкенда:** Dashboard/Portfolio (Sprint 9.2 — план), Documents (Phase 2.2 ✅), Users (Phase 1.3 ✅).
+**Зависимость от бэкенда:** Dashboard (Sprint 9.2 ✅), Portfolio (Sprint 9.2 ✅), Documents (Phase 2.2 ✅), Users (Phase 1.3 ✅), Agent Applications (Sprint 7.1 ✅), Certificates (Sprint 9.2 ✅).
 
-**Критерий готовности:** Инвестор видит дашборд, портфель, документы, настройки. Экраны без готового бэкенда показывают заглушки.
+**Критерий готовности:** Инвестор видит дашборд, портфель, документы, настройки, сертификаты.
 
 ---
 
@@ -973,38 +937,38 @@ export const api = {
 
 **Задачи:**
 - [ ] src/views/company/CompanyDashboardView.vue:
-  - Название компании, статус
-  - Виджеты: количество продуктов, общие продажи, passive balance
-  - Последние транзакции (когда Sprint 6.4 готов)
+  - GET /api/v1/dashboard/summary → балансы и агрегаты (работает для любой роли)
+  - Виджеты: количество продуктов, passive balance, current_value_cents
+  - Последние транзакции: GET /api/v1/transactions
 
-**Зависимость от бэкенда:** Dashboard (Sprint 9.2 — план), Transactions (Sprint 6.4 — план).
+**Зависимость от бэкенда:** Dashboard (Sprint 9.2 ✅), Transactions (Sprint 6.4 ✅).
 
 **Критерий готовности:** Компания видит дашборд с метриками.
 
 ---
 
-### F5.2: Управление продуктами
+### F5.2: Продукты + Аналитика + Баланс
 
-**Цель:** Компания видит свои продукты (readonly — управление через Staff).
+**Цель:** Компания видит свои продукты, аналитику и управляет балансом.
 
 **Задачи:**
 - [ ] src/views/company/CompanyProductsView.vue:
-  - GET /api/v1/products?company_id={my_company_id}
-  - Список продуктов компании: название, статус, цена, sold_units
+  - GET /api/v1/products?company_id={my_company_id} → список продуктов
 - [ ] src/views/company/CompanyProductEditView.vue:
-  - GET /api/v1/products/{id} — детали
-  - Readonly view (редактирование — через Staff endpoints)
-  - Планы рассрочки, roadmap
+  - GET /api/v1/products/{id} — детали (readonly, редактирование через Staff)
 - [ ] src/views/company/CompanyAnalyticsView.vue:
   - GET /api/v1/portfolio/me/company/{id} — аналитика продаж
-  - GET /api/v1/agent/leaderboard — топ агентов по компании
+- [ ] src/views/company/CompanyBalanceView.vue:
+  - Passive balance из GET /api/v1/dashboard/summary → passive_balance
+  - Список выводов: GET /api/v1/withdrawals/me
+  - Кнопка "Вывести": POST /api/v1/withdrawals (body: `{ amount_cents }`)
+  - Настройка реквизитов: GET/PUT /api/v1/users/me/payout-details
 - [ ] src/views/company/CompanySettingsView.vue:
-  - GET /api/v1/companies/{id} — профиль компании
-  - Readonly (редактирование — через Staff)
+  - GET /api/v1/companies/{id} — профиль компании (readonly)
 
-**Зависимость от бэкенда:** Products (Phase 4.2 ✅), Companies (Phase 4.1 ✅), Analytics (Sprint 9.2 — план).
+**Зависимость от бэкенда:** Products (Phase 4.2 ✅), Companies (Phase 4.1 ✅), Dashboard (Sprint 9.2 ✅), Withdrawals (Sprint 6.3 ✅).
 
-**Критерий готовности:** Компания видит свои продукты и аналитику.
+**Критерий готовности:** Компания видит продукты, аналитику, управляет выводами.
 
 ---
 
@@ -1017,17 +981,17 @@ export const api = {
 **Задачи:**
 - [ ] src/views/agent/AgentDashboardView.vue:
   - Виджеты: комиссии за месяц, количество рефералов, ранг в лидерборде
+  - GET /api/v1/dashboard/summary — балансы
   - Quick actions: Создать ссылку, Мои комиссии
 - [ ] src/views/agent/AgentHubView.vue:
-  - POST /api/v1/referrals/links — создать реферальную ссылку
-  - GET /api/v1/referrals/links/me — мои ссылки
-  - Каждая ссылка: код, копирование, статистика (клики, конверсии)
-  - GET /api/v1/referrals/stats/me — общая статистика
+  - POST /api/v1/referrals/links → ReferralLinkResponse (code generated server-side)
+  - GET /api/v1/referrals/links/me → ReferralLinkListResponse (paginated)
+  - Каждая ссылка: код, copy button, is_active flag
+  - GET /api/v1/referrals/stats/me → ReferralStatsResponse — общая статистика
 - [ ] src/views/agent/ReferralsView.vue:
   - Список привлечённых инвесторов (L1/L2/L3)
-  - Иерархия: tree view или flat list с уровнем
 
-**Зависимость от бэкенда:** Referrals (Sprint 7.2 — план).
+**Зависимость от бэкенда:** Referrals (Sprint 7.2 ✅). Permission: только role=agent.
 
 **Критерий готовности:** Агент создаёт ссылки, видит рефералов.
 
@@ -1039,24 +1003,23 @@ export const api = {
 
 **Задачи:**
 - [ ] src/views/agent/CommissionsView.vue:
-  - GET /api/v1/agent/commissions/me — история комиссий
-  - Каждая запись: сумма, уровень (L1/L2/L3), инвестор, продукт, дата
+  - GET /api/v1/agent/commissions/me → CommissionListResponse (limit/offset)
+  - Каждая запись: type (commission/volume_bonus), amount_cents, level, investor_name, product_name, status, created_at
   - Фильтры: уровень, период
 - [ ] src/views/agent/LeaderboardView.vue:
-  - GET /api/v1/agent/leaderboard — топ агентов
-  - Ранг, имя, объём продаж
-  - Подсветка своей позиции
-- [ ] src/views/agent/PassiveBalanceView.vue:
-  - Passive balance: confirmed + frozen
-  - Кнопка "Вывести" → запрос вывода
-  - POST /api/v1/withdrawals — создать запрос
+  - GET /api/v1/agent/leaderboard → LeaderboardResponse
+  - Каждая запись: rank, agent_name, volume_cents, is_me
+  - Подсветка своей позиции (is_me = true)
+  - snapshot_at, period_start для контекста
+- [ ] src/views/agent/BalanceView.vue (passive):
+  - Passive balance из GET /api/v1/dashboard/summary → passive_balance
+  - Кнопка "Вывести" → POST /api/v1/withdrawals (body: `{ amount_cents }`)
   - GET /api/v1/withdrawals/me — история выводов
-  - Каждый вывод: сумма, статус (CBadge), дата
-- [ ] src/views/agent/AgentSettingsView.vue:
-  - Всё из InvestorSettingsView + реквизиты выплат (payout details)
-  - IBAN / email / crypto address
+  - Настройка реквизитов: GET/PUT /api/v1/users/me/payout-details
+- [ ] src/views/agent/AgentMoreView.vue:
+  - Навигация к: Settings, Leaderboard, Investor Portfolio, Notifications
 
-**Зависимость от бэкенда:** Commissions (Sprint 7.3 — план), Leaderboard (Sprint 7.3 — план), Withdrawals (Sprint 6.3 — план).
+**Зависимость от бэкенда:** Commissions (Sprint 7.3 ✅), Leaderboard (Sprint 7.3 ✅), Withdrawals (Sprint 6.3 ✅).
 
 **Критерий готовности:** Агент видит комиссии, лидерборд, может запросить вывод.
 
@@ -1089,19 +1052,19 @@ export const api = {
 **Задачи:**
 - [ ] src/stores/notifications.ts (Pinia):
   - `unreadCount: number`
-  - `notifications: NotificationDelivery[]`
-  - `fetchUnreadCount()` — GET /api/v1/notifications/unread-count
-  - `fetchNotifications()` — GET /api/v1/notifications
-  - `markRead(id)` — POST /api/v1/notifications/{id}/read
-  - `markAllRead()` — POST /api/v1/notifications/read-all
+  - `notifications: NotificationDeliveryResponse[]`
+  - `fetchUnreadCount()` — GET /api/v1/notifications/unread-count → `{ unread_count }`
+  - `fetchNotifications(page, per_page, type?, channel?)` — GET /api/v1/notifications → NotificationListResponse
+  - `markRead(deliveryId)` — POST /api/v1/notifications/{id}/read → 204
+  - `markAllRead()` — POST /api/v1/notifications/read-all → `{ marked_count }`
 - [ ] Badge counter в CTabBar (на иконке "Главная" или bell icon)
 - [ ] Notification list (slide-in panel или dedicated view):
-  - Каждое уведомление: иконка типа, title, body, time ago
+  - Каждое уведомление: title, body, type, priority, time ago, read_at
   - Свайп или клик → markRead
   - "Отметить все прочитанными"
 - [ ] Polling: `setInterval` refresh unread count каждые 30 секунд
 
-**Зависимость от бэкенда:** Notifications REST (Sprint 8.3 — план).
+**Зависимость от бэкенда:** Notifications REST (Sprint 8.3 ✅).
 
 **Критерий готовности:** Юзер видит уведомления и badge с количеством непрочитанных.
 
@@ -1132,15 +1095,40 @@ export const api = {
 
 **Задачи:**
 - [ ] Лента постов на дашбордах (investor, agent):
-  - GET /api/v1/posts — фильтр по owner_type
-  - Баннеры (is_banner) с кнопкой dismiss → POST /api/v1/posts/{id}/dismiss
+  - GET /api/v1/posts → PostListResponse (paginated, filters: owner_type, company_id, tag)
+  - GET /api/v1/posts/{id} → PostResponse
+  - Баннеры (is_banner) с кнопкой dismiss → POST /api/v1/posts/{id}/dismiss → 204
+  - Анонимный доступ разрешён (get_optional_user)
 - [ ] Список событий:
-  - GET /api/v1/events/upcoming
+  - GET /api/v1/events → EventListResponse (paginated, all published)
+  - GET /api/v1/events/upcoming → list[EventResponse] (next 30 days)
   - Карточка: title, дата, location, ссылка
 
-**Зависимость от бэкенда:** Posts (Sprint 9.1 — план).
+**Зависимость от бэкенда:** Posts (Sprint 9.1 ✅), Events (Sprint 9.1 ✅).
 
 **Критерий готовности:** Юзер видит новости и события.
+
+---
+
+### F9.3: Staff Content Management
+
+**Цель:** Staff управляет постами и событиями.
+
+**Задачи:**
+- [ ] Staff CRUD для постов (permission: `content_manage`):
+  - POST /api/v1/staff/posts → создать
+  - PATCH /api/v1/staff/posts/{id} → редактировать
+  - DELETE /api/v1/staff/posts/{id} → soft-delete
+- [ ] Staff CRUD для событий (permission: `content_manage`):
+  - POST /api/v1/staff/events → создать
+  - PATCH /api/v1/staff/events/{id} → редактировать
+  - DELETE /api/v1/staff/events/{id} → soft-delete
+- [ ] Staff consistency tool (StaffMoreView):
+  - GET /api/v1/staff/consistency → 18 семафоров целостности данных
+
+**Зависимость от бэкенда:** Sprint 9.1 ✅, Sprint 6.4 ✅.
+
+**Критерий готовности:** Staff создаёт и редактирует контент.
 
 ---
 
@@ -1150,20 +1138,35 @@ export const api = {
 |---------------|---------------|-------------|------------|
 | F0: Инфра | — | — | Нет |
 | F1: Auth | 1.1, 1.2, 1.3 | ✅ | Нет (verify-email = gap, обходим) |
-| F2: Компоненты + Layout | 1.3 (users/me) | ✅ | Нет |
-| F3: Staff | 3.1–3.3, 5.2 | ✅ | Частично (withdrawals, agent-apps — заглушки) |
-| F4: Investor | 4.2, 5.2 | ✅ | Частично (purchase 6.1, installment 6.2, transactions 6.4, portfolio 9.2 — заглушки) |
-| F5: Company | 4.1, 4.2 | ✅ | Частично (analytics 9.2 — заглушка) |
-| F6: Agent | 7.1, 7.2, 7.3, 6.3 | ❌ Не начато | Да (основная функциональность) |
+| F2: Компоненты + Layout | 1.3 | ✅ | Нет |
+| F3: Staff | 3.1–3.3, 5.2, 5.3, 7.1 | ✅ | Частично (staff payments list — gap) |
+| F4: Investor | 4.2, 5.1, 5.2, 6.1, 6.2, 6.4, 9.2 | ✅ | **⚠️ Agent purchase — gap бэка** |
+| F5: Company | 4.1, 4.2, 6.3, 6.4, 9.2 | ✅ | Нет |
+| F6: Agent | 7.1, 7.2, 7.3, 6.3 | ✅ | **⚠️ Agent purchase — gap бэка** |
 | F7: i18n | — | — | Нет |
-| F8: Notifications | 8.1–8.3 | ❌ Не начато | Да |
-| F9: Полировка + Posts | 9.1 | ❌ Не начато | Частично |
+| F8: Notifications | 8.1–8.3 | ✅ | Нет |
+| F9: Полировка + Posts | 9.1, 6.4 | ✅ | Нет |
 
-**Стратегия:** Фазы F3–F5 можно начинать сразу — бэкенд готов на 70%+. Экраны с негативными бэкенд-зависимостями показывают `CEmptyState` ("Скоро") до готовности API. F6 стартует когда бэкенд Phase 7 готов.
+**Стратегия:** Все фазы можно начинать — бэкенд полностью готов. Два backend gaps требуют фикса:
+1. **Agent purchase/installment access** — `role in (investor, agent)` вместо `role == investor`
+2. **KYC reject reason** — добавить body parameter
+3. Verify-email — skip/заглушка
 
 ---
 
-## 6. LLM Code Review Guide (Frontend)
+## 6. Backend Gaps — ожидают фикса
+
+| # | Модуль | Описание | Приоритет |
+|---|--------|----------|-----------|
+| G1 | auth | `POST /auth/verify-email` не реализован | Low (skip) |
+| G2 | staff/payments | Нет `GET /staff/payments` (list all) | Medium |
+| G3 | purchases | `role != investor` → 403 для агентов | **BLOCKER** |
+| G4 | installments | `role != investor` → 403 для агентов | **BLOCKER** |
+| G5 | staff/kyc | KYC reject без reason parameter | Low |
+
+---
+
+## 7. LLM Code Review Guide (Frontend)
 
 ### FP-01: Не хардкодить API URL
 
@@ -1207,7 +1210,6 @@ try {
 ### FP-04: Double-submit guard — ДО валидации
 
 ```typescript
-// ПРАВИЛЬНО — guard первым:
 if (submitting.value) return
 submitting.value = true
 try {
@@ -1302,34 +1304,17 @@ const driver = platform.getStorageDriver()
 window[driver].setItem('cbs_token', token)
 ```
 
----
+### FP-13: Referral code persistence
 
-## 7. Реестр технического долга
+```typescript
+// ЗАПРЕЩЕНО — потерять referral code:
+router.push('/register')  // ref= query param пропал
 
-### Обозначения
+// ПРАВИЛЬНО — сохранить при первом визите:
+const ref = route.query.ref || platform.getStartParam()
+if (ref) sessionStorage.setItem('cbs_referral_code', ref as string)
 
-- **Среда:** 🧪 Тест / 🚀 Прод
-- **Статус:** ⬜ Open / ✅ Done
-
-### Известные решения (НЕ является долгом)
-
-| Решение | Причина |
-|---------|---------|
-| Ручная типизация API вместо OpenAPI codegen | Контроль, идиоматичность, проще поддерживать |
-| Раздельный token storage (localStorage/sessionStorage) по платформе | Telegram закрывает вкладку — sessionStorage очищается; standalone не должен разлогинивать |
-| Свой CSS вместо Tailwind | Дизайн-система готова в мокапах (variables.css v1.8.0), перенос 1:1 проще |
-| Внутренний Nginx в Docker фронтенда | SPA fallback + кеширование без усложнения хост-конфига |
-| CORS вместо proxy | Подготовка к будущему разделению на микросервисы |
-| Token decoupled от Pinia (модульная переменная в client.ts) | Исключает circular dependency client → store → client |
-| Noto Sans Arabic для RTL | Тот же CDN (Google Fonts), нейтральный стиль сочетается с Montserrat |
-
-### Инфраструктура — перед публичным запуском 🚀
-
-| ID | Среда | Описание | Решение | Статус |
-|----|-------|----------|---------|--------|
-| TD-FE-CORS | 🚀 | CORS whitelist содержит только `cbshome.org`. Staging/dev домены нужно добавлять вручную | Переменная `CORS_ORIGINS` в .env бэкенда | ⬜ |
-| TD-FE-VERIFY | 🚀 | POST /api/v1/auth/verify-email — gap в бэкенде. Email verification пропускается в MVP | Реализовать эндпоинт на бэкенде | ⬜ |
-
----
-
-**Конец документа**
+// Передать при регистрации:
+const referral_code = sessionStorage.getItem('cbs_referral_code')
+api.post('/auth/email/register', { email, password, referral_code })
+```

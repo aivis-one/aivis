@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Admin Service (Sprint 3.3)
+# CBSHOME Backend -- Admin Service (Sprint 3.3, G5 fix)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -390,8 +390,12 @@ async def kyc_reject(
     application_id: UUID,
     staff: User,
     session: AsyncSession,
+    *,
+    reason: str | None = None,
 ) -> None:
     """Reject a KYC application. Delegates to process_webhook.
+
+    Reason is stored in audit_log data (not in KYCApplication model).
 
     Raises:
         NotFoundError: If application not found.
@@ -418,11 +422,15 @@ async def kyc_reject(
         actor_type="staff",
         target_type="user",
         target_id=application.user_id,
-        data={"application_id": str(application_id)},
+        data={
+            "application_id": str(application_id),
+            "reason": reason,
+        },
     )
 
     logger.info(
         "kyc_rejected_by_staff",
         application_id=str(application_id),
         staff_id=str(staff.id),
+        reason=reason,
     )

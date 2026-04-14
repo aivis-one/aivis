@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Admin Schemas (Sprint 3.3)
+# CBSHOME Backend -- Admin Schemas (Sprint 3.3, G5 fix)
 # =============================================================================
 #
 # SCHEMAS:
@@ -9,13 +9,14 @@
 #   DashboardStatsResponse -- platform-wide statistics
 #   KYCQueueItem         -- pending KYC application with user info
 #   BlockRequest         -- PATCH /staff/users/{id}/block
+#   KYCRejectRequest     -- POST /staff/kyc/{id}/reject
 # =============================================================================
 
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.staff.schemas import StaffProfileResponse
 
@@ -105,3 +106,13 @@ class KYCQueueItem(BaseModel):
     email: str | None = None
     first_name: str | None = None
     last_name: str | None = None
+
+
+class KYCRejectRequest(BaseModel):
+    """Request body for KYC rejection with optional reason."""
+
+    reason: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Rejection reason (stored in audit log)",
+    )
