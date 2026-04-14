@@ -1,22 +1,26 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Schemas (Sprint 5.2, updated Sprint 5.3 + 6.1)
+# CBSHOME Backend -- Payment Schemas (Sprint 5.2, updated Sprint 5.3 + 6.1, G2)
 # =============================================================================
 #
 # Request/response schemas for payment endpoints.
 #
 # SCHEMAS:
-#   CreateAddressRequest   -- POST /payments/crypto-address
-#   DepositAddressResponse -- POST /payments/crypto-address response
-#   PaymentResponse        -- individual payment in history
-#   PaymentHistoryResponse -- GET /payments/history (paginated)
-#   CryptoWebhookRequest   -- POST /payments/crypto/webhook
+#   CreateAddressRequest      -- POST /payments/crypto-address
+#   DepositAddressResponse    -- POST /payments/crypto-address response
+#   PaymentResponse           -- individual payment in history (investor)
+#   PaymentHistoryResponse    -- GET /payments/history (paginated)
+#   CryptoWebhookRequest      -- POST /payments/crypto/webhook
 #
 # Sprint 5.3:
-#   ReversePaymentRequest  -- POST /staff/payments/{id}/reverse
-#   ReversalResponse       -- reversal result summary
+#   ReversePaymentRequest     -- POST /staff/payments/{id}/reverse
+#   ReversalResponse          -- reversal result summary
 #
 # Sprint 6.1 FIX:
 #   CryptoWebhookRequest.amount_usd_cents -- added upper bound (MAX_DEPOSIT_CENTS)
+#
+# G2:
+#   StaffPaymentResponse      -- payment with user_id (staff view)
+#   StaffPaymentListResponse  -- GET /staff/payments (paginated)
 # =============================================================================
 
 from datetime import datetime
@@ -120,3 +124,23 @@ class ReversalResponse(BaseModel):
     active_entries_reversed: int
     passive_entries_reversed: int
     affected_user_ids: list[UUID]
+
+
+# ---------------------------------------------------------------------------
+# Staff payment list (G2)
+# ---------------------------------------------------------------------------
+
+
+class StaffPaymentResponse(PaymentResponse):
+    """Payment with user_id for staff views."""
+
+    user_id: UUID
+
+
+class StaffPaymentListResponse(BaseModel):
+    """Paginated payment list for staff."""
+
+    items: list[StaffPaymentResponse]
+    total: int
+    page: int
+    per_page: int

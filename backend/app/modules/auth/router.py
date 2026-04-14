@@ -1,19 +1,22 @@
 # =============================================================================
-# CBSHOME Backend -- Auth Router
+# CBSHOME Backend -- Auth Router (G1 fix)
 # =============================================================================
 #
 # ENDPOINTS:
-#   POST /api/v1/auth/email/register  -- Register via email + password
-#   POST /api/v1/auth/email/login     -- Login via email + password
-#   POST /api/v1/auth/telegram        -- Login via Telegram WebApp (Sprint 1.2)
-#   POST /api/v1/auth/logout          -- Logout current session
-#   POST /api/v1/auth/logout-all      -- Logout all sessions
+#   POST /api/v1/auth/email/register      -- Register via email + password
+#   POST /api/v1/auth/email/login         -- Login via email + password
+#   POST /api/v1/auth/telegram            -- Login via Telegram WebApp (Sprint 1.2)
+#   POST /api/v1/auth/verify-email        -- Verify 6-digit email code (G1)
+#   POST /api/v1/auth/verify-email/resend -- Resend verification code (G1)
+#   POST /api/v1/auth/logout              -- Logout current session
+#   POST /api/v1/auth/logout-all          -- Logout all sessions
 #
 # RATE LIMITING (SEC-5):
 #   Email register and login are rate-limited by IP address.
 #   Uses same config as Telegram auth: auth_rate_limit_max_requests /
 #   auth_rate_limit_window_seconds.
 #   Key: "email_auth:{ip}" -- shared between register and login.
+#   Resend: rate-limited per user_id (1 per 60s).
 #
 # REFERRAL (Sprint 7.2):
 #   referral_code is passed from request body to service layer.
@@ -32,12 +35,13 @@ from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.exceptions import BadRequestError
 from app.core.rate_limit import check_rate_limit
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.auth.schemas import (
     AuthResponse,
     EmailLoginRequest,
     EmailRegisterRequest,
     TelegramAuthRequest,
+    VerifyEmailRequest,
 )
 from app.modules.auth.service import (
     create_session,
@@ -45,7 +49,9 @@ from app.modules.auth.service import (
     delete_session,
     login_email,
     register_email,
+    resend_verification_code,
     upsert_telegram_user,
+    verify_email_code,
 )
 from app.modules.auth.telegram import (
     TelegramValidationError,
@@ -132,6 +138,39 @@ async def auth_email_login(
         user=UserResponse.model_validate(user),
         session_token=token,
     )
+
+
+# ---------------------------------------------------------------------------
+# Email Verification (G1)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/verify-email",
+    response_model=UserResponse,
+)
+async def auth_verify_email(
+    body: VerifyEmailRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> UserResponse:
+    """Verify email with 6-digit code sent during registration."""
+    updated_user = await verify_email_code(user, body.code, session)
+    return UserResponse.model_validate(updated_user)
+
+
+@router.post(
+    "/verify-email/resend",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def auth_resend_verification(
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Resend verification code. Rate-limited: 1 per 60 seconds."""
+    # Uses default auth rate limit config (5 per 60s). Acceptable for MVP.
+    await check_rate_limit(f"email_verify_resend:{user.id}")
+    await resend_verification_code(user, session)
 
 
 # ---------------------------------------------------------------------------

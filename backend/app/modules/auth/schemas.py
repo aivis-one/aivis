@@ -7,6 +7,7 @@
 # Sprint 1.1: EmailRegisterRequest, EmailLoginRequest, AuthResponse
 # Sprint 1.2: TelegramAuthRequest
 # Sprint 7.2: +referral_code on register + telegram requests
+# G1 fix: +VerifyEmailRequest for email verification
 # =============================================================================
 
 from pydantic import BaseModel, EmailStr, Field
@@ -45,6 +46,23 @@ class EmailLoginRequest(BaseModel):
 
     email: EmailStr
     password: str = Field(..., min_length=1)
+
+
+# ---------------------------------------------------------------------------
+# Email Verification (G1)
+# ---------------------------------------------------------------------------
+
+
+class VerifyEmailRequest(BaseModel):
+    """POST /api/v1/auth/verify-email -- request body."""
+
+    code: str = Field(
+        ...,
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+        description="6-digit verification code",
+    )
 
 
 # ---------------------------------------------------------------------------

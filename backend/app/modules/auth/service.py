@@ -1,14 +1,16 @@
 # =============================================================================
-# CBSHOME Backend -- Auth Service (Sprint 7.2)
+# CBSHOME Backend -- Auth Service (Sprint 7.2, G1 fix)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   register_email()        -- create User via email + password
-#   login_email()           -- authenticate by email + password
-#   create_session()        -- Redis session with ZSET index
-#   delete_session()        -- single session logout
-#   delete_all_sessions()   -- logout-all via Lua script
-#   upsert_telegram_user()  -- Telegram WebApp auth (Sprint 1.2)
+#   register_email()              -- create User via email + password
+#   login_email()                 -- authenticate by email + password
+#   create_session()              -- Redis session with ZSET index
+#   delete_session()              -- single session logout
+#   delete_all_sessions()         -- logout-all via Lua script
+#   upsert_telegram_user()        -- Telegram WebApp auth (Sprint 1.2)
+#   verify_email_code()           -- verify 6-digit email code (G1)
+#   resend_verification_code()    -- regenerate + resend code (G1)
 #
 # FAILED LOGIN AUDIT (SEC-7):
 #   login_email() records failed attempts in audit_log via a dedicated
@@ -21,6 +23,11 @@
 #   referred_by = agent_id. Invalid/missing -> referred_by = platform_id.
 #   Silent fallback, never blocks registration.
 #
+# EMAIL VERIFICATION (G1):
+#   6-digit numeric code, stored in credentials.onboarding.email_token.
+#   TTL: 10 minutes. Max 5 attempts per code. Resend has rate limit.
+#   Verification email sent via core/email.py (SMTP + Mailgun fallback).
+#
 # COMMIT RULE (P-01):
 #   Service never commits or rolls back. Caller manages the transaction.
 #   Exception: _audit_login_failure() uses its own session+commit.
@@ -28,7 +35,7 @@
 
 import json
 import secrets
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 import structlog
@@ -41,7 +48,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.config import settings
 from app.core.database import get_session_factory
-from app.core.exceptions import ConflictError, UnauthorizedError
+from app.core.exceptions import BadRequestError, ConflictError, UnauthorizedError
 from app.core.redis import get_redis
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
@@ -52,6 +59,10 @@ _ph = PasswordHasher()
 # Redis key prefixes.
 _SESSION_PREFIX = "session:"
 _USER_SESSIONS_PREFIX = "user_sessions:"
+
+# Email verification constants.
+_VERIFICATION_CODE_TTL_MINUTES = 10
+_VERIFICATION_MAX_ATTEMPTS = 5
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +81,37 @@ def verify_password(password: str, password_hash: str) -> bool:
         return _ph.verify(password_hash, password)
     except VerifyMismatchError:
         return False
+
+
+# ---------------------------------------------------------------------------
+# Email verification helpers (G1)
+# ---------------------------------------------------------------------------
+
+
+def _generate_verification_code() -> str:
+    """Generate a 6-digit numeric verification code."""
+    return str(secrets.randbelow(900000) + 100000)
+
+
+async def _send_verification_email(email: str, code: str) -> None:
+    """Send verification code via email. Errors logged, not raised."""
+    from app.core.email import send_email
+
+    try:
+        await send_email(
+            recipient=email,
+            subject="CBS HOME - Email Verification",
+            body=(
+                f"Your verification code is: {code}\n\n"
+                f"This code expires in {_VERIFICATION_CODE_TTL_MINUTES} minutes.\n\n"
+                "If you did not request this, please ignore this email."
+            ),
+        )
+    except Exception:
+        logger.error(
+            "verification_email_send_failed",
+            recipient=email[:3] + "***",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +222,8 @@ async def register_email(
     """Register a new user via email + password.
 
     Creates a User with role=investor, stores hashed password and
-    email verification token in credentials JSONB.
+    6-digit verification code in credentials JSONB. Sends verification
+    email with the code.
 
     referral_code is resolved FIRST: valid code -> referred_by = agent_id,
     invalid/missing -> referred_by = platform_id. Never blocks registration.
@@ -193,7 +236,9 @@ async def register_email(
     """
     email_lower = email.strip().lower()
     password_hashed = hash_password(password)
-    email_token = secrets.token_urlsafe(32)
+    verification_code = _generate_verification_code()
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(minutes=_VERIFICATION_CODE_TTL_MINUTES)
 
     # Sprint 7.2: resolve referrer FIRST -- agents' bread and butter.
     referred_by = await _resolve_referrer(referral_code, session)
@@ -209,8 +254,8 @@ async def register_email(
                 "verified_at": None,
             },
             "onboarding": {
-                "email_token": email_token,
-                "email_token_expires_at": None,
+                "email_token": verification_code,
+                "email_token_expires_at": expires_at.isoformat(),
                 "email_verification_attempts": 0,
             },
         },
@@ -245,6 +290,9 @@ async def register_email(
         auth_method="email",
         referred_by=str(referred_by),
     )
+
+    # Send verification email (fire-and-forget, errors logged).
+    await _send_verification_email(email_lower, verification_code)
 
     return user
 
@@ -306,6 +354,121 @@ async def login_email(
     logger.info("user_login", user_id=str(user.id), auth_method="email")
 
     return user
+
+
+# ---------------------------------------------------------------------------
+# Email Verification (G1)
+# ---------------------------------------------------------------------------
+
+
+async def verify_email_code(
+    user: User,
+    code: str,
+    session: AsyncSession,
+) -> User:
+    """Verify a 6-digit email code.
+
+    Checks: already verified, attempts limit, TTL, code match.
+    On success: sets credentials.email.verified=True, clears token.
+
+    Raises:
+        BadRequestError: On any verification failure.
+    """
+    email_creds = (user.credentials or {}).get("email", {})
+    onboarding = (user.credentials or {}).get("onboarding", {})
+
+    # Already verified.
+    if email_creds.get("verified"):
+        raise BadRequestError("Email is already verified")
+
+    # Check attempts.
+    attempts = onboarding.get("email_verification_attempts", 0)
+    if attempts >= _VERIFICATION_MAX_ATTEMPTS:
+        raise BadRequestError("Too many attempts, please request a new code")
+
+    # Check TTL.
+    expires_at_str = onboarding.get("email_token_expires_at")
+    if expires_at_str:
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if datetime.now(UTC) > expires_at:
+            raise BadRequestError("Code expired, please request a new code")
+
+    # Check code.
+    stored_code = onboarding.get("email_token", "")
+    if not secrets.compare_digest(code, stored_code):
+        # Increment attempts.
+        updated_creds = dict(user.credentials)
+        updated_creds["onboarding"] = dict(onboarding)
+        updated_creds["onboarding"]["email_verification_attempts"] = attempts + 1
+        user.set_jsonb("credentials", updated_creds)
+        await session.flush()
+        raise BadRequestError("Invalid verification code")
+
+    # Success: mark verified, clear token.
+    now = datetime.now(UTC)
+    updated_creds = dict(user.credentials)
+    updated_creds["email"] = dict(email_creds)
+    updated_creds["email"]["verified"] = True
+    updated_creds["email"]["verified_at"] = now.isoformat()
+    updated_creds["onboarding"] = dict(onboarding)
+    updated_creds["onboarding"]["email_token"] = None
+    updated_creds["onboarding"]["email_token_expires_at"] = None
+    updated_creds["onboarding"]["email_verification_attempts"] = 0
+    user.set_jsonb("credentials", updated_creds)
+    await session.flush()
+    await session.refresh(user)
+
+    await record_audit(
+        session=session,
+        event="user.email_verified",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={},
+    )
+
+    logger.info("email_verified", user_id=str(user.id))
+
+    return user
+
+
+async def resend_verification_code(
+    user: User,
+    session: AsyncSession,
+) -> None:
+    """Regenerate 6-digit code, reset TTL and attempts, resend email.
+
+    Raises:
+        BadRequestError: If already verified or no email in credentials.
+    """
+    email_creds = (user.credentials or {}).get("email", {})
+    onboarding = (user.credentials or {}).get("onboarding", {})
+
+    if email_creds.get("verified"):
+        raise BadRequestError("Email is already verified")
+
+    email_address = email_creds.get("email")
+    if not email_address:
+        raise BadRequestError("No email address on this account")
+
+    # Generate new code.
+    new_code = _generate_verification_code()
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(minutes=_VERIFICATION_CODE_TTL_MINUTES)
+
+    updated_creds = dict(user.credentials)
+    updated_creds["onboarding"] = dict(onboarding)
+    updated_creds["onboarding"]["email_token"] = new_code
+    updated_creds["onboarding"]["email_token_expires_at"] = expires_at.isoformat()
+    updated_creds["onboarding"]["email_verification_attempts"] = 0
+    user.set_jsonb("credentials", updated_creds)
+    await session.flush()
+
+    logger.info("verification_code_resent", user_id=str(user.id))
+
+    # Send email (fire-and-forget).
+    await _send_verification_email(email_address, new_code)
 
 
 # ---------------------------------------------------------------------------

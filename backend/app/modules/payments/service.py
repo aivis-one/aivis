@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Service (Sprint 5.2, updated Sprint 6.4)
+# CBSHOME Backend -- Payment Service (Sprint 5.2, updated Sprint 6.4, G2)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -7,6 +7,7 @@
 #   get_payment()                   -- load Payment by id
 #   process_crypto_webhook()        -- create Payment, write active_ledger
 #   list_payments()                 -- paginated history for an investor
+#   list_all_payments()             -- paginated history for staff (all users, G2)
 #
 # CLOSED MODULE:
 #   Internal logic (provider selection, retry, fallback) is hidden.
@@ -198,6 +199,56 @@ async def list_payments(
         .offset(offset)
         .limit(per_page)
     )
+    result = await session.execute(stmt)
+    payments = list(result.scalars().all())
+
+    return payments, total
+
+
+async def list_all_payments(
+    session: AsyncSession,
+    *,
+    page: int = 1,
+    per_page: int = 20,
+    status: str | None = None,
+    user_id: UUID | None = None,
+) -> tuple[list[Payment], int]:
+    """List all payments for staff view with optional filters.
+
+    Args:
+        session: Active DB session.
+        page: Page number (1-based).
+        per_page: Items per page.
+        status: Optional status filter (frozen, confirmed, reversed, etc.).
+        user_id: Optional user filter.
+
+    Returns:
+        (payments, total_count).
+    """
+    # Build filters.
+    filters = []
+    if status is not None:
+        filters.append(Payment.status == status)
+    if user_id is not None:
+        filters.append(Payment.user_id == user_id)
+
+    # Count total.
+    count_stmt = select(func.count()).select_from(Payment)
+    if filters:
+        count_stmt = count_stmt.where(*filters)
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    # Fetch page.
+    offset = (page - 1) * per_page
+    stmt = (
+        select(Payment)
+        .order_by(Payment.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    if filters:
+        stmt = stmt.where(*filters)
+
     result = await session.execute(stmt)
     payments = list(result.scalars().all())
 
