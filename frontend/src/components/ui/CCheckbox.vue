@@ -1,0 +1,37 @@
+<script setup lang="ts">
+// Checkbox with label. Mockup checkbox-row pattern.
+
+import { Check } from 'lucide-vue-next'
+
+const props = withDefaults(
+  defineProps<{ modelValue?: boolean; label?: string }>(),
+  { modelValue: false },
+)
+
+const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
+
+function toggle(): void {
+  emit('update:modelValue', !props.modelValue)
+}
+</script>
+
+<template>
+  <div class="c-checkbox" @click="toggle">
+    <div class="c-checkbox__box" :class="{ 'c-checkbox__box--checked': modelValue }">
+      <Check v-if="modelValue" :size="14" />
+    </div>
+    <span v-if="label" class="c-checkbox__label">{{ label }}</span>
+    <span v-else class="c-checkbox__label"><slot /></span>
+  </div>
+</template>
+
+<style scoped>
+.c-checkbox { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
+.c-checkbox__box {
+  width: 20px; height: 20px; min-width: 20px; border: 2px solid var(--border);
+  border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; color: white; margin-top: 2px;
+}
+.c-checkbox__box--checked { background: var(--primary); border-color: var(--primary); }
+.c-checkbox__label { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+</style>

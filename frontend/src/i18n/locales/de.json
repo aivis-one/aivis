@@ -55,5 +55,33 @@
       "networkError": "Verbindungsfehler. Überprüfen Sie Ihr Internet",
       "timeout": "Server hat nicht geantwortet. Versuchen Sie es erneut"
     }
+  },
+  "tab": {
+    "home": "Start",
+    "portfolio": "Portfolio",
+    "market": "Markt",
+    "balance": "Kontostand",
+    "more": "Mehr",
+    "agent": {
+      "home": "Start",
+      "hub": "Hub",
+      "commissions": "Provisionen",
+      "balance": "Kontostand",
+      "more": "Mehr"
+    },
+    "comp": {
+      "home": "Start",
+      "products": "Produkte",
+      "analytics": "Analytik",
+      "balance": "Kontostand",
+      "settings": "Einstellungen"
+    },
+    "staff": {
+      "home": "Start",
+      "users": "Benutzer",
+      "kyc": "KYC",
+      "payments": "Zahlungen",
+      "more": "Mehr"
+    }
   }
 }

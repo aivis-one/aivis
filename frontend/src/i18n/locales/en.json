@@ -55,5 +55,33 @@
       "networkError": "Connection error. Check your internet",
       "timeout": "Server did not respond. Try again"
     }
+  },
+  "tab": {
+    "home": "Home",
+    "portfolio": "Portfolio",
+    "market": "Market",
+    "balance": "Balance",
+    "more": "More",
+    "agent": {
+      "home": "Home",
+      "hub": "Hub",
+      "commissions": "Commissions",
+      "balance": "Balance",
+      "more": "More"
+    },
+    "comp": {
+      "home": "Home",
+      "products": "Products",
+      "analytics": "Analytics",
+      "balance": "Balance",
+      "settings": "Settings"
+    },
+    "staff": {
+      "home": "Home",
+      "users": "Users",
+      "kyc": "KYC",
+      "payments": "Payments",
+      "more": "More"
+    }
   }
 }
