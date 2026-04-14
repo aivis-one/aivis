@@ -18,5 +18,42 @@
     "noResults": "Keine Ergebnisse gefunden",
     "yes": "Ja",
     "no": "Nein"
+  },
+  "auth": {
+    "back": "Zurück",
+    "login": {
+      "title": "Anmelden",
+      "subtitle": "Melden Sie sich bei CBS HOME an, um Ihre Investitionen zu verwalten",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "passPlaceholder": "Passwort eingeben",
+      "forgot": "Passwort vergessen?",
+      "btn": "Anmelden",
+      "or": "oder",
+      "telegram": "Mit Telegram anmelden",
+      "noAccount": "Kein Konto?",
+      "createAccount": "Konto erstellen"
+    },
+    "register": {
+      "title": "Konto erstellen",
+      "subtitle": "Werden Sie Teil der CBS HOME Investitionsplattform",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "passwordHint": "Mindestens 8 Zeichen, Buchstaben und Zahlen",
+      "confirmPassword": "Passwort bestätigen",
+      "passPlaceholder": "Mindestens 8 Zeichen",
+      "confirmPlaceholder": "Passwort wiederholen",
+      "btn": "Konto erstellen",
+      "hasAccount": "Haben Sie bereits ein Konto?",
+      "loginLink": "Anmelden"
+    },
+    "error": {
+      "invalidCredentials": "Falsche E-Mail oder falsches Passwort",
+      "emailTaken": "Diese E-Mail ist bereits registriert",
+      "passwordMismatch": "Passwörter stimmen nicht überein",
+      "fillAllFields": "Bitte füllen Sie alle Felder aus",
+      "networkError": "Verbindungsfehler. Überprüfen Sie Ihr Internet",
+      "timeout": "Server hat nicht geantwortet. Versuchen Sie es erneut"
+    }
   }
 }

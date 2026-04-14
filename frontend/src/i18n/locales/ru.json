@@ -18,5 +18,42 @@
     "noResults": "Ничего не найдено",
     "yes": "Да",
     "no": "Нет"
+  },
+  "auth": {
+    "back": "Назад",
+    "login": {
+      "title": "Вход в аккаунт",
+      "subtitle": "Войдите в CBS HOME для управления инвестициями",
+      "email": "Email",
+      "password": "Пароль",
+      "passPlaceholder": "Введите пароль",
+      "forgot": "Забыли пароль?",
+      "btn": "Войти",
+      "or": "или",
+      "telegram": "Войти через Telegram",
+      "noAccount": "Нет аккаунта?",
+      "createAccount": "Создать аккаунт"
+    },
+    "register": {
+      "title": "Создать аккаунт",
+      "subtitle": "Присоединяйтесь к инвестиционной платформе CBS HOME",
+      "email": "Email",
+      "password": "Пароль",
+      "passwordHint": "Минимум 8 символов, буквы и цифры",
+      "confirmPassword": "Подтверждение пароля",
+      "passPlaceholder": "Минимум 8 символов",
+      "confirmPlaceholder": "Повторите пароль",
+      "btn": "Создать аккаунт",
+      "hasAccount": "Уже есть аккаунт?",
+      "loginLink": "Войти"
+    },
+    "error": {
+      "invalidCredentials": "Неверный email или пароль",
+      "emailTaken": "Этот email уже зарегистрирован",
+      "passwordMismatch": "Пароли не совпадают",
+      "fillAllFields": "Заполните все поля",
+      "networkError": "Ошибка соединения. Проверьте интернет",
+      "timeout": "Сервер не ответил. Попробуйте ещё раз"
+    }
   }
 }
