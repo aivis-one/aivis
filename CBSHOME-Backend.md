@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 2.9
-**Дата:** 12 апреля 2026
+**Версия:** 3.0
+**Дата:** 14 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -324,6 +324,9 @@ cbshome version                   -- git log + runtime versions + image list
   - `POST /api/v1/auth/logout`
   - `POST /api/v1/auth/logout-all`
 - [x] Email verification token (сохраняется в `credentials.onboarding.email_token`)
+- [x] G1 fix: 6-значный цифровой код вместо `token_urlsafe(32)`. TTL 10 минут, max 5 попыток. Email отправляется при регистрации через `core/email.py`
+- [x] G1 fix: `POST /api/v1/auth/verify-email` — проверка кода (timing-safe `secrets.compare_digest`)
+- [x] G1 fix: `POST /api/v1/auth/verify-email/resend` — перегенерация + отправка, rate limit `email_verify_resend:{user_id}`
 - [x] Password hash: argon2 (`argon2-cffi`)
 - [x] Redis сессии: `session:{token}` + `user_sessions:{user_id}` (ZSET for logout-all)
 - [x] TTL: `SESSION_TTL_DAYS` из config
@@ -349,6 +352,8 @@ cbshome version                   -- git log + runtime versions + image list
 ```
 POST /api/v1/auth/email/register  -> AuthResponse {user, session_token}  (201)
 POST /api/v1/auth/email/login     -> AuthResponse                       (200)
+POST /api/v1/auth/verify-email    -> UserResponse                       (200)
+POST /api/v1/auth/verify-email/resend -> 204
 POST /api/v1/auth/logout          -> 204
 POST /api/v1/auth/logout-all      -> 204
 ```
@@ -357,10 +362,10 @@ POST /api/v1/auth/logout-all      -> 204
 ```
 backend/app/modules/auth/
 ├── __init__.py
-├── schemas.py          -- EmailRegisterRequest, EmailLoginRequest, AuthResponse
-├── service.py          -- register/login + Redis sessions (ZSET + Lua)
+├── schemas.py          -- EmailRegisterRequest, EmailLoginRequest, VerifyEmailRequest, AuthResponse
+├── service.py          -- register/login/verify_email_code/resend + Redis sessions (ZSET + Lua)
 ├── dependencies.py     -- get_current_user, _write, optional, staff
-└── router.py           -- 4 endpoints
+└── router.py           -- 6 endpoints
 
 backend/app/modules/users/
 └── schemas.py          -- UserResponse, UserUpdate
@@ -766,7 +771,7 @@ backend/tests/
   - `GET /api/v1/staff/dashboard/stats` — статистика платформы (any staff)
   - `GET /api/v1/staff/kyc/queue` — очередь KYC (kyc_approve perm)
   - `POST /api/v1/staff/kyc/{id}/approve` — одобрить KYC (kyc_approve perm)
-  - `POST /api/v1/staff/kyc/{id}/reject` — отклонить KYC (kyc_approve perm)
+  - `POST /api/v1/staff/kyc/{id}/reject` — отклонить KYC (kyc_approve perm, body: `KYCRejectRequest {reason?: str}`)
 - [x] `app/modules/staff/router.py` (расширен):
   - `GET /api/v1/staff/users` — унифицированный список юзеров (?role=, ?page=, ?per_page=)
   - `GET /api/v1/staff/users/{id}` — детали юзера
@@ -791,13 +796,13 @@ PATCH /api/v1/staff/users/{id}/block       -> 204
 GET   /api/v1/staff/dashboard/stats        -> DashboardStatsResponse  (200)
 GET   /api/v1/staff/kyc/queue              -> list[KYCQueueItem]  (200)
 POST  /api/v1/staff/kyc/{id}/approve       -> 204
-POST  /api/v1/staff/kyc/{id}/reject        -> 204
+POST  /api/v1/staff/kyc/{id}/reject        -> 204 (body: {reason?})
 ```
 
 **Результат:**
 ```
 backend/app/modules/staff/
-├── admin_schemas.py     -- UserListItem, UserListResponse, UserDetailResponse, DashboardStatsResponse, KYCQueueItem, BlockRequest
+├── admin_schemas.py     -- UserListItem, UserListResponse, UserDetailResponse, DashboardStatsResponse, KYCQueueItem, BlockRequest, KYCRejectRequest
 ├── admin_service.py     -- list_users, get_user_detail, block_user, dashboard_stats, kyc_queue/approve/reject
 └── admin_router.py      -- dashboard_router + kyc_admin_router (4 endpoints)
 
@@ -1287,6 +1292,7 @@ backend/tests/
 - [x] `main.py` — `_payment_confirmation_worker()` вызывает `run_confirmation_batch()` каждые `CONFIRMATION_WORKER_INTERVAL_MINUTES`
 - [x] `app/modules/payments/reversal.py` — `reverse_payment()`: зеркальные ledger-записи, Payment -> reversed, audit
 - [x] `app/modules/payments/staff_router.py` — `POST /api/v1/staff/payments/{id}/reverse` (permission: `payment_review`)
+- [x] G2 fix: `GET /api/v1/staff/payments` — list all payments with filters (status, user_id), paginated. `StaffPaymentResponse` extends `PaymentResponse` + `user_id`. Permission: `payment_review`
 - [x] `app/modules/payments/schemas.py` — `+ReversePaymentRequest`, `+ReversalResponse`
 - [x] `tests/test_payment_confirmation.py` — 8 тестов
 - [x] `tests/test_payment_reversal.py` — 6 тестов
@@ -1295,7 +1301,8 @@ backend/tests/
 
 **Endpoints:**
 ```
-POST /api/v1/staff/payments/{id}/reverse  -> ReversalResponse  (200, payment_review)
+GET  /api/v1/staff/payments                -> StaffPaymentListResponse  (200, payment_review)
+POST /api/v1/staff/payments/{id}/reverse   -> ReversalResponse         (200, payment_review)
 ```
 
 **Решения реализации:**
@@ -1319,12 +1326,12 @@ backend/app/modules/payments/
 ├── constants.py        -- PaymentType, PaymentStatus, state machine (Sprint 5.2)
 ├── models.py           -- Payment (JSONBMixin), CryptoAddress (Sprint 5.2)
 ├── interface.py        -- PaymentServiceProtocol, DepositAddress (Sprint 5.2)
-├── schemas.py          -- +ReversePaymentRequest, +ReversalResponse (Sprint 5.3)
-├── service.py          -- get_or_create_deposit_address, process_crypto_webhook, list_payments, get_payment (Sprint 5.2)
+├── schemas.py          -- +ReversePaymentRequest, +ReversalResponse (Sprint 5.3), +StaffPaymentResponse, +StaffPaymentListResponse (G2)
+├── service.py          -- get_or_create_deposit_address, process_crypto_webhook, list_payments, list_all_payments (G2), get_payment (Sprint 5.2)
 ├── confirmation.py     -- run_confirmation_batch() (Sprint 5.3)
 ├── reversal.py         -- reverse_payment() (Sprint 5.3, +FOR UPDATE +total from entries: code review)
 ├── router.py           -- POST /crypto-address, GET /history (Sprint 5.2)
-├── staff_router.py     -- POST /staff/payments/{id}/reverse (Sprint 5.3)
+├── staff_router.py     -- GET /staff/payments (G2), POST /staff/payments/{id}/reverse (Sprint 5.3)
 └── webhook_router.py   -- POST /crypto/webhook (Sprint 5.2)
 
 backend/tests/
@@ -1340,7 +1347,7 @@ backend/tests/
 
 ---
 
-**Phase 5 завершена.** 4 endpoints (2 investor payments + 1 webhook + 1 staff reversal), 24 теста Phase 5 (+118 Phase 0-4 = 142 Sprint 5.2, 156 Sprint 5.3), 2 миграции (итого 8). AML-матрица standalone. Confirmation daemon. Chargeback reversal.
+**Phase 5 завершена.** 5 endpoints (2 investor payments + 1 webhook + 1 staff reversal + 1 staff list (G2)), 24 теста Phase 5 (+118 Phase 0-4 = 142 Sprint 5.2, 156 Sprint 5.3), 2 миграции (итого 8). AML-матрица standalone. Confirmation daemon. Chargeback reversal.
 
 **Обновлённые файлы (Phase 5 total):**
 - `core/constants.py` — `LedgerReason` registry
@@ -1407,7 +1414,7 @@ Platform получает полный остаток по `distribution_config`
 - [x] `app/modules/purchases/constants.py` — `PurchaseStatus`, `PurchaseLegalBasis`
 - [x] `app/modules/purchases/schemas.py` — `CreatePurchaseRequest`, `PurchaseResponse`, `PurchaseListResponse`
 - [x] `app/modules/purchases/service.py` — `execute_purchase()`, `get_sold_units_map()`, `get_investor_portfolio_cents()`
-- [x] `app/modules/purchases/router.py` — `POST /api/v1/products/{id}/purchase`
+- [x] `app/modules/purchases/router.py` — `POST /api/v1/products/{id}/purchase` (role: investor or agent, G3 fix)
 - [x] `app/modules/products/models.py` — `+purchase_config JSONB`, `-gift_units`, `+JSONBMixin`
 - [x] `app/modules/products/schemas.py` — `purchase_config` вместо `gift_units` во всех схемах
 - [x] `app/modules/products/service.py` — `purchase_config` в `create_product()`, `update_product()`
@@ -1595,7 +1602,7 @@ InstallmentTranche:
 - P6-21: **default_plan()** — overdue tranche → defaulted, remaining scheduled/overdue → cancelled, plan → defaulted. Инвестор сохраняет уже оплаченные акции. Бонусы не начисляются
 - P6-22: **Daemon batch-first** — `run_installment_batch()` вызывается ДО `asyncio.sleep()` (fix #34: аналогично confirmation worker CR-P5-05). Sleep до следующего `INSTALLMENT_WORKER_HOUR`. `timedelta(days=1)` для границ месяцев
 - P6-23: **Worker transaction isolation** — каждый tranche обрабатывается в отдельной DB-транзакции (`session.begin()`). Ошибка одного tranche не откатывает другие. Дедупликация defaults по `plan_id` через `seen_plans: set`
-- P6-24: **Два роутера** — `create_router` (POST `/products/{id}/installment`) и `query_router` (GET `/installments/me`, GET `/installments/{id}`). Разные prefix'ы, оба требуют `role=investor`
+- P6-24: **Два роутера** — `create_router` (POST `/products/{id}/installment`) и `query_router` (GET `/installments/me`, GET `/installments/{id}`). Разные prefix'ы, оба требуют `role in (investor, agent)` (G4 fix: агенты тоже могут покупать)
 - P6-25: **Дублирование планов разрешено** — инвестор может иметь несколько active планов по одному продукту (разные пакеты: 6 и 12 месяцев). By design, не баг
 
 **Логика `create_plan()`:**
@@ -2973,6 +2980,10 @@ backend/app/modules/transactions/
 | TD-056 | `notifications/formatters.py` | Email обязательность: юзер без email в credentials → delivery FAILED + `PermanentDeliveryError`. Enforcement на уровне onboarding (запрет продолжения без email) — отдельный спринт | Phase 9 | ⬜ |
 | TD-057 | `notifications/service.py` | Dedicated delivery worker для масштабирования broadcast. Текущий `asyncio.gather` + `Semaphore(20)` — 25 мин worst case на 1000 юзеров. При 10K+ нужен отдельный worker с `FOR UPDATE SKIP LOCKED` на deliveries | Before Scale | ⬜ |
 | TD-058 | `commissions/worker.py` | Leaderboard `run_leaderboard_update()` без advisory lock. При multi-instance deployment возможна двойная обработка. Monthly/quarterly payout имеют advisory lock, update — нет | Before Scale | ⬜ |
+| TD-059 | `purchases/router.py`, `installments/router.py` | ~~Agent purchase/installment blocked (`role != investor` → 403)~~ → `_BUYER_ROLES = {INVESTOR, AGENT}`. Агенты — тоже инвесторы по бизнес-логике | G3/G4 | ✅ G3/G4 fix |
+| TD-060 | `staff/admin_router.py`, `admin_schemas.py`, `admin_service.py` | ~~KYC reject без reason~~ → `KYCRejectRequest {reason?: str, max_length=2000}`. Reason записывается в `audit_log.data`, не в модель KYCApplication | G5 | ✅ G5 fix |
+| TD-061 | `auth/router.py`, `auth/service.py`, `auth/schemas.py` | ~~Email verification endpoint отсутствует~~ → 6-значный код, TTL 10 мин, max 5 попыток, `secrets.compare_digest`, resend с rate limit. Email через `core/email.py` | G1 | ✅ G1 fix |
+| TD-062 | `payments/staff_router.py`, `payments/service.py`, `payments/schemas.py` | ~~Staff не может видеть список всех платежей~~ → `GET /staff/payments` с фильтрами (status, user_id), `StaffPaymentResponse` (+user_id), permission `payment_review` | G2 | ✅ G2 fix |
 
 ---
 
@@ -2980,4 +2991,4 @@ backend/app/modules/transactions/
 
 ---
 
-*Version 2.9 | 2026-04-12 | cbshome Backend TZ — Phase 6 complete, Phase 7 complete, Phase 8 complete, Phase 9 complete, Sprint 10.1 complete. Sprint 10.1: Protocol stubs (tokens, ai_trainer, providers, auto_translate) + transactions/export 501. 22 migrations, TD-009 stub created, 330 tests total, 0 warnings, Sprint 10.2 next*
+*Version 3.0 | 2026-04-14 | G1–G5 frontend-blocking fixes: email verification (2 endpoints), staff payment list, agent purchase/installment access, KYC reject reason. 330+ tests, Sprint 10.2 next*

@@ -656,9 +656,10 @@ export const api = {
 **Задачи:**
 - [ ] src/views/auth/VerifyEmailView.vue:
   - Code input (6 цифр, из мокапа auth-flow/screen-verify)
-  - **⚠️ BACKEND GAP:** `POST /api/v1/auth/verify-email` не реализован
-  - **Стратегия:** Показать экран, при отправке кода — skip (заглушка "Verified"). Email verification не блокирует регистрацию (блокирует только покупку до kyc_status=approved)
-  - Resend button с cooldown timer (готов к интеграции)
+  - POST /api/v1/auth/verify-email → body: `{ code: "123456" }` (6 цифр)
+  - POST /api/v1/auth/verify-email/resend → 204 (rate limited)
+  - 6-значный код, TTL 10 минут, max 5 попыток, timing-safe проверка
+  - Resend button с cooldown timer
 - [ ] src/views/auth/OnboardingProfileView.vue:
   - Имя, фамилия, страна, телефон
   - PATCH /api/v1/users/me
@@ -676,7 +677,7 @@ export const api = {
   - POST /api/v1/documents/{id}/sign → DocumentSigningResponse
 - [ ] Onboarding guard: проверяет `user.onboarding_step` и редиректит на нужный шаг
 
-**Зависимость от бэкенда:** PATCH /users/me (✅), KYC (✅), Documents (✅). Verify-email — gap.
+**Зависимость от бэкенда:** PATCH /users/me (✅), KYC (✅), Documents (✅), Verify-email (✅).
 
 **Критерий готовности:** Новый юзер проходит полный онбординг от регистрации до готовности.
 
@@ -737,8 +738,7 @@ export const api = {
   - Каждый item: аватар, имя, дата подачи, статус
   - Действия:
     - POST /api/v1/staff/kyc/{id}/approve — одобрить
-    - POST /api/v1/staff/kyc/{id}/reject — отклонить
-    - **⚠️ BACKEND GAP:** KYC reject не принимает reason (в отличие от Agent Application reject). Пока без поля причины
+    - POST /api/v1/staff/kyc/{id}/reject — отклонить (body: `{ reason?: string }`, reason записывается в audit log)
   - Double-submit guard
   - Toast: "KYC одобрен" / "KYC отклонён"
   - `error` ref + CEmptyState с кнопкой "Повторить" при ошибке загрузки
@@ -755,8 +755,8 @@ export const api = {
 
 **Задачи:**
 - [ ] src/views/staff/StaffPaymentsView.vue:
-  - **⚠️ BACKEND GAP:** Нет `GET /staff/payments` (list all payments). Варианты: (a) аватаринг, (b) будущий endpoint бэка
-  - MVP: CEmptyState или базовый список через аватаринг
+  - GET /api/v1/staff/payments → StaffPaymentListResponse (paginated, filters: ?status=, ?user_id=, permission: `payment_review`)
+  - Каждый item: amount_cents, currency, payment_type, provider, status, user_id, created_at
   - Staff-действие:
     - POST /api/v1/staff/payments/{id}/reverse — chargeback (permission: `payment_review`, body: `{ reason? }`)
   - Withdrawals:
@@ -781,9 +781,9 @@ export const api = {
   - POST /api/v1/staff/agent-applications/{id}/approve — одобрить → 204
   - POST /api/v1/staff/agent-applications/{id}/reject — отклонить (body: `{ reason }`) → 204
 
-**Зависимость от бэкенда:** Payments (Phase 5.2 ✅), Avatar (Phase 3.2 ✅), Agent apps (Phase 7.1 ✅), Withdrawals (Phase 6.3 ✅).
+**Зависимость от бэкенда:** Payments (Phase 5.2 ✅, G2 ✅), Avatar (Phase 3.2 ✅), Agent apps (Phase 7.1 ✅), Withdrawals (Phase 6.3 ✅).
 
-**Критерий готовности:** Staff может аватариться, управлять agent apps. Payments — частично (gap list all).
+**Критерий готовности:** Staff видит все платежи, может аватариться, управлять agent apps и withdrawals.
 
 ---
 
@@ -828,7 +828,7 @@ export const api = {
 
 **Цель:** Инвестор покупает продукт (инстант или рассрочка).
 
-**⚠️ BACKEND GAP:** Purchase и Installment endpoints проверяют `role == investor` → 403 для агентов. Ожидает фикс бэка: `role in (investor, agent)`.
+**Роли:** доступно для `investor` и `agent` (агенты тоже могут инвестировать).
 
 **Задачи:**
 - [ ] src/views/investor/PurchaseView.vue:
@@ -1137,32 +1137,29 @@ export const api = {
 | Frontend Phase | Backend Phase | Статус бэка | Блокирует? |
 |---------------|---------------|-------------|------------|
 | F0: Инфра | — | — | Нет |
-| F1: Auth | 1.1, 1.2, 1.3 | ✅ | Нет (verify-email = gap, обходим) |
+| F1: Auth | 1.1, 1.2, 1.3 | ✅ | Нет |
 | F2: Компоненты + Layout | 1.3 | ✅ | Нет |
-| F3: Staff | 3.1–3.3, 5.2, 5.3, 7.1 | ✅ | Частично (staff payments list — gap) |
-| F4: Investor | 4.2, 5.1, 5.2, 6.1, 6.2, 6.4, 9.2 | ✅ | **⚠️ Agent purchase — gap бэка** |
+| F3: Staff | 3.1–3.3, 5.2, 5.3, 7.1 | ✅ | Нет |
+| F4: Investor | 4.2, 5.1, 5.2, 6.1, 6.2, 6.4, 9.2 | ✅ | Нет |
 | F5: Company | 4.1, 4.2, 6.3, 6.4, 9.2 | ✅ | Нет |
-| F6: Agent | 7.1, 7.2, 7.3, 6.3 | ✅ | **⚠️ Agent purchase — gap бэка** |
+| F6: Agent | 7.1, 7.2, 7.3, 6.3 | ✅ | Нет |
 | F7: i18n | — | — | Нет |
 | F8: Notifications | 8.1–8.3 | ✅ | Нет |
 | F9: Полировка + Posts | 9.1, 6.4 | ✅ | Нет |
 
-**Стратегия:** Все фазы можно начинать — бэкенд полностью готов. Два backend gaps требуют фикса:
-1. **Agent purchase/installment access** — `role in (investor, agent)` вместо `role == investor`
-2. **KYC reject reason** — добавить body parameter
-3. Verify-email — skip/заглушка
+**Стратегия:** Все фазы можно начинать — бэкенд полностью готов. Все backend gaps (G1–G5) закрыты.
 
 ---
 
-## 6. Backend Gaps — ожидают фикса
+## 6. Backend Gaps — все закрыты (v3.0)
 
-| # | Модуль | Описание | Приоритет |
-|---|--------|----------|-----------|
-| G1 | auth | `POST /auth/verify-email` не реализован | Low (skip) |
-| G2 | staff/payments | Нет `GET /staff/payments` (list all) | Medium |
-| G3 | purchases | `role != investor` → 403 для агентов | **BLOCKER** |
-| G4 | installments | `role != investor` → 403 для агентов | **BLOCKER** |
-| G5 | staff/kyc | KYC reject без reason parameter | Low |
+| # | Модуль | Описание | Статус |
+|---|--------|----------|--------|
+| G1 | auth | `POST /auth/verify-email` + `/resend` — 6-значный код, TTL, rate limit | ✅ Закрыт |
+| G2 | staff/payments | `GET /staff/payments` — list all с фильтрами (status, user_id) | ✅ Закрыт |
+| G3 | purchases | `_BUYER_ROLES = {INVESTOR, AGENT}` — агенты могут покупать | ✅ Закрыт |
+| G4 | installments | `_BUYER_ROLES = {INVESTOR, AGENT}` — агенты могут оформлять рассрочку | ✅ Закрыт |
+| G5 | staff/kyc | `KYCRejectRequest {reason?}` — reason в audit_log | ✅ Закрыт |
 
 ---
 
