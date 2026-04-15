@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 3.0
-**Дата:** 14 апреля 2026
+**Версия:** 3.1
+**Дата:** 15 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -2984,6 +2984,9 @@ backend/app/modules/transactions/
 | TD-060 | `staff/admin_router.py`, `admin_schemas.py`, `admin_service.py` | ~~KYC reject без reason~~ → `KYCRejectRequest {reason?: str, max_length=2000}`. Reason записывается в `audit_log.data`, не в модель KYCApplication | G5 | ✅ G5 fix |
 | TD-061 | `auth/router.py`, `auth/service.py`, `auth/schemas.py` | ~~Email verification endpoint отсутствует~~ → 6-значный код, TTL 10 мин, max 5 попыток, `secrets.compare_digest`, resend с rate limit. Email через `core/email.py` | G1 | ✅ G1 fix |
 | TD-062 | `payments/staff_router.py`, `payments/service.py`, `payments/schemas.py` | ~~Staff не может видеть список всех платежей~~ → `GET /staff/payments` с фильтрами (status, user_id), `StaffPaymentResponse` (+user_id), permission `payment_review` | G2 | ✅ G2 fix |
+| TD-063 | `tests/conftest.py` | ~~`_send_verification_email()` вызывается в тестах~~ → SMTP timeout (Postfix → example.com) + Mailgun timeout (placeholder key) = ~60с на каждую регистрацию. Фикс: `mock_email` autouse fixture, `monkeypatch` на noop. Продакшен-код не тронут | F1 | ✅ F1 fix |
+| TD-064 | `tests/test_staff_admin.py` | ~~`test_kyc_reject` не отправляет JSON body~~ → G5 добавил `KYCRejectRequest` (обязательный body), тест не обновлён. 422 вместо 204. Фикс: `json={}` | F1 | ✅ F1 fix |
+| TD-065 | `scripts/install_cbshome.sh` | ~~`docker compose build --no-cache` в `case_update()`~~ → каждый `cbshome update` пересобирал все слои с нуля (~105с + 17GB мусора). Фикс: убран `--no-cache` из update (оставлен только при первичной установке) | F1 | ✅ F1 fix |
 
 ---
 
@@ -2991,4 +2994,4 @@ backend/app/modules/transactions/
 
 ---
 
-*Version 3.0 | 2026-04-14 | G1–G5 frontend-blocking fixes: email verification (2 endpoints), staff payment list, agent purchase/installment access, KYC reject reason. 330+ tests, Sprint 10.2 next*
+*Version 3.1 | 2026-04-15 | F1 frontend fixes: mock_email in tests (SMTP timeout), test_kyc_reject body, install_cbshome.sh --no-cache removal. 330 tests, all green*

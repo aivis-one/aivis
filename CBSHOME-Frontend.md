@@ -1,7 +1,7 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.0
-**Дата:** 14 апреля 2026
+**Версия:** 2.1
+**Дата:** 15 апреля 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -97,6 +97,7 @@ interface UserResponse {
 | PWA | vite-plugin-pwa | latest | Manifest + Service Worker |
 | Стили | Свой CSS | — | Дизайн-система из мокапов (variables.css v1.8.0) |
 | Линтинг | ESLint + Prettier | latest | Качество кода |
+| Иконки | lucide-vue-next | ^0.460 | SVG-иконки из мокапов (Lucide) |
 | Платформа | Telegram WebApp SDK | latest | initData, тема, haptic |
 | Шрифты | Montserrat + Noto Sans Arabic | Google Fonts | LTR + RTL |
 
@@ -335,6 +336,13 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - [x] docker-compose.yml: сервис `frontend` с build context `./frontend`
 - [x] `install_cbshome.sh`: Nginx-блок для `cbshome.org` → `localhost:3000`
 
+**Обновления (F1):**
+- Dockerfile: `npm ci` → `npm install` (автоматическое подтягивание новых зависимостей при `cbshome update`)
+- Dockerfile: `ENV VITE_API_BASE_URL=https://api.cbshome.org` + `ENV VITE_TELEGRAM_BOT_URL=https://t.me/cbshome_bot` — baked into build stage
+- `.env.production` — Vite production env vars (дублирует Dockerfile ENV для dev-сборки)
+- `.dockerignore` — разрешён `.env.production`
+- `install_cbshome.sh`: убран `--no-cache` из `case_update()` (оставлен при первичной установке)
+
 **Критерий готовности:** `docker compose up frontend` → cbshome.org отдаёт SPA.
 
 ---
@@ -361,6 +369,9 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - [x] vite-plugin-pwa: `registerType: 'autoUpdate'`, `workbox.globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']`, `navigateFallback: 'index.html'`, `navigateFallbackDenylist: [/^\/api\//]`
 - [x] Placeholder-иконки: сплошной оранжевый (#cc3203) PNG 192x192 и 512x512
 
+**Обновления (F1):**
+- `vite.config.ts`: добавлен `runtimeCaching` для Google Fonts (без него production build падал: "Couldn't find configuration for either precaching or runtime caching")
+
 **Критерий готовности:** iPhone Safari → "Добавить на экран" → приложение открывается в standalone-режиме.
 
 ---
@@ -380,15 +391,15 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ---
 
-## PHASE F1: Auth + Платформа
+## PHASE F1: Auth + Платформа ✅
 
-### F1.1: Платформенная абстракция
+### ✅ F1.1: Платформенная абстракция
 
 **Цель:** Приложение знает, где запущено, и адаптируется.
 
 **Задачи:**
-- [ ] src/platform/types.ts — интерфейс Platform (9 методов, включая `getStorageDriver()`)
-- [ ] src/platform/telegram.ts — обёртка над `window.Telegram.WebApp`:
+- [x] src/platform/types.ts — интерфейс Platform (9 методов, включая `getStorageDriver()`)
+- [x] src/platform/telegram.ts — обёртка над `window.Telegram.WebApp`:
   - `init()` — `WebApp.ready()`, `expand()`, `setHeaderColor('#1A6B6A')`, `setBackgroundColor('#F5F5F5')`
   - `getInitData()` — `WebApp.initData || null`
   - `getTheme()` — `WebApp.colorScheme || 'light'`
@@ -397,27 +408,31 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
   - `close()` — `WebApp.close()`
   - `getStorageDriver()` → `'sessionStorage'`
   - `getStartParam()` → `WebApp.initDataUnsafe?.start_param || null` (для referral_code)
-- [ ] src/platform/standalone.ts — полноценная standalone-реализация:
+- [x] src/platform/standalone.ts — полноценная standalone-реализация:
   - `getInitData()` → `null`
   - `hapticFeedback()` → no-op
   - `showBackButton(cb)` → `window.history.back()` fallback
   - `getStorageDriver()` → `'localStorage'`
   - `getStartParam()` → `null`
-- [ ] src/platform/index.ts — автодетект по `window.Telegram?.WebApp`, экспорт singleton `platform`
+- [x] src/platform/index.ts — автодетект по `window.Telegram?.WebApp.initData`, экспорт singleton `platform`
 
-**Критерий готовности:** `platform.name === 'telegram'` в Telegram, `platform.name === 'standalone'` в браузере.
+**Решения реализации:**
+- Детект Telegram: проверяем `wa && wa.initData` (не только `wa`). SDK скрипт создаёт `window.Telegram.WebApp` даже в обычном браузере, но `initData` — непустая строка только в реальном Telegram
+- TelegramWebApp type declarations встроены в `types.ts` (subset используемых полей)
+- BackButton callback cleanup через `offClick` перед `onClick` — предотвращает стекирование
+
+**Критерий готовности:** `platform.name === 'telegram'` в Telegram, `platform.name === 'standalone'` в браузере. ✅
 
 ---
 
-### F1.2: API-клиент
+### ✅ F1.2: API-клиент
 
 **Цель:** Типизированный HTTP-клиент для общения с бэкендом через CORS.
 
 **Задачи:**
-- [ ] src/api/client.ts:
-  - `BASE_URL` из `import.meta.env.VITE_API_BASE_URL` (e.g. `https://api.cbshome.org`)
+- [x] src/api/client.ts:
+  - `BASE_URL` из `import.meta.env.VITE_API_BASE_URL` с fallback `'https://api.cbshome.org'`
   - Обёртка над fetch: `get<T>()`, `post<T>()`, `patch<T>()`, `put<T>()`, `delete()`
-  - `credentials: 'include'` — CORS with credentials
   - Авто-подстановка `Authorization: Bearer {token}` через модульный `_token`
   - Обработка 401 → callback `_onUnauthorized()` → auth store очищает сессию
   - Обработка 422 → парсинг массива ValidationError → join в строку
@@ -425,7 +440,8 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
   - Обработка сетевых ошибок → `ApiNetworkError`
   - `AbortController` + 15s timeout → `ApiTimeoutError`
   - `Accept-Language` header из текущей vue-i18n locale
-- [ ] src/api/types.ts — TypeScript-интерфейсы:
+  - Non-JSON error (502/503) → `HTTP {status}: non-JSON response`
+- [x] src/api/types.ts — TypeScript-интерфейсы:
   - `EmailRegisterRequest { email, password, referral_code? }` — referral_code: string | null
   - `EmailLoginRequest { email, password }`
   - `TelegramAuthRequest { init_data, referral_code? }` — referral_code: string | null
@@ -433,37 +449,24 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
   - `UserResponse` (см. раздел 1.5)
   - `UserUpdate { profile?, language? }`
   - `PaginatedResponse<T> { items: T[], total, page, per_page }`
-  - `ApiError` (string | ValidationError[])
+  - `VerifyEmailRequest { code: string }`
+  - `ValidationErrorItem { loc, msg, type }`
 
-**Экспорты client.ts:**
-```typescript
-export class ApiResponseError extends Error { status: number; detail: string }
-export class ApiNetworkError extends Error {}
-export class ApiTimeoutError extends Error {}
-export function setAuthToken(token: string | null): void
-export function getAuthToken(): string | null
-export function setOnUnauthorized(cb: () => void): void
-export const api = {
-  get<T>(path: string): Promise<T>,
-  post<T>(path: string, body?: unknown): Promise<T>,
-  patch<T>(path: string, body?: unknown): Promise<T>,
-  put<T>(path: string, body?: unknown): Promise<T>,
-  delete(path: string): Promise<void>,
-}
-```
+**Решения реализации:**
+- `credentials: 'include'` убран — Bearer token auth, cookies не нужны. Закрывает CSRF-вектор
+- `BASE_URL` fallback через `??` — защита от undefined при отсутствии env var (Vite Docker build)
+- Dockerfile: `ENV VITE_API_BASE_URL=https://api.cbshome.org` — baked into build stage
 
-**Зависимость от бэкенда:** Любой endpoint (для проверки CORS). Phase 1 ✅.
-
-**Критерий готовности:** `api.get<UserResponse>('/api/v1/users/me')` возвращает типизированный ответ через CORS.
+**Критерий готовности:** `api.get<UserResponse>('/api/v1/users/me')` возвращает типизированный ответ через CORS. ✅
 
 ---
 
-### F1.3: Auth flow (Email + Telegram)
+### ✅ F1.3: Auth flow (Email + Telegram)
 
 **Цель:** Юзер авторизуется через email/password или через Telegram WebApp.
 
 **Задачи:**
-- [ ] src/stores/auth.ts (Pinia):
+- [x] src/stores/auth.ts (Pinia):
   - `user: UserResponse | null`
   - `token: string | null`
   - `loading: boolean`
@@ -477,86 +480,105 @@ export const api = {
   - `logout()` — POST /auth/logout + очистка store
   - Персистенция token в storage (driver из `platform.getStorageDriver()`) под ключом `cbs_token`
   - Регистрация `_onUnauthorized` callback в API client
-- [ ] Referral code handling:
+- [x] Referral code handling:
   - При первом визите: сохранить `?ref=` из URL или `platform.getStartParam()` в `sessionStorage('cbs_referral_code')`
   - Передать в `registerViaEmail()` и `loginViaTelegram()`
   - Очистить после успешной регистрации
-- [ ] src/composables/useAuth.ts — объединяет platform + auth store:
+- [x] src/composables/useAuth.ts — объединяет platform + auth store:
   - `initAuth()` — вызывается один раз из App.vue `onMounted`:
     1. `platform.init()`
     2. Сохранить referral code если есть
     3. `authStore.restoreSession()` — если сохранённый токен валиден → готово
     4. Если Telegram: `platform.getInitData()` → `authStore.loginViaTelegram(initData, referral_code)`
     5. Если standalone и нет токена → показать LoginView
-  - Module-level refs `isReady`, `isStandalone`
+  - Module-level refs `isReady`, `isStandalone`, `authError`
   - `waitUntilReady()` — Promise.race(isReady watcher, 10s timeout) для router guards
-- [ ] src/views/auth/LoginView.vue:
+  - `retryAuth()` — повторная попытка (для Telegram error state)
+- [x] src/views/auth/LoginView.vue:
   - Email + password form
   - Кнопка "Войти"
   - Ссылка "Нет аккаунта? Зарегистрироваться"
-  - Кнопка "Войти через Telegram" → deep link в Telegram бот
   - Loading state, error display
-- [ ] src/views/auth/RegisterView.vue:
+  - Кнопка "Войти через Telegram" — отложена (бот есть, UI позже)
+- [x] src/views/auth/RegisterView.vue:
   - Email + password + password confirm
   - Кнопка "Зарегистрироваться"
   - Ссылка "Уже есть аккаунт? Войти"
-- [ ] src/views/auth/LoadingView.vue — экран загрузки (лого + spinner)
-- [ ] src/components/ui/CbsLogo.vue — SVG лого как shared компонент
-- [ ] src/App.vue — auth-шлюз:
+- [x] src/views/auth/LoadingView.vue — экран загрузки (лого + spinner)
+- [x] src/components/ui/CbsLogo.vue — SVG лого как shared компонент
+- [x] src/App.vue — auth-шлюз:
   - `!isReady` → LoadingView
-  - `!isAuthenticated` → LoginView (standalone) или LoadingView (telegram, auto-login)
+  - `authError && !isStandalone` → Error screen + retry button
+  - `!isAuthenticated` → LoginView / RegisterView (standalone)
   - Authenticated → `<RouterView />`
+
+**Решения реализации:**
+- Storage driver: явный ternary `sessionStorage / localStorage` вместо `window[driver]` — TypeScript type safety
+- Telegram auth failure: `authError` ref + `retryAuth()` — пользователь видит ошибку + retry вместо вечного спиннера
+- i18n ключи auth.* из `mockups/js/i18n.js` — 4 локали (en/ru/de/ar), включая error messages
+- Кнопка "Войти через Telegram" отложена: `VITE_TELEGRAM_BOT_URL=https://t.me/cbshome_bot` готов в env
 
 **Зависимость от бэкенда:** POST /auth/email/register, POST /auth/email/login, POST /auth/telegram, POST /auth/logout, GET /users/me. Phase 1 ✅.
 
-**Критерий готовности:** Юзер входит через email/password в браузере. Юзер автоматически авторизован в Telegram WebApp. Referral code сохраняется и передаётся при регистрации.
+**Критерий готовности:** Юзер входит через email/password в браузере. Юзер автоматически авторизован в Telegram WebApp. Referral code сохраняется и передаётся при регистрации. ✅
 
 ---
 
 ## PHASE F2: UI-компоненты + Layout
 
-### F2.1: UI-компоненты (дизайн-система)
+### ✅ F2.1: UI-компоненты (дизайн-система)
 
 **Цель:** Библиотека переиспользуемых компонентов из мокапов.
 
 **Задачи:**
-- [ ] Компоненты из мокапов (1:1 перенос визуала):
+- [x] Компоненты из мокапов (1:1 перенос визуала):
 
 **Примитивы (src/components/ui/):**
 
 | Компонент | Пропсы | Описание |
 |-----------|--------|----------|
-| CButton | variant (primary/secondary/outline/danger/telegram), size, disabled, loading | Кнопка с состояниями. `btn-primary` = orange accent из мокапов |
-| CInput | label, placeholder, error, type | Текстовое поле |
-| CTextarea | label, placeholder, error, rows | Многострочное поле |
-| CSelect | label, options, error | Выпадающий список |
-| CCheckbox | label, checked | Чекбокс |
-| CCard | — (slot) | Карточка-контейнер |
-| CBadge | variant (success/warning/error/info), text | Статусный бейдж |
+| CButton | variant (primary/secondary/outline/danger/telegram/link), size, disabled, loading | Кнопка с состояниями. `btn-primary` = orange accent из мокапов |
+| CInput | label, placeholder, error, type, modelValue | Текстовое поле с password toggle |
+| CTextarea | label, placeholder, error, rows, modelValue | Многострочное поле |
+| CSelect | label, options, error, placeholder, modelValue | Выпадающий список с custom arrow |
+| CCheckbox | label, modelValue | Чекбокс (v-model) |
+| CCard | hoverable, padding (slot) | Карточка-контейнер |
+| CBadge | variant (success/warning/danger/primary/accent/neutral), text | Статусный бейдж |
 | CAvatar | name, url, size | Аватар (инициалы или фото) |
 | CLoader | size | Спиннер загрузки |
-| CDivider | — | Горизонтальный разделитель |
-| CEmptyState | icon, title, description | Пустое состояние |
-| CToast | — (composable) | Всплывающее уведомление |
-| CStatCard | value, label, icon | Числовая карточка статистики |
+| CDivider | text | Горизонтальный разделитель с опциональным текстом |
+| CEmptyState | title, description (icon slot) | Пустое состояние |
+| CToast | — (composable useToast) | Всплывающее уведомление (Teleport to body) |
+| CStatCard | value, label, sub, change, changeDir (icon slot) | Числовая карточка статистики |
 | CProgressBar | value, max, color | Полоска прогресса |
-| CModal | open, closeOnOverlay, showClose | Модальное окно |
+| CModal | open, closeOnOverlay, showClose | Модальное окно (Teleport, Transition) |
 | CIconBox | variant (teal/orange/green/yellow/red/blue/neutral) | Иконка в цветном квадрате (из mockups/css/components.css) |
+
+- [x] src/components/ui/index.ts — barrel export всех 17 компонентов (включая CbsLogo)
+- [x] src/composables/useToast.ts — singleton state, showToast(message, variant), auto-hide 3s
 
 **Layout-компоненты (src/components/layout/):**
 
 | Компонент | Описание |
 |-----------|----------|
-| CHeader | Заголовок с кнопкой назад и action-слотом справа. Лого слева |
-| CTabBar | Нижняя навигация (конфигурируется через `items` пропс). RTL-aware |
-| InvestorShell | CHeader + `<slot>` + CTabBar (INVESTOR_TABS) |
-| AgentShell | CHeader + `<slot>` + CTabBar (AGENT_TABS) |
-| CompanyShell | CHeader + `<slot>` + CTabBar (COMPANY_TABS) |
-| StaffShell | CHeader + `<slot>` + CTabBar (STAFF_TABS) |
+| CHeader | Sticky header с лого, title, back button, right slot. Lucide ChevronLeft |
+| CTabBar | Нижняя навигация (TabItem[], route-aware active state). Lucide иконки, RTL-aware |
+| InvestorShell | CHeader + `<RouterView>` + CTabBar (INVESTOR_TABS) + CToast |
+| AgentShell | CHeader + `<RouterView>` + CTabBar (AGENT_TABS) + CToast |
+| CompanyShell | CHeader + `<RouterView>` + CTabBar (COMPANY_TABS) + CToast |
+| StaffShell | CHeader + `<RouterView>` + CTabBar (STAFF_TABS) + CToast |
 
-Все layout-компоненты поддерживают RTL через `[dir="rtl"]` CSS selectors.
+- [x] src/router/tabs.ts — TabItem interface + конфигурации для 4 ролей
+- [x] i18n ключи tab.* из mockups/js/i18n.js (4 локали)
 
-**Критерий готовности:** Все компоненты рендерятся корректно в обеих темах (light/dark) и в RTL.
+**Решения реализации:**
+- Все стили 1:1 из `mockups/css/components.css` через CSS-переменные (`variables.css`)
+- Lucide-vue-next (^0.460) для иконок — все мокапы используют Lucide
+- CTabBar: `iconMap` Record маппит строковые имена иконок из tabs.ts на Lucide-компоненты
+- Shell'ы: minimal composition (CHeader + RouterView + CTabBar + CToast), контент рендерится через nested routes
+- Dockerfile: `npm ci` → `npm install` для автоматического подтягивания новых зависимостей при `cbshome update`
+
+**Критерий готовности:** Все компоненты рендерятся корректно в обеих темах (light/dark) и в RTL. ✅
 
 ---
 
@@ -1296,9 +1318,15 @@ background: var(--bg-subtle);
 // ЗАПРЕЩЕНО — хардкод storage:
 localStorage.setItem('cbs_token', token)
 
-// ПРАВИЛЬНО — через platform:
+// ЗАПРЕЩЕНО — window[driver] (bypasses TypeScript):
 const driver = platform.getStorageDriver()
 window[driver].setItem('cbs_token', token)
+
+// ПРАВИЛЬНО — явный ternary:
+const storage = platform.getStorageDriver() === 'sessionStorage'
+  ? sessionStorage
+  : localStorage
+storage.setItem('cbs_token', token)
 ```
 
 ### FP-13: Referral code persistence
