@@ -1,6 +1,6 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.1
+**Версия:** 2.2
 **Дата:** 15 апреля 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -68,9 +68,10 @@ Agent имеет доступ ко всем инвесторским экран�
 interface UserResponse {
   id: string             // UUID
   role: string           // 'investor' | 'agent' | 'company' | 'staff' | 'platform'
+  email: string | null   // extracted from credentials.email.email (null for Telegram-only)
   is_active: boolean
-  onboarding_step: string
-  kyc_status: string     // 'none' | 'submitted' | 'approved' | 'rejected'
+  onboarding_step: string // 'registered' | 'email_verified' | 'profile_complete' | 'role_selected' | 'kyc_done' | 'onboarding_complete'
+  kyc_status: string     // 'not_started' | 'submitted' | 'approved' | 'rejected'
   profile: Record<string, any>  // JSONB: first_name, last_name, country, phone...
   payout_details: Record<string, any> | null
   language: string       // 'en' | 'ru' | 'de' | 'ar'
@@ -79,7 +80,7 @@ interface UserResponse {
 }
 ```
 
-Поля `email`, `telegram_id` — внутри `credentials` JSONB, который НЕ возвращается (содержит password hash). Staff видит email через `GET /staff/users/{id}`.
+`email` извлекается из `credentials.email.email` через `@property` на модели User. Telegram-only юзеры получают `null`. Хэши паролей и токены остаются скрытыми.
 
 ---
 
@@ -582,15 +583,15 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ---
 
-### F2.2: Роутинг + Layout
+### ✅ F2.2: Роутинг + Layout
 
 **Цель:** Навигация между экранами, role-based доступ.
 
 **Задачи:**
-- [ ] src/router/index.ts — маршруты:
+- [x] src/router/index.ts — 43 маршрута с lazy loading:
 
 ```
-/                          → редирект по роли
+/                          → редирект по роли (beforeEnter)
 /loading                   → LoadingView
 /login                     → LoginView
 /register                  → RegisterView
@@ -621,12 +622,12 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 /agent/referrals           → ReferralsView
 /agent/commissions         → CommissionsView
 /agent/leaderboard         → LeaderboardView
-/agent/balance             → BalanceView (passive + active)
-/agent/market              → MarketView
-/agent/portfolio           → PortfolioView
+/agent/balance             → AgentBalanceView
+/agent/market              → MarketView (shared)
+/agent/portfolio           → PortfolioView (shared)
 /agent/settings            → AgentSettingsView
 /agent/more                → AgentMoreView
--- Agent также имеет доступ к /investor/* экранам (market, product, purchase...)
+-- Agent investor screens (products, purchase, installment) duplicated under AgentShell
 
 -- Company --
 /company/dashboard         → CompanyDashboardView
@@ -646,62 +647,86 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 /staff/avatar              → StaffAvatarView
 
 /404                       → NotFoundView
+/:pathMatch(.*)*           → redirect /404
 ```
 
-- [ ] src/router/guards.ts:
-  - `authGuard` — не авторизован → /login
-  - `roleGuard('investor')` — role не investor/agent → redirect по роли
-  - `roleGuard('agent')` — role не agent → redirect по роли
-  - `roleGuard('company')` — role не company → redirect по роли
-  - `roleGuard('staff')` — role не staff → redirect по роли
-  - `onboardingGuard` — onboarding не завершён → /onboarding/*
+- [x] src/router/guards.ts — единый `globalGuard` (beforeEach):
+  - `waitUntilReady()` → ожидание auth init
+  - Auth: `!isAuthenticated` → `/login`. Authenticated users на /login → redirect по роли
+  - Onboarding: `ONBOARDING_REDIRECTS` map → redirect на текущий шаг (skip для `meta.skipOnboarding`)
+  - Role: `meta.roles` → redirect если роль не совпадает
+  - Route meta: `{ public?, roles?, skipOnboarding? }`
+- [x] 38 stub-views для всех маршрутов (investor, agent, company, staff, onboarding, 404)
+- [x] NotFoundView — 404 страница с CSS-переменными
+- [x] Tab bar конфигурация по ролям (src/router/tabs.ts) — уже готова в F2.1
 
-- [ ] Tab bar конфигурация по ролям (src/router/tabs.ts) — **из мокапов (источник истины)**:
+**Решения реализации:**
+- Shell'ы как parent routes с children — agent дублирует investor screens (market, portfolio, products/:id, purchase/:id, installment/:id) под AgentShell для правильного tab bar
+- `meta.roles: ['investor', 'agent']` на InvestorShell — агенты видят investor экраны
+- Root `/` → `beforeEnter` redirect по `authStore.role` (guard уже прождал auth)
+- `getRoleDashboard(role)` — утилита для маппинга роли → путь дашборда
+- `ONBOARDING_REDIRECTS` — маппинг `onboarding_step` → redirect path, защита от infinite loop
+- Stub-views: `$t('i18n.key')` + badge с фазой реализации (F3–F6)
 
-| Роль | Таб 1 | Таб 2 | Таб 3 | Таб 4 | Таб 5 |
-|------|-------|-------|-------|-------|-------|
-| investor | Главная | Портфель | Маркет | Баланс | Ещё |
-| agent | Главная | Hub | Комиссии | Баланс | Ещё |
-| company | Главная | Продукты | Аналитика | Баланс | Настройки |
-| staff | Главная | Юзеры | KYC | Платежи | Ещё |
+**Зависимость от бэкенда:** GET /api/v1/users/me (role, onboarding_step). Phase 1 ✅.
 
-**Зависимость от бэкенда:** GET /api/v1/users/me (role). Phase 1 ✅.
-
-**Критерий готовности:** После логина юзер видит layout с tab bar по своей роли. Переходы между экранами работают. Чужие роли → redirect.
+**Критерий готовности:** После логина юзер видит layout с tab bar по своей роли. Переходы между экранами работают. Чужие роли → redirect. ✅
 
 ---
 
-### F2.3: Onboarding flow
+### ✅ F2.3: Onboarding flow
 
 **Цель:** Новый пользователь проходит онбординг: верификация email → профиль → выбор роли → KYC → документы.
 
 **Задачи:**
-- [ ] src/views/auth/VerifyEmailView.vue:
-  - Code input (6 цифр, из мокапа auth-flow/screen-verify)
-  - POST /api/v1/auth/verify-email → body: `{ code: "123456" }` (6 цифр)
+- [x] src/views/auth/VerifyEmailView.vue:
+  - 6 отдельных digit-input'ов с auto-focus, paste support, backspace navigation
+  - Email пользователя из `authStore.user.email` (добавлено в UserResponse)
+  - POST /api/v1/auth/verify-email → body: `{ code: "123456" }`
   - POST /api/v1/auth/verify-email/resend → 204 (rate limited)
-  - 6-значный код, TTL 10 минут, max 5 попыток, timing-safe проверка
-  - Resend button с cooldown timer
-- [ ] src/views/auth/OnboardingProfileView.vue:
-  - Имя, фамилия, страна, телефон
-  - PATCH /api/v1/users/me
-- [ ] src/views/auth/OnboardingRoleView.vue:
-  - Карточки ролей из мокапа auth-flow/screen-role: Investor, Agent, Company
-  - Каждая карточка: иконка, название, описание, feature-чипы
-  - PATCH /api/v1/users/me (role selection)
-- [ ] src/views/auth/OnboardingKYCView.vue:
-  - POST /api/v1/kyc/submit → KYCSubmitResponse { id, status, created_at }
-  - Статус из GET /api/v1/kyc/status → { kyc_status, application_id, application_status }
-- [ ] src/views/auth/OnboardingDocsView.vue:
-  - Список документов для подписания
-  - GET /api/v1/documents → list[DocumentResponse] (filtered by role)
-  - GET /api/v1/documents/{id} → DocumentResponse (с is_signed flag)
-  - POST /api/v1/documents/{id}/sign → DocumentSigningResponse
-- [ ] Onboarding guard: проверяет `user.onboarding_step` и редиректит на нужный шаг
+  - Resend button с 60s cooldown timer (стартует на mount)
+  - После успеха: `fetchMe()` → guard redirect
+- [x] src/views/auth/OnboardingProfileView.vue:
+  - first_name + last_name (side-by-side), phone, country (select), language (select)
+  - Pre-fill из существующего profile (Telegram-юзеры)
+  - PATCH /api/v1/users/me → `fetchMe()` → guard redirect
+  - Валидация: first_name + last_name + country обязательны
+- [x] src/views/auth/OnboardingRoleView.vue:
+  - 3 карточки ролей из мокапа: investor, agent, company
+  - Каждая: emoji-иконка, название, описание, feature-чипы
+  - Selected state с чекмарком + accent border
+  - Кнопка disabled → "Continue as {role}" при выборе
+  - POST /api/v1/users/me/select-role → `fetchMe()` → guard redirect
+- [x] src/views/auth/OnboardingKYCView.vue:
+  - 4 состояния: not_started (submit button), submitted (pending card + polling 10s), approved (green card + continue), rejected (red card + retry)
+  - POST /api/v1/kyc/submit → polling GET /api/v1/kyc/status
+  - Polling при `approved` автоматически вызывает `authStore.fetchMe()` для auto-redirect
+  - `onUnmounted` cleanup polling timer
+- [x] src/views/auth/OnboardingDocsView.vue:
+  - GET /api/v1/documents → список с checkboxes
+  - POST /api/v1/documents/{id}/sign при клике (409 → тихо обновляет)
+  - Ссылка content_url (external link icon) с @click.stop
+  - Счётчик "Signed {checked} of {total}"
+  - Кнопка активна когда все подписаны → `fetchMe()` → guard → dashboard
+- [x] Onboarding guard: реализован в guards.ts (F2.2) — `ONBOARDING_REDIRECTS` map
+- [x] api/types.ts: + `SelectRoleRequest`, `KYCSubmitResponse`, `KYCStatusResponse`, `DocumentResponse`, `DocumentSigningResponse`, `email` в `UserResponse`, fix `KycStatus` ('not_started' вместо 'none')
+- [x] i18n: ~46 onboarding ключей × 4 локали (auth.verify.*, auth.profile.*, auth.role.*, auth.kyc.*, auth.docs.*, error.pageNotFound)
 
-**Зависимость от бэкенда:** PATCH /users/me (✅), KYC (✅), Documents (✅), Verify-email (✅).
+**Решения реализации:**
+- Email в VerifyEmailView: `authStore.user.email` — добавлено в UserResponse через `@property` на бэкенде (credentials не экспозится)
+- Onboarding step progression реализована на бэкенде (F2.3-Backend):
+  - verify_email_code() → `registered` → `email_verified`
+  - update_user() → `email_verified` → `profile_complete` (когда first_name + last_name + country заполнены)
+  - select_role() → `profile_complete` → `role_selected` (POST /users/me/select-role)
+  - process_webhook(approved) → `role_selected` → `kyc_done`
+  - sign_document() → `kyc_done` → `onboarding_complete` (когда все docs роли подписаны)
+- Role selection: POST /users/me/select-role (не PATCH /users/me) — отдельный endpoint с валидацией (investor/agent/company, step guard)
+- KYC polling: `setInterval(10s)` с auto-fetchMe на approved для seamless redirect
+- Все auth views используют raw HTML (form-input, btn-primary) — consistent с LoginView/RegisterView из F1.3
 
-**Критерий готовности:** Новый юзер проходит полный онбординг от регистрации до готовности.
+**Зависимость от бэкенда:** PATCH /users/me (✅), POST /users/me/select-role (✅ F2.3-Backend), KYC (✅), Documents (✅), Verify-email (✅).
+
+**Критерий готовности:** Новый юзер проходит полный онбординг от регистрации до готовности. ✅
 
 ---
 

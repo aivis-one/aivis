@@ -1,6 +1,6 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 3.1
+**Версия:** 3.2
 **Дата:** 15 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
@@ -138,7 +138,7 @@ User:
     -- Системный пользователь идентифицируется по role=platform,
     -- отдельного поля is_system нет
     is_active: bool   -- default True
-    onboarding_step: enum  -- registered | email_verified | profile_complete | kyc_done | role_selected
+    onboarding_step: enum  -- registered | email_verified | profile_complete | role_selected | kyc_done | onboarding_complete
     kyc_status: enum  -- not_started | submitted | approved | rejected
     -- kyc_status -- денормализованный кэш KYCApplication.status для hot path
     credentials: JSONB  -- {email: {...}, telegram: {...}, onboarding: {...}}
@@ -625,6 +625,63 @@ backend/tests/
 - `main.py` — `+kyc_router`, `+documents_router`, `+staff_documents_router`
 - `.env.example` — `+KYC_WEBHOOK_SECRET=`
 - `install_cbshome.sh` — `+KYC_WEBHOOK_SECRET` генерация в `.env`
+
+---
+
+## F2.3-Backend: Onboarding State Machine
+
+---
+
+### ✅ Sprint F2.3-B: Onboarding Step Progression + Role Selection
+
+**Цель:** Автоматическое продвижение `onboarding_step` при каждом шаге онбординга + endpoint для выбора роли.
+
+**Задачи:**
+- [x] `app/modules/users/models.py` — `OnboardingStep` enum: `+ ONBOARDING_COMPLETE = "onboarding_complete"`, `@property email` на User (извлекает из credentials JSONB)
+- [x] `app/modules/users/schemas.py` — `+ email: str | None = None` в `UserResponse`, `+ SelectRoleRequest { role }` с `field_validator` (investor/agent/company)
+- [x] `app/modules/users/service.py` — `+ select_role()` (guard: step == profile_complete), `update_user()`: auto-advance к `profile_complete` при заполненном профиле (first_name + last_name + country)
+- [x] `app/modules/users/router.py` — `+ POST /api/v1/users/me/select-role`
+- [x] `app/modules/auth/service.py` — `verify_email_code()`: `registered` → `email_verified`
+- [x] `app/modules/kyc/service.py` — `process_webhook()`: approved + `role_selected` → `kyc_done`
+- [x] `app/modules/documents/service.py` — `sign_document()`: `+ _maybe_complete_onboarding()` — все docs роли подписаны → `onboarding_complete`
+- [x] `migrations/versions/0023_onboarding_complete.py` — ALTER CHECK constraint + `onboarding_complete`
+- [x] `tests/test_onboarding.py` — 7 тестов (full flow + edge cases)
+
+**Onboarding State Machine:**
+```
+REGISTERED → EMAIL_VERIFIED → PROFILE_COMPLETE → ROLE_SELECTED → KYC_DONE → ONBOARDING_COMPLETE
+     ↑              ↑                ↑                 ↑              ↑              ↑
+ verify_email   update_user      select_role      kyc_webhook    sign_document
+ (auth/service) (users/service)  (users/service)  (kyc/service)  (documents/service)
+```
+
+**Решения реализации:**
+- Каждый step advancement проверяет текущий шаг — пропуск шагов невозможен
+- `select_role()` — отдельный endpoint (не через PATCH /users/me) с Pydantic валидацией: `_SELECTABLE_ROLES = {"investor", "agent", "company"}`. Staff/platform → 422
+- `_maybe_complete_onboarding()` — проверяет `ROLE_REQUIRED_DOCUMENT_TYPES[role]` и `DocumentSigning`. Только при `step == kyc_done`
+- `email` на UserResponse — `@property` на модели, Pydantic `from_attributes=True` подхватывает. Не колонка в БД, не миграция
+- Profile completion: `_REQUIRED_PROFILE_FIELDS = {"first_name", "last_name", "country"}` — auto-advance при заполнении
+
+**Endpoints (добавлено):**
+```
+POST /api/v1/users/me/select-role  -> UserResponse  (200)
+```
+
+**Результат:**
+```
+Обновлённые файлы (7 сервисов + 1 миграция + 1 тест):
+  app/modules/users/models.py      -- +ONBOARDING_COMPLETE, +@property email
+  app/modules/users/schemas.py     -- +email в UserResponse, +SelectRoleRequest
+  app/modules/users/service.py     -- +select_role(), update_user() auto-advance
+  app/modules/users/router.py      -- +POST /me/select-role
+  app/modules/auth/service.py      -- verify_email_code() step advance
+  app/modules/kyc/service.py       -- process_webhook() step advance
+  app/modules/documents/service.py -- sign_document() + _maybe_complete_onboarding()
+  migrations/versions/0023_onboarding_complete.py
+  tests/test_onboarding.py         -- 7 tests
+```
+
+**Критерий готовности:** Полный onboarding flow работает end-to-end. 336 тестов зелёные.
 
 ---
 
