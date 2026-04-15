@@ -1,53 +1,253 @@
 <script setup lang="ts">
-// Stub — will be replaced with full implementation in F2.3.
+// Profile setup — first name, last name, phone, country, language.
+// PATCH /api/v1/users/me { profile: {...}, language }
+// After success: fetchMe() → guard redirects to /onboarding/role.
 
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
+import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
+import type { UserResponse } from '@/api/types'
+import CbsLogo from '@/components/ui/CbsLogo.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const authStore = useAuthStore()
+
+const firstName = ref('')
+const lastName = ref('')
+const phone = ref('')
+const country = ref('')
+const language = ref(locale.value)
+const loading = ref(false)
+const error = ref('')
+
+const countries = [
+  { value: 'DE', label: 'Deutschland' },
+  { value: 'CH', label: 'Schweiz' },
+  { value: 'AT', label: 'Österreich' },
+  { value: 'RU', label: 'Россия' },
+  { value: 'OTHER', label: 'Other' },
+]
+
+const languages = [
+  { value: 'en', label: 'English' },
+  { value: 'ru', label: 'Русский' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'ar', label: 'العربية' },
+]
+
+// Pre-fill from existing profile if available (e.g. Telegram user).
+onMounted(() => {
+  const profile = authStore.user?.profile
+  if (profile && typeof profile === 'object') {
+    firstName.value = (profile.first_name as string) ?? ''
+    lastName.value = (profile.last_name as string) ?? ''
+    phone.value = (profile.phone as string) ?? ''
+    country.value = (profile.country as string) ?? ''
+  }
+  language.value = authStore.user?.language ?? locale.value
+})
+
+async function handleSubmit(): Promise<void> {
+  error.value = ''
+
+  if (!firstName.value.trim() || !lastName.value.trim() || !country.value) {
+    error.value = t('auth.error.fillAllFields')
+    return
+  }
+
+  loading.value = true
+
+  try {
+    await api.patch<UserResponse>('/api/v1/users/me', {
+      profile: {
+        first_name: firstName.value.trim(),
+        last_name: lastName.value.trim(),
+        phone: phone.value.trim() || undefined,
+        country: country.value,
+      },
+      language: language.value,
+    })
+    await authStore.fetchMe()
+    // Guard will redirect to /onboarding/role.
+  } catch (err) {
+    if (err instanceof ApiResponseError) {
+      error.value = err.detail
+    } else if (err instanceof ApiNetworkError) {
+      error.value = t('auth.error.networkError')
+    } else if (err instanceof ApiTimeoutError) {
+      error.value = t('auth.error.timeout')
+    } else {
+      error.value = t('common.error')
+    }
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="onboarding-stub">
-    <h1 class="onboarding-stub__title">{{ t('auth.profile.title') }}</h1>
-    <p class="onboarding-stub__subtitle">{{ t('auth.profile.subtitle') }}</p>
-    <div class="onboarding-stub__placeholder">F2.3</div>
+  <div class="auth-screen">
+    <header class="auth-header">
+      <CbsLogo :height="28" />
+    </header>
+
+    <div class="auth-content">
+      <h1 class="auth-title">{{ t('auth.profile.title') }}</h1>
+      <p class="auth-subtitle">{{ t('auth.profile.subtitle') }}</p>
+
+      <div class="auth-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">{{ t('auth.profile.firstName') }}</label>
+            <input
+              v-model="firstName"
+              type="text"
+              class="form-input"
+              autocomplete="given-name"
+              @keydown.enter="handleSubmit"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ t('auth.profile.lastName') }}</label>
+            <input
+              v-model="lastName"
+              type="text"
+              class="form-input"
+              autocomplete="family-name"
+              @keydown.enter="handleSubmit"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ t('auth.profile.phone') }}</label>
+          <input
+            v-model="phone"
+            type="tel"
+            class="form-input"
+            placeholder="+49 XXX XXXXXXXX"
+            autocomplete="tel"
+            @keydown.enter="handleSubmit"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ t('auth.profile.country') }}</label>
+          <select v-model="country" class="form-select">
+            <option value="" disabled>—</option>
+            <option
+              v-for="c in countries"
+              :key="c.value"
+              :value="c.value"
+            >
+              {{ c.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ t('auth.profile.language') }}</label>
+          <select v-model="language" class="form-select">
+            <option
+              v-for="l in languages"
+              :key="l.value"
+              :value="l.value"
+            >
+              {{ l.label }}
+            </option>
+          </select>
+        </div>
+
+        <div v-if="error" class="auth-error">{{ error }}</div>
+
+        <button
+          class="btn btn-primary"
+          type="button"
+          :disabled="loading"
+          @click="handleSubmit"
+        >
+          <span v-if="loading" class="btn-spinner" />
+          <span v-else>{{ t('auth.profile.btn') }}</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.onboarding-stub {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
+.auth-screen {
+  display: flex; flex-direction: column;
+  min-height: 100vh; min-height: 100dvh;
   background: var(--bg);
-  padding: 24px;
-  text-align: center;
+}
+.auth-header {
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px 24px;
+}
+.auth-content {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px; overflow-y: auto;
+}
+.auth-title {
+  font-size: 24px; font-weight: 700; color: var(--text);
+  margin-bottom: 8px; text-align: center;
+}
+.auth-subtitle {
+  font-size: 14px; color: var(--text-secondary);
+  margin-bottom: 32px; text-align: center; line-height: 1.5;
+}
+.auth-form { width: 100%; max-width: 360px; }
+.auth-error {
+  font-size: 13px; color: var(--danger); text-align: center;
+  margin-bottom: 16px;
 }
 
-.onboarding-stub__title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 8px;
+.form-row {
+  display: flex; gap: 12px;
+}
+.form-row .form-group { flex: 1; }
+
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: var(--text); margin-bottom: 6px;
+}
+.form-input,
+.form-select {
+  width: 100%; padding: 14px 16px;
+  border: 2px solid var(--border); border-radius: var(--radius-md);
+  font-size: 15px; font-family: inherit;
+  background: var(--bg); color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-input:focus,
+.form-select:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: var(--shadow-focus);
+}
+.form-select {
+  appearance: none; cursor: pointer;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23525252' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
 }
 
-.onboarding-stub__subtitle {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0 0 32px;
-  max-width: 320px;
+.btn { width: 100%; }
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px; border-radius: var(--radius-md);
+  background: var(--accent); color: white;
+  font-weight: 600; font-size: 15px; font-family: inherit;
+  border: none; cursor: pointer;
 }
-
-.onboarding-stub__placeholder {
-  padding: 8px 16px;
-  border-radius: var(--radius-sm, 6px);
-  background: var(--bg-secondary, var(--surface));
-  color: var(--text-tertiary);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-spinner {
+  width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white; border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

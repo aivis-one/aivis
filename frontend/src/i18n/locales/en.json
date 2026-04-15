@@ -19,6 +19,9 @@
     "yes": "Yes",
     "no": "No"
   },
+  "error": {
+    "pageNotFound": "Page not found"
+  },
   "auth": {
     "back": "Back",
     "login": {
@@ -46,6 +49,74 @@
       "btn": "Create Account",
       "hasAccount": "Already have an account?",
       "loginLink": "Sign in"
+    },
+    "verify": {
+      "title": "Check Your Email",
+      "subtitle": "We sent a verification code to",
+      "btn": "Verify",
+      "noCode": "Didn't receive the code?",
+      "resend": "Resend code",
+      "resendIn": "Resend in {seconds}s"
+    },
+    "profile": {
+      "title": "Profile Setup",
+      "subtitle": "Fill in your account information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "phone": "Phone",
+      "country": "Country",
+      "btn": "Continue"
+    },
+    "role": {
+      "title": "Choose Your Role",
+      "subtitle": "How do you plan to use the platform?",
+      "investor": "Investor",
+      "investorDesc": "Buy products, manage your portfolio and track investments",
+      "agent": "Agent",
+      "agentDesc": "All investor features plus referral program and commissions",
+      "company": "Company",
+      "companyDesc": "List products, manage sales and earn revenue",
+      "btn": "Select a role",
+      "continueAs": "Continue as",
+      "feat": {
+        "portfolio": "Portfolio",
+        "installments": "Installments",
+        "balance": "Balance",
+        "documents": "Documents",
+        "referrals": "Referral Links",
+        "commissions": "Commissions L1/L2/L3",
+        "leaderboard": "Leaderboard",
+        "certification": "Certification",
+        "products": "Products",
+        "analytics": "Analytics",
+        "revenue": "Revenue"
+      }
+    },
+    "kyc": {
+      "title": "Identity Verification",
+      "subtitle": "KYC verification is required to use the platform",
+      "submit": "Start Verification",
+      "pending": "Verification Pending",
+      "pendingText": "Your documents are being reviewed. This usually takes a few minutes.",
+      "approved": "Verification Complete",
+      "approvedText": "Your identity has been verified. You can continue setting up your account.",
+      "rejected": "Verification Rejected",
+      "rejectedText": "Your verification was rejected. Please try again.",
+      "continue": "Continue",
+      "redo": "Try again",
+      "statusesTitle": "Verification statuses:",
+      "statusPending": "Pending — documents under review",
+      "statusApproved": "Approved — verification complete",
+      "statusRejected": "Rejected — resubmission required"
+    },
+    "docs": {
+      "title": "Document Signing",
+      "subtitle": "Review and sign the required documents to get started",
+      "signDocumentsBtn": "Sign Documents",
+      "checkedOf": "Signed {checked} of {total}",
+      "required": "Required",
+      "complete": "Onboarding Complete",
+      "completeText": "You're all set! Redirecting to your dashboard..."
     },
     "error": {
       "invalidCredentials": "Incorrect email or password",

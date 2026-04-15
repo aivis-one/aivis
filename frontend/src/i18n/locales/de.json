@@ -19,6 +19,9 @@
     "yes": "Ja",
     "no": "Nein"
   },
+  "error": {
+    "pageNotFound": "Seite nicht gefunden"
+  },
   "auth": {
     "back": "Zurück",
     "login": {
@@ -46,6 +49,74 @@
       "btn": "Konto erstellen",
       "hasAccount": "Haben Sie bereits ein Konto?",
       "loginLink": "Anmelden"
+    },
+    "verify": {
+      "title": "Prüfen Sie Ihre E-Mail",
+      "subtitle": "Wir haben einen Bestätigungscode gesendet an",
+      "btn": "Bestätigen",
+      "noCode": "Keinen Code erhalten?",
+      "resend": "Code erneut senden",
+      "resendIn": "Erneut senden in {seconds}s"
+    },
+    "profile": {
+      "title": "Profil einrichten",
+      "subtitle": "Füllen Sie Ihre Kontoinformationen aus",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "phone": "Telefon",
+      "country": "Land",
+      "btn": "Weiter"
+    },
+    "role": {
+      "title": "Wählen Sie Ihre Rolle",
+      "subtitle": "Wie möchten Sie die Plattform nutzen?",
+      "investor": "Investor",
+      "investorDesc": "Produkte kaufen, Portfolio verwalten und Investitionen verfolgen",
+      "agent": "Agent",
+      "agentDesc": "Alle Investorfunktionen plus Empfehlungsprogramm und Provisionen",
+      "company": "Unternehmen",
+      "companyDesc": "Produkte listen, Verkäufe verwalten und Umsatz erzielen",
+      "btn": "Rolle auswählen",
+      "continueAs": "Weiter als",
+      "feat": {
+        "portfolio": "Portfolio",
+        "installments": "Ratenzahlung",
+        "balance": "Kontostand",
+        "documents": "Dokumente",
+        "referrals": "Empfehlungslinks",
+        "commissions": "Provisionen L1/L2/L3",
+        "leaderboard": "Rangliste",
+        "certification": "Zertifizierung",
+        "products": "Produkte",
+        "analytics": "Analytik",
+        "revenue": "Umsatz"
+      }
+    },
+    "kyc": {
+      "title": "Identitätsprüfung",
+      "subtitle": "KYC-Verifizierung ist erforderlich, um die Plattform zu nutzen",
+      "submit": "Verifizierung starten",
+      "pending": "Verifizierung läuft",
+      "pendingText": "Ihre Dokumente werden geprüft. Dies dauert normalerweise einige Minuten.",
+      "approved": "Verifizierung abgeschlossen",
+      "approvedText": "Ihre Identität wurde bestätigt. Sie können die Kontoeinrichtung fortsetzen.",
+      "rejected": "Verifizierung abgelehnt",
+      "rejectedText": "Ihre Verifizierung wurde abgelehnt. Bitte versuchen Sie es erneut.",
+      "continue": "Weiter",
+      "redo": "Erneut versuchen",
+      "statusesTitle": "Verifizierungsstatus:",
+      "statusPending": "Ausstehend — Dokumente werden geprüft",
+      "statusApproved": "Genehmigt — Verifizierung abgeschlossen",
+      "statusRejected": "Abgelehnt — erneute Einreichung erforderlich"
+    },
+    "docs": {
+      "title": "Dokumentenunterzeichnung",
+      "subtitle": "Prüfen und unterschreiben Sie die erforderlichen Dokumente",
+      "signDocumentsBtn": "Dokumente unterschreiben",
+      "checkedOf": "{checked} von {total} unterschrieben",
+      "required": "Erforderlich",
+      "complete": "Onboarding abgeschlossen",
+      "completeText": "Alles bereit! Weiterleitung zum Dashboard..."
     },
     "error": {
       "invalidCredentials": "Falsche E-Mail oder falsches Passwort",
