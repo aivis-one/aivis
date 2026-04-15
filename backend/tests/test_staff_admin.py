@@ -351,6 +351,7 @@ async def test_kyc_reject(
     # Reject.
     resp = await client.post(
         f"/api/v1/staff/kyc/{application_id}/reject",
+        json={},
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 204

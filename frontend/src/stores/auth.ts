@@ -37,8 +37,9 @@ export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------
 
   function _getStorage(): Storage {
-    const driver = platform.getStorageDriver()
-    return window[driver]
+    return platform.getStorageDriver() === 'sessionStorage'
+      ? sessionStorage
+      : localStorage
   }
 
   function _persistToken(value: string | null): void {

@@ -12,7 +12,6 @@
 //   - Network errors → ApiNetworkError
 //   - AbortController + 15s timeout → ApiTimeoutError
 //   - Accept-Language from current vue-i18n locale
-//   - credentials: 'include' (CORS with credentials)
 // =============================================================================
 
 import { i18n } from '@/i18n'
@@ -116,7 +115,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
-      credentials: 'include',
       signal: controller.signal,
     })
   } catch (err: unknown) {
@@ -144,7 +142,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   try {
     data = await response.json()
   } catch {
-    throw new ApiResponseError(response.status, 'Invalid JSON response')
+    throw new ApiResponseError(response.status, `HTTP ${response.status}: non-JSON response`)
   }
 
   // 422 Validation Error -- parse detail array.

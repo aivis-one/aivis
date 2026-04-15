@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const isReady = ref(false)
 const isStandalone = ref(true)
+const authError = ref<string | null>(null)
 
 // ---------------------------------------------------------------------------
 // Composable
@@ -38,6 +39,7 @@ export function useAuth() {
    */
   async function initAuth(): Promise<void> {
     const authStore = useAuthStore()
+    authError.value = null
 
     try {
       await platform.init()
@@ -56,16 +58,23 @@ export function useAuth() {
         if (initData) {
           const referralCode = sessionStorage.getItem('cbs_referral_code')
           await authStore.loginViaTelegram(initData, referralCode)
+        } else {
+          authError.value = 'Telegram initData not available'
         }
       }
       // Standalone with no token: isReady becomes true, App.vue shows LoginView.
     } catch (err) {
-      // Auth init failed -- isReady will still be set to true so the
-      // user isn't stuck on the loading screen forever.
+      authError.value = err instanceof Error ? err.message : 'Authentication failed'
       console.error('[useAuth] initAuth failed:', err)
     } finally {
       isReady.value = true
     }
+  }
+
+  /** Retry auth initialization (e.g. after Telegram failure). */
+  async function retryAuth(): Promise<void> {
+    isReady.value = false
+    await initAuth()
   }
 
   /**
@@ -94,8 +103,10 @@ export function useAuth() {
 
   return {
     initAuth,
+    retryAuth,
     isReady,
     isStandalone,
+    authError,
     waitUntilReady,
   }
 }
