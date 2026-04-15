@@ -18,7 +18,7 @@
 import { i18n } from '@/i18n'
 import type { ValidationErrorItem } from '@/api/types'
 
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://api.cbshome.org'
 const TIMEOUT_MS = 15_000
 
 // ---------------------------------------------------------------------------
