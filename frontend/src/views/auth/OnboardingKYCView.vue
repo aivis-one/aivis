@@ -53,6 +53,10 @@ function startPolling(): void {
     kycStatus.value = data.kyc_status
     if (data.kyc_status !== 'submitted') {
       stopPolling()
+      // Sync auth store so guards can redirect automatically.
+      if (data.kyc_status === 'approved') {
+        await authStore.fetchMe()
+      }
     }
   }, POLL_INTERVAL)
 }

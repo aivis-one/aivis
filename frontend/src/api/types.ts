@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 export type UserRole = 'investor' | 'agent' | 'company' | 'staff' | 'platform'
-export type KycStatus = 'none' | 'submitted' | 'approved' | 'rejected'
+export type KycStatus = 'not_started' | 'submitted' | 'approved' | 'rejected'
 
 export interface UserResponse {
   id: string
