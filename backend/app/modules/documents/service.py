@@ -47,6 +47,7 @@ from app.modules.documents.schemas import (
     DocumentResponse,
     DocumentUpdateRequest,
 )
+from app.modules.users.models import OnboardingStep, User
 
 logger = structlog.get_logger()
 
@@ -344,4 +345,68 @@ async def sign_document(
         document_id=str(document_id),
     )
 
+    # Check if all required documents are now signed.
+    await _maybe_complete_onboarding(user_id, session)
+
     return signing
+
+
+# ---------------------------------------------------------------------------
+# Onboarding completion check
+# ---------------------------------------------------------------------------
+
+
+async def _maybe_complete_onboarding(
+    user_id: UUID,
+    session: AsyncSession,
+) -> None:
+    """Advance onboarding to complete if all role docs are signed.
+
+    Called after each document signing. Only acts when
+    onboarding_step == kyc_done (the step right before completion).
+    """
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is None or user.onboarding_step != OnboardingStep.KYC_DONE:
+        return
+
+    # Get required doc types for this role.
+    doc_types = ROLE_REQUIRED_DOCUMENT_TYPES.get(user.role, [])
+    if not doc_types:
+        # No docs required for this role — complete immediately.
+        user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
+        await session.flush()
+        logger.info("onboarding_complete", user_id=str(user_id))
+        return
+
+    # Active documents of required types.
+    doc_stmt = (
+        select(Document.id)
+        .where(
+            Document.type.in_(doc_types),
+            Document.status == DocumentStatus.ACTIVE,
+        )
+    )
+    doc_result = await session.execute(doc_stmt)
+    active_doc_ids = {row[0] for row in doc_result.all()}
+
+    if not active_doc_ids:
+        return
+
+    # User's signings for those documents.
+    sign_stmt = (
+        select(DocumentSigning.document_id)
+        .where(
+            DocumentSigning.user_id == user_id,
+            DocumentSigning.document_id.in_(active_doc_ids),
+        )
+    )
+    sign_result = await session.execute(sign_stmt)
+    signed_ids = {row[0] for row in sign_result.all()}
+
+    if active_doc_ids <= signed_ids:
+        user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
+        await session.flush()
+        logger.info("onboarding_complete", user_id=str(user_id))

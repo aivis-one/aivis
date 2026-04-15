@@ -25,7 +25,7 @@ from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
 from app.modules.kyc.schemas import KYCStatusResponse
-from app.modules.users.models import User
+from app.modules.users.models import OnboardingStep, User
 
 logger = structlog.get_logger()
 
@@ -170,6 +170,11 @@ async def process_webhook(
 
     # Sync denormalized cache on User.
     user.kyc_status = new_status
+
+    # Advance onboarding step on approval.
+    if new_status == KYCApplicationStatus.APPROVED:
+        if user.onboarding_step == OnboardingStep.ROLE_SELECTED:
+            user.onboarding_step = OnboardingStep.KYC_DONE
 
     await session.flush()
     await session.refresh(user)

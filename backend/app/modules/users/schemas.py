@@ -21,13 +21,14 @@
 #   Service layer rejects explicit null for NOT NULL DB columns (language).
 #
 # Sprint 6.3: payout_details schemas for withdrawal payment methods.
+# F2.3: SelectRoleRequest for onboarding role selection.
 # =============================================================================
 
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class UserResponse(BaseModel):
@@ -65,6 +66,34 @@ class UserUpdate(BaseModel):
 
     profile: dict[str, Any] | None = Field(default=None)
     language: str | None = Field(default=None, min_length=1, max_length=10)
+
+
+# ---------------------------------------------------------------------------
+# Role selection (F2.3 -- Onboarding)
+# ---------------------------------------------------------------------------
+
+# Roles selectable during onboarding (staff and platform excluded).
+_SELECTABLE_ROLES = {"investor", "agent", "company"}
+
+
+class SelectRoleRequest(BaseModel):
+    """POST /api/v1/users/me/select-role -- onboarding role selection."""
+
+    role: str = Field(
+        ...,
+        description="Target role: investor, agent, or company",
+    )
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        """Only investor, agent, company are selectable during onboarding."""
+        if v not in _SELECTABLE_ROLES:
+            raise ValueError(
+                f"Invalid role: {v}. Must be one of: "
+                f"{', '.join(sorted(_SELECTABLE_ROLES))}"
+            )
+        return v
 
 
 # ---------------------------------------------------------------------------

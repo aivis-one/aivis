@@ -1,17 +1,18 @@
 # =============================================================================
-# CBSHOME Backend -- Users Router (Sprint 1.3, Sprint 6.3)
+# CBSHOME Backend -- Users Router (Sprint 1.3, Sprint 6.3, F2.3)
 # =============================================================================
 #
 # ENDPOINTS:
 #   GET   /api/v1/users/me                -- Get current user profile
 #   PATCH /api/v1/users/me                -- Update current user profile
+#   POST  /api/v1/users/me/select-role    -- Select role during onboarding (F2.3)
 #   GET   /api/v1/users/me/payout-details -- Get payout details (Sprint 6.3)
 #   PUT   /api/v1/users/me/payout-details -- Set payout details (Sprint 6.3)
 #
 # TD-029 PATTERN:
-#   PATCH/PUT use get_current_user_write (write session). Both the dependency
-#   and the router declare Depends(get_db_session), so FastAPI reuses
-#   the same session instance -- one DB connection, no merge needed.
+#   PATCH/PUT/POST use get_current_user_write (write session). Both the
+#   dependency and the router declare Depends(get_db_session), so FastAPI
+#   reuses the same session instance -- one DB connection, no merge needed.
 #
 # GET uses get_current_user (read-only session) -- no extra DB query,
 # user is already loaded by the dependency.
@@ -26,11 +27,12 @@ from app.modules.auth.dependencies import get_current_user, get_current_user_wri
 from app.modules.users.models import User
 from app.modules.users.schemas import (
     PayoutDetailsResponse,
+    SelectRoleRequest,
     UpdatePayoutDetailsRequest,
     UserResponse,
     UserUpdate,
 )
-from app.modules.users.service import update_payout_details, update_user
+from app.modules.users.service import select_role, update_payout_details, update_user
 
 logger = structlog.get_logger()
 
@@ -68,6 +70,26 @@ async def update_me(
 
 
 # ---------------------------------------------------------------------------
+# Role selection (F2.3 -- Onboarding)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/me/select-role", response_model=UserResponse)
+async def select_role_endpoint(
+    body: SelectRoleRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> UserResponse:
+    """Select a role during onboarding.
+
+    Only allowed when onboarding_step == profile_complete.
+    Changes user.role and advances onboarding to role_selected.
+    """
+    updated = await select_role(user, body.role, session)
+    return UserResponse.model_validate(updated)
+
+
+# ---------------------------------------------------------------------------
 # Payout details (Sprint 6.3)
 # ---------------------------------------------------------------------------
 
@@ -86,9 +108,6 @@ async def set_payout_details(
     user: User = Depends(get_current_user_write),
     session: AsyncSession = Depends(get_db_session),
 ) -> PayoutDetailsResponse:
-    """Set or replace the authenticated user's payout details.
-
-    Full replacement -- not merge. Previous value is overwritten.
-    """
+    """Set the authenticated user's payout details (full replacement)."""
     updated = await update_payout_details(user, body.payout_details, session)
     return PayoutDetailsResponse(payout_details=updated.payout_details)

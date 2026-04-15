@@ -66,6 +66,7 @@ class OnboardingStep(enum.StrEnum):
     PROFILE_COMPLETE = "profile_complete"
     KYC_DONE = "kyc_done"
     ROLE_SELECTED = "role_selected"
+    ONBOARDING_COMPLETE = "onboarding_complete"
 
 
 class KYCStatus(enum.StrEnum):
@@ -151,14 +152,13 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
 
     # -- Payout details (Sprint 6.3) --
     # Free-form JSONB with user's withdrawal payment methods.
-    # Snapshot-copied into Withdrawal.payout_details_snapshot at creation.
-    # Use set_jsonb("payout_details", value) for mutations.
     payout_details: Mapped[dict | None] = mapped_column(  # type: ignore[type-arg]
         JSONB,
+        default=None,
         nullable=True,
     )
 
-    # -- Locale --
+    # -- Language --
     language: Mapped[str] = mapped_column(
         String(10),
         default="en",
@@ -166,5 +166,6 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
 
-    def __repr__(self) -> str:
-        return f"<User id={self.id} role={self.role} active={self.is_active}>"
+    # -- Timestamps (from TimestampMixin, but updated_at needs trigger) --
+    # created_at: auto (TimestampMixin)
+    # updated_at: nullable, set by DB trigger or application

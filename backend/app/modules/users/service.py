@@ -1,9 +1,10 @@
 # =============================================================================
-# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024, Sprint 6.3)
+# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024, Sprint 6.3, F2.3)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   update_user()           -- partial profile update via PATCH /users/me
+#   select_role()           -- onboarding role selection (F2.3)
 #   update_payout_details() -- set withdrawal payment methods (Sprint 6.3)
 #
 # PARTIAL UPDATE STRATEGY:
@@ -41,7 +42,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError
-from app.modules.users.models import User
+from app.modules.users.models import OnboardingStep, User, UserRole
 from app.modules.users.schemas import UserUpdate
 
 logger = structlog.get_logger()
@@ -55,6 +56,9 @@ _ALLOWED_PROFILE_KEYS = frozenset({
     "phone",
     "avatar_url",
 })
+
+# Profile fields required to advance to profile_complete step.
+_REQUIRED_PROFILE_FIELDS = frozenset({"first_name", "last_name", "country"})
 
 
 async def update_user(
@@ -108,6 +112,12 @@ async def update_user(
         merged.update(incoming)
         user.set_jsonb("profile", merged)
 
+    # Advance onboarding step if profile requirements are met.
+    if user.onboarding_step == OnboardingStep.EMAIL_VERIFIED:
+        profile = user.profile or {}
+        if all(profile.get(f) for f in _REQUIRED_PROFILE_FIELDS):
+            user.onboarding_step = OnboardingStep.PROFILE_COMPLETE
+
     await session.flush()
     # Reload expired attrs (updated_at) after potential set_jsonb + flush.
     await session.refresh(user)
@@ -128,6 +138,66 @@ async def update_user(
         "user_profile_updated",
         user_id=str(user.id),
         fields=list(updates.keys()),
+    )
+
+    return user
+
+
+# ---------------------------------------------------------------------------
+# Role selection (F2.3 -- Onboarding)
+# ---------------------------------------------------------------------------
+
+
+async def select_role(
+    user: User,
+    role: str,
+    session: AsyncSession,
+) -> User:
+    """Select a role during onboarding.
+
+    Only allowed when onboarding_step == profile_complete.
+    Changes user.role and advances to role_selected.
+
+    Args:
+        user: User object bound to write session.
+        role: Target role (investor, agent, company). Already
+              validated by SelectRoleRequest schema.
+        session: Write session.
+
+    Returns:
+        Updated User with refreshed attributes.
+
+    Raises:
+        BadRequestError: If onboarding_step is not profile_complete.
+    """
+    if user.onboarding_step != OnboardingStep.PROFILE_COMPLETE:
+        raise BadRequestError(
+            f"Role selection requires onboarding_step=profile_complete "
+            f"(current: {user.onboarding_step})"
+        )
+
+    old_role = user.role
+    user.role = role
+    user.onboarding_step = OnboardingStep.ROLE_SELECTED
+
+    await session.flush()
+    await session.refresh(user)
+
+    await record_audit(
+        session=session,
+        event="user.role_selected",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={"old_role": old_role, "new_role": role},
+    )
+
+    logger.info(
+        "user_role_selected",
+        user_id=str(user.id),
+        old_role=old_role,
+        new_role=role,
     )
 
     return user
@@ -157,7 +227,6 @@ async def update_payout_details(
         Updated User with refreshed attributes.
     """
     user.set_jsonb("payout_details", payout_details)
-
     await session.flush()
     await session.refresh(user)
 
@@ -168,7 +237,7 @@ async def update_payout_details(
         actor_type="user",
         target_type="user",
         target_id=user.id,
-        data={},  # No values logged -- financial details are sensitive.
+        data={},
     )
 
     logger.info(

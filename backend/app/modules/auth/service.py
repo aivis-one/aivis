@@ -415,6 +415,11 @@ async def verify_email_code(
     updated_creds["onboarding"]["email_token_expires_at"] = None
     updated_creds["onboarding"]["email_verification_attempts"] = 0
     user.set_jsonb("credentials", updated_creds)
+
+    # Advance onboarding step.
+    if user.onboarding_step == OnboardingStep.REGISTERED:
+        user.onboarding_step = OnboardingStep.EMAIL_VERIFIED
+
     await session.flush()
     await session.refresh(user)
 
