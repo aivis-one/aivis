@@ -95,12 +95,6 @@ def _generate_verification_code() -> str:
 
 async def _send_verification_email(email: str, code: str) -> None:
     """Send verification code via email. Errors logged, not raised."""
-    from app.core.config import settings
-
-    if settings.app_env.lower() in ("development", "dev", "test"):
-        logger.info("verification_email_skipped_dev", email=email[:3] + "***", code=code)
-        return
-
     from app.core.email import send_email
 
     try:

@@ -87,6 +87,18 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture(autouse=True)
+def mock_email(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Skip verification email in tests -- no SMTP/Mailgun timeouts."""
+
+    async def _noop(_email: str, _code: str) -> None:
+        pass
+
+    monkeypatch.setattr(
+        "app.modules.auth.service._send_verification_email", _noop
+    )
+
+
+@pytest.fixture(autouse=True)
 async def clear_rate_limit() -> None:
     """Clear email auth rate limit key before each test.
 
