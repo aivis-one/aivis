@@ -169,3 +169,10 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     # -- Timestamps (from TimestampMixin, but updated_at needs trigger) --
     # created_at: auto (TimestampMixin)
     # updated_at: nullable, set by DB trigger or application
+
+    # -- Derived properties --
+
+    @property
+    def email(self) -> str | None:
+        """Email extracted from credentials JSONB. None for Telegram-only users."""
+        return (self.credentials or {}).get("email", {}).get("email")

@@ -36,10 +36,12 @@ class UserResponse(BaseModel):
 
     Excludes credentials (sensitive: password hashes, tokens).
     Profile is returned as-is from JSONB.
+    Email is extracted from credentials via User.email property.
     """
 
     id: UUID
     role: str
+    email: str | None = None
     is_active: bool
     onboarding_step: str
     kyc_status: str
