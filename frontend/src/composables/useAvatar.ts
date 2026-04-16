@@ -79,10 +79,11 @@ export function useAvatar() {
       const targetDashboard = getRoleDashboard(authStore.role)
       await router.push(targetDashboard)
     } catch {
-      // Rollback: restore staff token on failure.
+      // Rollback: restore staff token on failure (memory + storage).
       const savedToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
       if (savedToken) {
         setAuthToken(savedToken)
+        _getMainStorage().setItem(TOKEN_KEY, savedToken)
       }
       setAvatarActive(false)
       showToast(t('common.error'), 'error')
