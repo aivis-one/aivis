@@ -10,7 +10,7 @@ import { Users, ShieldAlert, CreditCard, UserCheck, ShieldCheck, Ghost } from 'l
 import { CStatCard, CIconBox, CLoader, CButton, CBadge } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { fetchDashboardStats } from '@/api/admin'
+import { fetchDashboardStats, fetchAgentApplications } from '@/api/admin'
 import type { DashboardStatsResponse } from '@/api/types'
 
 const { t } = useI18n()
@@ -19,6 +19,7 @@ const authStore = useAuthStore()
 const { showToast } = useToast()
 
 const stats = ref<DashboardStatsResponse | null>(null)
+const pendingApps = ref(0)
 const loading = ref(true)
 const error = ref(false)
 
@@ -36,7 +37,12 @@ async function loadStats(): Promise<void> {
   loading.value = true
   error.value = false
   try {
-    stats.value = await fetchDashboardStats()
+    const [statsData, apps] = await Promise.all([
+      fetchDashboardStats(),
+      fetchAgentApplications().catch(() => []),
+    ])
+    stats.value = statsData
+    pendingApps.value = apps.length
   } catch {
     error.value = true
     showToast(t('common.error'), 'error')
@@ -105,10 +111,10 @@ onMounted(loadStats)
         </CStatCard>
 
         <CStatCard
-          :value="String(stats.active_avatar_sessions)"
+          :value="String(pendingApps)"
           :label="t('staff.agentApps')"
           :sub="t('staff.new')"
-          @click="router.push('/staff/more')"
+          @click="router.push('/staff/agent-apps')"
         >
           <template #icon>
             <CIconBox variant="orange"><UserCheck :size="22" /></CIconBox>

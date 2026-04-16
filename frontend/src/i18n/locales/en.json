@@ -17,7 +17,8 @@
     "search": "Search",
     "noResults": "No results found",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "all": "All"
   },
   "error": {
     "pageNotFound": "Page not found"

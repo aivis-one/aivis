@@ -18,6 +18,18 @@ import type {
   StaffPermissionKey,
 } from '@/api/types'
 
+// Full list of permission keys — ensures UI shows all toggles even if backend omits false values.
+const ALL_PERMISSION_KEYS: StaffPermissionKey[] = [
+  'avatar_mode',
+  'kyc_approve',
+  'payment_review',
+  'user_block',
+  'financial_operations',
+  'agent_application_review',
+  'translation_edit',
+  'company_manage',
+]
+
 const { t } = useI18n()
 const { showToast } = useToast()
 
@@ -162,7 +174,7 @@ onMounted(loadUsers)
       <button
         class="filter-chip" :class="{ active: !roleFilter }"
         @click="setRoleFilter('')"
-      >{{ t('common.search') === 'Search' ? 'All' : 'Все' }}</button>
+      >{{ t('common.all') }}</button>
       <button
         v-for="r in ['investor', 'agent', 'company', 'staff']"
         :key="r"
@@ -263,15 +275,15 @@ onMounted(loadUsers)
         <div v-if="detailUser.staff_profile" class="detail__section">
           <h4 class="detail__subtitle">{{ t('staff.userDetail.permissions') }}</h4>
           <div
-            v-for="(val, key) in detailUser.staff_profile.permissions"
+            v-for="key in ALL_PERMISSION_KEYS"
             :key="key"
             class="detail__perm"
           >
             <label class="detail__perm-label">
               <input
                 type="checkbox"
-                :checked="!!val"
-                @change="togglePermission(key as StaffPermissionKey, !!val)"
+                :checked="!!detailUser.staff_profile.permissions[key]"
+                @change="togglePermission(key, !!detailUser.staff_profile.permissions[key])"
               />
               {{ key }}
             </label>
