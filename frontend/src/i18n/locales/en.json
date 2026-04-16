@@ -154,5 +154,116 @@
       "payments": "Payments",
       "more": "More"
     }
+  },
+  "staff": {
+    "panel": "Staff Panel",
+    "badge": "Staff Admin",
+    "users": {
+      "stat": "Users",
+      "title": "Users",
+      "change": "+{count} this month"
+    },
+    "kycQueue": "KYC Queue",
+    "pending": "Pending",
+    "new": "New",
+    "payments": {
+      "stat": "Payments",
+      "title": "Payments",
+      "hint": "Verify the transaction hash on the blockchain before confirming. All payments are crypto (USDT).",
+      "amount": "Amount",
+      "status": "Status",
+      "noPayments": "No payments found",
+      "reversed": "Payment reversed",
+      "reverse": "Reverse",
+      "reverseConfirm": "Are you sure you want to reverse this payment?",
+      "reason": "Reason (optional)"
+    },
+    "awaitingConfirm": "Awaiting Confirmation",
+    "agentApps": "Agent Applications",
+    "quickActions": "Quick Actions",
+    "processKyc": "Process KYC",
+    "checkPayments": "Check Payments",
+    "searchPlaceholder": "Search by name, email...",
+    "kyc": {
+      "title": "KYC Queue",
+      "hint": "Review user documents and data before approval.",
+      "avgTime": "Average processing time: 15 min.",
+      "moreApps": "... {count} more applications",
+      "approved": "KYC approved",
+      "rejected": "KYC rejected",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectReason": "Rejection reason (optional)",
+      "noQueue": "No pending KYC applications",
+      "submitted": "Submitted"
+    },
+    "more": {
+      "title": "More"
+    },
+    "settings": {
+      "tools": "Tools",
+      "system": "System",
+      "platform": "Platform",
+      "language": "Language",
+      "langVal": "English",
+      "logout": "Sign out"
+    },
+    "agentApps2": {
+      "title": "Agent Applications",
+      "hint": "An investor can apply for agent status. Cooldown: 30 days after rejection. Review investment history.",
+      "approved": "Application approved",
+      "rejected": "Application rejected",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectReason": "Rejection reason (required)",
+      "noQueue": "No pending applications"
+    },
+    "avatar": {
+      "title": "Avatar Mode",
+      "subtitle": "View the platform as the user sees it",
+      "selectUser": "Select user",
+      "portfolio": "portfolio",
+      "referrals": "referrals",
+      "restrictions": "Restricted operations in Avatar Mode",
+      "noPurchase": "Cannot make purchases on behalf of the user",
+      "noWithdraw": "Cannot withdraw funds",
+      "noPassword": "Cannot change password or email",
+      "noDelete": "Cannot delete account",
+      "noKyc": "Cannot modify KYC data",
+      "session": "Active Session",
+      "return": "Return to Staff",
+      "start": "Start Session",
+      "end": "End Session",
+      "enterUserId": "User ID",
+      "started": "Avatar session started",
+      "ended": "Avatar session ended",
+      "banner": "Avatar mode: {name} — Return to your account"
+    },
+    "userDetail": {
+      "title": "User Details",
+      "role": "Role",
+      "status": "Status",
+      "active": "Active",
+      "blocked": "Blocked",
+      "onboardingStep": "Onboarding",
+      "kycStatus": "KYC Status",
+      "registered": "Registered",
+      "block": "Block User",
+      "blockConfirm": "Are you sure you want to block this user?",
+      "blockReason": "Block reason (optional)",
+      "unblockNote": "User has been blocked",
+      "promoteToStaff": "Promote to Staff",
+      "promoteConfirm": "Promote this user to staff role?",
+      "promoted": "User promoted to staff",
+      "permissions": "Permissions",
+      "permissionsUpdated": "Permissions updated"
+    },
+    "withdrawals": {
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "rejectReason": "Rejection reason (required)",
+      "confirmed": "Withdrawal confirmed",
+      "rejected": "Withdrawal rejected"
+    }
   }
 }

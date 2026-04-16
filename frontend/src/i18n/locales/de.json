@@ -154,5 +154,116 @@
       "payments": "Zahlungen",
       "more": "Mehr"
     }
+  },
+  "staff": {
+    "panel": "Staff Panel",
+    "badge": "Staff Admin",
+    "users": {
+      "stat": "Benutzer",
+      "title": "Benutzer",
+      "change": "+{count} diesen Monat"
+    },
+    "kycQueue": "KYC-Warteschlange",
+    "pending": "Ausstehend",
+    "new": "Neu",
+    "payments": {
+      "stat": "Zahlungen",
+      "title": "Zahlungen",
+      "hint": "Überprüfen Sie den Transaktionshash in der Blockchain vor der Bestätigung. Alle Zahlungen sind Krypto (USDT).",
+      "amount": "Betrag",
+      "status": "Status",
+      "noPayments": "Keine Zahlungen gefunden",
+      "reversed": "Zahlung storniert",
+      "reverse": "Stornieren",
+      "reverseConfirm": "Sind Sie sicher, dass Sie diese Zahlung stornieren möchten?",
+      "reason": "Grund (optional)"
+    },
+    "awaitingConfirm": "Warten auf Bestätigung",
+    "agentApps": "Agentenanträge",
+    "quickActions": "Schnellaktionen",
+    "processKyc": "KYC bearbeiten",
+    "checkPayments": "Zahlungen prüfen",
+    "searchPlaceholder": "Suche nach Name, E-Mail...",
+    "kyc": {
+      "title": "KYC-Warteschlange",
+      "hint": "Prüfen Sie Dokumente und Daten des Benutzers vor der Genehmigung.",
+      "avgTime": "Durchschnittliche Bearbeitungszeit: 15 Min.",
+      "moreApps": "... {count} weitere Anträge",
+      "approved": "KYC genehmigt",
+      "rejected": "KYC abgelehnt",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "rejectReason": "Ablehnungsgrund (optional)",
+      "noQueue": "Keine ausstehenden KYC-Anträge",
+      "submitted": "Eingereicht"
+    },
+    "more": {
+      "title": "Mehr"
+    },
+    "settings": {
+      "tools": "Werkzeuge",
+      "system": "System",
+      "platform": "Plattform",
+      "language": "Sprache",
+      "langVal": "Deutsch",
+      "logout": "Abmelden"
+    },
+    "agentApps2": {
+      "title": "Agentenanträge",
+      "hint": "Ein Investor kann den Agentenstatus beantragen. Cooldown: 30 Tage nach Ablehnung. Prüfen Sie die Investitionshistorie.",
+      "approved": "Antrag genehmigt",
+      "rejected": "Antrag abgelehnt",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "rejectReason": "Ablehnungsgrund (erforderlich)",
+      "noQueue": "Keine ausstehenden Anträge"
+    },
+    "avatar": {
+      "title": "Avatar-Modus",
+      "subtitle": "Sehen Sie die Plattform aus Nutzersicht",
+      "selectUser": "Benutzer auswählen",
+      "portfolio": "Portfolio",
+      "referrals": "Empfehlungen",
+      "restrictions": "Eingeschränkte Operationen im Avatar-Modus",
+      "noPurchase": "Keine Käufe im Namen des Nutzers möglich",
+      "noWithdraw": "Keine Auszahlungen möglich",
+      "noPassword": "Passwort oder E-Mail nicht änderbar",
+      "noDelete": "Konto kann nicht gelöscht werden",
+      "noKyc": "KYC-Daten nicht änderbar",
+      "session": "Aktive Sitzung",
+      "return": "Zurück zu Staff",
+      "start": "Sitzung starten",
+      "end": "Sitzung beenden",
+      "enterUserId": "Benutzer-ID",
+      "started": "Avatar-Sitzung gestartet",
+      "ended": "Avatar-Sitzung beendet",
+      "banner": "Avatar-Modus: {name} — Zurück zu Ihrem Konto"
+    },
+    "userDetail": {
+      "title": "Benutzerdetails",
+      "role": "Rolle",
+      "status": "Status",
+      "active": "Aktiv",
+      "blocked": "Gesperrt",
+      "onboardingStep": "Onboarding",
+      "kycStatus": "KYC-Status",
+      "registered": "Registriert",
+      "block": "Benutzer sperren",
+      "blockConfirm": "Sind Sie sicher, dass Sie diesen Benutzer sperren möchten?",
+      "blockReason": "Sperrgrund (optional)",
+      "unblockNote": "Benutzer wurde gesperrt",
+      "promoteToStaff": "Zu Staff befördern",
+      "promoteConfirm": "Benutzer zur Staff-Rolle befördern?",
+      "promoted": "Benutzer zu Staff befördert",
+      "permissions": "Berechtigungen",
+      "permissionsUpdated": "Berechtigungen aktualisiert"
+    },
+    "withdrawals": {
+      "confirm": "Bestätigen",
+      "reject": "Ablehnen",
+      "rejectReason": "Ablehnungsgrund (erforderlich)",
+      "confirmed": "Auszahlung bestätigt",
+      "rejected": "Auszahlung abgelehnt"
+    }
   }
 }
