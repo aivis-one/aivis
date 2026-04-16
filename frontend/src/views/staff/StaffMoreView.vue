@@ -5,7 +5,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Shield, FileText, Ghost, LogOut } from 'lucide-vue-next'
+import { FileText, Ghost, LogOut } from 'lucide-vue-next'
 import { CAvatar, CBadge } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 
@@ -39,9 +39,7 @@ async function handleLogout(): Promise<void> {
       <div class="staff-more__name">{{ userName }}</div>
       <div class="staff-more__email">{{ userEmail }}</div>
       <div class="staff-more__badges">
-        <CBadge variant="primary">
-          <Shield :size="10" style="vertical-align:-1px" /> Staff
-        </CBadge>
+        <CBadge variant="primary" text="Staff" />
       </div>
     </div>
 
