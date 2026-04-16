@@ -148,7 +148,7 @@ preflight_checks
 if [ -d "$INSTALL_BASE/repo" ]; then
     warn "Found existing installation at $INSTALL_BASE"
     echo ""
-    read -rp "Remove existing installation and start fresh? (y/n): " -n 1
+    read -rp "Remove existing installation and start fresh? (y/n): " -n 1 < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         log "Stopping existing services..."
@@ -298,7 +298,7 @@ echo -e "${CYAN}"
 cat "${DEPLOY_KEY}.pub"
 echo -e "${NC}"
 echo "Press ENTER after adding the deploy key to GitHub..."
-read -r
+read -r < /dev/tty
 
 # Test SSH connection
 if ssh -i "$DEPLOY_KEY" -o StrictHostKeyChecking=no \
@@ -415,7 +415,7 @@ echo ""
 prompt_secret() {
     local VAR="$1"
     local LABEL="$2"
-    read -rp "  $LABEL: " VALUE
+    read -rp "  $LABEL: " VALUE < /dev/tty
     if [ -n "$VALUE" ]; then
         sed -i "s|${VAR}=.*|${VAR}=${VALUE}|" "$ENV_FILE"
         success "  $LABEL set"
@@ -617,7 +617,7 @@ echo "Add this TXT record in your DNS settings, then verify with:"
 echo "  opendkim-testkey -d ${MAIL_DOMAIN} -s ${DKIM_SELECTOR} -vvv"
 echo ""
 echo "Press ENTER to continue..."
-read -r
+read -r < /dev/tty
 
 success "Mail server setup complete"
 
@@ -826,7 +826,7 @@ case_update() {
         echo -e "${YELLOW}⚠ Uncommitted changes detected:${NC}"
         git status --short
         echo ""
-        read -rp "Discard local changes and update? (y/n): " -n 1
+        read -rp "Discard local changes and update? (y/n): " -n 1 < /dev/tty
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             echo "Update cancelled"
@@ -994,7 +994,7 @@ case_db() {
                 exit 1
             fi
             echo -e "${YELLOW}⚠ This will overwrite the current database!${NC}"
-            read -rp "Are you sure? (y/n): " -n 1
+            read -rp "Are you sure? (y/n): " -n 1 < /dev/tty
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 echo "Restoring database..."

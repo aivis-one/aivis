@@ -115,7 +115,6 @@
       "title": "Document Signing",
       "subtitle": "Review and sign the required documents to get started",
       "signDocumentsBtn": "Sign Documents",
-      "noDocs": "No documents required at this time",
       "checkedOf": "Signed {checked} of {total}",
       "required": "Required",
       "noDocs": "No documents required. You can continue.",
