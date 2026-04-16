@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 3.2
-**Дата:** 15 апреля 2026
+**Версия:** 3.3
+**Дата:** 17 апреля 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -219,7 +219,7 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
 - [x] Preflight: OS (Ubuntu 22.04+), RAM (>= 2GB), disk (>= 10GB), DNS
 - [x] Fix locale (en_US.UTF-8)
 - [x] System deps: Docker, Nginx, Certbot, UFW, git, curl, dnsutils
-- [x] UFW: только 22/80/443
+- [x] UFW: 22/80/443 + Docker→Postfix (172.16.0.0/12 → port 25)
 - [x] Deploy user `cbshome` (non-root, в docker group)
 - [x] SSH deploy key -> GitHub (`aivis-one/cbshome`) -> clone repo
 - [x] Генерация `.env` с рандомными паролями (openssl rand)
@@ -255,13 +255,16 @@ cbshome ssl renew                 -- certbot renew + nginx reload
 cbshome ssl status                -- certbot certificates info
 cbshome nginx reload              -- nginx -t + systemctl reload
 cbshome version                   -- git log + runtime versions + image list
+cbshome test-email <email>        -- test Mailgun (primary) + SMTP (fallback) delivery
 ```
 
 **Особенности реализации:**
 - `cbshome update` выходит с `exit 0` если Already up to date (нет новых коммитов)
 - `cbshome update` не делает `git reset --hard` при ошибке — выводит инструкцию для ручного разрешения
 - `.env` генерируется атомарно через temp file + mv (пароли генерируются один раз до heredoc)
-- Docker build всегда `--no-cache` (и при install, и при update)
+- `.env` template включает `MAILGUN_API_URL=https://api.eu.mailgun.net` (v3.3)
+- `read` команды читают из `/dev/tty` (v3.3: совместимость с `curl | bash`)
+- `docker compose build/up` получают `< /dev/null` (v3.3: предотвращает stdin consumption при pipe)
 - Nginx: `X-Real-IP $remote_addr` прокидывается в app для достоверного IP в audit log
 
 **Критерий готовности:** `curl https://api.cbshome.org/health` -> `{"status":"ok"}`.
@@ -492,7 +495,7 @@ backend/tests/
 - [x] `app/modules/kyc/models.py` — `KYCApplication`, `KYCApplicationStatus` (StrEnum)
 - [x] `app/modules/kyc/service.py` — `submit_kyc()`, `get_kyc_status()`, `process_webhook()`
 - [x] При изменении статуса KYCApplication — синхронизация `User.kyc_status` (денормализованный кэш)
-- [x] `POST /api/v1/kyc/submit` — создаёт KYCApplication, статус -> submitted
+- [x] `POST /api/v1/kyc/submit` — создаёт KYCApplication, статус -> submitted, **сразу ставит `onboarding_step = kyc_done`** (v3.3: non-blocking KYC, верификация идёт в фоне)
 - [x] `GET /api/v1/kyc/status` — текущий статус + последняя заявка
 - [x] `POST /api/v1/kyc/webhook` — заглушка (SumSub webhook handler) с `X-Webhook-Secret` защитой
 - [x] `tests/test_kyc.py` — 7 тестов
@@ -651,12 +654,15 @@ backend/tests/
 ```
 REGISTERED → EMAIL_VERIFIED → PROFILE_COMPLETE → ROLE_SELECTED → KYC_DONE → ONBOARDING_COMPLETE
      ↑              ↑                ↑                 ↑              ↑              ↑
- verify_email   update_user      select_role      kyc_webhook    sign_document
+ verify_email   update_user      select_role      submit_kyc     sign_document
  (auth/service) (users/service)  (users/service)  (kyc/service)  (documents/service)
 ```
 
+**v3.3:** `submit_kyc()` сразу ставит `KYC_DONE` (non-blocking KYC). Верификация идёт в фоне, webhook обновляет только `kyc_status`, не `onboarding_step`.
+
 **Решения реализации:**
 - Каждый step advancement проверяет текущий шаг — пропуск шагов невозможен
+- **BP-15: Auto-advance при 0 элементов.** Каждый шаг онбординга должен обрабатывать случай "нечего обрабатывать". Если на шаге 0 элементов (0 документов, KYC submit без ожидания) — auto-advance на следующий шаг. Не полагаться на то, что фронт вызовет конкретный endpoint. Правило: если `count == 0` → step++ автоматически
 - `select_role()` — отдельный endpoint (не через PATCH /users/me) с Pydantic валидацией: `_SELECTABLE_ROLES = {"investor", "agent", "company"}`. Staff/platform → 422
 - `_maybe_complete_onboarding()` — проверяет `ROLE_REQUIRED_DOCUMENT_TYPES[role]` и `DocumentSigning`. Только при `step == kyc_done`
 - `email` на UserResponse — `@property` на модели, Pydantic `from_attributes=True` подхватывает. Не колонка в БД, не миграция
@@ -2575,6 +2581,7 @@ high_secured_domains: str = ""  # comma-separated
 
 # Изменено
 mailgun_domain: str = "mail.cbshome.org"  # was ""
+mailgun_api_url: str = "https://api.mailgun.net"  # v3.3: EU domains use https://api.eu.mailgun.net
 ```
 
 **Endpoints:**
@@ -2612,7 +2619,7 @@ backend/tests/
 - `scripts/install_cbshome.sh` — EMAP удалён, +MAIL_DOMAIN, +Postfix/OpenDKIM section, +SMTP .env template
 
 **Решения реализации (Sprint 8.2):**
-- P8-09: **SMTP primary, Mailgun fallback** — собственный Postfix на хосте (не в контейнере). Docker→host через `host.docker.internal:host-gateway`. High-secured domains (немецкие провайдеры) → Mailgun напрямую
+- P8-09: **Mailgun primary, SMTP fallback** (v3.3: inverted from original SMTP-primary). Mailgun HTTP API → primary (50K/month free, EU endpoint `api.eu.mailgun.net`). SMTP Postfix → fallback (own server, may be blocked by hosting provider). `send_email()` tries Mailgun first, falls back to SMTP on failure. `high_secured_domains` removed — Mailgun handles all domains. Config: `mailgun_api_url` setting for US/EU endpoint selection. `start_tls` explicitly set to `use_tls` value (prevents auto-negotiate with self-signed Postfix cert)
 - P8-10: **Concurrent delivery** — `asyncio.gather` + `Semaphore(20)`. Formatter.deliver() не трогает SQLAlchemy session — только внешние API calls. Результаты применяются последовательно. TD-057 для dedicated delivery worker при 10K+ юзеров
 - P8-11: **PermanentDeliveryError** — bot blocked (403), chat not found, no credentials → immediate FAILED, attempts не инкрементируются. Transient errors → retry до max_attempts
 - P8-12: **Template engine** — `str.format_map(SafeDict)`, no SSTI risk. `yaml.safe_load()`. `lang.isalnum()` prevents path traversal
@@ -3051,4 +3058,4 @@ backend/app/modules/transactions/
 
 ---
 
-*Version 3.1 | 2026-04-15 | F1 frontend fixes: mock_email in tests (SMTP timeout), test_kyc_reject body, install_cbshome.sh --no-cache removal. 330 tests, all green*
+*Version 3.3 | 2026-04-17 | Email: Mailgun primary + SMTP fallback (inverted), EU endpoint support, start_tls fix. KYC non-blocking onboarding. install_cbshome.sh: UFW Docker SMTP, /dev/tty reads, docker stdin fix, test-email command. 336 tests, all green*

@@ -1,7 +1,7 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.3
-**Дата:** 16 апреля 2026
+**Версия:** 2.4
+**Дата:** 17 апреля 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -862,7 +862,32 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 **Критерий готовности:** Staff видит все платежи, может аватариться, управлять agent apps и withdrawals. ✅
 
-**Phase F3 завершена.** 7 views + 2 composables + api/admin.ts + api/types.ts + i18n (4 локали) + App.vue (banner) + CIconBox.vue + avatarState.ts. 9 коммитов, code review score: 9.2/10.
+**Phase F3 завершена.** 7 views + 2 composables + api/admin.ts + api/types.ts + i18n (4 локали) + App.vue (banner) + CIconBox.vue + avatarState.ts. 8 коммитов code review, score: 9/10.
+
+---
+
+### ✅ F3.5: Live Testing Fixes (post-deploy)
+
+**Цель:** Фиксы найденные при live testing на production VPS.
+
+**Баги найдены и закрыты:**
+
+| # | Severity | Баг | Фикс |
+|---|----------|-----|------|
+| BUG-01 | 🔴 | Все onboarding views не редиректят после успеха (`fetchMe()` не инициирует навигацию) | +`useRouter` + `router.push('/')` после `fetchMe()` в 4 файлах: VerifyEmailView, OnboardingProfileView, OnboardingRoleView, OnboardingDocsView |
+| BUG-02 | 🔴 | KYC блокирует онбординг — юзер застревает на экране ожидания | Бэкенд: `submit_kyc()` сразу ставит `kyc_done`. Фронт: "Понятно" кнопка → redirect, убран polling |
+| BUG-03 | 🔴 | DocsView — при 0 документов кнопка disabled, юзер застревает | `canComplete = signedCount === documents.length` (0 === 0 = true) |
+| BUG-04 | 🟡 | Raw JSON в ошибке (`{"error":"bad_request","message":"..."}`) | `extractErrorMessage()` парсит `detail` (FastAPI) + `message` (middleware) + fallback `JSON.stringify` |
+| BUG-05 | 🟡 | Пропущен i18n ключ `auth.profile.language` | Добавлен в 4 локали |
+
+**Изменённые файлы:**
+- `src/api/client.ts` — unified error parsing
+- `src/views/auth/VerifyEmailView.vue` — +`router.push('/')`
+- `src/views/auth/OnboardingProfileView.vue` — +`router.push('/')`
+- `src/views/auth/OnboardingRoleView.vue` — +`router.push('/')`
+- `src/views/auth/OnboardingKYCView.vue` — non-blocking KYC, убран polling, кнопка "Понятно"
+- `src/views/auth/OnboardingDocsView.vue` — `canComplete` при 0 docs + `router.push('/')`
+- `src/i18n/locales/{en,ru,de,ar}.json` — +`language`, +`noDocs`
 
 ---
 
@@ -1400,6 +1425,21 @@ if (ref) sessionStorage.setItem('cbs_referral_code', ref as string)
 const referral_code = sessionStorage.getItem('cbs_referral_code')
 api.post('/auth/email/register', { email, password, referral_code })
 ```
+
+### FP-14: После async действия → всегда `router.push('/')`
+
+```typescript
+// ЗАПРЕЩЕНО — надеяться что guard/реактивность подхватит:
+await authStore.fetchMe()
+// Guard will redirect... (НЕТ! Guard не срабатывает без навигации)
+
+// ПРАВИЛЬНО — явный redirect через корневой маршрут:
+await authStore.fetchMe()
+await router.push('/')
+// globalGuard проверит onboarding_step → redirect на нужный экран
+```
+
+Vue Router guards срабатывают только на **навигацию**, не на мутацию Pinia store. Корневой `/` + `globalGuard` = единый маршрутизатор. Применять после: регистрации, верификации, профиля, выбора роли, KYC, подписания документов — любого действия, меняющего `user.onboarding_step` или `user.role`.
 
 ---
 
