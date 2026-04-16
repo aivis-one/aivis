@@ -251,8 +251,9 @@ ufw default allow outgoing > /dev/null 2>&1
 ufw allow 22/tcp  > /dev/null 2>&1
 ufw allow 80/tcp  > /dev/null 2>&1
 ufw allow 443/tcp > /dev/null 2>&1
+ufw allow from 172.16.0.0/12 to any port 25 proto tcp comment "Docker SMTP to Postfix" > /dev/null 2>&1
 echo "y" | ufw enable > /dev/null 2>&1
-success "UFW: 22 (SSH) + 80 (HTTP) + 443 (HTTPS) only"
+success "UFW: 22 (SSH) + 80 (HTTP) + 443 (HTTPS) + Docker→SMTP"
 
 # ==============================================================================
 # DEPLOY USER
@@ -388,6 +389,7 @@ SMTP_FROM_EMAIL=noreply@${MAIL_DOMAIN}
 SMTP_USE_TLS=false
 MAILGUN_API_KEY=PLACEHOLDER
 MAILGUN_DOMAIN=${MAIL_DOMAIN}
+MAILGUN_API_URL=https://api.eu.mailgun.net
 HIGH_SECURED_DOMAINS=t-online.de,web.de,online.de,kabelmail.de,kabelbw.de,gmx.de,arcor.de
 
 # -- Crypto --
@@ -1092,6 +1094,65 @@ case_version() {
 }
 
 # ==============================================================================
+# TEST EMAIL
+# ==============================================================================
+
+case_test_email() {
+    cd_compose
+    local RECIPIENT="${1:-}"
+    if [ -z "$RECIPIENT" ]; then
+        echo "Usage: cbshome test-email <recipient@example.com>"
+        exit 1
+    fi
+
+    echo "=== Email Delivery Test ==="
+    echo ""
+    echo "Recipient: $RECIPIENT"
+    echo ""
+
+    # Test 1: Mailgun API (primary)
+    echo -n "1. Mailgun API... "
+    MAILGUN_RESULT=$(docker compose exec -T app python -c "
+import asyncio
+from app.core.email import send_email
+result = asyncio.run(send_email(
+    recipient='$RECIPIENT',
+    subject='CBS HOME — Mailgun Test',
+    body='This test email was sent via Mailgun HTTP API (primary channel).',
+))
+print('OK' if result else 'FAIL')
+" 2>/dev/null)
+    if echo "$MAILGUN_RESULT" | grep -q "OK"; then
+        echo -e "${GREEN}✓ Sent via Mailgun${NC}"
+    else
+        echo -e "${RED}✗ Mailgun failed${NC}"
+    fi
+
+    # Test 2: SMTP Postfix (fallback)
+    echo -n "2. SMTP Postfix... "
+    SMTP_RESULT=$(docker compose exec -T app python -c "
+import asyncio
+from app.core.email import send_email
+result = asyncio.run(send_email(
+    recipient='$RECIPIENT',
+    subject='CBS HOME — SMTP Test',
+    body='This test email was sent via SMTP Postfix (fallback channel).',
+    force_smtp=True,
+))
+print('OK' if result else 'FAIL')
+" 2>/dev/null)
+    if echo "$SMTP_RESULT" | grep -q "OK"; then
+        echo -e "${GREEN}✓ Sent via SMTP${NC}"
+    else
+        echo -e "${YELLOW}⚠ SMTP failed (outbound port 25 may be blocked by hosting provider)${NC}"
+    fi
+
+    echo ""
+    echo "Check $RECIPIENT inbox for test emails."
+    echo "If SMTP failed, request port 25/587 unblock from your hosting provider."
+}
+
+# ==============================================================================
 # MAIN
 # ==============================================================================
 
@@ -1111,6 +1172,7 @@ case "$CMD" in
     ssl)            case_ssl "$@" ;;
     nginx)          case_nginx "$@" ;;
     version)        case_version ;;
+    test-email)     case_test_email "$@" ;;
     help|*)
         echo -e "${CYAN}CBSHOME Management Script${NC}"
         echo ""
@@ -1142,6 +1204,7 @@ case "$CMD" in
         echo "  ssl renew                 — Renew SSL certificates"
         echo "  ssl status                — Show certificate info"
         echo "  nginx reload              — Test config and reload Nginx"
+        echo "  test-email <email>        — Test Mailgun + SMTP delivery"
         ;;
 esac
 MANAGE_EOF
@@ -1180,7 +1243,9 @@ echo "1. Edit $INSTALL_BASE/repo/backend/.env"
 echo "   -- Set TELEGRAM_BOT_TOKEN (if not done)"
 echo "   -- Set SUMSUB_API_KEY / SUMSUB_SECRET_KEY"
 echo "   -- Set MAILGUN_API_KEY (if not done)"
+echo "   -- Set MAILGUN_API_URL (default: EU endpoint, change to https://api.mailgun.net for US)"
 echo "2. Add DKIM DNS record (printed above during mail setup)"
 echo "3. Verify DKIM: opendkim-testkey -d ${MAIL_DOMAIN} -s cbshome -vvv"
 echo "4. Run: cbshome restart app"
+echo "5. Test email: cbshome test-email your@email.com"
 echo ""
