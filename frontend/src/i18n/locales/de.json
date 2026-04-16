@@ -117,6 +117,7 @@
       "signDocumentsBtn": "Dokumente unterschreiben",
       "checkedOf": "{checked} von {total} unterschrieben",
       "required": "Erforderlich",
+      "read": "Lesen",
       "noDocs": "Keine Dokumente erforderlich. Sie können fortfahren.",
       "complete": "Onboarding abgeschlossen",
       "completeText": "Alles bereit! Weiterleitung zum Dashboard..."

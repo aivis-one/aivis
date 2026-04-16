@@ -1,18 +1,26 @@
 # =============================================================================
-# CBSHOME Backend -- Document Models (Sprint 2.2)
+# CBSHOME Backend -- Document Models (Sprint 2.2, updated by 0024)
 # =============================================================================
 #
 # Document:
-#   Versioned document template managed by Staff. Status lifecycle:
+#   Versioned document template. Status lifecycle:
 #   draft -> active -> archived (see CBSHOME-State-Machines.md section 5).
+#
+#   Since migration 0024 the HTML body of a document lives as a static
+#   file in frontend/public/legal/<type>.html -- the backend only stores
+#   metadata. `type` is a free-form string (not an enum) so legal can add
+#   new categories by dropping an HTML file with proper <meta> tags into
+#   the legal folder; no code change needed.
+#
+#   `content_hash` is a sha256 hex digest of the HTML body. Seed reads
+#   the file, computes the hash, and compares against the current active
+#   row. If hashes differ the current row is archived and a new one is
+#   created with version+1. The hash column is never exposed through the
+#   API -- it is an internal seed artefact.
 #
 # DocumentSigning:
 #   Immutable record of user consent (checkbox). One per (user, document)
 #   pair. No updated_at -- signings are never modified.
-#
-# DocumentType:
-#   Concrete document categories. Role-to-type mapping lives in
-#   documents/constants.py (ROLE_REQUIRED_DOCUMENT_TYPES).
 #
 # FUTURE (Phase 2+):
 #   DocumentSigning gains docusign_envelope_id, docusign_signed_at via
@@ -23,21 +31,20 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.core.mixins import TimestampMixin, UUIDMixin
-
-
-class DocumentType(enum.StrEnum):
-    """Concrete document categories."""
-
-    PRIVACY_POLICY = "privacy_policy"
-    TERMS_OF_SERVICE = "terms_of_service"
-    INVESTMENT_AGREEMENT = "investment_agreement"
-    AGENT_AGREEMENT = "agent_agreement"
-    COMPANY_AGREEMENT = "company_agreement"
+from app.core.mixins import JSONBMixin, TimestampMixin, UUIDMixin
 
 
 class DocumentStatus(enum.StrEnum):
@@ -48,11 +55,20 @@ class DocumentStatus(enum.StrEnum):
     ARCHIVED = "archived"
 
 
-class Document(UUIDMixin, TimestampMixin, Base):
-    """Versioned document template managed by Staff."""
+class Document(JSONBMixin, UUIDMixin, TimestampMixin, Base):
+    """Versioned document template.
+
+    The HTML body is NOT stored here -- it lives at
+    frontend/public/legal/<type>.html and is served as static content
+    by the frontend. Seed reads those files on install/update to
+    populate this table with metadata (title, type, required_for_roles,
+    content_hash).
+    """
 
     __tablename__ = "documents"
 
+    # Free-form string; acceptable values are driven by files in
+    # frontend/public/legal/ (one HTML per type).
     type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
@@ -71,9 +87,24 @@ class Document(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
 
-    content_url: Mapped[str] = mapped_column(
-        String(2000),
+    # JSONB array of role names, e.g. ["investor", "agent"]. Signals
+    # which user roles must sign this document during onboarding.
+    # Mutations must go through set_jsonb("required_for_roles", value)
+    # (see JSONBMixin) to be flagged as dirty by SQLAlchemy.
+    required_for_roles: Mapped[list] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
         nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
+
+    # SHA-256 hex digest of the HTML body. Used by seed to detect edits
+    # in frontend/public/legal/<type>.html: if the current file's hash
+    # differs from the active row, seed archives the row and creates a
+    # new one with incremented version. Not exposed via the API.
+    content_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        server_default="",
     )
 
     status: Mapped[str] = mapped_column(

@@ -658,6 +658,11 @@ log "Seeding Platform user..."
 docker compose exec -T app python scripts/seed_platform.py
 success "Platform user seeded"
 
+# Seed legal documents from frontend/public/legal/*.html (bind-mounted at /legal)
+log "Seeding legal documents..."
+docker compose exec -T app python scripts/seed_documents.py
+success "Legal documents seeded"
+
 # ==============================================================================
 # MANAGEMENT SCRIPT
 # ==============================================================================
@@ -896,6 +901,11 @@ case_update() {
     echo "Seeding Platform user..."
     docker compose exec -T app python scripts/seed_platform.py
 
+    # Seed legal documents (idempotent; reads frontend/public/legal/*.html).
+    echo ""
+    echo "Seeding legal documents..."
+    docker compose exec -T app python scripts/seed_documents.py
+
     # Run backend tests.
     echo ""
     echo "Running backend tests..."
@@ -1025,8 +1035,10 @@ case_seed() {
     cd_compose
     if [ "${1:-}" = "--reset" ]; then
         docker compose exec -T app python scripts/seed_platform.py --reset
+        docker compose exec -T app python scripts/seed_documents.py
     else
         docker compose exec -T app python scripts/seed_platform.py
+        docker compose exec -T app python scripts/seed_documents.py
     fi
 }
 
@@ -1196,8 +1208,8 @@ case "$CMD" in
         echo "  db dump                   — Create SQL dump"
         echo "  db restore <file>         — Restore from dump"
         echo "  db migrate                — Run Alembic migrations"
-        echo "  seed                      — Seed Platform user"
-        echo "  seed --reset              — Clean + re-seed"
+        echo "  seed                      — Seed Platform user + legal documents"
+        echo "  seed --reset              — Reset Platform user and re-seed documents"
         echo ""
         echo "Maintenance:"
         echo "  backup                    — Backup DB + .env (7-day rotation)"

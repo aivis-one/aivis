@@ -117,6 +117,7 @@
       "signDocumentsBtn": "Sign Documents",
       "checkedOf": "Signed {checked} of {total}",
       "required": "Required",
+      "read": "Read",
       "noDocs": "No documents required. You can continue.",
       "complete": "Onboarding Complete",
       "completeText": "You're all set! Redirecting to your dashboard..."

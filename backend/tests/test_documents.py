@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Tests (Sprint 2.2)
+# CBSHOME Backend -- Document Tests (Sprint 2.2, updated by 0024)
 # =============================================================================
 #
 # Tests cover:
@@ -11,7 +11,7 @@
 #   6:  List documents by role (investor sees own package)
 #   7:  Sign active document -> 201
 #   8:  Sign same document again -> 409
-#   9:  Update document title and content_url
+#   9:  Update document title and required_for_roles
 #   10: Sign archived document -> 400
 #
 # Email prefix: "s22_" -- unique to this test file, cleaned up in fixture.
@@ -56,16 +56,24 @@ async def _create_active_document(
     staff_token: str,
     doc_type: str = "privacy_policy",
     version: int = 1,
+    required_for_roles: list[str] | None = None,
 ) -> dict:
-    """Helper: create a document and publish it (draft -> active)."""
+    """Helper: create a document and publish it (draft -> active).
+
+    `required_for_roles` defaults to ["investor"] so tests that do not
+    care about role filtering still get a doc visible to investors.
+    """
+    if required_for_roles is None:
+        required_for_roles = ["investor"]
+
     # Create draft.
     resp = await client.post(
         "/api/v1/staff/documents",
         json={
             "type": doc_type,
             "title": f"Test {doc_type} v{version}",
-            "content_url": f"https://docs.example.com/{doc_type}/v{version}",
             "version": version,
+            "required_for_roles": required_for_roles,
         },
         headers=auth_headers(staff_token),
     )
@@ -99,8 +107,8 @@ async def test_create_document_staff(
         json={
             "type": "privacy_policy",
             "title": "Privacy Policy v1",
-            "content_url": "https://docs.example.com/privacy/v1",
             "version": 1,
+            "required_for_roles": ["investor", "agent"],
         },
         headers=auth_headers(token),
     )
@@ -111,6 +119,7 @@ async def test_create_document_staff(
     assert body["version"] == 1
     assert body["status"] == "draft"
     assert body["title"] == "Privacy Policy v1"
+    assert body["required_for_roles"] == ["investor", "agent"]
 
 
 @pytest.mark.asyncio
@@ -126,7 +135,7 @@ async def test_create_document_non_staff(client: AsyncClient) -> None:
         json={
             "type": "privacy_policy",
             "title": "Privacy Policy v1",
-            "content_url": "https://docs.example.com/privacy/v1",
+            "required_for_roles": ["investor"],
         },
         headers=auth_headers(token),
     )
@@ -146,7 +155,7 @@ async def test_update_document_status_flow(
         json={
             "type": "terms_of_service",
             "title": "Terms v1",
-            "content_url": "https://docs.example.com/terms/v1",
+            "required_for_roles": ["investor"],
         },
         headers=auth_headers(token),
     )
@@ -192,7 +201,7 @@ async def test_delete_draft_document(
         json={
             "type": "investment_agreement",
             "title": "Agreement v1",
-            "content_url": "https://docs.example.com/agreement/v1",
+            "required_for_roles": ["investor"],
         },
         headers=auth_headers(token),
     )
@@ -230,12 +239,19 @@ async def test_delete_active_document_fails(
 async def test_list_documents_by_role(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Investor sees investor package, not agent_agreement."""
+    """Investor sees docs with investor in required_for_roles; not agent-only."""
     staff_token = await _staff_token(client, db_session)
 
-    # Create active documents: privacy_policy + agent_agreement.
-    await _create_active_document(client, staff_token, "privacy_policy")
-    await _create_active_document(client, staff_token, "agent_agreement")
+    # privacy_policy required for investor (and agent).
+    await _create_active_document(
+        client, staff_token, "privacy_policy",
+        required_for_roles=["investor", "agent"],
+    )
+    # agent_agreement required for agent only.
+    await _create_active_document(
+        client, staff_token, "agent_agreement",
+        required_for_roles=["agent"],
+    )
 
     # Register investor.
     inv_data = await register_user(
@@ -252,7 +268,7 @@ async def test_list_documents_by_role(
 
     doc_types = [d["type"] for d in docs]
     assert "privacy_policy" in doc_types
-    # Investor should NOT see agent_agreement.
+    # Investor should NOT see a doc that is only required for agents.
     assert "agent_agreement" not in doc_types
 
 
@@ -310,15 +326,15 @@ async def test_sign_document_duplicate(
 
 
 # ---------------------------------------------------------------------------
-# Additional tests (review v10 feedback)
+# Additional tests
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_update_document_title_and_url(
+async def test_update_document_title_and_roles(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Update document title and content_url."""
+    """Update document title and required_for_roles."""
     token = await _staff_token(client, db_session)
 
     resp = await client.post(
@@ -326,7 +342,7 @@ async def test_update_document_title_and_url(
         json={
             "type": "company_agreement",
             "title": "Old Title",
-            "content_url": "https://docs.example.com/old",
+            "required_for_roles": ["company"],
         },
         headers=auth_headers(token),
     )
@@ -336,14 +352,14 @@ async def test_update_document_title_and_url(
         f"/api/v1/staff/documents/{doc_id}",
         json={
             "title": "New Title",
-            "content_url": "https://docs.example.com/new",
+            "required_for_roles": ["company", "agent"],
         },
         headers=auth_headers(token),
     )
     assert resp2.status_code == 200
     body = resp2.json()
     assert body["title"] == "New Title"
-    assert body["content_url"] == "https://docs.example.com/new"
+    assert body["required_for_roles"] == ["company", "agent"]
 
 
 @pytest.mark.asyncio

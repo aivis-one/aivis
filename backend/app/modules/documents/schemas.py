@@ -1,23 +1,22 @@
 # =============================================================================
-# CBSHOME Backend -- Document Schemas (Sprint 2.2)
+# CBSHOME Backend -- Document Schemas (Sprint 2.2, updated by 0024)
 # =============================================================================
 #
 # Pydantic models for document endpoints.
 #
-# DocumentResponse:      returned by all document endpoints
-# DocumentCreateRequest: staff creates a new document
-# DocumentUpdateRequest: staff updates document (partial, exclude_unset)
+# DocumentResponse:        returned by all document endpoints
+# DocumentCreateRequest:   staff creates a new document
+# DocumentUpdateRequest:   staff updates document (partial, exclude_unset)
 # DocumentSigningResponse: returned after user signs a document
 #
-# CONTENT_URL VALIDATION:
-#   Only https:// URLs are accepted to prevent XSS (javascript:) and
-#   LFI (file://) attacks when frontend renders the URL.
+# Migration 0024 removed content_url (bodies now live in
+# frontend/public/legal/*.html) and added required_for_roles.
 # =============================================================================
 
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class DocumentResponse(BaseModel):
@@ -27,7 +26,7 @@ class DocumentResponse(BaseModel):
     type: str
     version: int
     title: str
-    content_url: str
+    required_for_roles: list[str] = Field(default_factory=list)
     status: str
     created_by: UUID
     created_at: datetime
@@ -40,21 +39,10 @@ class DocumentResponse(BaseModel):
 class DocumentCreateRequest(BaseModel):
     """Staff creates a new document."""
 
-    type: str = Field(
-        ...,
-        description="Document type (privacy_policy, terms_of_service, etc.)",
-    )
+    type: str = Field(..., min_length=1, max_length=50)
     title: str = Field(..., min_length=1, max_length=500)
-    content_url: str = Field(..., min_length=1, max_length=2000)
     version: int = Field(default=1, ge=1)
-
-    @field_validator("content_url")
-    @classmethod
-    def validate_content_url(cls, v: str) -> str:
-        """Ensure content_url uses https:// scheme."""
-        if not v.startswith("https://"):
-            raise ValueError("content_url must start with https://")
-        return v
+    required_for_roles: list[str] = Field(default_factory=list)
 
 
 class DocumentUpdateRequest(BaseModel):
@@ -65,16 +53,8 @@ class DocumentUpdateRequest(BaseModel):
     """
 
     title: str | None = Field(default=None, min_length=1, max_length=500)
-    content_url: str | None = Field(default=None, min_length=1, max_length=2000)
     status: str | None = Field(default=None)
-
-    @field_validator("content_url")
-    @classmethod
-    def validate_content_url(cls, v: str | None) -> str | None:
-        """Ensure content_url uses https:// scheme (when provided)."""
-        if v is not None and not v.startswith("https://"):
-            raise ValueError("content_url must start with https://")
-        return v
+    required_for_roles: list[str] | None = Field(default=None)
 
 
 class DocumentSigningResponse(BaseModel):

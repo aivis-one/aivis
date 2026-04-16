@@ -22,6 +22,10 @@ services:
       - "host.docker.internal:host-gateway"
     env_file:
       - ./backend/.env
+    # Legal documents are authored in the frontend repo and consumed by
+    # seed_documents.py inside this container. Read-only bind mount.
+    volumes:
+      - ./frontend/public/legal:/legal:ro
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

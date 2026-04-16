@@ -5,6 +5,7 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const router = useRouter()
 
 const email = ref('')
 const password = ref('')
@@ -45,6 +47,11 @@ async function handleRegister(): Promise<void> {
 
   try {
     await authStore.registerViaEmail(email.value, password.value, referralCode)
+    // BUG-07 fix: after registration the user is authenticated and at
+    // onboarding_step=registered. Let the router guard forward them to
+    // the correct next screen (email verification) instead of staying
+    // on the register view.
+    await router.push('/')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       if (err.status === 409) {

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Service (Sprint 2.2)
+# CBSHOME Backend -- Document Service (Sprint 2.2, updated by 0024)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -19,10 +19,18 @@
 #     active -> archived  (Staff: archive)
 #     draft  -> archived  (Staff: cancel draft)
 #
+# ROLE MAPPING (0024):
+#   Document.required_for_roles is a JSONB array of role names. Role
+#   filtering uses the PostgreSQL JSONB containment operator (`@>`).
+#   There is no Python-side enum or dict any more -- new document types
+#   can be introduced by adding an HTML file with proper <meta> tags to
+#   frontend/public/legal/ without touching the code.
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
 # =============================================================================
 
+import json
 from uuid import UUID
 
 import structlog
@@ -32,15 +40,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import USER_AGENT_MAX_LEN
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
-from app.modules.documents.constants import (
-    ROLE_REQUIRED_DOCUMENT_TYPES,
-    VALID_STATUS_TRANSITIONS,
-)
+from app.modules.documents.constants import VALID_STATUS_TRANSITIONS
 from app.modules.documents.models import (
     Document,
     DocumentSigning,
     DocumentStatus,
-    DocumentType,
 )
 from app.modules.documents.schemas import (
     DocumentCreateRequest,
@@ -50,6 +54,20 @@ from app.modules.documents.schemas import (
 from app.modules.users.models import OnboardingStep, User
 
 logger = structlog.get_logger()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _role_containment(role: str) -> str:
+    """Build a JSONB operand for `Document.required_for_roles @> [role]`.
+
+    Returns a JSON string of the form '["investor"]' suitable for the
+    PostgreSQL `@>` operator (same pattern as posts/service.py tag filter).
+    """
+    return json.dumps([role])
 
 
 # ---------------------------------------------------------------------------
@@ -65,22 +83,13 @@ async def create_document(
     """Create a new document in draft status.
 
     Raises:
-        BadRequestError: If type is not a valid DocumentType.
         ConflictError: If (type, version) combination already exists.
     """
-    # Validate type enum.
-    valid_types = [t.value for t in DocumentType]
-    if body.type not in valid_types:
-        raise BadRequestError(
-            f"Invalid document type: {body.type}. "
-            f"Valid types: {', '.join(valid_types)}"
-        )
-
     document = Document(
         type=body.type,
         version=body.version,
         title=body.title,
-        content_url=body.content_url,
+        required_for_roles=list(body.required_for_roles),
         status=DocumentStatus.DRAFT,
         created_by=staff_id,
     )
@@ -143,8 +152,14 @@ async def update_document(
     # Apply other fields.
     if "title" in updates and updates["title"] is not None:
         document.title = updates["title"]
-    if "content_url" in updates and updates["content_url"] is not None:
-        document.content_url = updates["content_url"]
+    if (
+        "required_for_roles" in updates
+        and updates["required_for_roles"] is not None
+    ):
+        # JSONB mutation must go through set_jsonb to flag the column dirty.
+        document.set_jsonb(
+            "required_for_roles", list(updates["required_for_roles"])
+        )
 
     await session.flush()
     await session.refresh(document)
@@ -207,7 +222,7 @@ def _build_document_response(
         type=document.type,
         version=document.version,
         title=document.title,
-        content_url=document.content_url,
+        required_for_roles=list(document.required_for_roles or []),
         status=document.status,
         created_by=document.created_by,
         created_at=document.created_at,
@@ -221,21 +236,16 @@ async def list_documents_for_role(
     user_id: UUID,
     session: AsyncSession,
 ) -> list[DocumentResponse]:
-    """List active documents for a user's role with is_signed flag.
+    """List active documents required for the user's role with is_signed flag.
 
-    Returns documents whose type is in ROLE_REQUIRED_DOCUMENT_TYPES
-    for the given role, filtered to active status only.
+    Uses PostgreSQL JSONB containment (`@>`) to find rows whose
+    required_for_roles array contains the given role.
     """
-    doc_types = ROLE_REQUIRED_DOCUMENT_TYPES.get(role, [])
-    if not doc_types:
-        return []
-
-    # Get active documents for the role.
     stmt = (
         select(Document)
         .where(
-            Document.type.in_(doc_types),
             Document.status == DocumentStatus.ACTIVE,
+            Document.required_for_roles.op("@>")(_role_containment(role)),
         )
         .order_by(Document.type, Document.version.desc())
     )
@@ -360,10 +370,16 @@ async def _maybe_complete_onboarding(
     user_id: UUID,
     session: AsyncSession,
 ) -> None:
-    """Advance onboarding to complete if all role docs are signed.
+    """Advance onboarding to complete if the user has nothing left to sign.
 
     Called after each document signing. Only acts when
     onboarding_step == kyc_done (the step right before completion).
+
+    Role membership is computed via
+    `Document.required_for_roles @> [user.role]`. If no active documents
+    exist for the role (which normally does not happen because seed
+    guarantees at least the base set), the user is still advanced to
+    complete to avoid a permanent stall at kyc_done.
     """
     stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)
@@ -372,27 +388,24 @@ async def _maybe_complete_onboarding(
     if user is None or user.onboarding_step != OnboardingStep.KYC_DONE:
         return
 
-    # Get required doc types for this role.
-    doc_types = ROLE_REQUIRED_DOCUMENT_TYPES.get(user.role, [])
-    if not doc_types:
-        # No docs required for this role — complete immediately.
-        user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
-        await session.flush()
-        logger.info("onboarding_complete", user_id=str(user_id))
-        return
-
-    # Active documents of required types.
+    # Active documents required for this user's role.
     doc_stmt = (
         select(Document.id)
         .where(
-            Document.type.in_(doc_types),
             Document.status == DocumentStatus.ACTIVE,
+            Document.required_for_roles.op("@>")(
+                _role_containment(user.role)
+            ),
         )
     )
     doc_result = await session.execute(doc_stmt)
     active_doc_ids = {row[0] for row in doc_result.all()}
 
     if not active_doc_ids:
+        # No docs required for this role -- nothing left to sign.
+        user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
+        await session.flush()
+        logger.info("onboarding_complete", user_id=str(user_id))
         return
 
     # User's signings for those documents.

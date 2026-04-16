@@ -1,35 +1,21 @@
 # =============================================================================
-# CBSHOME Backend -- Document Constants (Sprint 2.2)
+# CBSHOME Backend -- Document Constants (Sprint 2.2, updated by 0024)
 # =============================================================================
-#
-# ROLE_REQUIRED_DOCUMENT_TYPES:
-#   Maps user role to required document types for that role.
-#   Used by list_documents_for_role() to filter documents.
 #
 # VALID_STATUS_TRANSITIONS:
 #   Allowed status transitions per State Machines v1.4 section 5.
+#
+# Since migration 0024 the per-role document mapping lives in the DB
+# (documents.required_for_roles JSONB), not here. Do NOT reintroduce a
+# Python-side mapping -- adding new document types must not require a
+# code change. Role membership is declared via
+# <meta name="cbs-required-for-roles"> inside each HTML file under
+# frontend/public/legal/ and is picked up by seed_documents.py.
 # =============================================================================
 
-from app.modules.documents.models import DocumentStatus, DocumentType
+from app.modules.documents.models import DocumentStatus
 
-ROLE_REQUIRED_DOCUMENT_TYPES: dict[str, list[str]] = {
-    "investor": [
-        DocumentType.PRIVACY_POLICY,
-        DocumentType.TERMS_OF_SERVICE,
-        DocumentType.INVESTMENT_AGREEMENT,
-    ],
-    "agent": [
-        DocumentType.PRIVACY_POLICY,
-        DocumentType.TERMS_OF_SERVICE,
-        DocumentType.INVESTMENT_AGREEMENT,
-        DocumentType.AGENT_AGREEMENT,
-    ],
-    "company": [
-        DocumentType.COMPANY_AGREEMENT,
-    ],
-}
 
-# State machine transitions (State Machines v1.4 section 5).
 VALID_STATUS_TRANSITIONS: dict[str, list[str]] = {
     DocumentStatus.DRAFT: [
         DocumentStatus.ACTIVE,

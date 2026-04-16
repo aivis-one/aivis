@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Onboarding Flow Tests (F2.3)
+# CBSHOME Backend -- Onboarding Flow Tests (F2.3, updated by 0024)
 # =============================================================================
 #
 # Tests cover the full onboarding pipeline:
@@ -78,15 +78,24 @@ async def _create_active_doc(
     staff_token: str,
     doc_type: str,
     version: int = 1,
+    required_for_roles: list[str] | None = None,
 ) -> str:
-    """Create + publish a document, return its id."""
+    """Create + publish a document, return its id.
+
+    Defaults to required_for_roles=["investor"] so the full-flow test
+    (which uses an investor account) sees the docs without needing to
+    pass the list every time.
+    """
+    if required_for_roles is None:
+        required_for_roles = ["investor"]
+
     resp = await client.post(
         "/api/v1/staff/documents",
         json={
             "type": doc_type,
             "title": f"Test {doc_type} v{version}",
-            "content_url": f"https://docs.example.com/{doc_type}/v{version}",
             "version": version,
+            "required_for_roles": required_for_roles,
         },
         headers=auth_headers(staff_token),
     )
@@ -178,6 +187,7 @@ async def test_full_onboarding_flow(
     )
 
     # Investor requires: privacy_policy, terms_of_service, investment_agreement.
+    # Helper defaults required_for_roles to ["investor"].
     doc_ids = []
     for doc_type in ["privacy_policy", "terms_of_service", "investment_agreement"]:
         doc_id = await _create_active_doc(client, staff_token, doc_type)

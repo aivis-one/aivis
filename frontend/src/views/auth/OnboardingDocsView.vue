@@ -1,8 +1,18 @@
 <script setup lang="ts">
-// Document signing — list required docs, sign each, complete onboarding.
-// GET  /api/v1/documents → DocumentResponse[]
-// POST /api/v1/documents/{id}/sign → DocumentSigningResponse
-// After all signed (or 0 docs): fetchMe() → router.push('/') → dashboard.
+// Document signing screen.
+// Flow:
+//   1. GET /api/v1/documents -> list for user's role (with is_signed flag).
+//   2. User ticks a checkbox per unsigned doc (checkbox is locked-checked
+//      for docs already signed earlier). Click on "Read" opens a modal
+//      that fetches /legal/{type}.html and renders it with v-html. No
+//      sanitisation -- the legal folder ships with our own repo.
+//   3. "Sign documents" button is disabled until every unsigned doc is
+//      ticked. Click -> POST /documents/{id}/sign for each unsigned doc,
+//      then fetchMe() (backend advanced onboarding_step on the last
+//      signing), then router.push('/') so the guard routes to the role
+//      dashboard.
+//
+// No per-row sign: a single explicit act of consent at the bottom.
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -11,24 +21,51 @@ import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError } from '@/api/client'
 import type { DocumentResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
+import { CModal } from '@/components/ui'
 
 const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
+// -- List state --
 const documents = ref<DocumentResponse[]>([])
 const loadingDocs = ref(true)
-const signingId = ref<string | null>(null)
-const completing = ref(false)
 const error = ref('')
 
-const signedCount = computed(() =>
-  documents.value.filter((d) => d.is_signed).length,
+// User-ticked checkboxes for currently-unsigned docs. Using a Set keyed
+// by document UUID so toggling stays O(1).
+const checkedIds = ref<Set<string>>(new Set())
+
+// -- Sign flow --
+const signing = ref(false)
+
+// -- Modal state --
+const viewingDoc = ref<DocumentResponse | null>(null)
+const viewContent = ref('')
+const viewLoading = ref(false)
+const viewError = ref('')
+
+// ---------------------------------------------------------------------------
+// Computed
+// ---------------------------------------------------------------------------
+
+function isChecked(doc: DocumentResponse): boolean {
+  return doc.is_signed === true || checkedIds.value.has(doc.id)
+}
+
+const checkedCount = computed(
+  () => documents.value.filter(isChecked).length,
 )
-// Allow completion when all docs signed OR no docs exist (nothing to sign).
-const canComplete = computed(() =>
-  signedCount.value === documents.value.length,
-)
+
+// All unsigned docs have a tick, or there are no docs at all.
+const canSignAll = computed(() => {
+  if (documents.value.length === 0) return true
+  return documents.value.every(isChecked)
+})
+
+// ---------------------------------------------------------------------------
+// Fetch
+// ---------------------------------------------------------------------------
 
 onMounted(async () => {
   await fetchDocuments()
@@ -36,6 +73,7 @@ onMounted(async () => {
 
 async function fetchDocuments(): Promise<void> {
   loadingDocs.value = true
+  error.value = ''
   try {
     documents.value = await api.get<DocumentResponse[]>('/api/v1/documents')
   } catch {
@@ -45,44 +83,91 @@ async function fetchDocuments(): Promise<void> {
   }
 }
 
-async function signDocument(doc: DocumentResponse): Promise<void> {
-  if (doc.is_signed || signingId.value) return
+// ---------------------------------------------------------------------------
+// Checkbox toggle
+// ---------------------------------------------------------------------------
+
+function toggleCheck(doc: DocumentResponse): void {
+  // Already-signed docs are locked.
+  if (doc.is_signed) return
+  // Rebuild the Set so Vue reactivity picks up the change.
+  const next = new Set(checkedIds.value)
+  if (next.has(doc.id)) {
+    next.delete(doc.id)
+  } else {
+    next.add(doc.id)
+  }
+  checkedIds.value = next
+}
+
+// ---------------------------------------------------------------------------
+// Modal
+// ---------------------------------------------------------------------------
+
+async function openDocument(doc: DocumentResponse): Promise<void> {
+  viewingDoc.value = doc
+  viewContent.value = ''
+  viewError.value = ''
+  viewLoading.value = true
+  try {
+    // Static file served by the frontend from public/legal/<type>.html.
+    const resp = await fetch(`/legal/${doc.type}.html`)
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`)
+    }
+    viewContent.value = await resp.text()
+  } catch {
+    viewError.value = t('common.error')
+  } finally {
+    viewLoading.value = false
+  }
+}
+
+function closeModal(): void {
+  viewingDoc.value = null
+  viewContent.value = ''
+  viewError.value = ''
+}
+
+// ---------------------------------------------------------------------------
+// Sign-all
+// ---------------------------------------------------------------------------
+
+async function handleSignAll(): Promise<void> {
+  if (!canSignAll.value || signing.value) return
+  signing.value = true
   error.value = ''
-  signingId.value = doc.id
 
   try {
-    await api.post<unknown>(`/api/v1/documents/${doc.id}/sign`)
-    // Update local state.
-    const idx = documents.value.findIndex((d) => d.id === doc.id)
-    if (idx !== -1) {
-      documents.value[idx] = { ...documents.value[idx], is_signed: true }
+    // Sign every currently-unsigned doc sequentially. A 409 from the
+    // backend means "already signed" -- treat as success and move on.
+    for (const doc of documents.value) {
+      if (doc.is_signed) continue
+      try {
+        await api.post(`/api/v1/documents/${doc.id}/sign`)
+      } catch (err) {
+        if (err instanceof ApiResponseError && err.status === 409) {
+          continue
+        }
+        throw err
+      }
     }
+
+    // Backend auto-advanced onboarding_step on the last signing; pull
+    // the new user state so the router guard sees onboarding_complete.
+    await authStore.fetchMe()
+
+    // Root resolves to the role-based dashboard via guard.
+    await router.push('/')
   } catch (err) {
     if (err instanceof ApiResponseError) {
-      // 409 = already signed — update local state.
-      if (err.status === 409) {
-        const idx = documents.value.findIndex((d) => d.id === doc.id)
-        if (idx !== -1) {
-          documents.value[idx] = { ...documents.value[idx], is_signed: true }
-        }
-      } else {
-        error.value = err.detail
-      }
+      error.value = err.detail
     } else {
       error.value = t('common.error')
     }
   } finally {
-    signingId.value = null
+    signing.value = false
   }
-}
-
-async function handleComplete(): Promise<void> {
-  if (!canComplete.value) return
-  completing.value = true
-  await authStore.fetchMe()
-  completing.value = false
-  // Navigate to root — guard will redirect to role dashboard.
-  await router.push('/')
 }
 </script>
 
@@ -101,7 +186,7 @@ async function handleComplete(): Promise<void> {
         <span class="btn-spinner" />
       </div>
 
-      <!-- Document list -->
+      <!-- Document list / empty state -->
       <template v-else>
         <div v-if="documents.length > 0" class="doc-list">
           <div
@@ -109,17 +194,13 @@ async function handleComplete(): Promise<void> {
             :key="doc.id"
             class="doc-item"
             :class="{ signed: doc.is_signed }"
-            @click="signDocument(doc)"
+            @click="toggleCheck(doc)"
           >
             <div
               class="doc-checkbox"
-              :class="{ checked: doc.is_signed }"
+              :class="{ checked: isChecked(doc), locked: doc.is_signed }"
             >
-              <span v-if="doc.is_signed">✓</span>
-              <span
-                v-else-if="signingId === doc.id"
-                class="doc-spinner"
-              />
+              <span v-if="isChecked(doc)">✓</span>
             </div>
             <div class="doc-info">
               <div class="doc-title">{{ doc.title }}</div>
@@ -127,12 +208,10 @@ async function handleComplete(): Promise<void> {
                 <span class="doc-required">{{ t('auth.docs.required') }}</span>
               </div>
             </div>
-            <a
+            <button
+              type="button"
               class="doc-link"
-              :href="doc.content_url"
-              target="_blank"
-              rel="noopener"
-              @click.stop
+              @click.stop="openDocument(doc)"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -148,16 +227,17 @@ async function handleComplete(): Promise<void> {
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
-            </a>
+              <span class="doc-link-label">{{ t('auth.docs.read') }}</span>
+            </button>
           </div>
         </div>
 
-        <!-- Counter (only when there are docs) -->
+        <!-- Counter -->
         <div v-if="documents.length > 0" class="doc-counter">
-          {{ t('auth.docs.checkedOf', { checked: signedCount, total: documents.length }) }}
+          {{ t('auth.docs.checkedOf', { checked: checkedCount, total: documents.length }) }}
         </div>
 
-        <!-- No docs message -->
+        <!-- No docs required for this role -->
         <div v-if="documents.length === 0" class="no-docs">
           {{ t('auth.docs.noDocs') }}
         </div>
@@ -168,15 +248,36 @@ async function handleComplete(): Promise<void> {
           <button
             class="btn btn-primary"
             type="button"
-            :disabled="!canComplete || completing"
-            @click="handleComplete"
+            :disabled="!canSignAll || signing"
+            @click="handleSignAll"
           >
-            <span v-if="completing" class="btn-spinner" />
+            <span v-if="signing" class="btn-spinner" />
             <span v-else>{{ t('auth.docs.signDocumentsBtn') }}</span>
           </button>
         </div>
       </template>
     </div>
+
+    <!-- Document preview modal -->
+    <CModal :open="viewingDoc !== null" @close="closeModal">
+      <h3 class="doc-modal__title">
+        {{ viewingDoc ? viewingDoc.title : '' }}
+      </h3>
+      <div class="doc-modal__body">
+        <div v-if="viewLoading" class="doc-modal__center">
+          <span class="btn-spinner" />
+        </div>
+        <p v-else-if="viewError" class="auth-error">{{ viewError }}</p>
+        <!-- Trusted content: HTML authored in our own repo, never user input. -->
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div v-else class="doc-modal__content" v-html="viewContent" />
+      </div>
+      <div class="doc-modal__actions">
+        <button type="button" class="btn btn-primary" @click="closeModal">
+          {{ t('common.close') }}
+        </button>
+      </div>
+    </CModal>
   </div>
 </template>
 
@@ -241,11 +342,8 @@ async function handleComplete(): Promise<void> {
 .doc-checkbox.checked {
   background: var(--primary); border-color: var(--primary);
 }
-
-.doc-spinner {
-  width: 12px; height: 12px;
-  border: 2px solid var(--border); border-top-color: var(--primary);
-  border-radius: 50%; animation: spin 0.6s linear infinite;
+.doc-checkbox.locked {
+  opacity: 0.8;
 }
 
 .doc-info { flex: 1; }
@@ -258,7 +356,10 @@ async function handleComplete(): Promise<void> {
 }
 
 .doc-link {
+  display: inline-flex; align-items: center; gap: 6px;
   color: var(--text-tertiary); margin-top: 2px;
+  background: none; border: none; padding: 2px 4px; cursor: pointer;
+  font-family: inherit; font-size: 12px;
   transition: color 0.2s;
 }
 .doc-link:hover { color: var(--primary); }
@@ -286,4 +387,36 @@ async function handleComplete(): Promise<void> {
   display: inline-block;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Document preview modal --- */
+.doc-modal__title {
+  font-size: 18px; font-weight: 700; color: var(--text);
+  margin: 0 0 12px; padding-right: 24px;  /* room for close button */
+}
+.doc-modal__body {
+  min-height: 120px; max-height: 60vh; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 16px; background: var(--bg-subtle, var(--bg));
+  margin-bottom: 16px;
+}
+.doc-modal__center {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 120px;
+}
+.doc-modal__content {
+  font-size: 14px; color: var(--text); line-height: 1.6;
+}
+.doc-modal__content :deep(h1) { font-size: 20px; margin: 0 0 12px; }
+.doc-modal__content :deep(h2) { font-size: 16px; margin: 16px 0 8px; }
+.doc-modal__content :deep(p) { margin: 0 0 12px; }
+.doc-modal__content :deep(ul),
+.doc-modal__content :deep(ol) { margin: 0 0 12px; padding-left: 20px; }
+.doc-modal__content :deep(li) { margin-bottom: 4px; }
+
+.doc-modal__actions {
+  display: flex; justify-content: flex-end;
+}
+.doc-modal__actions .btn-primary {
+  width: auto; min-width: 120px;
+}
 </style>
