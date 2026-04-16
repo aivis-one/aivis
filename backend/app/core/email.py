@@ -99,10 +99,12 @@ async def send_smtp(
     kwargs: dict = {
         "hostname": hostname,
         "port": port,
+        "start_tls": use_tls,
     }
 
     if use_tls:
-        kwargs["start_tls"] = True
+        # Explicit STARTTLS with certificate validation.
+        pass
 
     if username:
         kwargs["username"] = username

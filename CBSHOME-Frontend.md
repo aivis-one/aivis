@@ -1,7 +1,7 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.2
-**Дата:** 15 апреля 2026
+**Версия:** 2.3
+**Дата:** 16 апреля 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -525,7 +525,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ---
 
-## PHASE F2: UI-компоненты + Layout
+## PHASE F2: UI-компоненты + Layout ✅
 
 ### ✅ F2.1: UI-компоненты (дизайн-система)
 
@@ -730,107 +730,139 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ---
 
-## PHASE F3: Staff
+## PHASE F3: Staff ✅
 
-### F3.1: Дашборд + статистика
+### ✅ F3.1: Дашборд + статистика
 
 **Цель:** Staff видит ключевые метрики.
 
 **Задачи:**
-- [ ] src/views/staff/StaffDashboardView.vue:
-  - GET /api/v1/staff/dashboard/stats → DashboardStatsResponse:
-    - `total_users: number`
-    - `users_by_role: Record<string, number>` — { investor: 5, agent: 2, ... }
-    - `pending_kyc_count: number`
-    - `active_avatar_sessions: number`
-  - CStatCard: total_users, pending_kyc_count, active_avatar_sessions
-  - Чипы/мини-таблица: users_by_role breakdown
+- [x] src/views/staff/StaffDashboardView.vue:
+  - GET /api/v1/staff/dashboard/stats → DashboardStatsResponse
+  - GET /api/v1/staff/agent-applications → `.length` для реального счётчика заявок
+  - CStatCard: total_users, pending_kyc_count, pendingApps (параллельная загрузка через `Promise.all`)
+  - Чипы: users_by_role breakdown
   - Алертовый баннер если pending_kyc_count > 0
-  - Навигационные ссылки: в юзеры → /staff/users, в KYC → /staff/kyc
+  - Quick actions: Process KYC, Check Payments, Avatar Mode
+  - Навигационные ссылки: в юзеры → /staff/users, в KYC → /staff/kyc, в agent apps → /staff/agent-apps
+- [x] src/api/admin.ts — 19 типизированных API-функций для всех staff endpoints
+- [x] src/api/types.ts — 25 интерфейсов staff (Dashboard, Users, KYC, Payments, Withdrawals, Avatar, AgentApps)
 
 **Зависимость от бэкенда:** GET /api/v1/staff/dashboard/stats. Phase 3.3 ✅.
 
-**Критерий готовности:** Staff видит статистику.
+**Критерий готовности:** Staff видит статистику. ✅
 
 ---
 
-### F3.2: Управление юзерами
+### ✅ F3.2: Управление юзерами
 
 **Цель:** Staff видит и управляет пользователями.
 
 **Задачи:**
-- [ ] src/views/staff/StaffUsersView.vue:
+- [x] src/views/staff/StaffUsersView.vue:
   - GET /api/v1/staff/users — список юзеров с пагинацией (?role=, ?page=, ?per_page=)
-  - Каждый item: аватар, имя, email, роль (CBadge), kyc_status, дата регистрации
+  - Role filter chips (All / investor / agent / company / staff)
+  - Каждый item: CAvatar, имя, email, роль (CBadge), kyc_status
   - Platform user скрыт (бэкенд исключает из списка)
-  - Клик → detail sheet или modal:
+  - Клик → detail modal (CModal):
     - GET /api/v1/staff/users/{id} → UserDetailResponse
-    - PATCH /api/v1/staff/users/{id}/block — блокировка (body: `{ reason? }`, permission: `user_block`)
-    - POST /api/v1/staff/users — создать staff (body: `{ user_id }`, только Admin)
-    - PATCH /api/v1/staff/users/{id}/permissions — обновить permissions (только Admin)
+    - PATCH /api/v1/staff/users/{id}/block — блокировка с reason modal (permission: `user_block`)
+    - POST /api/v1/staff/users — создать staff с confirmation modal (только Admin)
+    - Permissions — все 8 ключей (`ALL_PERMISSION_KEYS`) через checkbox toggles (только Admin)
+  - Pagination: prev/next с page counter
+
+**Решения реализации:**
+- F3-01: `ALL_PERMISSION_KEYS: StaffPermissionKey[]` — итерация по полному набору ключей, а не по ответу бэкенда. Гарантирует, что UI покажет все toggles даже если backend не вернул `false`-значения.
+- F3-02: `common.all` i18n ключ для фильтра — никогда не определять язык через сравнение строки перевода.
 
 **Зависимость от бэкенда:** Phase 3.1 ✅.
 
-**Критерий готовности:** Staff видит всех юзеров, может заблокировать и промоутить.
+**Критерий готовности:** Staff видит всех юзеров, может заблокировать и промоутить. ✅
 
 ---
 
-### F3.3: KYC-очередь
+### ✅ F3.3: KYC-очередь
 
 **Цель:** Staff одобряет и отклоняет KYC-заявки.
 
 **Задачи:**
-- [ ] src/views/staff/StaffKYCView.vue:
+- [x] src/views/staff/StaffKYCView.vue:
   - GET /api/v1/staff/kyc/queue → list[KYCQueueItem] (permission: `kyc_approve`)
-  - Каждый item: аватар, имя, дата подачи, статус
+  - Каждый item: CAvatar, имя, email, дата подачи
   - Действия:
-    - POST /api/v1/staff/kyc/{id}/approve — одобрить
-    - POST /api/v1/staff/kyc/{id}/reject — отклонить (body: `{ reason?: string }`, reason записывается в audit log)
-  - Double-submit guard
+    - POST /api/v1/staff/kyc/{id}/approve — одобрить (inline button)
+    - POST /api/v1/staff/kyc/{id}/reject — отклонить (CModal с optional reason)
+  - Double-submit guard: `processingIds: Set<string>`
   - Toast: "KYC одобрен" / "KYC отклонён"
-  - `error` ref + CEmptyState с кнопкой "Повторить" при ошибке загрузки
+  - Hint banner с инструкцией
+  - CEmptyState при пустой очереди
 
 **Зависимость от бэкенда:** Phase 3.3 ✅.
 
-**Критерий готовности:** Staff одобряет и отклоняет KYC-заявки.
+**Критерий готовности:** Staff одобряет и отклоняет KYC-заявки. ✅
 
 ---
 
-### F3.4: Платежи + Аватаринг + Agent Apps
+### ✅ F3.4: Платежи + Аватаринг + Agent Apps
 
 **Цель:** Staff видит историю платежей, может входить под другим пользователем, управляет заявками агентов.
 
 **Задачи:**
-- [ ] src/views/staff/StaffPaymentsView.vue:
-  - GET /api/v1/staff/payments → StaffPaymentListResponse (paginated, filters: ?status=, ?user_id=, permission: `payment_review`)
-  - Каждый item: amount_cents, currency, payment_type, provider, status, user_id, created_at
-  - Staff-действие:
-    - POST /api/v1/staff/payments/{id}/reverse — chargeback (permission: `payment_review`, body: `{ reason? }`)
-  - Withdrawals:
-    - POST /api/v1/staff/withdrawals/{id}/confirm — одобрить (permission: `payment_review`)
-    - POST /api/v1/staff/withdrawals/{id}/reject — отклонить (permission: `payment_review`, body: `{ reason }`)
-- [ ] src/views/staff/StaffMoreView.vue:
-  - Профиль staff (аватар, имя, роль)
-  - Навигация: Agent Apps → /staff/agent-apps, Avatar → /staff/avatar
-- [ ] src/views/staff/StaffAvatarView.vue:
-  - POST /api/v1/staff/avatar/start — начать сессию (body: `{ target_user_id }`, permission: `avatar_mode`)
-    - Ответ: `{ avatar_session_id, session_token }` — новый токен для работы под юзером
-  - POST /api/v1/staff/avatar/end — завершить сессию
-  - GET /api/v1/staff/avatar/active — проверка активной сессии (для восстановления после reload)
-  - **Механика фронта:**
-    1. Сохранить оригинальный staff token в отдельную переменную
-    2. Переключить API client на avatar token
-    3. Показать оверлей-баннер "Avatar mode: {user_name} — Return to your account"
-    4. При "Return" → POST /staff/avatar/end + восстановить оригинальный token
-  - При reload → GET /staff/avatar/active → если есть active session, показать баннер
-- [ ] src/views/staff/StaffAgentAppsView.vue:
-  - GET /api/v1/staff/agent-applications — список заявок (permission: `agent_application_review`)
-  - POST /api/v1/staff/agent-applications/{id}/approve — одобрить → 204
-  - POST /api/v1/staff/agent-applications/{id}/reject — отклонить (body: `{ reason }`) → 204
+- [x] src/views/staff/StaffPaymentsView.vue:
+  - GET /api/v1/staff/payments → StaffPaymentListResponse (paginated, filters: ?status=, ?user_id=)
+  - Status filter chips (All / frozen / confirmed / reversed / failed)
+  - Каждый item: amount (formatted), payment_type, provider, status (CBadge), user_id (truncated), date
+  - POST /api/v1/staff/payments/{id}/reverse — chargeback через CModal с optional reason
+  - Pagination
+- [x] src/views/staff/StaffMoreView.vue:
+  - Профиль staff (CAvatar, имя, email, CBadge "Staff")
+  - Навигация: Agent Apps → /staff/agent-apps (с badge count), Avatar Mode → /staff/avatar
+  - System info: platform version, language
+  - Logout action
+- [x] src/views/staff/StaffAvatarView.vue:
+  - Форма старта: input User ID + кнопка "Start Session"
+  - Список ограничений (5 пунктов из мокапа)
+  - Логика swap токена → через `useAvatar` composable → redirect
+- [x] src/composables/useAvatar.ts — avatar mode composable:
+  - `startAvatarSession(userId)` → save staff token → POST start → persist avatar token → fetchMe → redirect to target dashboard
+  - `endAvatarSession()` → restore staff token → POST end → fetchMe → redirect /staff/dashboard
+  - Zombie guard: если `cbs_staff_token` отсутствует при end → сброс флага без вызова backend
+  - Rollback: при ошибке start — восстанавливает staff token в память И storage
+  - Catch в end: при ошибке — восстанавливает staff token, backend session истечёт по TTL
+- [x] src/composables/avatarState.ts — shared reactive flag:
+  - `STAFF_TOKEN_KEY`, `avatarActive: Ref<boolean>`, `setAvatarActive(value)` — единая точка мутации
+  - Импортируется из `useAvatar.ts` и `stores/auth.ts` без цикла
+- [x] src/App.vue — avatar overlay banner:
+  - Fixed z-index:9999 при `isAvatarActive && isAuthenticated`
+  - Ghost icon + target user name + "Return to Staff" button
+  - Content push: `padding-top: 40px` на authenticated wrapper
+- [x] src/views/staff/StaffAgentAppsView.vue:
+  - GET /api/v1/staff/agent-applications — pending queue
+  - Approve: inline button (✓), double-submit guard
+  - Reject: CModal с required reason
+  - CEmptyState при пустой очереди, hint banner
+- [x] i18n: секция `staff.*` (~60 ключей × 4 локали: en, ru, de, ar) + `common.all`
+
+**Решения реализации:**
+- F3-03: Avatar token swap через `sessionStorage('cbs_staff_token')`. На reload: `restoreSession()` подхватит avatar token из `cbs_token`, баннер увидит маркер в sessionStorage.
+- F3-04: `avatarState.ts` — отдельный модуль для shared reactive flag. Разрывает потенциальный цикл `useAvatar → stores/auth → useAvatar`.
+- F3-05: `stores/auth._clearSession()` вызывает `setAvatarActive(false)` — сбрасывает флаг на logout / 401 / restore fail. Закрывает сценарий "zombie banner после повторного логина".
+- F3-06: `endAvatarSession` zombie guard — если `cbs_staff_token` отсутствует (после 401 + re-login), сбрасывает флаг и редиректит без вызова backend.
+- F3-07: Dashboard загружает agent applications count параллельно со stats (`Promise.all`), а не показывает `active_avatar_sessions` под ложным лейблом.
+- F3-08: `CIconBox.vue` (F2.1 компонент) — создан с 7 вариантами из mockups/css/components.css.
+
+**Дополнительные изменения (F3):**
+- `stores/auth.ts` — import `setAvatarActive` из `avatarState`
+- `public/theme-init.js` + `index.html` — inline script вынесен для CSP compliance
+- `OnboardingKYCView.vue` — polling обёрнут в try/catch (предотвращение unhandledrejection)
+- `.env.example` — `http://localhost:8000` вместо прод URL
+- Удалён дубль `components/ui/CHeader.vue` (используется только `components/layout/CHeader.vue`)
 
 **Зависимость от бэкенда:** Payments (Phase 5.2 ✅, G2 ✅), Avatar (Phase 3.2 ✅), Agent apps (Phase 7.1 ✅), Withdrawals (Phase 6.3 ✅).
 
-**Критерий готовности:** Staff видит все платежи, может аватариться, управлять agent apps и withdrawals.
+**Критерий готовности:** Staff видит все платежи, может аватариться, управлять agent apps и withdrawals. ✅
+
+**Phase F3 завершена.** 7 views + 2 composables + api/admin.ts + api/types.ts + i18n (4 локали) + App.vue (banner) + CIconBox.vue + avatarState.ts. 9 коммитов, code review score: 9.2/10.
 
 ---
 
@@ -1368,3 +1400,59 @@ if (ref) sessionStorage.setItem('cbs_referral_code', ref as string)
 const referral_code = sessionStorage.getItem('cbs_referral_code')
 api.post('/auth/email/register', { email, password, referral_code })
 ```
+
+---
+
+## 8. Tech Debt (Frontend)
+
+Выявлен в ходе code review Phase F3 (score 6.5 → 9/10). Не блокирует MVP, закрывается после F4–F6.
+
+### TD-F01: Инфраструктура
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F01a | `Dockerfile:13` — `npm install` → `npm ci` (детерминированные сборки) | 🟡 | Перед staging |
+| TD-F01b | `nginx.conf:46` — `connect-src 'self' https://api.cbshome.org` захардкожен. Параметризовать через ENV / nginx template при смене `VITE_API_BASE_URL` | 🟡 | Перед staging |
+| TD-F01c | `nginx.conf` — добавить `Strict-Transport-Security`, `gzip_static on` | 🟢 | При production |
+| TD-F01d | `manifest.json` — добавить `id`, `scope`, `lang` (PWA Lighthouse) | 🟢 | При production |
+| TD-F01e | `package.json` — добавить `"engines": { "node": ">=22" }` | 🟢 | При production |
+
+### TD-F02: Тесты
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F02a | Установить `vitest` + `@vue/test-utils` | 🟡 | Отдельный спринт после F5 |
+| TD-F02b | `router/guards.test.ts` — таблица сценариев auth × onboarding × role | 🟡 | С TD-F02a |
+| TD-F02c | `stores/auth.test.ts` — restoreSession, loginViaEmail, 401 → _clearSession | 🟡 | С TD-F02a |
+| TD-F02d | `api/client.test.ts` — 401, 422, 204, timeout (vi.useFakeTimers) | 🟡 | С TD-F02a |
+| TD-F02e | `views/staff/StaffKYCView.test.ts` — approve/reject + double-submit guard | 🟢 | После TD-F02a |
+
+### TD-F03: Рефакторинг
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F03a | `AuthShell.vue` + `assets/auth.css` — извлечь общий layout для 7 auth/onboarding views. ~1500 строк дублированного CSS | 🟡 | После F4, перед F6 |
+| TD-F03b | Inline SVG в auth-views → заменить на `lucide-vue-next` (уже используется в staff views) | 🟢 | С TD-F03a |
+| TD-F03c | `useDisplayName(user)` composable — дублируется в StaffDashboardView, StaffMoreView, App.vue | 🟢 | С TD-F03a |
+| TD-F03d | `UserProfile` typed interface вместо `Record<string, unknown>` + `as` cast повсюду | 🟢 | С TD-F03a |
+| TD-F03e | `CTabBar` — иконки как Vue-компоненты в `tabs.ts`, убрать `iconMap` dictionary | 🟢 | Nice-to-have |
+| TD-F03f | `api/types.ts` — генерация из OpenAPI бэкенда (`openapi-typescript`) | 🟢 | После стабилизации API |
+| TD-F03g | `ALL_PERMISSION_KEYS` в `StaffUsersView` — добавить `satisfies readonly StaffPermissionKey[]` для защиты от type drift при добавлении новых permission | 🟢 | С F4 |
+
+### TD-F04: UX-полировка (avatar mode)
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F04a | UUID-валидация `target_user_id` на клиенте (regex check перед POST) | 🟡 | С F4 |
+| TD-F04b | Avatar-баннер скрыть поверх LoadingView (`&& isReady`) или добавить `isReady` в условие | 🟢 | С F4 |
+| TD-F04c | Дашборд грузит полный `agent-applications` ради `.length` — рассмотреть отдельный count-endpoint или включить в `DashboardStatsResponse` на бэке | 🟢 | После F6 |
+
+### TD-F05: Прочее
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F05a | `OnboardingKYCView` polling — нет лимита попыток / экспоненциального backoff при долгой недоступности бэка | 🟢 | F9 (полировка) |
+| TD-F05b | `api/client.ts:154` — `parseValidationErrors` для не-массива возвращает `String(detail)`, что для объекта даст `"[object Object]"`. Заменить на `JSON.stringify` | 🟢 | С TD-F03a |
+| TD-F05c | `CButton` — при `loading=true` + `variant="outline"` белый спиннер не виден на прозрачном фоне | 🟢 | F9 (полировка) |
+| TD-F05d | `_saveReferralCode` (`useAuth.ts`) — валидировать формат referral code на клиенте (`/^[A-Za-z0-9_-]{4,40}$/`) | 🟢 | С F6 (Agent) |
+| TD-F05e | UI "Logout from all sessions" — бэкенд `POST /auth/logout-all` существует, но не используется | 🟢 | F9 (полировка) |
