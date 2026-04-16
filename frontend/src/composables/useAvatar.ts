@@ -1,8 +1,12 @@
 // =============================================================================
-// CBSHOME Frontend -- useAvatar Composable (Phase F3 fix)
+// CBSHOME Frontend -- useAvatar Composable (Phase F3)
 // =============================================================================
 //
 // Avatar mode state management. Staff operates as another user.
+//
+// State flag lives in composables/avatarState.ts (shared with stores/auth.ts
+// to avoid circular imports). Auth store calls setAvatarActive(false) on
+// _clearSession — prevents zombie flag after 401/logout.
 //
 // Token swap mechanic:
 //   1. startAvatarSession() — save staff token to sessionStorage,
@@ -13,14 +17,10 @@
 //      redirect to /staff/dashboard.
 //
 // Reload resilience:
-//   - cbs_token in storage = avatar token (persisted via _persistToken)
+//   - cbs_token in storage = avatar token (persisted)
 //   - cbs_staff_token in sessionStorage = original staff token backup
 //   - restoreSession() loads avatar token → fetchMe → target user
 //   - App.vue checks isAvatarActive → shows banner
-//
-// Exit:
-//   - Banner "Return to Staff" → endAvatarSession()
-//   - Staff routes inaccessible during avatar (role != staff) — correct
 // =============================================================================
 
 import { computed, ref } from 'vue'
@@ -32,12 +32,9 @@ import { startAvatar, endAvatar } from '@/api/admin'
 import { useToast } from '@/composables/useToast'
 import { getRoleDashboard } from '@/router/guards'
 import { platform } from '@/platform'
+import { avatarActive, setAvatarActive, STAFF_TOKEN_KEY } from '@/composables/avatarState'
 
-const STAFF_TOKEN_KEY = 'cbs_staff_token'
 const TOKEN_KEY = 'cbs_token'
-
-// Shared reactive flag — survives component unmount, reset on end/logout.
-const _avatarActive = ref(!!sessionStorage.getItem(STAFF_TOKEN_KEY))
 
 export function useAvatar() {
   const router = useRouter()
@@ -48,7 +45,7 @@ export function useAvatar() {
   const loading = ref(false)
 
   /** Whether avatar mode is currently active. */
-  const isAvatarActive = computed(() => _avatarActive.value)
+  const isAvatarActive = computed(() => avatarActive.value)
 
   /**
    * Start avatar session.
@@ -74,7 +71,7 @@ export function useAvatar() {
       await authStore.fetchMe()
 
       // 5. Update reactive flag.
-      _avatarActive.value = true
+      setAvatarActive(true)
 
       showToast(t('staff.avatar.started'), 'success')
 
@@ -86,9 +83,8 @@ export function useAvatar() {
       const savedToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
       if (savedToken) {
         setAuthToken(savedToken)
-        sessionStorage.removeItem(STAFF_TOKEN_KEY)
       }
-      _avatarActive.value = false
+      setAvatarActive(false)
       showToast(t('common.error'), 'error')
     } finally {
       loading.value = false
@@ -101,22 +97,30 @@ export function useAvatar() {
    */
   async function endAvatarSession(): Promise<void> {
     loading.value = true
+
+    // Guard: if staff token is gone (zombie flag after 401 → re-login),
+    // just reset flag and redirect — don't call backend.
+    const staffToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
+    if (!staffToken) {
+      setAvatarActive(false)
+      showToast(t('staff.avatar.ended'), 'warning')
+      await router.push('/staff/dashboard').catch(() => { /* may not have staff role */ })
+      loading.value = false
+      return
+    }
+
     try {
       // 1. Restore staff token BEFORE calling end (endpoint requires staff auth).
-      const staffToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
-      if (!staffToken) throw new Error('No staff token in sessionStorage')
       setAuthToken(staffToken)
 
       // 2. Call end endpoint.
       await endAvatar()
 
       // 3. Persist staff token back to main storage.
-      const storage = _getMainStorage()
-      storage.setItem(TOKEN_KEY, staffToken)
+      _getMainStorage().setItem(TOKEN_KEY, staffToken)
 
-      // 4. Cleanup sessionStorage.
-      sessionStorage.removeItem(STAFF_TOKEN_KEY)
-      _avatarActive.value = false
+      // 4. Cleanup.
+      setAvatarActive(false)
 
       // 5. Refresh user — now returns staff user.
       await authStore.fetchMe()
@@ -128,15 +132,11 @@ export function useAvatar() {
     } catch {
       // Even if endAvatar API call fails, restore staff token to prevent desync.
       // The backend avatar session will expire by TTL.
-      const fallbackToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
-      if (fallbackToken) {
-        setAuthToken(fallbackToken)
-        _getMainStorage().setItem(TOKEN_KEY, fallbackToken)
-        sessionStorage.removeItem(STAFF_TOKEN_KEY)
-        _avatarActive.value = false
-        await authStore.fetchMe().catch(() => { /* best effort */ })
-        await router.push('/staff/dashboard')
-      }
+      setAuthToken(staffToken)
+      _getMainStorage().setItem(TOKEN_KEY, staffToken)
+      setAvatarActive(false)
+      await authStore.fetchMe().catch(() => { /* best effort */ })
+      await router.push('/staff/dashboard')
       showToast(t('common.error'), 'error')
     } finally {
       loading.value = false

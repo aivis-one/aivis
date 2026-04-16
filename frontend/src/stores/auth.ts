@@ -13,6 +13,7 @@ import { defineStore } from 'pinia'
 import { api, setAuthToken, setOnUnauthorized } from '@/api/client'
 import type { AuthResponse, UserResponse, UserRole } from '@/api/types'
 import { platform } from '@/platform'
+import { setAvatarActive } from '@/composables/avatarState'
 
 const TOKEN_KEY = 'cbs_token'
 
@@ -61,8 +62,8 @@ export const useAuthStore = defineStore('auth', () => {
   function _clearSession(): void {
     _persistToken(null)
     user.value = null
-    // Clean up avatar mode marker if staff logs out during avatar session.
-    sessionStorage.removeItem('cbs_staff_token')
+    // Reset avatar flag + clean sessionStorage marker.
+    setAvatarActive(false)
   }
 
   // ---------------------------------------------------------------------------
