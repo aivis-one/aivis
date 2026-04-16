@@ -1,74 +1,37 @@
 <script setup lang="ts">
-// KYC verification — submit application, poll status, show result.
+// KYC verification — submit application, show status, continue immediately.
 // POST /api/v1/kyc/submit → KYCSubmitResponse
 // GET  /api/v1/kyc/status → KYCStatusResponse
-// States: not_started → submitted (polling) → approved/rejected.
-// After approved: fetchMe() → guard redirects to /onboarding/docs.
+//
+// KYC does NOT block onboarding. After submit, user clicks "Got it" and
+// proceeds to the next step. Verification runs in background.
 
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import type { KYCStatusResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
+const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
-
-const POLL_INTERVAL = 10_000
 
 const kycStatus = ref<string>('not_started')
 const loading = ref(false)
 const error = ref('')
-let pollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   await fetchStatus()
-})
-
-onUnmounted(() => {
-  stopPolling()
 })
 
 async function fetchStatus(): Promise<void> {
   try {
     const data = await api.get<KYCStatusResponse>('/api/v1/kyc/status')
     kycStatus.value = data.kyc_status
-
-    // Start polling if submitted (waiting for webhook).
-    if (data.kyc_status === 'submitted') {
-      startPolling()
-    } else {
-      stopPolling()
-    }
   } catch {
-    // Silently ignore — status will be retried.
-  }
-}
-
-function startPolling(): void {
-  if (pollTimer) return
-  pollTimer = setInterval(async () => {
-    try {
-      const data = await api.get<KYCStatusResponse>('/api/v1/kyc/status')
-      kycStatus.value = data.kyc_status
-      if (data.kyc_status !== 'submitted') {
-        stopPolling()
-        // Sync auth store so guards can redirect automatically.
-        if (data.kyc_status === 'approved') {
-          await authStore.fetchMe()
-        }
-      }
-    } catch {
-      // Network flap — next poll tick will retry.
-    }
-  }, POLL_INTERVAL)
-}
-
-function stopPolling(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
+    // Silently ignore — show not_started state.
   }
 }
 
@@ -79,7 +42,8 @@ async function handleSubmit(): Promise<void> {
   try {
     await api.post<unknown>('/api/v1/kyc/submit')
     kycStatus.value = 'submitted'
-    startPolling()
+    // Backend advances onboarding_step to kyc_done immediately.
+    await authStore.fetchMe()
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail
@@ -99,7 +63,8 @@ async function handleContinue(): Promise<void> {
   loading.value = true
   await authStore.fetchMe()
   loading.value = false
-  // Guard will redirect to /onboarding/docs.
+  // Navigate to root — guard will redirect to the next onboarding step.
+  await router.push('/')
 }
 
 async function handleRetry(): Promise<void> {
@@ -151,7 +116,7 @@ async function handleRetry(): Promise<void> {
         </div>
       </template>
 
-      <!-- Submitted (pending) -->
+      <!-- Submitted (pending) — non-blocking, user can proceed -->
       <template v-else-if="kycStatus === 'submitted'">
         <div class="kyc-status-card pending">
           <div class="kyc-card-icon">
@@ -173,9 +138,18 @@ async function handleRetry(): Promise<void> {
             {{ t('auth.kyc.pending') }}
           </div>
           <div class="kyc-card-text">{{ t('auth.kyc.pendingText') }}</div>
-          <div class="kyc-polling-indicator">
-            <span class="kyc-dot" />
-          </div>
+        </div>
+
+        <div class="kyc-actions">
+          <button
+            class="btn btn-primary"
+            type="button"
+            :disabled="loading"
+            @click="handleContinue"
+          >
+            <span v-if="loading" class="btn-spinner" />
+            <span v-else>{{ t('auth.kyc.continue') }}</span>
+          </button>
         </div>
       </template>
 
@@ -323,18 +297,6 @@ async function handleRetry(): Promise<void> {
 .kyc-card-icon { display: flex; justify-content: center; margin-bottom: 16px; }
 .kyc-card-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
 .kyc-card-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
-
-.kyc-polling-indicator {
-  display: flex; justify-content: center; margin-top: 16px;
-}
-.kyc-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--warning); animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.5); }
-}
 
 .kyc-actions { width: 100%; max-width: 360px; }
 

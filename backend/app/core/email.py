@@ -191,42 +191,64 @@ async def send_email(
     subject: str,
     body: str,
     attachment: tuple[str, bytes, str] | None = None,
-    force_mailgun: bool = False,
+    force_smtp: bool = False,
 ) -> bool:
     """Send email using app settings config.
 
     Convenience wrapper for non-notification code (certificates, etc.).
-    Handles SMTP/Mailgun routing and high-secured domain logic.
+    Handles Mailgun/SMTP routing and high-secured domain logic.
+
+    Priority: Mailgun HTTP API (primary) → SMTP Postfix (fallback).
 
     Args:
         recipient: Recipient email address.
         subject: Email subject.
         body: Plain text body.
         attachment: Optional (filename, data, content_type).
-        force_mailgun: Skip SMTP, send via Mailgun directly.
+        force_smtp: Skip Mailgun, send via SMTP directly.
 
     Returns:
         True if sent successfully, False otherwise.
     """
     from app.core.config import settings
 
-    # Check high-secured domains.
-    domain = recipient.rsplit("@", 1)[-1].lower()
-    high_secured = settings.high_secured_domain_list
-
-    if force_mailgun or domain in high_secured:
-        return await send_mailgun(
+    # Force SMTP path (for testing or specific use cases).
+    if force_smtp:
+        msg = build_message(
             from_email=settings.smtp_from_email,
             recipient=recipient,
             subject=subject,
             body=body,
-            api_key=settings.mailgun_api_key,
-            domain=settings.mailgun_domain,
-            api_url=settings.mailgun_api_url,
             attachment=attachment,
         )
+        await send_smtp(
+            msg,
+            hostname=settings.smtp_host,
+            port=settings.smtp_port,
+            use_tls=settings.smtp_use_tls,
+            username=settings.smtp_user,
+            password=settings.smtp_password,
+        )
+        return True
 
-    # SMTP primary, Mailgun fallback.
+    # Mailgun primary, SMTP fallback.
+    result = await send_mailgun(
+        from_email=settings.smtp_from_email,
+        recipient=recipient,
+        subject=subject,
+        body=body,
+        api_key=settings.mailgun_api_key,
+        domain=settings.mailgun_domain,
+        api_url=settings.mailgun_api_url,
+        attachment=attachment,
+    )
+    if result:
+        return True
+
+    logger.warning(
+        "mailgun_failed_fallback_smtp",
+        recipient=mask_email(recipient),
+    )
     try:
         msg = build_message(
             from_email=settings.smtp_from_email,
@@ -245,18 +267,9 @@ async def send_email(
         )
         return True
     except Exception as smtp_exc:
-        logger.warning(
-            "smtp_failed_fallback_mailgun",
+        logger.error(
+            "both_email_channels_failed",
             recipient=mask_email(recipient),
-            error=str(smtp_exc)[:200],
+            smtp_error=str(smtp_exc)[:200],
         )
-        return await send_mailgun(
-            from_email=settings.smtp_from_email,
-            recipient=recipient,
-            subject=subject,
-            body=body,
-            api_key=settings.mailgun_api_key,
-            domain=settings.mailgun_domain,
-            api_url=settings.mailgun_api_url,
-            attachment=attachment,
-        )
+        return False

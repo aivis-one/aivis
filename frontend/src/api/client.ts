@@ -86,6 +86,34 @@ function parseValidationErrors(detail: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
+// Extract human-readable error message from response body
+// ---------------------------------------------------------------------------
+
+function extractErrorMessage(status: number, data: unknown): string {
+  if (!data || typeof data !== 'object') {
+    return `HTTP ${status}`
+  }
+
+  const obj = data as Record<string, unknown>
+
+  // FastAPI format: { detail: "..." } or { detail: [...] }
+  if ('detail' in obj) {
+    if (status === 422) {
+      return parseValidationErrors(obj.detail)
+    }
+    return String(obj.detail)
+  }
+
+  // Rate limiter / middleware format: { error: "...", message: "..." }
+  if ('message' in obj && typeof obj.message === 'string') {
+    return obj.message
+  }
+
+  // Fallback: stringify the object.
+  return JSON.stringify(data)
+}
+
+// ---------------------------------------------------------------------------
 // Core request function
 // ---------------------------------------------------------------------------
 
@@ -145,22 +173,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiResponseError(response.status, `HTTP ${response.status}: non-JSON response`)
   }
 
-  // 422 Validation Error -- parse detail array.
-  if (response.status === 422) {
-    const detail =
-      data && typeof data === 'object' && 'detail' in data
-        ? (data as { detail: unknown }).detail
-        : data
-    throw new ApiResponseError(422, parseValidationErrors(detail))
-  }
-
-  // Other error statuses.
+  // Error responses (4xx, 5xx).
   if (!response.ok) {
-    const detail =
-      data && typeof data === 'object' && 'detail' in data
-        ? String((data as { detail: unknown }).detail)
-        : JSON.stringify(data)
-    throw new ApiResponseError(response.status, detail)
+    throw new ApiResponseError(response.status, extractErrorMessage(response.status, data))
   }
 
   return data as T

@@ -227,23 +227,23 @@ class EmailFormatter:
             variables=variables,
         )
 
-        # Determine delivery strategy based on recipient domain.
-        domain = recipient.rsplit("@", 1)[-1].lower()
-        high_secured = settings.high_secured_domain_list
+        # Mailgun primary, SMTP fallback.
+        result = await send_mailgun(
+            from_email=self._from_email,
+            recipient=recipient,
+            subject=subject,
+            body=body,
+            api_key=self._mailgun_api_key,
+            domain=self._mailgun_domain,
+            api_url=self._mailgun_api_url,
+        )
+        if result:
+            return True
 
-        if domain in high_secured:
-            # High-secured domain -> Mailgun only.
-            return await send_mailgun(
-                from_email=self._from_email,
-                recipient=recipient,
-                subject=subject,
-                body=body,
-                api_key=self._mailgun_api_key,
-                domain=self._mailgun_domain,
-                api_url=self._mailgun_api_url,
-            )
-
-        # Normal domain -> SMTP primary, Mailgun fallback.
+        logger.warning(
+            "mailgun_failed_fallback_smtp",
+            recipient=mask_email(recipient),
+        )
         try:
             msg = build_message(
                 from_email=self._from_email,
@@ -261,20 +261,12 @@ class EmailFormatter:
             )
             return True
         except Exception as smtp_exc:
-            logger.warning(
-                "smtp_failed_fallback_mailgun",
+            logger.error(
+                "both_email_channels_failed",
                 recipient=mask_email(recipient),
-                error=str(smtp_exc)[:200],
+                smtp_error=str(smtp_exc)[:200],
             )
-            return await send_mailgun(
-                from_email=self._from_email,
-                recipient=recipient,
-                subject=subject,
-                body=body,
-                api_key=self._mailgun_api_key,
-                domain=self._mailgun_domain,
-                api_url=self._mailgun_api_url,
-            )
+            return False
 
 
 # ---------------------------------------------------------------------------

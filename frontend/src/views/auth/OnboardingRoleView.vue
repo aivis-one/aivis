@@ -1,15 +1,17 @@
 <script setup lang="ts">
 // Role selection — 3 cards (investor, agent, company) from mockup.
 // POST /api/v1/users/me/select-role { role }
-// After success: fetchMe() → guard redirects to /onboarding/kyc.
+// After success: fetchMe() → router.push('/') → guard redirects.
 
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import type { UserResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
+const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
@@ -85,7 +87,8 @@ async function handleSubmit(): Promise<void> {
       role: selectedRole.value,
     })
     await authStore.fetchMe()
-    // Guard will redirect to /onboarding/kyc.
+    // Navigate to root — guard will redirect to the next onboarding step.
+    await router.push('/')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail

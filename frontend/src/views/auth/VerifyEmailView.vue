@@ -2,15 +2,17 @@
 // Email verification — 6 individual digit inputs with auto-focus.
 // POST /api/v1/auth/verify-email { code }
 // POST /api/v1/auth/verify-email/resend → 204
-// After success: fetchMe() → guard redirects to next onboarding step.
+// After success: fetchMe() → router.push('/') → guard redirects.
 
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import type { UserResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
+const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
@@ -84,7 +86,8 @@ async function handleVerify(): Promise<void> {
       code: code.value,
     })
     await authStore.fetchMe()
-    // Guard will redirect to /onboarding/profile.
+    // Navigate to root — guard will redirect to the next onboarding step.
+    await router.push('/')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail

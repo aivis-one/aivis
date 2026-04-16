@@ -1,15 +1,17 @@
 <script setup lang="ts">
 // Profile setup — first name, last name, phone, country, language.
 // PATCH /api/v1/users/me { profile: {...}, language }
-// After success: fetchMe() → guard redirects to /onboarding/role.
+// After success: fetchMe() → router.push('/') → guard redirects.
 
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import type { UserResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
+const router = useRouter()
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
 
@@ -69,7 +71,8 @@ async function handleSubmit(): Promise<void> {
       language: language.value,
     })
     await authStore.fetchMe()
-    // Guard will redirect to /onboarding/role.
+    // Navigate to root — guard will redirect to the next onboarding step.
+    await router.push('/')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail

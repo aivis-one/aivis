@@ -3,9 +3,16 @@
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   submit_kyc()       -- create KYCApplication, sync User.kyc_status
+#   submit_kyc()       -- create KYCApplication, sync User.kyc_status,
+#                         advance onboarding_step immediately (non-blocking)
 #   get_kyc_status()   -- return current status + latest application
 #   process_webhook()  -- update application + User.kyc_status (stub)
+#
+# NON-BLOCKING KYC:
+#   submit_kyc() advances onboarding_step to KYC_DONE immediately.
+#   User proceeds through onboarding while KYC verification runs
+#   in background. Staff can approve/reject later without blocking
+#   the user's ability to use the platform.
 #
 # SYNC RULE:
 #   Every status change on KYCApplication MUST also update User.kyc_status.
@@ -42,8 +49,9 @@ async def submit_kyc(
 ) -> KYCApplication:
     """Submit a new KYC application.
 
-    Creates a KYCApplication with status=submitted and syncs
-    User.kyc_status to "submitted".
+    Creates a KYCApplication with status=submitted, syncs
+    User.kyc_status to "submitted", and advances onboarding_step
+    to KYC_DONE immediately (non-blocking KYC).
 
     Raises:
         ConflictError: If user already has a pending (submitted) application.
@@ -72,6 +80,10 @@ async def submit_kyc(
     # Sync denormalized cache.
     old_status = user.kyc_status
     user.kyc_status = KYCApplicationStatus.SUBMITTED
+
+    # Advance onboarding step immediately — KYC runs in background.
+    if user.onboarding_step == OnboardingStep.ROLE_SELECTED:
+        user.onboarding_step = OnboardingStep.KYC_DONE
 
     await session.flush()
     await session.refresh(application)
@@ -128,12 +140,14 @@ async def process_webhook(
     This is a stub: in production, SumSub signature validation
     will happen in the router before calling this function.
 
+    Note: onboarding_step is NOT changed here because it was already
+    advanced to KYC_DONE during submit (non-blocking KYC).
+
     Raises:
         BadRequestError: If new_status is not approved or rejected.
         NotFoundError: If user or pending application not found.
     """
     # Guard: validate status even though schema already checks.
-    # Protects against internal callers bypassing schema validation.
     if new_status not in _VALID_WEBHOOK_STATUSES:
         raise BadRequestError(
             f"Invalid KYC status: {new_status}. "
@@ -170,11 +184,6 @@ async def process_webhook(
 
     # Sync denormalized cache on User.
     user.kyc_status = new_status
-
-    # Advance onboarding step on approval.
-    if new_status == KYCApplicationStatus.APPROVED:
-        if user.onboarding_step == OnboardingStep.ROLE_SELECTED:
-            user.onboarding_step = OnboardingStep.KYC_DONE
 
     await session.flush()
     await session.refresh(user)

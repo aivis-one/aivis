@@ -2,15 +2,17 @@
 // Document signing — list required docs, sign each, complete onboarding.
 // GET  /api/v1/documents → DocumentResponse[]
 // POST /api/v1/documents/{id}/sign → DocumentSigningResponse
-// After all signed: fetchMe() → guard redirects to role dashboard.
+// After all signed (or 0 docs): fetchMe() → router.push('/') → dashboard.
 
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError } from '@/api/client'
 import type { DocumentResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
+const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
@@ -23,8 +25,9 @@ const error = ref('')
 const signedCount = computed(() =>
   documents.value.filter((d) => d.is_signed).length,
 )
-const allSigned = computed(() =>
-  documents.value.length > 0 && signedCount.value === documents.value.length,
+// Allow completion when all docs signed OR no docs exist (nothing to sign).
+const canComplete = computed(() =>
+  signedCount.value === documents.value.length,
 )
 
 onMounted(async () => {
@@ -74,11 +77,12 @@ async function signDocument(doc: DocumentResponse): Promise<void> {
 }
 
 async function handleComplete(): Promise<void> {
-  if (!allSigned.value) return
+  if (!canComplete.value) return
   completing.value = true
   await authStore.fetchMe()
   completing.value = false
-  // Guard will redirect to role dashboard.
+  // Navigate to root — guard will redirect to role dashboard.
+  await router.push('/')
 }
 </script>
 
@@ -99,7 +103,7 @@ async function handleComplete(): Promise<void> {
 
       <!-- Document list -->
       <template v-else>
-        <div class="doc-list">
+        <div v-if="documents.length > 0" class="doc-list">
           <div
             v-for="doc in documents"
             :key="doc.id"
@@ -148,9 +152,14 @@ async function handleComplete(): Promise<void> {
           </div>
         </div>
 
-        <!-- Counter -->
+        <!-- Counter (only when there are docs) -->
         <div v-if="documents.length > 0" class="doc-counter">
           {{ t('auth.docs.checkedOf', { checked: signedCount, total: documents.length }) }}
+        </div>
+
+        <!-- No docs message -->
+        <div v-if="documents.length === 0" class="no-docs">
+          {{ t('auth.docs.noDocs') }}
         </div>
 
         <div v-if="error" class="auth-error">{{ error }}</div>
@@ -159,7 +168,7 @@ async function handleComplete(): Promise<void> {
           <button
             class="btn btn-primary"
             type="button"
-            :disabled="!allSigned || completing"
+            :disabled="!canComplete || completing"
             @click="handleComplete"
           >
             <span v-if="completing" class="btn-spinner" />
@@ -201,6 +210,11 @@ async function handleComplete(): Promise<void> {
 
 .docs-loading {
   display: flex; justify-content: center; padding: 40px;
+}
+
+.no-docs {
+  font-size: 14px; color: var(--text-secondary);
+  text-align: center; margin-bottom: 24px;
 }
 
 .doc-list {

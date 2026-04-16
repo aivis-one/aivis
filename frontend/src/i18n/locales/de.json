@@ -66,6 +66,7 @@
       "lastName": "Nachname",
       "phone": "Telefon",
       "country": "Land",
+      "language": "Sprache",
       "btn": "Weiter"
     },
     "role": {
@@ -116,6 +117,7 @@
       "signDocumentsBtn": "Dokumente unterschreiben",
       "checkedOf": "{checked} von {total} unterschrieben",
       "required": "Erforderlich",
+      "noDocs": "Keine Dokumente erforderlich. Sie können fortfahren.",
       "complete": "Onboarding abgeschlossen",
       "completeText": "Alles bereit! Weiterleitung zum Dashboard..."
     },
