@@ -49,14 +49,18 @@ async function fetchStatus(): Promise<void> {
 function startPolling(): void {
   if (pollTimer) return
   pollTimer = setInterval(async () => {
-    const data = await api.get<KYCStatusResponse>('/api/v1/kyc/status')
-    kycStatus.value = data.kyc_status
-    if (data.kyc_status !== 'submitted') {
-      stopPolling()
-      // Sync auth store so guards can redirect automatically.
-      if (data.kyc_status === 'approved') {
-        await authStore.fetchMe()
+    try {
+      const data = await api.get<KYCStatusResponse>('/api/v1/kyc/status')
+      kycStatus.value = data.kyc_status
+      if (data.kyc_status !== 'submitted') {
+        stopPolling()
+        // Sync auth store so guards can redirect automatically.
+        if (data.kyc_status === 'approved') {
+          await authStore.fetchMe()
+        }
       }
+    } catch {
+      // Network flap — next poll tick will retry.
     }
   }, POLL_INTERVAL)
 }
