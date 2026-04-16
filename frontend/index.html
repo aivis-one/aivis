@@ -13,22 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <title>CBS HOME</title>
-  <script>
-    // Theme detection: localStorage -> system preference -> light
-    (function () {
-      var t = localStorage.getItem('cbs-theme')
-      if (t === 'dark' || t === 'light') {
-        document.documentElement.setAttribute('data-theme', t)
-      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.setAttribute('data-theme', 'dark')
-      }
-      var l = localStorage.getItem('cbs-lang')
-      if (l) {
-        document.documentElement.lang = l
-        if (l === 'ar') document.documentElement.dir = 'rtl'
-      }
-    })()
-  </script>
+  <script src="/theme-init.js"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>

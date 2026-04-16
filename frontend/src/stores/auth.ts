@@ -61,6 +61,8 @@ export const useAuthStore = defineStore('auth', () => {
   function _clearSession(): void {
     _persistToken(null)
     user.value = null
+    // Clean up avatar mode marker if staff logs out during avatar session.
+    sessionStorage.removeItem('cbs_staff_token')
   }
 
   // ---------------------------------------------------------------------------

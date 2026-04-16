@@ -31,6 +31,7 @@ import { useAuthStore } from '@/stores/auth'
 import { startAvatar, endAvatar } from '@/api/admin'
 import { useToast } from '@/composables/useToast'
 import { getRoleDashboard } from '@/router/guards'
+import { platform } from '@/platform'
 
 const STAFF_TOKEN_KEY = 'cbs_staff_token'
 const TOKEN_KEY = 'cbs_token'
@@ -125,6 +126,17 @@ export function useAvatar() {
       // 6. Redirect to staff dashboard.
       await router.push('/staff/dashboard')
     } catch {
+      // Even if endAvatar API call fails, restore staff token to prevent desync.
+      // The backend avatar session will expire by TTL.
+      const fallbackToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
+      if (fallbackToken) {
+        setAuthToken(fallbackToken)
+        _getMainStorage().setItem(TOKEN_KEY, fallbackToken)
+        sessionStorage.removeItem(STAFF_TOKEN_KEY)
+        _avatarActive.value = false
+        await authStore.fetchMe().catch(() => { /* best effort */ })
+        await router.push('/staff/dashboard')
+      }
       showToast(t('common.error'), 'error')
     } finally {
       loading.value = false
@@ -132,14 +144,12 @@ export function useAvatar() {
   }
 
   /**
-   * Get main token storage (mirrors auth store logic).
+   * Get main token storage — uses platform detection (same as auth store).
    */
   function _getMainStorage(): Storage {
-    // Platform detection: Telegram uses sessionStorage, standalone uses localStorage.
-    // Safe fallback: check where cbs_token currently lives.
-    if (localStorage.getItem(TOKEN_KEY)) return localStorage
-    if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage
-    return localStorage
+    return platform.getStorageDriver() === 'sessionStorage'
+      ? sessionStorage
+      : localStorage
   }
 
   return {
