@@ -127,11 +127,13 @@ async def send_mailgun(
     body: str,
     api_key: str,
     domain: str,
+    api_url: str = "https://api.mailgun.net",
     attachment: tuple[str, bytes, str] | None = None,
 ) -> bool:
     """Send email via Mailgun HTTP API.
 
     Supports optional file attachment via multipart form upload.
+    Use api_url="https://api.eu.mailgun.net" for EU-region domains.
 
     Returns True on success, False on failure.
     """
@@ -141,7 +143,7 @@ async def send_mailgun(
         logger.error("mailgun_not_configured")
         return False
 
-    url = f"https://api.mailgun.net/v3/{domain}/messages"
+    url = f"{api_url}/v3/{domain}/messages"
 
     data = {
         "from": from_email,
@@ -220,6 +222,7 @@ async def send_email(
             body=body,
             api_key=settings.mailgun_api_key,
             domain=settings.mailgun_domain,
+            api_url=settings.mailgun_api_url,
             attachment=attachment,
         )
 
@@ -254,5 +257,6 @@ async def send_email(
             body=body,
             api_key=settings.mailgun_api_key,
             domain=settings.mailgun_domain,
+            api_url=settings.mailgun_api_url,
             attachment=attachment,
         )

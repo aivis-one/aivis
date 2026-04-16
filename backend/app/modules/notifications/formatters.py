@@ -176,6 +176,7 @@ class EmailFormatter:
         use_tls: bool,
         mailgun_api_key: str,
         mailgun_domain: str,
+        mailgun_api_url: str = "https://api.mailgun.net",
     ) -> None:
         self._smtp_host = smtp_host
         self._smtp_port = smtp_port
@@ -185,6 +186,7 @@ class EmailFormatter:
         self._use_tls = use_tls
         self._mailgun_api_key = mailgun_api_key
         self._mailgun_domain = mailgun_domain
+        self._mailgun_api_url = mailgun_api_url
 
     async def deliver(
         self,
@@ -238,6 +240,7 @@ class EmailFormatter:
                 body=body,
                 api_key=self._mailgun_api_key,
                 domain=self._mailgun_domain,
+                api_url=self._mailgun_api_url,
             )
 
         # Normal domain -> SMTP primary, Mailgun fallback.
@@ -270,6 +273,7 @@ class EmailFormatter:
                 body=body,
                 api_key=self._mailgun_api_key,
                 domain=self._mailgun_domain,
+                api_url=self._mailgun_api_url,
             )
 
 
@@ -355,6 +359,7 @@ def _init_formatters() -> None:
                 use_tls=settings.smtp_use_tls,
                 mailgun_api_key=settings.mailgun_api_key,
                 mailgun_domain=settings.mailgun_domain,
+                mailgun_api_url=settings.mailgun_api_url,
             )
             logger.info("email_formatter_initialized", smtp_host=smtp_host)
         except Exception:

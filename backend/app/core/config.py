@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = False
     mailgun_api_key: str = "TEST"
     mailgun_domain: str = "mail.cbshome.org"
+    mailgun_api_url: str = "https://api.mailgun.net"
     high_secured_domains: str = ""
 
     # -- Crypto payments --
