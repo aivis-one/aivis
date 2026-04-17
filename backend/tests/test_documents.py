@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Tests (Sprint 2.2, updated by 0024)
+# CBSHOME Backend -- Document Tests (Sprint 2.2, updated by 0024, 0025)
 # =============================================================================
 #
 # Tests cover:
@@ -19,7 +19,7 @@
 # The cleanup fixture also wipes the whole documents + document_signings
 # tables, because seed_documents.py populates them at install time and
 # those seed rows would otherwise clash with active documents the tests
-# try to create (409 conflict on the unique-active-per-type invariant).
+# try to create.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
@@ -42,7 +42,7 @@ EMAIL_PREFIX = "s22_"
 
 async def _cleanup_documents(session: AsyncSession) -> None:
     """Wipe documents + signings. Seed rows from install_cbshome.sh would
-    otherwise collide with the active-per-type uniqueness rule."""
+    otherwise collide with the active-per-(type, language) rule."""
     await session.execute(delete(DocumentSigning))
     await session.execute(delete(Document))
     await session.commit()
@@ -73,13 +73,10 @@ async def _create_active_document(
     staff_token: str,
     doc_type: str = "privacy_policy",
     version: int = 1,
+    language: str = "en",
     required_for_roles: list[str] | None = None,
 ) -> dict:
-    """Helper: create a document and publish it (draft -> active).
-
-    `required_for_roles` defaults to ["investor"] so tests that do not
-    care about role filtering still get a doc visible to investors.
-    """
+    """Helper: create a document and publish it (draft -> active)."""
     if required_for_roles is None:
         required_for_roles = ["investor"]
 
@@ -89,6 +86,7 @@ async def _create_active_document(
         json={
             "type": doc_type,
             "title": f"Test {doc_type} v{version}",
+            "language": language,
             "version": version,
             "required_for_roles": required_for_roles,
         },
@@ -124,6 +122,7 @@ async def test_create_document_staff(
         json={
             "type": "privacy_policy",
             "title": "Privacy Policy v1",
+            "language": "en",
             "version": 1,
             "required_for_roles": ["investor", "agent"],
         },
@@ -134,6 +133,7 @@ async def test_create_document_staff(
 
     assert body["type"] == "privacy_policy"
     assert body["version"] == 1
+    assert body["language"] == "en"
     assert body["status"] == "draft"
     assert body["title"] == "Privacy Policy v1"
     assert body["required_for_roles"] == ["investor", "agent"]
@@ -152,6 +152,7 @@ async def test_create_document_non_staff(client: AsyncClient) -> None:
         json={
             "type": "privacy_policy",
             "title": "Privacy Policy v1",
+            "language": "en",
             "required_for_roles": ["investor"],
         },
         headers=auth_headers(token),
@@ -172,6 +173,7 @@ async def test_update_document_status_flow(
         json={
             "type": "terms_of_service",
             "title": "Terms v1",
+            "language": "en",
             "required_for_roles": ["investor"],
         },
         headers=auth_headers(token),
@@ -218,6 +220,7 @@ async def test_delete_draft_document(
         json={
             "type": "investment_agreement",
             "title": "Agreement v1",
+            "language": "en",
             "required_for_roles": ["investor"],
         },
         headers=auth_headers(token),
@@ -359,6 +362,7 @@ async def test_update_document_title_and_roles(
         json={
             "type": "company_agreement",
             "title": "Old Title",
+            "language": "en",
             "required_for_roles": ["company"],
         },
         headers=auth_headers(token),

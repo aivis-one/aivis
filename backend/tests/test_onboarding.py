@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Onboarding Flow Tests (F2.3, updated by 0024)
+# CBSHOME Backend -- Onboarding Flow Tests (F2.3, updated by 0024, 0025)
 # =============================================================================
 #
 # Tests cover the full onboarding pipeline:
@@ -15,9 +15,7 @@
 #
 # The cleanup fixture also wipes documents + document_signings. Otherwise
 # the rows seeded by install_cbshome.sh would (a) clash with active docs
-# this test tries to create and (b) silently prevent the full-flow test
-# from reaching onboarding_complete (the user would have extra unsigned
-# docs after we sign the three test ones).
+# this test tries to create and (b) skew the onboarding_complete assertion.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
@@ -96,14 +94,10 @@ async def _create_active_doc(
     staff_token: str,
     doc_type: str,
     version: int = 1,
+    language: str = "en",
     required_for_roles: list[str] | None = None,
 ) -> str:
-    """Create + publish a document, return its id.
-
-    Defaults to required_for_roles=["investor"] so the full-flow test
-    (which uses an investor account) sees the docs without needing to
-    pass the list every time.
-    """
+    """Create + publish a document, return its id."""
     if required_for_roles is None:
         required_for_roles = ["investor"]
 
@@ -112,6 +106,7 @@ async def _create_active_doc(
         json={
             "type": doc_type,
             "title": f"Test {doc_type} v{version}",
+            "language": language,
             "version": version,
             "required_for_roles": required_for_roles,
         },
@@ -205,7 +200,7 @@ async def test_full_onboarding_flow(
     )
 
     # Investor requires: privacy_policy, terms_of_service, investment_agreement.
-    # Helper defaults required_for_roles to ["investor"].
+    # Helper defaults language="en" and required_for_roles=["investor"].
     doc_ids = []
     for doc_type in ["privacy_policy", "terms_of_service", "investment_agreement"]:
         doc_id = await _create_active_doc(client, staff_token, doc_type)

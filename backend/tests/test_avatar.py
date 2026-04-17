@@ -364,7 +364,7 @@ async def test_avatar_guard_blocks_in_avatar_mode(
         json={
             "type": "privacy_policy",
             "title": "Test PP",
-            "content_url": "https://docs.example.com/pp",
+            "language": "en",
             "version": 99,
         },
         headers=auth_headers(admin_token),
