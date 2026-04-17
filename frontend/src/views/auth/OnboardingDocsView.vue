@@ -1,18 +1,21 @@
 <script setup lang="ts">
 // Document signing screen.
 // Flow:
-//   1. GET /api/v1/documents -> list for user's role (with is_signed flag).
+//   1. GET /api/v1/documents -> list for user's role, already resolved
+//      to the user's locale (backend picks user_language or falls back
+//      to 'en', and 500s if a required type is missing in both).
 //   2. User ticks a checkbox per unsigned doc (checkbox is locked-checked
 //      for docs already signed earlier). Click on "Read" opens a modal
-//      that fetches /legal/{type}.html and renders it with v-html. No
-//      sanitisation -- the legal folder ships with our own repo.
-//   3. "Sign documents" button is disabled until every unsigned doc is
-//      ticked. Click -> POST /documents/{id}/sign for each unsigned doc,
-//      then fetchMe() (backend advanced onboarding_step on the last
-//      signing), then router.push('/') so the guard routes to the role
-//      dashboard.
-//
-// No per-row sign: a single explicit act of consent at the bottom.
+//      that fetches /legal/{doc.language}/{doc.type}.html -- the exact
+//      localised copy the backend returned -- and renders the body via
+//      v-html. No sanitisation: the legal folder ships with our own
+//      repo. HTML is parsed and the <body> innerHTML is extracted so
+//      the rendered node does not contain <html>, <head> or <meta>.
+//   3. "Sign documents" button is disabled until every unsigned doc
+//      is ticked. Click -> POST /documents/{id}/sign for each unsigned
+//      doc, then fetchMe() (backend advanced onboarding_step on the
+//      last signing), then router.push('/') so the guard routes to the
+//      role dashboard.
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -110,12 +113,17 @@ async function openDocument(doc: DocumentResponse): Promise<void> {
   viewError.value = ''
   viewLoading.value = true
   try {
-    // Static file served by the frontend from public/legal/<type>.html.
-    const resp = await fetch(`/legal/${doc.type}.html`)
+    // Fetch the exact localised HTML the backend selected for this user.
+    const resp = await fetch(`/legal/${doc.language}/${doc.type}.html`)
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`)
     }
-    viewContent.value = await resp.text()
+    const raw = await resp.text()
+    // Parse the full HTML document and pull the body innerHTML so the
+    // mounted node contains just the legal content, not <html>, <head>,
+    // <title>, <meta>, etc.
+    const dom = new DOMParser().parseFromString(raw, 'text/html')
+    viewContent.value = dom.body.innerHTML
   } catch {
     viewError.value = t('common.error')
   } finally {
@@ -268,7 +276,9 @@ async function handleSignAll(): Promise<void> {
           <span class="btn-spinner" />
         </div>
         <p v-else-if="viewError" class="auth-error">{{ viewError }}</p>
-        <!-- Trusted content: HTML authored in our own repo, never user input. -->
+        <!-- Trusted content: HTML authored in our own repo. Body innerHTML
+             was extracted via DOMParser above, so <html>/<head>/<meta>
+             are not in the mounted subtree. -->
         <!-- eslint-disable-next-line vue/no-v-html -->
         <div v-else class="doc-modal__content" v-html="viewContent" />
       </div>

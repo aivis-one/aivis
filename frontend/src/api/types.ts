@@ -89,8 +89,9 @@ export interface DocumentResponse {
   id: string
   type: string
   version: number
+  language: string
   title: string
-  content_url: string
+  required_for_roles: string[]
   status: string
   created_by: string
   created_at: string
