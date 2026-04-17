@@ -703,14 +703,15 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
   - Polling при `approved` автоматически вызывает `authStore.fetchMe()` для auto-redirect
   - `onUnmounted` cleanup polling timer
 - [x] src/views/auth/OnboardingDocsView.vue:
-  - GET /api/v1/documents → список с checkboxes
-  - POST /api/v1/documents/{id}/sign при клике (409 → тихо обновляет)
-  - Ссылка content_url (external link icon) с @click.stop
-  - Счётчик "Signed {checked} of {total}"
-  - Кнопка активна когда все подписаны → `fetchMe()` → guard → dashboard
+  - GET /api/v1/documents → `DocumentResponse[]` (бэк уже резолвит `language` под юзера с fallback на `en`)
+  - Чекбоксы напротив каждого документа + общая кнопка "Sign documents" (не клик-подписывай-сразу)
+  - "Read" button → CModal: `fetch('/legal/${doc.language}/${doc.type}.html')` → `new DOMParser().parseFromString(raw, 'text/html')` → `dom.body.innerHTML` в `v-html`. Атрибуты `<html>`, `<meta name="cbs-*">`, `<title>` и `<!DOCTYPE>` в DOM не попадают
+  - При нажатии на общую кнопку — последовательные POST /api/v1/documents/{id}/sign по всем неподписанным (409 → continue как уже подписанный)
+  - После всех подписей: `authStore.fetchMe()` → `router.push('/')` (guard доведёт до дашборда)
+  - Arabic RTL наследуется из `document.documentElement.dir='rtl'` (см. `i18n/index.ts`) — специальных wrap'ов вокруг `v-html` не требуется, т.к. UI-локаль == локаль документа по контракту с бэком
 - [x] Onboarding guard: реализован в guards.ts (F2.2) — `ONBOARDING_REDIRECTS` map
-- [x] api/types.ts: + `SelectRoleRequest`, `KYCSubmitResponse`, `KYCStatusResponse`, `DocumentResponse`, `DocumentSigningResponse`, `email` в `UserResponse`, fix `KycStatus` ('not_started' вместо 'none')
-- [x] i18n: ~46 onboarding ключей × 4 локали (auth.verify.*, auth.profile.*, auth.role.*, auth.kyc.*, auth.docs.*, error.pageNotFound)
+- [x] api/types.ts: + `SelectRoleRequest`, `KYCSubmitResponse`, `KYCStatusResponse`, `DocumentResponse` (`+language`, `+required_for_roles: string[]`, `-content_url` — см. Sprint 2.2 UPDATE на бэкенде), `DocumentSigningResponse`, `email` в `UserResponse`, fix `KycStatus` ('not_started' вместо 'none')
+- [x] i18n: ~46 onboarding ключей × 4 локали (auth.verify.*, auth.profile.*, auth.role.*, auth.kyc.*, auth.docs.*, `auth.docs.read`, error.pageNotFound)
 
 **Решения реализации:**
 - Email в VerifyEmailView: `authStore.user.email` — добавлено в UserResponse через `@property` на бэкенде (credentials не экспозится)
@@ -879,15 +880,21 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 | BUG-03 | 🔴 | DocsView — при 0 документов кнопка disabled, юзер застревает | `canComplete = signedCount === documents.length` (0 === 0 = true) |
 | BUG-04 | 🟡 | Raw JSON в ошибке (`{"error":"bad_request","message":"..."}`) | `extractErrorMessage()` парсит `detail` (FastAPI) + `message` (middleware) + fallback `JSON.stringify` |
 | BUG-05 | 🟡 | Пропущен i18n ключ `auth.profile.language` | Добавлен в 4 локали |
+| BUG-07 | 🔴 | После `POST /auth/email/register` пользователь оставался на `/register` (дублирующий рендер, тапы на "Verify" не работали) | `RegisterView.vue`: `await router.push({ name: 'verify' })` сразу после `registerViaEmail()`. Явная навигация к `/verify` — экономит раунд через `root.beforeEnter` + `globalGuard` |
+| BUG-08 | 🔴 | `OnboardingDocsView` залипал на "Sign documents" — POST подписывал, но список не обновлялся без ручного рефреша | Полный рерайт вьюхи: чекбоксы + один общий sign-all (последовательные POST с 409-continue) + `fetchMe()` + `router.push('/')`. Тело документа — в CModal через `DOMParser → body.innerHTML`, fetch `/legal/{doc.language}/{doc.type}.html` |
 
 **Изменённые файлы:**
 - `src/api/client.ts` — unified error parsing
+- `src/api/types.ts` — `DocumentResponse`: `+language`, `+required_for_roles`, `-content_url`
 - `src/views/auth/VerifyEmailView.vue` — +`router.push('/')`
 - `src/views/auth/OnboardingProfileView.vue` — +`router.push('/')`
 - `src/views/auth/OnboardingRoleView.vue` — +`router.push('/')`
 - `src/views/auth/OnboardingKYCView.vue` — non-blocking KYC, убран polling, кнопка "Понятно"
-- `src/views/auth/OnboardingDocsView.vue` — `canComplete` при 0 docs + `router.push('/')`
-- `src/i18n/locales/{en,ru,de,ar}.json` — +`language`, +`noDocs`
+- `src/views/auth/RegisterView.vue` — `+router.push({ name: 'verify' })` после регистрации (BUG-07)
+- `src/views/auth/OnboardingDocsView.vue` — полный рерайт: чекбоксы + sign-all + CModal с DOMParser (BUG-08)
+- `src/i18n/locales/{en,ru,de,ar}.json` — +`language`, +`noDocs`, +`auth.docs.read` ("Read" / "Читать" / "Lesen" / "قراءة")
+- `public/legal/{en,ru,de,ar}/*.html` — 20 HTML-болванок (5 типов × 4 локали) с `cbs-document-type` / `cbs-language` / `cbs-required-for-roles` meta-тегами; содержимое — Lorem ipsum placeholder (TD-F06a, юрист заменит перед production)
+- `public/legal/*.html` — 5 старых flat-файлов **удалены** (структура теперь per-locale)
 
 ---
 
@@ -1496,3 +1503,12 @@ Vue Router guards срабатывают только на **навигацию*
 | TD-F05c | `CButton` — при `loading=true` + `variant="outline"` белый спиннер не виден на прозрачном фоне | 🟢 | F9 (полировка) |
 | TD-F05d | `_saveReferralCode` (`useAuth.ts`) — валидировать формат referral code на клиенте (`/^[A-Za-z0-9_-]{4,40}$/`) | 🟢 | С F6 (Agent) |
 | TD-F05e | UI "Logout from all sessions" — бэкенд `POST /auth/logout-all` существует, но не используется | 🟢 | F9 (полировка) |
+
+### TD-F06: Legal + Verify
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F06a | `public/legal/{en,ru,de,ar}/*.html` × 20 файлов содержат Lorem ipsum. Placeholder до юриста. Pre-launch blocker, не код-блокер. CI-гейта на Lorem намеренно нет — проверяется в release checklist перед production | 🟡 | Pre-launch |
+| TD-F06b | `VerifyEmailView` resend cooldown не персистентный: таймер 60s живёт в компонентном `ref`, `F5` / navigate away / обратно — сброс. Надо: сохранять `cooldownUntil` timestamp в `sessionStorage`, при mount сверяться с `Date.now()`. Дополнительно — очищать cooldown когда бэк возвращает `code_expired` (смысл ждать пропадает) | 🟡 | С F4 |
+| TD-F06c | `OnboardingDocsView` не использует `doc.required_for_roles` в UI. Поле есть в типе, но никакой chip `"For agents only"` рядом с названием не показывается. Решение: не показывать — юзер и так видит только свои документы. Оставлено как nice-to-have только если продукт потребует | 🟢 | Nice-to-have |
+| TD-F06d | Нет frontend-тестов вообще (backend: 33 файла `test_*`). Установка `vitest` + тесты на guards / stores / api.client — TD-F02a/b/c/d уже заведены | 🟡 | Отдельный спринт после F5 |

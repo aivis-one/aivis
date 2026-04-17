@@ -618,6 +618,78 @@ backend/tests/
 
 ---
 
+### ✅ Sprint 2.2 UPDATE: Legal Body как static-файлы + Role mapping в JSONB + Localisation
+
+**Цель:** убрать внешний `content_url` (ранее S3/URL на стороне), убрать жёсткий enum типов и жёсткий dict `ROLE_REQUIRED_DOCUMENT_TYPES`, добавить локализацию документов (en/ru/de/ar).
+
+**Миграции:**
+- [x] `0024_documents_role_metadata.py`:
+  - `DROP COLUMN content_url`
+  - `ADD COLUMN required_for_roles JSONB NOT NULL DEFAULT '[]'::jsonb`
+  - `ADD COLUMN content_hash String(64)` (sha256 от тела HTML)
+  - Снят `CHECK ck_documents_type` — `type` теперь свободный String, допустимые значения определяются файлами в `frontend/public/legal/`
+- [x] `0025_documents_language.py`:
+  - `ADD COLUMN language String(10) NOT NULL DEFAULT 'en'`
+  - Пересоздан UNIQUE: было `(type, version)` → стало `(type, version, language)`
+  - `CREATE INDEX ix_documents_type_language_status` для запроса онбординга
+
+**Изменения:**
+- [x] `app/modules/documents/models.py` — убран `DocumentType` enum; добавлены `language`, `required_for_roles` (JSONB), `content_hash`. `type: String(50)` без CHECK
+- [x] `app/modules/documents/constants.py` — **удалена** `ROLE_REQUIRED_DOCUMENT_TYPES`. Роли задаются в `Document.required_for_roles` (JSONB array)
+- [x] `app/modules/documents/schemas.py` — `DocumentResponse/CreateRequest` получили `language`, `required_for_roles`; убран `content_url` + `https://` валидатор
+- [x] `app/modules/documents/service.py`:
+  - `list_documents_for_role(role, user_language, user_id, session)` — JSONB containment `Document.required_for_roles.contains([role])`, фильтр по `language IN (user_language, 'en')`, per-type выбор: user_language если есть, иначе `en`. Если required type не существует ни в user_language, ни в `en` — `RuntimeError` (HTTP 500) + `structlog.error("legal_documents_misconfigured")`. Админ видит поломку сразу, онбординг блокируется
+  - `_maybe_complete_onboarding(user_id, session)` — группирует по `Document.type` (не по document_id): юзер, подписавший `privacy_policy` на одной локали, считается выполнившим требование по типу даже если сменил язык в середине онбординга
+- [x] `app/modules/documents/router.py` — `GET /documents` передаёт `user.language` в сервис
+- [x] `scripts/seed_documents.py` — новый скрипт:
+  - Читает `/legal/<lang>/<type>.html` (bind-mounted read-only из `frontend/public/legal`)
+  - stdlib `html.parser` извлекает meta-теги: `cbs-document-type` (required), `cbs-language` (required, must match folder name), `cbs-required-for-roles` (CSV), `<title>`
+  - sha256 тела файла → сравнение с существующей active-записью (type, language)
+  - Идемпотент: нет записи → v1 active; хэш совпал → metadata-only update title/roles; хэш разный → archive current + v+1 active; файл удалён → archive (никогда не delete, чтобы не сломать FK на DocumentSigning)
+- [x] `frontend/public/legal/<lang>/<type>.html` × 5 типов × 4 локали = **20 HTML-болванок** с Lorem ipsum (TD-066)
+- [x] `docker-compose.yml` — `./frontend/public/legal:/legal:ro` bind mount в сервис `app`
+- [x] `scripts/install_cbshome.sh` — `seed_documents.py` вызывается в `install`, `update`, `case_seed` ветках после `seed_platform.py` / `seed_admin.py`
+- [x] `tests/test_documents.py` — все прямые POST `/staff/documents` + хелпер `_create_active_document` шлют `"language": "en"`; `_cleanup_documents` фикстура перед/после каждого теста (TD-067)
+- [x] `tests/test_onboarding.py` — хелпер `_create_active_doc` принимает `language` (default `en`)
+- [x] `tests/test_avatar.py::test_avatar_guard_blocks_in_avatar_mode` — `content_url` → `language: "en"` в POST body
+
+**Решения реализации:**
+- **Static HTML вместо content_url/S3.** Тело документа — не сущность БД, а часть артефакта фронта. Релиз legal-текста = PR с правкой HTML + `cbshome update`. Seed сам бампнёт версию по хэшу. Никаких внешних URL, XSS/LFI guard больше не нужен
+- **type как free-form String.** Легальная команда может добавить новый тип документа (напр. `risk_disclosure`) без миграции — положить файл, прописать meta. Заодно отпадает дубль `enum DocumentType` ↔ `CHECK ck_documents_type`
+- **required_for_roles JSONB.** SQLAlchemy `.contains([role])` транслируется в PostgreSQL `@>` (JSONB containment). Покрыто индексом `(type, language, status)` по первым двум колонкам — выборка `status='active' AND required_for_roles @> [role]` быстрая, containment filter добивается в памяти на небольшом результате
+- **en — гарантированный baseline.** Если для типа нет локализованной копии, должна быть `en`. Отсутствие обеих = платформа сломана → 500. Молчаливый skip недопустим (юзер прошёл бы онбординг без подписания документа)
+- **_maybe_complete_onboarding группирует по type, не по id.** Иначе смена локали в UI после подписания на старой локали сбивает расчёт
+- **Seed читает через stdlib html.parser.** BeautifulSoup/lxml не нужны. Мелкая утилитка, без внешних deps
+- **sha256 тела как content_hash.** Любое изменение HTML (включая whitespace) бампит версию. Для legal это приемлемо: каждая правка — новая редакция
+- **Никогда не DELETE Document.** Archive-only, чтобы сохранить FK-integrity с `document_signings` (юзер подписал v1, v2 активна, v1 архивна — запись подписи v1 остаётся валидной)
+
+**Endpoints (без изменений):**
+```
+GET  /api/v1/documents          -> list[DocumentResponse]   (now: language-resolved)
+GET  /api/v1/documents/{id}     -> DocumentResponse
+POST /api/v1/documents/{id}/sign -> DocumentSigningResponse
+POST   /api/v1/staff/documents       -> DocumentResponse  (body: +language, -content_url, +required_for_roles)
+PATCH  /api/v1/staff/documents/{id}  -> DocumentResponse
+DELETE /api/v1/staff/documents/{id}  -> 204
+```
+
+**Модели (актуальные):**
+```python
+Document:
+    id: UUID, type: String(50), version: Integer, language: String(10)
+    title: String(500)
+    required_for_roles: JSONB  -- ['investor', 'agent', ...]
+    content_hash: String(64)    -- sha256, internal
+    status: String(20)  -- CHECK: draft | active | archived
+    created_by: UUID  -- FK users.id
+    -- UNIQUE (type, version, language)
+    -- INDEX (type, language, status)
+```
+
+**Критерий готовности:** юзер в любой из 4 локалей видит свои документы и подписывает. Смена user.language между подписаниями не ломает прогресс. 336 тестов зелёные.
+
+---
+
 **Phase 2 завершена.** 9 endpoints (3 KYC + 3 documents user + 3 documents staff), 17 тестов Phase 2 (+46 Phase 0-1 = 63 total), 1 миграция (итого 4).
 
 **Обновлённые core-файлы:**
@@ -664,7 +736,7 @@ REGISTERED → EMAIL_VERIFIED → PROFILE_COMPLETE → ROLE_SELECTED → KYC_DON
 - Каждый step advancement проверяет текущий шаг — пропуск шагов невозможен
 - **BP-15: Auto-advance при 0 элементов.** Каждый шаг онбординга должен обрабатывать случай "нечего обрабатывать". Если на шаге 0 элементов (0 документов, KYC submit без ожидания) — auto-advance на следующий шаг. Не полагаться на то, что фронт вызовет конкретный endpoint. Правило: если `count == 0` → step++ автоматически
 - `select_role()` — отдельный endpoint (не через PATCH /users/me) с Pydantic валидацией: `_SELECTABLE_ROLES = {"investor", "agent", "company"}`. Staff/platform → 422
-- `_maybe_complete_onboarding()` — проверяет `ROLE_REQUIRED_DOCUMENT_TYPES[role]` и `DocumentSigning`. Только при `step == kyc_done`
+- `_maybe_complete_onboarding()` — выбирает active `Document`, где `required_for_roles @> [user.role]`, группирует по `type`, сравнивает с подписанными. Только при `step == kyc_done`. Группировка по type (не по document_id) — смена локали между подписаниями не сбивает прогресс
 - `email` на UserResponse — `@property` на модели, Pydantic `from_attributes=True` подхватывает. Не колонка в БД, не миграция
 - Profile completion: `_REQUIRED_PROFILE_FIELDS = {"first_name", "last_name", "country"}` — auto-advance при заполнении
 
@@ -3051,11 +3123,18 @@ backend/app/modules/transactions/
 | TD-063 | `tests/conftest.py` | ~~`_send_verification_email()` вызывается в тестах~~ → SMTP timeout (Postfix → example.com) + Mailgun timeout (placeholder key) = ~60с на каждую регистрацию. Фикс: `mock_email` autouse fixture, `monkeypatch` на noop. Продакшен-код не тронут | F1 | ✅ F1 fix |
 | TD-064 | `tests/test_staff_admin.py` | ~~`test_kyc_reject` не отправляет JSON body~~ → G5 добавил `KYCRejectRequest` (обязательный body), тест не обновлён. 422 вместо 204. Фикс: `json={}` | F1 | ✅ F1 fix |
 | TD-065 | `scripts/install_cbshome.sh` | ~~`docker compose build --no-cache` в `case_update()`~~ → каждый `cbshome update` пересобирал все слои с нуля (~105с + 17GB мусора). Фикс: убран `--no-cache` из update (оставлен только при первичной установке) | F1 | ✅ F1 fix |
+| TD-066 | `frontend/public/legal/**/*.html` | 20 legal-болванок с Lorem ipsum вместо реального текста. Pre-launch blocker (не код-блокер): юрист должен заменить тексты до production. CI-гейта намеренно нет — проверяется в release-checklist | Pre-launch | ⬜ |
+| TD-067 | `backend/tests/test_documents.py`, `test_onboarding.py` | `_cleanup_documents` fixture делает `DELETE FROM document_signings; DELETE FROM documents` перед/после каждого теста. Чтобы тесты могли создавать `(type, version, language)` без конфликта с seed-записями. На общей БД (TEST = PROD) снесёт реальные seed и подписания — но тесты против production и не запускаются. Правильный фикс — изолированная test-DB (TD-068) | Backlog | ⬜ |
+| TD-068 | `docker-compose.yml`, `backend/tests/conftest.py` | Нет изолированной тестовой БД: тесты гоняются по тому же `postgres` сервису что и приложение. Нужен `test-postgres` service + `TEST_DATABASE_URL`. Снимет TD-067 и вернёт тестам нормальные fixtures-scoped cleanups | Before Scale | ⬜ |
+| TD-069 | `backend/tests/test_dashboard.py::test_certificate_email` | Исходный мок был на `aiosmtplib.send` — `core/email.py` реально ходит Mailgun primary, SMTP только как fallback. Тест случайно проходил только потому что Mailgun placeholder-key давал ошибку и падало в SMTP, который мок ловил. Фикс: мок на `send_certificate_email` router-level. Настоящий долг — явный sender-contract (protocol), mock на который не ломается от ротации primary/fallback | Backlog | ⬜ |
+| TD-070 | `backend/app/modules/documents/service.py` | `list_documents_for_role` делает два запроса (candidates + distinct types) чтобы отличить "юзер в миноритарной локали" от "платформа сломана". Можно сократить до одного запроса с `GROUP BY type` + агрегатом по наличию en/user_lang, но читаемость пострадает. Приемлемо при <20 типов | Backlog | ⬜ |
 
 ---
 
 **Конец документа**
 
 ---
+
+*Version 3.4 | 2026-04-17 | Sprint 2.2 UPDATE: `content_url` dropped, Document body moved to static HTML in `frontend/public/legal/<lang>/<type>.html`, `required_for_roles` JSONB replaces `ROLE_REQUIRED_DOCUMENT_TYPES` dict, localisation (en/ru/de/ar) via `Document.language` + `UNIQUE (type, version, language)`, seed_documents.py syncs hash-based. 336 tests, all green.*
 
 *Version 3.3 | 2026-04-17 | Email: Mailgun primary + SMTP fallback (inverted), EU endpoint support, start_tls fix. KYC non-blocking onboarding. install_cbshome.sh: UFW Docker SMTP, /dev/tty reads, docker stdin fix, test-email command. 336 tests, all green*

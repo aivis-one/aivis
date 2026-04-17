@@ -14,6 +14,7 @@ import { api, setAuthToken, setOnUnauthorized } from '@/api/client'
 import type { AuthResponse, UserResponse, UserRole } from '@/api/types'
 import { platform } from '@/platform'
 import { setAvatarActive } from '@/composables/avatarState'
+import { setLocale } from '@/i18n'
 
 const TOKEN_KEY = 'cbs_token'
 
@@ -57,6 +58,9 @@ export const useAuthStore = defineStore('auth', () => {
   function _setSession(response: AuthResponse): void {
     _persistToken(response.session_token)
     user.value = response.user
+    // Backend is the source of truth for user.language; sync the UI.
+    // Fire-and-forget: locale JSON loads lazily, no need to await.
+    void setLocale(response.user.language)
   }
 
   function _clearSession(): void {
@@ -129,7 +133,10 @@ export const useAuthStore = defineStore('auth', () => {
     // Set token first so API client can send it.
     _persistToken(savedToken)
     try {
-      user.value = await api.get<UserResponse>('/api/v1/users/me')
+      const me = await api.get<UserResponse>('/api/v1/users/me')
+      user.value = me
+      // Persisted session restored -- align UI with stored language.
+      void setLocale(me.language)
       return true
     } catch {
       _clearSession()

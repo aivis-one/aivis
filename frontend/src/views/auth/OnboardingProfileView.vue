@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import type { UserResponse } from '@/api/types'
+import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
 const router = useRouter()
@@ -31,12 +32,13 @@ const countries = [
   { value: 'OTHER', label: 'Other' },
 ]
 
-const languages = [
-  { value: 'en', label: 'English' },
-  { value: 'ru', label: 'Русский' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'ar', label: 'العربية' },
-]
+// Derived from SUPPORTED_LOCALES so adding a new language requires
+// only one change (the config file + its JSON) and the picker picks
+// it up automatically.
+const languages = SUPPORTED_LOCALES.map((l) => ({
+  value: l.code,
+  label: l.label,
+}))
 
 // Pre-fill from existing profile if available (e.g. Telegram user).
 onMounted(() => {
