@@ -269,5 +269,27 @@
       "confirmed": "Withdrawal confirmed",
       "rejected": "Withdrawal rejected"
     }
+  },
+  "inv": {
+    "unit": "unit",
+    "available": "available",
+    "market": {
+      "title": "Marketplace",
+      "subtitle": "Available Investment Products",
+      "filter": {
+        "all": "All companies",
+        "company": "Company",
+        "title": "Filter by company",
+        "search": "Search companies...",
+        "clear": "Clear filter",
+        "empty": "No companies found"
+      },
+      "empty": {
+        "title": "No products available",
+        "desc": "Check back later for new investment opportunities",
+        "filteredTitle": "No products for this company",
+        "filteredDesc": "Try another filter or clear it"
+      }
+    }
   }
 }

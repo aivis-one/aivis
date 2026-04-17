@@ -269,5 +269,27 @@
       "confirmed": "Auszahlung bestätigt",
       "rejected": "Auszahlung abgelehnt"
     }
+  },
+  "inv": {
+    "unit": "Anteil",
+    "available": "verfügbar",
+    "market": {
+      "title": "Marktplatz",
+      "subtitle": "Verfügbare Investitionsprodukte",
+      "filter": {
+        "all": "Alle Unternehmen",
+        "company": "Unternehmen",
+        "title": "Nach Unternehmen filtern",
+        "search": "Unternehmen suchen...",
+        "clear": "Filter zurücksetzen",
+        "empty": "Keine Unternehmen gefunden"
+      },
+      "empty": {
+        "title": "Noch keine Produkte",
+        "desc": "Schauen Sie später für neue Investitionsmöglichkeiten vorbei",
+        "filteredTitle": "Keine Produkte für dieses Unternehmen",
+        "filteredDesc": "Versuchen Sie einen anderen Filter oder setzen Sie ihn zurück"
+      }
+    }
   }
 }
