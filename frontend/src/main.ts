@@ -26,4 +26,12 @@ async function bootstrap(): Promise<void> {
   app.mount('#app')
 }
 
-void bootstrap()
+// Fail-visibly instead of a silent white screen if bootstrap rejects
+// (e.g. locale chunk missing or network error on cold start).
+bootstrap().catch((err) => {
+  console.error('Bootstrap failed:', err)
+  const root = document.getElementById('app')
+  if (root) {
+    root.textContent = 'Failed to start app. Please reload the page.'
+  }
+})
