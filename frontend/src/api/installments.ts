@@ -1,0 +1,77 @@
+// =============================================================================
+// CBSHOME Frontend -- Installment Plans API (Phase F4.2)
+// =============================================================================
+//
+// Typed wrappers for installment-plan endpoints.
+// Source of truth: backend/app/modules/installments/router.py (Sprint 6.2).
+//
+// Plan creation is nested under the product resource; queries live
+// under the top-level /installments namespace. That split mirrors
+// the backend's two routers and keeps the URL shape predictable.
+//
+// listMyPlans / getPlanDetail are unused by F4.2 itself but land
+// here now so F4.4 (Portfolio) can consume them without a second
+// round-trip to the API layer.
+// =============================================================================
+
+import { api } from '@/api/client'
+import type {
+  CreateInstallmentPlanRequest,
+  InstallmentPlanDetailResponse,
+  InstallmentPlanListResponse,
+  InstallmentPlanResponse,
+} from '@/api/types'
+
+/**
+ * POST /api/v1/products/{product_id}/installment
+ *
+ * Creates a new installment plan by snapshotting the selected
+ * ProductInstallment template. The first tranche is NOT paid
+ * inline -- the installments worker picks it up on its next tick.
+ *
+ * 4xx conditions the caller must be ready to handle:
+ *   - 400 "KYC verification required ..."            -- investor not KYC-approved
+ *   - 400 "Installment template does not belong ..." -- template/product mismatch
+ *   - 400 "Insufficient balance ..."                 -- can't afford first tranche
+ *   - 400 Product/Company not active
+ *   - 403                                             -- wrong role
+ *   - 404                                             -- product or template missing
+ */
+export function createInstallmentPlan(
+  productId: string,
+  body: CreateInstallmentPlanRequest,
+): Promise<InstallmentPlanResponse> {
+  return api.post<InstallmentPlanResponse>(
+    `/api/v1/products/${productId}/installment`,
+    body,
+  )
+}
+
+/**
+ * GET /api/v1/installments/me -- paginated list of the authenticated
+ * buyer's installment plans, newest first. Used by F4.4 Portfolio.
+ */
+export function listMyPlans(params?: {
+  page?: number
+  per_page?: number
+}): Promise<InstallmentPlanListResponse> {
+  const q = new URLSearchParams()
+  if (params?.page) q.set('page', String(params.page))
+  if (params?.per_page) q.set('per_page', String(params.per_page))
+  const qs = q.toString()
+  return api.get<InstallmentPlanListResponse>(
+    `/api/v1/installments/me${qs ? '?' + qs : ''}`,
+  )
+}
+
+/**
+ * GET /api/v1/installments/{plan_id} -- plan detail with expanded
+ * tranche list. Ownership-enforced on the backend; non-owners get 404.
+ */
+export function getPlanDetail(
+  planId: string,
+): Promise<InstallmentPlanDetailResponse> {
+  return api.get<InstallmentPlanDetailResponse>(
+    `/api/v1/installments/${planId}`,
+  )
+}

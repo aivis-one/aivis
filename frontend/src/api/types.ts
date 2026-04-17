@@ -446,3 +446,155 @@ export interface PublicCompanyListResponse {
   page: number
   per_page: number
 }
+
+// ===========================================================================
+// Phase F4.2 -- Purchase + Installment + Dashboard summary
+//
+// Matches:
+//   backend/app/modules/purchases/schemas.py       (Sprint 6.1)
+//   backend/app/modules/installments/schemas.py    (Sprint 6.2)
+//   backend/app/modules/dashboard/schemas.py       (Sprint 9.2)
+//
+// Status/legal-basis unions keep a `| string` escape hatch so an
+// unknown backend enum value cannot narrow the response type into
+// a runtime type error -- same pattern used for staff payments /
+// withdrawals above.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Purchase (Sprint 6.1)
+// ---------------------------------------------------------------------------
+
+export type PurchaseLegalBasis =
+  | 'sale'
+  | 'gift'
+  | 'installment_tranche'
+
+export type PurchaseStatusType = 'active' | 'reversed'
+
+/**
+ * POST /api/v1/products/{id}/purchase -- request body.
+ *
+ * Empty body is valid (organic purchase). Pass referral_link_id
+ * only when the flow originated from a referral link.
+ */
+export interface CreatePurchaseRequest {
+  referral_link_id?: string | null
+}
+
+/**
+ * Single purchase record. POST /products/{id}/purchase returns a
+ * list: the sale record plus any gift purchases triggered by
+ * purchase_config bonuses.
+ */
+export interface PurchaseResponse {
+  id: string
+  investor_id: string
+  product_id: string
+  company_id: string
+  legal_basis: PurchaseLegalBasis | string
+  units: number
+  paid_cents: number
+  price_per_unit_cents: number
+  status: PurchaseStatusType | string
+  created_at: string
+}
+
+// ---------------------------------------------------------------------------
+// Installment plans (Sprint 6.2)
+// ---------------------------------------------------------------------------
+
+export type InstallmentPlanStatusType =
+  | 'active'
+  | 'completed'
+  | 'defaulted'
+
+export type InstallmentTrancheStatusType =
+  | 'pending'
+  | 'paid'
+  | 'overdue'
+  | 'cancelled'
+
+/**
+ * POST /api/v1/products/{id}/installment -- request body.
+ *
+ * product_installment_id picks which ProductInstallment template
+ * to snapshot into the new plan. referral_link_id is optional
+ * (Sprint 7.2 stub).
+ */
+export interface CreateInstallmentPlanRequest {
+  product_installment_id: string
+  referral_link_id?: string | null
+}
+
+export interface InstallmentTrancheResponse {
+  id: string
+  plan_id: string
+  number: number
+  // ISO-8601 date (YYYY-MM-DD).
+  due_date: string
+  amount_cents: number
+  units_unlocked: number
+  status: InstallmentTrancheStatusType | string
+  paid_at: string | null
+  purchase_id: string | null
+}
+
+export interface InstallmentPlanResponse {
+  id: string
+  investor_id: string
+  product_id: string
+  company_id: string
+  product_installment_id: string
+  total_price_cents: number
+  total_units: number
+  price_per_unit_cents: number
+  status: InstallmentPlanStatusType | string
+  created_at: string
+  completed_at: string | null
+  defaulted_at: string | null
+}
+
+export interface InstallmentPlanDetailResponse extends InstallmentPlanResponse {
+  tranches: InstallmentTrancheResponse[]
+}
+
+export interface InstallmentPlanListResponse {
+  items: InstallmentPlanResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard summary (Sprint 9.2)
+//
+// GET /api/v1/dashboard/summary returns ledger balances plus a
+// per-company portfolio breakdown. F4.2 uses active_balance.confirmed
+// as the spendable figure on the purchase/installment confirm screens;
+// frozen amounts are excluded by the backend when executing a sale.
+// ---------------------------------------------------------------------------
+
+export interface BalanceResponse {
+  frozen: number
+  confirmed: number
+}
+
+export interface CompanySummaryResponse {
+  company_id: string
+  company_name: string
+  logo_url: string | null
+  total_units: number
+  invested_cents: number
+  current_value_cents: number
+}
+
+export interface DashboardSummaryResponse {
+  active_balance: BalanceResponse
+  passive_balance: BalanceResponse
+  total_invested_cents: number
+  total_units: number
+  current_value_cents: number
+  companies_count: number
+  companies: CompanySummaryResponse[]
+}
