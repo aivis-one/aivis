@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Service (Sprint 4.1)
+# CBSHOME Backend -- Company Service (Sprint 4.1 + Sprint F4.1)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -7,12 +7,18 @@
 #   update_company()       -- partial update profile/media/distribution_config
 #   update_price()         -- change price + cascade to Products + history
 #   get_company()          -- load CompanyProfile by id
-#   list_companies()       -- paginated list (public: active only; staff: all)
+#   list_companies()       -- paginated list (public: active only; staff: all;
+#                             optional case-insensitive name search)
 #   get_company_detail()   -- profile + roadmap items
 #   create_roadmap_item()  -- add roadmap milestone
 #   update_roadmap_item()  -- partial update roadmap item
 #   delete_roadmap_item()  -- soft-delete (is_deleted=True)
 #   reorder_roadmap()      -- bulk update order column
+#
+# Sprint F4.1 CHANGES:
+#   - list_companies(): +search kwarg (case-insensitive ILIKE on name).
+#     Used by the storefront filter bottom-sheet on the Investor side
+#     to handle 500+ companies without shipping the whole catalogue.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -304,6 +310,7 @@ async def list_companies(
     session: AsyncSession,
     *,
     active_only: bool = True,
+    search: str | None = None,
     page: int = 1,
     per_page: int = 20,
 ) -> tuple[list[CompanyProfile], int]:
@@ -311,20 +318,33 @@ async def list_companies(
 
     active_only=True for public endpoint (only active companies).
     active_only=False for staff endpoint (all companies).
+    search: optional case-insensitive substring match on name.
 
     Returns (companies, total_count).
     """
-    base_filter = CompanyProfile.status == CompanyStatus.ACTIVE if active_only else True
+    # Build filter list and AND-reduce so both filters apply.
+    conditions = []
+    if active_only:
+        conditions.append(CompanyProfile.status == CompanyStatus.ACTIVE)
+    if search is not None:
+        needle = search.strip()
+        if needle:
+            # ILIKE is PostgreSQL's case-insensitive LIKE. Substring match.
+            conditions.append(CompanyProfile.name.ilike(f"%{needle}%"))
+
+    where_clause = True if not conditions else conditions[0]
+    for cond in conditions[1:]:
+        where_clause = where_clause & cond
 
     # Count total.
-    count_stmt = select(func.count()).select_from(CompanyProfile).where(base_filter)
+    count_stmt = select(func.count()).select_from(CompanyProfile).where(where_clause)
     total = (await session.execute(count_stmt)).scalar_one()
 
     # Fetch page.
     offset = (page - 1) * per_page
     stmt = (
         select(CompanyProfile)
-        .where(base_filter)
+        .where(where_clause)
         .order_by(CompanyProfile.created_at.desc())
         .offset(offset)
         .limit(per_page)

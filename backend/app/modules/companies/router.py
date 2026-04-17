@@ -1,9 +1,9 @@
 # =============================================================================
-# CBSHOME Backend -- Company Public Router (Sprint 4.1, fix Phase 4)
+# CBSHOME Backend -- Company Public Router (Sprint 4.1, fix Phase 4 + F4.1)
 # =============================================================================
 #
 # ENDPOINTS:
-#   GET /api/v1/companies       -- list active companies (public)
+#   GET /api/v1/companies       -- list active companies (public, ?search=)
 #   GET /api/v1/companies/{id}  -- company detail with roadmap (public)
 #
 # AUTH:
@@ -12,6 +12,12 @@
 # Phase 4 FIX:
 #   Detail endpoint returns 404 for non-active companies.
 #   Previously returned hidden/archived companies by UUID.
+#
+# Sprint F4.1 CHANGES:
+#   - List endpoint accepts ?search=<str>: case-insensitive ILIKE match
+#     on CompanyProfile.name. Used by the Investor storefront filter
+#     bottom-sheet to handle 500+ companies without shipping the whole
+#     catalogue.
 # =============================================================================
 
 from uuid import UUID
@@ -38,14 +44,20 @@ router = APIRouter(prefix="/api/v1/companies", tags=["companies"])
     response_model=PublicCompanyListResponse,
 )
 async def list_companies_endpoint(
+    search: str | None = Query(default=None, max_length=200),
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_db_reader),
 ) -> PublicCompanyListResponse:
-    """List active companies (public storefront)."""
+    """List active companies (public storefront).
+
+    Optional ?search=<str> does a case-insensitive substring match on
+    company name.
+    """
     companies, total = await list_companies(
         session,
         active_only=True,
+        search=search,
         page=page,
         per_page=per_page,
     )

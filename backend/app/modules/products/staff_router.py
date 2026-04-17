@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1, fix Phase 4)
+# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1 + F4.1)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -18,6 +18,11 @@
 # Phase 4 FIX:
 #   _require_financial_operations extracted to staff/permissions.py
 #   (was duplicated in companies/staff_router.py).
+#
+# Sprint F4.1 CHANGES:
+#   - Create/Update endpoints forward cover_url to the service layer.
+#     cover_url is NOT financial_operations-gated (same tier as name /
+#     description -- purely cosmetic media URL).
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit().
@@ -86,6 +91,7 @@ async def create_product_endpoint(
         staff,
         session,
         description=body.description,
+        cover_url=body.cover_url,
         purchase_config=body.purchase_config,
     )
     return ProductResponse.model_validate(product)
@@ -116,6 +122,7 @@ async def update_product_endpoint(
         session,
         name=updates.get("name"),
         description=updates.get("description", ...),
+        cover_url=updates.get("cover_url", ...),
         purchase_config=updates.get("purchase_config", ...),
     )
     return ProductResponse.model_validate(product)

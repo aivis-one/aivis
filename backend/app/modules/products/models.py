@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Models (Sprint 4.2 + Sprint 6.1, fix Phase 4)
+# CBSHOME Backend -- Product Models (Sprint 4.2 + Sprint 6.1 + Sprint F4.1)
 # =============================================================================
 #
 # Product:
@@ -11,6 +11,10 @@
 #   - Removed gift_units column (replaced by purchase_config.bonuses[])
 #   - Added purchase_config JSONB column (nullable, fallback to Company)
 #   - Added JSONBMixin for safe purchase_config mutation
+#
+# Sprint F4.1 CHANGES:
+#   - Added cover_url (nullable String(2000)): storefront hero image.
+#     When null, clients fall back to Company logo/cover.
 #
 # PURCHASE_CONFIG JSONB (nullable):
 #   {
@@ -77,6 +81,14 @@ class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     price_per_unit_cents: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
+    )
+
+    # -- Storefront hero image (Sprint F4.1) --
+    # Nullable: when unset, storefront falls back to CompanyProfile.logo_url
+    # / cover_url, and finally to a placeholder icon on the client.
+    cover_url: Mapped[str | None] = mapped_column(
+        String(2000),
+        nullable=True,
     )
 
     # -- Purchase configuration (Sprint 6.1) --

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Schemas (Sprint 4.2 + Sprint 6.1)
+# CBSHOME Backend -- Product Schemas (Sprint 4.2 + Sprint 6.1 + Sprint F4.1)
 # =============================================================================
 #
 # Sprint 6.1 CHANGES:
@@ -8,6 +8,14 @@
 #   - Added purchase_config to CreateProductRequest, UpdateProductRequest,
 #     ProductResponse
 #   - PublicProductResponse does NOT expose purchase_config (business-sensitive)
+#
+# Sprint F4.1 CHANGES:
+#   - Added cover_url to CreateProductRequest, UpdateProductRequest,
+#     ProductResponse, PublicProductResponse.
+#   - Added denormalised company fields to PublicProductResponse:
+#       company_name, company_logo_url, company_cover_url.
+#     Populated by the public router via a batch CompanyProfile lookup so
+#     the storefront can render cards without a second round-trip.
 # =============================================================================
 
 from datetime import datetime
@@ -30,6 +38,7 @@ class CreateProductRequest(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
     units: int = Field(gt=0)
+    cover_url: str | None = Field(default=None, max_length=2000)
     purchase_config: dict | None = None  # type: ignore[type-arg]
 
 
@@ -44,6 +53,7 @@ class UpdateProductRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
+    cover_url: str | None = Field(default=None, max_length=2000)
     purchase_config: dict | None = None  # type: ignore[type-arg]
 
 
@@ -100,6 +110,7 @@ class ProductResponse(BaseModel):
     name: str
     description: str | None
     units: int
+    cover_url: str | None
     purchase_config: dict | None  # type: ignore[type-arg]
     price_per_unit_cents: int
     status: str
@@ -123,7 +134,12 @@ class ProductListResponse(BaseModel):
 
 
 class PublicProductResponse(BaseModel):
-    """Product info for public storefront."""
+    """Product info for public storefront.
+
+    company_name / company_logo_url / company_cover_url are denormalised
+    from CompanyProfile by the public router (Sprint F4.1) so the
+    storefront can render a card without a second API call.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -133,7 +149,13 @@ class PublicProductResponse(BaseModel):
     description: str | None
     units: int
     price_per_unit_cents: int
+    cover_url: str | None = None
     sold_units: int = 0  # Populated by router from Purchase count (TD-031)
+
+    # Denormalised company fields (Sprint F4.1). Populated by router.
+    company_name: str = ""
+    company_logo_url: str | None = None
+    company_cover_url: str | None = None
 
 
 class PublicProductDetailResponse(PublicProductResponse):

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Tests (Sprint 4.1)
+# CBSHOME Backend -- Company Tests (Sprint 4.1 + Sprint F4.1)
 # =============================================================================
 #
 # Tests cover:
@@ -13,6 +13,7 @@
 #   8:  Reorder roadmap items -> 200
 #   9:  Delete (soft) roadmap item -> 204
 #   10: Public list shows only active companies
+#   11: Public list ?search= does case-insensitive substring match
 #
 # Email prefix: "s41_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -57,12 +58,20 @@ async def _admin_token(
     return token
 
 
-def _company_payload(suffix: str = "acme") -> dict:
-    """Helper: build a valid CreateCompanyRequest body."""
+def _company_payload(
+    suffix: str = "acme",
+    *,
+    name: str | None = None,
+) -> dict:
+    """Helper: build a valid CreateCompanyRequest body.
+
+    Optional `name` override for search tests where a specific brand
+    string matters.
+    """
     return {
         "email": f"{EMAIL_PREFIX}{suffix}@example.com",
         "password": "companypass123",
-        "name": f"Test Company {suffix}",
+        "name": name or f"Test Company {suffix}",
         "description": "A test company",
         "price_per_unit_cents": 10000,
         "distribution_config": VALID_DIST_CONFIG,
@@ -73,15 +82,29 @@ async def _create_company(
     client: AsyncClient,
     admin_token: str,
     suffix: str = "acme",
+    *,
+    name: str | None = None,
 ) -> dict:
     """Helper: create a company and return response body."""
     resp = await client.post(
         "/api/v1/staff/companies",
-        json=_company_payload(suffix),
+        json=_company_payload(suffix, name=name),
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Create failed: {resp.text}"
     return resp.json()
+
+
+async def _activate(
+    client: AsyncClient, admin_token: str, company_id: str
+) -> None:
+    """Helper: transition company to active so it shows on public list."""
+    resp = await client.patch(
+        f"/api/v1/staff/companies/{company_id}",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
 
 
 # ---------------------------------------------------------------------------
@@ -420,3 +443,54 @@ async def test_public_list_active_only(
     ids = [c["id"] for c in body["items"]]
     assert c1["id"] in ids
     assert c2["id"] not in ids
+
+
+# ---------------------------------------------------------------------------
+# Test 11: Public list ?search= case-insensitive substring match (Sprint F4.1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_public_list_search_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """?search= does case-insensitive substring match on company name.
+
+    Creates 3 active companies with distinct names, then verifies:
+      - partial match in the middle of a name is found
+      - search is case-insensitive
+      - a non-matching needle returns an empty page
+    """
+    token = await _admin_token(client, db_session)
+
+    ipi = await _create_company(client, token, suffix="sr1", name="IPI AG Holdings")
+    immo = await _create_company(client, token, suffix="sr2", name="Immo-Pro-Invest")
+    cbs = await _create_company(client, token, suffix="sr3", name="CBS Home Franchise")
+
+    for c in (ipi, immo, cbs):
+        await _activate(client, token, c["id"])
+
+    # Substring match in the middle.
+    resp = await client.get("/api/v1/companies", params={"search": "Pro"})
+    assert resp.status_code == 200
+    ids = [c["id"] for c in resp.json()["items"]]
+    assert immo["id"] in ids
+    assert ipi["id"] not in ids
+    assert cbs["id"] not in ids
+
+    # Case-insensitive: lowercase needle matches title case name.
+    resp2 = await client.get("/api/v1/companies", params={"search": "cbs"})
+    assert resp2.status_code == 200
+    ids2 = [c["id"] for c in resp2.json()["items"]]
+    assert cbs["id"] in ids2
+    assert ipi["id"] not in ids2
+    assert immo["id"] not in ids2
+
+    # No match -> empty list, total = 0.
+    resp3 = await client.get(
+        "/api/v1/companies", params={"search": "nonexistent-xyz"}
+    )
+    assert resp3.status_code == 200
+    body3 = resp3.json()
+    assert body3["total"] == 0
+    assert body3["items"] == []

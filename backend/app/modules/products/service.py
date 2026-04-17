@@ -1,10 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Product Service (Sprint 4.2 + Sprint 6.1)
+# CBSHOME Backend -- Product Service (Sprint 4.2 + Sprint 6.1 + Sprint F4.1)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   create_product()        -- create Product, copy price from Company
-#   update_product()        -- partial update (name, description, purchase_config)
+#   update_product()        -- partial update (name, description,
+#                              cover_url, purchase_config)
 #   update_product_status() -- state machine transition
 #   get_product()           -- load Product by id
 #   list_products()         -- paginated list (public: active only)
@@ -18,6 +19,10 @@
 #   - create_product(): gift_units -> purchase_config
 #   - update_product(): gift_units -> purchase_config (set_jsonb)
 #   - validate_purchase_config() called on save
+#
+# Sprint F4.1 CHANGES:
+#   - create_product(): +cover_url kwarg (scalar, stored as-is).
+#   - update_product(): +cover_url sentinel kwarg (Ellipsis semantics).
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -69,6 +74,7 @@ async def create_product(
     session: AsyncSession,
     *,
     description: str | None = None,
+    cover_url: str | None = None,
     purchase_config: dict | None = None,  # type: ignore[type-arg]
 ) -> Product:
     """Create a new product for a company.
@@ -91,6 +97,7 @@ async def create_product(
         name=name,
         description=description,
         units=units,
+        cover_url=cover_url,
         purchase_config=purchase_config,
         price_per_unit_cents=company.price_per_unit_cents,
         status=ProductStatus.HIDDEN,
@@ -131,9 +138,13 @@ async def update_product(
     *,
     name: str | None = None,
     description=...,
+    cover_url=...,
     purchase_config=...,
 ) -> Product:
     """Partial update of product fields.
+
+    Uses Ellipsis (...) as the "not provided" sentinel to distinguish
+    between "keep current value" and "set to null" for nullable fields.
 
     Raises:
         NotFoundError: If product not found.
@@ -150,6 +161,10 @@ async def update_product(
     if description is not ...:
         product.description = description
         changed_fields.append("description")
+
+    if cover_url is not ...:
+        product.cover_url = cover_url
+        changed_fields.append("cover_url")
 
     if purchase_config is not ...:
         if purchase_config is not None:

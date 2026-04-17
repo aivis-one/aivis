@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Tests (Sprint 4.2 + Sprint 6.1)
+# CBSHOME Backend -- Product Tests (Sprint 4.2 + Sprint 6.1 + Sprint F4.1)
 # =============================================================================
 #
 # Tests cover:
@@ -15,6 +15,10 @@
 #   10: Price cascade soft-deletes installments
 #   11: Public list shows only active products
 #   12: Public detail includes installments and sold_units
+#   13: Product cover_url round-trip (create + update + staff response)
+#   14: Public list denormalises company_name / company_logo_url /
+#       company_cover_url + product cover_url
+#   15: Public detail denormalises company fields
 #
 # Email prefix: "s42_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -58,22 +62,45 @@ async def _admin_token(
 
 
 async def _create_company(
-    client: AsyncClient, admin_token: str, suffix: str = "co"
+    client: AsyncClient,
+    admin_token: str,
+    suffix: str = "co",
+    *,
+    logo_url: str | None = None,
+    cover_url: str | None = None,
 ) -> dict:
     """Helper: create a company and return response."""
+    body: dict = {
+        "email": f"{EMAIL_PREFIX}{suffix}@example.com",
+        "password": "companypass123",
+        "name": f"Test Company {suffix}",
+        "price_per_unit_cents": 10000,
+        "distribution_config": VALID_DIST_CONFIG,
+    }
+    if logo_url is not None:
+        body["logo_url"] = logo_url
+    if cover_url is not None:
+        body["cover_url"] = cover_url
+
     resp = await client.post(
         "/api/v1/staff/companies",
-        json={
-            "email": f"{EMAIL_PREFIX}{suffix}@example.com",
-            "password": "companypass123",
-            "name": f"Test Company {suffix}",
-            "price_per_unit_cents": 10000,
-            "distribution_config": VALID_DIST_CONFIG,
-        },
+        json=body,
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Create company failed: {resp.text}"
     return resp.json()
+
+
+async def _activate_company(
+    client: AsyncClient, admin_token: str, company_id: str
+) -> None:
+    """Helper: set company status to active."""
+    resp = await client.patch(
+        f"/api/v1/staff/companies/{company_id}",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
 
 
 async def _create_product(
@@ -82,16 +109,22 @@ async def _create_product(
     company_id: str,
     suffix: str = "pkg",
     units: int = 100,
+    *,
+    cover_url: str | None = None,
 ) -> dict:
     """Helper: create a product and return response."""
+    body: dict = {
+        "company_id": company_id,
+        "name": f"Package {suffix}",
+        "description": f"Test package {suffix}",
+        "units": units,
+    }
+    if cover_url is not None:
+        body["cover_url"] = cover_url
+
     resp = await client.post(
         "/api/v1/staff/products",
-        json={
-            "company_id": company_id,
-            "name": f"Package {suffix}",
-            "description": f"Test package {suffix}",
-            "units": units,
-        },
+        json=body,
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Create product failed: {resp.text}"
@@ -530,3 +563,138 @@ async def test_public_detail_with_installments(
     assert body["sold_units"] == 0
     assert len(body["installments"]) == 1
     assert body["installments"][0]["name"] == "Visible Plan"
+
+
+# ---------------------------------------------------------------------------
+# Test 13: Product cover_url round-trip (Sprint F4.1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_product_cover_url_round_trip(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """cover_url is persisted on create, editable via PATCH, cleared via null."""
+    token = await _admin_token(client, db_session)
+    company = await _create_company(client, token, suffix="cov")
+
+    # Create with cover_url.
+    created = await _create_product(
+        client,
+        token,
+        company["id"],
+        suffix="cv",
+        cover_url="https://cdn.example.com/products/initial.jpg",
+    )
+    assert created["cover_url"] == "https://cdn.example.com/products/initial.jpg"
+
+    # Update cover_url.
+    resp = await client.patch(
+        f"/api/v1/staff/products/{created['id']}",
+        json={"cover_url": "https://cdn.example.com/products/updated.jpg"},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["cover_url"] == "https://cdn.example.com/products/updated.jpg"
+
+    # Clear cover_url with explicit null.
+    resp2 = await client.patch(
+        f"/api/v1/staff/products/{created['id']}",
+        json={"cover_url": None},
+        headers=auth_headers(token),
+    )
+    assert resp2.status_code == 200
+    assert resp2.json()["cover_url"] is None
+
+
+# ---------------------------------------------------------------------------
+# Test 14: Public list denormalises company fields + cover_url (Sprint F4.1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_public_list_denormalises_company(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Public list returns product cover_url + company_name / logo_url / cover_url."""
+    token = await _admin_token(client, db_session)
+    company = await _create_company(
+        client,
+        token,
+        suffix="dn",
+        logo_url="https://cdn.example.com/co/logo.png",
+        cover_url="https://cdn.example.com/co/cover.jpg",
+    )
+    await _activate_company(client, token, company["id"])
+
+    product = await _create_product(
+        client,
+        token,
+        company["id"],
+        suffix="dn1",
+        cover_url="https://cdn.example.com/p/hero.jpg",
+    )
+
+    # Publish product.
+    await client.patch(
+        f"/api/v1/staff/products/{product['id']}/status",
+        json={"status": "active"},
+        headers=auth_headers(token),
+    )
+
+    resp = await client.get(
+        "/api/v1/products",
+        params={"company_id": company["id"]},
+    )
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert len(items) == 1
+    item = items[0]
+
+    assert item["cover_url"] == "https://cdn.example.com/p/hero.jpg"
+    assert item["company_name"] == company["name"]
+    assert item["company_logo_url"] == "https://cdn.example.com/co/logo.png"
+    assert item["company_cover_url"] == "https://cdn.example.com/co/cover.jpg"
+
+
+# ---------------------------------------------------------------------------
+# Test 15: Public detail denormalises company fields (Sprint F4.1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_public_detail_denormalises_company(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Public detail returns product cover_url + company fields.
+
+    Also verifies the null-cover_url case: product without cover_url
+    should return cover_url=None (client falls back to company logo).
+    """
+    token = await _admin_token(client, db_session)
+    company = await _create_company(
+        client,
+        token,
+        suffix="dd",
+        logo_url="https://cdn.example.com/co2/logo.png",
+    )
+    await _activate_company(client, token, company["id"])
+
+    # No cover_url on product -- client fallback scenario.
+    product = await _create_product(client, token, company["id"], suffix="dd1")
+
+    # Publish.
+    await client.patch(
+        f"/api/v1/staff/products/{product['id']}/status",
+        json={"status": "active"},
+        headers=auth_headers(token),
+    )
+
+    resp = await client.get(f"/api/v1/products/{product['id']}")
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["cover_url"] is None
+    assert body["company_name"] == company["name"]
+    assert body["company_logo_url"] == "https://cdn.example.com/co2/logo.png"
+    assert body["company_cover_url"] is None
