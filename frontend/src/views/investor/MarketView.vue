@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- MarketView (Phase F4.1)
+// CBSHOME Frontend -- MarketView (Phase F4.1 + F4.1.3 polish)
 // =============================================================================
 //
 // Investor storefront. Shared with /agent/market -- both routes render
@@ -11,11 +11,22 @@
 //   - Company filter via CompanyFilterSheet bottom-sheet.
 //   - Loading / error / empty (unfiltered) / empty (filtered) states.
 //   - Click-through to ProductDetailView (role-aware route name).
+//
+// F4.1.3 polish:
+//   - filterLabel now derives the company name primarily from the
+//     denormalised `company_name` on the first product item. This
+//     makes deeplinks / restored-state filters display the real
+//     name immediately rather than falling back to a generic label.
+//     The companies-store cache stays as a secondary fallback for
+//     the edge case where the filter yields zero products.
+//   - hasMore is pulled via storeToRefs instead of an ad-hoc computed
+//     wrapper (Pinia-idiomatic).
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { storeToRefs } from 'pinia'
 import { ChevronDown, X } from 'lucide-vue-next'
 import { CLoader, CEmptyState, CButton } from '@/components/ui'
 import ProductCard from '@/components/shared/ProductCard.vue'
@@ -31,33 +42,40 @@ const router = useRouter()
 const productsStore = useProductsStore()
 const companiesStore = useCompaniesStore()
 
+// Reactive refs the composable needs. storeToRefs keeps them reactive
+// when destructured out of the Pinia store.
+const { hasMore } = storeToRefs(productsStore)
+
 // Sentinel element the IntersectionObserver watches.
 const sentinelRef = ref<HTMLElement | null>(null)
 
 // Bottom-sheet open state.
 const filterOpen = ref(false)
 
-// Chip label: "All companies" when no filter, or the company name
-// looked up in the companies store. Falls back to a generic "Company"
-// label if the filtered company isn't in the store's current page
-// (e.g. user arrived with a pre-set filter).
+// Chip label resolution order (F4.1.3):
+//   1. No filter -> "All companies".
+//   2. Filter set + at least one product loaded -> use the denormalised
+//      company_name from the first item. This is the fast path for
+//      deeplinks / restored state where the filter sheet hasn't been
+//      opened yet (so companiesStore.items is empty).
+//   3. Filter set + zero products (filtered company has no active
+//      products right now) -> try the filter sheet's cached list.
+//   4. Still nothing -> generic "Company" fallback for the split
+//      second before the first fetch resolves.
 const filterLabel = computed<string>(() => {
   if (productsStore.companyIdFilter === null) {
     return t('inv.market.filter.all')
   }
-  const match = companiesStore.items.find(
+  const firstItem = productsStore.items[0]
+  if (firstItem) return firstItem.company_name
+  const cached = companiesStore.items.find(
     (c) => c.id === productsStore.companyIdFilter,
   )
-  return match?.name ?? t('inv.market.filter.company')
+  return cached?.name ?? t('inv.market.filter.company')
 })
 
-// Wire up infinite scroll. hasMore is a computed so the observer
-// honours changes after each page fetch.
-useInfiniteScroll(
-  sentinelRef,
-  computed(() => productsStore.hasMore),
-  productsStore.loadMore,
-)
+// Wire up infinite scroll.
+useInfiniteScroll(sentinelRef, hasMore, productsStore.loadMore)
 
 onMounted(() => {
   // Always refresh page 1 on mount -- avoids stale data from a

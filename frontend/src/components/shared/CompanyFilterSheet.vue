@@ -1,18 +1,27 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyFilterSheet (Phase F4.1)
+// CBSHOME Frontend -- CompanyFilterSheet (Phase F4.1 + F4.1.3 polish)
 // =============================================================================
 //
 // Bottom-sheet dialog for picking a company filter on the storefront.
 //
 // Flow:
-//   - opens: reset search, fetch initial page of companies
+//   - opens: reset search, fetch initial page of companies UNLESS the
+//     store already has unfiltered results from a prior open (saves a
+//     round trip on repeated open/close cycles)
 //   - search input: debounced 250ms -> companiesStore.searchCompanies
 //   - pick an item: emit @select with company id (or null for "All")
 //                   and close the sheet
 //
 // At 500+ companies we never ship the whole catalogue; search on the
 // backend narrows the set via ILIKE (metachar-escaped in F4.1.1).
+//
+// F4.1.3 polish:
+//   - Skip the on-open refetch when the store already holds an
+//     unfiltered page. Trade-off: brand-new companies added during
+//     the session won't appear until the user types something or
+//     reloads the app. Acceptable -- companies are slow-changing
+//     catalogue entries, not notifications.
 // =============================================================================
 
 import { computed, ref, watch } from 'vue'
@@ -39,13 +48,16 @@ const localQuery = ref('')
 // Debounce handle so rapid typing doesn't flood the API.
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-// On open, reset query and fetch a fresh initial page so stale data
-// from a prior opening doesn't flash.
+// On open, reset the local query. Only hit the network if the store
+// doesn't already have a fresh unfiltered list from a prior open.
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) {
-      localQuery.value = ''
+    if (!isOpen) return
+    localQuery.value = ''
+    const hasCachedUnfilteredList =
+      companiesStore.items.length > 0 && companiesStore.search === ''
+    if (!hasCachedUnfilteredList) {
       void companiesStore.searchCompanies('')
     }
   },
