@@ -348,3 +348,101 @@ export interface AgentApplicationResponse {
 export interface RejectAgentApplicationRequest {
   reason: string
 }
+
+// ===========================================================================
+// Phase F4.1 -- Public storefront (products + companies)
+//
+// Matches backend/app/modules/products/schemas.py (Public*) and
+// backend/app/modules/companies/schemas.py (Public*, RoadmapItemResponse).
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Products: installment plan template (public, surfaced on product detail)
+// ---------------------------------------------------------------------------
+
+export interface InstallmentResponse {
+  id: string
+  product_id: string
+  name: string
+  /**
+   * plan_config shape (Sprint 6.2):
+   *   {
+   *     "tranches": [{"amount_cents": int, "units_percent": int}, ...],
+   *     "bonus_units": int,
+   *     "agent_bonus_units": int
+   *   }
+   */
+  plan_config: Record<string, unknown>
+  created_at: string
+}
+
+// ---------------------------------------------------------------------------
+// Products: public storefront (Sprint 4.2 + F4.1 denormalisation)
+// ---------------------------------------------------------------------------
+
+export interface PublicProductResponse {
+  id: string
+  company_id: string
+  name: string
+  description: string | null
+  units: number
+  price_per_unit_cents: number
+  cover_url: string | null
+  sold_units: number
+
+  // Denormalised from CompanyProfile by the public router (F4.1).
+  // Client renders cards without a second round-trip.
+  company_name: string
+  company_logo_url: string | null
+  company_cover_url: string | null
+}
+
+export interface PublicProductDetailResponse extends PublicProductResponse {
+  installments: InstallmentResponse[]
+}
+
+export interface PublicProductListResponse {
+  items: PublicProductResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
+// ---------------------------------------------------------------------------
+// Companies: public storefront (Sprint 4.1)
+// ---------------------------------------------------------------------------
+
+export interface RoadmapItemResponse {
+  id: string
+  title: string
+  description: string | null
+  target_date: string | null
+  status: string
+  order: number
+  created_at: string
+  updated_at: string | null
+}
+
+export interface PublicCompanyResponse {
+  id: string
+  name: string
+  description: string | null
+  logo_url: string | null
+  cover_url: string | null
+  promo_video_url: string | null
+  presentation_url: string | null
+  price_per_unit_cents: number
+  status: string
+  created_at: string
+}
+
+export interface PublicCompanyDetailResponse extends PublicCompanyResponse {
+  roadmap: RoadmapItemResponse[]
+}
+
+export interface PublicCompanyListResponse {
+  items: PublicCompanyResponse[]
+  total: number
+  page: number
+  per_page: number
+}
