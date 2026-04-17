@@ -30,7 +30,6 @@
 #   Service never commits. Caller (get_db_session) manages the transaction.
 # =============================================================================
 
-import json
 from uuid import UUID
 
 import structlog
@@ -54,20 +53,6 @@ from app.modules.documents.schemas import (
 from app.modules.users.models import OnboardingStep, User
 
 logger = structlog.get_logger()
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _role_containment(role: str) -> str:
-    """Build a JSONB operand for `Document.required_for_roles @> [role]`.
-
-    Returns a JSON string of the form '["investor"]' suitable for the
-    PostgreSQL `@>` operator (same pattern as posts/service.py tag filter).
-    """
-    return json.dumps([role])
 
 
 # ---------------------------------------------------------------------------
@@ -245,7 +230,7 @@ async def list_documents_for_role(
         select(Document)
         .where(
             Document.status == DocumentStatus.ACTIVE,
-            Document.required_for_roles.op("@>")(_role_containment(role)),
+            Document.required_for_roles.contains([role]),
         )
         .order_by(Document.type, Document.version.desc())
     )
@@ -393,9 +378,7 @@ async def _maybe_complete_onboarding(
         select(Document.id)
         .where(
             Document.status == DocumentStatus.ACTIVE,
-            Document.required_for_roles.op("@>")(
-                _role_containment(user.role)
-            ),
+            Document.required_for_roles.contains([user.role]),
         )
     )
     doc_result = await session.execute(doc_stmt)
