@@ -10,7 +10,6 @@
 #   - purchase_config.bonuses with `always` and `platform`-funded variants
 #   - hidden company + hidden product (negative visibility tests)
 #   - LIKE-escape test (company name contains "%" -- "Tesla 50%")
-#   - sold-out product (one Purchase row injected)
 #   - long names / empty descriptions / rich descriptions
 #
 # LOGOS:
@@ -24,11 +23,16 @@
 #   assets, out of scope for dev seeds.
 #
 # SOLD_UNITS:
-#   Computed by the storefront router from Purchase rows. The one
-#   sold-out product is seeded with a single Purchase by a
-#   dedicated seed-investor so `sold_units` reaches `units`.
-#   All other products stay at sold_units=0. This is a cosmetic
-#   injection -- no ledger entries, no balances.
+#   Every seeded product ships fully available -- no Purchase rows
+#   injected. The backend currently conflates `Product.units` with
+#   both "package size" and "available inventory", and `sold_units`
+#   is COUNT(Purchase), not SUM. Until TD-F05 fixes the share-pool
+#   model properly (introducing Company.total_shares_issued +
+#   Product.package_size + computed available_packages), any fake
+#   sold-out data here would only misrepresent a broken model.
+#   Treat this script as decorative: it fills empty screens with
+#   realistic names / prices / installments. Purchase-flow and
+#   availability logic are validated elsewhere.
 #
 # IDEMPOTENCY:
 #   Re-running the script without --reset is a no-op for anything
@@ -65,10 +69,6 @@ from app.modules.companies.constants import CompanyStatus
 from app.modules.companies.models import CompanyProfile
 from app.modules.products.constants import ProductStatus
 from app.modules.products.models import Product, ProductInstallment
-from app.modules.purchases.constants import (
-    PurchaseLegalBasis,
-    PurchaseStatus,
-)
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
@@ -99,12 +99,14 @@ def err(msg: str) -> None:
 
 
 SEED_PASSWORD = "seedpass123"  # noqa: S105 -- dev-only fixture password
-SEED_INVESTOR_EMAIL = "seed-investor@cbshome.dev"
 
 
 def _svg_logo(initials: str, bg: str) -> str:
     """Inline SVG data-URI. Square 200x200, initials on a coloured
     background. Viewable inline anywhere, no external fetch.
+
+    base64 rather than utf8 -- avoids the pitfalls of escaping
+    spaces / quotes / < > inside a CSS url() token across browsers.
     """
     # Keep initials to three chars max so they fit the viewBox.
     label = initials[:3].upper()
@@ -116,14 +118,8 @@ def _svg_logo(initials: str, bg: str) -> str:
         f'text-anchor="middle" dominant-baseline="central">'
         f"{label}</text></svg>"
     )
-    # data:image/svg+xml;utf8,<svg...> -- only a handful of chars need
-    # escaping for a URL-safe inline reference.
-    url_safe = (
-        svg.replace("\n", "")
-        .replace("#", "%23")
-        .replace('"', "'")
-    )
-    return f"data:image/svg+xml;utf8,{url_safe}"
+    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
 
 
 # ---------------------------------------------------------------------------
@@ -274,12 +270,14 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
     {
         "company_slug": "ipi-ag",
         "name": "IPI AG Sold Tranche",
-        "description": "Completed pack -- closed to new buyers.",
+        "description": (
+            "Example pack. Until the backend models share issuance "
+            "properly (TD-F05), all products seeded here remain "
+            "fully available."
+        ),
         "units": 500,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
-        # Marker for sold-out injection below.
-        "_force_sold_out": True,
     },
     {
         "company_slug": "ipi-ag",
@@ -567,9 +565,8 @@ async def _reset(session: AsyncSession) -> None:
         )
     )
 
-    # 5. Users we created (company owners + seed investor).
-    all_emails = owner_emails + [SEED_INVESTOR_EMAIL]
-    for email in all_emails:
+    # 5. Users we created (company owners only).
+    for email in owner_emails:
         await session.execute(
             delete(User).where(
                 User.credentials["email"]["email"].as_string() == email
@@ -718,69 +715,6 @@ async def _ensure_installments(
     await session.flush()
 
 
-async def _ensure_seed_investor(
-    session: AsyncSession,
-    *,
-    platform_user_id,  # UUID, used as referred_by (NOT NULL on users)
-) -> User:
-    """Return the dedicated seed investor used for sold-out injection."""
-    stmt = select(User).where(
-        User.credentials["email"]["email"].as_string()
-        == SEED_INVESTOR_EMAIL
-    )
-    existing = (await session.execute(stmt)).scalar_one_or_none()
-    if existing is not None:
-        return existing
-
-    user = User(
-        role=UserRole.INVESTOR,
-        is_active=True,
-        onboarding_step=OnboardingStep.ROLE_SELECTED,
-        kyc_status=KYCStatus.APPROVED,
-        referred_by=platform_user_id,
-        credentials={
-            "email": {
-                "email": SEED_INVESTOR_EMAIL,
-                "password_hash": hash_password(SEED_PASSWORD),
-            },
-        },
-        profile={"first_name": "Seed", "last_name": "Investor"},
-        language="en",
-    )
-    session.add(user)
-    await session.flush()
-    return user
-
-
-async def _ensure_sold_out(
-    session: AsyncSession,
-    *,
-    product: Product,
-    investor: User,
-) -> None:
-    """Inject a single Purchase row so sold_units == units.
-
-    Cosmetic only -- no ledger entries, no balances. See module
-    docstring for the trade-off.
-    """
-    stmt = select(Purchase.id).where(Purchase.product_id == product.id)
-    if (await session.execute(stmt)).first() is not None:
-        return
-
-    purchase = Purchase(
-        investor_id=investor.id,
-        product_id=product.id,
-        company_id=product.company_id,
-        legal_basis=PurchaseLegalBasis.SALE,
-        units=product.units,
-        paid_cents=product.units * product.price_per_unit_cents,
-        price_per_unit_cents=product.price_per_unit_cents,
-        status=PurchaseStatus.ACTIVE,
-    )
-    session.add(purchase)
-    await session.flush()
-
-
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -816,15 +750,12 @@ async def seed_storefront(reset: bool) -> None:
             # 2. Products.
             log("Ensuring products")
             products_by_name: dict[str, Product] = {}
-            sold_out_product: Product | None = None
             for spec in PRODUCTS:
                 company = companies_by_slug[spec["company_slug"]]
                 product = await _ensure_product(
                     session, spec=spec, company=company
                 )
                 products_by_name[spec["name"]] = product
-                if spec.get("_force_sold_out"):
-                    sold_out_product = product
             log(f"  {len(products_by_name)} products ready")
 
             # 3. Installments.
@@ -843,21 +774,6 @@ async def seed_storefront(reset: bool) -> None:
                 )
                 plan_count += len(specs)
             log(f"  {plan_count} installment plans ensured")
-
-            # 4. Sold-out injection (single Purchase on one product).
-            if sold_out_product is not None:
-                investor = await _ensure_seed_investor(
-                    session, platform_user_id=platform_user_id
-                )
-                await _ensure_sold_out(
-                    session,
-                    product=sold_out_product,
-                    investor=investor,
-                )
-                log(
-                    f"  Sold-out marker on '{sold_out_product.name}' "
-                    f"(+1 Purchase row)"
-                )
 
             await session.commit()
             log("Storefront seed complete")
