@@ -290,6 +290,21 @@
         "filteredTitle": "لا توجد منتجات لهذه الشركة",
         "filteredDesc": "جرّب فلتراً آخر أو امسحه"
       }
+    },
+    "product": {
+      "notFound": {
+        "title": "المنتج غير موجود",
+        "desc": "قد يكون هذا المنتج محذوفاً أو لم يعد متاحاً"
+      },
+      "backToMarket": "العودة إلى السوق",
+      "priceLabel": "السعر لكل وحدة",
+      "availability": "التوفر",
+      "description": "عن المنتج",
+      "installments": "خطط التقسيط",
+      "installmentsEmpty": "لا توجد خطط تقسيط متاحة لهذا المنتج",
+      "installmentsBonus": "+{n} وحدة إضافية",
+      "buy": "شراء الآن",
+      "installment": "الدفع بالتقسيط"
     }
   }
 }

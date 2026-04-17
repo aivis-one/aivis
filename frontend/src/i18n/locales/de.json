@@ -290,6 +290,21 @@
         "filteredTitle": "Keine Produkte für dieses Unternehmen",
         "filteredDesc": "Versuchen Sie einen anderen Filter oder setzen Sie ihn zurück"
       }
+    },
+    "product": {
+      "notFound": {
+        "title": "Produkt nicht gefunden",
+        "desc": "Dieses Produkt wurde möglicherweise entfernt oder ist nicht mehr verfügbar"
+      },
+      "backToMarket": "Zurück zum Marktplatz",
+      "priceLabel": "Preis pro Anteil",
+      "availability": "Verfügbarkeit",
+      "description": "Über das Produkt",
+      "installments": "Ratenzahlungspläne",
+      "installmentsEmpty": "Für dieses Produkt sind keine Ratenzahlungspläne verfügbar",
+      "installmentsBonus": "+{n} Bonus-Anteile",
+      "buy": "Jetzt kaufen",
+      "installment": "In Raten zahlen"
     }
   }
 }

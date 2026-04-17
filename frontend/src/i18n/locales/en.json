@@ -290,6 +290,21 @@
         "filteredTitle": "No products for this company",
         "filteredDesc": "Try another filter or clear it"
       }
+    },
+    "product": {
+      "notFound": {
+        "title": "Product not found",
+        "desc": "This product may have been removed or is no longer available"
+      },
+      "backToMarket": "Back to marketplace",
+      "priceLabel": "Price per unit",
+      "availability": "Availability",
+      "description": "About",
+      "installments": "Installment plans",
+      "installmentsEmpty": "No installment plans available for this product",
+      "installmentsBonus": "+{n} bonus units",
+      "buy": "Buy now",
+      "installment": "Pay in installments"
     }
   }
 }
