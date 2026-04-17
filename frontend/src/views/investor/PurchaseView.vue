@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PurchaseView (Phase F4.2)
+// CBSHOME Frontend -- PurchaseView (Phase F4.2 + F4.2.1 polish)
 // =============================================================================
 //
 // Instant-purchase confirmation screen. Shared across
@@ -16,17 +16,20 @@
 //      affordance (disabled button when balance < total) is a UX
 //      courtesy, not a security boundary.
 //   4. Success -> toast + push to the portfolio in the current shell.
-//   5. Error -> map ApiResponseError to a specific toast / side-effect.
-//      KYC rejection nudges to /onboarding/kyc.
+//   5. Error -> narrow to ApiResponseError and branch on status + a
+//      message hint. KYC rejection nudges to /onboarding/kyc.
 //
 // Balance source:
 //   active_balance.confirmed from /dashboard/summary. The backend
 //   reads the same figure via get_active_balance (frozen excluded).
 //
-// Error identification is done by (status, message-regex) duck-typing
-// rather than by importing a specific error class. This keeps the
-// view decoupled from the concrete shape of api/client errors and
-// survives any reshuffle of error-type exports.
+// F4.2.1 polish:
+//   Error identification switched from (duck-typed status, regex)
+//   to `instanceof ApiResponseError` + status/message. Regex on the
+//   backend message string is still the discriminator between the
+//   three 400 sub-cases -- not ideal, but robust enough until the
+//   backend starts emitting error codes in `detail` (tracked as
+//   TD-F10). Until then, at least the type and status are rigid.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -35,6 +38,7 @@ import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
+import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
 import { getDashboardSummary } from '@/api/dashboard'
@@ -49,6 +53,9 @@ import type { PublicProductDetailResponse } from '@/api/types'
 
 // Backend currency is not emitted on Public* yet (TD-F03). Same
 // escape hatch as ProductDetailView -- remove once the field lands.
+// Note: BalanceResponse also lacks a currency field (TD-F03 scope
+// extended) -- spendable balance is assumed USD cents until the
+// multi-currency contract ships.
 type ProductWithOptionalCurrency = PublicProductDetailResponse & {
   currency?: string
 }
@@ -130,41 +137,41 @@ async function confirm(): Promise<void> {
       name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio',
     })
   } catch (err: unknown) {
-    handlePurchaseError(err)
+    await handlePurchaseError(err)
   } finally {
     submitting.value = false
   }
 }
 
-function handlePurchaseError(err: unknown): void {
-  const status = readErrorStatus(err)
-  const message = readErrorMessage(err)
+async function handlePurchaseError(err: unknown): Promise<void> {
+  if (err instanceof ApiResponseError) {
+    const { status, message } = err
 
-  // KYC first -- matches BadRequestError('KYC verification required ...')
-  // from purchases/service.py execute_purchase KYC guard.
-  if (status === 400 && /kyc/i.test(message)) {
-    showToast(t('inv.purchase.error.kycRequired'), 'warning')
-    // Path-based push -- safer than named route if the onboarding
-    // route name drifts. Router guards send the user onward if KYC
-    // has actually already been approved.
-    router.push('/onboarding/kyc')
-    return
+    // KYC first -- matches BadRequestError('KYC verification required ...')
+    // from purchases/service.py KYC guard. TD-F10 will replace the
+    // regex with a backend-emitted error code.
+    if (status === 400 && /kyc/i.test(message)) {
+      showToast(t('inv.purchase.error.kycRequired'), 'warning')
+      router.push('/onboarding/kyc')
+      return
+    }
+
+    // Insufficient balance. Refresh the balance probe before returning
+    // so the next render shows the fresh figure, not the stale one.
+    if (status === 400 && /insufficient/i.test(message)) {
+      showToast(t('inv.purchase.error.insufficientBalance'), 'error')
+      await refreshBalance()
+      return
+    }
+
+    // Product / company status changed under us.
+    if ((status === 400 && /not active/i.test(message)) || status === 404) {
+      showToast(t('inv.purchase.error.productInactive'), 'error')
+      return
+    }
   }
 
-  // Insufficient balance. Refresh our balance probe in case another
-  // tab / session already spent some of it.
-  if (status === 400 && /insufficient/i.test(message)) {
-    showToast(t('inv.purchase.error.insufficientBalance'), 'error')
-    void refreshBalance()
-    return
-  }
-
-  // Product / company status changed under us.
-  if ((status === 400 && /not active/i.test(message)) || status === 404) {
-    showToast(t('inv.purchase.error.productInactive'), 'error')
-    return
-  }
-
+  // Network / timeout / unknown -- fall through to generic.
   showToast(t('inv.purchase.error.generic'), 'error')
 }
 
@@ -175,19 +182,6 @@ async function refreshBalance(): Promise<void> {
   } catch {
     // Balance display is a hint, not a gate. Swallow.
   }
-}
-
-function readErrorStatus(err: unknown): number | null {
-  if (typeof err === 'object' && err !== null && 'status' in err) {
-    const s = (err as { status: unknown }).status
-    if (typeof s === 'number') return s
-  }
-  return null
-}
-
-function readErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message
-  return String(err)
 }
 
 function cancel(): void {
