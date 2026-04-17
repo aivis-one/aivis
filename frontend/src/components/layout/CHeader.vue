@@ -1,6 +1,10 @@
 <script setup lang="ts">
 // App header — sticky top bar from mockups/css/components.css .app-header.
 // Shows logo + title on the left, optional back button, right slot.
+//
+// F4.1.4 polish: left section now truncates long titles with
+// ellipsis instead of bleeding into the right slot. Defensive CSS --
+// any title passed from any view stays inside the header strip.
 
 import { useRouter } from 'vue-router'
 import { ChevronLeft } from 'lucide-vue-next'
@@ -46,12 +50,34 @@ function goBack(): void {
   position: sticky; top: 0; z-index: 100; background: var(--bg);
   padding: 12px 16px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
 }
-.c-header__left { display: flex; align-items: center; gap: 10px; }
-.c-header__title { font-size: 16px; font-weight: 700; color: var(--primary-dark); }
+.c-header__left {
+  display: flex; align-items: center; gap: 10px;
+  /* Claim the remaining width and allow the title child to shrink
+     below its intrinsic content size (needed for ellipsis). */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.c-header__title {
+  font-size: 16px; font-weight: 700; color: var(--primary-dark);
+  /* Truncate long titles with ellipsis rather than push the right
+     slot off the edge. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .c-header__back {
   background: none; border: none; cursor: pointer; color: var(--text);
   padding: 4px; display: flex; align-items: center; margin-left: -4px;
+  flex-shrink: 0;
 }
-.c-header__right { display: flex; align-items: center; gap: 8px; }
+.c-header__right {
+  display: flex; align-items: center; gap: 8px;
+  /* Right slot must never shrink -- if someone adds action buttons
+     they should stay full size; the title absorbs the space loss. */
+  flex-shrink: 0;
+}
 </style>

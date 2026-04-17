@@ -304,7 +304,8 @@
       "installmentsEmpty": "لا توجد خطط تقسيط متاحة لهذا المنتج",
       "installmentsBonus": "+{n} وحدة إضافية",
       "buy": "شراء الآن",
-      "installment": "الدفع بالتقسيط"
+      "installment": "الدفع بالتقسيط",
+      "soldOut": "نفد الكمية"
     }
   }
 }

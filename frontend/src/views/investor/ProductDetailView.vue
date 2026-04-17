@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductDetailView (Phase F4.1)
+// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 polish)
 // =============================================================================
 //
 // Public product detail screen. Shared across /investor/products/:id
@@ -8,9 +8,7 @@
 //
 // Fetch strategy:
 //   - Local state, no Pinia store. A product detail is a one-shot
-//     fetch with no cross-view cache requirements in F4.1. When
-//     PurchaseView / InstallmentView in F4.2 need the same data,
-//     we can promote to a store then.
+//     fetch with no cross-view cache requirements in F4.1.
 //
 // CTAs wire up to F4.2 stubs (PurchaseView, InstallmentView) -- the
 // routes exist and the views render placeholders until F4.2 ships.
@@ -18,9 +16,17 @@
 // Installment plans show only the plan name + bonus-units hint here;
 // full tranche breakdown lives on the installment flow itself.
 //
-// Cover image / money formatting mirrors ProductCard (duplicate
-// inline -- TD-F04 to extract to utils/format.ts once the pattern
-// settles across three or more surfaces).
+// F4.1.4 polish:
+//   - Formatters moved to utils/format.ts (TD-F04 closed).
+//   - Role-aware routing via router/helpers.ts (no more path-match
+//     copypasta).
+//   - CHeader displays the product name as a title, truncated by
+//     the header itself when it doesn't fit.
+//   - Buy CTA label switches to "Sold out" when available <= 0 so
+//     the disabled state is self-explanatory.
+//   - Hero fallback now stacks icon + text vertically instead of
+//     overlapping them in the same flex row.
+//   - Description breaks long unbroken strings (URLs) inside the box.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -30,6 +36,12 @@ import { Building, Calendar, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import { getProduct } from '@/api/products'
+import { isAgentShell } from '@/router/helpers'
+import {
+  formatNumber,
+  formatPrice,
+  resolveCoverImage,
+} from '@/utils/format'
 import type { PublicProductDetailResponse } from '@/api/types'
 
 // Backend currency field is not emitted yet (TD-F03). Keep the
@@ -47,7 +59,7 @@ const loading = ref(true)
 const errored = ref(false)
 
 const productId = computed(() => route.params.id as string)
-const isAgentShell = computed(() => route.path.startsWith('/agent'))
+const agentShell = computed(() => isAgentShell(route))
 
 async function loadProduct(): Promise<void> {
   loading.value = true
@@ -62,24 +74,9 @@ async function loadProduct(): Promise<void> {
   }
 }
 
-function formatCents(cents: number, currency?: string): string {
-  const c = (currency ?? 'USD').toUpperCase()
-  const amount = (cents / 100).toFixed(2)
-  if (c === 'USD') return `$${amount}`
-  return `${amount} ${c}`
-}
-
-function formatUnits(n: number): string {
-  return n.toLocaleString(locale.value)
-}
-
-// Pre-built "url(...)" string with encodeURI so stray characters in
-// staff-provided URLs can't break the inline style.
 const coverImage = computed<string | null>(() => {
   const p = product.value
-  if (!p) return null
-  const raw = p.cover_url ?? p.company_logo_url
-  return raw ? `url("${encodeURI(raw)}")` : null
+  return p ? resolveCoverImage(p) : null
 })
 
 const available = computed<number>(() => {
@@ -95,19 +92,19 @@ function installmentBonus(config: Record<string, unknown>): number {
 }
 
 function backToMarket(): void {
-  const name = isAgentShell.value ? 'agent-market' : 'investor-market'
+  const name = agentShell.value ? 'agent-market' : 'investor-market'
   void router.push({ name })
 }
 
 function buyNow(): void {
   if (!product.value) return
-  const name = isAgentShell.value ? 'agent-purchase' : 'investor-purchase'
+  const name = agentShell.value ? 'agent-purchase' : 'investor-purchase'
   void router.push({ name, params: { id: product.value.id } })
 }
 
 function startInstallment(): void {
   if (!product.value) return
-  const name = isAgentShell.value
+  const name = agentShell.value
     ? 'agent-installment'
     : 'investor-installment'
   void router.push({ name, params: { id: product.value.id } })
@@ -118,7 +115,11 @@ onMounted(loadProduct)
 
 <template>
   <div class="pd">
-    <CHeader :show-back="true" :show-logo="false" />
+    <CHeader
+      :show-back="true"
+      :show-logo="false"
+      :title="product?.name"
+    />
 
     <!-- Loading -->
     <div v-if="loading" class="pd__center">
@@ -159,7 +160,7 @@ onMounted(loadProduct)
               {{ t('inv.product.priceLabel') }}
             </div>
             <div class="pd__stat-value pd__stat-value--price">
-              {{ formatCents(product.price_per_unit_cents, product.currency) }}
+              {{ formatPrice(product.price_per_unit_cents, product.currency) }}
             </div>
             <div class="pd__stat-unit">/ {{ t('inv.unit') }}</div>
           </div>
@@ -167,7 +168,9 @@ onMounted(loadProduct)
             <div class="pd__stat-label">
               {{ t('inv.product.availability') }}
             </div>
-            <div class="pd__stat-value">{{ formatUnits(available) }}</div>
+            <div class="pd__stat-value">
+              {{ formatNumber(available, locale) }}
+            </div>
             <div class="pd__stat-unit">{{ t('inv.available') }}</div>
           </div>
         </div>
@@ -219,7 +222,12 @@ onMounted(loadProduct)
             :disabled="available <= 0"
             @click="buyNow"
           >
-            <ShoppingCart :size="16" /> {{ t('inv.product.buy') }}
+            <ShoppingCart :size="16" />
+            {{
+              available > 0
+                ? t('inv.product.buy')
+                : t('inv.product.soldOut')
+            }}
           </CButton>
           <CButton
             v-if="product.installments.length > 0"
@@ -265,8 +273,10 @@ onMounted(loadProduct)
 }
 .pd__hero--fallback {
   background-color: var(--bg-subtle);
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
 }
 .pd__hero--fallback::after { display: none; }
 
@@ -284,6 +294,7 @@ onMounted(loadProduct)
 .pd__hero--fallback .pd__hero-content {
   text-align: center;
   color: var(--text);
+  padding: 0 20px 20px;
 }
 .pd__hero-company {
   font-size: 12px; font-weight: 600;
@@ -349,6 +360,9 @@ onMounted(loadProduct)
   line-height: 1.5;
   margin: 0;
   white-space: pre-wrap;
+  /* Break long unbroken tokens (URLs, identifiers) instead of
+     letting them push the container wider than the viewport. */
+  overflow-wrap: break-word;
 }
 
 .pd__empty {

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Router (Phase F2.2)
+// CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 polish)
 // =============================================================================
 //
 // Full route map (~40 routes). Shell components as layout wrappers.
@@ -15,6 +15,14 @@
 //   /staff/*                   — StaffShell (staff only)
 //   /404                       — not found
 //   /:pathMatch(.*)*           — catch-all → /404
+//
+// F4.1.4 polish:
+//   Each shell wrapper carries `meta.shell` so that shared views
+//   (MarketView / ProductDetailView / future PurchaseView etc.)
+//   can pick role-aware route names via router/helpers.ts without
+//   pattern-matching on `route.path`. Vue Router merges meta from
+//   parent + child route records, so the tag propagates to all
+//   nested views automatically.
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -105,7 +113,7 @@ export const router = createRouter({
     {
       path: '/investor',
       component: () => import('@/components/layout/InvestorShell.vue'),
-      meta: { roles: ['investor', 'agent'] },
+      meta: { roles: ['investor', 'agent'], shell: 'investor' },
       children: [
         {
           path: '',
@@ -178,7 +186,7 @@ export const router = createRouter({
     {
       path: '/agent',
       component: () => import('@/components/layout/AgentShell.vue'),
-      meta: { roles: ['agent'] },
+      meta: { roles: ['agent'], shell: 'agent' },
       children: [
         {
           path: '',
@@ -260,7 +268,7 @@ export const router = createRouter({
     {
       path: '/company',
       component: () => import('@/components/layout/CompanyShell.vue'),
-      meta: { roles: ['company'] },
+      meta: { roles: ['company'], shell: 'company' },
       children: [
         {
           path: '',
@@ -305,7 +313,7 @@ export const router = createRouter({
     {
       path: '/staff',
       component: () => import('@/components/layout/StaffShell.vue'),
-      meta: { roles: ['staff'] },
+      meta: { roles: ['staff'], shell: 'staff' },
       children: [
         {
           path: '',

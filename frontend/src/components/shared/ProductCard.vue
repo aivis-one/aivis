@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductCard (Phase F4.1 + F4.1.3 polish)
+// CBSHOME Frontend -- ProductCard (Phase F4.1 + F4.1.4 polish)
 // =============================================================================
 //
 // Storefront grid card. Emits @click with the full product so the
@@ -11,28 +11,22 @@
 //   2. product.company_logo_url   -- company logo as a neutral fallback
 //   3. Building icon              -- final fallback (no image)
 //
-// Money formatting is inline (no shared util yet -- TD-F03: extract
-// to utils/format.ts once at least two surfaces need it, and once
-// the backend starts emitting a real `currency` field).
-//
-// F4.1.3 polish:
-//   - formatCents reads `product.currency ?? 'USD'` defensively. The
-//     backend doesn't yet emit this field on PublicProductResponse
-//     (TD-F03); the `??` keeps us correct today and ready later.
-//   - formatUnits uses the active UI locale so the thousands
-//     separator matches the rest of the app.
-//   - cover URL is passed through encodeURI to neutralise any stray
-//     quotes or parens in staff-provided URLs that would otherwise
-//     break the inline background-image style.
+// F4.1.4 polish: formatters moved to utils/format.ts (TD-F04 closed).
 // =============================================================================
 
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Building } from 'lucide-vue-next'
+import {
+  formatNumber,
+  formatPrice,
+  resolveCoverImage,
+} from '@/utils/format'
 import type { PublicProductResponse } from '@/api/types'
 
-// Extend the API type locally -- the backend may or may not emit
-// `currency` yet (TD-F03). The `?: string` keeps us safe either way.
+// Backend doesn't yet emit `currency` on PublicProductResponse
+// (TD-F03). Keep the escape hatch here so the card stays correct
+// once it lands.
 type ProductWithOptionalCurrency = PublicProductResponse & {
   currency?: string
 }
@@ -45,32 +39,7 @@ defineEmits<{ click: [product: PublicProductResponse] }>()
 
 const { t, locale } = useI18n()
 
-// Wrapped in url("...") + URI-encoded here so the template style
-// binding is a single clean string. Encoding neutralises stray
-// characters in staff-provided URLs that would otherwise break
-// the inline background-image declaration.
-const coverImage = computed<string | null>(() => {
-  const raw = props.product.cover_url ?? props.product.company_logo_url
-  return raw ? `url("${encodeURI(raw)}")` : null
-})
-
-// Cents -> "$12.34" / "12.34 EUR" etc. Pads to 2 decimals and prefixes
-// "$" for USD (the common case in this phase), otherwise suffixes the
-// currency code. No Intl.NumberFormat until we know the real set of
-// currencies the platform needs to support (TD-F03).
-function formatCents(cents: number): string {
-  const currency = (props.product.currency ?? 'USD').toUpperCase()
-  const amount = (cents / 100).toFixed(2)
-  if (currency === 'USD') return `$${amount}`
-  return `${amount} ${currency}`
-}
-
-// Thousands separator per the active UI locale -- matches the
-// rendering convention the user sees elsewhere in the app (numbers
-// in their portfolio, balance, etc.).
-function formatUnits(n: number): string {
-  return n.toLocaleString(locale.value)
-}
+const coverImage = computed(() => resolveCoverImage(props.product))
 
 const available = computed(
   () => props.product.units - props.product.sold_units,
@@ -98,11 +67,11 @@ const available = computed(
       </div>
       <div class="product-card__meta">
         <span class="product-card__price">
-          {{ formatCents(product.price_per_unit_cents) }}
+          {{ formatPrice(product.price_per_unit_cents, product.currency) }}
           <span class="product-card__unit">/ {{ t('inv.unit') }}</span>
         </span>
         <span class="product-card__units">
-          {{ formatUnits(available) }} {{ t('inv.available') }}
+          {{ formatNumber(available, locale) }} {{ t('inv.available') }}
         </span>
       </div>
     </div>

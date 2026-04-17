@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- MarketView (Phase F4.1 + F4.1.3 polish)
+// CBSHOME Frontend -- MarketView (Phase F4.1 + F4.1.4 polish)
 // =============================================================================
 //
 // Investor storefront. Shared with /agent/market -- both routes render
@@ -12,19 +12,13 @@
 //   - Loading / error / empty (unfiltered) / empty (filtered) states.
 //   - Click-through to ProductDetailView (role-aware route name).
 //
-// F4.1.3 polish:
-//   - filterLabel now derives the company name primarily from the
-//     denormalised `company_name` on the first product item. This
-//     makes deeplinks / restored-state filters display the real
-//     name immediately rather than falling back to a generic label.
-//     The companies-store cache stays as a secondary fallback for
-//     the edge case where the filter yields zero products.
-//   - hasMore is pulled via storeToRefs instead of an ad-hoc computed
-//     wrapper (Pinia-idiomatic).
+// F4.1.4 polish:
+//   - Role-aware routing via router/helpers.ts instead of
+//     `route.path.startsWith('/agent')` copypasta.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { ChevronDown, X } from 'lucide-vue-next'
@@ -34,9 +28,11 @@ import CompanyFilterSheet from '@/components/shared/CompanyFilterSheet.vue'
 import { useProductsStore } from '@/stores/products'
 import { useCompaniesStore } from '@/stores/companies'
 import { useInfiniteScroll } from '@/composables/usePagination'
+import { isAgentShell } from '@/router/helpers'
 import type { PublicProductResponse } from '@/api/types'
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 
 const productsStore = useProductsStore()
@@ -55,11 +51,9 @@ const filterOpen = ref(false)
 // Chip label resolution order (F4.1.3):
 //   1. No filter -> "All companies".
 //   2. Filter set + at least one product loaded -> use the denormalised
-//      company_name from the first item. This is the fast path for
-//      deeplinks / restored state where the filter sheet hasn't been
-//      opened yet (so companiesStore.items is empty).
-//   3. Filter set + zero products (filtered company has no active
-//      products right now) -> try the filter sheet's cached list.
+//      company_name from the first item (fast path for deeplinks /
+//      restored state where the filter sheet hasn't been opened yet).
+//   3. Filter set + zero products -> try the filter sheet's cached list.
 //   4. Still nothing -> generic "Company" fallback for the split
 //      second before the first fetch resolves.
 const filterLabel = computed<string>(() => {
@@ -84,9 +78,7 @@ onMounted(() => {
 })
 
 function openProduct(product: PublicProductResponse): void {
-  // Role-aware route name: /investor/products/:id vs /agent/products/:id.
-  const currentPath = router.currentRoute.value.path
-  const name = currentPath.startsWith('/agent')
+  const name = isAgentShell(route)
     ? 'agent-product-detail'
     : 'investor-product-detail'
   void router.push({ name, params: { id: product.id } })
