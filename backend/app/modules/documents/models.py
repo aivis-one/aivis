@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Models (Sprint 2.2, updated by 0024)
+# CBSHOME Backend -- Document Models (Sprint 2.2, updated by 0024, 0025)
 # =============================================================================
 #
 # Document:
@@ -7,24 +7,25 @@
 #   draft -> active -> archived (see CBSHOME-State-Machines.md section 5).
 #
 #   Since migration 0024 the HTML body of a document lives as a static
-#   file in frontend/public/legal/<type>.html -- the backend only stores
-#   metadata. `type` is a free-form string (not an enum) so legal can add
-#   new categories by dropping an HTML file with proper <meta> tags into
+#   file served by the frontend. The backend only stores metadata.
+#   `type` is a free-form string (not an enum) so legal can add new
+#   categories by dropping an HTML file with proper <meta> tags into
 #   the legal folder; no code change needed.
+#
+#   Migration 0025 added per-language rows: the same `type` can exist
+#   in multiple languages, and the user signs the exact copy they read.
+#   Static path: frontend/public/legal/<language>/<type>.html.
+#   Uniqueness is now (type, version, language).
 #
 #   `content_hash` is a sha256 hex digest of the HTML body. Seed reads
 #   the file, computes the hash, and compares against the current active
-#   row. If hashes differ the current row is archived and a new one is
-#   created with version+1. The hash column is never exposed through the
-#   API -- it is an internal seed artefact.
+#   row for the same (type, language). If hashes differ the current row
+#   is archived and a new one is created with version+1. The hash column
+#   is never exposed through the API -- it is an internal seed artefact.
 #
 # DocumentSigning:
 #   Immutable record of user consent (checkbox). One per (user, document)
 #   pair. No updated_at -- signings are never modified.
-#
-# FUTURE (Phase 2+):
-#   DocumentSigning gains docusign_envelope_id, docusign_signed_at via
-#   ALTER ADD COLUMN. Module structure does not change.
 # =============================================================================
 
 import enum
@@ -34,6 +35,7 @@ from uuid import UUID
 from sqlalchemy import (
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -56,19 +58,19 @@ class DocumentStatus(enum.StrEnum):
 
 
 class Document(JSONBMixin, UUIDMixin, TimestampMixin, Base):
-    """Versioned document template.
+    """Versioned document template, one row per (type, version, language).
 
     The HTML body is NOT stored here -- it lives at
-    frontend/public/legal/<type>.html and is served as static content
-    by the frontend. Seed reads those files on install/update to
-    populate this table with metadata (title, type, required_for_roles,
-    content_hash).
+    frontend/public/legal/<language>/<type>.html and is served as static
+    content by the frontend. Seed reads those files on install/update
+    to populate this table with metadata (title, type, language,
+    required_for_roles, content_hash).
     """
 
     __tablename__ = "documents"
 
     # Free-form string; acceptable values are driven by files in
-    # frontend/public/legal/ (one HTML per type).
+    # frontend/public/legal/<language>/ (one HTML per type per language).
     type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
@@ -80,6 +82,14 @@ class Document(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         default=1,
         server_default="1",
         nullable=False,
+    )
+
+    # ISO 639-1 language code, e.g. "en", "ru", "de", "ar". Drives both
+    # the static-file path and the language a user signs in.
+    language: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        server_default="en",
     )
 
     title: Mapped[str] = mapped_column(
@@ -97,10 +107,10 @@ class Document(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         server_default=text("'[]'::jsonb"),
     )
 
-    # SHA-256 hex digest of the HTML body. Used by seed to detect edits
-    # in frontend/public/legal/<type>.html: if the current file's hash
-    # differs from the active row, seed archives the row and creates a
-    # new one with incremented version. Not exposed via the API.
+    # SHA-256 hex digest of the HTML body. Used by seed to detect edits:
+    # if the current file's hash differs from the active row for the
+    # same (type, language), seed archives the row and creates a new one
+    # with incremented version. Not exposed via the API.
     content_hash: Mapped[str] = mapped_column(
         String(64),
         nullable=False,
@@ -121,13 +131,20 @@ class Document(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("type", "version", name="uq_documents_type_version"),
+        UniqueConstraint(
+            "type", "version", "language",
+            name="uq_documents_type_version_language",
+        ),
+        Index(
+            "ix_documents_type_language_status",
+            "type", "language", "status",
+        ),
     )
 
     def __repr__(self) -> str:
         return (
             f"<Document id={self.id} type={self.type} "
-            f"v={self.version} status={self.status}>"
+            f"v={self.version} lang={self.language} status={self.status}>"
         )
 
 

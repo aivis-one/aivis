@@ -53,7 +53,9 @@ async def list_documents(
     Returns documents with is_signed flag indicating whether the
     user has already signed each document.
     """
-    return await list_documents_for_role(user.role, user.id, session)
+    return await list_documents_for_role(
+        user.role, user.language, user.id, session
+    )
 
 
 @router.get(

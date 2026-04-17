@@ -3,28 +3,34 @@
 # CBSHOME Backend -- Seed Legal Documents
 # =============================================================================
 #
-# Syncs frontend/public/legal/*.html (mounted read-only at /legal in the
-# app container) into the `documents` table.
+# Syncs frontend/public/legal/<language>/*.html (mounted read-only at
+# /legal in the app container) into the `documents` table.
 #
-# Each HTML file must carry at least one meta tag:
-#   <meta name="cbs-document-type" content="privacy_policy">
-# Optional:
-#   <meta name="cbs-required-for-roles" content="investor,agent">
-#   <title>Human-readable title</title>   (falls back to the type)
+# Each HTML file must carry:
+#   <meta name="cbs-document-type"      content="privacy_policy">
+#   <meta name="cbs-language"           content="en">            (must match folder)
+#   <meta name="cbs-required-for-roles" content="investor,agent"> (optional)
+#   <title>Human-readable title</title>                          (optional)
 #
-# SYNC RULES (per type):
+# SYNC RULES, per (type, language):
 #   no active row                -> create v1 active
 #   active row, body hash matches -> metadata-only update (title/roles)
 #   active row, body hash differs -> archive current, create v+1 active
 #
-# For every active row in the DB whose type is no longer present among
-# the files -> archive it.
+# For every active row in the DB whose (type, language) is no longer
+# present among the files -> archive it.
 #
 # The script is idempotent: a second run with no file changes is a no-op.
 #
 # Role values are NOT validated -- a role typo simply means the document
 # is never shown to anyone. Adding or renaming types does not require a
 # code change; it requires dropping an HTML file into the legal folder.
+#
+# Folder structure:
+#   /legal/en/privacy_policy.html
+#   /legal/ru/privacy_policy.html
+#   ...
+# Files directly in /legal/ (without a language subdirectory) are ignored.
 #
 # USAGE:
 #   docker compose exec -T app python scripts/seed_documents.py
@@ -114,12 +120,15 @@ class _MetadataParser(HTMLParser):
                 self.title = text
 
 
-def _parse_metadata(file_path: Path) -> dict | None:
-    """Parse one HTML file -> metadata dict, or None if required tag missing.
+def _parse_metadata(file_path: Path, folder_language: str) -> dict | None:
+    """Parse one HTML file -> metadata dict, or None if invalid.
 
-    Returns {type, title, required_for_roles, content_hash}.
-    The hash covers raw file bytes; any whitespace change triggers a version
-    bump, which is acceptable for legal documents.
+    Returns {type, language, title, required_for_roles, content_hash}.
+    The file's language is the folder it lives in; the value of the
+    `cbs-language` meta must match (so humans can't drift the two apart).
+
+    The hash covers raw file bytes; any whitespace change triggers a
+    version bump, which is acceptable for legal documents.
     """
     content = file_path.read_bytes()
 
@@ -128,6 +137,25 @@ def _parse_metadata(file_path: Path) -> dict | None:
 
     doc_type = (parser.meta.get("cbs-document-type") or "").strip()
     if not doc_type:
+        warn(
+            f"Skipping {file_path}: missing "
+            f'<meta name="cbs-document-type">'
+        )
+        return None
+
+    meta_language = (parser.meta.get("cbs-language") or "").strip()
+    if not meta_language:
+        warn(
+            f"Skipping {file_path}: missing "
+            f'<meta name="cbs-language">'
+        )
+        return None
+
+    if meta_language != folder_language:
+        warn(
+            f"Skipping {file_path}: language mismatch "
+            f"(folder={folder_language!r}, meta={meta_language!r})"
+        )
         return None
 
     roles_raw = (parser.meta.get("cbs-required-for-roles") or "").strip()
@@ -137,6 +165,7 @@ def _parse_metadata(file_path: Path) -> dict | None:
 
     return {
         "type": doc_type,
+        "language": folder_language,
         "title": title,
         "required_for_roles": roles,
         "content_hash": hashlib.sha256(content).hexdigest(),
@@ -186,44 +215,42 @@ async def _pick_creator_id(session) -> UUID:
 
 
 async def seed_documents() -> None:
-    """Sync /legal/*.html into the documents table."""
+    """Sync /legal/<lang>/*.html into the documents table."""
     setup_logging()
 
     if not LEGAL_DIR.is_dir():
         err(f"Legal directory not found: {LEGAL_DIR}")
         sys.exit(1)
 
-    # Parse every HTML file in the legal dir.
-    files = sorted(LEGAL_DIR.glob("*.html"))
-    parsed: dict[str, dict] = {}
-    for f in files:
-        meta = _parse_metadata(f)
-        if meta is None:
-            warn(
-                f"Skipping {f.name}: missing "
-                f"<meta name=\"cbs-document-type\">"
-            )
-            continue
-        # Two files with the same type shouldn't happen in a healthy repo.
-        if meta["type"] in parsed:
-            warn(
-                f"Duplicate document type {meta['type']!r} -- "
-                f"{f.name} overrides earlier file"
-            )
-        parsed[meta["type"]] = meta
+    # Parse every HTML file one level deep. LEGAL_DIR/<language>/<type>.html.
+    parsed: dict[tuple[str, str], dict] = {}
+    for lang_dir in sorted(p for p in LEGAL_DIR.iterdir() if p.is_dir()):
+        folder_language = lang_dir.name
+        for f in sorted(lang_dir.glob("*.html")):
+            meta = _parse_metadata(f, folder_language)
+            if meta is None:
+                continue
+            key = (meta["type"], meta["language"])
+            if key in parsed:
+                warn(
+                    f"Duplicate {key[0]!r} [{key[1]}] -- "
+                    f"{f} overrides earlier file"
+                )
+            parsed[key] = meta
 
     factory = get_session_factory()
     async with factory() as session:
         try:
             creator_id = await _pick_creator_id(session)
 
-            # Load the current active row for each type.
+            # Current active row per (type, language).
             active_stmt = select(Document).where(
                 Document.status == DocumentStatus.ACTIVE,
             )
             active_result = await session.execute(active_stmt)
-            active_by_type: dict[str, Document] = {
-                d.type: d for d in active_result.scalars().all()
+            active_by_key: dict[tuple[str, str], Document] = {
+                (d.type, d.language): d
+                for d in active_result.scalars().all()
             }
 
             created = 0
@@ -233,14 +260,16 @@ async def seed_documents() -> None:
             archived = 0
 
             # 1) For every file: create / no-op / bump version.
-            for doc_type, meta in parsed.items():
-                existing = active_by_type.get(doc_type)
+            for key, meta in parsed.items():
+                existing = active_by_key.get(key)
+                doc_type, language = key
 
                 if existing is None:
-                    # Brand new type -> v1 active.
+                    # Brand new (type, language) -> v1 active.
                     doc = Document(
                         type=doc_type,
                         version=1,
+                        language=language,
                         title=meta["title"],
                         required_for_roles=list(meta["required_for_roles"]),
                         content_hash=meta["content_hash"],
@@ -252,15 +281,14 @@ async def seed_documents() -> None:
                     continue
 
                 if existing.content_hash == meta["content_hash"]:
-                    # Body unchanged. Refresh title / roles if they drifted
-                    # (e.g. legal tweaked metadata without touching content).
+                    # Body unchanged. Refresh title / roles if drifted
+                    # (legal tweaked metadata without touching body).
                     changed = False
                     if existing.title != meta["title"]:
                         existing.title = meta["title"]
                         changed = True
                     existing_roles = list(existing.required_for_roles or [])
                     if existing_roles != meta["required_for_roles"]:
-                        # JSONB mutation must flag the column dirty.
                         existing.set_jsonb(
                             "required_for_roles",
                             list(meta["required_for_roles"]),
@@ -277,6 +305,7 @@ async def seed_documents() -> None:
                 new_doc = Document(
                     type=doc_type,
                     version=existing.version + 1,
+                    language=language,
                     title=meta["title"],
                     required_for_roles=list(meta["required_for_roles"]),
                     content_hash=meta["content_hash"],
@@ -286,10 +315,10 @@ async def seed_documents() -> None:
                 session.add(new_doc)
                 bumped += 1
 
-            # 2) Active docs whose file has been removed from the repo
-            # -> archive. We never delete, since signings reference them.
-            for doc_type, doc in active_by_type.items():
-                if doc_type not in parsed:
+            # 2) Active rows whose file was removed -> archive.
+            #    Never delete: DocumentSigning rows still reference them.
+            for key, doc in active_by_key.items():
+                if key not in parsed:
                     doc.status = DocumentStatus.ARCHIVED
                     archived += 1
 

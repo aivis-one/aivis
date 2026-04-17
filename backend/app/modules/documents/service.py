@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Service (Sprint 2.2, updated by 0024)
+# CBSHOME Backend -- Document Service (Sprint 2.2, updated by 0024, 0025)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -9,7 +9,9 @@
 #     delete_document()  -- delete draft documents only
 #
 #   User operations:
-#     list_documents_for_role()  -- active documents for user's role
+#     list_documents_for_role()  -- active docs for role, in user's locale
+#                                   (fallback to 'en'); raises if a required
+#                                   type has no active row in either locale
 #     get_document()             -- single document with is_signed flag
 #     sign_document()            -- record checkbox consent
 #
@@ -21,10 +23,14 @@
 #
 # ROLE MAPPING (0024):
 #   Document.required_for_roles is a JSONB array of role names. Role
-#   filtering uses the PostgreSQL JSONB containment operator (`@>`).
-#   There is no Python-side enum or dict any more -- new document types
-#   can be introduced by adding an HTML file with proper <meta> tags to
-#   frontend/public/legal/ without touching the code.
+#   filtering uses PostgreSQL JSONB containment via
+#   SQLAlchemy's `.contains([role])`.
+#
+# LOCALISATION (0025):
+#   Each active document row belongs to one locale. For listing we pick
+#   the user's locale per type, falling back to 'en' if the locale copy
+#   is missing. The user signs the exact row they read, so the signing
+#   language is recorded via DocumentSigning.document_id.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -54,6 +60,11 @@ from app.modules.users.models import OnboardingStep, User
 
 logger = structlog.get_logger()
 
+# English is the guaranteed baseline language -- every document type
+# MUST have an active English row. When a user's locale copy is
+# missing we fall back to this.
+FALLBACK_LANGUAGE = "en"
+
 
 # ---------------------------------------------------------------------------
 # Staff operations
@@ -68,11 +79,12 @@ async def create_document(
     """Create a new document in draft status.
 
     Raises:
-        ConflictError: If (type, version) combination already exists.
+        ConflictError: If (type, version, language) combination already exists.
     """
     document = Document(
         type=body.type,
         version=body.version,
+        language=body.language,
         title=body.title,
         required_for_roles=list(body.required_for_roles),
         status=DocumentStatus.DRAFT,
@@ -83,9 +95,10 @@ async def create_document(
     try:
         await session.flush()
     except IntegrityError as exc:
-        if "uq_documents_type_version" in str(exc.orig):
+        if "uq_documents_type_version_language" in str(exc.orig):
             raise ConflictError(
-                f"Document {body.type} version {body.version} already exists"
+                f"Document {body.type} v{body.version} "
+                f"[{body.language}] already exists"
             )
         raise
 
@@ -95,6 +108,7 @@ async def create_document(
         "document_created",
         document_id=str(document.id),
         type=document.type,
+        language=document.language,
         version=document.version,
     )
 
@@ -206,6 +220,7 @@ def _build_document_response(
         id=document.id,
         type=document.type,
         version=document.version,
+        language=document.language,
         title=document.title,
         required_for_roles=list(document.required_for_roles or []),
         status=document.status,
@@ -218,30 +233,93 @@ def _build_document_response(
 
 async def list_documents_for_role(
     role: str,
+    user_language: str,
     user_id: UUID,
     session: AsyncSession,
 ) -> list[DocumentResponse]:
-    """List active documents required for the user's role with is_signed flag.
+    """Active documents required for the role, in the user's locale.
 
-    Uses PostgreSQL JSONB containment (`@>`) to find rows whose
-    required_for_roles array contains the given role.
+    For each required type we return one row:
+      - the document in `user_language` if available,
+      - otherwise the `en` fallback,
+      - otherwise raise -- the platform is misconfigured (seed bug
+        or missing HTML file). The user must not proceed until an
+        admin fixes the legal folder.
+
+    Raises:
+        RuntimeError: a required document type has no active row in the
+            user's locale and no English fallback.
     """
+    # Collect every active row for the role, but only in the two
+    # languages that can possibly be returned: the user's and 'en'.
+    candidate_langs = [user_language]
+    if user_language != FALLBACK_LANGUAGE:
+        candidate_langs.append(FALLBACK_LANGUAGE)
+
     stmt = (
         select(Document)
         .where(
             Document.status == DocumentStatus.ACTIVE,
             Document.required_for_roles.contains([role]),
+            Document.language.in_(candidate_langs),
         )
         .order_by(Document.type, Document.version.desc())
     )
     result = await session.execute(stmt)
-    documents = result.scalars().all()
+    candidates = result.scalars().all()
 
-    if not documents:
+    # Independently list every active type required for this role,
+    # across all languages -- this tells us which types MUST be
+    # resolvable for the user.
+    types_stmt = (
+        select(Document.type)
+        .where(
+            Document.status == DocumentStatus.ACTIVE,
+            Document.required_for_roles.contains([role]),
+        )
+        .distinct()
+    )
+    types_result = await session.execute(types_stmt)
+    required_types: set[str] = {row[0] for row in types_result.all()}
+
+    if not required_types:
         return []
 
-    # Get user's signings for these documents in one query.
-    doc_ids = [d.id for d in documents]
+    # Pick the best row per type: user_language > en.
+    chosen: dict[str, Document] = {}
+    for doc in candidates:
+        current = chosen.get(doc.type)
+        if current is None:
+            chosen[doc.type] = doc
+            continue
+        # Prefer the user's own language over the fallback.
+        if (
+            doc.language == user_language
+            and current.language != user_language
+        ):
+            chosen[doc.type] = doc
+
+    missing = required_types - set(chosen.keys())
+    if missing:
+        # Admin misconfiguration -- a required type has no row in either
+        # the user's locale or in English. Surface as a 500 so the
+        # person responsible sees it immediately; onboarding halts.
+        logger.error(
+            "legal_documents_misconfigured",
+            role=role,
+            user_language=user_language,
+            missing_types=sorted(missing),
+        )
+        raise RuntimeError(
+            "Legal documents misconfigured: no active row "
+            f"for types {sorted(missing)} in language "
+            f"{user_language!r} or {FALLBACK_LANGUAGE!r}."
+        )
+
+    selected_docs = list(chosen.values())
+
+    # Fetch user's signings for those documents in one go.
+    doc_ids = [d.id for d in selected_docs]
     signing_stmt = (
         select(DocumentSigning.document_id)
         .where(
@@ -252,9 +330,11 @@ async def list_documents_for_role(
     signing_result = await session.execute(signing_stmt)
     signed_doc_ids = {row[0] for row in signing_result.all()}
 
+    # Return in a stable order: by type, then by language for determinism.
+    selected_docs.sort(key=lambda d: (d.type, d.language))
     return [
         _build_document_response(doc, doc.id in signed_doc_ids)
-        for doc in documents
+        for doc in selected_docs
     ]
 
 
@@ -355,16 +435,15 @@ async def _maybe_complete_onboarding(
     user_id: UUID,
     session: AsyncSession,
 ) -> None:
-    """Advance onboarding to complete if the user has nothing left to sign.
+    """Advance onboarding to complete if the user signed every required type.
 
     Called after each document signing. Only acts when
     onboarding_step == kyc_done (the step right before completion).
 
-    Role membership is computed via
-    `Document.required_for_roles @> [user.role]`. If no active documents
-    exist for the role (which normally does not happen because seed
-    guarantees at least the base set), the user is still advanced to
-    complete to avoid a permanent stall at kyc_done.
+    We group by `type`, not by document id: a user who signed the
+    English Privacy Policy in one session and (after a locale switch)
+    the Russian one in another session is still considered done on
+    the `privacy_policy` type.
     """
     stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)
@@ -373,36 +452,43 @@ async def _maybe_complete_onboarding(
     if user is None or user.onboarding_step != OnboardingStep.KYC_DONE:
         return
 
-    # Active documents required for this user's role.
+    # Every active doc row required for the user's role, across all
+    # languages. Map id -> type for quick lookup.
     doc_stmt = (
-        select(Document.id)
+        select(Document.id, Document.type)
         .where(
             Document.status == DocumentStatus.ACTIVE,
             Document.required_for_roles.contains([user.role]),
         )
     )
     doc_result = await session.execute(doc_stmt)
-    active_doc_ids = {row[0] for row in doc_result.all()}
+    rows = doc_result.all()
 
-    if not active_doc_ids:
+    if not rows:
         # No docs required for this role -- nothing left to sign.
         user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
         await session.flush()
         logger.info("onboarding_complete", user_id=str(user_id))
         return
 
-    # User's signings for those documents.
+    id_to_type = {row[0]: row[1] for row in rows}
+    required_types = set(id_to_type.values())
+
     sign_stmt = (
         select(DocumentSigning.document_id)
         .where(
             DocumentSigning.user_id == user_id,
-            DocumentSigning.document_id.in_(active_doc_ids),
+            DocumentSigning.document_id.in_(id_to_type.keys()),
         )
     )
     sign_result = await session.execute(sign_stmt)
-    signed_ids = {row[0] for row in sign_result.all()}
+    signed_types = {
+        id_to_type[row[0]]
+        for row in sign_result.all()
+        if row[0] in id_to_type
+    }
 
-    if active_doc_ids <= signed_ids:
+    if required_types <= signed_types:
         user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
         await session.flush()
         logger.info("onboarding_complete", user_id=str(user_id))

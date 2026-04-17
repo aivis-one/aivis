@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Schemas (Sprint 2.2, updated by 0024)
+# CBSHOME Backend -- Document Schemas (Sprint 2.2, updated by 0024, 0025)
 # =============================================================================
 #
 # Pydantic models for document endpoints.
@@ -9,8 +9,10 @@
 # DocumentUpdateRequest:   staff updates document (partial, exclude_unset)
 # DocumentSigningResponse: returned after user signs a document
 #
-# Migration 0024 removed content_url (bodies now live in
-# frontend/public/legal/*.html) and added required_for_roles.
+# Migration 0024 removed content_url and added required_for_roles.
+# Migration 0025 added `language`: each row is one localised version of
+# a document type. The exact language a user signs is recorded in the
+# DocumentSigning.document_id reference.
 # =============================================================================
 
 from datetime import datetime
@@ -25,6 +27,7 @@ class DocumentResponse(BaseModel):
     id: UUID
     type: str
     version: int
+    language: str
     title: str
     required_for_roles: list[str] = Field(default_factory=list)
     status: str
@@ -40,6 +43,7 @@ class DocumentCreateRequest(BaseModel):
     """Staff creates a new document."""
 
     type: str = Field(..., min_length=1, max_length=50)
+    language: str = Field(..., min_length=2, max_length=10)
     title: str = Field(..., min_length=1, max_length=500)
     version: int = Field(default=1, ge=1)
     required_for_roles: list[str] = Field(default_factory=list)
