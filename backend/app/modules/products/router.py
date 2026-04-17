@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Product Public Router (Sprint 4.2 + Sprint 6.1 + F4.1)
+# CBSHOME Backend -- Product Public Router (Sprint 4.2 + Sprint 6.1 + F4.1
+#                                            + F4.1.1 hotfix)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -22,11 +23,14 @@
 #     the current page and denormalises company_name / company_logo_url
 #     / company_cover_url into the response. One extra SELECT per page
 #     (not per product) -- no N+1.
-#   - Detail endpoint loads the owning company via get_company() and
+#   - Detail endpoint loads the owning company via a direct SELECT and
 #     denormalises the same three fields.
-#   - FK is RESTRICT on products.company_id, so a missing company for an
-#     existing product is a data integrity bug -- we surface it as
-#     KeyError / NotFoundError rather than silently masking it.
+#
+# F4.1.1 hotfix:
+#   - Missing company for an existing product (violates FK RESTRICT) now
+#     raises an explicit RuntimeError naming product_id AND company_id,
+#     yielding a 500 with a grep-able trace instead of a bare KeyError
+#     (list) or a misleading 404 NotFoundError (detail, via get_company).
 # =============================================================================
 
 from uuid import UUID
@@ -38,7 +42,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
 from app.modules.companies.models import CompanyProfile
-from app.modules.companies.service import get_company
 from app.modules.products.constants import ProductStatus
 from app.modules.products.schemas import (
     InstallmentResponse,
@@ -91,8 +94,15 @@ async def list_products_endpoint(
     for p in products:
         resp = PublicProductResponse.model_validate(p)
         resp.sold_units = sold_map.get(p.id, 0)
-        # FK is RESTRICT -- company is guaranteed to exist.
-        company = companies_map[p.company_id]
+        # FK is RESTRICT -- missing company is a data integrity bug.
+        # Surface it explicitly (500 with a grep-able message) rather
+        # than a bare KeyError (F4.1.1 hotfix).
+        company = companies_map.get(p.company_id)
+        if company is None:
+            raise RuntimeError(
+                f"Data integrity: product {p.id} references "
+                f"missing company {p.company_id}"
+            )
         resp.company_name = company.name
         resp.company_logo_url = company.logo_url
         resp.company_cover_url = company.cover_url
@@ -125,7 +135,21 @@ async def get_product_detail_endpoint(
         raise NotFoundError("Product not found")
 
     sold_map = await get_sold_units_map(session, [product.id])
-    company = await get_company(product.company_id, session)
+
+    # Load the owning company directly. We intentionally do NOT call
+    # get_company() here because its NotFoundError -> 404 would mislead
+    # the investor into thinking the product does not exist, when
+    # actually the product is fine and the FK-backed company row is
+    # missing -- a server-side data integrity bug (F4.1.1 hotfix).
+    company_stmt = select(CompanyProfile).where(
+        CompanyProfile.id == product.company_id
+    )
+    company = (await session.execute(company_stmt)).scalar_one_or_none()
+    if company is None:
+        raise RuntimeError(
+            f"Data integrity: product {product.id} references "
+            f"missing company {product.company_id}"
+        )
 
     response = PublicProductDetailResponse.model_validate(product)
     response.sold_units = sold_map.get(product.id, 0)

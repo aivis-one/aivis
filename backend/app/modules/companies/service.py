@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Service (Sprint 4.1 + Sprint F4.1)
+# CBSHOME Backend -- Company Service (Sprint 4.1 + Sprint F4.1 + F4.1.1 hotfix)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -20,6 +20,14 @@
 #     Used by the storefront filter bottom-sheet on the Investor side
 #     to handle 500+ companies without shipping the whole catalogue.
 #
+# F4.1.1 hotfix:
+#   - list_companies() escapes LIKE metacharacters ( % _ \ ) in the
+#     search needle so a query like "50%" matches the literal string
+#     "50%" in company names rather than being interpreted as "50*".
+#   - WHERE construction uses sqlalchemy.and_(*conditions) instead of
+#     a hand-rolled left-fold -- single line, no accidents when a
+#     third filter is added.
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
 #
@@ -35,7 +43,7 @@
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -306,6 +314,21 @@ async def get_company(
     return profile
 
 
+def _escape_like(needle: str) -> str:
+    """Escape LIKE/ILIKE metacharacters so user input matches literally.
+
+    The three metacharacters are: backslash (escape char itself), percent
+    (any sequence), and underscore (any single char). Order matters --
+    backslash MUST be escaped first, otherwise we would double-escape
+    the backslashes we are about to add.
+    """
+    return (
+        needle.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+
+
 async def list_companies(
     session: AsyncSession,
     *,
@@ -318,23 +341,25 @@ async def list_companies(
 
     active_only=True for public endpoint (only active companies).
     active_only=False for staff endpoint (all companies).
-    search: optional case-insensitive substring match on name.
+    search: optional case-insensitive substring match on name. LIKE
+            metacharacters in the needle are escaped so a user query
+            like "50%" matches the literal "50%" rather than acting
+            as a wildcard.
 
     Returns (companies, total_count).
     """
-    # Build filter list and AND-reduce so both filters apply.
     conditions = []
     if active_only:
         conditions.append(CompanyProfile.status == CompanyStatus.ACTIVE)
     if search is not None:
         needle = search.strip()
         if needle:
-            # ILIKE is PostgreSQL's case-insensitive LIKE. Substring match.
-            conditions.append(CompanyProfile.name.ilike(f"%{needle}%"))
+            escaped = _escape_like(needle)
+            conditions.append(
+                CompanyProfile.name.ilike(f"%{escaped}%", escape="\\")
+            )
 
-    where_clause = True if not conditions else conditions[0]
-    for cond in conditions[1:]:
-        where_clause = where_clause & cond
+    where_clause = and_(*conditions) if conditions else True
 
     # Count total.
     count_stmt = select(func.count()).select_from(CompanyProfile).where(where_clause)
