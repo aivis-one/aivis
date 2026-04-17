@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Router Guards (Phase F2.2)
+// CBSHOME Frontend -- Router Guards (Phase F2.2 + F4.1.5 polish)
 // =============================================================================
 //
 // Global navigation guard registered as router.beforeEach().
@@ -12,12 +12,15 @@
 //   public         — skip all checks, allow unauthenticated access
 //   skipOnboarding — skip onboarding redirect (for onboarding routes)
 //   roles          — allowed roles (string[]), empty = any authenticated
+//   shell          — which shell wraps this route; read by shared views
+//                    via router/helpers.ts (F4.1.5)
 // =============================================================================
 
 import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 
 import { useAuth } from '@/composables/useAuth'
 import { useAuthStore } from '@/stores/auth'
+import type { Shell } from './helpers'
 
 // ---------------------------------------------------------------------------
 // Route meta augmentation
@@ -31,6 +34,9 @@ declare module 'vue-router' {
     roles?: string[]
     /** Skip onboarding redirect (for onboarding routes themselves). */
     skipOnboarding?: boolean
+    /** Which shell wraps this route. Set on shell wrapper records
+     *  and inherited by nested views via vue-router meta merge. */
+    shell?: Shell
   }
 }
 

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Router Helpers (Phase F4.1.4)
+// CBSHOME Frontend -- Router Helpers (Phase F4.1.4 + F4.1.5 polish)
 // =============================================================================
 //
 // Shared views (MarketView, ProductDetailView, and soon PurchaseView
@@ -10,6 +10,11 @@
 // Why meta, not path-matching? A future `/partner/market` shell that
 // reuses the same views just needs its own meta.shell = 'partner',
 // with zero edits in the shared views.
+//
+// F4.1.5 polish:
+//   `RouteMeta.shell` is now declared in guards.ts's augmentation
+//   block, so `route.meta.shell` is natively typed as
+//   `Shell | undefined` -- no runtime cast needed here.
 // =============================================================================
 
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
@@ -27,7 +32,7 @@ export type Shell = 'investor' | 'agent' | 'company' | 'staff'
 export function getShell(
   route: RouteLocationNormalizedLoaded,
 ): Shell | undefined {
-  return route.meta.shell as Shell | undefined
+  return route.meta.shell
 }
 
 /** True when the current route is nested under /agent. */
