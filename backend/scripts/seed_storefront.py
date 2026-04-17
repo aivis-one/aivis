@@ -718,7 +718,11 @@ async def _ensure_installments(
     await session.flush()
 
 
-async def _ensure_seed_investor(session: AsyncSession) -> User:
+async def _ensure_seed_investor(
+    session: AsyncSession,
+    *,
+    platform_user_id,  # UUID, used as referred_by (NOT NULL on users)
+) -> User:
     """Return the dedicated seed investor used for sold-out injection."""
     stmt = select(User).where(
         User.credentials["email"]["email"].as_string()
@@ -733,6 +737,7 @@ async def _ensure_seed_investor(session: AsyncSession) -> User:
         is_active=True,
         onboarding_step=OnboardingStep.ROLE_SELECTED,
         kyc_status=KYCStatus.APPROVED,
+        referred_by=platform_user_id,
         credentials={
             "email": {
                 "email": SEED_INVESTOR_EMAIL,
@@ -841,7 +846,9 @@ async def seed_storefront(reset: bool) -> None:
 
             # 4. Sold-out injection (single Purchase on one product).
             if sold_out_product is not None:
-                investor = await _ensure_seed_investor(session)
+                investor = await _ensure_seed_investor(
+                    session, platform_user_id=platform_user_id
+                )
                 await _ensure_sold_out(
                     session,
                     product=sold_out_product,
