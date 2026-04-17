@@ -10,6 +10,7 @@
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
 - `CBSHOME-Installment.md` — механика рассрочки
+- `CBSHOME-Share-Pool-Refactor.md` — TD-071 / Sprint 4.3 (обязательно к реализации перед Phase 5 фронта)
 
 ---
 
@@ -1202,6 +1203,22 @@ backend/tests/
 ```
 
 **Критерий готовности:** Витрина работает. Один продукт может иметь произвольное число планов рассрочки. `plan_config` валидируется при сохранении. Price cascade обновляет продукты и soft-delete'ит installment-шаблоны. 115 тестов зелёные.
+
+---
+
+### ⏸ Sprint 4.3: Share Pool & Product Inventory Refactor (planned — BLOCKER before Phase 5 frontend F5)
+
+**Цель:** Исправить архитектурную ошибку в модели акций. Сейчас `Product.units` трактуется одновременно как «размер пакета» и как «доступный инвентарь», а `sold_units` считается COUNT(Purchase), не SUM. Это противоречит бизнес-реальности: компания выпускает фиксированный пул акций, продукты — лишь правила деноминации этого пула на пакеты разного размера.
+
+**Правильная модель:**
+- `CompanyProfile.total_shares_issued` — эмиссия, фиксированное число акций на продажу.
+- `Product.units` переименовывается в `Product.package_size` — размер одного пакета в акциях.
+- `available_packages` для продукта вычисляется динамически: `floor((total_shares_issued − SUM(Purchase.units WHERE company_id=X AND status=active)) / package_size)`.
+- `execute_purchase()` валидирует `company.shares_remaining >= product.package_size` перед списанием.
+
+**Детальная спецификация, миграция, пошаговый план, диффы кода и тестов, acceptance criteria — в отдельном документе:** `CBSHOME-Share-Pool-Refactor.md`.
+
+**Статус:** в таблице реестра техдолга — `TD-071` (🔴 Blocker before F5).
 
 ---
 
@@ -3128,6 +3145,7 @@ backend/app/modules/transactions/
 | TD-068 | `docker-compose.yml`, `backend/tests/conftest.py` | Нет изолированной тестовой БД: тесты гоняются по тому же `postgres` сервису что и приложение. Нужен `test-postgres` service + `TEST_DATABASE_URL`. Снимет TD-067 и вернёт тестам нормальные fixtures-scoped cleanups | Before Scale | ⬜ |
 | TD-069 | `backend/tests/test_dashboard.py::test_certificate_email` | Исходный мок был на `aiosmtplib.send` — `core/email.py` реально ходит Mailgun primary, SMTP только как fallback. Тест случайно проходил только потому что Mailgun placeholder-key давал ошибку и падало в SMTP, который мок ловил. Фикс: мок на `send_certificate_email` router-level. Настоящий долг — явный sender-contract (protocol), mock на который не ломается от ротации primary/fallback | Backlog | ⬜ |
 | TD-070 | `backend/app/modules/documents/service.py` | `list_documents_for_role` делает два запроса (candidates + distinct types) чтобы отличить "юзер в миноритарной локали" от "платформа сломана". Можно сократить до одного запроса с `GROUP BY type` + агрегатом по наличию en/user_lang, но читаемость пострадает. Приемлемо при <20 типов | Backlog | ⬜ |
+| **TD-071** | `companies/models.py`, `products/models.py`, `purchases/service.py`, `processors/base.py`, `tests/` | **Share Pool & Product Inventory refactor.** `Product.units` ошибочно трактуется как «инвентарь пакета», `sold_units = COUNT(Purchase)` не отражает акции. Правильная модель: `Company.total_shares_issued` — эмиссия, `Product.package_size` — размер пакета, `available_packages` вычисляется динамически. Детальная спецификация — `CBSHOME-Share-Pool-Refactor.md`. Sprint 4.3 (planned) | 🔴 **Blocker before F5** | ⬜ |
 
 ---
 

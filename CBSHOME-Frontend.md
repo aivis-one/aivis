@@ -11,6 +11,7 @@
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
 - `CBSHOME-Installment.md` — механика рассрочки
+- `CBSHOME-Share-Pool-Refactor.md` — TD-F07 follow-up (обязательно перед стартом F5)
 - `mockups/` — UI-прототипы (auth-flow, investor-shell, agent-shell, company-shell, staff-shell)
 
 ---
@@ -1042,6 +1043,8 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ## PHASE F5: Company
 
+> ⚠ **BLOCKER:** перед стартом F5 должен быть завершён backend Sprint 4.3 (TD-071) — рефакторинг модели акций / пакетов. Витрины Company оперируют теми же `Product`-сущностями, но от лица владельца компании: там нельзя показывать заведомо неверные цифры `sold_units` / `units`. Детали — `CBSHOME-Share-Pool-Refactor.md`. После merge бэка на фронте остаётся парная follow-up задача (`TD-F07`): переименование поля в `api/types.ts` + точечные правки `ProductCard.vue`, `ProductDetailView.vue`, локалей. Формально отдельным спринтом во Frontend ТЗ не оформляется — это механическое переименование, идущее сразу после backend merge.
+
 ### F5.1: Дашборд компании
 
 **Цель:** Компания видит свою статистику.
@@ -1512,3 +1515,18 @@ Vue Router guards срабатывают только на **навигацию*
 | TD-F06b | `VerifyEmailView` resend cooldown не персистентный: таймер 60s живёт в компонентном `ref`, `F5` / navigate away / обратно — сброс. Надо: сохранять `cooldownUntil` timestamp в `sessionStorage`, при mount сверяться с `Date.now()`. Дополнительно — очищать cooldown когда бэк возвращает `code_expired` (смысл ждать пропадает) | 🟡 | С F4 |
 | TD-F06c | `OnboardingDocsView` не использует `doc.required_for_roles` в UI. Поле есть в типе, но никакой chip `"For agents only"` рядом с названием не показывается. Решение: не показывать — юзер и так видит только свои документы. Оставлено как nice-to-have только если продукт потребует | 🟢 | Nice-to-have |
 | TD-F06d | Нет frontend-тестов вообще (backend: 33 файла `test_*`). Установка `vitest` + тесты на guards / stores / api.client — TD-F02a/b/c/d уже заведены | 🟡 | Отдельный спринт после F5 |
+
+### TD-F07: Share Pool Alignment (follow-up к backend Sprint 4.3)
+
+Парная задача к backend TD-071. После merge backend-рефакторинга поле `sold_units` исчезает из API, появляется `available_packages`; `Product.units` переименовывается в `package_size`. На фронте это чисто механический rename + обновление текстов UI.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F07a | `frontend/src/api/types.ts` — в `PublicProductResponse` / `PublicProductDetailResponse`: `units` → `package_size`, `sold_units` → `available_packages`. Импортеры TypeScript покажут все места использования — пройтись по ним | 🔴 | Сразу после backend Sprint 4.3 merge |
+| TD-F07b | `frontend/src/components/shared/ProductCard.vue` — вместо расчёта `available = p.units - p.sold_units` использовать `p.available_packages` напрямую. Переписать ключ i18n из `inv.market.available` («N available» — акции) на `inv.market.packsAvailable` («N packs available» — пакеты) | 🔴 | С TD-F07a |
+| TD-F07c | `frontend/src/views/investor/ProductDetailView.vue` — те же правки что в ProductCard. Availability-статистика в `<CStat>` блоке: label из «AVAILABILITY» в «PACKS AVAILABLE», значение из `product.available_packages`. Sold-out условие (disabled CTA) → `product.available_packages === 0` | 🔴 | С TD-F07a |
+| TD-F07d | `frontend/src/i18n/locales/{en,ru,de,ar}.json` — добавить ключ `inv.market.packsAvailable` с вариантами пакетов во всех 4 локалях. Старый `inv.market.available` можно оставить — он может пригодиться для других контекстов (или удалить, если нигде более не используется — проверить grep'ом) | 🔴 | С TD-F07a |
+| TD-F07e | `frontend/src/stores/products.ts` — убедиться что store корректно прокидывает новое поле из API-ответа без трансформаций. Типы автоматически проверятся | 🔴 | С TD-F07a |
+| TD-F07f | Ручная проверка: seed-скрипт после `--reset` + `docker compose restart app` — все 18 видимых продуктов должны показывать realistic `available_packages` (ниже `total_shares_issued / package_size` если были покупки, равно — если не было) | 🔴 | После всех TD-F07a..e |
+
+Детальная спецификация, включая пример до/после диффов кода и текстов локалей — в `CBSHOME-Share-Pool-Refactor.md`, раздел «Frontend changes».
