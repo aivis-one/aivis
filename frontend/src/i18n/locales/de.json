@@ -306,6 +306,28 @@
       "buy": "Jetzt kaufen",
       "installment": "In Raten zahlen",
       "soldOut": "Ausverkauft"
+    },
+    "purchase": {
+      "title": "Kauf",
+      "orderSummary": "Bestellübersicht",
+      "packageSize": "Paketgröße",
+      "pricePerUnit": "Preis pro Anteil",
+      "total": "Gesamt",
+      "yourBalance": "Ihr Kontostand",
+      "insufficientHint": "Nicht genügend Kontostand für diesen Kauf",
+      "confirm": "Kauf bestätigen",
+      "cancel": "Abbrechen",
+      "success": "Paket erfolgreich gekauft",
+      "loadError": {
+        "title": "Kaufdaten konnten nicht geladen werden",
+        "desc": "Bitte gehen Sie zurück und versuchen Sie es erneut"
+      },
+      "error": {
+        "insufficientBalance": "Nicht genügend Guthaben auf Ihrem aktiven Konto",
+        "kycRequired": "KYC-Verifizierung erforderlich. Weiterleitung zum Onboarding",
+        "productInactive": "Dieses Produkt ist nicht mehr verfügbar",
+        "generic": "Kauf fehlgeschlagen. Bitte versuchen Sie es erneut"
+      }
     }
   }
 }

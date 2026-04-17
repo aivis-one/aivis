@@ -306,6 +306,28 @@
       "buy": "Buy now",
       "installment": "Pay in installments",
       "soldOut": "Sold out"
+    },
+    "purchase": {
+      "title": "Purchase",
+      "orderSummary": "Order summary",
+      "packageSize": "Package size",
+      "pricePerUnit": "Price per unit",
+      "total": "Total",
+      "yourBalance": "Your balance",
+      "insufficientHint": "Not enough balance to complete this purchase",
+      "confirm": "Confirm purchase",
+      "cancel": "Cancel",
+      "success": "Package purchased successfully",
+      "loadError": {
+        "title": "Could not load purchase details",
+        "desc": "Please go back and try again"
+      },
+      "error": {
+        "insufficientBalance": "Not enough balance on your active account",
+        "kycRequired": "KYC verification required. Redirecting to onboarding",
+        "productInactive": "This product is no longer available",
+        "generic": "Purchase failed. Please try again"
+      }
     }
   }
 }
