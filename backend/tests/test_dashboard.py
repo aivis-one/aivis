@@ -526,7 +526,7 @@ async def test_certificate_other_user(
 async def test_certificate_email(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """POST /purchases/{id}/certificate/email -> 204 (mocked SMTP)."""
+    """POST /purchases/{id}/certificate/email -> 204 (mocked send)."""
     admin_token = await _admin_token(client, db_session)
     inv_token, inv_id, company, product, purchases = (
         await _setup_company_product_purchase(
@@ -539,7 +539,16 @@ async def test_certificate_email(
         p for p in purchases if p["legal_basis"] == "sale"
     )
 
-    with patch("aiosmtplib.send", new_callable=AsyncMock) as mock_send:
+    # Patch the function as used by the router, not a low-level SMTP helper.
+    # core/email.send_email() routes Mailgun (primary) -> SMTP (fallback);
+    # mocking aiosmtplib.send only catches the fallback path, so whenever a
+    # real MAILGUN_API_KEY is set in .env the email goes out via HTTP and the
+    # mock never fires. Patching send_certificate_email bypasses both paths.
+    with patch(
+        "app.modules.purchases.certificate_router.send_certificate_email",
+        new_callable=AsyncMock,
+        return_value=True,
+    ) as mock_send:
         resp = await client.post(
             f"/api/v1/purchases/{sale_purchase['id']}/certificate/email",
             headers=auth_headers(inv_token),

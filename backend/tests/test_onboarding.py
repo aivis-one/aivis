@@ -12,16 +12,23 @@
 #   7: Signing all docs advances step to onboarding_complete
 #
 # Email prefix: "onb_" -- unique to this test file, cleaned up in fixture.
+#
+# The cleanup fixture also wipes documents + document_signings. Otherwise
+# the rows seeded by install_cbshome.sh would (a) clash with active docs
+# this test tries to create and (b) silently prevent the full-flow test
+# from reaching onboarding_complete (the user would have extra unsigned
+# docs after we sign the three test ones).
 # =============================================================================
 
 from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.modules.documents.models import Document, DocumentSigning
 from app.modules.users.models import User
 from tests.helpers import (
     auth_headers,
@@ -38,11 +45,22 @@ def webhook_headers() -> dict[str, str]:
     return {"X-Webhook-Secret": settings.kyc_webhook_secret}
 
 
+async def _cleanup_documents(session: AsyncSession) -> None:
+    """Wipe documents + signings. Seed rows from install_cbshome.sh would
+    otherwise collide with active documents these tests create and also
+    skew the onboarding_complete assertion."""
+    await session.execute(delete(DocumentSigning))
+    await session.execute(delete(Document))
+    await session.commit()
+
+
 @pytest.fixture(autouse=True)
 async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
+    """Clean docs + test users before and after each test."""
+    await _cleanup_documents(db_session)
     await cleanup_test_users(db_session, EMAIL_PREFIX)
     yield
+    await _cleanup_documents(db_session)
     await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 

@@ -47,11 +47,10 @@ async function handleRegister(): Promise<void> {
 
   try {
     await authStore.registerViaEmail(email.value, password.value, referralCode)
-    // BUG-07 fix: after registration the user is authenticated and at
-    // onboarding_step=registered. Let the router guard forward them to
-    // the correct next screen (email verification) instead of staying
-    // on the register view.
-    await router.push('/')
+    // BUG-07 fix: after registration the user is at onboarding_step=registered.
+    // Push straight to /verify (meta.skipOnboarding=true) -- going through /
+    // would bounce us via root.beforeEnter + globalGuard for no reason.
+    await router.push({ name: 'verify' })
   } catch (err) {
     if (err instanceof ApiResponseError) {
       if (err.status === 409) {

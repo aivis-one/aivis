@@ -15,14 +15,21 @@
 #   10: Sign archived document -> 400
 #
 # Email prefix: "s22_" -- unique to this test file, cleaned up in fixture.
+#
+# The cleanup fixture also wipes the whole documents + document_signings
+# tables, because seed_documents.py populates them at install time and
+# those seed rows would otherwise clash with active documents the tests
+# try to create (409 conflict on the unique-active-per-type invariant).
 # =============================================================================
 
 from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.documents.models import Document, DocumentSigning
 from tests.helpers import (
     auth_headers,
     cleanup_test_users,
@@ -33,11 +40,21 @@ from tests.helpers import (
 EMAIL_PREFIX = "s22_"
 
 
+async def _cleanup_documents(session: AsyncSession) -> None:
+    """Wipe documents + signings. Seed rows from install_cbshome.sh would
+    otherwise collide with the active-per-type uniqueness rule."""
+    await session.execute(delete(DocumentSigning))
+    await session.execute(delete(Document))
+    await session.commit()
+
+
 @pytest.fixture(autouse=True)
 async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
+    """Clean docs + test users before and after each test."""
+    await _cleanup_documents(db_session)
     await cleanup_test_users(db_session, EMAIL_PREFIX)
     yield
+    await _cleanup_documents(db_session)
     await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
