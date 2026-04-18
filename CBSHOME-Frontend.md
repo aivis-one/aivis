@@ -1,7 +1,7 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.4
-**Дата:** 17 апреля 2026
+**Версия:** 2.5
+**Дата:** 18 апреля 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -973,34 +973,52 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ---
 
-### F4.3: Баланс + Пополнение
+### ✅ F4.3: Баланс + Пополнение + Транзакции
 
-**Цель:** Инвестор видит active balance и пополняет его криптой.
+**Цель:** Инвестор видит active balance, пополняет его криптой (TRC20), просматривает историю платежей и журнал транзакций.
+
+**Роли:** инвестор. Agent-side balance/transactions (дубль под AgentShell) — отложен до F6 polish (см. Open Backlog).
 
 **Задачи:**
-- [ ] src/stores/balance.ts (Pinia):
-  - `active_confirmed: number` (cents)
-  - `active_frozen: number` (cents)
-  - `passive_confirmed: number` (cents)
-  - `passive_frozen: number` (cents)
-  - `refresh()` — GET /api/v1/dashboard/summary → берём active_balance и passive_balance
-- [ ] src/views/investor/BalanceView.vue:
-  - Active balance: confirmed (зелёный) + frozen (серый, если > 0)
-  - Кнопка "Пополнить" → крипто-адрес
-  - POST /api/v1/payments/crypto-address → body: `{ network: "TRC20" }` → `{ address, network, user_id }`
-  - QR-код генерируется на фронте из address
-  - Кнопка "Скопировать адрес"
-  - История платежей: GET /api/v1/payments/history → PaymentHistoryResponse (paginated)
-  - Каждый платёж: amount_cents, payment_type, status (CBadge), created_at
-- [ ] src/views/investor/TransactionsView.vue:
-  - GET /api/v1/transactions → TransactionListResponse (paginated)
-  - Фильтры: type, date_from, date_to, amount_min, amount_max
-  - GET /api/v1/transactions/{id} → детали транзакции
-  - Каждая транзакция: тип, сумма, статус, дата
+- [x] src/api/payments.ts — `createCryptoAddress({ network })`, `listPaymentHistory(params)`
+- [x] src/api/transactions.ts — `listTransactions(params)`, `getTransaction(id)` — через `buildQueryString`, весь фильтр surface (type/date_from/date_to/amount_min/amount_max) прокинут даже при том, что UI F4.3 драйвит только `type`
+- [x] src/api/types.ts — расширен блоком F4.3: `PaymentResponse`, `PaymentHistoryResponse`, `DepositAddressResponse`, `CreateAddressRequest`, `CryptoNetwork` union (`TRC20|ERC20|BEP20|PoS`), `TransactionType` union (14 значений), `ReferenceType`, `TransactionResponse`, `TransactionListResponse`
+- [x] src/stores/balance.ts (Pinia) — `activeBalance: BalanceResponse`, `passiveBalance: BalanceResponse` (nested объекты camelCase), `refresh()` → GET /api/v1/dashboard/summary, `error` flag
+- [x] src/stores/transactions.ts (Pinia) — `items`/`total`/`page`/`typeFilter: string | null`/`loading`/`errored`, `fetchFirstPage()`/`loadMore()`/`setTypeFilter(prefix)` с fetch-epoch guard (паттерн из products store)
+- [x] src/utils/querystring.ts — `buildQueryString(params)`: skip undefined/null/'', emits 0 для будущих range-фильтров. Закрывает TD-F08e
+- [x] Миграция 5 existing API-функций на `buildQueryString`: `listProducts`, `listCompanies`, `listMyPlans`, `fetchUsers`, `fetchPayments`. Ни одного ручного `URLSearchParams` не осталось в `api/*`
+- [x] src/views/investor/BalanceView.vue (перепись из stub) — balance card с active.confirmed + frozen (только если > 0), "Deposit" CTA → `investor-deposit`, payment history: local `ref<PaymentResponse[]>` + `useInfiniteScroll` + epoch-guard (per_page=20), 5 состояний (initial-loading / first-page-error / empty / list / load-more), status/type labels через `inv.balance.status.*` / `inv.balance.type.*` с raw-token fallback
+- [x] src/views/investor/InvestorDepositView.vue (новый) — TRC20 hardcoded (multi-network selector отложен), `createCryptoAddress({ network: 'TRC20' })` on mount, QR via `qrcode.toString({ type: 'svg' })` с forced light palette (камеры кошельков не читают тёмные QR), injected через `v-html` в белом контейнере; monospace-адрес (`user-select: all`) + copy-button через `navigator.clipboard`; `ShieldAlert`-warning «send only USDT via TRC20»; `router.back()` с fallback `push('investor-balance')` (симметрично с PurchaseView cancel)
+- [x] src/views/investor/TransactionsView.vue (перепись из stub) — 5 category-tabs (All / Deposits / Purchases / Installments / Withdrawals) → backend prefix-match (`deposit:`, `purchase:`, `installment:`, `withdrawal:`); icon per group (ArrowDownLeft/ArrowUpRight/ShoppingBag/Repeat/RefreshCw); signed amount с `+`/`-` prefix + success/danger color; tap → detail sheet через `selectedId` ref; i18n labels с raw fallback
+- [x] src/components/shared/TransactionDetailSheet.vue (новый) — `CBottomSheet` с fetch on open (`watch([open, id])` с epoch-guard), key-value рендер `details` JSONB: known keys → i18n (`inv.transactions.detail.keys.*`), unknown → humanised snake_case (`trigger_tranche_number` → «Trigger Tranche Number»), `*_cents` suffix → `formatPrice`, `tx_hash` → middle-truncate + copy button; reset on close для fresh refetch при повторном открытии того же id
+- [x] src/router/index.ts — добавлен child-route `balance/deposit` → `investor-deposit` (nested под `balance/` → URL читается как subsection, history-chain ведёт обратно к BalanceView). Agent shell не дублирует — deposit остаётся investor-scope в F4.3
+- [x] src/i18n/index.ts — **critical fix:** `setupI18n()` теперь pre-loads DEFAULT_LOCALE параллельно с активной через `Promise.all`. Без этого vue-i18n `fallbackLocale` резолвит только messages в памяти — пропущенный ключ в ru/de/ar рендерился как raw dotted path (`inv.balance.title` вместо текста). Теперь fallback всегда доступен, стратегия «en обязателен в каждом feature-батче, ru/de/ar могут догонять» становится безопасной
+- [x] qrcode package + @types/qrcode в package.json (регенерирован `package-lock.json` через `npm install --package-lock-only`)
+- [x] i18n: 91 новых ключа × 4 локали (`inv.balance.*` 40 ключей, `inv.deposit.*` 11 ключей, `inv.transactions.*` 40 ключей включая 14 type-label'ов для всех `TransactionType` значений + 12 `detail.keys.*`)
+
+**UI-паттерны (соблюдение конвенции):**
+- **BalanceView и TransactionsView — top-level tab views** → CHeader НЕ добавляется, шапку рисует shell один раз; inline page-header в стиле MarketView (`<h1 class="__title">` + `<p class="__subtitle">`). После первой итерации B2 был замечен двойной header (shell CHeader + view CHeader) — поправлено в UI fix коммите: `CHeader` убран из BalanceView.
+- **InvestorDepositView — sub-route под balance/** → CHeader с `:show-back="true"` + `:show-logo="false"` + `:title="..."`. Паттерн идентичен InstallmentView / PurchaseView.
+- **Epoch-guard** применён везде где есть async + tab-switch / re-fetch: balance payment history, transactions store, transaction detail fetch, deposit address fetch.
+
+**Error taxonomy (консистентно с F4.2):**
+- `instanceof ApiResponseError` во всех error-handlers.
+- Generic fallback-toast для deposit fetch (backend issue: fine-grained `error_code` не эмитит, TD-F08c).
+- Silent swallow на `loadMore` ошибках — уже-загруженные страницы остаются видимыми.
+
+**XSS surface:**
+- `v-html` только для QR SVG от `qrcode` (чистый `<path>`, zero-surface).
+- Transaction `details` JSONB — никогда через `v-html`, только interpolation `{{ formatValue(key, value) }}` + `JSON.stringify` для вложенных объектов.
 
 **Зависимость от бэкенда:** Dashboard (Sprint 9.2 ✅), Crypto address (Sprint 5.2 ✅), Payments (Sprint 5.2 ✅), Transactions (Sprint 6.4 ✅).
 
-**Критерий готовности:** Инвестор видит баланс, получает крипто-адрес для пополнения, видит историю.
+**Критерий готовности:** Инвестор видит баланс, получает крипто-адрес с QR для пополнения, просматривает историю платежей и журнал транзакций с фильтром по категориям и деталями per-event. ✅
+
+**Commit chain:** B1 (`f61882d` API + types + store + querystring util) → B1-polish (balance store camelCase, strict CryptoNetwork, PurchaseView/InstallmentView cancel fix) → B1.1 (`7c57ba7` buildQueryString migration, **TD-F08e closed**) → B2 (BalanceView + DepositView + QR + i18n + qrcode dep) → B2 UI fix (drop redundant CHeader in BalanceView, hide logo in DepositView) → i18n fallback preload → B3 (TransactionsView + DetailSheet + store + en.json) → B3.1 (TransactionsView storeToRefs migration) → i18n catchup ru/de/ar. Final score ревьюера: **9.8/10**.
+
+**Follow-ups для F4.4 grooming-коммита (TD-F09 секция):** extract `formatSignedPrice` + `tOrRaw` в utils до старта Portfolio views.
+
+**Side-fix вне frontend-скоупа:** `scripts/seed_storefront.py` — добавлен пропущенный `import base64` (NameError при генерации SVG-логотипа компаний через base64-encoded data URI).
 
 ---
 
@@ -1551,4 +1569,17 @@ Vue Router guards срабатывают только на **навигацию*
 | TD-F08b | `api/installments.ts` — `listMyPlans` / `getPlanDetail` написаны в F4.2 задел под F4.4 без текущего потребителя. Если F4.4 Portfolio задействует — снять TD; если нет — удалить | 🟢 | F4.4 |
 | TD-F08c | Backend issues `error_code` в 4xx `detail` payload (`kyc_required`, `insufficient_balance`, `product_inactive`, `template_mismatch`). Frontend error handlers в PurchaseView / InstallmentView (и будущих withdraw / transaction flows) заменяют regex-discriminator на switch по `code`. Сейчас в каждом `handleXError` стоит `// TD-F08c: replace regex with backend error_code` | 🟡 | BE + FE совместно, после Sprint 4.3 |
 | TD-F08d | Backend `/installments/preview` endpoint (или аналогичное поле в `InstallmentPlanResponse` ответа `POST /products/{id}/installment` — preview до создания не существует сейчас) возвращает материализованный tranche breakdown с точным `units_unlocked` per tranche. Frontend `utils/installmentPlans.getTrancheUnits` уходит в архив — зеркало scheduler math в двух языках устраняется. Пометка `// TD-F08d` в util | 🟢 | BE + FE совместно, после F4.4 |
-| TD-F08e | `src/utils/querystring.ts` — extract `buildQueryString(params: Record<string, string \| number \| undefined>): string` из дублирующегося паттерна в `api/{products,companies,installments,admin}.ts`. Порог извлечения — 5-й потребитель (сейчас 4) | 🟢 | При 5-м потребителе (F4.3 Transactions с фильтрами — вероятный триггер) |
+| TD-F08e | ✅ **Закрыт в F4.3 B1.1** (`7c57ba7`). `src/utils/querystring.ts` создан, 6 потребителей мигрированы (2 новых из F4.3 + 4 существующих: products, companies, installments, admin). Ни одного ручного `URLSearchParams` в `api/*` не осталось | 🟢 | ✅ Done |
+
+### TD-F09: F4.3 Polish & Follow-ups
+
+Выявлены в ходе code review Phase F4.3 (score 9.8). Не блокируют F4.4, фиксируются для консолидации одним grooming-коммитом в начале F4.4 Portfolio.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F09a | Extract `formatSignedPrice(cents, currency?)` в `src/utils/format.ts`. Дубль `Math.abs(cents)` + signed-prefix логики в двух местах: `TransactionsView.formatAmount` и `TransactionDetailSheet.signedAmount`. Небольшое расхождение в `cents === 0` case (view всегда `+`, sheet без знака) — дизайн-вопрос, при extract закрепить одну семантику. Миграция: 2 call-site'а | 🟡 | F4.4 grooming-коммит перед Portfolio |
+| TD-F09b | Extract `tOrRaw(t, key, raw)` в `src/utils/i18n.ts`. Паттерн «label with raw fallback» повторяется 5 раз: `BalanceView.statusLabel` + `BalanceView.typeLabel`, `TransactionsView.typeLabel`, `TransactionDetailSheet.typeLabel` + `TransactionDetailSheet.keyLabel`. Все делают `const translated = t(key); return translated === key ? raw : translated`. Миграция: 5 call-site'ов | 🟡 | С TD-F09a |
+| TD-F09c | `TransactionDetailSheet.copyValue` не имеет `copying` ref (в отличие от `InvestorDepositView.copyAddress`). Double-tap показывает множественные toast'ы — `useToast` singleton их replace'ит, видимых багов нет, но консистентность страдает | 🟢 | Nice-to-have |
+| TD-F09d | QR-код в `InvestorDepositView` рендерится через `v-html` (qrcode → SVG string). Альтернатива для эстетики: `QRCode.toDataURL(address)` + `<img :src="dataUrl">` — избавит от `v-html` полностью. Security-equivalent (qrcode генерирует только `<path>`), но меньше нужен `:deep(svg)` CSS. Overkill для MVP, оставлен | 🟢 | Nice-to-have |
+
+
