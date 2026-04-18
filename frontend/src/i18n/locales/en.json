@@ -304,7 +304,6 @@
       "installmentsEmpty": "No installment plans available for this product",
       "installmentsBonus": "+{n} bonus units",
       "buy": "Buy now",
-      "installment": "Pay in installments",
       "soldOut": "Sold out"
     },
     "purchase": {
@@ -327,6 +326,37 @@
         "kycRequired": "KYC verification required. Redirecting to onboarding",
         "productInactive": "This product is no longer available",
         "generic": "Purchase failed. Please try again"
+      }
+    },
+    "installment": {
+      "title": "Installment Plan",
+      "loadError": {
+        "title": "Could not load installment details",
+        "desc": "Please go back and try again"
+      },
+      "empty": {
+        "title": "No installment plans",
+        "desc": "This product does not offer installment plans"
+      },
+      "backToProduct": "Back to product",
+      "selectTitle": "Choose a plan",
+      "selectHint": "Pick the plan that fits your schedule",
+      "planTitle": "Selected plan",
+      "tranches": "Payment schedule",
+      "tranche": "Tranche {n}",
+      "scheduleNote": "Monthly payments after the first tranche, charged automatically",
+      "firstPayment": "First payment",
+      "yourBalance": "Your balance",
+      "insufficientHint": "Not enough balance for the first tranche",
+      "confirm": "Confirm installment plan",
+      "cancel": "Cancel",
+      "success": "Installment plan created",
+      "error": {
+        "insufficientBalance": "Not enough balance for the first tranche",
+        "kycRequired": "KYC verification required. Redirecting to onboarding",
+        "templateMismatch": "The selected plan is no longer valid for this product",
+        "productInactive": "This product is no longer available",
+        "generic": "Could not create the plan. Please try again"
       }
     }
   }

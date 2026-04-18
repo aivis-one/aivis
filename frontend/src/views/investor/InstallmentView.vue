@@ -1,45 +1,804 @@
 <script setup lang="ts">
-// Stub — will be replaced with full implementation in F4.3.
-// Installment plan selection and confirmation.
+// =============================================================================
+// CBSHOME Frontend -- InstallmentView (Phase F4.2)
+// =============================================================================
+//
+// Installment plan confirmation screen. Shared across
+// /investor/installment/:id and /agent/installment/:id via
+// role-aware route names.
+//
+// Two runtime modes, controlled by whether the current route carries
+// a valid `?plan=<template_id>` query parameter:
+//
+//   * CONFIRM mode (query.plan matches one of product.installments)
+//     The selected plan is pre-resolved, full breakdown is shown,
+//     Confirm kicks off POST /api/v1/products/{id}/installment.
+//     This is the happy path -- ProductDetailView deep-links here
+//     when the user taps a plan card.
+//
+//   * SELECT mode (no query, or query.plan doesn't match)
+//     Defensive fallback for deep-linked / bookmarked URLs and for
+//     the rare case where a stale template id was passed in. Shows
+//     the full list of plans as tappable cards; picking one triggers
+//     router.replace to update the URL and flips the view to
+//     CONFIRM mode in the same screen -- no remount.
+//
+// Cancel always returns to ProductDetail in the current shell. The
+// user can pick a different plan from there (three cards in total,
+// no infinite list per product).
+//
+// Error handling mirrors PurchaseView (F4.2.1): narrow to
+// ApiResponseError, discriminate 400 sub-cases by regex on message,
+// map to toast + side-effect. TD-F10 will replace the regex with a
+// backend-emitted `error_code` discriminator.
+//
+// Balance source: active_balance.confirmed from /dashboard/summary.
+// The backend validates first-tranche affordability inside create_plan,
+// the UI check is a courtesy.
+//
+// Unit decomposition: the backend scheduler floors
+// `units_percent * product_units // 100` for each tranche and gives
+// the leftover to the last tranche. We mirror the same math here so
+// the on-screen breakdown matches what the backend will persist.
+// =============================================================================
 
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { Building, Calendar } from 'lucide-vue-next'
+import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import CHeader from '@/components/layout/CHeader.vue'
+import { ApiResponseError } from '@/api/client'
+import { getProduct } from '@/api/products'
+import { createInstallmentPlan } from '@/api/installments'
+import { getDashboardSummary } from '@/api/dashboard'
+import { useToast } from '@/composables/useToast'
+import { isAgentShell } from '@/router/helpers'
+import {
+  formatNumber,
+  formatPrice,
+  resolveCoverImage,
+} from '@/utils/format'
+import type {
+  InstallmentResponse,
+  PublicProductDetailResponse,
+} from '@/api/types'
 
-const { t } = useI18n()
+// Backend currency field is not emitted on Public*/BalanceResponse
+// yet (TD-F03 scope includes both). Same escape hatch as the other
+// F4.2 views -- remove once the multi-currency contract ships.
+type ProductWithOptionalCurrency = PublicProductDetailResponse & {
+  currency?: string
+}
+
+// Typed shape of plan_config JSONB (see backend/app/modules/products/
+// constants.py::validate_plan_config). Kept local to this view --
+// the backend ships plan_config as Record<string, unknown> and this
+// is where we narrow.
+interface TrancheConfig {
+  amount_cents: number
+  units_percent: number
+}
+interface PlanConfig {
+  tranches: TrancheConfig[]
+  bonus_units: number
+  agent_bonus_units: number
+}
+
+const route = useRoute()
+const router = useRouter()
+const { t, locale } = useI18n()
+const { showToast } = useToast()
+
+const product = ref<ProductWithOptionalCurrency | null>(null)
+const balanceCents = ref(0)
+const loading = ref(true)
+const errored = ref(false)
+const submitting = ref(false)
+
+// Currently-selected template. Null in SELECT mode.
+const selectedPlan = ref<InstallmentResponse | null>(null)
+
+const productId = computed(() => route.params.id as string)
+const agentShell = computed(() => isAgentShell(route))
+
+const queryPlanId = computed<string | null>(() => {
+  const q = route.query.plan
+  if (typeof q === 'string' && q.length > 0) return q
+  return null
+})
+
+const noPlans = computed<boolean>(() => {
+  return product.value !== null && product.value.installments.length === 0
+})
+
+const mode = computed<'select' | 'confirm'>(() => {
+  return selectedPlan.value ? 'confirm' : 'select'
+})
+
+const planConfig = computed<PlanConfig | null>(() => {
+  if (!selectedPlan.value) return null
+  return parsePlanConfig(selectedPlan.value.plan_config)
+})
+
+const firstTrancheCents = computed<number>(() => {
+  const tranches = planConfig.value?.tranches ?? []
+  return tranches[0]?.amount_cents ?? 0
+})
+
+const insufficientBalance = computed<boolean>(() => {
+  return balanceCents.value < firstTrancheCents.value
+})
+
+const canConfirm = computed<boolean>(() => {
+  return (
+    !loading.value &&
+    !submitting.value &&
+    !errored.value &&
+    product.value !== null &&
+    selectedPlan.value !== null &&
+    planConfig.value !== null &&
+    planConfig.value.tranches.length >= 2 &&
+    !insufficientBalance.value
+  )
+})
+
+const coverImage = computed<string | null>(() => {
+  return product.value ? resolveCoverImage(product.value) : null
+})
+
+const headerTitle = computed<string>(() => {
+  return product.value?.name ?? t('inv.installment.title')
+})
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function parsePlanConfig(
+  cfg: Record<string, unknown>,
+): PlanConfig | null {
+  const rawTranches = cfg['tranches']
+  if (!Array.isArray(rawTranches)) return null
+
+  const tranches: TrancheConfig[] = []
+  for (const t of rawTranches) {
+    if (typeof t !== 'object' || t === null) return null
+    const rec = t as Record<string, unknown>
+    const amount = rec['amount_cents']
+    const percent = rec['units_percent']
+    if (typeof amount !== 'number' || typeof percent !== 'number') return null
+    tranches.push({ amount_cents: amount, units_percent: percent })
+  }
+  if (tranches.length < 2) return null
+
+  const bu = cfg['bonus_units']
+  const abu = cfg['agent_bonus_units']
+  return {
+    tranches,
+    bonus_units: typeof bu === 'number' ? bu : 0,
+    agent_bonus_units: typeof abu === 'number' ? abu : 0,
+  }
+}
+
+function resolvePlanById(id: string): InstallmentResponse | null {
+  const list = product.value?.installments ?? []
+  return list.find((p) => p.id === id) ?? null
+}
+
+/**
+ * Mirror backend scheduler math: each non-last tranche gets
+ * `floor(total_units * percent / 100)`; the last tranche takes
+ * whatever is left so the sum equals product.units exactly.
+ */
+function unitsForTranche(index: number): number {
+  if (!product.value || !planConfig.value) return 0
+  const total = product.value.units
+  const list = planConfig.value.tranches
+  if (index < list.length - 1) {
+    return Math.floor((total * list[index].units_percent) / 100)
+  }
+  let consumed = 0
+  for (let i = 0; i < list.length - 1; i += 1) {
+    consumed += Math.floor((total * list[i].units_percent) / 100)
+  }
+  return total - consumed
+}
+
+function bonusOf(plan: InstallmentResponse): number {
+  const cfg = parsePlanConfig(plan.plan_config)
+  return cfg?.bonus_units ?? 0
+}
+
+function installmentRouteName(): string {
+  return agentShell.value ? 'agent-installment' : 'investor-installment'
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle + actions
+// ---------------------------------------------------------------------------
+
+async function load(): Promise<void> {
+  loading.value = true
+  errored.value = false
+  try {
+    const [p, s] = await Promise.all([
+      getProduct(productId.value),
+      getDashboardSummary(),
+    ])
+    product.value = p
+    balanceCents.value = s.active_balance.confirmed
+
+    // Resolve the query-provided template against the just-loaded
+    // plan list. If it matches -> CONFIRM mode; otherwise leave
+    // selectedPlan null -> SELECT mode (fallback).
+    const qid = queryPlanId.value
+    if (qid) {
+      selectedPlan.value = resolvePlanById(qid)
+    } else {
+      selectedPlan.value = null
+    }
+  } catch {
+    product.value = null
+    selectedPlan.value = null
+    errored.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+function pickPlan(plan: InstallmentResponse): void {
+  selectedPlan.value = plan
+  // Keep the URL in sync for deep-linking / back button. Replace so
+  // we don't pile up history entries for each tap inside the selector.
+  void router.replace({
+    name: installmentRouteName(),
+    params: { id: productId.value },
+    query: { plan: plan.id },
+  })
+}
+
+async function confirm(): Promise<void> {
+  if (!canConfirm.value || !selectedPlan.value) return
+  submitting.value = true
+  try {
+    await createInstallmentPlan(productId.value, {
+      product_installment_id: selectedPlan.value.id,
+    })
+    showToast(t('inv.installment.success'), 'success')
+    router.push({
+      name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio',
+    })
+  } catch (err: unknown) {
+    await handlePlanError(err)
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handlePlanError(err: unknown): Promise<void> {
+  if (err instanceof ApiResponseError) {
+    const { status, message } = err
+
+    if (status === 400 && /kyc/i.test(message)) {
+      showToast(t('inv.installment.error.kycRequired'), 'warning')
+      router.push('/onboarding/kyc')
+      return
+    }
+
+    if (status === 400 && /insufficient/i.test(message)) {
+      showToast(t('inv.installment.error.insufficientBalance'), 'error')
+      await refreshBalance()
+      return
+    }
+
+    // Template drift -- rare, but possible if an admin soft-deletes
+    // the template between ProductDetail load and Confirm click.
+    if (status === 400 && /(template|does not belong)/i.test(message)) {
+      showToast(t('inv.installment.error.templateMismatch'), 'error')
+      return
+    }
+
+    if ((status === 400 && /not active/i.test(message)) || status === 404) {
+      showToast(t('inv.installment.error.productInactive'), 'error')
+      return
+    }
+  }
+
+  showToast(t('inv.installment.error.generic'), 'error')
+}
+
+async function refreshBalance(): Promise<void> {
+  try {
+    const s = await getDashboardSummary()
+    balanceCents.value = s.active_balance.confirmed
+  } catch {
+    // Balance display is a hint, not a gate. Swallow.
+  }
+}
+
+function cancel(): void {
+  router.push({
+    name: agentShell.value
+      ? 'agent-product-detail'
+      : 'investor-product-detail',
+    params: { id: productId.value },
+  })
+}
+
+function backToMarket(): void {
+  router.push({
+    name: agentShell.value ? 'agent-market' : 'investor-market',
+  })
+}
+
+function backToProduct(): void {
+  // Reuse cancel() semantics -- same destination.
+  cancel()
+}
+
+// If the user navigates inside the shell (e.g. tapping a different
+// plan card) without a full remount, re-resolve selectedPlan from
+// the updated query string. Keeps SELECT/CONFIRM modes in sync with
+// deep-link state without requiring onMounted to run again.
+watch(queryPlanId, (qid) => {
+  if (!product.value) return
+  if (qid) {
+    selectedPlan.value = resolvePlanById(qid)
+  } else {
+    selectedPlan.value = null
+  }
+})
+
+onMounted(load)
 </script>
 
 <template>
-  <div class="view-stub">
-    <h1 class="view-stub__title">{{ t('inv.installment.title') }}</h1>
-    <div class="view-stub__badge">F4.3</div>
+  <div class="iv">
+    <CHeader
+      :show-back="true"
+      :show-logo="false"
+      :title="headerTitle"
+    />
+
+    <!-- Loading -->
+    <div v-if="loading" class="iv__center">
+      <CLoader :size="28" />
+    </div>
+
+    <!-- Product load error -->
+    <template v-else-if="errored || !product">
+      <div class="iv__center">
+        <CEmptyState
+          :title="t('inv.installment.loadError.title')"
+          :description="t('inv.installment.loadError.desc')"
+        />
+        <CButton variant="outline" size="sm" @click="backToMarket">
+          {{ t('inv.product.backToMarket') }}
+        </CButton>
+      </div>
+    </template>
+
+    <!-- No installment plans configured on this product -->
+    <template v-else-if="noPlans">
+      <div class="iv__center">
+        <CEmptyState
+          :title="t('inv.installment.empty.title')"
+          :description="t('inv.installment.empty.desc')"
+        />
+        <CButton variant="outline" size="sm" @click="backToProduct">
+          {{ t('inv.installment.backToProduct') }}
+        </CButton>
+      </div>
+    </template>
+
+    <template v-else>
+      <!-- Product hero -->
+      <div
+        class="iv__hero"
+        :class="{ 'iv__hero--fallback': !coverImage }"
+        :style="{ backgroundImage: coverImage ?? 'none' }"
+      >
+        <Building v-if="!coverImage" :size="48" class="iv__hero-icon" />
+        <div class="iv__hero-content">
+          <div class="iv__hero-company">{{ product.company_name }}</div>
+          <h1 class="iv__hero-title">{{ product.name }}</h1>
+        </div>
+      </div>
+
+      <div class="iv__body">
+        <!-- SELECT mode: fallback for deep-links without ?plan= -->
+        <template v-if="mode === 'select'">
+          <section class="iv__card">
+            <h2 class="iv__card-title">
+              {{ t('inv.installment.selectTitle') }}
+            </h2>
+            <p class="iv__hint">
+              {{ t('inv.installment.selectHint') }}
+            </p>
+            <ul class="iv__plans">
+              <li
+                v-for="plan in product.installments"
+                :key="plan.id"
+                class="iv__plan"
+                role="button"
+                tabindex="0"
+                @click="pickPlan(plan)"
+                @keydown.enter.prevent="pickPlan(plan)"
+                @keydown.space.prevent="pickPlan(plan)"
+              >
+                <span class="iv__plan-name">{{ plan.name }}</span>
+                <span
+                  v-if="bonusOf(plan) > 0"
+                  class="iv__plan-bonus"
+                >
+                  {{
+                    t('inv.product.installmentsBonus', { n: bonusOf(plan) })
+                  }}
+                </span>
+              </li>
+            </ul>
+          </section>
+
+          <div class="iv__actions">
+            <CButton variant="outline" @click="cancel">
+              {{ t('inv.installment.cancel') }}
+            </CButton>
+          </div>
+        </template>
+
+        <!-- CONFIRM mode: selected plan, schedule, balance, CTAs -->
+        <template v-else-if="selectedPlan && planConfig">
+          <!-- Chosen plan summary -->
+          <section class="iv__card">
+            <h2 class="iv__card-title">
+              {{ t('inv.installment.planTitle') }}
+            </h2>
+            <div class="iv__plan iv__plan--selected">
+              <span class="iv__plan-name">{{ selectedPlan.name }}</span>
+              <span
+                v-if="planConfig.bonus_units > 0"
+                class="iv__plan-bonus"
+              >
+                {{
+                  t('inv.product.installmentsBonus', {
+                    n: planConfig.bonus_units,
+                  })
+                }}
+              </span>
+            </div>
+          </section>
+
+          <!-- Payment schedule -->
+          <section class="iv__card">
+            <h2 class="iv__card-title">
+              {{ t('inv.installment.tranches') }}
+            </h2>
+            <ul class="iv__tranches">
+              <li
+                v-for="(tr, i) in planConfig.tranches"
+                :key="i"
+                class="iv__tranche"
+              >
+                <span class="iv__tranche-num">
+                  {{ t('inv.installment.tranche', { n: i + 1 }) }}
+                </span>
+                <span class="iv__tranche-amount">
+                  {{ formatPrice(tr.amount_cents, product.currency) }}
+                </span>
+                <span class="iv__tranche-units">
+                  {{ formatNumber(unitsForTranche(i), locale) }}
+                  {{ t('inv.unit') }}
+                </span>
+              </li>
+            </ul>
+            <p class="iv__note">
+              {{ t('inv.installment.scheduleNote') }}
+            </p>
+          </section>
+
+          <!-- First payment + spendable balance -->
+          <section class="iv__card">
+            <div class="iv__row">
+              <span class="iv__row-label">
+                {{ t('inv.installment.firstPayment') }}
+              </span>
+              <span class="iv__row-value iv__row-value--accent">
+                {{ formatPrice(firstTrancheCents, product.currency) }}
+              </span>
+            </div>
+            <div class="iv__row">
+              <span class="iv__row-label">
+                {{ t('inv.installment.yourBalance') }}
+              </span>
+              <span
+                class="iv__row-value"
+                :class="{ 'iv__row-value--warn': insufficientBalance }"
+              >
+                {{ formatPrice(balanceCents, product.currency) }}
+              </span>
+            </div>
+            <p
+              v-if="insufficientBalance"
+              class="iv__balance-hint"
+            >
+              {{ t('inv.installment.insufficientHint') }}
+            </p>
+          </section>
+
+          <!-- Actions -->
+          <div class="iv__actions">
+            <CButton
+              variant="primary"
+              :disabled="!canConfirm"
+              @click="confirm"
+            >
+              <Calendar :size="16" />
+              {{ t('inv.installment.confirm') }}
+            </CButton>
+            <CButton
+              variant="outline"
+              :disabled="submitting"
+              @click="cancel"
+            >
+              {{ t('inv.installment.cancel') }}
+            </CButton>
+          </div>
+        </template>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.view-stub {
+.iv {
+  display: flex;
+  flex-direction: column;
+}
+
+.iv__center {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
   padding: 24px;
-  text-align: center;
 }
 
-.view-stub__title {
+/* Hero with cover */
+.iv__hero {
+  position: relative;
+  height: 160px;
+  background-color: var(--bg-subtle);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  color: #fff;
+}
+.iv__hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.75));
+  pointer-events: none;
+}
+.iv__hero--fallback {
+  background-color: var(--bg-subtle);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.iv__hero--fallback::after {
+  display: none;
+}
+.iv__hero-icon {
+  position: relative;
+  z-index: 1;
+  color: var(--text-tertiary);
+  stroke-width: 1.5;
+}
+.iv__hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 16px 20px;
+  width: 100%;
+}
+.iv__hero--fallback .iv__hero-content {
+  text-align: center;
+  color: var(--text);
+  padding: 0 20px 16px;
+}
+.iv__hero-company {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.iv__hero-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 16px;
+  margin: 0;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
-.view-stub__badge {
-  padding: 6px 14px;
-  border-radius: var(--radius-sm, 6px);
+/* Body */
+.iv__body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Card container */
+.iv__card {
+  padding: 16px;
+  border-radius: var(--radius-md, 12px);
   background: var(--bg-secondary, var(--surface));
+}
+.iv__card-title {
+  font-size: 11px;
+  font-weight: 700;
+  margin: 0 0 12px;
   color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.iv__hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: -4px 0 12px;
+  line-height: 1.4;
+}
+.iv__note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+/* Plans list (SELECT mode) */
+.iv__plans {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.iv__plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease,
+    transform 0.05s ease;
+}
+.iv__plan:hover {
+  border-color: var(--primary);
+}
+.iv__plan:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.iv__plan:active {
+  transform: scale(0.99);
+}
+
+/* Selected-plan card in CONFIRM mode: same layout, no tap affordance. */
+.iv__plan--selected {
+  cursor: default;
+  user-select: auto;
+  border-color: var(--primary);
+}
+.iv__plan--selected:hover {
+  border-color: var(--primary);
+}
+.iv__plan--selected:active {
+  transform: none;
+}
+
+.iv__plan-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.iv__plan-bonus {
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  color: var(--success);
+  white-space: nowrap;
+}
+
+/* Tranche rows */
+.iv__tranches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.iv__tranche {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+.iv__tranche:last-child {
+  border-bottom: none;
+}
+.iv__tranche-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.iv__tranche-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}
+.iv__tranche-units {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Row (label + value) for balance / first-payment */
+.iv__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+.iv__row-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.iv__row-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.iv__row-value--accent {
+  font-size: 18px;
+  color: var(--primary);
+}
+.iv__row-value--warn {
+  color: var(--danger);
+}
+.iv__balance-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* Actions */
+.iv__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
 }
 </style>

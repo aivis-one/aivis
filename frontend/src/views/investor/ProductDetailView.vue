@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 polish)
+// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 + F4.2)
 // =============================================================================
 //
 // Public product detail screen. Shared across /investor/products/:id
@@ -10,29 +10,27 @@
 //   - Local state, no Pinia store. A product detail is a one-shot
 //     fetch with no cross-view cache requirements in F4.1.
 //
-// CTAs wire up to F4.2 stubs (PurchaseView, InstallmentView) -- the
-// routes exist and the views render placeholders until F4.2 ships.
+// F4.2 change -- installment plan cards are the CTA.
+//   Each installment row is now a tappable card that deep-links
+//   into InstallmentView with `?plan=<template_id>`, opening the
+//   confirmation flow for that exact plan in one tap. The secondary
+//   "Pay in installments" button underneath was removed -- no second
+//   selector needed. "Buy now" stays as the primary CTA for users
+//   who want the full package up front.
 //
-// Installment plans show only the plan name + bonus-units hint here;
-// full tranche breakdown lives on the installment flow itself.
-//
-// F4.1.4 polish:
+// F4.1.4 polish (retained):
 //   - Formatters moved to utils/format.ts (TD-F04 closed).
-//   - Role-aware routing via router/helpers.ts (no more path-match
-//     copypasta).
-//   - CHeader displays the product name as a title, truncated by
-//     the header itself when it doesn't fit.
-//   - Buy CTA label switches to "Sold out" when available <= 0 so
-//     the disabled state is self-explanatory.
-//   - Hero fallback now stacks icon + text vertically instead of
-//     overlapping them in the same flex row.
-//   - Description breaks long unbroken strings (URLs) inside the box.
+//   - Role-aware routing via router/helpers.ts.
+//   - CHeader shows product name, truncated by the header itself.
+//   - Buy CTA label switches to "Sold out" when available <= 0.
+//   - Hero fallback stacks icon + text vertically.
+//   - Description breaks long unbroken tokens.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, Calendar, ShoppingCart } from 'lucide-vue-next'
+import { Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import { getProduct } from '@/api/products'
@@ -102,12 +100,20 @@ function buyNow(): void {
   void router.push({ name, params: { id: product.value.id } })
 }
 
-function startInstallment(): void {
+// F4.2 -- plan card tap. Deep-link into InstallmentView with the
+// selected template pre-chosen so the user lands directly on the
+// confirmation screen.
+function openInstallmentPlan(planId: string): void {
   if (!product.value) return
+  if (available.value <= 0) return
   const name = agentShell.value
     ? 'agent-installment'
     : 'investor-installment'
-  void router.push({ name, params: { id: product.value.id } })
+  void router.push({
+    name,
+    params: { id: product.value.id },
+    query: { plan: planId },
+  })
 }
 
 onMounted(loadProduct)
@@ -183,7 +189,7 @@ onMounted(loadProduct)
           <p class="pd__description">{{ product.description }}</p>
         </section>
 
-        <!-- Installment plans -->
+        <!-- Installment plans -- each card is a tappable CTA -->
         <section class="pd__section">
           <h2 class="pd__section-title">
             {{ t('inv.product.installments') }}
@@ -199,6 +205,13 @@ onMounted(loadProduct)
               v-for="plan in product.installments"
               :key="plan.id"
               class="pd__plan"
+              :class="{ 'pd__plan--disabled': available <= 0 }"
+              role="button"
+              :tabindex="available <= 0 ? -1 : 0"
+              :aria-disabled="available <= 0 ? 'true' : 'false'"
+              @click="openInstallmentPlan(plan.id)"
+              @keydown.enter.prevent="openInstallmentPlan(plan.id)"
+              @keydown.space.prevent="openInstallmentPlan(plan.id)"
             >
               <span class="pd__plan-name">{{ plan.name }}</span>
               <span
@@ -215,7 +228,8 @@ onMounted(loadProduct)
           </ul>
         </section>
 
-        <!-- CTAs -->
+        <!-- Primary CTA -- instant purchase. The installment CTA
+             lives on the plan cards above (F4.2). -->
         <div class="pd__actions">
           <CButton
             variant="primary"
@@ -228,14 +242,6 @@ onMounted(loadProduct)
                 ? t('inv.product.buy')
                 : t('inv.product.soldOut')
             }}
-          </CButton>
-          <CButton
-            v-if="product.installments.length > 0"
-            variant="outline"
-            :disabled="available <= 0"
-            @click="startInstallment"
-          >
-            <Calendar :size="16" /> {{ t('inv.product.installment') }}
           </CButton>
         </div>
       </div>
@@ -382,6 +388,10 @@ onMounted(loadProduct)
   flex-direction: column;
   gap: 8px;
 }
+
+/* Plan card is now a tappable button (F4.2). Role=button + tabindex
+   elevate the <li> to an interactive element for SR/keyboard users.
+   Hover/active states hint at the tap target. */
 .pd__plan {
   display: flex;
   align-items: center;
@@ -391,7 +401,34 @@ onMounted(loadProduct)
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease,
+    transform 0.05s ease;
 }
+.pd__plan:hover {
+  border-color: var(--primary);
+}
+.pd__plan:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.pd__plan:active {
+  transform: scale(0.99);
+}
+.pd__plan--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.pd__plan--disabled:hover {
+  border-color: var(--border);
+}
+.pd__plan--disabled:active {
+  transform: none;
+}
+
 .pd__plan-name {
   font-size: 14px;
   font-weight: 600;

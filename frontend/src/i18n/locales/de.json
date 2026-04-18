@@ -304,7 +304,6 @@
       "installmentsEmpty": "Für dieses Produkt sind keine Ratenzahlungspläne verfügbar",
       "installmentsBonus": "+{n} Bonus-Anteile",
       "buy": "Jetzt kaufen",
-      "installment": "In Raten zahlen",
       "soldOut": "Ausverkauft"
     },
     "purchase": {
@@ -327,6 +326,37 @@
         "kycRequired": "KYC-Verifizierung erforderlich. Weiterleitung zum Onboarding",
         "productInactive": "Dieses Produkt ist nicht mehr verfügbar",
         "generic": "Kauf fehlgeschlagen. Bitte versuchen Sie es erneut"
+      }
+    },
+    "installment": {
+      "title": "Ratenzahlung",
+      "loadError": {
+        "title": "Ratenzahlungsdaten konnten nicht geladen werden",
+        "desc": "Bitte gehen Sie zurück und versuchen Sie es erneut"
+      },
+      "empty": {
+        "title": "Keine Ratenzahlungspläne",
+        "desc": "Für dieses Produkt sind keine Ratenzahlungspläne verfügbar"
+      },
+      "backToProduct": "Zurück zum Produkt",
+      "selectTitle": "Plan auswählen",
+      "selectHint": "Wählen Sie den Plan, der zu Ihrem Zeitplan passt",
+      "planTitle": "Ausgewählter Plan",
+      "tranches": "Zahlungsplan",
+      "tranche": "Rate {n}",
+      "scheduleNote": "Monatliche Zahlungen nach der ersten Rate, automatisch abgebucht",
+      "firstPayment": "Erste Zahlung",
+      "yourBalance": "Ihr Kontostand",
+      "insufficientHint": "Nicht genügend Guthaben für die erste Rate",
+      "confirm": "Ratenzahlung bestätigen",
+      "cancel": "Abbrechen",
+      "success": "Ratenzahlungsplan erstellt",
+      "error": {
+        "insufficientBalance": "Nicht genügend Guthaben für die erste Rate",
+        "kycRequired": "KYC-Verifizierung erforderlich. Weiterleitung zum Onboarding",
+        "templateMismatch": "Der ausgewählte Plan ist für dieses Produkt nicht mehr gültig",
+        "productInactive": "Dieses Produkt ist nicht mehr verfügbar",
+        "generic": "Plan konnte nicht erstellt werden. Bitte versuchen Sie es erneut"
       }
     }
   }
