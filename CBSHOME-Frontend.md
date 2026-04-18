@@ -901,65 +901,75 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ## PHASE F4: Investor
 
-### F4.1: Витрина продуктов
+### ✅ F4.1: Витрина продуктов
 
 **Цель:** Инвестор видит доступные продукты.
 
 **Задачи:**
-- [ ] src/stores/products.ts (Pinia):
-  - `products: PublicProductResponse[]`
-  - `total: number`
-  - `filters: { company_id? }`
-  - `loading: boolean`
-  - `fetchProducts()` — GET /api/v1/products с фильтрами и пагинацией
-- [ ] src/api/products.ts — типизированные методы:
-  - GET /api/v1/products → PublicProductListResponse `{ items, total, page, per_page }`
-  - GET /api/v1/products/{id} → PublicProductDetailResponse (includes installments)
-  - GET /api/v1/companies → PublicCompanyListResponse (для фильтра по компании)
-- [ ] src/components/shared/ProductCard.vue:
-  - Карточка продукта (из мокапа investor-shell/screen-market):
-    - Обложка, название, компания
-    - Цена за юнит (`price_per_unit_cents`), `sold_units`
-  - Клик → /investor/products/:id
-- [ ] src/views/investor/MarketView.vue:
-  - Список продуктов
-  - Фильтр по компании (из GET /api/v1/companies)
-  - Бесконечный скролл (usePagination)
-- [ ] src/views/investor/ProductDetailView.vue:
-  - GET /api/v1/products/{id} → описание, компания, цена, юниты, планы рассрочки (installments[])
-  - Кнопка "Купить" → /investor/purchase/:id
-  - Кнопка "Рассрочка" → /investor/installment/:id
+- [x] src/stores/products.ts (Pinia) — `products`, `total`, `filters`, `loading`, `fetchProducts()`
+- [x] src/api/products.ts — `listProducts(params)`, `getProduct(id)`
+- [x] src/api/companies.ts — `listCompanies(params)` для фильтра
+- [x] src/components/shared/ProductCard.vue — обложка + название + компания + цена + `sold_units`, клик → `/investor/products/:id`
+- [x] src/components/shared/CompanyFilterSheet.vue — bottom-sheet фильтр по компании
+- [x] src/composables/usePagination.ts — бесконечный скролл / страницы
+- [x] src/views/investor/MarketView.vue — список + фильтр + пагинация + empty states (`inv.market.empty.*`)
+- [x] src/views/investor/ProductDetailView.vue — hero + stats + description + installment plans list + CTAs
 
-**Зависимость от бэкенда:** GET /products (Phase 4.2 ✅), GET /companies (Phase 4.1 ✅).
+**Polish (интегрированы в F4.1 scope):**
+- **F4.1.1:** N+1 guard в public router на бэке — batch-load `CompanyProfile` за одну SELECT на страницу. Ответы `GET /products` / `GET /products/{id}` денормализуют `company_name`, `company_logo_url`, `company_cover_url` — витрина рендерится без второго round-trip.
+- **F4.1.4:** Formatters вынесены в `src/utils/format.ts` (`formatPrice`, `formatNumber`, `resolveCoverImage`) — убран дубль из ProductCard + ProductDetailView. Role-aware routing через `src/router/helpers.ts::isAgentShell` — ни одного `path.startsWith` в views. CHeader truncate на длинных product.name. Buy CTA показывает "Sold out" при `available <= 0`. Hero fallback stack + `overflow-wrap: break-word` на description.
+- **F4.1.5:** RouteMeta augmentation — `shell?: Shell` объявлен в `router/guards.ts`, `route.meta.shell` типизирован нативно без runtime cast в helpers.
 
-**Критерий готовности:** Инвестор видит витрину, открывает карточку продукта с полной информацией.
+**Зависимость от бэкенда:** GET /products (Sprint 4.2 ✅ + denormalisation F4.1), GET /companies (Sprint 4.1 ✅).
+
+**Критерий готовности:** Инвестор видит витрину, открывает карточку продукта с полной информацией. ✅
+
+**Commit chain:** до `bf4f1e5` (F4.1 main) + `b1171bc` (F4.1.5 RouteMeta patch). Score ревьюера: 9.9/10.
 
 ---
 
-### F4.2: Покупка + Рассрочка
+### ✅ F4.2: Покупка + Рассрочка
 
 **Цель:** Инвестор покупает продукт (инстант или рассрочка).
 
 **Роли:** доступно для `investor` и `agent` (агенты тоже могут инвестировать).
 
 **Задачи:**
-- [ ] src/views/investor/PurchaseView.vue:
-  - Подтверждение покупки: продукт, сумма, баланс
-  - POST /api/v1/products/{id}/purchase → body: `{ referral_link_id? }`
-  - Response: `list[PurchaseResponse]` — массив (sale + gift purchases)
-  - Обработка ошибок: недостаточно средств, KYC не пройден (403)
-  - Success: toast + redirect на портфель
-- [ ] src/views/investor/InstallmentView.vue:
-  - Выбор плана рассрочки из списка installments (из ProductDetailResponse)
-  - Отображение: число траншей, сумма каждого, бонусные юниты (из plan_config)
-  - POST /api/v1/products/{id}/installment → body: `{ product_installment_id, referral_link_id? }`
-  - Response: InstallmentPlanResponse
-  - GET /api/v1/installments/me → мои планы рассрочки (paginated)
-  - GET /api/v1/installments/{id} → детали плана с траншами (InstallmentPlanDetailResponse)
+- [x] src/api/purchases.ts — `createPurchase(productId, body)` → `Promise<PurchaseResponse[]>` (sale + gift purchases из `purchase_config.bonuses`)
+- [x] src/api/installments.ts — `createInstallmentPlan(productId, body)`, `listMyPlans(params)`, `getPlanDetail(id)`
+- [x] src/api/dashboard.ts — `getDashboardSummary()` для balance probe
+- [x] src/api/types.ts — `PurchaseResponse/CreatePurchaseRequest`, `InstallmentPlanResponse/Detail/List`, `InstallmentTrancheResponse`, `CreateInstallmentPlanRequest`, `BalanceResponse`, `CompanySummaryResponse`, `DashboardSummaryResponse`. Enum-поля (`legal_basis`, `status`) — union `| string` escape hatch для защиты от неизвестных бэковских значений
+- [x] src/views/investor/PurchaseView.vue — instant-buy: order summary (`units × price = total`), balance card, Confirm/Cancel, role-aware redirect на portfolio при успехе
+- [x] src/views/investor/InstallmentView.vue — two-mode: CONFIRM (deep-link `?plan=<id>` → подтверждение одного плана со schedule + first-tranche + balance) / SELECT (fallback без query: список планов как tappable cards). `router.replace` + `watch(queryPlanId)` для URL-sync без remount
+- [x] src/views/investor/ProductDetailView.vue — план-карточки стали tappable CTAs (role="button" + tabindex + keyboard handlers), deep-link в `/investor/installment/:id?plan=<template_id>`. Secondary "Pay in installments" кнопка удалена — tap-target сама карточка
+- [x] src/utils/installmentPlans.ts — shared `parsePlanConfig` (typed PlanConfig из JSONB), `getPlanBonus(plan)`, `getTrancheUnits(config, total, index)` (mirror backend scheduler math: `floor(percent × total / 100)` + остаток последнему траншу)
+- [x] i18n: ~50 ключей × 4 локали (`inv.purchase.*`, `inv.installment.*`); удалён устаревший `inv.product.installment` (кнопки больше нет)
 
-**Зависимость от бэкенда:** Purchase (Sprint 6.1 ✅), Installments (Sprint 6.2 ✅).
+**Integration contracts:**
+- Roles guard на бэке: `_BUYER_ROLES = {investor, agent}` — staff/company отвергаются `403`.
+- KYC gate: UI перехватывает `400 "KYC verification required ..."` → warning toast + `router.push('/onboarding/kyc')`.
+- Balance probe: `active_balance.confirmed` из `/dashboard/summary` (frozen excluded — бэк при execute_purchase не учитывает).
+- `referral_link_id` — reserved optional field в request bodies (Sprint 7.2 stub).
 
-**Критерий готовности:** Инвестор покупает продукт и оформляет рассрочку.
+**Error taxonomy (унифицирована PurchaseView + InstallmentView):**
+- `instanceof ApiResponseError` → discriminate 400 sub-cases regex'ом на `message` (регексы — временный discriminator, см. TD-F08c):
+  - `/kyc/i` → warning toast + redirect `/onboarding/kyc`
+  - `/insufficient/i` → error toast + `await refreshBalance()` (ловит «другая вкладка съела»)
+  - `/(template\|does not belong)/i` → error toast `templateMismatch` (InstallmentView only — race при soft-delete template)
+  - `/not active/i` или `404` → error toast `productInactive`
+  - fall-through → generic toast
+
+**Маркетинговый приоритет:** installment plan cards на ProductDetail — главная CTA, не secondary link. Deep-link сокращает путь «ProductDetail → Confirm» до 1 тапа. "Buy now" остаётся primary CTA рядом для инстант-пути.
+
+**Зависимость от бэкенда:** Purchase (Sprint 6.1 ✅), Installments (Sprint 6.2 ✅), Dashboard (Sprint 9.2 ✅).
+
+**Критерий готовности:** Инвестор покупает продукт и оформляет рассрочку. ✅
+
+**Commit chain:** B1 (`3202f68` API + types) → B2 (`fac96da` PurchaseView) → B2.1 (`157a972` typed error handling via `ApiResponseError`) → B3 (`3a39c14` InstallmentView + ProductDetail refactor) → B3.1 (extract `utils/installmentPlans`). Score ревьюера: 9.7 → 9.8 → 9.9 по ходу патчей.
+
+**Follow-ups (TD-F08 блок, секция 8):** TD-F08a currency multi-value contract, TD-F08b YAGNI wrappers, TD-F08c backend `error_code`, TD-F08d `/installments/preview`, TD-F08e `buildQueryString` util.
+
+**После F4.4 → Sprint 4.3 + TD-F07** (Share Pool Refactor). Views F4.2 подлежат ревизии по TD-F07b/c: поля `units`/`sold_units` → `package_size`/`available_packages`, availability-вычисления мигрируют.
 
 ---
 
@@ -1530,3 +1540,15 @@ Vue Router guards срабатывают только на **навигацию*
 | TD-F07f | Ручная проверка: seed-скрипт после `--reset` + `docker compose restart app` — все 18 видимых продуктов должны показывать realistic `available_packages` (ниже `total_shares_issued / package_size` если были покупки, равно — если не было) | 🔴 | После всех TD-F07a..e |
 
 Детальная спецификация, включая пример до/после диффов кода и текстов локалей — в `CBSHOME-Share-Pool-Refactor.md`, раздел «Frontend changes».
+
+### TD-F08: F4.2 Polish & Follow-ups
+
+Выявлены в ходе code review Phase F4.2 (score 9.8–9.9). Не блокируют F4.3/F4.4, фиксируются для консолидации в соответствующих спринтах или при появлении ≥N потребителей.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F08a | `BalanceResponse` и `Public*` (products, companies) не эмитят поле `currency`. UI опирается на соглашение «всё USD cents»; `formatPrice(cents, product.currency)` вызывается с `currency === undefined`, падает на дефолт `'USD'`. При введении мультивалютности — добавить `currency?: string` в Pydantic-схемы на бэке и в TypeScript-типы на фронте, параметризовать потребителей. Пометки `// TD-F08a` в F4.2 views (PurchaseView / InstallmentView / ProductDetailView) | 🟡 | С мультивалютным контрактом |
+| TD-F08b | `api/installments.ts` — `listMyPlans` / `getPlanDetail` написаны в F4.2 задел под F4.4 без текущего потребителя. Если F4.4 Portfolio задействует — снять TD; если нет — удалить | 🟢 | F4.4 |
+| TD-F08c | Backend issues `error_code` в 4xx `detail` payload (`kyc_required`, `insufficient_balance`, `product_inactive`, `template_mismatch`). Frontend error handlers в PurchaseView / InstallmentView (и будущих withdraw / transaction flows) заменяют regex-discriminator на switch по `code`. Сейчас в каждом `handleXError` стоит `// TD-F08c: replace regex with backend error_code` | 🟡 | BE + FE совместно, после Sprint 4.3 |
+| TD-F08d | Backend `/installments/preview` endpoint (или аналогичное поле в `InstallmentPlanResponse` ответа `POST /products/{id}/installment` — preview до создания не существует сейчас) возвращает материализованный tranche breakdown с точным `units_unlocked` per tranche. Frontend `utils/installmentPlans.getTrancheUnits` уходит в архив — зеркало scheduler math в двух языках устраняется. Пометка `// TD-F08d` в util | 🟢 | BE + FE совместно, после F4.4 |
+| TD-F08e | `src/utils/querystring.ts` — extract `buildQueryString(params: Record<string, string \| number \| undefined>): string` из дублирующегося паттерна в `api/{products,companies,installments,admin}.ts`. Порог извлечения — 5-й потребитель (сейчас 4) | 🟢 | При 5-м потребителе (F4.3 Transactions с фильтрами — вероятный триггер) |
