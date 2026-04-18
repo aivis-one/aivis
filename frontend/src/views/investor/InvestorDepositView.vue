@@ -138,7 +138,7 @@ onMounted(load)
 
 <template>
   <div class="dv">
-    <CHeader :show-back="true" :title="t('inv.deposit.title')" />
+    <CHeader :show-back="true" :show-logo="false" :title="t('inv.deposit.title')" />
 
     <!-- Loading -->
     <div v-if="loading" class="dv__center">

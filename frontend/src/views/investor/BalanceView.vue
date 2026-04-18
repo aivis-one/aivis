@@ -41,7 +41,6 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowDownToLine, CreditCard } from 'lucide-vue-next'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import { useBalanceStore } from '@/stores/balance'
 import { listPaymentHistory } from '@/api/payments'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -194,7 +193,9 @@ watch(
 
 <template>
   <div class="bv">
-    <CHeader :title="t('inv.balance.title')" />
+    <div class="bv__header">
+      <h1 class="bv__title">{{ t('inv.balance.title') }}</h1>
+    </div>
 
     <!-- Active balance card -->
     <section class="bv__card bv__balance">
@@ -331,6 +332,17 @@ watch(
   display: flex;
   flex-direction: column;
   padding-bottom: 24px;
+}
+
+/* Page header (inline, not CHeader -- shell already renders CHeader) */
+.bv__header {
+  padding: 16px 16px 0;
+}
+.bv__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
 }
 
 /* Card base */
