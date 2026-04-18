@@ -45,6 +45,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { ArrowDownLeft, ArrowUpRight, CreditCard, RefreshCw, Repeat, ShoppingBag } from 'lucide-vue-next'
 
@@ -57,6 +58,11 @@ import type { TransactionResponse } from '@/api/types'
 
 const { t } = useI18n()
 const store = useTransactionsStore()
+// storeToRefs keeps hasMore reactive when destructured -- matches
+// MarketView / productsStore pattern. Passing store.hasMore directly
+// would unwrap to a plain boolean; wrapping in computed(() => ...)
+// works but adds a redundant layer.
+const { hasMore } = storeToRefs(store)
 
 interface Tab {
   key: string
@@ -141,11 +147,7 @@ function selectTab(tab: Tab): void {
 }
 
 // Wire up infinite scroll to the store's loadMore.
-useInfiniteScroll(
-  sentinelRef,
-  computed(() => store.hasMore),
-  store.loadMore,
-)
+useInfiniteScroll(sentinelRef, hasMore, store.loadMore)
 
 onMounted(() => {
   // Always refresh on mount -- even a fresh store returns cached
