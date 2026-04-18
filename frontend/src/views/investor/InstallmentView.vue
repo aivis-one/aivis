@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InstallmentView (Phase F4.2)
+// CBSHOME Frontend -- InstallmentView (Phase F4.2 + F4.2.2 polish)
 // =============================================================================
 //
 // Installment plan confirmation screen. Shared across
@@ -36,10 +36,12 @@
 // The backend validates first-tranche affordability inside create_plan,
 // the UI check is a courtesy.
 //
-// Unit decomposition: the backend scheduler floors
-// `units_percent * product_units // 100` for each tranche and gives
-// the leftover to the last tranche. We mirror the same math here so
-// the on-screen breakdown matches what the backend will persist.
+// F4.2.2 polish:
+//   Plan-config parsing, bonus extraction, and tranche-units math
+//   moved to utils/installmentPlans -- shared with ProductDetailView
+//   and (upcoming) F4.4 Portfolio. The backend-scheduler mirror math
+//   lives in a single place now; TD-F11 tracks replacing it with a
+//   backend-issued preview endpoint.
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
@@ -59,6 +61,12 @@ import {
   formatPrice,
   resolveCoverImage,
 } from '@/utils/format'
+import {
+  getPlanBonus,
+  getTrancheUnits,
+  parsePlanConfig,
+  type PlanConfig,
+} from '@/utils/installmentPlans'
 import type {
   InstallmentResponse,
   PublicProductDetailResponse,
@@ -69,20 +77,6 @@ import type {
 // F4.2 views -- remove once the multi-currency contract ships.
 type ProductWithOptionalCurrency = PublicProductDetailResponse & {
   currency?: string
-}
-
-// Typed shape of plan_config JSONB (see backend/app/modules/products/
-// constants.py::validate_plan_config). Kept local to this view --
-// the backend ships plan_config as Record<string, unknown> and this
-// is where we narrow.
-interface TrancheConfig {
-  amount_cents: number
-  units_percent: number
-}
-interface PlanConfig {
-  tranches: TrancheConfig[]
-  bonus_units: number
-  agent_bonus_units: number
 }
 
 const route = useRoute()
@@ -152,34 +146,8 @@ const headerTitle = computed<string>(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Local helpers
 // ---------------------------------------------------------------------------
-
-function parsePlanConfig(
-  cfg: Record<string, unknown>,
-): PlanConfig | null {
-  const rawTranches = cfg['tranches']
-  if (!Array.isArray(rawTranches)) return null
-
-  const tranches: TrancheConfig[] = []
-  for (const t of rawTranches) {
-    if (typeof t !== 'object' || t === null) return null
-    const rec = t as Record<string, unknown>
-    const amount = rec['amount_cents']
-    const percent = rec['units_percent']
-    if (typeof amount !== 'number' || typeof percent !== 'number') return null
-    tranches.push({ amount_cents: amount, units_percent: percent })
-  }
-  if (tranches.length < 2) return null
-
-  const bu = cfg['bonus_units']
-  const abu = cfg['agent_bonus_units']
-  return {
-    tranches,
-    bonus_units: typeof bu === 'number' ? bu : 0,
-    agent_bonus_units: typeof abu === 'number' ? abu : 0,
-  }
-}
 
 function resolvePlanById(id: string): InstallmentResponse | null {
   const list = product.value?.installments ?? []
@@ -187,27 +155,12 @@ function resolvePlanById(id: string): InstallmentResponse | null {
 }
 
 /**
- * Mirror backend scheduler math: each non-last tranche gets
- * `floor(total_units * percent / 100)`; the last tranche takes
- * whatever is left so the sum equals product.units exactly.
+ * Tranche row units -- thin wrapper that feeds the shared util
+ * the product total. Kept local so the template stays terse.
  */
 function unitsForTranche(index: number): number {
   if (!product.value || !planConfig.value) return 0
-  const total = product.value.units
-  const list = planConfig.value.tranches
-  if (index < list.length - 1) {
-    return Math.floor((total * list[index].units_percent) / 100)
-  }
-  let consumed = 0
-  for (let i = 0; i < list.length - 1; i += 1) {
-    consumed += Math.floor((total * list[i].units_percent) / 100)
-  }
-  return total - consumed
-}
-
-function bonusOf(plan: InstallmentResponse): number {
-  const cfg = parsePlanConfig(plan.plan_config)
-  return cfg?.bonus_units ?? 0
+  return getTrancheUnits(planConfig.value, product.value.units, index)
 }
 
 function installmentRouteName(): string {
@@ -332,11 +285,6 @@ function backToMarket(): void {
   })
 }
 
-function backToProduct(): void {
-  // Reuse cancel() semantics -- same destination.
-  cancel()
-}
-
 // If the user navigates inside the shell (e.g. tapping a different
 // plan card) without a full remount, re-resolve selectedPlan from
 // the updated query string. Keeps SELECT/CONFIRM modes in sync with
@@ -386,7 +334,7 @@ onMounted(load)
           :title="t('inv.installment.empty.title')"
           :description="t('inv.installment.empty.desc')"
         />
-        <CButton variant="outline" size="sm" @click="backToProduct">
+        <CButton variant="outline" size="sm" @click="cancel">
           {{ t('inv.installment.backToProduct') }}
         </CButton>
       </div>
@@ -429,11 +377,13 @@ onMounted(load)
               >
                 <span class="iv__plan-name">{{ plan.name }}</span>
                 <span
-                  v-if="bonusOf(plan) > 0"
+                  v-if="getPlanBonus(plan) > 0"
                   class="iv__plan-bonus"
                 >
                   {{
-                    t('inv.product.installmentsBonus', { n: bonusOf(plan) })
+                    t('inv.product.installmentsBonus', {
+                      n: getPlanBonus(plan),
+                    })
                   }}
                 </span>
               </li>

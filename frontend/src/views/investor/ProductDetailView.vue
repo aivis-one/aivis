@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 + F4.2)
+// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 + F4.2 + F4.2.2)
 // =============================================================================
 //
 // Public product detail screen. Shared across /investor/products/:id
@@ -17,6 +17,13 @@
 //   "Pay in installments" button underneath was removed -- no second
 //   selector needed. "Buy now" stays as the primary CTA for users
 //   who want the full package up front.
+//
+// F4.2.2 polish:
+//   Plan-config parsing was duplicated between this view and
+//   InstallmentView. Extracted to utils/installmentPlans so
+//   ProductDetail, InstallmentView, and the upcoming F4.4 Portfolio
+//   share one parser with consistent strictness. Bonus extraction
+//   here is now `getPlanBonus(plan)` from that module.
 //
 // F4.1.4 polish (retained):
 //   - Formatters moved to utils/format.ts (TD-F04 closed).
@@ -40,6 +47,7 @@ import {
   formatPrice,
   resolveCoverImage,
 } from '@/utils/format'
+import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 
 // Backend currency field is not emitted yet (TD-F03). Keep the
@@ -81,13 +89,6 @@ const available = computed<number>(() => {
   const p = product.value
   return p ? p.units - p.sold_units : 0
 })
-
-// plan_config is backend JSONB (see schemas.py) -- extract bonus_units
-// defensively so a malformed plan doesn't crash the view.
-function installmentBonus(config: Record<string, unknown>): number {
-  const b = config['bonus_units']
-  return typeof b === 'number' ? b : 0
-}
 
 function backToMarket(): void {
   const name = agentShell.value ? 'agent-market' : 'investor-market'
@@ -215,12 +216,12 @@ onMounted(loadProduct)
             >
               <span class="pd__plan-name">{{ plan.name }}</span>
               <span
-                v-if="installmentBonus(plan.plan_config) > 0"
+                v-if="getPlanBonus(plan) > 0"
                 class="pd__plan-bonus"
               >
                 {{
                   t('inv.product.installmentsBonus', {
-                    n: installmentBonus(plan.plan_config),
+                    n: getPlanBonus(plan),
                   })
                 }}
               </span>
