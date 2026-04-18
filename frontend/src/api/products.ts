@@ -4,9 +4,14 @@
 //
 // Typed wrappers for /api/v1/products/* (public storefront).
 // Source of truth: backend/app/modules/products/router.py.
+//
+// F4.3 B1.1: inline URLSearchParams replaced with buildQueryString
+// (TD-F08e closure). No behavioural change -- buildQueryString skips
+// the same undefined/null/'' values the inline ternary did.
 // =============================================================================
 
 import { api } from '@/api/client'
+import { buildQueryString } from '@/utils/querystring'
 import type {
   PublicProductDetailResponse,
   PublicProductListResponse,
@@ -24,14 +29,12 @@ export function listProducts(params?: {
   page?: number
   per_page?: number
 }): Promise<PublicProductListResponse> {
-  const q = new URLSearchParams()
-  if (params?.company_id) q.set('company_id', params.company_id)
-  if (params?.page) q.set('page', String(params.page))
-  if (params?.per_page) q.set('per_page', String(params.per_page))
-  const qs = q.toString()
-  return api.get<PublicProductListResponse>(
-    `/api/v1/products${qs ? '?' + qs : ''}`,
-  )
+  const qs = buildQueryString({
+    company_id: params?.company_id,
+    page: params?.page,
+    per_page: params?.per_page,
+  })
+  return api.get<PublicProductListResponse>(`/api/v1/products${qs}`)
 }
 
 /**

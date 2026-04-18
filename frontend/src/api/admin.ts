@@ -4,9 +4,15 @@
 //
 // Typed wrappers for all /api/v1/staff/* endpoints.
 // Source of truth: backend routers (staff, admin, avatar, payments, withdrawals, agent-apps).
+//
+// F4.3 B1.1: fetchUsers and fetchPayments migrated from inline
+// URLSearchParams to buildQueryString util (TD-F08e closure). No
+// behavioural change -- the helper applies the same skip rules as
+// the old `if (params?.x) q.set(...)` ternary.
 // =============================================================================
 
 import { api } from '@/api/client'
+import { buildQueryString } from '@/utils/querystring'
 import type {
   DashboardStatsResponse,
   UserListResponse,
@@ -47,12 +53,12 @@ export function fetchUsers(params?: {
   page?: number
   per_page?: number
 }): Promise<UserListResponse> {
-  const q = new URLSearchParams()
-  if (params?.role) q.set('role', params.role)
-  if (params?.page) q.set('page', String(params.page))
-  if (params?.per_page) q.set('per_page', String(params.per_page))
-  const qs = q.toString()
-  return api.get<UserListResponse>(`/api/v1/staff/users${qs ? '?' + qs : ''}`)
+  const qs = buildQueryString({
+    role: params?.role,
+    page: params?.page,
+    per_page: params?.per_page,
+  })
+  return api.get<UserListResponse>(`/api/v1/staff/users${qs}`)
 }
 
 /** GET /api/v1/staff/users/{id} — full user detail. */
@@ -111,13 +117,13 @@ export function fetchPayments(params?: {
   page?: number
   per_page?: number
 }): Promise<StaffPaymentListResponse> {
-  const q = new URLSearchParams()
-  if (params?.status) q.set('status', params.status)
-  if (params?.user_id) q.set('user_id', params.user_id)
-  if (params?.page) q.set('page', String(params.page))
-  if (params?.per_page) q.set('per_page', String(params.per_page))
-  const qs = q.toString()
-  return api.get<StaffPaymentListResponse>(`/api/v1/staff/payments${qs ? '?' + qs : ''}`)
+  const qs = buildQueryString({
+    status: params?.status,
+    user_id: params?.user_id,
+    page: params?.page,
+    per_page: params?.per_page,
+  })
+  return api.get<StaffPaymentListResponse>(`/api/v1/staff/payments${qs}`)
 }
 
 /** POST /api/v1/staff/payments/{id}/reverse — chargeback reversal. */

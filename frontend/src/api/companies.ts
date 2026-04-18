@@ -8,9 +8,13 @@
 // listCompanies supports ?search= for the storefront filter bottom-sheet
 // on the Investor side -- case-insensitive substring match on name,
 // with LIKE metacharacters escaped server-side.
+//
+// F4.3 B1.1: inline URLSearchParams replaced with buildQueryString
+// (TD-F08e closure). No behavioural change.
 // =============================================================================
 
 import { api } from '@/api/client'
+import { buildQueryString } from '@/utils/querystring'
 import type {
   PublicCompanyDetailResponse,
   PublicCompanyListResponse,
@@ -27,14 +31,12 @@ export function listCompanies(params?: {
   page?: number
   per_page?: number
 }): Promise<PublicCompanyListResponse> {
-  const q = new URLSearchParams()
-  if (params?.search) q.set('search', params.search)
-  if (params?.page) q.set('page', String(params.page))
-  if (params?.per_page) q.set('per_page', String(params.per_page))
-  const qs = q.toString()
-  return api.get<PublicCompanyListResponse>(
-    `/api/v1/companies${qs ? '?' + qs : ''}`,
-  )
+  const qs = buildQueryString({
+    search: params?.search,
+    page: params?.page,
+    per_page: params?.per_page,
+  })
+  return api.get<PublicCompanyListResponse>(`/api/v1/companies${qs}`)
 }
 
 /**

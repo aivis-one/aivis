@@ -12,9 +12,13 @@
 // listMyPlans / getPlanDetail are unused by F4.2 itself but land
 // here now so F4.4 (Portfolio) can consume them without a second
 // round-trip to the API layer.
+//
+// F4.3 B1.1: inline URLSearchParams replaced with buildQueryString
+// (TD-F08e closure). No behavioural change.
 // =============================================================================
 
 import { api } from '@/api/client'
+import { buildQueryString } from '@/utils/querystring'
 import type {
   CreateInstallmentPlanRequest,
   InstallmentPlanDetailResponse,
@@ -55,12 +59,12 @@ export function listMyPlans(params?: {
   page?: number
   per_page?: number
 }): Promise<InstallmentPlanListResponse> {
-  const q = new URLSearchParams()
-  if (params?.page) q.set('page', String(params.page))
-  if (params?.per_page) q.set('per_page', String(params.per_page))
-  const qs = q.toString()
+  const qs = buildQueryString({
+    page: params?.page,
+    per_page: params?.per_page,
+  })
   return api.get<InstallmentPlanListResponse>(
-    `/api/v1/installments/me${qs ? '?' + qs : ''}`,
+    `/api/v1/installments/me${qs}`,
   )
 }
 
