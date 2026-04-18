@@ -49,6 +49,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import asyncio
 import sys
 from pathlib import Path
