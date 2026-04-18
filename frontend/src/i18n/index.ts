@@ -4,7 +4,11 @@
 //
 // LAZY-LOADED LOCALES.
 // Only the locale the user actually needs is fetched. Vite compiles
-// each JSON into its own chunk; the main bundle contains none.
+// each JSON into its own chunk; the main bundle contains none. The
+// fallback locale (DEFAULT_LOCALE) is an exception -- it is always
+// preloaded alongside the active one so vue-i18n's own fallback
+// machinery has messages to resolve against when a key is missing
+// in the active locale (see setupI18n notes).
 //
 // LOCALE RESOLUTION.
 //   1. localStorage['cbs-lang'] -- stored at login from user.language.
@@ -78,10 +82,21 @@ function readStoredLocale(): SupportedLocale {
  * fetches its JSON, and applies the locale on the i18n instance and
  * on the <html> element. Must be awaited in main.ts -- an unresolved
  * setup would render with empty messages and keys would show through.
+ *
+ * Fallback preload: when the active locale is not the fallback, the
+ * fallback bundle is fetched in parallel. vue-i18n's fallbackLocale
+ * machinery only resolves against messages that are actually in
+ * memory -- without this preload, a missing key in ru/de/ar would
+ * render as the raw dotted path instead of the English string. The
+ * extra cost is one small JSON chunk (~15KB) loaded once per session.
+ * When active === fallback the second call no-ops via loadedLocales.
  */
 export async function setupI18n(): Promise<void> {
   const locale = readStoredLocale()
-  await loadLocaleMessages(locale)
+  await Promise.all([
+    loadLocaleMessages(DEFAULT_LOCALE),
+    loadLocaleMessages(locale),
+  ])
   i18n.global.locale.value = locale
   applyDir(locale)
 }
@@ -95,6 +110,10 @@ export async function setupI18n(): Promise<void> {
  * then flips the active locale. Persists the choice in localStorage
  * regardless of whether it changed -- so a cold boot starts in the
  * right language even when the current locale already happens to match.
+ *
+ * The fallback locale is already in memory from setupI18n, so no
+ * extra load is needed here -- vue-i18n's fallbackLocale resolver
+ * keeps working across switches.
  *
  * On load failure (missing file, network error for chunk) logs an
  * error and leaves the UI on the previous locale. Never throws --

@@ -358,6 +358,46 @@
         "productInactive": "This product is no longer available",
         "generic": "Could not create the plan. Please try again"
       }
+    },
+    "balance": {
+      "title": "Balance",
+      "active": "Active balance",
+      "frozen": "Frozen",
+      "deposit": "Deposit",
+      "history": "Payment history",
+      "historyEmpty": "No payments yet",
+      "historyError": {
+        "title": "Could not load payment history",
+        "desc": "Please try again in a moment"
+      },
+      "refreshFailed": "Could not refresh balance",
+      "status": {
+        "created": "Pending",
+        "frozen": "Pending confirmation",
+        "confirmed": "Confirmed",
+        "reversed": "Reversed",
+        "failed": "Failed"
+      },
+      "type": {
+        "crypto": "Crypto",
+        "bank": "Bank",
+        "card": "Card"
+      }
+    },
+    "deposit": {
+      "title": "Deposit",
+      "subtitle": "Send USDT via TRC20 to the address below. Funds appear in your balance after network confirmation.",
+      "network": "Network",
+      "copy": "Copy address",
+      "copied": "Address copied",
+      "copyError": "Could not copy address",
+      "warning": "Send only USDT via TRC20 to this address. Funds sent on other networks cannot be recovered.",
+      "qrUnavailable": "QR code unavailable — please use the address below.",
+      "backToBalance": "Back to balance",
+      "loadError": {
+        "title": "Could not get your deposit address",
+        "desc": "Please try again"
+      }
     }
   }
 }

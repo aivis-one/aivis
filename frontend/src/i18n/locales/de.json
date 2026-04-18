@@ -358,6 +358,46 @@
         "productInactive": "Dieses Produkt ist nicht mehr verfügbar",
         "generic": "Plan konnte nicht erstellt werden. Bitte versuchen Sie es erneut"
       }
+    },
+    "balance": {
+      "title": "Kontostand",
+      "active": "Aktiver Kontostand",
+      "frozen": "Gesperrt",
+      "deposit": "Einzahlen",
+      "history": "Zahlungsverlauf",
+      "historyEmpty": "Noch keine Zahlungen",
+      "historyError": {
+        "title": "Zahlungsverlauf konnte nicht geladen werden",
+        "desc": "Bitte versuchen Sie es gleich noch einmal"
+      },
+      "refreshFailed": "Kontostand konnte nicht aktualisiert werden",
+      "status": {
+        "created": "Erstellt",
+        "frozen": "Wartet auf Bestätigung",
+        "confirmed": "Bestätigt",
+        "reversed": "Storniert",
+        "failed": "Fehlgeschlagen"
+      },
+      "type": {
+        "crypto": "Krypto",
+        "bank": "Bank",
+        "card": "Karte"
+      }
+    },
+    "deposit": {
+      "title": "Einzahlung",
+      "subtitle": "Senden Sie USDT über TRC20 an die untenstehende Adresse. Nach der Netzwerk-Bestätigung erscheint das Guthaben auf Ihrem Konto.",
+      "network": "Netzwerk",
+      "copy": "Adresse kopieren",
+      "copied": "Adresse kopiert",
+      "copyError": "Adresse konnte nicht kopiert werden",
+      "warning": "Senden Sie nur USDT über TRC20 an diese Adresse. Mittel, die über andere Netzwerke gesendet werden, können nicht wiederhergestellt werden.",
+      "qrUnavailable": "QR-Code nicht verfügbar — verwenden Sie bitte die Adresse unten.",
+      "backToBalance": "Zurück zum Kontostand",
+      "loadError": {
+        "title": "Einzahlungsadresse konnte nicht abgerufen werden",
+        "desc": "Bitte versuchen Sie es erneut"
+      }
     }
   }
 }

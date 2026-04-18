@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 polish)
+// CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 polish + F4.3 B2)
 // =============================================================================
 //
 // Full route map (~40 routes). Shell components as layout wrappers.
@@ -23,6 +23,14 @@
 //   pattern-matching on `route.path`. Vue Router merges meta from
 //   parent + child route records, so the tag propagates to all
 //   nested views automatically.
+//
+// F4.3 B2:
+//   Added `/investor/balance/deposit` -> `investor-deposit` child
+//   route for the crypto deposit screen. Nested under `balance/`
+//   so the browser back chain naturally returns to BalanceView,
+//   and the URL reads as a subsection of balance. Agent shell does
+//   not duplicate this route -- deposit is investor-scope for F4.3
+//   (see plan: agent-side balance/transactions deferred).
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -153,6 +161,11 @@ export const router = createRouter({
           path: 'balance',
           name: 'investor-balance',
           component: () => import('@/views/investor/BalanceView.vue'),
+        },
+        {
+          path: 'balance/deposit',
+          name: 'investor-deposit',
+          component: () => import('@/views/investor/InvestorDepositView.vue'),
         },
         {
           path: 'transactions',
