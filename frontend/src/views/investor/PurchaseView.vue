@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PurchaseView (Phase F4.2 + F4.2.1 polish)
+// CBSHOME Frontend -- PurchaseView (Phase F4.2 + F4.2.1 polish + F4.3 fix)
 // =============================================================================
 //
 // Instant-purchase confirmation screen. Shared across
@@ -30,6 +30,16 @@
 //   three 400 sub-cases -- not ideal, but robust enough until the
 //   backend starts emitting error codes in `detail` (tracked as
 //   TD-F10). Until then, at least the type and status are rigid.
+//
+// F4.3 fix:
+//   Cancel used router.push(ProductDetail), which pushed a fresh
+//   history entry on top of the existing [Market, ProductDetail,
+//   Purchase] stack and turned the header back button on the
+//   returned ProductDetail into a back-to-Purchase trap. Now the
+//   cancel path asks vue-router to step back one entry (restoring
+//   scroll/state for free) and only falls through to push() when
+//   there is no back entry -- i.e. the user deep-linked into this
+//   screen.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -185,6 +195,16 @@ async function refreshBalance(): Promise<void> {
 }
 
 function cancel(): void {
+  // Prefer router.back() so the ProductDetail screen restores its
+  // scroll/state for free and we don't pollute history with a
+  // duplicate ProductDetail entry (which would turn the back button
+  // on that screen into a back-to-Purchase trap). Only push when
+  // vue-router has no prior entry -- i.e. PurchaseView was opened
+  // via a deep-linked URL.
+  if (router.options.history.state.back) {
+    router.back()
+    return
+  }
   router.push({
     name: agentShell.value
       ? 'agent-product-detail'

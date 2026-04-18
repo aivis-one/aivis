@@ -624,13 +624,16 @@ export interface DashboardSummaryResponse {
 //
 // Supported networks on backend: TRC20, ERC20, BEP20, PoS. F4.3
 // hardcodes TRC20; the full selector is deferred (see F4.3 plan).
-// Union keeps a `| string` escape hatch for future networks.
+// CreateAddressRequest uses the strict CryptoNetwork union -- the
+// frontend owns what it sends, so a compile-time typo catch wins
+// over a `| string` escape hatch. DepositAddressResponse.network
+// stays plain `string` since it comes from the backend.
 // ---------------------------------------------------------------------------
 
 export type CryptoNetwork = 'TRC20' | 'ERC20' | 'BEP20' | 'PoS'
 
 export interface CreateAddressRequest {
-  network: CryptoNetwork | string
+  network: CryptoNetwork
 }
 
 export interface DepositAddressResponse {

@@ -10,16 +10,19 @@
 // Portfolio), so the contract stays deliberately simple.
 //
 // STATE (all amounts in USD cents):
-//   active_confirmed  -- spendable active balance
-//   active_frozen     -- still-frozen active balance (not spendable)
-//   passive_confirmed -- earnings ready to withdraw
-//   passive_frozen    -- earnings still in cool-off
-//   loading           -- true during refresh()
-//   error             -- last refresh error message, null on success
+//   activeBalance  -- { confirmed, frozen } -- spendable + locked active
+//   passiveBalance -- { confirmed, frozen } -- withdrawable + cool-off
+//                                              earnings
+//   loading        -- true during refresh()
+//   error          -- last refresh error message, null on success
+//
+// Mirrors the backend BalanceResponse shape ({ confirmed, frozen })
+// rather than flattening to four top-level refs. CamelCase keys match
+// the rest of the stores (products, companies, auth).
 //
 // ACTIONS:
-//   refresh()         -- pull /dashboard/summary, write state, never throw
-//   reset()           -- zero out state (logout / role switch)
+//   refresh() -- pull /dashboard/summary, write state, never throw
+//   reset()   -- zero out state (logout / role switch)
 //
 // RACE POLICY:
 //   Last write wins. Balances are a snapshot -- a refresh fired after
@@ -40,12 +43,15 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { getDashboardSummary } from '@/api/dashboard'
+import type { BalanceResponse } from '@/api/types'
+
+function emptyBalance(): BalanceResponse {
+  return { confirmed: 0, frozen: 0 }
+}
 
 export const useBalanceStore = defineStore('balance', () => {
-  const active_confirmed = ref(0)
-  const active_frozen = ref(0)
-  const passive_confirmed = ref(0)
-  const passive_frozen = ref(0)
+  const activeBalance = ref<BalanceResponse>(emptyBalance())
+  const passiveBalance = ref<BalanceResponse>(emptyBalance())
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -54,16 +60,24 @@ export const useBalanceStore = defineStore('balance', () => {
    *
    * Never throws -- errors are captured on `error`. Callers that need
    * to branch on success should check `error` after `await refresh()`.
+   *
+   * Assigns fresh objects rather than spreading the response, so an
+   * unexpected future field on BalanceResponse can't leak into the
+   * store silently.
    */
   async function refresh(): Promise<void> {
     loading.value = true
     error.value = null
     try {
       const summary = await getDashboardSummary()
-      active_confirmed.value = summary.active_balance.confirmed
-      active_frozen.value = summary.active_balance.frozen
-      passive_confirmed.value = summary.passive_balance.confirmed
-      passive_frozen.value = summary.passive_balance.frozen
+      activeBalance.value = {
+        confirmed: summary.active_balance.confirmed,
+        frozen: summary.active_balance.frozen,
+      }
+      passiveBalance.value = {
+        confirmed: summary.passive_balance.confirmed,
+        frozen: summary.passive_balance.frozen,
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
@@ -73,19 +87,15 @@ export const useBalanceStore = defineStore('balance', () => {
 
   /** Reset all balances to zero. Called on logout and role switch. */
   function reset(): void {
-    active_confirmed.value = 0
-    active_frozen.value = 0
-    passive_confirmed.value = 0
-    passive_frozen.value = 0
+    activeBalance.value = emptyBalance()
+    passiveBalance.value = emptyBalance()
     loading.value = false
     error.value = null
   }
 
   return {
-    active_confirmed,
-    active_frozen,
-    passive_confirmed,
-    passive_frozen,
+    activeBalance,
+    passiveBalance,
     loading,
     error,
     refresh,

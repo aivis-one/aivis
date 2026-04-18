@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InstallmentView (Phase F4.2 + F4.2.2 polish)
+// CBSHOME Frontend -- InstallmentView (Phase F4.2 + F4.2.2 polish + F4.3 fix)
 // =============================================================================
 //
 // Installment plan confirmation screen. Shared across
@@ -42,6 +42,15 @@
 //   and (upcoming) F4.4 Portfolio. The backend-scheduler mirror math
 //   lives in a single place now; TD-F11 tracks replacing it with a
 //   backend-issued preview endpoint.
+//
+// F4.3 fix:
+//   Cancel used router.push(ProductDetail), which pushed a fresh
+//   history entry on top of the existing stack and turned the header
+//   back button on the returned ProductDetail into a back-to-
+//   Installment trap. Now the cancel path asks vue-router to step
+//   back one entry (restoring scroll/state for free) and only falls
+//   through to push() when there is no back entry -- i.e. the user
+//   deep-linked into this screen.
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
@@ -271,6 +280,16 @@ async function refreshBalance(): Promise<void> {
 }
 
 function cancel(): void {
+  // Prefer router.back() so the ProductDetail screen restores its
+  // scroll/state for free and we don't pollute history with a
+  // duplicate ProductDetail entry (which would turn the back button
+  // on that screen into a back-to-Installment trap). Only push when
+  // vue-router has no prior entry -- i.e. InstallmentView was opened
+  // via a deep-linked URL.
+  if (router.options.history.state.back) {
+    router.back()
+    return
+  }
   router.push({
     name: agentShell.value
       ? 'agent-product-detail'
