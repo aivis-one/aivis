@@ -598,3 +598,126 @@ export interface DashboardSummaryResponse {
   companies_count: number
   companies: CompanySummaryResponse[]
 }
+
+// ===========================================================================
+// Phase F4.3 -- Investor payments (deposit) + transactions event log
+//
+// Matches:
+//   backend/app/modules/payments/schemas.py       (Sprint 5.2)
+//     CreateAddressRequest, DepositAddressResponse,
+//     PaymentResponse (investor view -- no user_id/provider_data),
+//     PaymentHistoryResponse
+//   backend/app/modules/transactions/schemas.py   (Sprint 6.4)
+//   backend/app/modules/transactions/constants.py (TransactionType,
+//     ReferenceType)
+//
+// PaymentResponse is the INVESTOR-facing shape; Staff already has
+// its own StaffPaymentResponse above that adds user_id and
+// provider_data. They are intentionally independent types.
+//
+// PaymentType / PaymentStatusType unions are reused from the Staff
+// block above -- same backend enum, same `| string` escape hatch.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Crypto deposit address (Sprint 5.2)
+//
+// Supported networks on backend: TRC20, ERC20, BEP20, PoS. F4.3
+// hardcodes TRC20; the full selector is deferred (see F4.3 plan).
+// Union keeps a `| string` escape hatch for future networks.
+// ---------------------------------------------------------------------------
+
+export type CryptoNetwork = 'TRC20' | 'ERC20' | 'BEP20' | 'PoS'
+
+export interface CreateAddressRequest {
+  network: CryptoNetwork | string
+}
+
+export interface DepositAddressResponse {
+  address: string
+  network: string
+  user_id: string
+}
+
+// ---------------------------------------------------------------------------
+// Payment history (Sprint 5.2) -- investor view
+//
+// `payment_type` and `status` are strings on the backend (not enum
+// columns), so union + `| string` escape matches the Staff pattern.
+// ---------------------------------------------------------------------------
+
+export interface PaymentResponse {
+  id: string
+  amount_cents: number
+  currency: string
+  payment_type: PaymentType | string
+  provider: string
+  status: PaymentStatusType | string
+  frozen_until: string | null
+  created_at: string
+  updated_at: string | null
+}
+
+export interface PaymentHistoryResponse {
+  items: PaymentResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
+// ---------------------------------------------------------------------------
+// Transactions: immutable event log (Sprint 6.4)
+//
+// Type format is `{entity}:{event}` -- backend accepts either an
+// exact match (`deposit:received`) or a trailing-colon prefix
+// (`deposit:`) in the `type` query parameter. F4.3 TransactionsView
+// uses the prefix form for category tabs.
+// ---------------------------------------------------------------------------
+
+export type TransactionType =
+  | 'deposit:received'
+  | 'deposit:confirmed'
+  | 'deposit:reversed'
+  | 'purchase:completed'
+  | 'purchase:gift'
+  | 'installment:tranche_paid'
+  | 'installment:completed'
+  | 'installment:defaulted'
+  | 'withdrawal:created'
+  | 'withdrawal:confirmed'
+  | 'withdrawal:rejected'
+  | 'withdrawal:completed'
+  | 'withdrawal:failed'
+  | 'reversal:completed'
+
+export type ReferenceType =
+  | 'payment'
+  | 'purchase'
+  | 'withdrawal'
+  | 'installment_plan'
+
+/**
+ * Single transaction event. `amount_cents` is signed:
+ *   positive -- money in (deposit, refund)
+ *   negative -- money out (purchase, withdrawal)
+ * `details` JSONB is type-specific and rendered by the detail sheet;
+ * frontend should treat each key as optional and never assume shape.
+ */
+export interface TransactionResponse {
+  id: string
+  user_id: string
+  type: TransactionType | string
+  amount_cents: number
+  currency: string
+  reference_id: string | null
+  reference_type: ReferenceType | string | null
+  details: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface TransactionListResponse {
+  items: TransactionResponse[]
+  total: number
+  page: number
+  per_page: number
+}
