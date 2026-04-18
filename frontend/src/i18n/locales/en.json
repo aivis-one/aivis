@@ -398,6 +398,57 @@
         "title": "Could not get your deposit address",
         "desc": "Please try again"
       }
+    },
+    "transactions": {
+      "title": "Transactions",
+      "subtitle": "Your financial event log",
+      "empty": "No transactions yet",
+      "errorTitle": "Could not load transactions",
+      "errorDesc": "Please try again in a moment",
+      "tabs": {
+        "all": "All",
+        "deposits": "Deposits",
+        "purchases": "Purchases",
+        "installments": "Installments",
+        "withdrawals": "Withdrawals"
+      },
+      "type": {
+        "deposit:received": "Deposit received",
+        "deposit:confirmed": "Deposit confirmed",
+        "deposit:reversed": "Deposit reversed",
+        "purchase:completed": "Purchase",
+        "purchase:gift": "Bonus units",
+        "installment:tranche_paid": "Installment tranche paid",
+        "installment:completed": "Installment plan completed",
+        "installment:defaulted": "Installment plan defaulted",
+        "withdrawal:created": "Withdrawal requested",
+        "withdrawal:confirmed": "Withdrawal confirmed",
+        "withdrawal:rejected": "Withdrawal rejected",
+        "withdrawal:completed": "Withdrawal completed",
+        "withdrawal:failed": "Withdrawal failed",
+        "reversal:completed": "Reversal completed"
+      },
+      "detail": {
+        "title": "Transaction details",
+        "loadError": "Could not load transaction",
+        "copy": "Copy",
+        "copied": "Copied to clipboard",
+        "copyError": "Could not copy",
+        "keys": {
+          "network": "Network",
+          "tx_hash": "Transaction hash",
+          "from_address": "From address",
+          "product_name": "Product",
+          "units": "Units",
+          "price_per_unit_cents": "Price per unit",
+          "reason": "Reason",
+          "trigger_tranche_number": "Trigger tranche",
+          "cancelled_count": "Tranches cancelled",
+          "product_id": "Product ID",
+          "plan_id": "Plan ID",
+          "tranche_number": "Tranche number"
+        }
+      }
     }
   }
 }

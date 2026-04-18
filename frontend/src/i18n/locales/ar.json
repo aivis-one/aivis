@@ -398,6 +398,57 @@
         "title": "تعذر الحصول على عنوان الإيداع",
         "desc": "يرجى المحاولة مرة أخرى"
       }
+    },
+    "transactions": {
+      "title": "المعاملات",
+      "subtitle": "سجل عمليّاتك المالية",
+      "empty": "لا توجد معاملات بعد",
+      "errorTitle": "تعذر تحميل المعاملات",
+      "errorDesc": "يرجى المحاولة بعد لحظات",
+      "tabs": {
+        "all": "الكل",
+        "deposits": "الإيداعات",
+        "purchases": "المشتريات",
+        "installments": "التقسيط",
+        "withdrawals": "السحوبات"
+      },
+      "type": {
+        "deposit:received": "تم استلام الإيداع",
+        "deposit:confirmed": "تم تأكيد الإيداع",
+        "deposit:reversed": "تم إلغاء الإيداع",
+        "purchase:completed": "شراء",
+        "purchase:gift": "وحدات إضافية",
+        "installment:tranche_paid": "تم دفع دفعة التقسيط",
+        "installment:completed": "اكتملت خطة التقسيط",
+        "installment:defaulted": "تعثرت خطة التقسيط",
+        "withdrawal:created": "تم طلب السحب",
+        "withdrawal:confirmed": "تم تأكيد السحب",
+        "withdrawal:rejected": "تم رفض السحب",
+        "withdrawal:completed": "اكتمل السحب",
+        "withdrawal:failed": "فشل السحب",
+        "reversal:completed": "اكتمل عكس العملية"
+      },
+      "detail": {
+        "title": "تفاصيل المعاملة",
+        "loadError": "تعذر تحميل المعاملة",
+        "copy": "نسخ",
+        "copied": "تم النسخ إلى الحافظة",
+        "copyError": "تعذر النسخ",
+        "keys": {
+          "network": "الشبكة",
+          "tx_hash": "تجزئة المعاملة",
+          "from_address": "عنوان المرسل",
+          "product_name": "المنتج",
+          "units": "الوحدات",
+          "price_per_unit_cents": "السعر لكل وحدة",
+          "reason": "السبب",
+          "trigger_tranche_number": "الدفعة المسببة",
+          "cancelled_count": "الدفعات الملغاة",
+          "product_id": "معرّف المنتج",
+          "plan_id": "معرّف الخطة",
+          "tranche_number": "رقم الدفعة"
+        }
+      }
     }
   }
 }

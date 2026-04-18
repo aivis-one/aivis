@@ -398,6 +398,57 @@
         "title": "Einzahlungsadresse konnte nicht abgerufen werden",
         "desc": "Bitte versuchen Sie es erneut"
       }
+    },
+    "transactions": {
+      "title": "Transaktionen",
+      "subtitle": "Ihr Finanz-Ereignisprotokoll",
+      "empty": "Noch keine Transaktionen",
+      "errorTitle": "Transaktionen konnten nicht geladen werden",
+      "errorDesc": "Bitte versuchen Sie es gleich noch einmal",
+      "tabs": {
+        "all": "Alle",
+        "deposits": "Einzahlungen",
+        "purchases": "Käufe",
+        "installments": "Ratenzahlungen",
+        "withdrawals": "Auszahlungen"
+      },
+      "type": {
+        "deposit:received": "Einzahlung erhalten",
+        "deposit:confirmed": "Einzahlung bestätigt",
+        "deposit:reversed": "Einzahlung storniert",
+        "purchase:completed": "Kauf",
+        "purchase:gift": "Bonus-Anteile",
+        "installment:tranche_paid": "Rate bezahlt",
+        "installment:completed": "Ratenzahlung abgeschlossen",
+        "installment:defaulted": "Ratenzahlung in Verzug",
+        "withdrawal:created": "Auszahlung angefragt",
+        "withdrawal:confirmed": "Auszahlung bestätigt",
+        "withdrawal:rejected": "Auszahlung abgelehnt",
+        "withdrawal:completed": "Auszahlung abgeschlossen",
+        "withdrawal:failed": "Auszahlung fehlgeschlagen",
+        "reversal:completed": "Stornierung abgeschlossen"
+      },
+      "detail": {
+        "title": "Transaktionsdetails",
+        "loadError": "Transaktion konnte nicht geladen werden",
+        "copy": "Kopieren",
+        "copied": "In die Zwischenablage kopiert",
+        "copyError": "Konnte nicht kopiert werden",
+        "keys": {
+          "network": "Netzwerk",
+          "tx_hash": "Transaktions-Hash",
+          "from_address": "Absender-Adresse",
+          "product_name": "Produkt",
+          "units": "Anteile",
+          "price_per_unit_cents": "Preis pro Anteil",
+          "reason": "Grund",
+          "trigger_tranche_number": "Auslösende Rate",
+          "cancelled_count": "Stornierte Raten",
+          "product_id": "Produkt-ID",
+          "plan_id": "Plan-ID",
+          "tranche_number": "Ratennummer"
+        }
+      }
     }
   }
 }

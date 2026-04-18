@@ -398,6 +398,57 @@
         "title": "Не удалось получить адрес пополнения",
         "desc": "Попробуйте ещё раз"
       }
+    },
+    "transactions": {
+      "title": "Транзакции",
+      "subtitle": "Журнал ваших финансовых операций",
+      "empty": "Транзакций пока нет",
+      "errorTitle": "Не удалось загрузить транзакции",
+      "errorDesc": "Попробуйте ещё раз через минуту",
+      "tabs": {
+        "all": "Все",
+        "deposits": "Пополнения",
+        "purchases": "Покупки",
+        "installments": "Рассрочка",
+        "withdrawals": "Выводы"
+      },
+      "type": {
+        "deposit:received": "Пополнение получено",
+        "deposit:confirmed": "Пополнение подтверждено",
+        "deposit:reversed": "Пополнение отменено",
+        "purchase:completed": "Покупка",
+        "purchase:gift": "Бонусные юниты",
+        "installment:tranche_paid": "Оплачен транш рассрочки",
+        "installment:completed": "Рассрочка завершена",
+        "installment:defaulted": "Рассрочка просрочена",
+        "withdrawal:created": "Запрос вывода",
+        "withdrawal:confirmed": "Вывод подтверждён",
+        "withdrawal:rejected": "Вывод отклонён",
+        "withdrawal:completed": "Вывод выполнен",
+        "withdrawal:failed": "Ошибка вывода",
+        "reversal:completed": "Реверс выполнен"
+      },
+      "detail": {
+        "title": "Детали транзакции",
+        "loadError": "Не удалось загрузить транзакцию",
+        "copy": "Скопировать",
+        "copied": "Скопировано в буфер обмена",
+        "copyError": "Не удалось скопировать",
+        "keys": {
+          "network": "Сеть",
+          "tx_hash": "Хеш транзакции",
+          "from_address": "Адрес отправителя",
+          "product_name": "Продукт",
+          "units": "Юниты",
+          "price_per_unit_cents": "Цена за юнит",
+          "reason": "Причина",
+          "trigger_tranche_number": "Триггерный транш",
+          "cancelled_count": "Отменено траншей",
+          "product_id": "ID продукта",
+          "plan_id": "ID плана",
+          "tranche_number": "Номер транша"
+        }
+      }
     }
   }
 }
