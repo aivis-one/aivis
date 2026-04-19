@@ -20,6 +20,17 @@ import type { ValidationErrorItem } from '@/api/types'
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://api.cbshome.org'
 const TIMEOUT_MS = 15_000
 
+/**
+ * Absolute API base URL. Exported so non-JSON endpoints (e.g. the
+ * certificate HTML served as text/html) can build absolute URLs
+ * via `${API_BASE_URL}${path}` without duplicating the env lookup
+ * or the https://api.cbshome.org fallback.
+ *
+ * JSON endpoints should keep using `api.get`/`api.post` -- those
+ * already handle BASE_URL, auth header, timeout, and JSON parsing.
+ */
+export const API_BASE_URL: string = BASE_URL
+
 // ---------------------------------------------------------------------------
 // Error classes
 // ---------------------------------------------------------------------------

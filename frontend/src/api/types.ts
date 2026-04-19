@@ -724,3 +724,138 @@ export interface TransactionListResponse {
   page: number
   per_page: number
 }
+
+// ===========================================================================
+// Phase F4.4 -- Portfolio + Certificates + Agent applications (investor)
+//
+// Matches:
+//   backend/app/modules/portfolio/schemas.py              (Sprint 9.2)
+//     CompanyPositionResponse       -> PortfolioPositionResponse
+//     PortfolioResponse
+//     PurchaseItemResponse
+//     CompanyPositionDetailResponse
+//   backend/app/modules/agent_applications/constants.py   (Sprint 7.1)
+//     AgentApplicationStatus        -> AgentApplicationStatusType
+//
+// NAMING NOTE -- backend `CompanyPositionResponse` is renamed to
+// `PortfolioPositionResponse` on the frontend. Rationale:
+// `CompanySummaryResponse` (already above in the F4.2 block) lives
+// inside DashboardSummaryResponse.companies[] and carries a
+// narrower shape (no sale/gift split, no avg_price). Keeping the
+// backend's "CompanyPosition" name next to "CompanySummary" invited
+// exactly the confusion this frontend typing should prevent. The
+// wire contract is unchanged -- only the TypeScript identifier.
+//
+// `AgentApplicationResponse` is NOT re-declared here -- the staff
+// block above already exports it, and both investor and staff
+// endpoints return the same shape. `AgentApplicationStatusType`
+// below is a new string union that the staff block only alluded to
+// via the bare `status: string` field; no breakage -- it's a
+// compatible refinement callers may opt into.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Portfolio: per-company aggregate in the top-level list (Sprint 9.2)
+//
+// Backend: CompanyPositionResponse. Renamed on the frontend to
+// disambiguate from CompanySummaryResponse (F4.2).
+//
+// `avg_price_cents` is SUM(paid_cents) / SUM(units WHERE legal_basis='sale').
+// If sale_units is zero (gift-only portfolio in this company), the
+// backend returns 0 -- callers should not divide by it without a
+// guard, but for display `formatPrice(0)` renders as '$0.00' which
+// is the intended empty state.
+// ---------------------------------------------------------------------------
+
+export interface PortfolioPositionResponse {
+  company_id: string
+  company_name: string
+  logo_url: string | null
+  total_units: number
+  sale_units: number
+  gift_units: number
+  total_paid_cents: number
+  avg_price_cents: number
+  current_price_cents: number
+  current_value_cents: number
+  purchases_count: number
+}
+
+export interface PortfolioResponse {
+  positions: PortfolioPositionResponse[]
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio: per-company detail + paginated purchases (Sprint 9.2)
+//
+// Backend: CompanyPositionDetailResponse. The aggregate block
+// mirrors PortfolioPositionResponse minus purchases_count (it's
+// replaced by `total` which is the count used for pagination).
+// PurchaseItemResponse is a slimmer shape than F4.2's
+// PurchaseResponse -- no investor_id/company_id (implied by the
+// route) and no currency (single-currency MVP).
+// ---------------------------------------------------------------------------
+
+export interface PurchaseItemResponse {
+  id: string
+  product_id: string
+  legal_basis: PurchaseLegalBasis | string
+  units: number
+  paid_cents: number
+  price_per_unit_cents: number
+  status: PurchaseStatusType | string
+  created_at: string
+}
+
+export interface CompanyPositionDetailResponse {
+  company_id: string
+  company_name: string
+  logo_url: string | null
+  total_units: number
+  sale_units: number
+  gift_units: number
+  total_paid_cents: number
+  avg_price_cents: number
+  current_price_cents: number
+  current_value_cents: number
+  purchases: PurchaseItemResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
+// ---------------------------------------------------------------------------
+// Agent applications: status union (Sprint 7.1)
+//
+// Backend enum AgentApplicationStatus. Terminal: approved, rejected.
+// Pending is the only non-terminal. `rejected -> pending` is modelled
+// as a NEW AgentApplication row, not a status change -- the old row
+// stays rejected with cooldown_until set.
+//
+// The existing `AgentApplicationResponse.status: string` field in
+// the staff block above remains `string` for compatibility; callers
+// that want the narrower union can cast via the `| string` escape
+// hatch pattern used elsewhere (PaymentStatusType, etc.).
+// ---------------------------------------------------------------------------
+
+export type AgentApplicationStatusType = 'pending' | 'approved' | 'rejected'
+
+// ---------------------------------------------------------------------------
+// Agent applications: investor list wrapper (Sprint 7.1)
+//
+// Backend: AgentApplicationListResponse -- returned by
+// GET /api/v1/agent-applications/me. Uniquely for this endpoint
+// the shape is `{ items, total }` with no `page` / `per_page`
+// echoed back (the backend schema omits them). The investor-side
+// UI does not paginate -- per-user application counts are tiny --
+// so the absence of page/per_page is irrelevant at the consumer.
+//
+// The staff queue endpoint returns a plain `list[AgentApplicationResponse]`
+// with no wrapper at all, which is why this list type was not
+// needed before F4.4.
+// ---------------------------------------------------------------------------
+
+export interface AgentApplicationListResponse {
+  items: AgentApplicationResponse[]
+  total: number
+}
