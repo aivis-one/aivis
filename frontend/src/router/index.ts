@@ -1,8 +1,8 @@
 // =============================================================================
-// CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 polish + F4.3 B2)
+// CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 polish + F4.3 B2 + F4.4 B3)
 // =============================================================================
 //
-// Full route map (~40 routes). Shell components as layout wrappers.
+// Full route map (~42 routes). Shell components as layout wrappers.
 // All view imports are lazy-loaded via () => import().
 //
 // Structure:
@@ -31,6 +31,15 @@
 //   and the URL reads as a subsection of balance. Agent shell does
 //   not duplicate this route -- deposit is investor-scope for F4.3
 //   (see plan: agent-side balance/transactions deferred).
+//
+// F4.4 B3 (hotfix):
+//   Added `portfolio/:id` -> `investor-company-position` and the
+//   parallel `agent-company-position` child routes. Needed by
+//   PortfolioView, which pushes by role-aware route name when a
+//   position card is tapped. Placed right after each shell's
+//   `portfolio` route so the sub-route reads next to its parent in
+//   source order; the matcher does not require this (Vue Router
+//   uses path specificity), it's purely for readability.
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -136,6 +145,11 @@ export const router = createRouter({
           path: 'portfolio',
           name: 'investor-portfolio',
           component: () => import('@/views/investor/PortfolioView.vue'),
+        },
+        {
+          path: 'portfolio/:id',
+          name: 'investor-company-position',
+          component: () => import('@/views/investor/CompanyPositionView.vue'),
         },
         {
           path: 'market',
@@ -256,6 +270,11 @@ export const router = createRouter({
           path: 'portfolio',
           name: 'agent-portfolio',
           component: () => import('@/views/investor/PortfolioView.vue'),
+        },
+        {
+          path: 'portfolio/:id',
+          name: 'agent-company-position',
+          component: () => import('@/views/investor/CompanyPositionView.vue'),
         },
         {
           path: 'products/:id',
