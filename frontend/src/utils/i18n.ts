@@ -35,6 +35,14 @@
  * a pre-humanised form (TransactionDetailSheet.keyLabel passes a
  * snake_case-to-Title-Case version so unknown detail keys still read
  * naturally).
+ *
+ * INVARIANT -- vue-i18n `missingWarn` / `fallbackWarn` default behaviour.
+ * The `translated === key` check relies on vue-i18n returning the raw
+ * key string when the key is not found. This is the default. Projects
+ * that override missingWarn to a custom handler that swallows the key
+ * (returns '' or null) would break this discriminator silently. CBSHOME
+ * keeps defaults in src/i18n/index.ts; do not change that without
+ * updating tOrRaw to match.
  */
 export function tOrRaw(
   t: (key: string) => string,

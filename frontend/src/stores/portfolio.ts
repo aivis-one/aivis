@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Portfolio Store (Phase F4.4 B1)
+// CBSHOME Frontend -- Portfolio Store (Phase F4.4 B1 + B1-post)
 // =============================================================================
 //
 // Pinia store for the investor portfolio. Drives PortfolioView
@@ -7,17 +7,20 @@
 // aggregate + paginated purchases).
 //
 // STATE MODEL.
-//   positions                 -- top-level list from GET /portfolio/me
-//   positionsLoaded           -- "fetched at least once successfully"
-//                                so tab-return can show stale data
-//                                while a silent refresh is in flight
+//   positions                  -- top-level list from GET /portfolio/me
+//   positionsLoaded            -- "fetched at least once successfully"
+//                                 so tab-return can show stale data
+//                                 while a silent refresh is in flight
 //   positionsLoading / errored
 //
-//   currentCompanyId          -- selected company, null when no detail view open
-//   currentDetail             -- aggregate block for that company
-//   currentPurchases          -- accumulated across detail pages
+//   currentCompanyId           -- selected company, null when no detail open
+//   currentDetail              -- aggregate block for that company
+//   currentPurchases           -- accumulated across detail pages
 //   currentPage / currentTotal -- pagination watermarks
 //   currentLoading / errored
+//   currentLoadMoreErrored     -- per-company loadMore failed on a non-first
+//                                 page; brake for useInfiniteScroll so a
+//                                 flaky network cannot stampede the backend
 //
 // WHY ONE STORE, NOT TWO.
 //   Portfolio list (small, rarely refreshed) and per-company detail
@@ -35,21 +38,26 @@
 //   a cache-invalidation contract after every purchase in Market.
 //   Companies are edited rarely but by a single owner, and purchases
 //   change aggregate figures instantly -- a stale cache would be
-//   worse than a brief spinner. If F6.x ever needs a cache, add a
-//   Map<companyId, ...> alongside; the epoch-guard here won't fight
-//   it.
+//   worse than a brief spinner.
 //
-// EPOCH GUARD.
-//   A single counter shared across all three network paths
-//   (fetchPortfolio, setCompanyId's detail load, loadMorePurchases).
-//   Every path bumps it and captures the pre-bump value; resolves
-//   whose captured value no longer matches are no-ops. Mirrors
-//   stores/transactions.ts. One counter -- not per-path -- because
-//   the only race that matters is "is this resolve still the
-//   freshest one we care about"; separate counters would let a
-//   portfolio refresh concurrently overwrite a newer company
-//   detail fetch and vice versa, which is exactly the foot-gun we
-//   want to preclude.
+// TWO EPOCH COUNTERS (B1-post change).
+//   B1 used a single shared counter across all network paths. That
+//   was wrong: fetchPortfolio() writes only `positions*`, setCompanyId
+//   and loadMorePurchases write only `current*`. Shared counter made
+//   them invalidate each other without cause -- e.g. a fetchPortfolio
+//   in flight while the user tapped a position left positionsLoading
+//   pinned to true forever, because the finally clause's
+//   `epoch === fetchEpoch` check failed after setCompanyId bumped.
+//   Split into `portfolioEpoch` and `currentEpoch`: each path guards
+//   only against its own peers, and the two groups no longer pretend
+//   to race.
+//
+// PAUSE ON loadMore FAILURE (B1-post change).
+//   currentLoadMoreErrored is set when a non-first-page fetch fails.
+//   The consuming view passes this ref into useInfiniteScroll as the
+//   `paused` parameter so the IntersectionObserver stops firing after
+//   a failure. User-tapped Retry calls clearLoadMoreError() and, if
+//   the sentinel is still on-screen, the composable re-fires once.
 // =============================================================================
 
 import { computed, ref } from 'vue'
@@ -79,9 +87,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   const currentTotal = ref<number>(0)
   const currentLoading = ref<boolean>(false)
   const currentErrored = ref<boolean>(false)
+  const currentLoadMoreErrored = ref<boolean>(false)
 
-  // Shared epoch -- see header note on "one counter, not per-path".
-  let fetchEpoch = 0
+  // Two independent epoch counters. See header "TWO EPOCH COUNTERS".
+  let portfolioEpoch = 0
+  let currentEpoch = 0
 
   const hasMoreCurrentPurchases = computed<boolean>(
     () => currentPurchases.value.length < currentTotal.value,
@@ -92,19 +102,19 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   // -------------------------------------------------------------------------
 
   async function fetchPortfolio(): Promise<void> {
-    const epoch = ++fetchEpoch
+    const epoch = ++portfolioEpoch
     positionsLoading.value = true
     positionsErrored.value = false
     try {
       const resp = await getMyPortfolio()
-      if (epoch !== fetchEpoch) return
+      if (epoch !== portfolioEpoch) return
       positions.value = resp.positions
       positionsLoaded.value = true
     } catch {
-      if (epoch !== fetchEpoch) return
+      if (epoch !== portfolioEpoch) return
       positionsErrored.value = true
     } finally {
-      if (epoch === fetchEpoch) {
+      if (epoch === portfolioEpoch) {
         positionsLoading.value = false
       }
     }
@@ -120,10 +130,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
    * Idempotent: calling with the same id as `currentCompanyId` still
    * re-fetches, because the caller's trigger (usually onMounted of
    * CompanyPositionView) implies they want fresh data. Bumping the
-   * epoch cancels any in-flight request against the previous id.
+   * currentEpoch cancels any in-flight request against the previous id.
    */
   async function setCompanyId(id: string): Promise<void> {
-    const epoch = ++fetchEpoch
+    const epoch = ++currentEpoch
     currentCompanyId.value = id
     currentDetail.value = null
     currentPurchases.value = []
@@ -131,12 +141,16 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     currentTotal.value = 0
     currentLoading.value = true
     currentErrored.value = false
+    // New company is a fresh start for the loadMore brake -- any
+    // stale pause from the previous company must not block the
+    // sentinel here.
+    currentLoadMoreErrored.value = false
     try {
       const resp = await getCompanyPosition(id, {
         page: 1,
         per_page: PER_PAGE,
       })
-      if (epoch !== fetchEpoch) return
+      if (epoch !== currentEpoch) return
       // Detail carries both the aggregate AND the first page of
       // purchases; splitting storage lets loadMorePurchases append
       // without cloning the aggregate.
@@ -145,10 +159,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       currentTotal.value = resp.total
       currentPage.value = resp.page
     } catch {
-      if (epoch !== fetchEpoch) return
+      if (epoch !== currentEpoch) return
       currentErrored.value = true
     } finally {
-      if (epoch === fetchEpoch) {
+      if (epoch === currentEpoch) {
         currentLoading.value = false
       }
     }
@@ -158,12 +172,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (
       currentCompanyId.value === null ||
       currentLoading.value ||
+      currentLoadMoreErrored.value ||
       !hasMoreCurrentPurchases.value
     ) {
       return
     }
     const id = currentCompanyId.value
-    const epoch = ++fetchEpoch
+    const epoch = ++currentEpoch
     currentLoading.value = true
     try {
       const nextPage = currentPage.value + 1
@@ -171,10 +186,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         page: nextPage,
         per_page: PER_PAGE,
       })
-      if (epoch !== fetchEpoch) return
-      // Silent drop if company switched mid-flight: the currentCompanyId
-      // check above + the epoch guard together cover every race we
-      // can construct today.
+      if (epoch !== currentEpoch) return
+      // Silent drop if the company switched mid-flight -- the
+      // currentCompanyId check plus the epoch guard together cover
+      // every race we can construct.
       if (currentCompanyId.value !== id) return
       currentPurchases.value = [
         ...currentPurchases.value,
@@ -188,26 +203,39 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       // a second round-trip.
       currentDetail.value = resp
     } catch {
-      // Non-destructive, matches stores/transactions.loadMore. The
-      // already-loaded pages stay visible; the user can tap Retry
-      // on the first-page empty state if the initial call failed,
-      // or just scroll and try again (infinite-scroll sentinel
-      // will re-fire).
+      // Brake on: useInfiniteScroll stops firing until the user
+      // taps Retry. Guard with the epoch so an older resolve
+      // (company just switched) cannot paint a stale error onto
+      // the fresh state.
+      if (epoch !== currentEpoch) return
+      currentLoadMoreErrored.value = true
     } finally {
-      if (epoch === fetchEpoch) {
+      if (epoch === currentEpoch) {
         currentLoading.value = false
       }
     }
   }
 
   /**
+   * Clear the per-company loadMore pause flag after a user Retry
+   * interaction. Pairs with useInfiniteScroll's `paused` parameter
+   * -- the composable watches the flag going from true to false
+   * and, if the sentinel is still on-screen, fires loadMore once.
+   * See stores/transactions.ts clearLoadMoreError for the same
+   * contract on that store.
+   */
+  function clearLoadMoreError(): void {
+    currentLoadMoreErrored.value = false
+  }
+
+  /**
    * Clear per-company state when the detail view unmounts. Bumps
-   * the epoch so any in-flight fetch for this company resolves to
-   * a no-op. The positions list is untouched -- it belongs to the
-   * parent tab, not to the detail view.
+   * currentEpoch so any in-flight fetch for this company resolves
+   * to a no-op. Does not touch portfolioEpoch -- the positions list
+   * belongs to the parent tab, not to the detail view.
    */
   function clearCurrent(): void {
-    fetchEpoch++
+    currentEpoch++
     currentCompanyId.value = null
     currentDetail.value = null
     currentPurchases.value = []
@@ -215,6 +243,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     currentTotal.value = 0
     currentLoading.value = false
     currentErrored.value = false
+    currentLoadMoreErrored.value = false
   }
 
   return {
@@ -233,9 +262,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     currentTotal,
     currentLoading,
     currentErrored,
+    currentLoadMoreErrored,
     hasMoreCurrentPurchases,
     setCompanyId,
     loadMorePurchases,
+    clearLoadMoreError,
     clearCurrent,
   }
 })

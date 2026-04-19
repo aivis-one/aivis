@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Transactions Store (Phase F4.3 B3)
+// CBSHOME Frontend -- Transactions Store (Phase F4.3 B3 + F4.4 B1-post)
 // =============================================================================
 //
 // Pinia store for the investor transaction event log. Drives
@@ -7,14 +7,19 @@
 // sheet navigation.
 //
 // STATE MODEL.
-//   items        -- cumulative list across pages for the active tab
-//   total        -- server-reported total count for the active filter
-//   page         -- highest page number already appended to items
-//   typeFilter   -- null (All) or trailing-colon prefix like
-//                   "deposit:" that the backend expands via
-//                   Transaction.type.startswith(...)
-//   loading      -- true while any network call is in flight
-//   errored      -- first-page load failed; UI shows retry
+//   items              -- cumulative list across pages for the active tab
+//   total              -- server-reported total count for the active filter
+//   page               -- highest page number already appended to items
+//   typeFilter         -- null (All) or trailing-colon prefix like
+//                         "deposit:" that the backend expands via
+//                         Transaction.type.startswith(...)
+//   loading            -- true while any network call is in flight
+//   errored            -- first-page load failed; UI shows retry
+//   loadMoreErrored    -- loadMore failed on a non-first page (F4.4 B1-post).
+//                         Acts as a brake for useInfiniteScroll so a
+//                         transient error does not turn into a retry
+//                         storm at the backend. Cleared explicitly by
+//                         clearLoadMoreError() when the user taps Retry.
 //
 // EPOCH GUARD.
 //   Tab switches abort in-flight requests by bumping an epoch
@@ -48,6 +53,10 @@ export const useTransactionsStore = defineStore('transactions', () => {
   const typeFilter = ref<string | null>(null)
   const loading = ref(false)
   const errored = ref(false)
+  // Set when loadMore (not first page) hits a transient error.
+  // Consumed by useInfiniteScroll to suppress further sentinel-driven
+  // calls until the user taps Retry -- see store header.
+  const loadMoreErrored = ref(false)
 
   // Epoch guard -- every network-touching path bumps this counter
   // and captures the current value. A captured value that no longer
@@ -61,6 +70,10 @@ export const useTransactionsStore = defineStore('transactions', () => {
     const epoch = ++fetchEpoch
     loading.value = true
     errored.value = false
+    // First-page fetch is a fresh start -- clear any stale pause
+    // from a previous loadMore failure so the sentinel can resume
+    // once the page arrives.
+    loadMoreErrored.value = false
     try {
       const resp = await listTransactions({
         page: 1,
@@ -82,7 +95,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
   }
 
   async function loadMore(): Promise<void> {
-    if (loading.value || !hasMore.value) return
+    if (loading.value || !hasMore.value || loadMoreErrored.value) return
     const epoch = ++fetchEpoch
     loading.value = true
     try {
@@ -97,15 +110,33 @@ export const useTransactionsStore = defineStore('transactions', () => {
       total.value = resp.total
       page.value = nextPage
     } catch {
-      // Non-destructive: already-loaded pages stay visible; the user
-      // can scroll back up and tap Retry on the error banner if the
-      // first page itself failed. A silent swallow for loadMore
-      // avoids flashing a global error over a working list.
+      // Set the brake flag. Already-loaded pages stay visible, the
+      // infinite-scroll composable stops firing until the view
+      // calls clearLoadMoreError() in response to a user Retry.
+      // Guard with the epoch so an older resolve (tab just switched)
+      // cannot paint a stale error onto the fresh state.
+      if (epoch !== fetchEpoch) return
+      loadMoreErrored.value = true
     } finally {
       if (epoch === fetchEpoch) {
         loading.value = false
       }
     }
+  }
+
+  /**
+   * Clear the loadMore pause flag so the infinite-scroll sentinel
+   * can fire again. Intended to be called from a Retry button in
+   * the view; the button then typically calls loadMore() itself so
+   * the user sees an immediate attempt rather than waiting for the
+   * next intersect event. The composable also watches the flag
+   * going from true to false and will fire if the sentinel is
+   * already on-screen -- the explicit call and the watcher converge
+   * on the same behaviour without duplicate fetches (the loadMore
+   * guard on `loading` covers that race).
+   */
+  function clearLoadMoreError(): void {
+    loadMoreErrored.value = false
   }
 
   async function setTypeFilter(next: string | null): Promise<void> {
@@ -121,9 +152,11 @@ export const useTransactionsStore = defineStore('transactions', () => {
     typeFilter,
     loading,
     errored,
+    loadMoreErrored,
     hasMore,
     fetchFirstPage,
     loadMore,
+    clearLoadMoreError,
     setTypeFilter,
   }
 })

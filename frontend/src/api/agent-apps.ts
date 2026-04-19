@@ -16,12 +16,6 @@
 //   (api/admin.ts). This module is investor-only -- no staff
 //   helpers leak in.
 //
-// BODY FOR SUBMIT.
-//   Backend does not accept any fields on create -- the user
-//   identity comes from the session. Passing `undefined` to
-//   api.post keeps Content-Length zero and matches the canonical
-//   idiom in other wrappers (e.g. reversePayment without a reason).
-//
 // PAGINATION DECISION.
 //   Backend supports ?page&per_page on /me, but practically every
 //   investor has 1-3 applications in their lifetime (the flow is:

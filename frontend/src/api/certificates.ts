@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Certificates API (Phase F4.4)
+// CBSHOME Frontend -- Certificates API (Phase F4.4 B1 + B1-post)
 // =============================================================================
 //
 // Typed wrappers for per-purchase certificate endpoints.
@@ -28,6 +28,17 @@
 //   emailCertificate() is plain api.post -- 204 No Content, JSON
 //   client is perfectly happy.
 //
+// TIMEOUT COVERAGE (B1-post fix).
+//   B1 armed the abort timer before fetch() and cleared it in the
+//   catch block immediately after the response headers arrived.
+//   That left response.blob() -- which can be hundreds of KB over
+//   a slow 3G link -- unbounded. A stuck download would leave the
+//   consumer on a spinner forever. The fix keeps the same
+//   AbortController alive across both phases: the timer is cleared
+//   only in the outer finally, after the blob body has fully
+//   downloaded (or thrown). AbortError is mapped to ApiTimeoutError
+//   at either phase so callers keep a single error axis.
+//
 // LIFECYCLE.
 //   createObjectURL() registers the blob with the document. The
 //   caller MUST invoke URL.revokeObjectURL(url) when the iframe
@@ -38,13 +49,13 @@
 // =============================================================================
 
 import {
+  api,
   API_BASE_URL,
   ApiNetworkError,
   ApiResponseError,
   ApiTimeoutError,
   getAuthToken,
 } from '@/api/client'
-import { api } from '@/api/client'
 
 const TIMEOUT_MS = 15_000
 
@@ -62,7 +73,9 @@ const TIMEOUT_MS = 15_000
  * Throws ApiResponseError / ApiNetworkError / ApiTimeoutError to
  * match the surface of api.get -- the caller's error branch can
  * use the same `instanceof ApiResponseError` narrowing it already
- * does for JSON endpoints.
+ * does for JSON endpoints. ApiTimeoutError fires for both the
+ * headers phase (fetch never resolves) and the body phase (blob()
+ * stalls) -- the caller does not need to distinguish.
  */
 export async function fetchCertificateBlob(purchaseId: string): Promise<string> {
   const url = `${API_BASE_URL}/api/v1/purchases/${purchaseId}/certificate`
@@ -79,43 +92,59 @@ export async function fetchCertificateBlob(purchaseId: string): Promise<string> 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
-  let response: Response
   try {
-    response = await fetch(url, {
-      method: 'GET',
-      headers,
-      signal: controller.signal,
-    })
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new ApiTimeoutError()
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      })
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new ApiTimeoutError()
+      }
+      throw new ApiNetworkError(
+        err instanceof Error ? err.message : 'Network error',
+      )
     }
-    throw new ApiNetworkError(
-      err instanceof Error ? err.message : 'Network error',
-    )
+
+    if (!response.ok) {
+      // Mirror api.get error surface. Body might be JSON (FastAPI
+      // detail envelope) or HTML (framework-level error). Try JSON
+      // first, fall back to statusText -- the caller only needs a
+      // status-driven discriminant, not the precise text.
+      let detail = `HTTP ${response.status}`
+      try {
+        const data = (await response.json()) as { detail?: unknown }
+        if (data && typeof data === 'object' && 'detail' in data) {
+          detail = String(data.detail)
+        }
+      } catch {
+        // Non-JSON body -- keep the `HTTP <status>` default.
+      }
+      throw new ApiResponseError(response.status, detail)
+    }
+
+    // blob() consumes the body stream. If the network stalls mid-
+    // download, the AbortController (still armed) will abort the
+    // read and we re-map to ApiTimeoutError below.
+    let blob: Blob
+    try {
+      blob = await response.blob()
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new ApiTimeoutError()
+      }
+      throw new ApiNetworkError(
+        err instanceof Error ? err.message : 'Network error',
+      )
+    }
+
+    return URL.createObjectURL(blob)
   } finally {
     clearTimeout(timeoutId)
   }
-
-  if (!response.ok) {
-    // Mirror api.get error surface. Body might be JSON (FastAPI
-    // detail envelope) or HTML (framework-level error). Try JSON
-    // first, fall back to statusText -- the caller only needs a
-    // status-driven discriminant, not the precise text.
-    let detail = `HTTP ${response.status}`
-    try {
-      const data = (await response.json()) as { detail?: unknown }
-      if (data && typeof data === 'object' && 'detail' in data) {
-        detail = String(data.detail)
-      }
-    } catch {
-      // Non-JSON body -- keep the `HTTP <status>` default.
-    }
-    throw new ApiResponseError(response.status, detail)
-  }
-
-  const blob = await response.blob()
-  return URL.createObjectURL(blob)
 }
 
 /**
@@ -126,9 +155,6 @@ export async function fetchCertificateBlob(purchaseId: string): Promise<string> 
  * success, 404 when the caller does not own the purchase, and is
  * rate-limited per user to prevent SMTP abuse -- callers should
  * expect the standard 429 shape on rapid retries.
- *
- * Empty body is intentional: the investor email is derived from
- * the session user, so the client has nothing to send.
  */
 export function emailCertificate(purchaseId: string): Promise<void> {
   return api.post<void>(

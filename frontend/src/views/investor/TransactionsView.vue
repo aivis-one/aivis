@@ -63,7 +63,10 @@ const store = useTransactionsStore()
 // MarketView / productsStore pattern. Passing store.hasMore directly
 // would unwrap to a plain boolean; wrapping in computed(() => ...)
 // works but adds a redundant layer.
-const { hasMore } = storeToRefs(store)
+// loadMoreErrored is threaded into useInfiniteScroll as the `paused`
+// signal so a transient failure on page N does not stampede the
+// sentinel into refiring on every scroll oscillation (F4.4 B1-post).
+const { hasMore, loadMoreErrored } = storeToRefs(store)
 
 interface Tab {
   key: string
@@ -138,8 +141,19 @@ function selectTab(tab: Tab): void {
   void store.setTypeFilter(tab.filter)
 }
 
-// Wire up infinite scroll to the store's loadMore.
-useInfiniteScroll(sentinelRef, hasMore, store.loadMore)
+// Wire up infinite scroll to the store's loadMore. loadMoreErrored
+// is the `paused` brake -- see store header for the retry-storm
+// rationale. On user Retry below we clear the brake AND call
+// loadMore() directly so the attempt feels instant; the composable's
+// watcher on paused->false handles the edge case where the sentinel
+// is still visible but the caller (e.g. keyboard-only user) did not
+// scroll to trigger a fresh intersect.
+useInfiniteScroll(sentinelRef, hasMore, store.loadMore, loadMoreErrored)
+
+function retryLoadMore(): void {
+  store.clearLoadMoreError()
+  void store.loadMore()
+}
 
 onMounted(() => {
   // Always refresh on mount -- even a fresh store returns cached
@@ -242,6 +256,24 @@ onMounted(() => {
       class="tv__sentinel"
     >
       <CLoader v-if="store.loading" :size="20" />
+    </div>
+
+    <!--
+      loadMore error banner. Rendered only when page > 1 failed so
+      the first-page error state (above) stays the canonical empty-
+      list treatment. Tapping Retry clears the pause flag in the
+      store and re-fires loadMore explicitly.
+    -->
+    <div
+      v-if="hasItems && store.loadMoreErrored && !store.loading"
+      class="tv__loadmore-error"
+    >
+      <span class="tv__loadmore-error-text">
+        {{ t('inv.transactions.errorTitle') }}
+      </span>
+      <CButton variant="outline" size="sm" @click="retryLoadMore">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- Detail sheet -->
@@ -409,5 +441,26 @@ onMounted(() => {
   justify-content: center;
   padding: 16px 0 0;
   min-height: 32px;
+}
+
+/* loadMore error banner -- shown under the sentinel when page > 1
+   failed. Retry button resets the store pause flag and re-fires
+   loadMore. Matches BalanceView balance-error banner styling for
+   consistency across investor lists. */
+.tv__loadmore-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-dim);
+  color: var(--danger);
+  font-size: 13px;
+}
+.tv__loadmore-error-text {
+  flex: 1;
+  min-width: 0;
 }
 </style>
