@@ -161,7 +161,7 @@ cbshome/                              -- GitHub repo root (существует)
 │   │   │   │   ├── icons/            -- SVG-иконки из мокапов (Vue-компоненты)
 │   │   │   │   └── index.ts          -- Barrel export
 │   │   │   ├── layout/               -- CHeader, CTabBar, InvestorShell, AgentShell...
-│   │   │   └── shared/               -- ProductCard, PaymentCard, KYCBanner...
+│   │   │   └── shared/               -- ВСЕ reusable компоненты, не делим по ролям: ProductCard, CompanyFilterSheet, TransactionDetailSheet, CertificateSheet...
 │   │   │
 │   │   ├── views/                    -- Экраны (по ролям)
 │   │   │   ├── auth/                 -- LoginView, RegisterView, VerifyView...
@@ -173,9 +173,8 @@ cbshome/                              -- GitHub repo root (существует)
 │   │   ├── stores/                   -- Pinia хранилища
 │   │   │   ├── auth.ts               -- user, token, role, isAuthenticated
 │   │   │   ├── products.ts           -- list, filters, selected
-│   │   │   ├── dashboard.ts          -- investor dashboard summary
-│   │   │   ├── portfolio.ts          -- investor portfolio
-│   │   │   ├── balance.ts            -- active_balance, passive_balance (from dashboard)
+│   │   │   ├── dashboard.ts          -- full /dashboard/summary payload (balances + portfolio aggregate) -- replaces balance.ts (F4.4 B2)
+│   │   │   ├── portfolio.ts          -- investor portfolio (positions + per-company paginated purchases)
 │   │   │   ├── agent.ts              -- referrals, commissions, leaderboard
 │   │   │   ├── company.ts            -- company profile, products
 │   │   │   ├── transactions.ts       -- transaction history with filters
@@ -1026,32 +1025,18 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 **Цель:** Инвестор видит свой портфель и главную страницу.
 
-**Прогресс:** B0 ✅ merged · B1 ✅ merged · B1-post ✅ merged · B2–B7 pending.
+**Прогресс:** B0 ✅ · B1 ✅ · B1-post ✅ · B2 ✅ · B3 ⚠️ pushed (2 hotfixes pending, см. ниже) · B4–B7 pending.
 
 **Задачи:**
 - [x] **B0 grooming (F4.4):** extract `formatSignedPrice` в `src/utils/format.ts` + extract `tOrRaw` в `src/utils/i18n.ts` (новый файл). Миграция 7 call-site'ов (2 для signed-price, 5 для tOrRaw). Семантика `cents === 0` → без знака (фикс бага TransactionsView «+$0.00»). Закрывает **TD-F09a + TD-F09b**, вводит правило **FP-15** (server-driven enums → tOrRaw). Параллельный CC-аудит выявил staff-side долг → **TD-F10** (4 пункта, не в скоупе F4.4).
 - [x] **B1 API layer + stores + types (F4.4):** `api/portfolio.ts` (2 endpoint'а), `api/certificates.ts` (fetchCertificateBlob через raw fetch → blob URL для iframe, emailCertificate через api.post), `api/agent-apps.ts` (2 investor endpoint'а), `stores/portfolio.ts` (один store, positions + per-company paginated, epoch-guard), расширение `api/types.ts` (6 новых типов для F4.4), минимальная правка `api/client.ts` (экспорт `API_BASE_URL` для non-JSON endpoint'ов). Code review score 7/10 — основные замечания закрыты в B1-post.
 - [x] **B1-post (B1 review follow-up):** (1) split `fetchEpoch` в `stores/portfolio.ts` на `portfolioEpoch` + `currentEpoch` (было: залипание `positionsLoading` при конкурентных операциях), (2) timeout coverage в `fetchCertificateBlob` теперь охватывает `response.blob()` (было: стук на медленной сети → вечный спиннер), (3) **loadMore retry-storm brake** — новое правило `loadMoreErrored` + `clearLoadMoreError()` в паджинированных stores, `paused?: Ref<boolean>` параметр в `useInfiniteScroll`, Retry-баннер в view. Применено к `stores/portfolio.ts` и `stores/transactions.ts` одновременно (консистентность), view-миграция в `TransactionsView.vue`. Вводит правило **FP-16**.
-- [ ] **B2** — src/views/investor/InvestorDashboardView.vue:
-  - GET /api/v1/dashboard/summary → DashboardSummaryResponse:
-    - `active_balance: { frozen, confirmed }`
-    - `passive_balance: { frozen, confirmed }`
-    - `total_invested_cents, total_units, current_value_cents`
-    - `companies_count, companies[]`
-  - Виджет портфеля: общая стоимость, количество продуктов
-  - Виджет баланса: active balance
-  - Последние новости (GET /api/v1/posts)
-  - Quick actions: Пополнить, Витрина
-- [ ] **B3** — src/views/investor/PortfolioView.vue:
-  - GET /api/v1/portfolio/me → PortfolioResponse
-  - Каждая позиция: company_name, total_units, invested_cents, current_value_cents, avg_price_cents
-  - Клик → CompanyPositionView
-- [ ] **B3** — src/views/investor/CompanyPositionView.vue:
-  - GET /api/v1/portfolio/me/company/{id} → CompanyPositionDetailResponse
-  - Flat aggregate + пагинированный список покупок
-  - Кнопка "Сертификат" на каждой покупке:
-    - GET /api/v1/purchases/{id}/certificate → HTML (показать в iframe, **`sandbox=""` — TD-F11b, MUST fix**)
-    - POST /api/v1/purchases/{id}/certificate/email → отправить PDF на email
+- [x] **B2 — InvestorDashboardView + store rename:** новый `src/stores/dashboard.ts` (заменяет `stores/balance.ts`) с полным `DashboardSummaryResponse` payload + legacy `activeBalance`/`passiveBalance` computed getters для миграции без переписывания темплейтов. `stores/balance.ts` удалён. Новый `src/views/investor/InvestorDashboardView.vue` — 4 виджета: portfolio hero card (gradient, тап → `/investor/portfolio`, empty-state CTA на первую покупку), balance card (active confirmed + frozen hint), quick actions (Deposit + Market), posts preview (5 последних через `api/posts.ts`, новый модуль с narrow probe — без store, не переиспользуется). Миграция `PurchaseView.vue` / `InstallmentView.vue` с inline `getDashboardSummary()` → `useDashboardStore` (balance никогда не десинкнётся между экранами в одной сессии). Новый `api/posts.ts` (F9.1), расширение `api/types.ts` (F9.1 Posts/Events section, 939 lines total). +17 ключей `inv.dashboard.*` в en.json. Events отложены до F9.2.
+- [x] **B3 — PortfolioView + CompanyPositionView + Certificates:** новый `src/views/investor/PortfolioView.vue` (rewrite stub) — hero card с client-side profit % (`(current - paid) / paid * 100`, null при invested === 0, помечено TD-F11d) + positions list с тапом на детали. Новый `src/views/investor/CompanyPositionView.vue` — sub-route `/investor/portfolio/:id` (+ agent дубль), CHeader back + aggregate block + paginated purchases через FP-16 retry-storm brake + certificate flow. Новый `src/components/shared/CertificateSheet.vue` — bottom-sheet overlay (не inline, не full-screen modal — решение по Q3), iframe с **`sandbox=""`** (закрывает TD-F11b), email CTA без confirmation (решение Q4) с 3-секундным локальным cooldown поверх backend rate-limit. Новый `src/composables/useCertificateBlob.ts` — auto-revoke `URL.createObjectURL` через `onScopeDispose` + revoke-before-overwrite на повторный `load()`. Новый route `investor-company-position` + parный `agent-company-position`. +25 ключей `inv.portfolio.*` / `inv.companyPosition.*` / `inv.certificate.*` в en.json. Empty state PortfolioView → CTA на market (решение Q5).
+  - ⚠ **Хотфиксы после push'а B3** (применить до релиза):
+    1. В `CompanyPositionView.vue` импорт `@/components/investor/CertificateSheet.vue` → `@/components/shared/CertificateSheet.vue` (старая версия файла попала в репо до правки конвенции).
+    2. Применить `ROUTER-CHANGES.txt` из B3-zip: два `str_replace` в `src/router/index.ts` добавляют маршруты `investor-company-position` и `agent-company-position` (без них `router.push({ name: 'investor-company-position' })` не матчит).
+    Санити: `grep "components/investor" frontend/src/views/investor/CompanyPositionView.vue` → 0 строк; `grep -c "company-position" frontend/src/router/index.ts` → 2.
 - [ ] **B4** — src/views/investor/InvestorDocsView.vue:
   - GET /api/v1/documents → список документов
   - Статус подписания (signed / pending)
@@ -1074,9 +1059,9 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 **Критерий готовности:** Инвестор видит дашборд, портфель, документы, настройки, сертификаты.
 
-**Commit chain (по состоянию на B1-post):** B0 (`refactor(frontend): extract formatSignedPrice and tOrRaw utilities before F4.4`) → docs коммит (`docs(frontend): add FP-15 and TD-F10 ...`) → B1 (`feat(frontend): portfolio + certificates + agent-apps API layer and store (F4.4 B1)`) → B1-post (`fix(frontend): portfolio store race, blob timeout, loadMore retry storm (B1 review follow-up)`).
+**Commit chain (по состоянию на B3 push):** B0 (`refactor(frontend): extract formatSignedPrice and tOrRaw utilities before F4.4`) → docs коммит (`docs(frontend): add FP-15 and TD-F10 ...`) → B1 (`feat(frontend): portfolio + certificates + agent-apps API layer and store (F4.4 B1)`) → B1-post (`fix(frontend): portfolio store race, blob timeout, loadMore retry storm (B1 review follow-up)`) → docs коммит #2 (`docs(frontend): add FP-16 and TD-F11 ...`) → B2 (`feat(frontend): investor dashboard + rename balance store to dashboard (F4.4 B2)`) → B3 (`feat(frontend): investor portfolio + company position + certificates (F4.4 B3)`) → [pending] B3-hotfix (CertificateSheet import + router routes).
 
-**Follow-ups (TD-F11 секция):** iframe sandbox для certificate blob URL — обязателен в B3 (TD-F11b). Миграция certificates на общий `api.client` через `responseType` опцию — когда появится второй не-JSON endpoint (TD-F11c).
+**Follow-ups (TD-F11 секция):** ✅ iframe sandbox в B3 (TD-F11b закрыт). Миграция certificates на общий `api.client` через `responseType` опцию — когда появится второй не-JSON endpoint (TD-F11c). Новый — client-side profit calc в PortfolioView, мигрировать когда backend эмитит per-company profit (TD-F11d).
 
 ---
 
@@ -1698,13 +1683,14 @@ function retryLoadMore(): void {
 
 ### TD-F11: F4.4 B1 review follow-ups
 
-Выявлены в ходе code review F4.4 B1 (score 7/10 — один латентный баг в гонке epoch-счётчиков, один незакрытый таймаут, один архитектурный долг про retry-шторм). Пункты a/b закрыты в B1-post; пункт b (iframe sandbox) — обязательный MUST fix при реализации B3.
+Выявлены в ходе code review F4.4 B1 (score 7/10 — один латентный баг в гонке epoch-счётчиков, один незакрытый таймаут, один архитектурный долг про retry-шторм). Пункты a/b закрыты: a в B1-post, b в B3. TD-F11d появился в B3 как осознанное упрощение.
 
 | # | Описание | Приоритет | Когда |
 |---|----------|-----------|-------|
 | TD-F11a | ✅ **Закрыт в F4.4 B1-post.** Infinite-scroll retry-storm brake. `loadMoreErrored` + `clearLoadMoreError()` добавлены в `stores/portfolio.ts` и `stores/transactions.ts`; `useInfiniteScroll` получил опциональный 4-й параметр `paused?: Ref<boolean>`; `TransactionsView` мигрирован на новый контракт с Retry-баннером. Паттерн зафиксирован правилом **FP-16**. Сопутствующие фиксы B1-post (не долги, а ревью-замечания): split epoch в portfolio store (был общий счётчик — залипание loading при конкурентных fetchPortfolio/setCompanyId), timeout coverage до конца `response.blob()` в `fetchCertificateBlob` (был unbounded download на медленной сети), JSDoc про `missingWarn` invariant в `tOrRaw`, cleanup dual-import в certificates | 🟢 | ✅ Done |
-| TD-F11b | **🔴 MUST fix в F4.4 B3.** `CompanyPositionView.vue` будет рендерить сертификат через `<iframe :src="blobUrl">`. Бэкенд шаблон `certificate.html` рендерится через Jinja2 с `autoescape=True`, но iframe с blob URL с `origin === SPA origin` — единичная точка отказа для XSS: любая ошибка в escaping'е шаблона даёт скрипту доступ к `localStorage` и JWT. **Обязательный атрибут**: `sandbox=""` (empty — запрещает всё, включая скрипты) либо минимально-разрешающий `sandbox="allow-same-origin"` (только если нужны CSS backgrounds от того же origin). Не мержить B3 без sandbox. Проверить при ревью B3 | 🔴 | F4.4 B3 (обязательно) |
+| TD-F11b | ✅ **Закрыт в F4.4 B3.** `CertificateSheet.vue` рендерит сертификат в iframe с `sandbox=""` (empty — запрещает всё). Blob URL наследует origin SPA → без sandbox любая ошибка в `autoescape` Jinja2 дала бы скрипту доступ к `localStorage` + JWT. Релаксация до `allow-same-origin` в будущем допустима только с узким allow-list под конкретную нужду (например CSS backgrounds от API origin); явный коммент в компоненте предупреждает об этом | 🟢 | ✅ Done |
 | TD-F11c | `api/certificates.ts:fetchCertificateBlob` дублирует error-taxonomy из `api/client.ts` (ApiResponseError/Network/Timeout, Authorization header, timeout) — raw `fetch` потому что `api.client` всегда делает `response.json()`. Будущий источник дрифта: изменения в `client.ts` (например, `Accept-Language`, correlation-id, retries) не подхватятся certificates-путём. Миграция: расширить `api.client` опцией `responseType: 'json' \| 'blob' \| 'text'`, переписать `fetchCertificateBlob` через новый клиент. Преждевременно делать ради одного consumer'а — триггер миграции: появление второго не-JSON endpoint'а в проекте | 🟢 | По триггеру (второй не-JSON endpoint) |
+| TD-F11d | `PortfolioView.vue` считает profit % клиентски (`(current_value - total_paid) / total_paid * 100`), потому что `PortfolioResponse` / `PortfolioPositionResponse` на бэке не эмитят profit field. Null-guard на `total_paid_cents <= 0` (gift-only позиции) — profit блок не рендерится. Когда backend добавит per-company / total profit (с учётом комиссий / налогов / возможных fee-корректировок), заменить computed на чтение из response и дропнуть локальную формулу. Переход сдвинет отображаемые цифры на sub-cent величины из-за округления — callers не должны сравнивать с кэшем. Помечено `// TD-F11d` в коде | 🟡 | Когда backend эмитит profit field в Portfolio* ответах |
 
 
 
