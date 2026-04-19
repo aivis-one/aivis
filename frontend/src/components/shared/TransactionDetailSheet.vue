@@ -43,7 +43,8 @@ import CBottomSheet from '@/components/ui/CBottomSheet.vue'
 import { CEmptyState, CLoader } from '@/components/ui'
 import { getTransaction } from '@/api/transactions'
 import { useToast } from '@/composables/useToast'
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatSignedPrice } from '@/utils/format'
+import { tOrRaw } from '@/utils/i18n'
 import type { TransactionResponse } from '@/api/types'
 
 const props = defineProps<{
@@ -77,11 +78,7 @@ const hasDetails = computed<boolean>(() => detailEntries.value.length > 0)
 
 const signedAmount = computed<string>(() => {
   if (!txn.value) return ''
-  const cents = txn.value.amount_cents
-  const base = formatPrice(Math.abs(cents), txn.value.currency)
-  if (cents > 0) return `+${base}`
-  if (cents < 0) return `-${base}`
-  return base
+  return formatSignedPrice(txn.value.amount_cents, txn.value.currency)
 })
 
 const amountClass = computed<string>(() => {
@@ -92,21 +89,18 @@ const amountClass = computed<string>(() => {
 })
 
 function typeLabel(type: string): string {
-  const key = `inv.transactions.type.${type}`
-  const translated = t(key)
-  return translated === key ? type : translated
+  return tOrRaw(t, `inv.transactions.type.${type}`, type)
 }
 
 function keyLabel(key: string): string {
-  const i18nKey = `inv.transactions.detail.keys.${key}`
-  const translated = t(i18nKey)
-  if (translated !== i18nKey) return translated
-  // Humanise snake_case fallback: 'trigger_tranche_number' ->
-  // 'Trigger Tranche Number'. Keeps unknown backend additions
-  // readable without a code change.
-  return key
+  // Humanise snake_case as the raw fallback: 'trigger_tranche_number'
+  // -> 'Trigger Tranche Number'. tOrRaw then prefers a real
+  // translation if the key is in the catalogue, otherwise returns
+  // the humanised form so unknown backend additions stay readable.
+  const humanised = key
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+  return tOrRaw(t, `inv.transactions.detail.keys.${key}`, humanised)
 }
 
 function formatValue(key: string, value: unknown): string {

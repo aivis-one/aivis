@@ -45,6 +45,7 @@ import { useBalanceStore } from '@/stores/balance'
 import { listPaymentHistory } from '@/api/payments'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { formatPrice } from '@/utils/format'
+import { tOrRaw } from '@/utils/i18n'
 import type { PaymentResponse } from '@/api/types'
 
 const PER_PAGE = 20
@@ -86,15 +87,11 @@ function statusVariant(s: string): 'success' | 'warning' | 'danger' | 'neutral' 
 function statusLabel(s: string): string {
   // TD-F08c-style fall-through: if the backend adds a status we
   // haven't i18n'd yet, show the raw token rather than blanking.
-  const key = `inv.balance.status.${s}`
-  const translated = t(key)
-  return translated === key ? s : translated
+  return tOrRaw(t, `inv.balance.status.${s}`, s)
 }
 
 function typeLabel(type: string): string {
-  const key = `inv.balance.type.${type}`
-  const translated = t(key)
-  return translated === key ? type : translated
+  return tOrRaw(t, `inv.balance.type.${type}`, type)
 }
 
 function formatDate(iso: string): string {

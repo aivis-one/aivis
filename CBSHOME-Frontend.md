@@ -1479,6 +1479,37 @@ await router.push('/')
 
 Vue Router guards срабатывают только на **навигацию**, не на мутацию Pinia store. Корневой `/` + `globalGuard` = единый маршрутизатор. Применять после: регистрации, верификации, профиля, выбора роли, KYC, подписания документов — любого действия, меняющего `user.onboarding_step` или `user.role`.
 
+### FP-15: Server-driven enums → `tOrRaw`
+
+Любое поле от бэкенда с ограниченным набором значений (status, type, role, payment_type, kyc_status, network, provider и т.п.) рендерится в UI **строго** через `tOrRaw(t, 'scope.field.' + value, value)` из `@/utils/i18n`. Два антипаттерна исторически встречались в кодовой базе — оба эквивалентны и оба запрещены.
+
+```typescript
+// ЗАПРЕЩЕНО — raw-рендер без i18n:
+<CBadge :text="item.status" />
+<span>{{ item.payment_type }}</span>
+
+// ЗАПРЕЩЕНО — инлайн идиома «translated-or-raw»:
+function statusLabel(s: string): string {
+  const key = `inv.balance.status.${s}`
+  const translated = t(key)
+  return translated === key ? s : translated
+}
+
+// ПРАВИЛЬНО:
+import { tOrRaw } from '@/utils/i18n'
+
+function statusLabel(s: string): string {
+  return tOrRaw(t, `inv.balance.status.${s}`, s)
+}
+
+// В template прямой вызов тоже разрешён:
+<CBadge :text="tOrRaw(t, `inv.balance.status.${item.status}`, item.status)" />
+```
+
+Почему именно raw fallback. Бэкенд может добавить значение enum'а раньше, чем i18n-catalogue догонит — обычный рассинхрон релизов. Raw-токен (`approved`, `frozen`) в UI читается не идеально, но не ломает экран и сразу опознаётся QA как «i18n отстаёт». Hard-fail (blank badge или литеральный dotted-path `inv.balance.status.approved`) хуже по обоим критериям.
+
+Исключения. Сырой ID (UUID, hash, user_id slice) — не enum, `tOrRaw` к нему не применяется. Форматирование цифр/денег/дат — через свои утилиты (`formatPrice`, `formatSignedPrice`, `formatNumber`), правила FP-06/FP-07. Свободный пользовательский текст (имя, описание, комментарий) рендерится как есть.
+
 ---
 
 ## 8. Tech Debt (Frontend)
@@ -1581,5 +1612,17 @@ Vue Router guards срабатывают только на **навигацию*
 | TD-F09b | Extract `tOrRaw(t, key, raw)` в `src/utils/i18n.ts`. Паттерн «label with raw fallback» повторяется 5 раз: `BalanceView.statusLabel` + `BalanceView.typeLabel`, `TransactionsView.typeLabel`, `TransactionDetailSheet.typeLabel` + `TransactionDetailSheet.keyLabel`. Все делают `const translated = t(key); return translated === key ? raw : translated`. Миграция: 5 call-site'ов | 🟡 | С TD-F09a |
 | TD-F09c | `TransactionDetailSheet.copyValue` не имеет `copying` ref (в отличие от `InvestorDepositView.copyAddress`). Double-tap показывает множественные toast'ы — `useToast` singleton их replace'ит, видимых багов нет, но консистентность страдает | 🟢 | Nice-to-have |
 | TD-F09d | QR-код в `InvestorDepositView` рендерится через `v-html` (qrcode → SVG string). Альтернатива для эстетики: `QRCode.toDataURL(address)` + `<img :src="dataUrl">` — избавит от `v-html` полностью. Security-equivalent (qrcode генерирует только `<path>`), но меньше нужен `:deep(svg)` CSS. Overkill для MVP, оставлен | 🟢 | Nice-to-have |
+
+### TD-F10: Staff-side i18n gap (F4.4 B0 audit findings)
+
+Обнаружены архитектурным аудитом после F4.4 B0 grooming-коммита (параллельный скан кодовой базы на соответствие только что введённому правилу FP-15). Инвестор-скоуп был мигрирован в B0; staff-side остался с 7 raw-enum рендерами и одним локальным дублем `formatPrice`. Не блокирует F4.4 / F5.x / F6.x — миграция ждёт захода в staff-side полировку.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F10a | `StaffPaymentsView.vue` — три server enum'а рендерятся raw без i18n: `item.payment_type` и `item.provider` (mustache, ~стр. 141) + `item.status` (`:text` на CBadge, ~стр. 147). 3 call-site'а в одной вьюхе. Миграция: добавить `staff.payments.type.*` / `staff.payments.provider.*` / `staff.payments.status.*` в en.json + обернуть в `tOrRaw` (FP-15) | 🟢 | С началом staff-side полировки |
+| TD-F10b | `StaffAgentAppsView.vue` — `item.status` rendered raw (~стр. 119), 1 call-site. Добавить `staff.agentApps.status.*` + `tOrRaw` | 🟢 | С TD-F10a |
+| TD-F10c | `StaffUsersView.vue` — `item.role` + `detailUser.role` (2 call-site'а, ~стр. 212 / 249) и `item.kyc_status` + `detailUser.kyc_status` (2 call-site'а, ~стр. 216 / 260) — итого 4 call-site'а. Добавить `staff.users.role.*` + `staff.users.kycStatus.*` + `tOrRaw` | 🟢 | С TD-F10a |
+| TD-F10d | `StaffPaymentsView.vue:41–43` — локальная `formatCents(cents, currency)` → `"12.34 USD"` без `$`-префикса. Дубль `formatPrice`, но **семантически отличающийся**: `formatPrice(1234, 'USD')` выдаёт `"$12.34"`, `formatCents` — `"12.34 USD"`. Миграция **не чистый code swap** — требует product/design decision (формат в staff-UI намеренный или исторический долг?). Если намеренный — вынести отдельной `formatStaffCents` utility и задокументировать; если долг — мигрировать на `formatPrice`. Не закрывать без решения | 🟢 | С TD-F10a + design review |
+
 
 

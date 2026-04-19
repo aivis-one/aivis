@@ -1,11 +1,17 @@
 // =============================================================================
-// CBSHOME Frontend -- Format Utilities (Phase F4.1.4)
+// CBSHOME Frontend -- Format Utilities (Phase F4.1.4 + F4.4 B0)
 // =============================================================================
 //
 // Shared formatters extracted from ProductCard + ProductDetailView
-// (TD-F04 closed). Three consumers now rely on these:
-// ProductCard, ProductDetailView, and the filter sheet label. The
-// F4.2 flow (PurchaseView, InstallmentView) will join shortly.
+// (TD-F04 closed). Consumers today:
+//   - formatPrice:        ProductCard, ProductDetailView, PurchaseView,
+//                         InstallmentView, BalanceView, and the filter
+//                         sheet label.
+//   - formatSignedPrice:  TransactionsView list amount, TransactionDetailSheet
+//                         summary amount. Extracted in F4.4 B0 to collapse
+//                         two diverging implementations (TD-F09a).
+//   - formatNumber:       ProductCard, ProductDetailView, PurchaseView.
+//   - resolveCoverImage:  ProductCard, ProductDetailView.
 // =============================================================================
 
 /**
@@ -25,6 +31,27 @@ export function formatPrice(cents: number, currency?: string): string {
   const amount = (cents / 100).toFixed(2)
   if (c === 'USD') return `$${amount}`
   return `${amount} ${c}`
+}
+
+/**
+ * Signed cents -> price string with an explicit sign for non-zero values.
+ *
+ *   formatSignedPrice(1234)         -> "+$12.34"
+ *   formatSignedPrice(-1234)        -> "-$12.34"
+ *   formatSignedPrice(0)            -> "$0.00"
+ *   formatSignedPrice(-1234, 'EUR') -> "-12.34 EUR"
+ *
+ * Zero carries no sign -- a zero-amount movement has no credit/debit
+ * direction to signal. This consolidates TransactionsView.formatAmount
+ * (previously rendered "+$0.00" -- a minor bug) and
+ * TransactionDetailSheet.signedAmount (already correct) onto one
+ * shared implementation (TD-F09a).
+ */
+export function formatSignedPrice(cents: number, currency?: string): string {
+  const base = formatPrice(Math.abs(cents), currency)
+  if (cents > 0) return `+${base}`
+  if (cents < 0) return `-${base}`
+  return base
 }
 
 /**

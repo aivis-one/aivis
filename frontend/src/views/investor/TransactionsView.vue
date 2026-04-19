@@ -53,7 +53,8 @@ import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import TransactionDetailSheet from '@/components/shared/TransactionDetailSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { useTransactionsStore } from '@/stores/transactions'
-import { formatPrice } from '@/utils/format'
+import { formatSignedPrice } from '@/utils/format'
+import { tOrRaw } from '@/utils/i18n'
 import type { TransactionResponse } from '@/api/types'
 
 const { t } = useI18n()
@@ -102,16 +103,7 @@ function iconFor(type: string) {
 }
 
 function typeLabel(type: string): string {
-  const key = `inv.transactions.type.${type}`
-  const translated = t(key)
-  return translated === key ? type : translated
-}
-
-function formatAmount(cents: number, currency?: string): string {
-  // formatPrice already returns a signed string for negative values
-  // ('-$1.23') but we want a visible '+' for credits too.
-  const formatted = formatPrice(Math.abs(cents), currency)
-  return cents < 0 ? `-${formatted}` : `+${formatted}`
+  return tOrRaw(t, `inv.transactions.type.${type}`, type)
 }
 
 function amountClass(cents: number): string {
@@ -233,7 +225,7 @@ onMounted(() => {
           <div class="tv__item-line">
             <span class="tv__item-type">{{ typeLabel(item.type) }}</span>
             <span class="tv__amount" :class="amountClass(item.amount_cents)">
-              {{ formatAmount(item.amount_cents, item.currency) }}
+              {{ formatSignedPrice(item.amount_cents, item.currency) }}
             </span>
           </div>
           <div class="tv__item-line tv__item-line--sub">
