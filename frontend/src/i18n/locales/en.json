@@ -481,6 +481,67 @@
         "errorRetry": "Retry",
         "seeAll": "See all"
       }
+    },
+    "portfolio": {
+      "title": "Portfolio",
+      "subtitle": "Your holdings across all companies",
+      "totalValue": "Total value",
+      "products": "Products",
+      "units": "Units",
+      "invested": "Invested",
+      "profit": "Profit",
+      "position": {
+        "units": "Units",
+        "avgPrice": "Avg. price",
+        "value": "Value",
+        "saleUnits": "Purchased",
+        "giftUnits": "Gifted"
+      },
+      "empty": {
+        "title": "No investments yet",
+        "description": "Browse the market to start your portfolio.",
+        "cta": "Go to market"
+      },
+      "errorTitle": "Could not load portfolio"
+    },
+    "companyPosition": {
+      "title": "Position",
+      "aggregate": {
+        "totalUnits": "Total units",
+        "avgPrice": "Avg. price",
+        "invested": "Invested",
+        "currentValue": "Current value",
+        "saleUnits": "Purchased",
+        "giftUnits": "Gifted"
+      },
+      "purchases": {
+        "title": "Purchases",
+        "empty": "No purchases yet",
+        "legalBasis": {
+          "sale": "Purchase",
+          "gift": "Gift"
+        },
+        "units": "Units",
+        "paid": "Paid",
+        "pricePerUnit": "Price per unit",
+        "certificate": "Certificate"
+      },
+      "errorTitle": "Could not load position",
+      "notFound": {
+        "title": "Position not found",
+        "description": "You have no active purchases in this company."
+      }
+    },
+    "certificate": {
+      "title": "Certificate",
+      "loading": "Loading certificate...",
+      "errorTitle": "Could not load certificate",
+      "errorRetry": "Retry",
+      "emailSend": "Email to me",
+      "emailSending": "Sending...",
+      "emailSuccess": "Certificate sent to your email",
+      "emailError": "Could not send the certificate",
+      "close": "Close"
     }
   }
 }
