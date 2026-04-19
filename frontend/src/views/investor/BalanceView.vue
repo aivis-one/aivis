@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- BalanceView (Phase F4.3 B2)
+// CBSHOME Frontend -- BalanceView (Phase F4.3 B2 + F4.4 B2 store rename)
 // =============================================================================
 //
 // Investor balance screen. Shows the active ledger balance and a
@@ -8,10 +8,14 @@
 // dedicated /investor/balance/deposit screen (InvestorDepositView).
 //
 // State split:
-//   - balance figures live in the Pinia `balance` store, sourced
-//     from GET /api/v1/dashboard/summary. The store is shared with
-//     the upcoming F4.4 Dashboard/Portfolio screens, so balance
-//     never desyncs across views in one session.
+//   - balance figures live in the Pinia `dashboard` store, sourced
+//     from GET /api/v1/dashboard/summary. The store exposes the
+//     full DashboardSummaryResponse and is shared with the F4.4
+//     InvestorDashboardView / PurchaseView / InstallmentView, so
+//     balance never desyncs across views in one session. This view
+//     only reads `activeBalance` (a computed getter over
+//     `summary?.active_balance`) -- the portfolio aggregate fields
+//     are ignored here.
 //   - payment history lives in a local ref on this view. There is
 //     no reuse across screens, no filters, and the list is only
 //     consumed by this component -- a dedicated Pinia store would
@@ -41,7 +45,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowDownToLine, CreditCard } from 'lucide-vue-next'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
-import { useBalanceStore } from '@/stores/balance'
+import { useDashboardStore } from '@/stores/dashboard'
 import { listPaymentHistory } from '@/api/payments'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { formatPrice } from '@/utils/format'
@@ -52,7 +56,7 @@ const PER_PAGE = 20
 
 const router = useRouter()
 const { t } = useI18n()
-const balanceStore = useBalanceStore()
+const dashboardStore = useDashboardStore()
 
 // -- Payment history local state --
 const items = ref<PaymentResponse[]>([])
@@ -71,7 +75,7 @@ let fetchEpoch = 0
 const hasMore = computed(() => items.value.length < total.value)
 
 const hasFrozen = computed<boolean>(() => {
-  return balanceStore.activeBalance.frozen > 0
+  return dashboardStore.activeBalance.frozen > 0
 })
 
 // Map backend payment status onto a CBadge variant. Mirrors the
@@ -158,7 +162,7 @@ function goDeposit(): void {
 }
 
 async function reload(): Promise<void> {
-  await Promise.all([balanceStore.refresh(), fetchFirstPage()])
+  await Promise.all([dashboardStore.refresh(), fetchFirstPage()])
 }
 
 // Wire up the infinite scroll sentinel.
@@ -169,7 +173,7 @@ useInfiniteScroll(sentinelRef, hasMore, loadMore)
 // overwrite. We don't reset on unmount because the store is shared
 // with F4.4 screens and clearing on nav would cause a flash there.
 onMounted(() => {
-  void balanceStore.refresh()
+  void dashboardStore.refresh()
   void fetchFirstPage()
 })
 
@@ -180,7 +184,7 @@ onMounted(() => {
 // a toast + the user glancing back -- acceptable for F4.3; if
 // stickiness bites, F4.4 can add a store-level subscription.
 watch(
-  () => balanceStore.error,
+  () => dashboardStore.error,
   (err) => {
     // Surface as inline banner, no toast (see header comment).
     void err
@@ -198,13 +202,13 @@ watch(
     <section class="bv__card bv__balance">
       <h2 class="bv__card-title">{{ t('inv.balance.active') }}</h2>
 
-      <div v-if="balanceStore.loading && balanceStore.activeBalance.confirmed === 0 && balanceStore.activeBalance.frozen === 0" class="bv__balance-loading">
+      <div v-if="dashboardStore.loading && dashboardStore.activeBalance.confirmed === 0 && dashboardStore.activeBalance.frozen === 0" class="bv__balance-loading">
         <CLoader :size="20" />
       </div>
 
       <template v-else>
         <div class="bv__balance-main">
-          {{ formatPrice(balanceStore.activeBalance.confirmed) }}
+          {{ formatPrice(dashboardStore.activeBalance.confirmed) }}
         </div>
 
         <div
@@ -215,12 +219,12 @@ watch(
             {{ t('inv.balance.frozen') }}
           </span>
           <span class="bv__balance-frozen-value">
-            {{ formatPrice(balanceStore.activeBalance.frozen) }}
+            {{ formatPrice(dashboardStore.activeBalance.frozen) }}
           </span>
         </div>
 
         <div
-          v-if="balanceStore.error"
+          v-if="dashboardStore.error"
           class="bv__balance-error"
         >
           <span>{{ t('inv.balance.refreshFailed') }}</span>

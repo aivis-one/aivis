@@ -51,7 +51,7 @@ import CHeader from '@/components/layout/CHeader.vue'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
-import { getDashboardSummary } from '@/api/dashboard'
+import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { isAgentShell } from '@/router/helpers'
 import {
@@ -74,9 +74,9 @@ const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const { showToast } = useToast()
+const dashboardStore = useDashboardStore()
 
 const product = ref<ProductWithOptionalCurrency | null>(null)
-const balanceCents = ref(0)
 const loading = ref(true)
 const errored = ref(false)
 const submitting = ref(false)
@@ -95,6 +95,14 @@ const available = computed<number>(() => {
 })
 
 const soldOut = computed(() => available.value <= 0)
+
+// Spendable balance -- reads the store's computed getter, which
+// falls back to a zeroed placeholder before the first refresh.
+// Aligning with the F4.4 B2 store migration: no more local
+// balanceCents ref, no more inline getDashboardSummary probe.
+const balanceCents = computed<number>(
+  () => dashboardStore.activeBalance.confirmed,
+)
 
 const insufficientBalance = computed<boolean>(() => {
   return balanceCents.value < totalCents.value
@@ -123,12 +131,16 @@ async function load(): Promise<void> {
   loading.value = true
   errored.value = false
   try {
-    const [p, s] = await Promise.all([
+    // Parallel probe: product detail + balance store refresh. Only
+    // the product fetch's failure flips `errored` -- balance load
+    // failures surface through dashboardStore.error and would leave
+    // the UI with a zeroed balance, which the insufficient-balance
+    // gate already handles gracefully.
+    const [p] = await Promise.all([
       getProduct(productId.value),
-      getDashboardSummary(),
+      dashboardStore.refresh(),
     ])
     product.value = p
-    balanceCents.value = s.active_balance.confirmed
   } catch {
     product.value = null
     errored.value = true
@@ -168,9 +180,12 @@ async function handlePurchaseError(err: unknown): Promise<void> {
 
     // Insufficient balance. Refresh the balance probe before returning
     // so the next render shows the fresh figure, not the stale one.
+    // Store.refresh never throws -- balance display is a hint, not a
+    // gate, so a failed refresh here is acceptable (the previous
+    // stale value stays on screen).
     if (status === 400 && /insufficient/i.test(message)) {
       showToast(t('inv.purchase.error.insufficientBalance'), 'error')
-      await refreshBalance()
+      await dashboardStore.refresh()
       return
     }
 
@@ -183,15 +198,6 @@ async function handlePurchaseError(err: unknown): Promise<void> {
 
   // Network / timeout / unknown -- fall through to generic.
   showToast(t('inv.purchase.error.generic'), 'error')
-}
-
-async function refreshBalance(): Promise<void> {
-  try {
-    const s = await getDashboardSummary()
-    balanceCents.value = s.active_balance.confirmed
-  } catch {
-    // Balance display is a hint, not a gate. Swallow.
-  }
 }
 
 function cancel(): void {

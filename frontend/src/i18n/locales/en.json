@@ -449,6 +449,38 @@
           "tranche_number": "Tranche number"
         }
       }
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "greetingMorning": "Good morning",
+      "greetingAfternoon": "Good afternoon",
+      "greetingEvening": "Good evening",
+      "portfolio": {
+        "title": "Portfolio",
+        "totalValue": "Total value",
+        "products": "Products",
+        "units": "Units",
+        "companies": "Companies",
+        "empty": "No investments yet",
+        "emptyCta": "Browse the market"
+      },
+      "balance": {
+        "title": "Balance",
+        "available": "Available",
+        "frozen": "On hold"
+      },
+      "actions": {
+        "title": "Quick actions",
+        "deposit": "Deposit",
+        "market": "Market"
+      },
+      "posts": {
+        "title": "Latest news",
+        "empty": "No news yet",
+        "errorTitle": "Could not load news",
+        "errorRetry": "Retry",
+        "seeAll": "See all"
+      }
     }
   }
 }

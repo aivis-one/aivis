@@ -859,3 +859,81 @@ export interface AgentApplicationListResponse {
   items: AgentApplicationResponse[]
   total: number
 }
+
+// ===========================================================================
+// Phase F9.1 -- Posts + Events (public feed)
+//
+// Matches backend/app/modules/posts/schemas.py (Sprint 9.1).
+//
+// F4.4 B2 touches only the Post side: InvestorDashboardView uses the
+// top-N posts widget. Full Posts + Events UI (detail, filters, banner
+// dismiss, upcoming events) lands in F9.2. The typed surface is kept
+// intentionally narrow for now -- just enough for the dashboard probe.
+// `EventResponse` is also declared here so F9.2 can pick it up without
+// another types.ts commit.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Posts
+//
+// Backend: Post.owner_type is one of "platform" | "company" (Literal
+// in Pydantic CreatePostRequest), but the response keeps it as bare
+// `str` for forward compatibility. Mirror with the union + `| string`
+// escape hatch.
+//
+// `is_dismissed` is computed per-user (LEFT JOIN on PostDismiss) and
+// is `false` for anonymous callers. The dashboard widget treats it
+// as a read-only hint; full dismiss flow arrives in F9.2.
+// ---------------------------------------------------------------------------
+
+export type PostOwnerType = 'platform' | 'company'
+
+export interface PostResponse {
+  id: string
+  owner_type: PostOwnerType | string
+  owner_id: string | null
+  title: string
+  body: string
+  cover_url: string | null
+  tags: string[] | null
+  is_banner: boolean
+  is_published: boolean
+  published_at: string | null
+  created_by: string
+  created_at: string
+  updated_at: string | null
+  is_dismissed: boolean
+}
+
+export interface PostListResponse {
+  items: PostResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
+// ---------------------------------------------------------------------------
+// Events (declared for F9.2 completeness, not consumed in F4.4)
+// ---------------------------------------------------------------------------
+
+export interface EventResponse {
+  id: string
+  title: string
+  description: string | null
+  cover_url: string | null
+  starts_at: string
+  ends_at: string | null
+  location: string | null
+  url: string | null
+  is_published: boolean
+  created_by: string
+  created_at: string
+  updated_at: string | null
+}
+
+export interface EventListResponse {
+  items: EventResponse[]
+  total: number
+  page: number
+  per_page: number
+}

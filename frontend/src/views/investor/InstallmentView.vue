@@ -62,7 +62,7 @@ import CHeader from '@/components/layout/CHeader.vue'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createInstallmentPlan } from '@/api/installments'
-import { getDashboardSummary } from '@/api/dashboard'
+import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { isAgentShell } from '@/router/helpers'
 import {
@@ -92,9 +92,9 @@ const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const { showToast } = useToast()
+const dashboardStore = useDashboardStore()
 
 const product = ref<ProductWithOptionalCurrency | null>(null)
-const balanceCents = ref(0)
 const loading = ref(true)
 const errored = ref(false)
 const submitting = ref(false)
@@ -128,6 +128,14 @@ const firstTrancheCents = computed<number>(() => {
   const tranches = planConfig.value?.tranches ?? []
   return tranches[0]?.amount_cents ?? 0
 })
+
+// Spendable balance from the shared dashboard store. Falls back to
+// zero before the first refresh resolves (zeroed placeholder) -- the
+// insufficientBalance gate below treats that as "not enough", which
+// is the safe pessimistic default until the real value arrives.
+const balanceCents = computed<number>(
+  () => dashboardStore.activeBalance.confirmed,
+)
 
 const insufficientBalance = computed<boolean>(() => {
   return balanceCents.value < firstTrancheCents.value
@@ -184,12 +192,15 @@ async function load(): Promise<void> {
   loading.value = true
   errored.value = false
   try {
-    const [p, s] = await Promise.all([
+    // Parallel probe: product detail + balance store refresh. Only
+    // the product fetch's failure flips `errored` -- balance load
+    // failures surface through dashboardStore.error; a zeroed balance
+    // is handled by the insufficientBalance gate below.
+    const [p] = await Promise.all([
       getProduct(productId.value),
-      getDashboardSummary(),
+      dashboardStore.refresh(),
     ])
     product.value = p
-    balanceCents.value = s.active_balance.confirmed
 
     // Resolve the query-provided template against the just-loaded
     // plan list. If it matches -> CONFIRM mode; otherwise leave
@@ -250,7 +261,7 @@ async function handlePlanError(err: unknown): Promise<void> {
 
     if (status === 400 && /insufficient/i.test(message)) {
       showToast(t('inv.installment.error.insufficientBalance'), 'error')
-      await refreshBalance()
+      await dashboardStore.refresh()
       return
     }
 
@@ -268,15 +279,6 @@ async function handlePlanError(err: unknown): Promise<void> {
   }
 
   showToast(t('inv.installment.error.generic'), 'error')
-}
-
-async function refreshBalance(): Promise<void> {
-  try {
-    const s = await getDashboardSummary()
-    balanceCents.value = s.active_balance.confirmed
-  } catch {
-    // Balance display is a hint, not a gate. Swallow.
-  }
 }
 
 function cancel(): void {
