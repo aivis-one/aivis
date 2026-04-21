@@ -663,6 +663,11 @@ log "Seeding legal documents..."
 docker compose exec -T app python scripts/seed_documents.py
 success "Legal documents seeded"
 
+# Seed storefront (6 companies + 21 products + 19 installment plans) for dev/staging
+log "Seeding storefront (dev/staging fixtures)..."
+docker compose exec -T app python -m scripts.seed_storefront
+success "Storefront seeded"
+
 # ==============================================================================
 # MANAGEMENT SCRIPT
 # ==============================================================================
@@ -906,6 +911,11 @@ case_update() {
     echo "Seeding legal documents..."
     docker compose exec -T app python scripts/seed_documents.py
 
+    # Seed storefront (idempotent; dev/staging fixtures).
+    echo ""
+    echo "Seeding storefront..."
+    docker compose exec -T app python -m scripts.seed_storefront
+
     # Run backend tests.
     echo ""
     echo "Running backend tests..."
@@ -1036,10 +1046,31 @@ case_seed() {
     if [ "${1:-}" = "--reset" ]; then
         docker compose exec -T app python scripts/seed_platform.py --reset
         docker compose exec -T app python scripts/seed_documents.py
+        docker compose exec -T app python -m scripts.seed_storefront --reset
     else
         docker compose exec -T app python scripts/seed_platform.py
         docker compose exec -T app python scripts/seed_documents.py
+        docker compose exec -T app python -m scripts.seed_storefront
     fi
+}
+
+# ==============================================================================
+# SEED USER PORTFOLIO (dev)
+# ==============================================================================
+
+case_seed_portfolio() {
+    cd_compose
+    local EMAIL="${1:-}"
+    if [ -z "$EMAIL" ]; then
+        echo "Usage: cbshome seed-portfolio <email> [--deposit CENTS] [--purchases N]"
+        echo ""
+        echo "Fills a user's dashboard with deposit + random purchases (dev only)."
+        echo "Defaults: --deposit 10000000 (\$100k), --purchases 5"
+        exit 1
+    fi
+    shift
+    docker compose exec -T app python -m scripts.seed_user_portfolio \
+        --email "$EMAIL" "$@"
 }
 
 # ==============================================================================
@@ -1181,6 +1212,7 @@ case "$CMD" in
     backup)         case_backup ;;
     db)             case_db "$@" ;;
     seed)           case_seed "$@" ;;
+    seed-portfolio) case_seed_portfolio "$@" ;;
     ssl)            case_ssl "$@" ;;
     nginx)          case_nginx "$@" ;;
     version)        case_version ;;
@@ -1210,6 +1242,7 @@ case "$CMD" in
         echo "  db migrate                — Run Alembic migrations"
         echo "  seed                      — Seed Platform user + legal documents"
         echo "  seed --reset              — Reset Platform user and re-seed documents"
+        echo "  seed-portfolio <email>    — Dev: fill user's dashboard with deposit + purchases"
         echo ""
         echo "Maintenance:"
         echo "  backup                    — Backup DB + .env (7-day rotation)"
