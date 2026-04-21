@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorDashboardView (Phase F4.4 B2)
+// CBSHOME Frontend -- InvestorDashboardView (Phase F4.4 B2 + B5-post)
 // =============================================================================
 //
 // Investor home screen. Rendered by InvestorShell at /investor/dashboard
@@ -48,9 +48,22 @@
 //   component can assume an authenticated investor. Backend responds
 //   with zeroed summary for a KYC-pending investor -- still safe to
 //   render.
+//
+// B5-post: reactive greeting.
+//   The greeting (Morning / Afternoon / Evening) depends on the local
+//   clock. Keeping it as a bare `computed` reading `new Date()` meant
+//   a tab left open across midnight or the morning->afternoon border
+//   would never update without another render-triggering mutation.
+//   The fix is a module-private `now` ref bumped by a setInterval.
+//   60 s is fine -- greeting boundaries are hourly, and ticking every
+//   minute is visually imperceptible cost. The interval is cleared on
+//   unmount so the investor shell can rehydrate cleanly after logout
+//   / role switch. The choice of 60 s also means the worst-case lag
+//   between a boundary crossing and a UI update is 60 s, not 0 -- an
+//   acceptable tradeoff against a per-second timer on the home screen.
 // =============================================================================
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -94,11 +107,18 @@ async function loadPosts(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Greeting -- pure client-side, no backend involvement
+// Greeting -- reactive by the minute so a long-open tab flips morning /
+// afternoon / evening as the local clock crosses the boundary.
 // ---------------------------------------------------------------------------
 
+const GREETING_TICK_MS = 60_000
+
+const now = ref<number>(Date.now())
+let tickHandle: ReturnType<typeof setInterval> | null = null
+
 const greeting = computed<string>(() => {
-  const hour = new Date().getHours()
+  // Reading `now.value` ties this computed to the tick below.
+  const hour = new Date(now.value).getHours()
   if (hour < 12) return t('inv.dashboard.greetingMorning')
   if (hour < 18) return t('inv.dashboard.greetingAfternoon')
   return t('inv.dashboard.greetingEvening')
@@ -184,6 +204,19 @@ onMounted(() => {
   // balance spinners; posts have their own local flags.
   void dashboardStore.refresh()
   void loadPosts()
+
+  // Start the greeting tick. 60 s matches the worst-case lag we're
+  // willing to carry between a boundary crossing and the UI update.
+  tickHandle = setInterval(() => {
+    now.value = Date.now()
+  }, GREETING_TICK_MS)
+})
+
+onBeforeUnmount(() => {
+  if (tickHandle !== null) {
+    clearInterval(tickHandle)
+    tickHandle = null
+  }
 })
 </script>
 

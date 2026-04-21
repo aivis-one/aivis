@@ -96,7 +96,7 @@ export interface DocumentResponse {
   created_by: string
   created_at: string
   updated_at: string | null
-  is_signed: boolean | null
+  is_signed: boolean
 }
 
 export interface DocumentSigningResponse {

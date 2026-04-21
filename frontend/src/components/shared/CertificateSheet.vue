@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CertificateSheet (Phase F4.4 B3)
+// CBSHOME Frontend -- CertificateSheet (Phase F4.4 B3 + B5-post)
 // =============================================================================
 //
 // Bottom-sheet that renders a per-purchase certificate HTML and
@@ -13,6 +13,8 @@
 //   open->true transition (with a non-null id). The composable
 //   owns the blob URL lifecycle -- automatic revoke on scope
 //   dispose + manual revoke-before-overwrite on each new load.
+//   useCertificateBlob is epoch-guarded (B5-post) so two back-to-
+//   back load() calls from prop churn cannot leak the first URL.
 //
 // SANDBOX -- TD-F11b MUST fix.
 //   The HTML returned by the backend is rendered in an iframe via
@@ -44,6 +46,12 @@
 //   frustrated double-tap doesn't burn the next quota second. On
 //   success: toast 'sent'; on failure: toast 'could not send' +
 //   unlock the button immediately so the user can retry.
+//
+// B5-post: removed dead `if (err instanceof ApiResponseError) ...
+// else ...` branch in onEmail -- both arms showed the same toast.
+// Narrowing the error class added nothing actionable; the single
+// generic toast matches the comment "429 and 500 render the same
+// toast, and 404 cannot happen once load() has succeeded".
 // =============================================================================
 
 import { computed, ref, watch } from 'vue'
@@ -51,7 +59,6 @@ import { useI18n } from 'vue-i18n'
 
 import CBottomSheet from '@/components/ui/CBottomSheet.vue'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
-import { ApiResponseError } from '@/api/client'
 import { emailCertificate } from '@/api/certificates'
 import { useCertificateBlob } from '@/composables/useCertificateBlob'
 import { useToast } from '@/composables/useToast'
@@ -136,17 +143,13 @@ async function onEmail(): Promise<void> {
     await emailCertificate(props.purchaseId)
     showToast(t('inv.certificate.emailSuccess'), 'success')
     emailLockedUntil.value = Date.now() + EMAIL_COOLDOWN_MS
-  } catch (err: unknown) {
-    // Same regex-free, status-driven branch policy as other F4.4
-    // views: narrow to ApiResponseError but do not try to classify
-    // the message. Email send has no recoverable sub-states
-    // worth distinguishing in the UI -- 429 and 500 render the
-    // same toast, and 404 cannot happen once load() has succeeded.
-    if (err instanceof ApiResponseError) {
-      showToast(t('inv.certificate.emailError'), 'error')
-    } else {
-      showToast(t('inv.certificate.emailError'), 'error')
-    }
+  } catch {
+    // Email send has no recoverable sub-states worth distinguishing
+    // in the UI -- 429 / 500 / network all surface the same toast.
+    // 404 cannot happen once load() has succeeded (caller owns the
+    // purchase; backend re-checks ownership on email send but the
+    // user would not have reached this button otherwise).
+    showToast(t('inv.certificate.emailError'), 'error')
     // Unlock immediately on failure -- the user should be able to
     // retry without waiting for the cooldown window.
     emailLockedUntil.value = 0

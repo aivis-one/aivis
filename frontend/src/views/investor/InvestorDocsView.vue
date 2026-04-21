@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorDocsView (Phase F4.4 B4)
+// CBSHOME Frontend -- InvestorDocsView (Phase F4.4 B4 + B5-post)
 // =============================================================================
 //
 // User's legal documents list with read + sign flow. Rendered by
@@ -24,13 +24,33 @@
 //   Body: list of .doc-item rows. Icon + title + meta + status badge
 //   (signed / pending). Tap opens the detail modal.
 //
-// DETAIL MODAL (CModal -- decision Q2 in chat).
-//   - Body: HTML fetched from /legal/{doc.language}/{doc.type}.html,
-//     the exact localised copy the backend selected. Parsed via
-//     DOMParser, body.innerHTML extracted so the mount node contains
-//     just the legal content, no <html>/<head>/<meta>. Rendered with
-//     v-html. No sanitisation -- the legal folder ships with our own
-//     repo, not user input.
+// DETAIL MODAL (CModal, B5-post hardening).
+//   B4 rendered the legal HTML via v-html after stripping the doc
+//   chrome with DOMParser. That gave the mounted node full access to
+//   the SPA origin (localStorage, auth token), which is unacceptable
+//   once legal content starts being templated (investor name, date,
+//   certificate number all become user-reachable injection points).
+//   B5-post replaces v-html with a sandboxed iframe -- identical
+//   pattern to CertificateSheet.vue:
+//     - fetch /legal/{language}/{type}.html
+//     - wrap the response body in a Blob(text/html)
+//     - URL.createObjectURL -> iframe src
+//     - sandbox="" (empty value) forbids scripts, forms, same-origin
+//       access, navigation, storage; the legal text is static and
+//       needs none of these. See TD-F11b.
+//   URL lifecycle: revoke-before-overwrite on each openDoc() and a
+//   final revoke on modal close / component unmount.
+//
+//   Path safety. doc.type and doc.language are backend-driven free-
+//   form strings. A seed misconfig with "../../index" in either field
+//   would let fetch() leave /legal/. Even though the fetch() URL is
+//   always same-origin and the response would still be interpreted
+//   as text/html for the Blob wrap, we narrow to a strict token regex
+//   before touching the path. encodeURIComponent is applied on top as
+//   a belt-and-braces pass for any character that slips through the
+//   regex by accident.
+//
+// DETAIL MODAL -- ACTIONS.
 //   - Pending doc -> Sign CTA. POST /documents/{id}/sign.
 //     201 success | 409 treated as idempotent success (concurrent
 //     tab, replayed request). Local is_signed flipped on the row in
@@ -48,7 +68,7 @@
 //   valid state, rendered with a short CEmptyState. Not an error.
 // =============================================================================
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileText } from 'lucide-vue-next'
 
@@ -61,6 +81,12 @@ import type { DocumentResponse } from '@/api/types'
 
 const { t } = useI18n()
 const { showToast } = useToast()
+
+// Strict token for both doc.type and doc.language. Backend currently
+// emits plain identifiers (privacy_policy, terms_of_service, en, ru,
+// etc.); anything outside this shape indicates a seed misconfig and
+// must not be turned into a fetch path.
+const SAFE_TOKEN = /^[a-z0-9_-]{1,64}$/i
 
 // ---------------------------------------------------------------------------
 // List state
@@ -82,43 +108,78 @@ async function fetchDocuments(): Promise<void> {
   }
 }
 
-onMounted(() => {
-  void fetchDocuments()
-})
+void fetchDocuments()
 
 // ---------------------------------------------------------------------------
-// Modal state
+// Modal + iframe blob lifecycle
 // ---------------------------------------------------------------------------
 
 const viewingDoc = ref<DocumentResponse | null>(null)
-const viewContent = ref<string>('')
 const viewLoading = ref<boolean>(false)
 const viewError = ref<boolean>(false)
+const viewBlobUrl = ref<string | null>(null)
 const signing = ref<boolean>(false)
 
 const modalOpen = computed<boolean>(() => viewingDoc.value !== null)
 
+// Monotonic per-view counter, same pattern as useCertificateBlob:
+// a second openDoc() call while the first fetch is still in flight
+// must not publish the losing result, and must revoke the losing
+// blob URL it just created.
+let openEpoch = 0
+
+function _revokeBlob(): void {
+  if (viewBlobUrl.value) {
+    URL.revokeObjectURL(viewBlobUrl.value)
+    viewBlobUrl.value = null
+  }
+}
+
 async function openDoc(doc: DocumentResponse): Promise<void> {
+  // Reject malformed identifiers before they become a fetch path.
+  if (!SAFE_TOKEN.test(doc.language) || !SAFE_TOKEN.test(doc.type)) {
+    viewingDoc.value = doc
+    viewError.value = true
+    viewLoading.value = false
+    return
+  }
+  const mine = ++openEpoch
   viewingDoc.value = doc
-  viewContent.value = ''
   viewError.value = false
   viewLoading.value = true
+  _revokeBlob()
+
+  let nextUrl: string | null = null
   try {
-    const resp = await fetch(`/legal/${doc.language}/${doc.type}.html`)
+    const lang = encodeURIComponent(doc.language)
+    const type = encodeURIComponent(doc.type)
+    const resp = await fetch(`/legal/${lang}/${type}.html`)
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`)
     }
     const raw = await resp.text()
-    // Parse the full HTML document and pull the body innerHTML so
-    // the mounted node contains just the legal content, not
-    // <html>/<head>/<title>/<meta>.
-    const dom = new DOMParser().parseFromString(raw, 'text/html')
-    viewContent.value = dom.body.innerHTML
+    // Wrap the raw HTML in a text/html blob so the iframe renders it
+    // as a standalone document. No DOMParser/innerHTML trickery --
+    // iframe is sandboxed so the document chrome is harmless.
+    const blob = new Blob([raw], { type: 'text/html' })
+    nextUrl = URL.createObjectURL(blob)
   } catch {
-    viewError.value = true
+    if (mine === openEpoch) {
+      viewError.value = true
+    }
   } finally {
-    viewLoading.value = false
+    if (mine === openEpoch) {
+      viewLoading.value = false
+    }
   }
+
+  if (mine !== openEpoch) {
+    // Superseded -- another openDoc() started after us. Revoke our
+    // blob so the browser reclaims it.
+    if (nextUrl) URL.revokeObjectURL(nextUrl)
+    return
+  }
+  viewBlobUrl.value = nextUrl
 }
 
 async function retryModalBody(): Promise<void> {
@@ -128,11 +189,17 @@ async function retryModalBody(): Promise<void> {
 }
 
 function closeModal(): void {
+  openEpoch += 1
   viewingDoc.value = null
-  viewContent.value = ''
   viewError.value = false
+  viewLoading.value = false
   signing.value = false
+  _revokeBlob()
 }
+
+onUnmounted(() => {
+  _revokeBlob()
+})
 
 // ---------------------------------------------------------------------------
 // Sign flow
@@ -263,12 +330,23 @@ function metaLabel(doc: DocumentResponse): string {
           </CButton>
         </div>
 
-        <!-- Loaded body. No sanitisation: legal folder is repo-owned
-             content, not user-supplied. DOMParser already stripped
-             the document chrome. -->
-        <div v-else class="docs-modal__body" v-html="viewContent" />
+        <!--
+          Loaded body. Rendered in a sandboxed iframe via blob URL,
+          mirroring CertificateSheet.vue. `sandbox=""` (empty value)
+          forbids scripts, forms, same-origin access, navigation,
+          and storage. Legal documents are static text -- none of
+          those are needed. See TD-F11b.
+        -->
+        <iframe
+          v-else-if="viewBlobUrl"
+          :src="viewBlobUrl"
+          sandbox=""
+          class="docs-modal__iframe"
+          :title="viewingDoc.title"
+        />
 
-        <!-- Footer actions -->
+        <!-- Footer actions. Hidden while loading so the user does not
+             tap "Sign" on a document body that has not rendered yet. -->
         <div v-if="!viewLoading && !viewError" class="docs-modal__actions">
           <CButton
             v-if="!viewingDoc.is_signed"
@@ -341,8 +419,6 @@ function metaLabel(doc: DocumentResponse): string {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  /* Tinted primary background. Fallback keeps the icon chip legible
-     even if the CSS variable isn't defined for this theme. */
   background: var(--primary-tint, rgba(26, 107, 106, 0.12));
   color: var(--primary);
   flex-shrink: 0;
@@ -386,7 +462,6 @@ function metaLabel(doc: DocumentResponse): string {
   font-weight: 700;
   color: var(--text);
   margin: 0 0 16px;
-  /* Leave room on the right for the CModal close (X) button. */
   padding-right: 32px;
 }
 
@@ -403,26 +478,13 @@ function metaLabel(doc: DocumentResponse): string {
   color: var(--text-tertiary);
 }
 
-.docs-modal__body {
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.5;
-  max-height: 55vh;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-/* Legal HTML markup passes through v-html. Basic typography for
-   the tags we actually use in the seeded documents. */
-.docs-modal__body :deep(h1),
-.docs-modal__body :deep(h2),
-.docs-modal__body :deep(h3) {
-  margin-top: 12px;
-  margin-bottom: 8px;
-  font-weight: 700;
-}
-.docs-modal__body :deep(p) {
-  margin: 8px 0;
+.docs-modal__iframe {
+  width: 100%;
+  height: 55vh;
+  height: 55dvh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
 }
 
 .docs-modal__actions {

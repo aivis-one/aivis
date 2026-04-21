@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Dashboard Store (Phase F4.4 B2)
+// CBSHOME Frontend -- Dashboard Store (Phase F4.4 B2 + B5-post)
 // =============================================================================
 //
 // Pinia store exposing the full /api/v1/dashboard/summary payload to
@@ -30,11 +30,18 @@
 //   refresh() -- pull /dashboard/summary, write summary, never throw
 //   reset()   -- null out summary + error (logout / role switch)
 //
-// RACE POLICY.
-//   Last write wins. Balances are a snapshot -- real protection
-//   comes from call-site sequencing (`await refresh()` before
-//   branching on values), not an epoch guard. If a concrete race
-//   shows up, promote to the stores/products epoch pattern.
+// RACE POLICY (B5-post).
+//   Previously "last write wins". That left a window where rapid
+//   tab switches (Dashboard <-> Balance, both call refresh() in
+//   onMounted) could resolve out of order -- a slower earlier fetch
+//   landing after a faster later one and displaying stale figures.
+//   For a financial dashboard this is visually "jumping backwards"
+//   numbers. Fixed with a monotonic epoch guard identical to the
+//   pattern in stores/portfolio (two-epoch) and stores/transactions:
+//     - refresh() captures its own epoch
+//     - only the latest epoch may publish to summary / error / loading
+//     - reset() bumps the epoch too, so a refresh() that resolves
+//       after logout cannot repopulate summary behind the guard
 //
 // TD-F08a NOTE.
 //   BalanceResponse has no `currency` field -- the whole system
@@ -61,6 +68,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // Monotonic counter. Bumped by refresh() (on start) and reset()
+  // (to invalidate any in-flight refresh). Non-reactive by design --
+  // only read inside the async closure after await points.
+  let epoch = 0
+
   // Convenience getters -- preserve the legacy F4.3 store surface
   // (activeBalance / passiveBalance) so the migration from
   // useBalanceStore does not rewrite every template. Return zeroed
@@ -78,21 +90,40 @@ export const useDashboardStore = defineStore('dashboard', () => {
    * Never throws -- errors are captured on `error`. Callers that
    * need to branch on success should check `error` after
    * `await refresh()`.
+   *
+   * Epoch-guarded: a second refresh() that starts before the first
+   * resolves will supersede the first -- the loser's result is
+   * dropped silently, and only the latest winner writes to summary /
+   * error / loading.
    */
   async function refresh(): Promise<void> {
+    const mine = ++epoch
     loading.value = true
     error.value = null
     try {
-      summary.value = await getDashboardSummary()
+      const next = await getDashboardSummary()
+      if (mine !== epoch) return
+      summary.value = next
     } catch (err) {
+      if (mine !== epoch) return
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
-      loading.value = false
+      if (mine === epoch) {
+        loading.value = false
+      }
     }
   }
 
-  /** Reset state. Called on logout and role switch. */
+  /**
+   * Reset state. Called on logout and role switch.
+   *
+   * Bumps epoch so any in-flight refresh() that resolves AFTER
+   * reset() cannot repopulate summary -- a post-logout fetch coming
+   * back with the old user's data would otherwise overwrite the
+   * cleared state.
+   */
   function reset(): void {
+    epoch += 1
     summary.value = null
     loading.value = false
     error.value = null

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorSettingsView (Phase F4.4 B5)
+// CBSHOME Frontend -- InvestorSettingsView (Phase F4.4 B5 + B5-post)
 // =============================================================================
 //
 // Top-level tab view mounted at /investor/settings (the InvestorShell
@@ -32,6 +32,13 @@
 // AGENT APPLICATION STATE MACHINE.
 //   fetched at mount via getMyAgentApplications (newest-first). The
 //   latest row drives the section:
+//     loading       -- in flight
+//     load_error    -- fetch failed (B5-post). Inline retry button.
+//                      Without this, a network drop left the user
+//                      seeing an active "Apply" while they had a real
+//                      pending application server-side; clicking
+//                      caused a 409 with a generic toast. Showing the
+//                      retry surface keeps the UI honest.
 //     kyc_required  -- user.kyc_status != 'approved' (decision Q6 in
 //                      chat). Disabled row pointing to /onboarding/kyc.
 //     pending       -- latest status = pending. Disabled "under review"
@@ -51,11 +58,22 @@
 //   toggleMarketing flips the local ref immediately, fires PATCH
 //   /users/me { profile: { marketing_consent: next } }, and on success
 //   calls authStore.fetchMe() so any other subscriber of user.profile
-//   (e.g. a future Notifications screen) sees the updated value
-//   without waiting for a route change. On failure the local ref
-//   reverts and a toast is shown. The 400-level surface from the
-//   backend (unknown key, etc.) is already covered by the whitelist
-//   addition in users/service.py; the toast is the catch-all.
+//   sees the updated value without waiting for a route change. On
+//   failure the local ref reverts and a toast is shown.
+//
+// B5-post changes.
+//   - Clickable rows rendered as <button type="button"> instead of
+//     <div> so keyboard / screen-reader users can activate them.
+//     Styling nullified with CSS reset (appearance, background,
+//     border, font-family, text-align) to keep the visual from B5.
+//   - Marketing toggle wears aria-labelledby pointing at its sibling
+//     label span, so assistive tech reads "Marketing communications,
+//     pressed/not pressed" rather than a bare toggle state.
+//   - Dead `if (err instanceof ApiResponseError) ... else ...` branch
+//     in applyForAgent removed; both arms showed the same toast.
+//   - getMyAgentApplications failure now surfaces `agentLoadErrored`
+//     with an inline retry row rather than silently falling through
+//     to can_apply.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -67,6 +85,7 @@ import {
   LogOut,
   Monitor,
   Moon,
+  RefreshCw,
   Shield,
   Sun,
   UserPlus,
@@ -79,7 +98,6 @@ import {
 } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import { useAuthStore } from '@/stores/auth'
-import { ApiResponseError } from '@/api/client'
 import { updateMe } from '@/api/users'
 import {
   getMyAgentApplications,
@@ -160,14 +178,10 @@ async function toggleMarketing(): Promise<void> {
   if (marketingBusy.value) return
   const prev = marketingConsent.value
   const next = !prev
-  // Optimistic: flip locally so the toggle feels instant.
   marketingConsent.value = next
   marketingBusy.value = true
   try {
     await updateMe({ profile: { marketing_consent: next } })
-    // Resync the auth store so any other view reading
-    // user.profile.marketing_consent sees the new value without a
-    // route change.
     await authStore.fetchMe()
   } catch {
     marketingConsent.value = prev
@@ -182,6 +196,8 @@ async function toggleMarketing(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 type AgentState =
+  | 'loading'
+  | 'load_error'
   | 'kyc_required'
   | 'can_apply'
   | 'pending'
@@ -197,6 +213,7 @@ const kycApproved = computed<boolean>(
 
 const agentApps = ref<AgentApplicationResponse[]>([])
 const agentLoading = ref<boolean>(false)
+const agentLoadErrored = ref<boolean>(false)
 const agentSubmitting = ref<boolean>(false)
 
 // Newest-first per backend contract (get_my_applications orders by
@@ -206,6 +223,8 @@ const latestApp = computed<AgentApplicationResponse | null>(
 )
 
 const agentState = computed<AgentState>(() => {
+  if (agentLoading.value) return 'loading'
+  if (agentLoadErrored.value) return 'load_error'
   if (!kycApproved.value) return 'kyc_required'
   const last = latestApp.value
   if (!last) return 'can_apply'
@@ -238,14 +257,12 @@ const cooldownDaysLeft = computed<number>(() => {
 async function fetchAgentApps(): Promise<void> {
   if (!isInvestor.value) return
   agentLoading.value = true
+  agentLoadErrored.value = false
   try {
     const resp = await getMyAgentApplications()
     agentApps.value = resp.items
   } catch {
-    // Swallow -- no toast. The block just falls through to can_apply
-    // (if KYC is approved) or kyc_required; if the user actually
-    // tries to submit and the network is down, applyForAgent surfaces
-    // its own error.
+    agentLoadErrored.value = true
   } finally {
     agentLoading.value = false
   }
@@ -258,19 +275,13 @@ async function applyForAgent(): Promise<void> {
     await submitAgentApplication()
     showToast(t('inv.settings.agent.submitSuccess'), 'success')
     await fetchAgentApps()
-  } catch (err: unknown) {
-    // Same status-driven narrow as other F4.4 views. The backend
-    // currently surfaces 400 (cooldown/role mismatch) and 409
-    // (pending already exists); both map to the same generic toast
-    // because the UI has already gated those states and hitting them
-    // means the user clicked faster than the state refetch. The
-    // message text from the backend is human-readable but not
-    // translated -- keeping the i18n key-driven toast.
-    if (err instanceof ApiResponseError) {
-      showToast(t('inv.settings.agent.submitError'), 'error')
-    } else {
-      showToast(t('inv.settings.agent.submitError'), 'error')
-    }
+  } catch {
+    // Backend currently surfaces 400 (cooldown / role mismatch) and
+    // 409 (pending already exists). The UI has already gated those
+    // states, so hitting them means the local state was stale.
+    // Single generic toast -- no benefit to narrowing ApiResponseError
+    // vs. network error in the UX.
+    showToast(t('inv.settings.agent.submitError'), 'error')
   } finally {
     agentSubmitting.value = false
   }
@@ -359,6 +370,7 @@ onMounted(() => {
           <button
             v-for="mode in THEME_MODES"
             :key="mode"
+            type="button"
             class="sett__chip"
             :class="{ 'sett__chip--active': themeCurrent === mode }"
             @click="setTheme(mode)"
@@ -373,14 +385,16 @@ onMounted(() => {
 
       <!-- Marketing consent -->
       <div class="sett__row">
-        <span class="sett__row-label">
+        <span id="marketing-consent-label" class="sett__row-label">
           {{ t('inv.settings.prefs.marketing') }}
         </span>
         <button
+          type="button"
           class="sett__toggle"
           :class="{ 'sett__toggle--active': marketingConsent }"
           :disabled="marketingBusy"
           :aria-pressed="marketingConsent"
+          aria-labelledby="marketing-consent-label"
           @click="toggleMarketing"
         />
       </div>
@@ -392,57 +406,73 @@ onMounted(() => {
         {{ t('inv.settings.agent.title') }}
       </div>
 
-      <div v-if="agentLoading" class="sett__center">
+      <!-- Loading -->
+      <div v-if="agentState === 'loading'" class="sett__center">
         <CLoader :size="20" />
       </div>
 
-      <template v-else>
-        <!-- KYC required -->
-        <div
-          v-if="agentState === 'kyc_required'"
-          class="sett__row sett__row--clickable"
-          @click="goKyc"
+      <!-- Load error with retry -->
+      <button
+        v-else-if="agentState === 'load_error'"
+        type="button"
+        class="sett__row sett__row--clickable"
+        @click="fetchAgentApps"
+      >
+        <span class="sett__row-label sett__row-label--muted">
+          <RefreshCw :size="16" />
+          {{ t('inv.settings.agent.loadError') }}
+        </span>
+        <span class="sett__row-label sett__row-label--accent">
+          {{ t('common.retry') }}
+        </span>
+      </button>
+
+      <!-- KYC required -->
+      <button
+        v-else-if="agentState === 'kyc_required'"
+        type="button"
+        class="sett__row sett__row--clickable"
+        @click="goKyc"
+      >
+        <span class="sett__row-label sett__row-label--accent">
+          <Shield :size="16" />
+          {{ t('inv.settings.agent.kycRequired') }}
+        </span>
+        <ChevronRight :size="16" />
+      </button>
+
+      <!-- Pending review -->
+      <div v-else-if="agentState === 'pending'" class="sett__row">
+        <span class="sett__row-label sett__row-label--muted">
+          <UserPlus :size="16" />
+          {{ t('inv.settings.agent.pending') }}
+        </span>
+      </div>
+
+      <!-- Cooldown active -->
+      <div v-else-if="agentState === 'cooldown'" class="sett__row">
+        <span class="sett__row-label sett__row-label--muted">
+          <UserPlus :size="16" />
+          {{ t('inv.settings.agent.cooldown', { days: cooldownDaysLeft }) }}
+        </span>
+      </div>
+
+      <!-- Can apply / reapply -->
+      <div v-else class="sett__row sett__row--block">
+        <CButton
+          variant="primary"
+          size="md"
+          :loading="agentSubmitting"
+          @click="applyForAgent"
         >
-          <span class="sett__row-label sett__row-label--accent">
-            <Shield :size="16" />
-            {{ t('inv.settings.agent.kycRequired') }}
-          </span>
-          <ChevronRight :size="16" />
-        </div>
-
-        <!-- Pending review -->
-        <div v-else-if="agentState === 'pending'" class="sett__row">
-          <span class="sett__row-label sett__row-label--muted">
-            <UserPlus :size="16" />
-            {{ t('inv.settings.agent.pending') }}
-          </span>
-        </div>
-
-        <!-- Cooldown active -->
-        <div v-else-if="agentState === 'cooldown'" class="sett__row">
-          <span class="sett__row-label sett__row-label--muted">
-            <UserPlus :size="16" />
-            {{ t('inv.settings.agent.cooldown', { days: cooldownDaysLeft }) }}
-          </span>
-        </div>
-
-        <!-- Can apply / reapply -->
-        <div v-else class="sett__row sett__row--block">
-          <CButton
-            variant="primary"
-            size="md"
-            :loading="agentSubmitting"
-            @click="applyForAgent"
-          >
-            <UserPlus :size="16" />
-            {{
-              agentState === 'can_reapply'
-                ? t('inv.settings.agent.reapply')
-                : t('inv.settings.agent.apply')
-            }}
-          </CButton>
-        </div>
-      </template>
+          <UserPlus :size="16" />
+          {{
+            agentState === 'can_reapply'
+              ? t('inv.settings.agent.reapply')
+              : t('inv.settings.agent.apply')
+          }}
+        </CButton>
+      </div>
     </section>
 
     <!-- Actions -->
@@ -451,17 +481,23 @@ onMounted(() => {
         {{ t('inv.settings.actions.title') }}
       </div>
 
-      <div class="sett__row sett__row--clickable" @click="goDocs">
+      <button
+        type="button"
+        class="sett__row sett__row--clickable"
+        @click="goDocs"
+      >
         <span class="sett__row-label sett__row-label--accent">
           <FileText :size="16" />
           {{ t('inv.settings.actions.docs') }}
         </span>
         <ChevronRight :size="16" />
-      </div>
+      </button>
 
-      <div
+      <button
+        type="button"
         class="sett__row sett__row--clickable"
         :class="{ 'sett__row--disabled': loggingOut }"
+        :disabled="loggingOut"
         @click="handleLogout"
       >
         <span class="sett__row-label sett__row-label--danger">
@@ -469,7 +505,7 @@ onMounted(() => {
           {{ t('inv.settings.actions.logout') }}
         </span>
         <ChevronRight :size="16" />
-      </div>
+      </button>
     </section>
   </div>
 </template>
@@ -533,7 +569,12 @@ onMounted(() => {
   padding: 0 4px;
 }
 
-/* Row */
+/*
+ * Row. Rendered either as <div> (read-only) or <button type="button">
+ * (clickable). Shared CSS -- the button variant needs a reset to
+ * erase default button chrome (background, border, font, text-align)
+ * so the visual stays identical to the div variant from B5.
+ */
 .sett__row {
   display: flex;
   align-items: center;
@@ -546,12 +587,25 @@ onMounted(() => {
 .sett__row:last-child {
   border-bottom: none;
 }
+button.sett__row {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.sett__row:last-child {
+  border-bottom: none;
+}
+
 .sett__row--block {
   flex-wrap: wrap;
   align-items: stretch;
 }
 .sett__row--clickable {
-  cursor: pointer;
   transition: background 0.15s;
 }
 .sett__row--clickable:hover {
@@ -604,6 +658,7 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  font-family: inherit;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .sett__chip:hover {

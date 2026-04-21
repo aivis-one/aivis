@@ -604,7 +604,8 @@
         "cooldown": "Available in {days} days",
         "kycRequired": "Complete KYC verification to apply",
         "submitSuccess": "Application submitted",
-        "submitError": "Could not submit your application"
+        "submitError": "Could not submit your application",
+        "loadError": "Could not load application status"
       },
       "actions": {
         "title": "Actions",
