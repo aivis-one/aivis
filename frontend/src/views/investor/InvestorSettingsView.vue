@@ -1,45 +1,654 @@
 <script setup lang="ts">
-// Stub — will be replaced with full implementation in F4.4.
-// Investor settings — profile, language, theme, become agent.
+// =============================================================================
+// CBSHOME Frontend -- InvestorSettingsView (Phase F4.4 B5)
+// =============================================================================
+//
+// Top-level tab view mounted at /investor/settings (the InvestorShell
+// already paints the tab bar). Uses CHeader with show-back=false and
+// show-logo=true so the top strip matches the other top-level tabs
+// (Dashboard, Portfolio, Market, Balance).
+//
+// SECTIONS.
+//   1. Profile card -- avatar (via CAvatar, URL from profile.avatar_url
+//      with initials fallback), full name, email, role badge. All
+//      READ-ONLY. Per F4.4 B5 scope: personal data (name, phone,
+//      country, language) is NOT editable from Settings. Any future
+//      edit flow lives elsewhere (KYC re-submit, staff avatar mode).
+//   2. Profile details -- phone and country, each rendered as a
+//      single read-only row. Hidden if both are absent. Language is
+//      intentionally omitted: locale is locked at registration and
+//      the Settings page cannot change it, so showing it read-only
+//      adds noise without action.
+//   3. Preferences -- theme selector (3 chips: auto / light / dark,
+//      driven by useTheme -- client-only, no backend round-trip) and
+//      a marketing consent toggle backed by profile.marketing_consent
+//      (PATCH /users/me with optimistic local flip + revert on fail).
+//   4. Agent programme -- conditional block, only rendered when the
+//      current user is an investor. State machine below.
+//   5. Actions -- My Documents shortcut (deep link into
+//      InvestorDocsView) and Sign out (authStore.logout then push
+//      /login).
+//
+// AGENT APPLICATION STATE MACHINE.
+//   fetched at mount via getMyAgentApplications (newest-first). The
+//   latest row drives the section:
+//     kyc_required  -- user.kyc_status != 'approved' (decision Q6 in
+//                      chat). Disabled row pointing to /onboarding/kyc.
+//     pending       -- latest status = pending. Disabled "under review"
+//                      line, no button.
+//     cooldown      -- latest status = rejected AND cooldown_until is
+//                      in the future. Disabled row with N-days-left
+//                      label (ceiling days to avoid "0 days left" on
+//                      the last hour).
+//     can_reapply   -- latest status = rejected AND cooldown expired.
+//                      Active button labelled "Apply again".
+//     can_apply     -- no applications on record. Active button labelled
+//                      "Become an agent".
+//   Approved is unreachable here: approval flips user.role to agent,
+//   which removes them from the InvestorShell route guard.
+//
+// MARKETING CONSENT OPTIMISM.
+//   toggleMarketing flips the local ref immediately, fires PATCH
+//   /users/me { profile: { marketing_consent: next } }, and on success
+//   calls authStore.fetchMe() so any other subscriber of user.profile
+//   (e.g. a future Notifications screen) sees the updated value
+//   without waiting for a route change. On failure the local ref
+//   reverts and a toast is shown. The 400-level surface from the
+//   backend (unknown key, etc.) is already covered by the whitelist
+//   addition in users/service.py; the toast is the catch-all.
+// =============================================================================
 
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import {
+  ChevronRight,
+  FileText,
+  LogOut,
+  Monitor,
+  Moon,
+  Shield,
+  Sun,
+  UserPlus,
+} from 'lucide-vue-next'
+
+import {
+  CAvatar,
+  CButton,
+  CLoader,
+} from '@/components/ui'
+import CHeader from '@/components/layout/CHeader.vue'
+import { useAuthStore } from '@/stores/auth'
+import { ApiResponseError } from '@/api/client'
+import { updateMe } from '@/api/users'
+import {
+  getMyAgentApplications,
+  submitAgentApplication,
+} from '@/api/agent-apps'
+import { useTheme, type ThemeMode } from '@/composables/useTheme'
+import { useToast } from '@/composables/useToast'
+import { tOrRaw } from '@/utils/i18n'
+import type { AgentApplicationResponse } from '@/api/types'
 
 const { t } = useI18n()
+const router = useRouter()
+const authStore = useAuthStore()
+const { showToast } = useToast()
+
+// ---------------------------------------------------------------------------
+// Profile read-outs (all derived from authStore.user)
+// ---------------------------------------------------------------------------
+
+function _profile(): Record<string, unknown> {
+  const p = authStore.user?.profile
+  return (p && typeof p === 'object') ? (p as Record<string, unknown>) : {}
+}
+
+const fullName = computed<string>(() => {
+  const p = _profile()
+  const first = typeof p.first_name === 'string' ? p.first_name : ''
+  const last = typeof p.last_name === 'string' ? p.last_name : ''
+  const name = [first, last].filter(Boolean).join(' ').trim()
+  return name || t('inv.settings.unnamed')
+})
+
+const email = computed<string>(() => authStore.user?.email ?? '')
+
+const roleLabel = computed<string>(() => {
+  const role = authStore.user?.role ?? 'investor'
+  // FP-15: server-driven enum -> tOrRaw with raw fallback.
+  return tOrRaw(t, `inv.settings.role.${role}`, role)
+})
+
+const avatarUrl = computed<string | undefined>(() => {
+  const v = _profile().avatar_url
+  return typeof v === 'string' && v.length > 0 ? v : undefined
+})
+
+const phone = computed<string>(() => {
+  const v = _profile().phone
+  return typeof v === 'string' ? v : ''
+})
+
+const country = computed<string>(() => {
+  const v = _profile().country
+  return typeof v === 'string' ? v : ''
+})
+
+const hasProfileDetails = computed<boolean>(
+  () => phone.value.length > 0 || country.value.length > 0,
+)
+
+// ---------------------------------------------------------------------------
+// Theme (3-state chips)
+// ---------------------------------------------------------------------------
+
+const { current: themeCurrent, set: setTheme } = useTheme()
+
+const THEME_MODES: readonly ThemeMode[] = ['auto', 'light', 'dark'] as const
+
+// ---------------------------------------------------------------------------
+// Marketing consent
+// ---------------------------------------------------------------------------
+
+const marketingConsent = ref<boolean>(
+  Boolean(_profile().marketing_consent),
+)
+const marketingBusy = ref<boolean>(false)
+
+async function toggleMarketing(): Promise<void> {
+  if (marketingBusy.value) return
+  const prev = marketingConsent.value
+  const next = !prev
+  // Optimistic: flip locally so the toggle feels instant.
+  marketingConsent.value = next
+  marketingBusy.value = true
+  try {
+    await updateMe({ profile: { marketing_consent: next } })
+    // Resync the auth store so any other view reading
+    // user.profile.marketing_consent sees the new value without a
+    // route change.
+    await authStore.fetchMe()
+  } catch {
+    marketingConsent.value = prev
+    showToast(t('inv.settings.prefs.marketingError'), 'error')
+  } finally {
+    marketingBusy.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Agent application
+// ---------------------------------------------------------------------------
+
+type AgentState =
+  | 'kyc_required'
+  | 'can_apply'
+  | 'pending'
+  | 'cooldown'
+  | 'can_reapply'
+
+const isInvestor = computed<boolean>(
+  () => authStore.user?.role === 'investor',
+)
+const kycApproved = computed<boolean>(
+  () => authStore.user?.kyc_status === 'approved',
+)
+
+const agentApps = ref<AgentApplicationResponse[]>([])
+const agentLoading = ref<boolean>(false)
+const agentSubmitting = ref<boolean>(false)
+
+// Newest-first per backend contract (get_my_applications orders by
+// created_at DESC), so items[0] is always "the latest".
+const latestApp = computed<AgentApplicationResponse | null>(
+  () => agentApps.value[0] ?? null,
+)
+
+const agentState = computed<AgentState>(() => {
+  if (!kycApproved.value) return 'kyc_required'
+  const last = latestApp.value
+  if (!last) return 'can_apply'
+  if (last.status === 'pending') return 'pending'
+  if (last.status === 'rejected') {
+    if (last.cooldown_until) {
+      const until = new Date(last.cooldown_until).getTime()
+      if (!Number.isNaN(until) && Date.now() < until) return 'cooldown'
+    }
+    return 'can_reapply'
+  }
+  // Approved is unreachable in an investor shell (role would be
+  // agent). Defensive fallback -- treat as can_apply so the button
+  // stays visible rather than the UI going silent.
+  return 'can_apply'
+})
+
+// Ceiling so a user at "22 hours remaining" sees "1 day left", never
+// "0 days left".
+const cooldownDaysLeft = computed<number>(() => {
+  const last = latestApp.value
+  if (!last?.cooldown_until) return 0
+  const until = new Date(last.cooldown_until).getTime()
+  if (Number.isNaN(until)) return 0
+  const diff = until - Date.now()
+  if (diff <= 0) return 0
+  return Math.ceil(diff / (24 * 60 * 60 * 1000))
+})
+
+async function fetchAgentApps(): Promise<void> {
+  if (!isInvestor.value) return
+  agentLoading.value = true
+  try {
+    const resp = await getMyAgentApplications()
+    agentApps.value = resp.items
+  } catch {
+    // Swallow -- no toast. The block just falls through to can_apply
+    // (if KYC is approved) or kyc_required; if the user actually
+    // tries to submit and the network is down, applyForAgent surfaces
+    // its own error.
+  } finally {
+    agentLoading.value = false
+  }
+}
+
+async function applyForAgent(): Promise<void> {
+  if (agentSubmitting.value) return
+  agentSubmitting.value = true
+  try {
+    await submitAgentApplication()
+    showToast(t('inv.settings.agent.submitSuccess'), 'success')
+    await fetchAgentApps()
+  } catch (err: unknown) {
+    // Same status-driven narrow as other F4.4 views. The backend
+    // currently surfaces 400 (cooldown/role mismatch) and 409
+    // (pending already exists); both map to the same generic toast
+    // because the UI has already gated those states and hitting them
+    // means the user clicked faster than the state refetch. The
+    // message text from the backend is human-readable but not
+    // translated -- keeping the i18n key-driven toast.
+    if (err instanceof ApiResponseError) {
+      showToast(t('inv.settings.agent.submitError'), 'error')
+    } else {
+      showToast(t('inv.settings.agent.submitError'), 'error')
+    }
+  } finally {
+    agentSubmitting.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Navigation helpers
+// ---------------------------------------------------------------------------
+
+function goKyc(): void {
+  void router.push('/onboarding/kyc')
+}
+
+function goDocs(): void {
+  void router.push({ name: 'investor-docs' })
+}
+
+const loggingOut = ref<boolean>(false)
+
+async function handleLogout(): Promise<void> {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await authStore.logout()
+  } finally {
+    void router.push('/login')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+
+onMounted(() => {
+  void fetchAgentApps()
+})
 </script>
 
 <template>
-  <div class="view-stub">
-    <h1 class="view-stub__title">{{ t('inv.settings.title') }}</h1>
-    <div class="view-stub__badge">F4.4</div>
+  <div class="sett">
+    <CHeader
+      :show-back="false"
+      :show-logo="true"
+      :title="t('inv.settings.title')"
+    />
+
+    <!-- Profile card -->
+    <section class="sett__profile">
+      <CAvatar :url="avatarUrl" :name="fullName" :size="72" />
+      <div class="sett__name">{{ fullName }}</div>
+      <div v-if="email" class="sett__email">{{ email }}</div>
+      <div class="sett__role-badge">{{ roleLabel }}</div>
+    </section>
+
+    <!-- Profile details (read-only) -->
+    <section v-if="hasProfileDetails" class="sett__section">
+      <div class="sett__section-title">
+        {{ t('inv.settings.profile.title') }}
+      </div>
+      <div v-if="phone" class="sett__row">
+        <span class="sett__row-label">
+          {{ t('inv.settings.profile.phone') }}
+        </span>
+        <span class="sett__row-value">{{ phone }}</span>
+      </div>
+      <div v-if="country" class="sett__row">
+        <span class="sett__row-label">
+          {{ t('inv.settings.profile.country') }}
+        </span>
+        <span class="sett__row-value">{{ country }}</span>
+      </div>
+    </section>
+
+    <!-- Preferences -->
+    <section class="sett__section">
+      <div class="sett__section-title">
+        {{ t('inv.settings.prefs.title') }}
+      </div>
+
+      <!-- Theme chips -->
+      <div class="sett__row sett__row--block">
+        <span class="sett__row-label">
+          {{ t('inv.settings.prefs.theme') }}
+        </span>
+        <div class="sett__chips">
+          <button
+            v-for="mode in THEME_MODES"
+            :key="mode"
+            class="sett__chip"
+            :class="{ 'sett__chip--active': themeCurrent === mode }"
+            @click="setTheme(mode)"
+          >
+            <Monitor v-if="mode === 'auto'" :size="14" />
+            <Sun v-else-if="mode === 'light'" :size="14" />
+            <Moon v-else :size="14" />
+            {{ t(`inv.settings.prefs.themeValue.${mode}`) }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Marketing consent -->
+      <div class="sett__row">
+        <span class="sett__row-label">
+          {{ t('inv.settings.prefs.marketing') }}
+        </span>
+        <button
+          class="sett__toggle"
+          :class="{ 'sett__toggle--active': marketingConsent }"
+          :disabled="marketingBusy"
+          :aria-pressed="marketingConsent"
+          @click="toggleMarketing"
+        />
+      </div>
+    </section>
+
+    <!-- Agent programme -->
+    <section v-if="isInvestor" class="sett__section">
+      <div class="sett__section-title">
+        {{ t('inv.settings.agent.title') }}
+      </div>
+
+      <div v-if="agentLoading" class="sett__center">
+        <CLoader :size="20" />
+      </div>
+
+      <template v-else>
+        <!-- KYC required -->
+        <div
+          v-if="agentState === 'kyc_required'"
+          class="sett__row sett__row--clickable"
+          @click="goKyc"
+        >
+          <span class="sett__row-label sett__row-label--accent">
+            <Shield :size="16" />
+            {{ t('inv.settings.agent.kycRequired') }}
+          </span>
+          <ChevronRight :size="16" />
+        </div>
+
+        <!-- Pending review -->
+        <div v-else-if="agentState === 'pending'" class="sett__row">
+          <span class="sett__row-label sett__row-label--muted">
+            <UserPlus :size="16" />
+            {{ t('inv.settings.agent.pending') }}
+          </span>
+        </div>
+
+        <!-- Cooldown active -->
+        <div v-else-if="agentState === 'cooldown'" class="sett__row">
+          <span class="sett__row-label sett__row-label--muted">
+            <UserPlus :size="16" />
+            {{ t('inv.settings.agent.cooldown', { days: cooldownDaysLeft }) }}
+          </span>
+        </div>
+
+        <!-- Can apply / reapply -->
+        <div v-else class="sett__row sett__row--block">
+          <CButton
+            variant="primary"
+            size="md"
+            :loading="agentSubmitting"
+            @click="applyForAgent"
+          >
+            <UserPlus :size="16" />
+            {{
+              agentState === 'can_reapply'
+                ? t('inv.settings.agent.reapply')
+                : t('inv.settings.agent.apply')
+            }}
+          </CButton>
+        </div>
+      </template>
+    </section>
+
+    <!-- Actions -->
+    <section class="sett__section">
+      <div class="sett__section-title">
+        {{ t('inv.settings.actions.title') }}
+      </div>
+
+      <div class="sett__row sett__row--clickable" @click="goDocs">
+        <span class="sett__row-label sett__row-label--accent">
+          <FileText :size="16" />
+          {{ t('inv.settings.actions.docs') }}
+        </span>
+        <ChevronRight :size="16" />
+      </div>
+
+      <div
+        class="sett__row sett__row--clickable"
+        :class="{ 'sett__row--disabled': loggingOut }"
+        @click="handleLogout"
+      >
+        <span class="sett__row-label sett__row-label--danger">
+          <LogOut :size="16" />
+          {{ t('inv.settings.actions.logout') }}
+        </span>
+        <ChevronRight :size="16" />
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.view-stub {
+.sett {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 24px;
+}
+
+.sett__center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Profile card */
+.sett__profile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
-  padding: 24px;
-  text-align: center;
+  padding: 20px 16px 24px;
+  gap: 6px;
 }
-
-.view-stub__title {
-  font-size: 20px;
+.sett__name {
+  font-size: 18px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 16px;
+  color: var(--text);
+  margin-top: 6px;
+}
+.sett__email {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.sett__role-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--primary);
+  text-transform: capitalize;
 }
 
-.view-stub__badge {
-  padding: 6px 14px;
-  border-radius: var(--radius-sm, 6px);
-  background: var(--bg-secondary, var(--surface));
+/* Section */
+.sett__section {
+  padding: 0 16px;
+  margin-bottom: 20px;
+}
+.sett__section-title {
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+/* Row */
+.sett__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  min-height: 48px;
+}
+.sett__row:last-child {
+  border-bottom: none;
+}
+.sett__row--block {
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.sett__row--clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sett__row--clickable:hover {
+  background: var(--bg-subtle);
+}
+.sett__row--disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.sett__row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+.sett__row-label--accent {
+  color: var(--primary);
+  font-weight: 600;
+}
+.sett__row-label--muted {
+  color: var(--text-secondary);
+}
+.sett__row-label--danger {
+  color: var(--danger, #DC2626);
+  font-weight: 600;
+}
+.sett__row-value {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+/* Theme chips */
+.sett__chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sett__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.sett__chip:hover {
+  border-color: var(--primary-light);
+  color: var(--text);
+}
+.sett__chip--active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Toggle switch */
+.sett__toggle {
+  width: 44px;
+  height: 24px;
+  background: var(--border);
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+.sett__toggle::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.sett__toggle--active {
+  background: var(--primary);
+}
+.sett__toggle--active::after {
+  transform: translateX(20px);
+}
+.sett__toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

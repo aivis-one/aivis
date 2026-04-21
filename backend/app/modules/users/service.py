@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024, Sprint 6.3, F2.3)
+# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024, Sprint 6.3, F2.3, F4.4 B5)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -29,6 +29,14 @@
 #   Only allowed keys are accepted in profile JSONB. Prevents mass
 #   assignment of arbitrary keys (e.g. "is_admin", "role", "__proto__").
 #
+# F4.4 B5:
+#   Added "marketing_consent" to the whitelist. Stores the investor's
+#   opt-in for marketing communications as a boolean under
+#   profile.marketing_consent. GDPR-style opt-in -- default absent
+#   (treated as false); the UI toggle in InvestorSettingsView flips
+#   it via PATCH /users/me. Not part of _REQUIRED_PROFILE_FIELDS, so
+#   it does not affect onboarding step progression.
+#
 # AUDIT:
 #   Profile changes are recorded in audit_log for compliance.
 #   Country and phone changes are especially significant for
@@ -55,6 +63,7 @@ _ALLOWED_PROFILE_KEYS = frozenset({
     "country",
     "phone",
     "avatar_url",
+    "marketing_consent",
 })
 
 # Profile fields required to advance to profile_complete step.

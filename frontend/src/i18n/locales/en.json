@@ -542,6 +542,75 @@
       "emailSuccess": "Certificate sent to your email",
       "emailError": "Could not send the certificate",
       "close": "Close"
+    },
+    "docs": {
+      "title": "Documents",
+      "subtitle": "Your legal documents and signing history",
+      "errorTitle": "Could not load documents",
+      "empty": {
+        "title": "No documents yet",
+        "description": "Required documents will appear here when they are assigned to your role."
+      },
+      "status": {
+        "signed": "Signed",
+        "pending": "Pending"
+      },
+      "meta": {
+        "signed": "Already signed",
+        "pending": "Action required"
+      },
+      "modal": {
+        "loading": "Loading document...",
+        "errorTitle": "Could not load document",
+        "errorRetry": "Retry",
+        "sign": "Sign document",
+        "signing": "Signing...",
+        "signSuccess": "Document signed",
+        "signError": "Could not sign the document",
+        "close": "Close"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "unnamed": "No name",
+      "role": {
+        "investor": "Investor",
+        "agent": "Agent",
+        "company": "Company",
+        "staff": "Staff",
+        "platform": "Platform"
+      },
+      "profile": {
+        "title": "Profile",
+        "phone": "Phone",
+        "country": "Country"
+      },
+      "prefs": {
+        "title": "Preferences",
+        "theme": "Theme",
+        "themeValue": {
+          "auto": "Auto",
+          "light": "Light",
+          "dark": "Dark"
+        },
+        "marketing": "Marketing communications",
+        "marketingError": "Could not update your preference"
+      },
+      "agent": {
+        "title": "Agent programme",
+        "apply": "Become an agent",
+        "reapply": "Apply again",
+        "pending": "Your application is under review",
+        "cooldown": "Available in {days} days",
+        "kycRequired": "Complete KYC verification to apply",
+        "submitSuccess": "Application submitted",
+        "submitError": "Could not submit your application"
+      },
+      "actions": {
+        "title": "Actions",
+        "docs": "My documents",
+        "logout": "Sign out"
+      }
     }
   }
 }
