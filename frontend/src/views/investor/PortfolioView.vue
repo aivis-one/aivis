@@ -51,7 +51,7 @@ import { isAgentShell } from '@/router/helpers'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { PortfolioPositionResponse } from '@/api/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = usePortfolioStore()
@@ -208,7 +208,7 @@ onMounted(() => {
               {{ t('inv.portfolio.products') }}
             </div>
             <div class="pv__hero-stat-value">
-              {{ formatNumber(productsCount) }}
+              {{ formatNumber(productsCount, locale) }}
             </div>
           </div>
           <div class="pv__hero-stat">
@@ -216,7 +216,7 @@ onMounted(() => {
               {{ t('inv.portfolio.units') }}
             </div>
             <div class="pv__hero-stat-value">
-              {{ formatNumber(totalUnits) }}
+              {{ formatNumber(totalUnits, locale) }}
             </div>
           </div>
           <div v-if="totalProfitPercent !== null" class="pv__hero-stat">
@@ -266,7 +266,7 @@ onMounted(() => {
                 {{ t('inv.portfolio.position.units') }}
               </div>
               <div class="pv__item-stat-value">
-                {{ formatNumber(p.total_units) }}
+                {{ formatNumber(p.total_units, locale) }}
               </div>
             </div>
             <div class="pv__item-stat">

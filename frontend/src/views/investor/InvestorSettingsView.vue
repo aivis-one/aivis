@@ -461,7 +461,7 @@ onMounted(() => {
       <div v-else class="sett__row sett__row--block">
         <CButton
           variant="primary"
-          size="md"
+          size="default"
           :loading="agentSubmitting"
           @click="applyForAgent"
         >

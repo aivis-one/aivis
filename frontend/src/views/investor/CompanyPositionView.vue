@@ -53,7 +53,7 @@ import { formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { PurchaseItemResponse } from '@/api/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = usePortfolioStore()
@@ -223,7 +223,7 @@ onUnmounted(() => {
                 {{ t('inv.companyPosition.aggregate.totalUnits') }}
               </div>
               <div class="cp__agg-val">
-                {{ formatNumber(currentDetail.total_units) }}
+                {{ formatNumber(currentDetail.total_units, locale) }}
               </div>
             </div>
             <div class="cp__agg-stat">
@@ -247,7 +247,7 @@ onUnmounted(() => {
                 {{ t('inv.companyPosition.aggregate.saleUnits') }}
               </div>
               <div class="cp__agg-val">
-                {{ formatNumber(currentDetail.sale_units) }}
+                {{ formatNumber(currentDetail.sale_units, locale) }}
               </div>
             </div>
             <div v-if="currentDetail.gift_units > 0" class="cp__agg-stat">
@@ -255,7 +255,7 @@ onUnmounted(() => {
                 {{ t('inv.companyPosition.aggregate.giftUnits') }}
               </div>
               <div class="cp__agg-val">
-                {{ formatNumber(currentDetail.gift_units) }}
+                {{ formatNumber(currentDetail.gift_units, locale) }}
               </div>
             </div>
           </div>
@@ -299,7 +299,7 @@ onUnmounted(() => {
                 </div>
                 <div class="cp__item-stats">
                   <span class="cp__item-stat">
-                    {{ formatNumber(p.units) }}
+                    {{ formatNumber(p.units, locale) }}
                     {{ t('inv.companyPosition.purchases.units') }}
                   </span>
                   <span

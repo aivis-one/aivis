@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
               {{ t('inv.dashboard.portfolio.products') }}
             </div>
             <div class="dash__portfolio-stat-value">
-              {{ formatNumber(productsCount) }}
+              {{ formatNumber(productsCount, locale) }}
             </div>
           </div>
           <div class="dash__portfolio-stat">
@@ -271,7 +271,7 @@ onBeforeUnmount(() => {
               {{ t('inv.dashboard.portfolio.units') }}
             </div>
             <div class="dash__portfolio-stat-value">
-              {{ formatNumber(totalUnits) }}
+              {{ formatNumber(totalUnits, locale) }}
             </div>
           </div>
         </div>
