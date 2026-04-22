@@ -1,7 +1,7 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.5
-**Дата:** 18 апреля 2026
+**Версия:** 2.6
+**Дата:** 22 апреля 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -1021,47 +1021,50 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ---
 
-### F4.4: Портфель + Дашборд
+### ✅ F4.4: Портфель + Дашборд
 
-**Цель:** Инвестор видит свой портфель и главную страницу.
+**Цель:** Инвестор видит свой портфель, дашборд, документы, настройки, сертификаты.
 
-**Прогресс:** B0 ✅ · B1 ✅ · B1-post ✅ · B2 ✅ · B3 ⚠️ pushed (2 hotfixes pending, см. ниже) · B4–B7 pending.
+**Прогресс:** B0 ✅ · B1 ✅ · B1-post ✅ · B2 ✅ · B3 ✅ · B3-hotfix ✅ · B4 ✅ · B5 ✅ · B5-post ✅ · B6 ✅ · B6-hotfix ✅ · B7 ✅ — **F4.4 завершён**.
+
+**Финальный score ревьюера:** 9/10 (после B5-post — все 🟡 и 🟢 из двух последовательных ревью закрыты, готово к merge; B6 и B7 — косметика на уже стабильной базе).
 
 **Задачи:**
 - [x] **B0 grooming (F4.4):** extract `formatSignedPrice` в `src/utils/format.ts` + extract `tOrRaw` в `src/utils/i18n.ts` (новый файл). Миграция 7 call-site'ов (2 для signed-price, 5 для tOrRaw). Семантика `cents === 0` → без знака (фикс бага TransactionsView «+$0.00»). Закрывает **TD-F09a + TD-F09b**, вводит правило **FP-15** (server-driven enums → tOrRaw). Параллельный CC-аудит выявил staff-side долг → **TD-F10** (4 пункта, не в скоупе F4.4).
 - [x] **B1 API layer + stores + types (F4.4):** `api/portfolio.ts` (2 endpoint'а), `api/certificates.ts` (fetchCertificateBlob через raw fetch → blob URL для iframe, emailCertificate через api.post), `api/agent-apps.ts` (2 investor endpoint'а), `stores/portfolio.ts` (один store, positions + per-company paginated, epoch-guard), расширение `api/types.ts` (6 новых типов для F4.4), минимальная правка `api/client.ts` (экспорт `API_BASE_URL` для non-JSON endpoint'ов). Code review score 7/10 — основные замечания закрыты в B1-post.
 - [x] **B1-post (B1 review follow-up):** (1) split `fetchEpoch` в `stores/portfolio.ts` на `portfolioEpoch` + `currentEpoch` (было: залипание `positionsLoading` при конкурентных операциях), (2) timeout coverage в `fetchCertificateBlob` теперь охватывает `response.blob()` (было: стук на медленной сети → вечный спиннер), (3) **loadMore retry-storm brake** — новое правило `loadMoreErrored` + `clearLoadMoreError()` в паджинированных stores, `paused?: Ref<boolean>` параметр в `useInfiniteScroll`, Retry-баннер в view. Применено к `stores/portfolio.ts` и `stores/transactions.ts` одновременно (консистентность), view-миграция в `TransactionsView.vue`. Вводит правило **FP-16**.
-- [x] **B2 — InvestorDashboardView + store rename:** новый `src/stores/dashboard.ts` (заменяет `stores/balance.ts`) с полным `DashboardSummaryResponse` payload + legacy `activeBalance`/`passiveBalance` computed getters для миграции без переписывания темплейтов. `stores/balance.ts` удалён. Новый `src/views/investor/InvestorDashboardView.vue` — 4 виджета: portfolio hero card (gradient, тап → `/investor/portfolio`, empty-state CTA на первую покупку), balance card (active confirmed + frozen hint), quick actions (Deposit + Market), posts preview (5 последних через `api/posts.ts`, новый модуль с narrow probe — без store, не переиспользуется). Миграция `PurchaseView.vue` / `InstallmentView.vue` с inline `getDashboardSummary()` → `useDashboardStore` (balance никогда не десинкнётся между экранами в одной сессии). Новый `api/posts.ts` (F9.1), расширение `api/types.ts` (F9.1 Posts/Events section, 939 lines total). +17 ключей `inv.dashboard.*` в en.json. Events отложены до F9.2.
-- [x] **B3 — PortfolioView + CompanyPositionView + Certificates:** новый `src/views/investor/PortfolioView.vue` (rewrite stub) — hero card с client-side profit % (`(current - paid) / paid * 100`, null при invested === 0, помечено TD-F11d) + positions list с тапом на детали. Новый `src/views/investor/CompanyPositionView.vue` — sub-route `/investor/portfolio/:id` (+ agent дубль), CHeader back + aggregate block + paginated purchases через FP-16 retry-storm brake + certificate flow. Новый `src/components/shared/CertificateSheet.vue` — bottom-sheet overlay (не inline, не full-screen modal — решение по Q3), iframe с **`sandbox=""`** (закрывает TD-F11b), email CTA без confirmation (решение Q4) с 3-секундным локальным cooldown поверх backend rate-limit. Новый `src/composables/useCertificateBlob.ts` — auto-revoke `URL.createObjectURL` через `onScopeDispose` + revoke-before-overwrite на повторный `load()`. Новый route `investor-company-position` + parный `agent-company-position`. +25 ключей `inv.portfolio.*` / `inv.companyPosition.*` / `inv.certificate.*` в en.json. Empty state PortfolioView → CTA на market (решение Q5).
-  - ⚠ **Хотфиксы после push'а B3** (применить до релиза):
-    1. В `CompanyPositionView.vue` импорт `@/components/investor/CertificateSheet.vue` → `@/components/shared/CertificateSheet.vue` (старая версия файла попала в репо до правки конвенции).
-    2. Применить `ROUTER-CHANGES.txt` из B3-zip: два `str_replace` в `src/router/index.ts` добавляют маршруты `investor-company-position` и `agent-company-position` (без них `router.push({ name: 'investor-company-position' })` не матчит).
-    Санити: `grep "components/investor" frontend/src/views/investor/CompanyPositionView.vue` → 0 строк; `grep -c "company-position" frontend/src/router/index.ts` → 2.
-- [ ] **B4** — src/views/investor/InvestorDocsView.vue:
-  - GET /api/v1/documents → список документов
-  - Статус подписания (signed / pending)
-  - POST /api/v1/documents/{id}/sign
-- [ ] **B5** — src/views/investor/InvestorSettingsView.vue:
-  - Профиль: аватар, имя, роль
-  - PATCH /api/v1/users/me — редактирование
-  - Переключение языка (en/ru/de/ar)
-  - Переключение темы (light/dark)
-  - Кнопка "Стать агентом" (если роль = investor, KYC approved):
-    - POST /api/v1/agent-applications → подать заявку
-    - GET /api/v1/agent-applications/me → статус заявки
-    - Cooldown 30 дней после отклонения (показать таймер)
-  - **B5 review checkpoint:** validate `AgentApplicationStatusType` usage — тип добавлен в B1 как подготовка, первый реальный потребитель появится здесь.
-- [ ] **B6** — src/views/investor/InvestorMoreView.vue:
-  - Навигация к: Documents, Settings, Notifications, Agent Application
-- [ ] **B7** — i18n catchup ru/de/ar для всех новых ключей B2–B6.
+- [x] **B2 — InvestorDashboardView + store rename:** новый `src/stores/dashboard.ts` (заменяет `stores/balance.ts`) с полным `DashboardSummaryResponse` payload + legacy `activeBalance`/`passiveBalance` computed getters для миграции без переписывания темплейтов. `stores/balance.ts` удалён. Новый `src/views/investor/InvestorDashboardView.vue` — 5 виджетов: greeting row (time-of-day), portfolio hero card (gradient, тап → `/investor/portfolio`, empty-state CTA на первую покупку), balance card (active confirmed + frozen hint), quick actions (Deposit + Market), posts preview (5 последних через `api/posts.ts`, новый модуль с narrow probe — без store, не переиспользуется). Миграция `PurchaseView.vue` / `InstallmentView.vue` с inline `getDashboardSummary()` → `useDashboardStore` (balance никогда не десинкнётся между экранами в одной сессии). Новый `api/posts.ts` (F9.1), расширение `api/types.ts` (F9.1 Posts/Events section, 939 lines total). +17 ключей `inv.dashboard.*` в en.json. Events отложены до F9.2.
+- [x] **B3 — PortfolioView + CompanyPositionView + Certificates:** новый `src/views/investor/PortfolioView.vue` (rewrite stub) — hero card с client-side profit % (`(current - paid) / paid * 100`, null при invested === 0, помечено TD-F11d) + positions list с тапом на детали. Новый `src/views/investor/CompanyPositionView.vue` — sub-route `/investor/portfolio/:id` (+ agent дубль), CHeader back + aggregate block + paginated purchases через FP-16 retry-storm brake + certificate flow. Новый `src/components/shared/CertificateSheet.vue` — bottom-sheet overlay, iframe с **`sandbox=""`** (закрывает TD-F11b), email CTA без confirmation, 3-секундный локальный cooldown поверх backend rate-limit. Новый `src/composables/useCertificateBlob.ts` — auto-revoke `URL.createObjectURL` через `onScopeDispose` + revoke-before-overwrite на повторный `load()`. Новый route `investor-company-position` + парный `agent-company-position`. +25 ключей `inv.portfolio.*` / `inv.companyPosition.*` / `inv.certificate.*` в en.json.
+- [x] **B3-hotfix** (применён до релиза): (1) `CompanyPositionView.vue` import `@/components/investor/CertificateSheet.vue` → `@/components/shared/CertificateSheet.vue` (convention fix), (2) `router/index.ts`: добавлены маршруты `investor-company-position` + `agent-company-position` (без них `router.push({ name: ... })` не матчил).
+- [x] **B4 — InvestorDocsView:** новый `src/views/investor/InvestorDocsView.vue` (rewrite stub). Sub-route `/investor/docs`, CHeader back. GET `/api/v1/documents` → список с фильтрацией по role на бэке, resolver locale'а (user_language + en fallback). Тап на row → модалка с содержимым документа. Sign flow: POST `/api/v1/documents/{id}/sign`, 409 как идемпотентный success (concurrent tab / replay). Новый `api/documents.ts` (listDocuments / getDocument / signDocument). Новый тип документа `risk_disclosure` — добавлен в `[investor, agent]` × 4 локали (4 legal HTML stub'а в `frontend/public/legal/{en,ru,de,ar}/risk_disclosure.html`). Company role оставлена с одним `company_agreement` (staff-managed technical user, покупок нет). Marketing consent → user preference в Settings (не документ). +15 ключей `inv.docs.*` в en.json.
+- [x] **B5 — InvestorSettingsView + marketing consent:** новый `src/views/investor/InvestorSettingsView.vue` (rewrite stub) и backend whitelist fix. Профиль **read-only** (аватар через CAvatar с url/initials fallback — upload endpoint'а на бэке нет, показываем только; имя/email/role badge). **Язык locked at registration** (FOREVER — не меняется из Settings, UI switcher отсутствует). Профиль-детали (phone, country) — read-only rows без edit (Q7: «абсолютно запрещено менять личные данные»). Preferences: 3-state theme toggle (auto/light/dark) через новый `composables/useTheme.ts` (module-level singleton, `cbs-theme` localStorage ключ, совместим с `public/theme-init.js` pre-mount скриптом), marketing consent toggle (optimistic PATCH `/users/me` + revert on fail). Agent programme: state machine kyc_required → can_apply → pending → cooldown → can_reapply (N-days-left с ceiling) с подачей через `submitAgentApplication()`. Actions: Мои документы + Logout. Новый `api/users.ts` (getMe / updateMe). **Backend:** добавлен `"marketing_consent"` в `_ALLOWED_PROFILE_KEYS` (`app/modules/users/service.py`) — без этого PATCH возвращал 400. +25 ключей `inv.settings.*` в en.json.
+- [x] **B5-post (B5+B3 review follow-up, 🟡+🟢):** (1) **Security:** `InvestorDocsView` — v-html снят, legal HTML рендерится в iframe с `sandbox=""` через blob URL (тот же паттерн что CertificateSheet, TD-F11b extended). `doc.type`/`doc.language` валидируются `SAFE_TOKEN = /^[a-z0-9_-]{1,64}$/i` + encodeURIComponent перед fetch path. Локальный epoch guard + revoke на unmount/close. (2) **Гонки:** epoch guard добавлен в `useCertificateBlob.load()` (перекрывающийся вызов не публикует проигравший URL, сам revoke'ает) — **TD-F11e closed**. Epoch guard добавлен в `useDashboardStore.refresh()` + `reset()` бампит epoch (post-logout refresh не перезапишет очищенный state) — **TD-F11f closed**. (3) **Дубликаты:** `frontend/src/views/investor/CertificateSheet.vue` удалён (байт-в-байт копия `components/shared/` версии). (4) **a11y:** clickable rows в Settings → `<button type="button">` с CSS-reset; marketing toggle получил `aria-labelledby`. (5) **Reactive greeting** (Dashboard): `ref(Date.now())` + `setInterval(60_000)` + `clearInterval` в `onBeforeUnmount` (раньше greeting computed не реагировал на пересечение границ morning/afternoon/evening при открытой вкладке). (6) `DocumentResponse.is_signed: boolean | null` → `boolean` (бэкенд всегда возвращает bool для list endpoint'а). (7) `fetchAgentApps` silent catch → `agentLoadErrored` state + inline retry row. (8) Удалены мёртвые `if (err instanceof ApiResponseError) ... else ...` ветки с одинаковыми toast'ами (2 места).
+- [x] **B6 — InvestorMoreView + Settings header fix:** новый `src/views/investor/InvestorMoreView.vue` (rewrite stub). Grid `auto-fit, minmax(220px, 1fr)` с 2 live-плитками (Documents, Settings). Sign-out НЕ в More — остаётся только в Settings (редкое действие, защита от accidental tap в tab-reachable экране). Notifications отложены до F9.2 (роут не существует). Agent Application живёт внутри Settings (не отдельный top-level). **Critical finding через твой вопрос «а как попасть в Settings?»:** до B6 `/investor/settings` был orphaned route — `INVESTOR_TABS.more` ведёт на `/investor/more`, а More был stub'ом без ссылок. B6 wire'ит Settings обратно в UI. **Fix двойного header в Settings:** shell рисует CHeader глобально, а мой B5-Settings зашил свой `<CHeader>` → после B6-активации Settings покажет два header'а. Fix: убран CHeader + import, добавлен inline `<h1>` + `<p>` блок в стиле MarketView/TransactionsView. Шапка файла обновлена с объяснением регрессии. **Consistency fixes в Docs:** `void fetchDocuments()` → `onMounted(() => void fetchDocuments())`; `++openEpoch` переехал в самое начало `openDoc()` до SAFE_TOKEN guard + `_revokeBlob()` в early-return ветку невалидных идентификаторов. +8 ключей: `inv.more.*` (6) + `inv.settings.subtitle` + `inv.settings.agent.loadError` (B5-post).
+- [x] **B6-hotfix:** build-блокер из-за `vue-tsc`. CButton принимает только `size?: 'default' | 'sm'` — я использовал `size="md"` в трёх местах (Docs modal × 2, Settings agent button × 1). Убраны строки `size="md"` (дефолт и так default). Регрессия была с B5, но невидима до build-time проверки на VPS.
+- [x] **B7 — i18n catchup ru/de/ar:** 118 новых ключей × 3 локали = 354 перевода (7 блоков: dashboard, portfolio, companyPosition, certificate, docs, settings, more). Все locale JSON выросли с 350 до 468 leaf keys. Существующие переводы не тронуты (только добавлены отсутствовавшие ключи). Терминология якорилась на существующих ключах (RU: Портфель/Баланс/Маркет/Агент/Инвестор; DE: Portfolio/Kontostand/Marktplatz/Agent/Investor; AR: المحفظة/الرصيد/السوق/وكيل/مستثمر). `{days}` placeholder в `cooldown` сохранён во всех локалях. **Disclaimer:** DE/AR — best effort без nativespeaker-ревью, требуют professional vetting перед prod release (помечено в **TD-F12**). RU подлежит self-review.
 
-**Зависимость от бэкенда:** Dashboard (Sprint 9.2 ✅), Portfolio (Sprint 9.2 ✅), Documents (Phase 2.2 ✅), Users (Phase 1.3 ✅), Agent Applications (Sprint 7.1 ✅), Certificates (Sprint 9.2 ✅).
+**Зависимость от бэкенда:** Dashboard (Sprint 9.2 ✅), Portfolio (Sprint 9.2 ✅), Documents (Phase 2.2 ✅), Users (Phase 1.3 ✅ + B5 whitelist patch), Agent Applications (Sprint 7.1 ✅), Certificates (Sprint 9.2 ✅), Posts (Sprint 9.1 ✅).
 
-**Критерий готовности:** Инвестор видит дашборд, портфель, документы, настройки, сертификаты.
+**Критерий готовности:** Инвестор видит дашборд, портфель, документы, настройки, сертификаты. ✅
 
-**Commit chain (по состоянию на B3 push):** B0 (`refactor(frontend): extract formatSignedPrice and tOrRaw utilities before F4.4`) → docs коммит (`docs(frontend): add FP-15 and TD-F10 ...`) → B1 (`feat(frontend): portfolio + certificates + agent-apps API layer and store (F4.4 B1)`) → B1-post (`fix(frontend): portfolio store race, blob timeout, loadMore retry storm (B1 review follow-up)`) → docs коммит #2 (`docs(frontend): add FP-16 and TD-F11 ...`) → B2 (`feat(frontend): investor dashboard + rename balance store to dashboard (F4.4 B2)`) → B3 (`feat(frontend): investor portfolio + company position + certificates (F4.4 B3)`) → [pending] B3-hotfix (CertificateSheet import + router routes).
+**Commit chain (финал):** B0 → docs → B1 → B1-post → docs #2 → B2 → B3 → B3-hotfix → B4 → B5 → B5-post → B6 → B6-hotfix → B7. Точные commit messages — в git log.
 
-**Follow-ups (TD-F11 секция):** ✅ iframe sandbox в B3 (TD-F11b закрыт). Миграция certificates на общий `api.client` через `responseType` опцию — когда появится второй не-JSON endpoint (TD-F11c). Новый — client-side profit calc в PortfolioView, мигрировать когда backend эмитит per-company profit (TD-F11d).
+**Follow-ups (закрытые / открытые):**
+- ✅ TD-F11a (loadMore retry-storm brake) — B1-post
+- ✅ TD-F11b (iframe sandbox для CertificateSheet + InvestorDocsView) — B3 + B5-post
+- ✅ TD-F11e (useCertificateBlob epoch guard) — B5-post
+- ✅ TD-F11f (useDashboardStore epoch guard) — B5-post
+- 🟡 TD-F11c (certificates → общий api.client с responseType) — ждём второй non-JSON endpoint
+- 🟡 TD-F11d (PortfolioView client-side profit %) — ждём backend profit field
+- 🟡 **TD-F12** (новый) — DE/AR i18n professional review перед prod release
+- 🟡 **TD-F13** (новый) — migrate `OnboardingProfileView` inline `api.patch('/api/v1/users/me')` → новый `api/users.ts:updateMe()` (для консистентности; B5 не трогал за пределами scope)
+
+**Уроки F4.4 (для следующих фаз):**
+1. **CButton size="md" build-блокер (B6-hotfix)** — типы компонентов проверять в начале батча, не в конце. `size?: 'default' | 'sm'`, ни md ни lg. Удалить из мышечной памяти.
+2. **Shell рисует CHeader глобально** (`InvestorShell.vue` / `AgentShell.vue`). Top-level tab views (Dashboard, Portfolio, Market, Balance, Settings, More) **НИКОГДА** не добавляют свой CHeader — только inline `<h1>`+`<p>` page-header в стиле MarketView. Sub-route views (`/investor/balance/deposit`, `/investor/portfolio/:id`, `/investor/docs`) добавляют `<CHeader :show-back="true" :show-logo="false" :title="..." />`. Был инцидент двойного header в Settings (B5 → B6-fix) — проверять паттерн перед каждым top-level view.
+3. **Orphaned routes** — каждый новый роут должен иметь **входную точку** (ссылку из другого view или tab bar item). В F4.4 `/investor/settings` был orphaned до B6. Добавлять запись «Как попасть в этот экран:» при создании роута.
+4. **Backend whitelist для JSONB fields** — `_ALLOWED_PROFILE_KEYS` в `users/service.py` нужно расширять при добавлении нового ключа в profile. Фронт падает с 400 на PATCH. Проверять до писания frontend-фичи.
+5. **Epoch guard теперь стандарт** — применён в `stores/portfolio` (two-epoch), `stores/dashboard`, `stores/transactions`, `composables/useCertificateBlob`, inline `openDoc` в InvestorDocsView. Любой async + re-entrance сценарий должен иметь epoch. Правило кодифицировано в **FP-17** (ниже).
 
 ---
 
@@ -1567,6 +1570,51 @@ function retryLoadMore(): void {
 
 Совместимость. `useInfiniteScroll(sentinelRef, hasMore, loadMore)` — трёхаргументный вызов — остаётся легитимным для не-paginated кейсов и старых call-site'ов (`MarketView` и др.). Четвёртый параметр опциональный.
 
+### FP-17: Epoch guard на async re-entrance
+
+Введено и кодифицировано в F4.4 (применено в `stores/portfolio` two-epoch, `stores/dashboard`, `stores/transactions`, `composables/useCertificateBlob`, inline `openDoc` в `InvestorDocsView`).
+
+**Правило.** Любой async actor (store action / composable `load` / view-local fetch), который может быть **вызван повторно** до разрешения предыдущего await-chain, обязан иметь epoch guard.
+
+**Паттерн.**
+
+```ts
+let epoch = 0
+
+async function doThing(arg: string): Promise<void> {
+  const mine = ++epoch
+  loading.value = true
+  try {
+    const next = await fetchSomething(arg)
+    if (mine !== epoch) return          // superseded — drop result
+    data.value = next
+  } catch (err) {
+    if (mine !== epoch) return          // superseded — don't flip errored
+    errored.value = true
+  } finally {
+    if (mine === epoch) {                // only the winner touches loading
+      loading.value = false
+    }
+  }
+}
+
+function reset(): void {
+  epoch += 1                             // invalidate any in-flight call
+  data.value = null
+  loading.value = false
+}
+```
+
+**Ключевые моменты:**
+- Epoch — `let`, не `ref` (не нужна реактивность, только монотонность).
+- Инкремент **в начале** action'а (до любых early return'ов — иначе параллельный вызов может затереть error-state).
+- `reset()` / `clear()` тоже бампит epoch (post-logout fetch не должен repopulate).
+- Если action создаёт ресурс (blob URL, WebSocket, AbortController) — проигравший epoch должен **сам освободить ресурс** перед выходом (`URL.revokeObjectURL` для blob, `.abort()` для controller).
+
+**Когда НЕ нужен.** Строго однократные fetch'и за жизнь компонента (один `onMounted` без Retry-кнопки, без зависимости от reactive prop'а).
+
+**Нарушение = латентный баг** — сразу не проявится, всплывёт на медленной сети / rage-tap'е / быстром табе. Ревью обязано проверять этот паттерн.
+
 ---
 
 ## 8. Tech Debt (Frontend)
@@ -1681,16 +1729,36 @@ function retryLoadMore(): void {
 | TD-F10c | `StaffUsersView.vue` — `item.role` + `detailUser.role` (2 call-site'а, ~стр. 212 / 249) и `item.kyc_status` + `detailUser.kyc_status` (2 call-site'а, ~стр. 216 / 260) — итого 4 call-site'а. Добавить `staff.users.role.*` + `staff.users.kycStatus.*` + `tOrRaw` | 🟢 | С TD-F10a |
 | TD-F10d | `StaffPaymentsView.vue:41–43` — локальная `formatCents(cents, currency)` → `"12.34 USD"` без `$`-префикса. Дубль `formatPrice`, но **семантически отличающийся**: `formatPrice(1234, 'USD')` выдаёт `"$12.34"`, `formatCents` — `"12.34 USD"`. Миграция **не чистый code swap** — требует product/design decision (формат в staff-UI намеренный или исторический долг?). Если намеренный — вынести отдельной `formatStaffCents` utility и задокументировать; если долг — мигрировать на `formatPrice`. Не закрывать без решения | 🟢 | С TD-F10a + design review |
 
-### TD-F11: F4.4 B1 review follow-ups
+### TD-F11: F4.4 review follow-ups
 
-Выявлены в ходе code review F4.4 B1 (score 7/10 — один латентный баг в гонке epoch-счётчиков, один незакрытый таймаут, один архитектурный долг про retry-шторм). Пункты a/b закрыты: a в B1-post, b в B3. TD-F11d появился в B3 как осознанное упрощение.
+Выявлены в ходе code review F4.4 B1 (score 7/10) и последующих ревью B3/B5 (9/10 after B5-post). Пункты a, b, e, f закрыты. Пункты c, d — открытые триггер-based.
 
 | # | Описание | Приоритет | Когда |
 |---|----------|-----------|-------|
 | TD-F11a | ✅ **Закрыт в F4.4 B1-post.** Infinite-scroll retry-storm brake. `loadMoreErrored` + `clearLoadMoreError()` добавлены в `stores/portfolio.ts` и `stores/transactions.ts`; `useInfiniteScroll` получил опциональный 4-й параметр `paused?: Ref<boolean>`; `TransactionsView` мигрирован на новый контракт с Retry-баннером. Паттерн зафиксирован правилом **FP-16**. Сопутствующие фиксы B1-post (не долги, а ревью-замечания): split epoch в portfolio store (был общий счётчик — залипание loading при конкурентных fetchPortfolio/setCompanyId), timeout coverage до конца `response.blob()` в `fetchCertificateBlob` (был unbounded download на медленной сети), JSDoc про `missingWarn` invariant в `tOrRaw`, cleanup dual-import в certificates | 🟢 | ✅ Done |
-| TD-F11b | ✅ **Закрыт в F4.4 B3.** `CertificateSheet.vue` рендерит сертификат в iframe с `sandbox=""` (empty — запрещает всё). Blob URL наследует origin SPA → без sandbox любая ошибка в `autoescape` Jinja2 дала бы скрипту доступ к `localStorage` + JWT. Релаксация до `allow-same-origin` в будущем допустима только с узким allow-list под конкретную нужду (например CSS backgrounds от API origin); явный коммент в компоненте предупреждает об этом | 🟢 | ✅ Done |
-| TD-F11c | `api/certificates.ts:fetchCertificateBlob` дублирует error-taxonomy из `api/client.ts` (ApiResponseError/Network/Timeout, Authorization header, timeout) — raw `fetch` потому что `api.client` всегда делает `response.json()`. Будущий источник дрифта: изменения в `client.ts` (например, `Accept-Language`, correlation-id, retries) не подхватятся certificates-путём. Миграция: расширить `api.client` опцией `responseType: 'json' \| 'blob' \| 'text'`, переписать `fetchCertificateBlob` через новый клиент. Преждевременно делать ради одного consumer'а — триггер миграции: появление второго не-JSON endpoint'а в проекте | 🟢 | По триггеру (второй не-JSON endpoint) |
+| TD-F11b | ✅ **Закрыт в F4.4 B3 + расширен в B5-post.** `CertificateSheet.vue` рендерит сертификат в iframe с `sandbox=""` (empty — запрещает всё). Blob URL наследует origin SPA → без sandbox любая ошибка в `autoescape` Jinja2 дала бы скрипту доступ к `localStorage` + JWT. В B5-post тот же паттерн применён к `InvestorDocsView`: `v-html` снят, legal HTML рендерится в iframe с sandbox через blob URL, `doc.type`/`doc.language` валидируются `SAFE_TOKEN = /^[a-z0-9_-]{1,64}$/i` + encodeURIComponent перед fetch path. Релаксация до `allow-same-origin` в будущем допустима только с узким allow-list под конкретную нужду; явные комменты в компонентах предупреждают об этом | 🟢 | ✅ Done |
+| TD-F11c | `api/certificates.ts:fetchCertificateBlob` дублирует error-taxonomy из `api/client.ts` (ApiResponseError/Network/Timeout, Authorization header, timeout) — raw `fetch` потому что `api.client` всегда делает `response.json()`. Будущий источник дрифта: изменения в `client.ts` (например, `Accept-Language`, correlation-id, retries) не подхватятся certificates-путём. Миграция: расширить `api.client` опцией `responseType: 'json' \| 'blob' \| 'text'`, переписать `fetchCertificateBlob` через новый клиент. Сейчас **три** non-JSON call-site (certificates blob + email, legal HTML fetch в InvestorDocsView) — достаточный кворум чтобы начать думать об общем клиенте, но ещё не принудительный триггер (DocsView использует `fetch` напрямую без auth header — legal HTML public) | 🟢 | Когда появится четвёртый non-JSON endpoint или authorized non-JSON endpoint |
 | TD-F11d | `PortfolioView.vue` считает profit % клиентски (`(current_value - total_paid) / total_paid * 100`), потому что `PortfolioResponse` / `PortfolioPositionResponse` на бэке не эмитят profit field. Null-guard на `total_paid_cents <= 0` (gift-only позиции) — profit блок не рендерится. Когда backend добавит per-company / total profit (с учётом комиссий / налогов / возможных fee-корректировок), заменить computed на чтение из response и дропнуть локальную формулу. Переход сдвинет отображаемые цифры на sub-cent величины из-за округления — callers не должны сравнивать с кэшем. Помечено `// TD-F11d` в коде | 🟡 | Когда backend эмитит profit field в Portfolio* ответах |
+| TD-F11e | ✅ **Закрыт в F4.4 B5-post.** Epoch guard в `useCertificateBlob.load()`. Ранее перекрывающийся второй вызов `load()` (prop churn в `CertificateSheet` при быстрой смене `purchaseId`) мог: (a) записать проигравший URL в `blobUrl` без revoke (утечка до unmount), (b) сбросить `loading` в false пока winner ещё в полёте, (c) затереть `errored` loser'а поверх winner'а. Fix: monotonic per-instance epoch, проигравший revoke'ает свой URL сам, не касается shared state. `clear()` бампит epoch — in-flight `load()` после `clear()` revoke'нёт свой результат, не repopulate. Паттерн зафиксирован **FP-17** | 🟢 | ✅ Done |
+| TD-F11f | ✅ **Закрыт в F4.4 B5-post.** Epoch guard в `useDashboardStore.refresh()` + `reset()` бампит epoch. Ранее быстрые переключения между Dashboard и Balance (оба делают `refresh()` в `onMounted`) могли резолвиться вне порядка — старый fetch приходил после нового и подменял `summary` устаревшими цифрами («прыгающие» балансы). Post-logout сценарий: `reset()` очищал state, но in-flight `refresh()` мог repopulate summary пользовательскими данными после вызова `clearSession()`. Fix: `refresh()` захватывает epoch, только winner пишет; `reset()` инкрементит epoch, так что любой пост-logout fetch становится noop | 🟢 | ✅ Done |
+
+### TD-F12: i18n professional review (DE/AR)
+
+В F4.4 B7 добавлено 118 ключей × 3 локали (ru/de/ar) как best-effort перевод без nativespeaker-ревью. RU подлежит self-review (автор проекта). DE и AR требуют профессионального vetting перед prod release — финансовая терминология чувствительна к нюансам (Kontostand vs Guthaben, محفظة vs رصيد), а AR дополнительно имеет **pluralization проблему**: `inv.settings.agent.cooldown` = `متاح بعد {days} يوم` грамматически корректно только для 1-10 (единственное число), арабский требует разных форм для 1, 2, 3-10, 11+. vue-i18n поддерживает pluralization через `|` разделитель — если нужны точные AR плюралы, отдельная задача.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F12a | DE review: native speaker / professional translator проходит по всем 118 ключам в `de.json` из F4.4 B7. Особое внимание: финансовые термины (Kontostand, Gewinn, Einheiten), UI-стандарты (Weiter/Zurück vs Fortfahren/Abbrechen), формальность обращения (Sie vs du — проект использует Sie) | 🟡 | До prod release |
+| TD-F12b | AR review: native speaker проходит по всем 118 ключам в `ar.json`. Дополнительно: RTL-специфичные фразы, согласование родов, религиозно-корректная терминология для финансовых операций (возможно shariah-compliance в будущем) | 🟡 | До prod release |
+| TD-F12c | AR pluralization: ключи с `{days}` / `{count}` переписать через vue-i18n plural syntax `'форма1 | форма2 | форма3'`, если feedback от AR-reviewer'а подтвердит что текущая форма неприемлема | 🟢 | После TD-F12b, опционально |
+
+### TD-F13: OnboardingProfileView inline PATCH migration
+
+`src/views/auth/OnboardingProfileView.vue` дёргает `api.patch('/api/v1/users/me', {...})` напрямую вместо нового `api/users.ts:updateMe()`. B5 намеренно не трогал за пределами scope, но модуль `api/users.ts` создан именно для централизации работы с `/users/me` — inline-вызов теперь выглядит как долг.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F13 | Заменить `api.patch<UserResponse>('/api/v1/users/me', { profile, language })` на `updateMe({ profile, language })` в `OnboardingProfileView.vue`. Чистый code swap, без изменения поведения, тип отдаётся через UserResponse от updateMe | 🟢 | В любом следующем grooming-коммите (до F5) |
 
 
 
