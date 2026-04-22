@@ -101,10 +101,11 @@ def err(msg: str) -> None:
 # Defaults
 # ---------------------------------------------------------------------------
 
-# $100,000 in cents. Generous on purpose -- the whole point is that a
-# dev user should be able to buy multiple products without tripping
-# balance checks or burning through the deposit in one go.
-DEFAULT_DEPOSIT_CENTS = 10_000_000
+# $1,000,000 in cents. Covers up to 5 purchases of $100k each without
+# tripping balance checks. Previous value ($100k) was insufficient when
+# any single product costs $100k -- the first purchase left too little
+# for subsequent ones.
+DEFAULT_DEPOSIT_CENTS = 100_000_000
 DEFAULT_PURCHASES = 5
 
 
@@ -270,13 +271,19 @@ async def seed_portfolio(
             success = 0
             skipped: list[tuple[UUID, str]] = []
             for product in products:
+                # Capture id and name before entering the try block.
+                # After session.rollback() the ORM object is expired and
+                # any attribute access triggers a lazy load that fails with
+                # MissingGreenlet in an async context.
+                product_id = product.id
+                product_name = product.name
                 try:
                     purchases = await execute_purchase(
-                        product.id, user, session
+                        product_id, user, session
                     )
                     await session.commit()
                     log(
-                        f"  + {product.name!r} -- "
+                        f"  + {product_name!r} -- "
                         f"{len(purchases)} purchase row(s)"
                     )
                     success += 1
@@ -285,7 +292,7 @@ async def seed_portfolio(
                     # Re-load user after rollback; engine advisory lock
                     # invalidates the bound instance.
                     user = await _find_user_by_email(email, session)
-                    skipped.append((product.id, str(exc)))
+                    skipped.append((product_id, str(exc)))
                     if user is None:
                         # Almost impossible -- another process deleted
                         # the user mid-loop. Stop cleanly instead of

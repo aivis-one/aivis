@@ -11,28 +11,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: false, // Using public/manifest.json directly
       workbox: {
+        // Precache all static assets including self-hosted woff2 fonts.
+        // Fonts are downloaded to public/fonts/ by install_cbshome.sh
+        // and served from /fonts/<filename>.woff2 -- no external CDN needed.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//],
-        // Runtime caching for external assets (also prevents empty-config error).
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-style',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-woff',
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
-        ],
       },
     }),
   ],
