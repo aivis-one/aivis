@@ -64,6 +64,7 @@ from app.modules.installments.constants import (
 )
 from app.modules.installments.models import InstallmentPlan, InstallmentTranche
 from app.modules.installments.scheduler import calculate_due_date
+from app.modules.ledgers.service import get_active_balance
 from app.modules.processors.base import LedgerEntry, PurchaseContext, Transaction
 from app.modules.products.models import Product, ProductInstallment
 from app.modules.purchases import engine
@@ -147,6 +148,24 @@ async def create_plan(
 
     total_price_cents = sum(t["amount_cents"] for t in tranches_config)
     total_units = product.units
+
+    # -- 4a. Pre-check balance (happy-path optimisation) --
+    # The frontend's "Confirm" button is gated by insufficientBalance,
+    # so we only hit this branch on a stale snapshot or a staff-avatar
+    # race. Checking here (before we insert the plan + N tranche rows
+    # + audit event) avoids generating a dozen DB writes only to throw
+    # them away in an outer rollback, and keeps the `tranche_overdue`
+    # audit event clean -- pay_tranche would otherwise record one and
+    # immediately have it rolled back. The real race guard is the
+    # advisory lock inside engine.execute, reached below via
+    # pay_tranche.
+    first_tranche_cents = tranches_config[0]["amount_cents"]
+    balance = await get_active_balance(session, investor.id)
+    available_cents = balance["frozen"] + balance["confirmed"]
+    if available_cents < first_tranche_cents:
+        raise BadRequestError(
+            "Insufficient balance for the first installment tranche"
+        )
 
     # -- 5. Create InstallmentPlan --
     plan = InstallmentPlan(
@@ -364,9 +383,10 @@ async def pay_tranche(
         return False
 
     # -- 6. Update tranche --
-    # Engine returns [sale_purchase]. Take the first (sale) purchase.
-    sale_purchase = next(
-        p for p in purchases if p.legal_basis != "gift"
+    # Engine returns one non-gift Purchase for the tranche; with UX-01
+    # its legal_basis is PurchaseLegalBasis.INSTALLMENT_TRANCHE.
+    tranche_purchase = next(
+        p for p in purchases if p.legal_basis != PurchaseLegalBasis.GIFT
     )
 
     validate_tranche_status_transition(
@@ -374,7 +394,7 @@ async def pay_tranche(
     )
     tranche.status = InstallmentTrancheStatus.PAID
     tranche.paid_at = now
-    tranche.purchase_id = sale_purchase.id
+    tranche.purchase_id = tranche_purchase.id
     await session.flush()
 
     await record_audit(
@@ -388,7 +408,7 @@ async def pay_tranche(
             "plan_id": str(plan.id),
             "tranche_number": tranche.number,
             "amount_cents": tranche.amount_cents,
-            "purchase_id": str(sale_purchase.id),
+            "purchase_id": str(tranche_purchase.id),
         },
     )
 
@@ -404,14 +424,14 @@ async def pay_tranche(
             "tranche_number": tranche.number,
             "product_id": str(plan.product_id),
             "units_unlocked": tranche.units_unlocked,
-            "purchase_id": str(sale_purchase.id),
+            "purchase_id": str(tranche_purchase.id),
         },
     )
 
     # Sprint 7.2: record referral attribution (one per plan, first tranche only).
     if tranche.number == 1:
         await create_attribution(
-            sale_purchase.id, plan.referral_link_id, session
+            tranche_purchase.id, plan.referral_link_id, session
         )
 
     logger.info(
@@ -849,7 +869,7 @@ async def _award_completion_bonuses(
         ]
         transactions.append(Transaction(
             reason=reason,
-            legal_basis="gift",
+            legal_basis=PurchaseLegalBasis.GIFT,
             entries=entries,
             units=bonus_units,
         ))
@@ -880,7 +900,7 @@ async def _award_completion_bonuses(
         ]
         transactions.append(Transaction(
             reason=reason,
-            legal_basis="gift",
+            legal_basis=PurchaseLegalBasis.GIFT,
             entries=entries,
             units=agent_bonus_units,
         ))

@@ -286,6 +286,12 @@ async def seed_portfolio(
                     # invalidates the bound instance.
                     user = await _find_user_by_email(email, session)
                     skipped.append((product.id, str(exc)))
+                    if user is None:
+                        # Almost impossible -- another process deleted
+                        # the user mid-loop. Stop cleanly instead of
+                        # crashing on the next iteration.
+                        err("User disappeared during seed -- aborting")
+                        break
 
             log(
                 f"Done: {success} purchase(s) completed, "
