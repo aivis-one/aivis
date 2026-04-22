@@ -44,8 +44,12 @@ services:
       - "127.0.0.1:3000:3000"
     depends_on:
       app: { condition: service_healthy }
+    # nginx listens on 0.0.0.0:3000 (IPv4 only). `localhost` inside the
+    # container resolves AAAA first on some distros and the IPv6 probe
+    # fails with "connection refused" -- use an explicit 127.0.0.1 so
+    # the check never flips to unhealthy when nginx is actually serving.
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
