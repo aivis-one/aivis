@@ -832,7 +832,11 @@ case_update() {
     echo "Current: $CURRENT_COMMIT ($BRANCH)"
 
     # Check for uncommitted local changes.
-    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    # Use git status --porcelain (same output git status reads) rather than
+    # git diff-index, which fires false positives when file stat metadata
+    # drifts (e.g. after chmod, touch, or filesystem restore) even when
+    # the working tree is actually clean.
+    if [ -n "$(git status --porcelain)" ]; then
         echo -e "${YELLOW}⚠ Uncommitted changes detected:${NC}"
         git status --short
         echo ""

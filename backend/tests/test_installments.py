@@ -344,9 +344,13 @@ async def test_create_plan_success(
     assert tranches[0].number == 1
     assert tranches[0].amount_cents == 500_000
     assert tranches[0].units_unlocked == 50
-    assert tranches[0].status == InstallmentTrancheStatus.SCHEDULED
+    # UX-01: create_plan pays tranche #1 inline.
+    assert tranches[0].status == InstallmentTrancheStatus.PAID
+    assert tranches[0].paid_at is not None
+    assert tranches[0].purchase_id is not None
     assert tranches[1].number == 2
     assert tranches[1].units_unlocked == 50
+    assert tranches[1].status == InstallmentTrancheStatus.SCHEDULED
 
 
 @pytest.mark.asyncio
@@ -627,7 +631,12 @@ async def test_endpoint_plan_detail_other_investor(
 async def test_pay_tranche_success(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """pay_tranche with sufficient balance -> tranche paid."""
+    """pay_tranche with sufficient balance -> tranche paid.
+
+    UX-01 changed create_plan to pay tranche #1 inline, so this test
+    exercises pay_tranche against tranche #2 (the first one the daemon
+    would normally touch).
+    """
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     await _activate_company(client, admin_token, company["id"])
@@ -648,12 +657,13 @@ async def test_pay_tranche_success(
     )
     await db_session.commit()
 
-    # Load first tranche.
+    # Tranche #1 was already paid inline by create_plan (UX-01);
+    # exercise pay_tranche on #2.
     stmt = (
         select(InstallmentTranche)
         .where(
             InstallmentTranche.plan_id == plan.id,
-            InstallmentTranche.number == 1,
+            InstallmentTranche.number == 2,
         )
     )
     result = await db_session.execute(stmt)
@@ -671,10 +681,15 @@ async def test_pay_tranche_success(
 
 
 @pytest.mark.asyncio
-async def test_pay_tranche_insufficient_overdue(
+async def test_create_plan_insufficient_balance(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """pay_tranche with insufficient balance -> tranche overdue."""
+    """create_plan with insufficient balance -> BadRequestError, nothing persisted.
+
+    UX-01: create_plan pays tranche #1 inline. If the investor can't
+    cover it, the whole call aborts and the plan + tranche rows are
+    rolled back -- no orphan plan with a day-1 overdue tranche.
+    """
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     await _activate_company(client, admin_token, company["id"])
@@ -690,6 +705,47 @@ async def test_pay_tranche_insufficient_overdue(
     from app.modules.users.models import User
     inv_user = await db_session.get(User, inv_id)
 
+    with pytest.raises(BadRequestError, match="[Ii]nsufficient"):
+        await create_plan(
+            product_id=UUID(product["id"]),
+            product_installment_id=UUID(template["id"]),
+            investor=inv_user,
+            session=db_session,
+        )
+    await db_session.rollback()
+
+    # Confirm no plan was left behind.
+    stmt = select(InstallmentPlan).where(InstallmentPlan.investor_id == inv_id)
+    result = await db_session.execute(stmt)
+    plans = list(result.scalars().all())
+    assert plans == []
+
+
+@pytest.mark.asyncio
+async def test_pay_tranche_insufficient_overdue(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """pay_tranche with insufficient balance -> tranche overdue.
+
+    Create a plan with just enough balance to cover tranche #1 (paid
+    inline via UX-01). Then exercise pay_tranche on tranche #2 while
+    the balance is empty -- expect it to flip to OVERDUE.
+    """
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+    template = await _create_installment_template(client, admin_token, product["id"])
+
+    # Balance == 1 * tranche amount: enough for #1, nothing left for #2.
+    _, inv_id = await _create_investor_with_balance(
+        client, db_session, suffix="inv_just_one", balance_cents=500_000
+    )
+
+    from app.modules.users.models import User
+    inv_user = await db_session.get(User, inv_id)
+
     plan = await create_plan(
         product_id=UUID(product["id"]),
         product_installment_id=UUID(template["id"]),
@@ -698,11 +754,12 @@ async def test_pay_tranche_insufficient_overdue(
     )
     await db_session.commit()
 
+    # Tranche #1 is now PAID inline; balance is 0. Grab #2.
     stmt = (
         select(InstallmentTranche)
         .where(
             InstallmentTranche.plan_id == plan.id,
-            InstallmentTranche.number == 1,
+            InstallmentTranche.number == 2,
         )
     )
     result = await db_session.execute(stmt)
@@ -745,8 +802,9 @@ async def test_complete_plan_with_bonuses(
     )
     await db_session.commit()
 
-    # Pay both tranches.
-    for tranche_num in [1, 2]:
+    # Tranche #1 already paid by create_plan (UX-01); pay only #2 here
+    # to drive the plan to completion.
+    for tranche_num in [2]:
         stmt = (
             select(InstallmentTranche)
             .where(
@@ -785,7 +843,14 @@ async def test_complete_plan_with_bonuses(
 async def test_default_plan(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """default_plan -> plan defaulted, remaining tranches cancelled."""
+    """default_plan -> plan defaulted, remaining tranches cancelled.
+
+    UX-01 flow: tranche #1 is paid inline by create_plan, so the
+    real-world default scenario is that tranche #2 (or later) goes
+    overdue past the grace period. The investor is given exactly
+    enough for tranche #1 so there is nothing left for the daemon
+    to spend on tranche #2.
+    """
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     await _activate_company(client, admin_token, company["id"])
@@ -793,8 +858,10 @@ async def test_default_plan(
     await _activate_product(client, admin_token, product["id"])
     template = await _create_installment_template(client, admin_token, product["id"])
 
+    # Balance == one tranche: create_plan's inline tranche #1 goes
+    # through; tranche #2 will never be affordable.
     _, inv_id = await _create_investor_with_balance(
-        client, db_session, suffix="inv_default", balance_cents=100
+        client, db_session, suffix="inv_default", balance_cents=500_000
     )
 
     from app.modules.users.models import User
@@ -808,38 +875,39 @@ async def test_default_plan(
     )
     await db_session.commit()
 
-    # Mark first tranche as overdue (simulating daemon).
+    # Mark tranche #2 as overdue (simulating daemon after grace period).
     stmt = (
-        select(InstallmentTranche)
-        .where(
-            InstallmentTranche.plan_id == plan.id,
-            InstallmentTranche.number == 1,
-        )
-    )
-    result = await db_session.execute(stmt)
-    tranche1 = result.scalar_one()
-    tranche1.status = InstallmentTrancheStatus.OVERDUE
-    await db_session.flush()
-
-    # Default the plan.
-    await default_plan(plan, tranche1, db_session)
-    await db_session.commit()
-
-    await db_session.refresh(plan)
-    assert plan.status == InstallmentPlanStatus.DEFAULTED
-    assert plan.defaulted_at is not None
-
-    await db_session.refresh(tranche1)
-    assert tranche1.status == InstallmentTrancheStatus.DEFAULTED
-
-    # Second tranche should be cancelled.
-    stmt2 = (
         select(InstallmentTranche)
         .where(
             InstallmentTranche.plan_id == plan.id,
             InstallmentTranche.number == 2,
         )
     )
-    result2 = await db_session.execute(stmt2)
-    tranche2 = result2.scalar_one()
-    assert tranche2.status == InstallmentTrancheStatus.CANCELLED
+    result = await db_session.execute(stmt)
+    tranche2 = result.scalar_one()
+    tranche2.status = InstallmentTrancheStatus.OVERDUE
+    await db_session.flush()
+
+    # Default the plan.
+    await default_plan(plan, tranche2, db_session)
+    await db_session.commit()
+
+    await db_session.refresh(plan)
+    assert plan.status == InstallmentPlanStatus.DEFAULTED
+    assert plan.defaulted_at is not None
+
+    await db_session.refresh(tranche2)
+    assert tranche2.status == InstallmentTrancheStatus.DEFAULTED
+
+    # Tranche #1 stays PAID (already executed by UX-01) -- default
+    # only cancels scheduled/overdue tranches.
+    stmt1 = (
+        select(InstallmentTranche)
+        .where(
+            InstallmentTranche.plan_id == plan.id,
+            InstallmentTranche.number == 1,
+        )
+    )
+    result1 = await db_session.execute(stmt1)
+    tranche1 = result1.scalar_one()
+    assert tranche1.status == InstallmentTrancheStatus.PAID
