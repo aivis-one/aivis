@@ -449,6 +449,182 @@
           "tranche_number": "Ratennummer"
         }
       }
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "greetingMorning": "Guten Morgen",
+      "greetingAfternoon": "Guten Tag",
+      "greetingEvening": "Guten Abend",
+      "portfolio": {
+        "title": "Portfolio",
+        "totalValue": "Gesamtwert",
+        "products": "Produkte",
+        "units": "Einheiten",
+        "companies": "Unternehmen",
+        "empty": "Noch keine Investitionen",
+        "emptyCta": "Zum Marktplatz"
+      },
+      "balance": {
+        "title": "Kontostand",
+        "available": "Verfügbar",
+        "frozen": "Gesperrt"
+      },
+      "actions": {
+        "title": "Schnellaktionen",
+        "deposit": "Einzahlen",
+        "market": "Marktplatz"
+      },
+      "posts": {
+        "title": "Neuigkeiten",
+        "empty": "Noch keine Neuigkeiten",
+        "errorTitle": "Neuigkeiten konnten nicht geladen werden",
+        "errorRetry": "Wiederholen",
+        "seeAll": "Alle anzeigen"
+      }
+    },
+    "portfolio": {
+      "title": "Portfolio",
+      "subtitle": "Ihre Bestände über alle Unternehmen",
+      "totalValue": "Gesamtwert",
+      "products": "Produkte",
+      "units": "Einheiten",
+      "invested": "Investiert",
+      "profit": "Gewinn",
+      "position": {
+        "units": "Einheiten",
+        "avgPrice": "Ø-Preis",
+        "value": "Wert",
+        "saleUnits": "Gekauft",
+        "giftUnits": "Geschenkt"
+      },
+      "empty": {
+        "title": "Noch keine Investitionen",
+        "description": "Besuchen Sie den Marktplatz, um Ihr Portfolio aufzubauen.",
+        "cta": "Zum Marktplatz"
+      },
+      "errorTitle": "Portfolio konnte nicht geladen werden"
+    },
+    "companyPosition": {
+      "title": "Position",
+      "aggregate": {
+        "totalUnits": "Gesamt-Einheiten",
+        "avgPrice": "Ø-Preis",
+        "invested": "Investiert",
+        "currentValue": "Aktueller Wert",
+        "saleUnits": "Gekauft",
+        "giftUnits": "Geschenkt"
+      },
+      "purchases": {
+        "title": "Käufe",
+        "empty": "Noch keine Käufe",
+        "legalBasis": {
+          "sale": "Kauf",
+          "gift": "Geschenk"
+        },
+        "units": "Einheiten",
+        "paid": "Bezahlt",
+        "pricePerUnit": "Preis je Einheit",
+        "certificate": "Zertifikat"
+      },
+      "errorTitle": "Position konnte nicht geladen werden",
+      "notFound": {
+        "title": "Position nicht gefunden",
+        "description": "Sie haben keine aktiven Käufe in diesem Unternehmen."
+      }
+    },
+    "certificate": {
+      "title": "Zertifikat",
+      "loading": "Zertifikat wird geladen...",
+      "errorTitle": "Zertifikat konnte nicht geladen werden",
+      "errorRetry": "Wiederholen",
+      "emailSend": "Per E-Mail senden",
+      "emailSending": "Wird gesendet...",
+      "emailSuccess": "Zertifikat an Ihre E-Mail gesendet",
+      "emailError": "Zertifikat konnte nicht gesendet werden",
+      "close": "Schließen"
+    },
+    "docs": {
+      "title": "Dokumente",
+      "subtitle": "Ihre rechtlichen Dokumente und Unterschriftsverlauf",
+      "errorTitle": "Dokumente konnten nicht geladen werden",
+      "empty": {
+        "title": "Noch keine Dokumente",
+        "description": "Pflichtdokumente erscheinen hier, sobald sie Ihrer Rolle zugewiesen werden."
+      },
+      "status": {
+        "signed": "Unterzeichnet",
+        "pending": "Ausstehend"
+      },
+      "meta": {
+        "signed": "Bereits unterzeichnet",
+        "pending": "Aktion erforderlich"
+      },
+      "modal": {
+        "loading": "Dokument wird geladen...",
+        "errorTitle": "Dokument konnte nicht geladen werden",
+        "errorRetry": "Wiederholen",
+        "sign": "Dokument unterzeichnen",
+        "signing": "Wird unterzeichnet...",
+        "signSuccess": "Dokument unterzeichnet",
+        "signError": "Dokument konnte nicht unterzeichnet werden",
+        "close": "Schließen"
+      }
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "subtitle": "Profil und Einstellungen verwalten",
+      "unnamed": "Kein Name",
+      "role": {
+        "investor": "Investor",
+        "agent": "Agent",
+        "company": "Unternehmen",
+        "staff": "Mitarbeiter",
+        "platform": "Plattform"
+      },
+      "profile": {
+        "title": "Profil",
+        "phone": "Telefon",
+        "country": "Land"
+      },
+      "prefs": {
+        "title": "Einstellungen",
+        "theme": "Design",
+        "themeValue": {
+          "auto": "Auto",
+          "light": "Hell",
+          "dark": "Dunkel"
+        },
+        "marketing": "Marketing-Mitteilungen",
+        "marketingError": "Einstellung konnte nicht gespeichert werden"
+      },
+      "agent": {
+        "title": "Agentenprogramm",
+        "apply": "Agent werden",
+        "reapply": "Erneut bewerben",
+        "pending": "Ihre Bewerbung wird geprüft",
+        "cooldown": "Verfügbar in {days} Tagen",
+        "kycRequired": "KYC-Verifizierung erforderlich, um sich zu bewerben",
+        "submitSuccess": "Bewerbung eingereicht",
+        "submitError": "Bewerbung konnte nicht eingereicht werden",
+        "loadError": "Bewerbungsstatus konnte nicht geladen werden"
+      },
+      "actions": {
+        "title": "Aktionen",
+        "docs": "Meine Dokumente",
+        "logout": "Abmelden"
+      }
+    },
+    "more": {
+      "title": "Mehr",
+      "subtitle": "Verknüpfungen und Konto-Tools",
+      "docs": {
+        "title": "Dokumente",
+        "desc": "Vereinbarungen, Offenlegungen und Unterschriftsverlauf"
+      },
+      "settings": {
+        "title": "Einstellungen",
+        "desc": "Profil, Einstellungen und Agentenprogramm"
+      }
     }
   }
 }

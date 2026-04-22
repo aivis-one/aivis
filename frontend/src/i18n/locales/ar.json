@@ -449,6 +449,182 @@
           "tranche_number": "رقم الدفعة"
         }
       }
+    },
+    "dashboard": {
+      "title": "لوحة التحكم",
+      "greetingMorning": "صباح الخير",
+      "greetingAfternoon": "مساء الخير",
+      "greetingEvening": "مساء الخير",
+      "portfolio": {
+        "title": "المحفظة",
+        "totalValue": "القيمة الإجمالية",
+        "products": "المنتجات",
+        "units": "الوحدات",
+        "companies": "الشركات",
+        "empty": "لا توجد استثمارات بعد",
+        "emptyCta": "تصفّح السوق"
+      },
+      "balance": {
+        "title": "الرصيد",
+        "available": "المتاح",
+        "frozen": "قيد الانتظار"
+      },
+      "actions": {
+        "title": "إجراءات سريعة",
+        "deposit": "إيداع",
+        "market": "السوق"
+      },
+      "posts": {
+        "title": "آخر الأخبار",
+        "empty": "لا توجد أخبار بعد",
+        "errorTitle": "تعذّر تحميل الأخبار",
+        "errorRetry": "إعادة المحاولة",
+        "seeAll": "عرض الكل"
+      }
+    },
+    "portfolio": {
+      "title": "المحفظة",
+      "subtitle": "ممتلكاتك عبر جميع الشركات",
+      "totalValue": "القيمة الإجمالية",
+      "products": "المنتجات",
+      "units": "الوحدات",
+      "invested": "المستثمر",
+      "profit": "الربح",
+      "position": {
+        "units": "الوحدات",
+        "avgPrice": "متوسط السعر",
+        "value": "القيمة",
+        "saleUnits": "مشتراة",
+        "giftUnits": "مُهداة"
+      },
+      "empty": {
+        "title": "لا توجد استثمارات بعد",
+        "description": "تصفّح السوق لبدء بناء محفظتك.",
+        "cta": "الانتقال إلى السوق"
+      },
+      "errorTitle": "تعذّر تحميل المحفظة"
+    },
+    "companyPosition": {
+      "title": "المركز",
+      "aggregate": {
+        "totalUnits": "إجمالي الوحدات",
+        "avgPrice": "متوسط السعر",
+        "invested": "المستثمر",
+        "currentValue": "القيمة الحالية",
+        "saleUnits": "مشتراة",
+        "giftUnits": "مُهداة"
+      },
+      "purchases": {
+        "title": "المشتريات",
+        "empty": "لا توجد مشتريات بعد",
+        "legalBasis": {
+          "sale": "شراء",
+          "gift": "هدية"
+        },
+        "units": "الوحدات",
+        "paid": "المدفوع",
+        "pricePerUnit": "سعر الوحدة",
+        "certificate": "الشهادة"
+      },
+      "errorTitle": "تعذّر تحميل المركز",
+      "notFound": {
+        "title": "المركز غير موجود",
+        "description": "لا توجد مشتريات نشطة في هذه الشركة."
+      }
+    },
+    "certificate": {
+      "title": "الشهادة",
+      "loading": "جاري تحميل الشهادة...",
+      "errorTitle": "تعذّر تحميل الشهادة",
+      "errorRetry": "إعادة المحاولة",
+      "emailSend": "إرسال إلى بريدي الإلكتروني",
+      "emailSending": "جاري الإرسال...",
+      "emailSuccess": "تم إرسال الشهادة إلى بريدك الإلكتروني",
+      "emailError": "تعذّر إرسال الشهادة",
+      "close": "إغلاق"
+    },
+    "docs": {
+      "title": "المستندات",
+      "subtitle": "مستنداتك القانونية وسجل التوقيع",
+      "errorTitle": "تعذّر تحميل المستندات",
+      "empty": {
+        "title": "لا توجد مستندات بعد",
+        "description": "ستظهر المستندات المطلوبة هنا عند تعيينها لدورك."
+      },
+      "status": {
+        "signed": "موقَّع",
+        "pending": "قيد الانتظار"
+      },
+      "meta": {
+        "signed": "تم التوقيع مسبقاً",
+        "pending": "يتطلّب إجراءً"
+      },
+      "modal": {
+        "loading": "جاري تحميل المستند...",
+        "errorTitle": "تعذّر تحميل المستند",
+        "errorRetry": "إعادة المحاولة",
+        "sign": "توقيع المستند",
+        "signing": "جاري التوقيع...",
+        "signSuccess": "تم توقيع المستند",
+        "signError": "تعذّر توقيع المستند",
+        "close": "إغلاق"
+      }
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "subtitle": "إدارة الملف الشخصي والتفضيلات",
+      "unnamed": "بدون اسم",
+      "role": {
+        "investor": "مستثمر",
+        "agent": "وكيل",
+        "company": "شركة",
+        "staff": "موظف",
+        "platform": "المنصة"
+      },
+      "profile": {
+        "title": "الملف الشخصي",
+        "phone": "الهاتف",
+        "country": "الدولة"
+      },
+      "prefs": {
+        "title": "التفضيلات",
+        "theme": "المظهر",
+        "themeValue": {
+          "auto": "تلقائي",
+          "light": "فاتح",
+          "dark": "داكن"
+        },
+        "marketing": "الاتصالات التسويقية",
+        "marketingError": "تعذّر حفظ التفضيل"
+      },
+      "agent": {
+        "title": "برنامج الوكلاء",
+        "apply": "كن وكيلاً",
+        "reapply": "إعادة التقديم",
+        "pending": "طلبك قيد المراجعة",
+        "cooldown": "متاح بعد {days} يوم",
+        "kycRequired": "أكمل التحقق من الهوية (KYC) للتقديم",
+        "submitSuccess": "تم إرسال الطلب",
+        "submitError": "تعذّر إرسال الطلب",
+        "loadError": "تعذّر تحميل حالة الطلب"
+      },
+      "actions": {
+        "title": "الإجراءات",
+        "docs": "مستنداتي",
+        "logout": "تسجيل الخروج"
+      }
+    },
+    "more": {
+      "title": "المزيد",
+      "subtitle": "اختصارات وأدوات الحساب",
+      "docs": {
+        "title": "المستندات",
+        "desc": "الاتفاقيات والإقرارات وسجل التوقيع"
+      },
+      "settings": {
+        "title": "الإعدادات",
+        "desc": "الملف الشخصي والتفضيلات وبرنامج الوكلاء"
+      }
     }
   }
 }
