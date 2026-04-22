@@ -519,7 +519,8 @@
         "empty": "No purchases yet",
         "legalBasis": {
           "sale": "Purchase",
-          "gift": "Gift"
+          "gift": "Gift",
+          "installment_tranche": "Installment"
         },
         "units": "Units",
         "paid": "Paid",

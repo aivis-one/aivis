@@ -1,9 +1,10 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35, updated 6.4)
+# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35, updated 6.4, UX-01)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   create_plan()        -- create installment plan + expand tranches
+#   create_plan()        -- create installment plan + expand tranches +
+#                           pay first tranche inline (UX-01)
 #   pay_tranche()        -- pay a single tranche via engine.execute()
 #   complete_plan()      -- award bonuses, set completed
 #   default_plan()       -- set defaulted, cancel remaining tranches
@@ -18,6 +19,22 @@
 #
 #   Completion bonuses are written via engine.write_transactions() with
 #   manually-built Transaction objects (fixed bonus, not condition-based).
+#
+# UX-01 (first tranche paid inline):
+#   Previously create_plan() only scheduled tranches; the daemon paid
+#   the first tranche at INSTALLMENT_WORKER_HOUR -- which meant up to
+#   24h of user-visible no-op between clicking "Confirm installment
+#   plan" and seeing the charge on the dashboard. Investors read that
+#   as a broken button and clicked again, creating duplicate plans.
+#
+#   Fix: create_plan() now pays tranche #1 synchronously in the same
+#   transaction. Balance is debited and the Purchase row appears
+#   before the API returns 201. If the balance check fails (which the
+#   frontend already gates via insufficientBalance, so this is the
+#   rare race / avatar-mode case), the entire create_plan() call
+#   rolls back with BadRequestError -- no half-created plan with a
+#   day-1 overdue tranche. Tranches 2..N keep going through the
+#   daemon as before.
 #
 # Fix #35: catch InsufficientBalanceError by type, not string match.
 #
@@ -78,8 +95,8 @@ async def create_plan(
 ) -> InstallmentPlan:
     """Create an installment plan from a ProductInstallment template.
 
-    Snapshots plan_config, expands tranches, validates first tranche
-    affordability. Does NOT pay the first tranche -- daemon handles it.
+    Snapshots plan_config, expands tranches, and pays the first
+    tranche inline (UX-01). The daemon handles tranches 2..N.
 
     Args:
         product_id: Product being purchased.
@@ -89,12 +106,14 @@ async def create_plan(
         referral_link_id: Optional referral link (Sprint 7.2 stub).
 
     Returns:
-        Created InstallmentPlan with tranches.
+        Created InstallmentPlan with tranches; tranche #1 is already
+        PAID (status), the rest SCHEDULED.
 
     Raises:
         NotFoundError: Product or template not found.
-        BadRequestError: Template doesn't belong to product, insufficient
-            balance for first tranche, product not active.
+        BadRequestError: Template doesn't belong to product, product
+            not active, insufficient balance for first tranche
+            (entire plan rolled back -- no half-created state).
     """
     now = datetime.now(UTC)
     today = now.date()
@@ -200,6 +219,36 @@ async def create_plan(
         product_id=str(product.id),
         tranche_count=len(tranches_config),
     )
+
+    # -- 8. Pay first tranche inline (UX-01) --
+    # The frontend gates the "Confirm" button with its own
+    # insufficientBalance check, so the only way we reach this with
+    # not-enough-funds is a race (staff avatar-mode just spent the
+    # balance) or a stale balance snapshot on the client. In either
+    # case we surface 400 and the outer transaction rolls back the
+    # plan + tranches rows -- no orphan plan with a day-1 overdue
+    # tranche.
+    #
+    # Querying tranche #1 from the session (rather than keeping the
+    # loop variable) so pay_tranche sees the flushed row with a
+    # server-assigned id.
+    stmt = (
+        select(InstallmentTranche)
+        .where(
+            InstallmentTranche.plan_id == plan.id,
+            InstallmentTranche.number == 1,
+        )
+    )
+    first_tranche = (await session.execute(stmt)).scalar_one()
+
+    was_paid = await pay_tranche(first_tranche, plan, session)
+    if not was_paid:
+        # pay_tranche caught InsufficientBalanceError and flipped the
+        # tranche to OVERDUE; rolling back the whole create_plan via
+        # BadRequestError is cleaner than leaving an orphan plan.
+        raise BadRequestError(
+            "Insufficient balance for the first installment tranche"
+        )
 
     return plan
 

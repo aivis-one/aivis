@@ -42,7 +42,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
-import { FileText, Gift, ShoppingCart } from 'lucide-vue-next'
+import { CalendarClock, FileText, Gift, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import CertificateSheet from '@/components/shared/CertificateSheet.vue'
@@ -140,6 +140,7 @@ function legalBasisLabel(basis: string): string {
 
 function legalBasisClass(basis: string): string {
   if (basis === 'gift') return 'cp__item-icon--gift'
+  if (basis === 'installment_tranche') return 'cp__item-icon--installment'
   return 'cp__item-icon--sale'
 }
 
@@ -286,6 +287,7 @@ onUnmounted(() => {
             >
               <div class="cp__item-icon" :class="legalBasisClass(p.legal_basis)">
                 <Gift v-if="p.legal_basis === 'gift'" :size="16" />
+                <CalendarClock v-else-if="p.legal_basis === 'installment_tranche'" :size="16" />
                 <ShoppingCart v-else :size="16" />
               </div>
               <div class="cp__item-body">
@@ -461,6 +463,10 @@ onUnmounted(() => {
 .cp__item-icon--gift {
   background: var(--success-dim, var(--bg-subtle));
   color: var(--success);
+}
+.cp__item-icon--installment {
+  background: var(--warning-dim, var(--bg-subtle));
+  color: var(--warning, var(--accent));
 }
 
 .cp__item-body {
