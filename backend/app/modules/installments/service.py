@@ -67,6 +67,7 @@ from app.modules.installments.scheduler import calculate_due_date
 from app.modules.processors.base import LedgerEntry, PurchaseContext, Transaction
 from app.modules.products.models import Product, ProductInstallment
 from app.modules.purchases import engine
+from app.modules.purchases.constants import PurchaseLegalBasis
 from app.modules.referrals.service import create_attribution, get_agent_chain
 from app.modules.purchases.service import (
     compute_frozen_context,
@@ -299,6 +300,10 @@ async def pay_tranche(
     dist_config = _resolve_distribution_config(product, company)
 
     # -- 4. Build PurchaseContext for this tranche --
+    # legal_basis + reason tag this as an installment operation so the
+    # resulting Purchase row (legal_basis=installment_tranche) and the
+    # investor/platform ledger entries (reason=installment:tranche:...)
+    # are distinguishable from instant sales end-to-end.
     context = PurchaseContext(
         investor_id=plan.investor_id,
         product_id=plan.product_id,
@@ -318,6 +323,10 @@ async def pay_tranche(
             max_depth=len(dist_config.get("agent_levels", [])),
         ),  # Sprint 7.x stub
         triggered_at=now,
+        legal_basis=PurchaseLegalBasis.INSTALLMENT_TRANCHE,
+        reason=LedgerReason.INSTALLMENT_TRANCHE.format(
+            tranche_id=str(tranche.id),
+        ),
     )
 
     # -- 5. Execute via engine (fix #35: catch by type, not string) --

@@ -58,6 +58,11 @@ class LedgerReason:
     PURCHASE: str = "purchase:{purchase_id}"
 
     # ------------------------------------------------------------------
+    # Installments (active_ledger: -amount, one per tranche payment)
+    # ------------------------------------------------------------------
+    INSTALLMENT_TRANCHE: str = "installment:tranche:{tranche_id}"
+
+    # ------------------------------------------------------------------
     # Gifts -- all free unit allocations (passive_ledger: +0 entries)
     # type: bundle_bonus | airdrop | welcome | campaign |
     #        installment_tranche | installment_completion |

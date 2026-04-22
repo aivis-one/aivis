@@ -135,13 +135,15 @@ async def execute(
 
     # -- 4. Audit --
     for purchase in purchases:
+        if purchase.legal_basis == PurchaseLegalBasis.SALE:
+            event = "purchase.created"
+        elif purchase.legal_basis == PurchaseLegalBasis.INSTALLMENT_TRANCHE:
+            event = "purchase.tranche_created"
+        else:
+            event = "purchase.gift_created"
         await record_audit(
             session=session,
-            event=(
-                "purchase.created"
-                if purchase.legal_basis == PurchaseLegalBasis.SALE
-                else "purchase.gift_created"
-            ),
+            event=event,
             actor_id=context.investor_id,
             actor_type="user",
             target_type="purchase",

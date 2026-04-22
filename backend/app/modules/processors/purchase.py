@@ -38,9 +38,14 @@ class PurchaseProcessor:
     """Distribute purchase funds: investor -> platform -> company."""
 
     def process(self, context: PurchaseContext) -> list[Transaction]:
-        """Generate sale transaction with distribution entries.
+        """Generate sale/tranche transaction with distribution entries.
 
-        Returns a single Transaction with legal_basis="sale".
+        Returns a single Transaction whose legal_basis comes from
+        context.legal_basis (default "sale") -- installments call this
+        via engine.execute with legal_basis="installment_tranche" so
+        the resulting Purchase row is correctly tagged in the UI and
+        the primary ledger entries carry the canonical
+        "installment:tranche:{id}" reason (not "purchase:{id}").
         """
         amount = context.amount_cents
         dist = context.distribution_config
@@ -53,6 +58,16 @@ class PurchaseProcessor:
         # replaces it with the actual ID before writing to DB.
         pid = "{purchase_id}"
 
+        # Primary ledger reason for the investor -> platform entries.
+        # Installment tranches hand a fully-resolved reason in via
+        # context.reason (tranche_id is known at pay_tranche time);
+        # sale path keeps the {purchase_id} placeholder for the engine.
+        primary_reason = (
+            context.reason
+            if context.reason is not None
+            else LedgerReason.PURCHASE.format(purchase_id=pid)
+        )
+
         entries: list[LedgerEntry] = []
 
         # 1. Debit investor's active_ledger.
@@ -60,7 +75,7 @@ class PurchaseProcessor:
             user_id=context.investor_id,
             ledger_type="active",
             amount_cents=-amount,
-            reason=LedgerReason.PURCHASE.format(purchase_id=pid),
+            reason=primary_reason,
             origin_payment_id=context.origin_payment_id,
             frozen_until=context.frozen_until,
         ))
@@ -70,12 +85,14 @@ class PurchaseProcessor:
             user_id=context.platform_user_id,
             ledger_type="passive",
             amount_cents=amount,
-            reason=LedgerReason.PURCHASE.format(purchase_id=pid),
+            reason=primary_reason,
             origin_payment_id=context.origin_payment_id,
             frozen_until=context.frozen_until,
         ))
 
         # 3+4. Distribute company share: platform -> company.
+        # Distribution keeps its own canonical reason regardless of the
+        # triggering operation -- semaphores group by "distribution:".
         if company_share > 0:
             reason = LedgerReason.DISTRIBUTION_COMPANY.format(
                 company_id=str(context.company_id),
@@ -99,8 +116,8 @@ class PurchaseProcessor:
             ))
 
         return [Transaction(
-            reason=LedgerReason.PURCHASE.format(purchase_id=pid),
-            legal_basis="sale",
+            reason=primary_reason,
+            legal_basis=context.legal_basis,
             entries=entries,
             units=context.units,
         )]

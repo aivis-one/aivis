@@ -86,6 +86,18 @@ class PurchaseContext:
     frozen_until: datetime | None
     agent_chain: list[UUID] = field(default_factory=list)  # stub in 6.1
     triggered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    # Sprint 6.2 (UX-01 / installments):
+    # Defaults to "sale" so all existing instant-purchase call sites keep
+    # working unchanged. installments/service.pay_tranche overrides both
+    # fields so tranche payments are recorded as legal_basis=
+    # "installment_tranche" with reason="installment:tranche:{tranche_id}"
+    # instead of masquerading as a regular sale in ledger + Purchase rows.
+    legal_basis: str = "sale"  # "sale" | "installment_tranche"
+    # Ledger reason for the primary ledger entries emitted by
+    # PurchaseProcessor. If None -> falls back to LedgerReason.PURCHASE
+    # with the usual "{purchase_id}" placeholder (resolved by engine).
+    # If provided, must be a fully-resolved string (no placeholders left).
+    reason: str | None = None
 
 
 class ProcessorProtocol(Protocol):
