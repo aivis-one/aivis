@@ -359,7 +359,6 @@ function metaLabel(doc: DocumentResponse): string {
           <CButton
             v-if="!viewingDoc.is_signed"
             variant="primary"
-            size="md"
             :loading="signing"
             @click="onSign"
           >
@@ -368,7 +367,6 @@ function metaLabel(doc: DocumentResponse): string {
           <CButton
             v-else
             variant="outline"
-            size="md"
             @click="closeModal"
           >
             {{ t('inv.docs.modal.close') }}
