@@ -519,8 +519,7 @@
         "empty": "No purchases yet",
         "legalBasis": {
           "sale": "Purchase",
-          "gift": "Gift",
-          "installment_tranche": "Installment"
+          "gift": "Gift"
         },
         "units": "Units",
         "paid": "Paid",
@@ -612,6 +611,19 @@
         "title": "Actions",
         "docs": "My documents",
         "logout": "Sign out"
+      },
+      "subtitle": "Manage your profile and preferences"
+    },
+    "more": {
+      "title": "More",
+      "subtitle": "Shortcuts and account tools",
+      "docs": {
+        "title": "Documents",
+        "desc": "Agreements, disclosures, and signing history"
+      },
+      "settings": {
+        "title": "Settings",
+        "desc": "Profile, preferences, and agent programme"
       }
     }
   }

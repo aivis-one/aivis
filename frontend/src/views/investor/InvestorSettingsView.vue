@@ -1,12 +1,16 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorSettingsView (Phase F4.4 B5 + B5-post)
+// CBSHOME Frontend -- InvestorSettingsView (Phase F4.4 B5 + B5-post + B6)
 // =============================================================================
 //
-// Top-level tab view mounted at /investor/settings (the InvestorShell
-// already paints the tab bar). Uses CHeader with show-back=false and
-// show-logo=true so the top strip matches the other top-level tabs
-// (Dashboard, Portfolio, Market, Balance).
+// Reached via the More tab (tab bar -> /investor/more -> Settings tile).
+// Not itself a tab -- the tab bar's "More" slot points at MoreView.
+// InvestorShell already renders CHeader for every /investor/* route, so
+// this view MUST NOT add its own. The B5 revision shipped a nested
+// <CHeader> which doubled the top bar once MoreView started linking
+// here in B6; fixed in B6 by dropping that nested header and using the
+// inline page-header pattern from MarketView / TransactionsView (<h1>
+// + <p>).
 //
 // SECTIONS.
 //   1. Profile card -- avatar (via CAvatar, URL from profile.avatar_url
@@ -96,7 +100,6 @@ import {
   CButton,
   CLoader,
 } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import { useAuthStore } from '@/stores/auth'
 import { updateMe } from '@/api/users'
 import {
@@ -322,11 +325,11 @@ onMounted(() => {
 
 <template>
   <div class="sett">
-    <CHeader
-      :show-back="false"
-      :show-logo="true"
-      :title="t('inv.settings.title')"
-    />
+    <!-- Inline page header, no CHeader (shell renders it). -->
+    <div class="sett__header">
+      <h1 class="sett__page-title">{{ t('inv.settings.title') }}</h1>
+      <p class="sett__page-subtitle">{{ t('inv.settings.subtitle') }}</p>
+    </div>
 
     <!-- Profile card -->
     <section class="sett__profile">
@@ -461,7 +464,7 @@ onMounted(() => {
       <div v-else class="sett__row sett__row--block">
         <CButton
           variant="primary"
-          size="default"
+          size="md"
           :loading="agentSubmitting"
           @click="applyForAgent"
         >
@@ -515,6 +518,22 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   padding-bottom: 24px;
+}
+
+/* Inline page header -- MarketView pattern */
+.sett__header {
+  padding: 16px 16px 0;
+}
+.sett__page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+.sett__page-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
 }
 
 .sett__center {

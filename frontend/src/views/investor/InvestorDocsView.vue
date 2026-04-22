@@ -68,7 +68,7 @@
 //   valid state, rendered with a short CEmptyState. Not an error.
 // =============================================================================
 
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileText } from 'lucide-vue-next'
 
@@ -108,7 +108,9 @@ async function fetchDocuments(): Promise<void> {
   }
 }
 
-void fetchDocuments()
+onMounted(() => {
+  void fetchDocuments()
+})
 
 // ---------------------------------------------------------------------------
 // Modal + iframe blob lifecycle
@@ -136,14 +138,20 @@ function _revokeBlob(): void {
 }
 
 async function openDoc(doc: DocumentResponse): Promise<void> {
+  // Bump epoch BEFORE the SAFE_TOKEN guard so a still-in-flight
+  // previous openDoc() is invalidated even when the current call
+  // bails out early. Without this, a parallel valid openDoc() could
+  // resolve later and overwrite the error state we just set.
+  const mine = ++openEpoch
+
   // Reject malformed identifiers before they become a fetch path.
   if (!SAFE_TOKEN.test(doc.language) || !SAFE_TOKEN.test(doc.type)) {
     viewingDoc.value = doc
     viewError.value = true
     viewLoading.value = false
+    _revokeBlob()
     return
   }
-  const mine = ++openEpoch
   viewingDoc.value = doc
   viewError.value = false
   viewLoading.value = true
@@ -351,7 +359,7 @@ function metaLabel(doc: DocumentResponse): string {
           <CButton
             v-if="!viewingDoc.is_signed"
             variant="primary"
-            size="default"
+            size="md"
             :loading="signing"
             @click="onSign"
           >
@@ -360,7 +368,7 @@ function metaLabel(doc: DocumentResponse): string {
           <CButton
             v-else
             variant="outline"
-            size="default"
+            size="md"
             @click="closeModal"
           >
             {{ t('inv.docs.modal.close') }}
