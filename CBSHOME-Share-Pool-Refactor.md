@@ -1,27 +1,44 @@
-# CBSHOME — Share Pool & Product Inventory Refactor
+# CBSHOME — Option Pool & Product Inventory Refactor
 
 **Tracking ID (Backend):** TD-071
 **Tracking ID (Frontend):** TD-F07
-**Sprint:** 4.3 (planned, Phase 4)
-**Статус:** Planned / 🔴 Blocker before Frontend Phase F5
+**Sprint:** 4.3 (Phase 4)
+**Статус:** In Progress / 🔴 Blocker before Frontend Phase F5
+**Версия:** 2.0
 **Дата создания:** 17 апреля 2026
+**Дата обновления:** 30 апреля 2026
 
 **Зависимости:**
-- `CBSHOME-Backend.md` — раздел Phase 4, реестр техдолга (TD-071)
-- `CBSHOME-Frontend.md` — раздел PHASE F5, реестр техдолга (TD-F07)
-- `CBSHOME-Financial-System.md` — ссылки на `Purchase.units`, `Purchase.paid_cents`, `Product.price_per_unit_cents`
+- `CBSHOME-Backend.md` — Phase 4, реестр техдолга (TD-071)
+- `CBSHOME-Frontend.md` — PHASE F5, реестр техдолга (TD-F07)
+- `CBSHOME-Financial-System.md` — `Purchase.units`, `Purchase.paid_cents`, pricing
 
 ---
 
 ## 1. Summary
 
-Текущая модель `Product` конфликтует с бизнес-реальностью выпуска акций.
+Текущая модель `Product` конфликтует с бизнес-реальностью выпуска опционов и будущей токенизацией.
 
-**Одна фраза:** компания выпускает фиксированный пул акций на продажу, а продукты — это лишь **правила деноминации** пула на пакеты разных размеров. Покупка одного пакета любого размера у любого продукта **уменьшает общий пул** компании — и одновременно меняет доступность **всех** продуктов этой компании (каждый продукт по-своему, исходя из своего размера пакета).
+**Одна фраза:** компания имеет фиксированный `total_supply` опционов (покрывающий 100% акций), часть из них выделяет в `OptionPool` для продажи через платформу, а продукты — это лишь **правила деноминации** (упаковки) пула на пакеты разных размеров.
 
-Текущий код этого не моделирует. `Product.units` трактуется как «инвентарь этого конкретного продукта», `sold_units = COUNT(Purchase)` считает пакеты, а не акции. Продукты одной компании не связаны между собой.
+**Ключевые архитектурные решения v2.0:**
 
-Рефактор должен: (1) ввести эмиссию на уровне компании, (2) переименовать `Product.units` → `Product.package_size` для ясности семантики, (3) вычислять availability динамически как производную от остатка пула компании и размера пакета конкретного продукта, (4) валидировать покупку против остатка пула.
+1. **Три уровня владения:**
+   - **Акции** — юридическая реальность, вне системы.
+   - **Total Supply** — все опционы компании, покрывающие 100% акций. `total_supply = total_shares / shares_per_option`. При токенизации — полный mint контракта.
+   - **Option Pool** — доля Total Supply, выделенная на продажу через платформу. Owners компании держат оставшиеся опционы вне платформы.
+
+2. **`OptionPool` — отдельная модель**, не поле на CompanyProfile. Имеет свой lifecycle (`active` / `archived`), хранит `equity_percent` и `total_options`.
+
+3. **Product привязан к Pool** (`pool_id`), не к Company напрямую.
+
+4. **Цена живёт на Company**, не на Pool. Цена меняется чаще, чем пул (переоценка компании не требует нового пула). При токенизации цена будет жить в внешнем оракуле.
+
+5. **Gift/bonus опционы расходуют пул**, overflow идёт из owner supply (Total Supply за пределами пула).
+
+6. **Сплит** — архитектурно заложен (новый Pool, миграционные Products, двойная запись), реализация — future scope.
+
+7. **Допэмиссия** — редактирование `total_options` на существующем Pool (деноминация не меняется → покупки не мигрируются).
 
 ---
 
@@ -32,9 +49,10 @@
 ```python
 class CompanyProfile:
     price_per_unit_cents: BigInteger      # $ per share
-    # нет total_shares_issued — эмиссия не моделируется
+    # нет total_supply, нет shares_per_option, нет Pool
 
 class Product:
+    company_id: FK -> CompanyProfile      # прямая привязка к компании
     units: Integer                         # иммутабельно
     # трактуется одновременно как:
     #   (a) размер пакета (смысл в name: "Starter — 100 Shares")
@@ -44,34 +62,9 @@ class Product:
 **Функция подсчёта проданного:**
 
 ```python
-# backend/app/modules/purchases/service.py
-async def get_sold_units_map(
-    session: AsyncSession,
-    product_ids: list[UUID],
-) -> dict[UUID, int]:
-    stmt = (
-        select(
-            Purchase.product_id,
-            func.count().label("cnt"),              # ← COUNT(*), НЕ SUM(units)
-        )
-        .where(
-            Purchase.product_id.in_(product_ids),
-            Purchase.status == PurchaseStatus.ACTIVE,
-            Purchase.legal_basis == PurchaseLegalBasis.SALE,
-        )
-        .group_by(Purchase.product_id)
-    )
-    result = await session.execute(stmt)
-    return {row.product_id: row.cnt for row in result.all()}
-```
-
-**Публичная схема:**
-
-```python
-# backend/app/modules/products/schemas.py
-class PublicProductResponse(BaseModel):
-    units: int                             # размер пакета (миксуется со смыслом "доступно")
-    sold_units: int = 0                    # COUNT покупок этого продукта
+async def get_sold_units_map(...) -> dict[UUID, int]:
+    # COUNT(*), НЕ SUM(units) — считает пакеты, не акции
+    # Продукты одной компании не связаны между собой
 ```
 
 ### 2.2. Конкретный баг
@@ -82,72 +75,162 @@ class PublicProductResponse(BaseModel):
 - На фронте: `available = product.units - product.sold_units = 500 − 1 = 499`.
 - В UI пишется «499 available», хотя фактически пакет куплен целиком.
 
-Баг проявился при первой же проверке seed-данных — см. транскрипт B5.
-
 ### 2.3. Бизнес-реальность
 
-Компания IPI AG готова продать суммарно 1 000 000 акций. Эти акции предложены инвесторам через два одновременно активных пакета:
+Компания IPI AG готова продать 10% своих акций. Если у компании 100 000 000 акций и `shares_per_option = 10`, то `total_supply = 10 000 000` опционов. Из них в Pool выделено 10% = `1 000 000` опционов.
 
-- Продукт A: «Starter» — 100 акций за пакет.
-- Продукт B: «Pro» — 5 000 акций за пакет.
+Эти опционы предложены инвесторам через три одновременно активных пакета:
+- Продукт «Starter» — 100 опционов за пакет.
+- Продукт «Investor» — 1 000 опционов за пакет.
+- Продукт «Whale» — 10 000 опционов за пакет.
 
-В начале доступно: **10 000 Starter'ов ИЛИ 200 Pro**, или любое сочетание (их сумма в пересчёте на акции не должна превысить 1 000 000).
+Покупка пакета у **любого** продукта уменьшает `pool_remaining` для **всех** продуктов этой компании (каждый продукт по-своему, исходя из своего `package_size`).
 
-Инвесторы покупают 198 Pro → продано 990 000 акций. Остаётся 10 000 акций в пуле компании. Теперь:
-- Pro пакетов доступно: `floor(10 000 / 5 000) = 2`.
-- Starter пакетов доступно: `floor(10 000 / 100) = 100`.
+### 2.4. Правовой аспект и токенизация
 
-Ещё один инвестор покупает 1 Starter → продано 990 100 акций, остаток 9 900:
-- Pro пакетов доступно: `floor(9 900 / 5 000) = 1`.
-- Starter пакетов доступно: `floor(9 900 / 100) = 99`.
+Юридически все опционы одной компании стоят одинаково. Цена фиксируется на уровне Company и каскадируется на Products.
 
-**Ключевой инвариант:** availability продукта A **зависит от покупок продукта B** в рамках одной компании.
-
-### 2.4. Правовой аспект
-
-Юридически все акции одной компании должны стоить одинаково. Продукты НЕ могут иметь разную цену за акцию у одной компании — это фиксируется уже сейчас (`Product.price_per_unit_cents` денормализован из `Company` и каскадом обновляется).
-
-Но стимулировать большие пакеты можно через **gift shares** — дополнительные акции «в подарок», оформленные как отдельная `Purchase` с `legal_basis='gift'` и `paid_cents=0`. Это уже работает через `purchase_config.bonuses` и `GiftProcessor`. Семантика рефакторинга их не меняет.
+**Будущее (за пределами MVP):** при получении лицензии опционы конвертируются в токены на блокчейне. Отсюда архитектурные требования:
+- Pool = будущий смарт-контракт. Фиксированный supply.
+- Опцион = будущий токен.
+- Сплит = новый контракт + swap старых токенов на новые.
+- Нельзя мутировать количество токенов после создания контракта, но можно выпустить новые и сделать swap.
+- Двойная запись (списание + выпуск) — точная модель того, что произойдёт on-chain.
 
 ---
 
 ## 3. Правильная модель
 
-### 3.1. CompanyProfile
-
-Добавляется колонка `total_shares_issued: BigInteger` (NOT NULL, эмиссия — общее число акций, которые компания готова продать через платформу).
+### 3.1. CompanyProfile — новые поля
 
 ```python
 class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     # ... все существующие поля без изменений ...
     price_per_unit_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    total_shares_issued: Mapped[int] = mapped_column(     # NEW
+
+    # NEW: tokenization parameters
+    total_supply: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
     )
-```
+    # total_supply = all options covering 100% of company shares
+    # Formula: total_shares / shares_per_option
+    # At tokenization: this becomes the total mint of the contract
 
-### 3.2. Product
-
-Переименование `units` → `package_size`. Семантика меняется кардинально, но тип и иммутабельность остаются.
-
-```python
-class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
-    # ... все существующие поля без изменений, кроме:
-    package_size: Mapped[int] = mapped_column(            # RENAMED from `units`
+    shares_per_option: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
     )
-    # package_size = сколько акций в одном пакете этого продукта
-    # Immutable after creation (как и раньше).
+    # shares_per_option = how many shares one option represents
+    # Example: shares_per_option=10 means 1 option = 10 shares
+    # Determines denomination. Changes only on split (new Pool).
 ```
 
-### 3.3. Вычисляемая доступность
+### 3.2. OptionPool — новая модель
+
+```python
+class OptionPool(UUIDMixin, TimestampMixin, Base):
+    """Pool of options allocated for sale on the platform.
+
+    One active pool per company at any time.
+    Enforced by partial unique index: UNIQUE(company_id) WHERE status='active'.
+    """
+    __tablename__ = "option_pools"
+
+    company_id: Mapped[UUID] = mapped_column(
+        ForeignKey("company_profiles.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    equity_percent: Mapped[Decimal] = mapped_column(
+        Numeric(7, 4),
+        nullable=False,
+    )
+    # equity_percent = share of company allocated for sale
+    # Example: 10.0000 = 10% of total_supply
+
+    total_options: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+    # total_options = number of options in this pool
+    # At creation: computed from total_supply * equity_percent / 100
+    # At edit (допэмиссия): staff sets total_options, equity_percent recomputed
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="active",
+        server_default="active",
+        nullable=False,
+        index=True,
+    )
+    # Statuses: active, archived
+    # archived = pool frozen (e.g. after split)
+```
+
+**Partial unique index (DB-level guarantee):**
+
+```sql
+CREATE UNIQUE INDEX uq_one_active_pool_per_company
+ON option_pools (company_id)
+WHERE status = 'active';
+```
+
+**Source of truth rules:**
+
+| Operation | Source | Computed |
+|-----------|--------|----------|
+| Pool creation | `equity_percent` (staff sets) | `total_options = total_supply * equity_percent / 100` |
+| Pool edit (допэмиссия) | `total_options` (staff sets) | `equity_percent = total_options / total_supply * 100` |
+| Split | `equity_percent` inherits from old pool | `total_options` recomputed from new `total_supply` and new `shares_per_option` |
+
+### 3.3. Product — привязка к Pool
+
+```python
+class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
+    # CHANGED: pool_id instead of company_id
+    pool_id: Mapped[UUID] = mapped_column(
+        ForeignKey("option_pools.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    # Denormalized for fast queries (populated on creation, immutable)
+    company_id: Mapped[UUID] = mapped_column(
+        ForeignKey("company_profiles.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    # RENAMED from `units`
+    package_size: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    # package_size = how many options in one package of this product
+    # Immutable after creation.
+
+    # ... all other existing fields unchanged ...
+```
+
+**`company_id` на Product сохраняется** как денормализация — нужен для быстрых запросов (dashboard, portfolio) без JOIN через Pool. Заполняется при создании из `pool.company_id`, иммутабелен.
+
+### 3.4. Purchase — без структурных изменений
+
+```python
+class Purchase:
+    product_id: FK -> Product         # без изменений
+    company_id: FK -> CompanyProfile  # без изменений (денормализация)
+    units: int                        # snapshot of product.package_size at purchase time
+    # Поле НЕ переименовывается — это «сколько опционов получил инвестор»
+```
+
+### 3.5. Вычисляемая доступность
 
 Не колонка в БД, а runtime-функция:
 
 ```python
-# backend/app/modules/purchases/service.py
 async def get_available_packages_map(
     session: AsyncSession,
     company_ids: list[UUID],
@@ -155,585 +238,798 @@ async def get_available_packages_map(
 ) -> dict[UUID, int]:
     """For each product, compute how many packs are still available.
 
-    available_packages[product_id] = floor(
-        (company.total_shares_issued
-         - SUM(Purchase.units WHERE company_id = product.company_id
-                              AND status = 'active'
-                              AND legal_basis != 'gift'))
-        / product.package_size
-    )
+    available_packages[product_id] = max(0, floor(
+        pool_remaining / product.package_size
+    ))
 
-    Gift purchases are excluded from the sold count -- they are free
-    shares given out of bonuses, not consumption of the issued pool.
-    If the company has zero shares remaining, all its products show 0.
+    pool_remaining = pool.total_options - SUM(Purchase.units
+        WHERE company_id = product.company_id
+        AND status = 'active')
+
+    ALL purchases (including gifts) consume the pool.
+    If pool_remaining < 0, gifts have overflowed into owner supply.
+    Available packages = 0 in that case.
     """
 ```
 
-**Параметры расчёта:**
+**IMPORTANT:** В отличие от v1.0 спеки, gift purchases **учитываются** в расходе пула. Gift-опционы расходуют пул в первую очередь; если пул исчерпан, overflow берётся из owner supply (`total_supply` за пределами пула).
 
-- В знаменателе — `package_size` конкретного продукта.
-- В числителе — остаток по эмиссии **компании** (общий для всех её продуктов).
-- `legal_basis != 'gift'` исключает бонусные акции из подсчёта потреблённого пула (bonus shares — это дополнительная эмиссия сверх пула, см. §3.5).
-
-**Возвращает:** `{product_id: available_packages}`. Если компания распродана — `0` для всех её продуктов.
-
-### 3.4. Валидация покупки
+### 3.6. Валидация покупки
 
 В `execute_purchase()` добавляется проверка **перед** списанием денег:
 
 ```python
-# backend/app/modules/purchases/service.py, inside execute_purchase()
-# -- 1.5. Validate share pool has enough --
-shares_remaining = await _get_shares_remaining(company.id, session)
-if shares_remaining < product.package_size:
-    raise BadRequestError(
-        f"Company has only {shares_remaining} shares left in issuance, "
-        f"package requires {product.package_size}"
-    )
+# Inside execute_purchase(), after loading Product and Company:
+# -- 1.5. Find active pool, validate availability --
+pool = await _get_active_pool(company.id, session)
+pool_remaining = await _get_pool_remaining(pool, session)
+if pool_remaining < product.package_size:
+    raise BadRequestError("sold out")
 ```
 
-Вспомогательная функция:
-
 ```python
-async def _get_shares_remaining(
-    company_id: UUID,
-    session: AsyncSession,
-) -> int:
-    """Total shares remaining for a company: issued − consumed."""
-    company = await _load_company(company_id, session)
+async def _get_active_pool(company_id: UUID, session: AsyncSession) -> OptionPool:
+    """Load the single active pool for a company."""
+    stmt = select(OptionPool).where(
+        OptionPool.company_id == company_id,
+        OptionPool.status == "active",
+    )
+    result = await session.execute(stmt)
+    pools = list(result.scalars().all())
+
+    if len(pools) == 0:
+        raise BadRequestError("Company has no active pool")
+    if len(pools) > 1:
+        raise RuntimeError(f"Data integrity: multiple active pools for company {company_id}")
+
+    return pools[0]
+
+
+async def _get_pool_remaining(pool: OptionPool, session: AsyncSession) -> int:
+    """Options remaining in pool: total - all consumed (including gifts)."""
     consumed_stmt = (
         select(func.coalesce(func.sum(Purchase.units), 0))
         .where(
-            Purchase.company_id == company_id,
+            Purchase.company_id == pool.company_id,
             Purchase.status == PurchaseStatus.ACTIVE,
-            Purchase.legal_basis != PurchaseLegalBasis.GIFT,
         )
     )
     consumed = (await session.execute(consumed_stmt)).scalar_one()
-    return company.total_shares_issued - int(consumed)
+    return pool.total_options - int(consumed)
 ```
 
-### 3.5. Gift shares — семантика
+**Race condition:** Нет advisory lock на `pool_id` / `company_id`. Два параллельных запроса теоретически могут пройти валидацию одновременно, и пул уйдёт в минус. Это **осознанный бизнес-риск**: компании предупреждены, что фактически проданный пул может незначительно превысить заявленный. Решается потом оперативным снятием с продажи. Для MVP с малым трафиком — не проблема.
 
-Bonus shares, создаваемые `GiftProcessor`, — это **дополнительные** акции сверх объявленной эмиссии. Они предназначены как стимул, юридически оформлены как подарок, не уменьшают пул:
+### 3.7. Gift / bonus shares — семантика
 
-- `Purchase.legal_basis = 'gift'`, `paid_cents = 0`.
-- В подсчёте `shares_remaining` НЕ учитываются.
-- `PurchaseProcessor` не создаёт gift-акции; их создаёт `GiftProcessor` на основе `purchase_config.bonuses[]`.
-- `total_shares_issued` компании их не лимитирует — теоретически компания может раздать сколь угодно подарочных акций в зависимости от `bonuses` конфигурации продуктов.
+Bonus shares, создаваемые `GiftProcessor`, расходуют пул наравне с обычными покупками.
 
-Это **правильная** семантика: пул — про продаваемые акции; подарки — отдельный финансовый жест компании без лимита сверху.
+**Приоритет расхода:**
+1. Сначала пул (`pool.total_options`)
+2. Если пул исчерпан — overflow из owner supply (`total_supply - pool.total_options`)
 
-### 3.6. Installments
+Gift **всегда выдаётся** — даже если пул кончился. Система знает об overflow: `pool_remaining < 0` означает, что `abs(pool_remaining)` опционов «одолжено» у owners.
 
-`InstallmentPlan.total_units` денормализован как `product.package_size` на момент создания плана. Переименование поля не ломает снапшоты — `plan_config_snapshot` в JSONB не содержит ключа `units`, только `tranches`, `bonus_units`, `agent_bonus_units`. Плюс `total_units` уже отдельная колонка, заполняется при создании плана.
+Для **availability продуктов** (можно ли КУПИТЬ):
+- `available_packages = max(0, floor(pool_remaining / package_size))`
+- Когда `pool_remaining < package_size` → sold out, купить нельзя
+- Но gift всё равно создаётся (пишется Purchase с `legal_basis='gift'`)
 
-**Что надо:** в `installments/service.py:create_plan` строка `total_units = product.units` становится `total_units = product.package_size`. Одна точка правки.
+### 3.8. Installments
 
-**Что не надо:** миграция JSONB-снапшотов. Старые активные планы в БД продолжат работать — они смотрят на свой снапшот, не на актуальное состояние Product.
+`InstallmentPlan.total_units` — снапшот `product.package_size` на момент создания плана. Переименование поля не ломает снапшоты.
+
+**Единственное изменение:** в `installments/service.py:create_plan()`:
+`total_units = product.units` → `total_units = product.package_size`.
+
+Активные планы в БД продолжают работать по снапшотам.
+
+### 3.9. Installment Calculator (NEW)
+
+Staff endpoint для расчёта `plan_config` с мотивационным распределением опционов.
+
+**Суть:** суммы траншей — примерно равные и «красивые» (кратные шагу округления). Опционы — перекос к последнему траншу (30-50%), мотивирующий инвестора закрыть план до конца.
+
+**Endpoint:** `POST /api/v1/staff/products/{id}/installments/preview`
+
+**Параметры:**
+
+| Параметр | Тип | Описание |
+|----------|-----|----------|
+| `num_tranches` | int | Из списка `ALLOWED_TRANCHES` (конфиг): `[3, 6, 12, 24, 36]` |
+| `last_tranche_percent` | int | % опционов в последнем транше (30-50, staff задаёт) |
+| `amount_rounding_cents` | int | Шаг округления суммы (500, 1000, 5000, 10000 cents) |
+
+`total_amount_cents` и `package_size` берутся из Product автоматически.
+
+**Алгоритм:**
+
+```python
+# Amounts — equal and "pretty", remainder to last
+regular_amount = (total_amount_cents // num_tranches // amount_rounding) * amount_rounding
+last_amount = total_amount_cents - regular_amount * (num_tranches - 1)
+
+# Options — skew to last, remainder to last
+last_options_base = package_size * last_tranche_percent // 100
+remaining = package_size - last_options_base
+regular_options = remaining // (num_tranches - 1)
+last_options = package_size - regular_options * (num_tranches - 1)
+```
+
+**Инварианты (всегда true):**
+- `regular_amount * (N-1) + last_amount == total_amount_cents`
+- `regular_options * (N-1) + last_options == package_size`
+- `regular_amount % amount_rounding == 0`
+- `last_amount > 0` (иначе шаг округления слишком грубый → 400 error)
+
+**Пример:** пакет 10000 опционов, $1000, 6 траншей, last_tranche_percent=50, округление $5:
+- 5 × ($165, 1000 опционов) + 1 × ($175, 5000 опционов)
+
+**Response:** готовый `plan_config` + summary. Staff смотрит, жмёт «Создать» → стандартный `POST /products/{id}/installments` с тем же `plan_config`. Один алгоритм, один язык, DRY.
 
 ---
 
-## 4. Миграция (Alembic)
+## 4. Сплит — архитектура (future scope)
 
-### 4.1. Стратегия — двухшаговая внутри одной ревизии
+Реализация сплита НЕ входит в Sprint 4.3, но архитектура моделей спроектирована так, чтобы сплит был возможен без ломающих миграций.
 
-Колонка `total_shares_issued` появляется как `nullable=True` → data-migration выставляет значения → `ALTER COLUMN ... SET NOT NULL`. Это позволяет обработать существующие записи без server_default-заглушки.
+### 4.1. Когда нужен сплит
 
-Ревизия: **`0028_share_pool_refactor`** (номер — следующий свободный после последней revision в проекте; проверить `backend/migrations/versions/` перед созданием).
+Сплит = изменение `shares_per_option` (деноминации). Одна старая акция = N новых → старый опцион ≠ новый опцион → нужна полная миграция.
 
-### 4.2. Upgrade
+**Граница:** если `shares_per_option` не изменился — редактируем Pool (допэмиссия). Если изменился — новый Pool + миграция.
+
+### 4.2. Механика сплита
+
+1. **Новый Pool** создаётся с новой деноминацией. Старый Pool → `status = 'archived'`.
+
+2. **Миграционные Products:** для каждого старого Product создаётся «миграционный» Product в новом Pool. `package_size` пересчитан по коэффициенту сплита. `status = 'pool_migration'` — скрыт, купить нельзя, но FK сохранён.
+
+3. **Двойная запись покупок:** для каждой старой Purchase:
+   - Reversal: `legal_basis = 'pool_migration'`, отрицательная / `status = 'migrated_out'`, FK → старый Product
+   - Новая: `legal_basis = 'pool_migration'`, `paid_cents = 0`, `units = старые * коэффициент`, FK → миграционный Product нового Pool
+
+4. **Installment plans:** НЕ закрываются / пересоздаются. Обновляются in-place:
+   - `total_units *= коэффициент`
+   - `product_id` → переключить на миграционный Product нового Pool
+   - `plan_config_snapshot.tranches[].amount_cents` — **не трогать** (деньги не меняются)
+   - `plan_config_snapshot.tranches[].units_percent` — **не трогать** (проценты от деноминации не зависят)
+   - Уже оплаченные транши → их Purchase мигрируются двойной записью
+
+### 4.3. ProductStatus расширяется
 
 ```python
-"""share pool refactor -- Sprint 4.3
+class ProductStatus(str, Enum):
+    ACTIVE = "active"
+    HIDDEN = "hidden"
+    ARCHIVED = "archived"
+    POOL_MIGRATION = "pool_migration"  # NEW: invisible, for FK integrity at split
+```
 
-Revision ID: 0028_share_pool_refactor
-Revises: 0027_<previous>
-Create Date: 2026-04-XX XX:XX:XX.XXXXXX
+### 4.4. Допэмиссия — НЕ сплит
+
+Допэмиссия (увеличение/уменьшение количества опционов без изменения деноминации) — редактирование `total_options` на существующем Pool. Покупки не мигрируются. Products не трогаются. Availability пересчитывается динамически.
+
+**Валидация при уменьшении:**
+```python
+consumed = SUM(Purchase.units WHERE company_id = X AND status = active)
+if new_total_options < consumed:
+    raise BadRequestError("Cannot reduce pool below already sold")
+```
+
+---
+
+## 5. Staff endpoints — новые и изменённые
+
+### 5.1. Pool endpoints (NEW, staff-only)
+
+Все под permissions: `company_manage` + `financial_operations`.
+
+**`POST /api/v1/staff/companies/{id}/pool`** — создать Pool.
+
+Body:
+```json
+{
+  "equity_percent": 10.0
+}
+```
+- `total_options` вычисляется: `company.total_supply * equity_percent / 100`
+- Валидация: у компании нет другого активного Pool
+- Создаёт Pool со статусом `active`
+
+**`PATCH /api/v1/staff/companies/{id}/pool`** — редактировать Pool (допэмиссия).
+
+Body:
+```json
+{
+  "total_options": 1500000
+}
+```
+- `equity_percent` пересчитывается: `total_options / company.total_supply * 100`
+- Валидация: `total_options >= consumed` (нельзя уменьшить ниже проданного)
+- Audit event: `pool.updated`
+
+### 5.2. Product creation — изменения
+
+**`POST /api/v1/staff/products`** — body по-прежнему содержит `company_id`.
+
+Внутри сервиса:
+1. По `company_id` находим единственный активный Pool
+2. Если Pool'ов 0 → `BadRequestError("Company has no active pool")`
+3. Если Pool'ов > 1 → `RuntimeError("Data integrity: multiple active pools")`
+4. Создаём Product с `pool_id = pool.id`, `company_id = pool.company_id` (денормализация)
+5. Валидация: `package_size <= pool.total_options` (защита от дурака)
+
+### 5.3. Installment Calculator (NEW)
+
+**`POST /api/v1/staff/products/{id}/installments/preview`**
+
+Permissions: `company_manage` + `financial_operations`.
+
+Body:
+```json
+{
+  "num_tranches": 6,
+  "last_tranche_percent": 50,
+  "amount_rounding_cents": 500
+}
+```
+
+Response:
+```json
+{
+  "plan_config": {
+    "tranches": [
+      {"amount_cents": 16500, "units_percent": 10},
+      ...
+    ],
+    "bonus_units": 0,
+    "agent_bonus_units": 0
+  },
+  "summary": {
+    "regular_amount_cents": 16500,
+    "last_amount_cents": 17500,
+    "regular_options": 1000,
+    "last_options": 5000,
+    "num_tranches": 6
+  }
+}
+```
+
+Validation:
+- `num_tranches` must be in `ALLOWED_TRANCHES` config → `[3, 6, 12, 24, 36]`
+- `last_tranche_percent` must be 1-99 (reasonable: 30-50)
+- `last_amount > 0` after rounding, else 400
+
+---
+
+## 6. Company Dashboard — новый модуль (NEW)
+
+### 6.1. Обоснование
+
+Investor dashboard (`dashboard/`) и Company dashboard — разные аудитории, разные запросы, разные schemas, разные permissions. Объединять бессмысленно.
+
+### 6.2. Структура
+
+```
+backend/app/modules/company_dashboard/
+    __init__.py
+    router.py
+    service.py
+    schemas.py
+```
+
+### 6.3. Dependency — `get_current_company_profile()`
+
+Новый dependency в `companies/dependencies.py`:
+
+```python
+async def get_current_company_profile(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_reader),
+) -> CompanyProfile:
+    """Load CompanyProfile for authenticated company user."""
+    stmt = select(CompanyProfile).where(CompanyProfile.user_id == user.id)
+    result = await session.execute(stmt)
+    company = result.scalar_one_or_none()
+    if company is None:
+        raise ForbiddenError("User is not linked to a company")
+    return company
+```
+
+### 6.4. Endpoints (read-only)
+
+**`GET /api/v1/company/dashboard`**
+
+Response:
+```json
+{
+  "passive_balance": {"frozen": 0, "confirmed": 50000},
+  "total_revenue_cents": 1000000,
+  "total_options_sold": 7000,
+  "products_count": 3,
+  "pool": {
+    "total_options": 1000000,
+    "equity_percent": 10.0,
+    "consumed": 7000,
+    "remaining": 993000,
+    "status": "active"
+  },
+  "recent_transactions": [...]
+}
+```
+
+**`GET /api/v1/company/analytics`**
+
+Response:
+```json
+{
+  "total_revenue_cents": 1000000,
+  "revenue_this_month_cents": 150000,
+  "total_options_sold": 7000,
+  "sales_by_month": [
+    {"month": "2026-01", "revenue_cents": 200000, "options_sold": 1400},
+    ...
+  ],
+  "sales_by_product": [
+    {"product_id": "...", "product_name": "Starter", "revenue_cents": 300000, "options_sold": 3000},
+    ...
+  ]
+}
+```
+
+**`GET /api/v1/company/pool`**
+
+Pool info для company dashboard — можно сделать частью `/company/dashboard` response, либо отдельным endpoint.
+
+---
+
+## 7. Миграция (Alembic)
+
+### 7.1. Стратегия
+
+Одна ревизия `0027_option_pool_refactor`. Порядок:
+1. Создать таблицу `option_pools`
+2. Добавить `total_supply`, `shares_per_option` на `company_profiles`
+3. Data migration: создать Pool для каждой компании
+4. Добавить `pool_id` на `products` (nullable → populate → NOT NULL)
+5. Rename `products.units` → `products.package_size`
+6. Добавить partial unique index на `option_pools`
+
+### 7.2. Upgrade
+
+```python
+"""option pool refactor -- Sprint 4.3
+
+Revision ID: 0027_option_pool_refactor
+Revises: 0026_products_cover_url
 
 Changes:
-  - companies: +total_shares_issued (BigInteger, NOT NULL, computed for
-    existing rows as SUM(products.units) per company)
-  - products: rename column `units` → `package_size`
+  - NEW TABLE: option_pools
+  - companies: +total_supply, +shares_per_option
+  - products: +pool_id (FK), rename units → package_size
+  - partial unique index on option_pools(company_id) WHERE status='active'
 """
 
-from typing import Sequence, Union
-
-import sqlalchemy as sa
-from alembic import op
-
-revision: str = "0028_share_pool_refactor"
-down_revision: Union[str, None] = "0027_<previous>"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
-
-
 def upgrade() -> None:
-    # -- 1. Add total_shares_issued as nullable --
-    op.add_column(
-        "company_profiles",
-        sa.Column("total_shares_issued", sa.BigInteger(), nullable=True),
+    # -- 1. Create option_pools table --
+    op.create_table(
+        "option_pools",
+        sa.Column("id", sa.UUID(), nullable=False, default=uuid4),
+        sa.Column("company_id", sa.UUID(), nullable=False),
+        sa.Column("equity_percent", sa.Numeric(7, 4), nullable=False),
+        sa.Column("total_options", sa.BigInteger(), nullable=False),
+        sa.Column("status", sa.String(20), server_default="active", nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=func.now()),
+        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(["company_id"], ["company_profiles.id"], ondelete="RESTRICT"),
     )
+    op.create_index("ix_option_pools_company_id", "option_pools", ["company_id"])
+    op.create_index("ix_option_pools_status", "option_pools", ["status"])
 
-    # -- 2. Data migration: compute value for existing rows --
-    # For each company, set total_shares_issued to SUM(products.units).
-    # This preserves current availability levels at migration time:
-    # a company with 3 products (100+500+2000 units) becomes an issuance
-    # of 2600 shares, and every existing pack becomes buyable exactly once.
-    # Staff will revise these values later via UI (out of scope for this
-    # sprint) or via direct DB write on dev server.
+    # -- 2. Add company fields (nullable first) --
+    op.add_column("company_profiles", sa.Column("total_supply", sa.BigInteger(), nullable=True))
+    op.add_column("company_profiles", sa.Column("shares_per_option", sa.Integer(), nullable=True))
+
+    # -- 3. Data migration: populate company fields --
+    # Default: shares_per_option=1, total_supply = SUM(products.units) per company
+    op.execute("""
+        UPDATE company_profiles SET shares_per_option = 1
+    """)
     op.execute("""
         UPDATE company_profiles
-        SET total_shares_issued = COALESCE(
+        SET total_supply = COALESCE(
             (SELECT SUM(units) FROM products WHERE company_id = company_profiles.id),
             0
         )
     """)
 
-    # -- 3. Lock column as NOT NULL --
-    op.alter_column(
-        "company_profiles",
-        "total_shares_issued",
-        nullable=False,
+    # -- 4. Lock company fields as NOT NULL --
+    op.alter_column("company_profiles", "total_supply", nullable=False)
+    op.alter_column("company_profiles", "shares_per_option", nullable=False)
+
+    # -- 5. Create a Pool for each existing company --
+    op.execute("""
+        INSERT INTO option_pools (id, company_id, equity_percent, total_options, status)
+        SELECT
+            gen_random_uuid(),
+            cp.id,
+            100.0000,
+            cp.total_supply,
+            'active'
+        FROM company_profiles cp
+    """)
+
+    # -- 6. Add pool_id to products (nullable first) --
+    op.add_column("products", sa.Column("pool_id", sa.UUID(), nullable=True))
+    op.create_foreign_key(
+        "fk_products_pool_id", "products", "option_pools",
+        ["pool_id"], ["id"], ondelete="RESTRICT"
     )
 
-    # -- 4. Rename products.units → products.package_size --
-    op.alter_column(
-        "products",
-        "units",
-        new_column_name="package_size",
-    )
+    # -- 7. Populate pool_id from company_id --
+    op.execute("""
+        UPDATE products p
+        SET pool_id = (
+            SELECT op.id FROM option_pools op
+            WHERE op.company_id = p.company_id
+            AND op.status = 'active'
+        )
+    """)
+
+    # -- 8. Lock pool_id as NOT NULL, add index --
+    op.alter_column("products", "pool_id", nullable=False)
+    op.create_index("ix_products_pool_id", "products", ["pool_id"])
+
+    # -- 9. Rename products.units → products.package_size --
+    op.alter_column("products", "units", new_column_name="package_size")
+
+    # -- 10. Partial unique index: one active pool per company --
+    op.execute("""
+        CREATE UNIQUE INDEX uq_one_active_pool_per_company
+        ON option_pools (company_id)
+        WHERE status = 'active'
+    """)
 
 
 def downgrade() -> None:
-    op.alter_column(
-        "products",
-        "package_size",
-        new_column_name="units",
-    )
-    op.drop_column("company_profiles", "total_shares_issued")
+    op.execute("DROP INDEX IF EXISTS uq_one_active_pool_per_company")
+    op.alter_column("products", "package_size", new_column_name="units")
+    op.drop_index("ix_products_pool_id", "products")
+    op.drop_constraint("fk_products_pool_id", "products", type_="foreignkey")
+    op.drop_column("products", "pool_id")
+    op.execute("DELETE FROM option_pools")
+    op.drop_index("ix_option_pools_status", "option_pools")
+    op.drop_index("ix_option_pools_company_id", "option_pools")
+    op.drop_table("option_pools")
+    op.drop_column("company_profiles", "shares_per_option")
+    op.drop_column("company_profiles", "total_supply")
 ```
-
-### 4.3. Миграционный контракт
-
-- **Data integrity:** после миграции для каждой существующей компании `total_shares_issued >= SUM(active Purchase.units for this company)`. Условие вытекает из формулы: если до миграции продукты продавались, `SUM(products.units) >= SUM(purchases.units)` не гарантировано формально, но на практике — инвенторь продуктов подстраивался через стафа в админке. Для dev-сервера (единственное место где есть purchase-данные) условие выполняется.
-- **Idempotent:** повторный `alembic upgrade head` — no-op.
-- **Reversible:** `downgrade()` корректен для отката, но теряет information (колонка `total_shares_issued` удаляется).
-- **Нулевой даунтайм:** миграция INSERT-only по данным, не блокирует reads. `ALTER COLUMN RENAME` в Postgres — O(1) metadata-операция.
-
-### 4.4. Production readiness (позже, не этот sprint)
-
-- Перед production-миграцией — запустить проверочный SELECT: `SELECT company_id, SUM(units) FROM products GROUP BY company_id` → сравнить с ожидаемой эмиссией от бизнеса. Если расходится — staff-доводка через API.
-- Добавить staff-endpoint `PATCH /api/v1/staff/companies/{id}/shares-issued` для ручной корректировки. **Out of scope для этого спринта** (dev-сервер достаточно).
 
 ---
 
-## 5. Backend changes — полный чек-лист
+## 8. Backend changes — полный чек-лист
 
-### 5.1. Модели и схемы
-
-| Файл | Правка |
-|------|--------|
-| `app/modules/companies/models.py` | `CompanyProfile`: +`total_shares_issued: Mapped[int] = mapped_column(BigInteger, nullable=False)`. Обновить docstring класса. |
-| `app/modules/companies/schemas.py` | `CompanyResponse`, `CompanyDetailResponse`: +`total_shares_issued: int`. `CreateCompanyRequest`: +`total_shares_issued: int = Field(gt=0)`. `UpdateCompanyRequest`: +`total_shares_issued: int \| None = None`. `PublicCompanyResponse`, `PublicCompanyDetailResponse`: +`total_shares_issued: int` (публичная информация — сколько всего акций компания выпустила; НЕ `shares_remaining`, чтобы не раскрывать динамику продаж инвесторам раньше staff). Либо оставить только staff-view — решается в ходе ревью, рекомендация: **публично показывать** как social-proof «emisson: 1M». |
-| `app/modules/products/models.py` | `Product`: `units` → `package_size`. Обновить docstring класса. |
-| `app/modules/products/schemas.py` | `ProductResponse`, `PublicProductResponse`: `units` → `package_size`. **`sold_units` → `available_packages`** (семантика меняется, имя тоже, чтоб избежать confusion). `CreateProductRequest`: `units` → `package_size`. |
-
-### 5.2. Сервисы и роутеры
+### 8.1. Модели
 
 | Файл | Правка |
 |------|--------|
-| `app/modules/companies/service.py` | `create_company()`: принимать `total_shares_issued`, записывать в модель. `update_company()`: обработать `total_shares_issued` в `body.model_dump(exclude_unset=True)`. Audit event `company.shares_issued_updated` при изменении. |
-| `app/modules/products/service.py` | `create_product()`: параметр `units` → `package_size`. `cascade_price()` без изменений (не трогает `package_size`). Audit event `product.created` — `data={"package_size": ...}` вместо `"units"`. |
-| `app/modules/products/constants.py` | `validate_plan_config()` принимает `product_units` → `product_package_size`. Инварианты остаются те же, просто переменная переименована. Все места использования обновить. |
-| `app/modules/purchases/service.py` | **`get_sold_units_map()` → `get_available_packages_map()`**. Полная переписка по формуле из §3.3. `execute_purchase()`: добавить валидацию §3.4 сразу после загрузки product/company. `amount_cents = product.package_size * product.price_per_unit_cents` (одна строка переименования). +функция `_get_shares_remaining()` (приватная). |
-| `app/modules/purchases/router.py` | В `list_products_endpoint` и `get_product_detail_endpoint`: вместо `get_sold_units_map()` вызвать `get_available_packages_map()`, заполнять `resp.available_packages`. Убрать `resp.sold_units = ...`. |
-| `app/modules/processors/base.py` | `PurchaseContext.units` — комментарий обновить: `product.units` → `product.package_size`. Имя поля в dataclass оставить `units` (это **купленные акции** в данном покупочном контексте, не `package_size` продукта). |
-| `app/modules/installments/service.py` | `create_plan()`: `total_units = product.units` → `total_units = product.package_size`. В остальных местах `plan.total_units` не трогать — это снапшот. |
+| `companies/models.py` | +`total_supply: BigInteger`, +`shares_per_option: Integer`. Обновить docstring, `__repr__` |
+| `companies/constants.py` | Без изменений |
+| `products/models.py` | `units` → `package_size`. +`pool_id: FK -> option_pools`. Обновить docstring, `__repr__` |
+| **NEW:** `pools/models.py` | Новая модель `OptionPool` (§3.2) |
+| **NEW:** `pools/__init__.py` | — |
 
-### 5.3. Миграция
+### 8.2. Схемы
 
-- Создать `backend/migrations/versions/0028_share_pool_refactor.py` по шаблону §4.2.
-
-### 5.4. Тесты
-
-Backend тесты, которые ссылаются на `Product.units` или `sold_units` — нужно обновить. Ниже — исчерпывающий список.
-
-#### 5.4.1. `tests/test_products.py`
-
-| Тест | Правка |
+| Файл | Правка |
 |------|--------|
-| `_create_product()` helper | `"units": units` → `"package_size": units` в JSON body. |
-| `_create_company()` helper | +`"total_shares_issued": 10_000_000` (или запас под все тесты) в CreateCompanyRequest. |
-| `test_create_product` | `assert product["units"] == 100` → `assert product["package_size"] == 100`. |
-| `test_public_list_active_only` | Проверяет `PublicProductResponse` — поле `sold_units` → `available_packages`. Значение: `10_000_000 / 100 = 100000`. Либо переписать assertion на `>= 0`. |
-| `test_price_cascade_deletes_installments` | Без изменений, не трогает `units`/`sold_units`. |
-| Новый тест `test_create_company_requires_total_shares_issued` | POST без `total_shares_issued` → 422. |
-| Новый тест `test_product_available_packages_decreases_on_purchase` | Создать company (issuance=1000), product (package_size=100). Проверить `GET /products` → `available_packages=10`. Купить один пакет. Снова `GET /products` → `available_packages=9`. |
-| Новый тест `test_purchase_fails_when_company_exhausted` | issuance=100, package_size=200 → `execute_purchase` кидает BadRequestError. |
+| `companies/schemas.py` | +`total_supply`, +`shares_per_option` в Response/Create/Update |
+| `products/schemas.py` | `units` → `package_size` в Create/Response/Public. `sold_units` → `available_packages` в Public |
+| **NEW:** `pools/schemas.py` | `CreatePoolRequest`, `UpdatePoolRequest`, `PoolResponse` |
 
-#### 5.4.2. `tests/test_purchases.py`
+### 8.3. Сервисы и роутеры
 
-| Тест | Правка |
+| Файл | Правка |
 |------|--------|
-| `_make_context()` helper | Комментарий: `units = product.package_size`. Значение параметра не меняется. |
-| `_create_product()` helper | Как в `test_products.py`. |
-| `_create_company()` helper | Как в `test_products.py`. |
-| `test_purchase_instant_buy` | `data[0]["units"] == product["units"]` → `data[0]["units"] == product["package_size"]`. `paid_cents == product["units"] * ...` → `paid_cents == product["package_size"] * ...`. |
-| Все тесты `test_purchase_*` и `test_gift_*` | Автоматически проходят, если `_create_company()` / `_create_product()` хелперы правильны. |
+| `companies/service.py` | `create_company()`: +`total_supply`, +`shares_per_option`. `update_company()`: handle new fields |
+| **NEW:** `pools/service.py` | `create_pool()`, `update_pool()`, `get_active_pool()` |
+| **NEW:** `pools/router.py` | Staff endpoints: POST/PATCH `/staff/companies/{id}/pool` |
+| `products/service.py` | `create_product()`: `units` → `package_size`, lookup active Pool, set `pool_id`. Валидация `package_size <= pool.total_options` |
+| `products/constants.py` | `validate_plan_config()`: `product_units` → `product_package_size` |
+| `purchases/service.py` | `get_sold_units_map()` → `get_available_packages_map()`. `execute_purchase()`: +pool validation (§3.6). `amount_cents = product.package_size * ...`. +`_get_active_pool()`, +`_get_pool_remaining()` |
+| `products/router.py` (public) | `get_sold_units_map` → `get_available_packages_map`, `resp.sold_units =` → `resp.available_packages =`. Import: `get_sold_units_map` → `get_available_packages_map` |
+| `processors/base.py` | `PurchaseContext.units` — comment update only. Field name stays `units` |
+| `installments/service.py` | `product.units` → `product.package_size` (one line) |
+| **NEW:** `company_dashboard/` | Новый модуль (§6) |
+| **NEW:** `companies/dependencies.py` | `get_current_company_profile()` |
 
-#### 5.4.3. `tests/test_installments.py`
+### 8.4. Installment Calculator
 
-| Тест | Правка |
+| Файл | Правка |
 |------|--------|
-| Все тесты где создаётся product | Хелперы обновить (см. выше). |
-| `test_create_plan_snapshots_units` | Проверка что `plan.total_units == product.package_size`. |
+| `products/staff_router.py` | +`POST /staff/products/{id}/installments/preview` |
+| `products/service.py` (или `products/calculator.py`) | `calculate_installment_preview()` — алгоритм из §3.9 |
+| `products/schemas.py` | +`InstallmentPreviewRequest`, +`InstallmentPreviewResponse` |
+| `products/constants.py` | +`ALLOWED_TRANCHES = [3, 6, 12, 24, 36]` (config) |
 
-#### 5.4.4. `tests/test_dashboard.py`, `tests/test_companies.py`
+### 8.5. Seed script
 
-Косметические правки: `units` → `package_size` в test body, проверка `total_shares_issued` в Company responses.
-
-### 5.5. Seed script
-
-`backend/scripts/seed_storefront.py` — уже в /outputs/b5_backend. Правки:
+`backend/scripts/seed_storefront.py`:
 
 | Место | Правка |
 |-------|--------|
-| `COMPANIES` list | Каждая компания: +`"total_shares_issued": N`. Разумные значения: IPI AG — 10_000_000, Immo-Pro-Invest — 5_000_000, CBS Home — 100_000, Nordic — 50_000, Tesla — 2_000_000, Stealth — 100. |
-| `PRODUCTS` list | Ключ `"units"` → `"package_size"`. Значения НЕ меняются. |
-| `_ensure_company()` функция | При создании `CompanyProfile` — добавить `total_shares_issued=spec["total_shares_issued"]`. |
-| `_ensure_product()` функция | `units=spec["units"]` → `package_size=spec["package_size"]`. |
+| `COMPANIES` list | +`total_supply`, +`shares_per_option` для каждой компании |
+| `PRODUCTS` list | `units` → `package_size` |
+| Seed logic | Создать Pool для каждой компании после создания CompanyProfile |
 
-Проверить итог: для каждой компании `SUM(product.package_size)` меньше `total_shares_issued` с запасом (чтоб availability не была 1-2 пакета сразу после сида).
+### 8.6. Тесты
 
-### 5.6. Audit / documentation
+#### Обновление существующих:
 
 | Файл | Правка |
 |------|--------|
-| `CBSHOME-Backend.md` | Добавить Sprint 4.3 в Phase 4 раздел (уже сделано в patch этого батча). Обновить модель `CompanyProfile` / `Product` в описаниях. |
-| `CBSHOME-Financial-System.md` | Где упоминается `Product.units` — переименовать в `Product.package_size`. Добавить упоминание `Company.total_shares_issued`. |
-| Новые audit events | `company.shares_issued_updated` (при изменении total_shares_issued staff-endpoint'ом). Регистрировать в Sprint 4.3 summary. |
+| `test_products.py` | Хелперы: +`total_supply`, +`shares_per_option` в company, `units` → `package_size`, +создание Pool. Ассёрты: `sold_units` → `available_packages` |
+| `test_purchases.py` | Хелперы: аналогично. `product["units"]` → `product["package_size"]` |
+| `test_installments.py` | Хелперы: аналогично |
+| `test_dashboard.py` | Хелперы: +`total_supply`, +`shares_per_option`, +Pool |
+| `test_companies.py` | +`total_supply`, +`shares_per_option` в Create/Response assertions |
+
+#### Новые тесты:
+
+| Тест | Описание |
+|------|----------|
+| `test_create_pool` | POST pool → 201, equity_percent + total_options correct |
+| `test_one_active_pool_per_company` | Второй POST pool → 400 или DB constraint error |
+| `test_update_pool_total_options` | PATCH → equity_percent recomputed |
+| `test_update_pool_below_consumed` | PATCH total_options below sold → 400 |
+| `test_product_requires_active_pool` | Create product without pool → 400 |
+| `test_available_packages_decreases` | Buy → availability decreases for ALL products of company |
+| `test_purchase_sold_out` | pool_remaining < package_size → 400 |
+| `test_gift_consumes_pool` | Gift purchase reduces pool_remaining |
+| `test_gift_overflow_allowed` | Gift when pool_remaining=0 → succeeds, pool goes negative |
+| `test_installment_preview` | Calculator returns correct plan_config |
+| `test_installment_preview_invariants` | Amounts sum, options sum, rounding correct |
 
 ---
 
-## 6. Frontend changes — полный чек-лист
+## 9. Frontend changes — полный чек-лист (TD-F07)
 
-Переименование двух полей в API + текстов. Всё — в рамках `TD-F07` (не отдельный спринт).
+Механическое переименование после backend merge. Не отдельный спринт.
 
-### 6.1. Types
+### 9.1. Types
 
-**Файл:** `frontend/src/api/types.ts`
+`frontend/src/api/types.ts`:
 
 ```typescript
-// BEFORE
-export interface PublicProductResponse {
-  id: string
-  company_id: string
-  name: string
-  description: string | null
-  units: number                    // package size
-  price_per_unit_cents: number
-  sold_units: number               // COUNT(Purchase) -- broken
-  company_name: string
-  logo_url: string | null
-  cover_url: string | null
-  currency?: string
-}
-
-// AFTER
-export interface PublicProductResponse {
-  id: string
-  company_id: string
-  name: string
-  description: string | null
-  package_size: number             // RENAMED from `units`
-  price_per_unit_cents: number
-  available_packages: number       // RENAMED + semantics fixed
-  company_name: string
-  logo_url: string | null
-  cover_url: string | null
-  currency?: string
-}
-
-// PublicCompanyResponse: +total_shares_issued
-export interface PublicCompanyResponse {
-  // ... existing fields ...
-  total_shares_issued: number      // NEW: эмиссия компании
-}
+// PublicProductResponse: units → package_size, sold_units → available_packages
+// PublicCompanyResponse: +total_supply, +shares_per_option
+// NEW: PoolResponse (for company dashboard)
 ```
 
-TypeScript тут же укажет все сломанные места через type-error.
+### 9.2. Components
 
-### 6.2. Utils / helpers
+| Файл | Правка |
+|------|--------|
+| `ProductCard.vue` | `p.units - p.sold_units` → `p.available_packages` |
+| `ProductDetailView.vue` | Аналогично + sold-out state |
+| `stores/products.ts` | Проверить passthrough |
 
-**Файл:** `frontend/src/utils/format.ts`
+### 9.3. i18n
 
-Проверить — есть ли там функции форматирования availability. Судя по прошлому F4, вероятно нет (availability считался инлайн в компонентах). Если появится нужда — добавить:
-
-```typescript
-export function formatPacksAvailable(count: number, locale: string): string {
-  return formatNumber(count, locale)
-}
-```
-
-### 6.3. Components
-
-**Файл:** `frontend/src/components/shared/ProductCard.vue`
-
-```vue
-<!-- BEFORE -->
-<script setup lang="ts">
-const available = computed(() => props.product.units - props.product.sold_units)
-</script>
-
-<template>
-  <span>{{ available }} {{ t('inv.market.available') }}</span>
-</template>
-
-<!-- AFTER -->
-<script setup lang="ts">
-// available_packages приходит уже вычисленным с бэка
-</script>
-
-<template>
-  <span>
-    {{ product.available_packages }} {{ t('inv.market.packsAvailable') }}
-  </span>
-</template>
-```
-
-**Файл:** `frontend/src/views/investor/ProductDetailView.vue`
-
-```vue
-<!-- BEFORE -->
-<CStat>
-  <template #label>{{ t('inv.product.availability') }}</template>
-  <template #value>{{ product.units - product.sold_units }}</template>
-  <template #hint>{{ t('inv.market.available') }}</template>
-</CStat>
-<CButton :disabled="product.units - product.sold_units === 0">
-  {{ t('inv.product.buy') }}
-</CButton>
-
-<!-- AFTER -->
-<CStat>
-  <template #label>{{ t('inv.product.packsAvailability') }}</template>
-  <template #value>{{ product.available_packages }}</template>
-  <template #hint>{{ t('inv.market.packsAvailable') }}</template>
-</CStat>
-<CButton :disabled="product.available_packages === 0">
-  {{ product.available_packages > 0 ? t('inv.product.buy') : t('inv.product.soldOut') }}
-</CButton>
-```
-
-### 6.4. Stores
-
-**Файл:** `frontend/src/stores/products.ts`
-
-Проверить — store может просто передавать API-ответ, без трансформаций. Если есть маппинг (`const mapped = raw.map(...)`) — убедиться что передаются новые имена полей. Прозрачная правка при правильном типе `PublicProductResponse`.
-
-### 6.5. i18n locales
-
-**Файлы:** `frontend/src/i18n/locales/{en,ru,de,ar}.json`
-
-Добавить ключ в раздел `inv.market`:
-
-```json
-// en.json
-{
-  "inv": {
-    "market": {
-      "packsAvailable": "packs available"
-    },
-    "product": {
-      "packsAvailability": "PACKS AVAILABLE",
-      "soldOut": "Sold out"
-    }
-  }
-}
-```
-
-```json
-// ru.json
-{
-  "inv": {
-    "market": {
-      "packsAvailable": "пакетов доступно"
-    },
-    "product": {
-      "packsAvailability": "ДОСТУПНО ПАКЕТОВ",
-      "soldOut": "Распродано"
-    }
-  }
-}
-```
-
-```json
-// de.json
-{
-  "inv": {
-    "market": {
-      "packsAvailable": "Pakete verfügbar"
-    },
-    "product": {
-      "packsAvailability": "PAKETE VERFÜGBAR",
-      "soldOut": "Ausverkauft"
-    }
-  }
-}
-```
-
-```json
-// ar.json
-{
-  "inv": {
-    "market": {
-      "packsAvailable": "حزمة متاحة"
-    },
-    "product": {
-      "packsAvailability": "حزم متاحة",
-      "soldOut": "نفذ"
-    }
-  }
-}
-```
-
-Старый ключ `inv.market.available` — проверить grep'ом `rg "inv.market.available" frontend/src`. Если нигде не используется — удалить. Если используется где-то ещё (агент-шелл? компани-шелл?) — оставить пока.
-
-### 6.6. Company profile display
-
-Если где-то показывается `PublicCompanyResponse` (в F4.1 это `CompanyFilterSheet`) — решить, показывать ли там `total_shares_issued`. Рекомендация: нет, это детальная информация для компани-экрана (F5), не для фильтра.
+4 локали: `+inv.market.packsAvailable`, `+inv.product.packsAvailability`, `+inv.product.soldOut`
 
 ---
 
-## 7. Порядок выкатки
+## 10. Price cascade — без изменений
 
-### 7.1. Последовательность commits
-
-1. **Backend batch (Sprint 4.3):**
-   a. Миграция `0028_share_pool_refactor.py`.
-   b. Models (Company + Product).
-   c. Schemas (Company + Product + Public*).
-   d. Services (Company + Product + Purchase + Installment).
-   e. Routers (public product router, staff company router).
-   f. Processors (validators).
-   g. Tests (`test_products.py`, `test_purchases.py`, `test_installments.py`).
-   h. Seed script (`seed_storefront.py`).
-   i. Документация: `CBSHOME-Backend.md` обновить раздел моделей Phase 4.
-
-   **Merge criterion:** все существующие backend тесты зелёные (340+ тестов). +новые тесты share-pool.
-
-2. **Frontend batch (TD-F07, сразу после backend merge):**
-   a. `api/types.ts` — переименование.
-   b. `utils/format.ts` — если что-то добавляется.
-   c. `components/shared/ProductCard.vue`.
-   d. `views/investor/ProductDetailView.vue`.
-   e. `stores/products.ts` — проверка.
-   f. `i18n/locales/*.json` — 4 файла.
-
-   **Merge criterion:** `npm run typecheck` без ошибок, ручная проверка на dev-сервере: витрина показывает «packs available», правильные числа по seed-данным.
-
-3. **Seed re-run:**
-   ```bash
-   docker compose exec app python scripts/seed_storefront.py --reset
-   ```
-   Проверить: все 18 видимых продуктов показывают реалистичные числа. Для IPI AG Starter (package_size=100, company issuance=10_000_000): `available_packages=100_000`.
-
-### 7.2. Breaking API contract
-
-Между backend merge и frontend merge — контракт сломан (фронт ожидает `units`, бэк отдаёт `package_size`). На dev-сервере это приемлемо. Если потребуется — можно временно оставить оба поля в response с одним значением, выпилить старое после фронт-merge. Для нашего случая — нет необходимости.
-
-### 7.3. Rollback plan
-
-- Если обнаружится bug на стадии smoke-test: `alembic downgrade -1` → revert backend commit → revert frontend commit → сид перезапустить.
-- Данные не теряются: `total_shares_issued` колонка снимается, данные в БД переживут rollback только через `pg_dump` перед миграцией (которое рекомендуется делать всегда на dev).
+Цена живёт на Company, не на Pool. Price cascade работает как раньше: `Company.price_per_unit_cents` → каскад на все active/hidden Products → soft-delete всех installment templates. Pool не участвует.
 
 ---
 
-## 8. Acceptance criteria
+## 11. Edge cases и риски
 
-Для закрытия TD-071 / Sprint 4.3 / TD-F07 должны выполняться:
+### 11.1. `pool.total_options` = 0
+Все продукты компании: `available_packages = 0`. Покупка → `BadRequestError`. Корректное поведение.
+
+### 11.2. `package_size` > `pool.total_options`
+`available_packages = 0` с самого начала. Mitigation: валидация при `create_product()`.
+
+### 11.3. Параллельные покупки (race condition)
+Без lock'а на pool. Два инвестора могут купить одновременно → пул уходит в минус. Бизнес-приемлемо для MVP.
+
+### 11.4. Gift overflow
+`pool_remaining < 0` после gift → overflow из owner supply. Вычисляется динамически, не хранится.
+
+### 11.5. Installment calculator: шаг округления слишком грубый
+`regular_amount * (N-1) >= total_amount` → `last_amount <= 0` → 400 error.
+
+---
+
+## 12. Out of scope
+
+- Split реализация (§4 — архитектура заложена)
+- Advisory lock на pool при покупке
+- Staff UI для Pool management (F3 админка)
+- Multi-currency
+- Partial-pack покупки
+- Blockchain integration / smart contracts
+- Lock periods для owner tokens
+
+---
+
+## 13. Acceptance criteria
 
 ### Backend
 
-- [ ] Миграция `0028_share_pool_refactor` применена, БД консистентна: каждая компания имеет `total_shares_issued > 0`.
-- [ ] `products.units` переименована в `products.package_size` на уровне БД.
-- [ ] `get_sold_units_map` удалена, `get_available_packages_map` работает.
-- [ ] `execute_purchase` отклоняет покупку при исчерпании пула с `BadRequestError`.
-- [ ] `PublicProductResponse` возвращает `package_size` и `available_packages`.
-- [ ] `PublicCompanyResponse` возвращает `total_shares_issued`.
-- [ ] Все существующие backend тесты зелёные.
-- [ ] Новые тесты (`test_product_available_packages_decreases_on_purchase`, `test_purchase_fails_when_company_exhausted`) зелёные.
+- [ ] Миграция `0027_option_pool_refactor` применена, БД консистентна
+- [ ] Таблица `option_pools` создана, partial unique index работает
+- [ ] `CompanyProfile` имеет `total_supply` и `shares_per_option`
+- [ ] `Product` имеет `pool_id` (FK) и `package_size` (renamed from `units`)
+- [ ] Pool CRUD endpoints работают (staff-only)
+- [ ] `get_available_packages_map()` — корректный расчёт через pool
+- [ ] `execute_purchase()` — валидация `pool_remaining >= package_size`
+- [ ] Gift purchases учитываются в расходе пула
+- [ ] Installment calculator endpoint возвращает корректный preview
+- [ ] Company dashboard endpoints возвращают данные
+- [ ] Все существующие тесты зелёные
+- [ ] Все новые тесты зелёные
 
-### Frontend
+### Frontend (TD-F07)
 
-- [ ] `api/types.ts` содержит `package_size` и `available_packages` вместо `units` и `sold_units`.
-- [ ] `ProductCard.vue` и `ProductDetailView.vue` используют `product.available_packages`.
-- [ ] Новые i18n ключи `inv.market.packsAvailable`, `inv.product.packsAvailability`, `inv.product.soldOut` присутствуют во всех 4 локалях.
-- [ ] `npm run typecheck` — без ошибок.
-- [ ] Ручная проверка: купить один пакет на dev-сервере → в витрине availability уменьшается **у всех продуктов той же компании** с соответствующим пересчётом.
+- [ ] Types обновлены: `package_size`, `available_packages`
+- [ ] Components используют `available_packages` напрямую
+- [ ] i18n ключи во всех 4 локалях
+- [ ] `npm run typecheck` — без ошибок
 
 ### Data / seed
 
-- [ ] `docker compose exec app python scripts/seed_storefront.py --reset` — зелёный.
-- [ ] В UI после сида: «IPI AG Starter» показывает `100_000 packs available` (если issuance=10M, package_size=100).
-- [ ] В UI «IPI AG Whale» (package_size=10_000) показывает `1_000 packs available` у той же компании — **те же 10M акций, разная гранулярность**.
+- [ ] Seed создаёт Pool для каждой компании
+- [ ] Availability показывает реалистичные числа
 
 ---
 
-## 9. Edge cases и риски
+## 14. Changelog
 
-### 9.1. Edge case: `total_shares_issued` = 0
-
-Нулевая эмиссия → все продукты компании показывают `available_packages=0`, витрина их прячет. Покупка кидает `BadRequestError`. Корректное поведение.
-
-**Risk:** если staff случайно выставит 0 — компания пропадёт с витрины. Mitigation: валидация на staff-endpoint `PATCH /staff/companies/{id}` — `total_shares_issued > 0` (плюс `>= SUM(active purchases)`, чтобы не «раскулачить» уже проданные акции).
-
-### 9.2. Edge case: `package_size` > `total_shares_issued`
-
-Создан продукт с пакетом больше чем вся эмиссия. `available_packages = 0` с самого начала — никто не купит.
-
-**Risk:** бизнес-ошибка при создании. Mitigation: валидация в `create_product()` — `package_size <= company.total_shares_issued`.
-
-### 9.3. Edge case: одновременные покупки разных продуктов одной компании
-
-Два инвестора одновременно кликают Buy на разных продуктах одной компании. Какой-то из них может «съесть» последние акции. Второй получит `BadRequestError`.
-
-**Текущая защита:** advisory lock в `engine.execute()` берётся на `investor_id`, не на `company_id`. Двум разным инвесторам блокировка не мешает делать покупки параллельно.
-
-**Risk:** race condition — оба прошли pre-check «есть 500 акций», но суммарно они покупают 700 → последний в транзакции получит constraint failure.
-
-**Mitigation:** добавить advisory lock на `company_id` в `execute_purchase` перед `_get_shares_remaining()` проверкой. Это сериализует покупки у одной компании, но позволяет параллельные покупки разных компаний. Добавить в §5.2 как TODO-note.
-
-### 9.4. Edge case: gift shares потенциально могут создать «отрицательный» inventory если их считать в consumed
-
-Разобрано в §3.5: `legal_basis != 'gift'` в WHERE фильтре. Gift shares НЕ расходуют пул. Consistent с бизнес-логикой.
-
-### 9.5. Risk: тесты с hardcoded `units=100` в JSON body
-
-Тесты могут забыть обновить — pydantic validation на стороне API кинет 422. Mitigation: сквозной grep + code review.
-
-### 9.6. Risk: snapshots в installment plans не трогаются
-
-`InstallmentPlan.total_units` — снапшот, колонка в БД. `plan_config_snapshot` — JSONB, не содержит ключа `units`. После миграции активные планы продолжают работать по снапшотам. Новые планы создаются из `product.package_size`. Проверено: нет breakage.
+- **v1.0 (2026-04-17):** первая версия. Простое переименование + total_shares_issued.
+- **v2.0 (2026-04-30):** полная переработка архитектуры:
+  - `OptionPool` как отдельная модель
+  - `total_supply` + `shares_per_option` на Company
+  - Product привязан к Pool (`pool_id`), не к Company
+  - Gift shares расходуют пул (overflow → owner supply)
+  - Installment Calculator (preview endpoint)
+  - Company Dashboard — отдельный модуль
+  - Сплит — архитектура заложена (future scope)
+  - Допэмиссия — редактирование Pool (без миграции покупок)
+- **v2.1 (2026-04-30):** Impact analysis от Claude Code:
+  - Номер миграции: 0028 → 0027 (после 0026_products_cover_url)
+  - Точный перечень файлов/строк для правок (Appendix A)
+  - Зафиксированы Risk Areas
+  - `generate_ts_types.py` — в scope Sprint 4.3
 
 ---
 
-## 10. Out of scope
+## Appendix A: Impact Analysis Report (Claude Code)
 
-Не входит в Sprint 4.3, откладывается:
+Generated: 2026-04-30
+Repository: cbshome @ 31b5e28f671c3a98c5762de942b68ea981427a74
 
-- Staff UI для редактирования `total_shares_issued` (админка в Phase F3 этого не поддерживает — нужен новый endpoint + UI).
-- Проверка в `execute_purchase` с advisory lock на `company_id` — добавить в TD после merge, чтобы не раздувать спринт.
-- Показ `shares_remaining` (динамический, не `total_shares_issued`) на публичной company detail странице — UX-решение, согласовывается в Phase F5.
-- Analytics для компании: сколько % эмиссии продано, динамика продаж — Phase F5.2 CompanyAnalyticsView.
-- Partial-pack покупки («купить 50 акций из пакета 100») — архитектурно сложно, не MVP.
+### Summary
 
----
+| Metric | Count |
+|--------|-------|
+| Backend source files to modify | 8 |
+| Frontend files to modify | 5 |
+| Test files to modify | 6 |
+| New files to create | 11 |
+| Latest migration | 0026_products_cover_url |
 
-## 11. Changelog
+### Backend: Files to Modify (exact lines)
 
-- **v1.0 (2026-04-17):** первая версия. Создан после обсуждения в ходе B5 (seed script) — см. транскрипт.
+**`products/models.py`**
+- Line 6: docstring — update `units` → `package_size`
+- Line 75: `units: Mapped[int]` → rename column to `package_size`; add `pool_id` FK
+- Line 114: `__repr__` — `units=` → `package_size=`
+
+**`products/schemas.py`**
+- Line 40: `units: int = Field(gt=0)` → `package_size` in `CreateProductRequest`
+- Line 49: docstring `units and company_id are immutable` → update
+- Line 112: `units: int` → `package_size` in `StaffProductResponse`
+- Line 150: `units: int` → `package_size` in `PublicProductResponse`
+- Line 153: `sold_units: int = 0` → `available_packages: int = 0`
+
+**`products/staff_router.py`**
+- Line 90: `body.units,` → `body.package_size,`
+
+**`products/service.py`**
+- Line 72: param `units: int` → `package_size: int`
+- Line 99: `units=units,` → `package_size=package_size,`
+- Line 120: audit dict `"units"` → `"package_size"`
+- Lines 347, 403: `product.units` → `product.package_size` (call sites to `validate_plan_config`)
+
+**`products/constants.py`**
+- Lines 22, 115, 132–143: comments referencing `product.units` → `product.package_size`
+- Line 52: param `product_units: int` — name can stay, but Line 69 comment update
+
+**`purchases/service.py`**
+- Line 320: `product.units * product.price_per_unit_cents` → `product.package_size`
+- Line 329: `units=product.units` → `units=product.package_size` (populates `PurchaseContext.units`, NOT renamed)
+
+**`installments/service.py`**
+- Line 150: `total_units = product.units` → `product.package_size`
+
+**`processors/base.py`**
+- Line 81: comment `# product.units` → `# product.package_size` (field name `units` stays)
+
+### Frontend: Files to Modify (exact lines)
+
+**`api/types.ts`**
+- Line 388: `units: number` → `package_size: number`
+- Line 391: `sold_units: number` → `available_packages: number`
+
+**`components/shared/ProductCard.vue`**
+- Line 45: `props.product.units - props.product.sold_units` → `props.product.available_packages`
+
+**`views/investor/ProductDetailView.vue`**
+- Line 90: `p.units - p.sold_units` → `p.available_packages`
+
+**`views/investor/PurchaseView.vue`**
+- Line 89: `p.units * p.price_per_unit_cents` → `p.package_size * p.price_per_unit_cents`
+- Line 94: `p.units - p.sold_units` → `p.available_packages`
+- Line 277: `product.units` → `product.package_size`
+
+**`views/investor/InstallmentView.vue`**
+- Line 180: `product.value.units` → `product.value.package_size`
+
+### Tests: Files to Modify (exact lines)
+
+**`test_products.py`**
+- Line 111: helper param `units: int = 100` → `package_size`
+- Line 120: `"units": units` → `"package_size": package_size`
+- Line 169: `product["units"]` → `product["package_size"]`
+- Line 224: `"units": 50` → `"package_size": 50`
+
+**`test_purchases.py`**
+- Line 113: `"units": units` → `"package_size": units` in helper
+- Line 427: ⚠️ MIXED: `data[0]["units"]` is `Purchase.units` (stays), `product["units"]` → `product["package_size"]`
+- Line 428: `product["units"]` → `product["package_size"]`
+
+**`test_installments.py`**
+- Line 146: `"units": units` → `"package_size": units` in helper
+
+**`test_dashboard.py`**
+- Line 108: `"units": units` → `"package_size": units`
+- Line 436: ⚠️ AMBIGUOUS: verify if `p["units"]` is Purchase (stays) or Product (rename)
+
+**`test_leaderboard.py`**
+- Line 214: `"units": 100` → `"package_size": 100`
+
+**`test_referrals.py`**
+- Line 132: `"units": 10` → `"package_size": 10` in helper
+
+### Seed Script (`seed_storefront.py`)
+
+- 20 occurrences: `"units": <value>` → `"package_size": <value>` in PRODUCTS list
+- Line 675: `units=spec["units"]` → `package_size=spec["package_size"]`
+- Add pool seeding after each company creation
+
+### Risk Areas
+
+1. **`products/constants.py` + `service.py`** — `validate_plan_config(product_units=product.units)` → все 3 точки (param def + 2 call sites) должны измениться атомарно
+2. **`processors/base.py:81`** — `PurchaseContext.units` НЕ переименовывается. Только комментарий. Риск: автозамена заденет
+3. **`test_purchases.py:427`** — mixed assertion: `data[0]["units"]` (Purchase, stays) vs `product["units"]` (Product, rename). Риск: переименовать оба по ошибке
+4. **`test_dashboard.py:436`** — контекст `p["units"]` неоднозначен без проверки фикстуры
+5. **`products/router.py`** — основная точка замены `get_sold_units_map` → `get_available_packages_map`. Также batch-load `company_ids` для Pool lookup
+
+### Расхождения репорта с v2.0 спекой (исправлены)
+
+| Репорт Claude Code | Спека v2.0 (правильно) |
+|---|---|
+| OptionPool: `total_supply`, `shares_per_option`, `consumed`, `is_active` | OptionPool: `equity_percent`, `total_options`, `status`. `total_supply`/`shares_per_option` — на CompanyProfile. `consumed` — вычисляемый, не хранимый |
+| `is_active: BOOL` | `status: String(20)` (active / archived) — расширяемо для сплита |
+| «gifts should NOT consume pool» | Gifts DO consume pool, overflow → owner supply |
+| Миграция 0027 | ✅ Подтверждено: 0027 (после 0026_products_cover_url) |
 
 ---
 
