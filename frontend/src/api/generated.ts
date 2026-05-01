@@ -57,6 +57,12 @@ export interface AvatarStartResponse {
   session_token: string
 }
 
+/** Ledger balance split by status. */
+export interface BalanceResponse {
+  frozen?: number
+  confirmed?: number
+}
+
 /** Request to block a user. */
 export interface BlockRequest {
   reason?: string | null
@@ -92,7 +98,7 @@ export interface CompanyAnalyticsResponse {
 
 /** Aggregated dashboard for the authenticated company. Fields: passive_balance: company's earnings ledger split by status. total_revenue_cents: SUM(Purchase.paid_cents) for active purchases of this company. Gift purchases naturally contribute 0 here. total_options_sold: SUM(Purchase.units WHERE legal_basis='sale') for active purchases. Gifts are excluded so the number reflects commercial activity, not pool consumption (pool consumption lives in pool.consumed below). products_count: COUNT(Product) for non-archived products. pool: active OptionPool snapshot, or None if the company hasn't had a pool created yet (newly created company before staff runs POST /staff/companies/{id}/pool). recent_transactions: last 20 Transaction rows for the company's user_id, newest first. */
 export interface CompanyDashboardResponse {
-  passive_balance: app__modules__company_dashboard__schemas__BalanceResponse
+  passive_balance: BalanceResponse
   total_revenue_cents: number
   total_options_sold: number
   products_count: number
@@ -300,8 +306,8 @@ export interface DashboardStatsResponse {
 
 /** Full dashboard summary for the authenticated user. */
 export interface DashboardSummaryResponse {
-  active_balance: app__modules__dashboard__schemas__BalanceResponse
-  passive_balance: app__modules__dashboard__schemas__BalanceResponse
+  active_balance: BalanceResponse
+  passive_balance: BalanceResponse
   total_invested_cents: number
   total_units: number
   current_value_cents: number
@@ -1086,16 +1092,4 @@ export interface WithdrawalResponse {
   completed_at?: string | null
   rejected_at?: string | null
   failed_at?: string | null
-}
-
-/** Ledger balance split by status (cents). */
-export interface app__modules__company_dashboard__schemas__BalanceResponse {
-  frozen: number
-  confirmed: number
-}
-
-/** Ledger balance split by status. */
-export interface app__modules__dashboard__schemas__BalanceResponse {
-  frozen?: number
-  confirmed?: number
 }
