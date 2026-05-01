@@ -1,9 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Product Service (Sprint 4.2 + Sprint 6.1 + Sprint F4.1)
+# CBSHOME Backend -- Product Service (Sprint 4.2 + Sprint 6.1 + Sprint F4.1
+#                                       + Sprint 4.3)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   create_product()        -- create Product, copy price from Company
+#   create_product()        -- create Product, copy price from Company,
+#                              attach to active OptionPool (Sprint 4.3)
 #   update_product()        -- partial update (name, description,
 #                              cover_url, purchase_config)
 #   update_product_status() -- state machine transition
@@ -23,6 +25,16 @@
 # Sprint F4.1 CHANGES:
 #   - create_product(): +cover_url kwarg (scalar, stored as-is).
 #   - update_product(): +cover_url sentinel kwarg (Ellipsis semantics).
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - create_product(): kwarg `units` -> `package_size`. Looks up the
+#     single active OptionPool for the company, sets pool_id from it,
+#     and validates package_size <= pool.total_options. If the company
+#     has no active pool yet, the request is rejected with 400.
+#   - validate_plan_config() call sites now pass product.package_size
+#     (the column was renamed). The kwarg name stays as `product_units`
+#     in constants.py to avoid touching every test fixture (see comment
+#     in constants.py).
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -69,7 +81,7 @@ logger = structlog.get_logger()
 async def create_product(
     company_id: UUID,
     name: str,
-    units: int,
+    package_size: int,
     staff: User,
     session: AsyncSession,
     *,
@@ -82,21 +94,47 @@ async def create_product(
     Copies price_per_unit_cents from CompanyProfile.
     If purchase_config is provided, validates it before saving.
 
+    Sprint 4.3: looks up the company's single active OptionPool, attaches
+    the product to it, and validates package_size <= pool.total_options.
+
     Raises:
         NotFoundError: If company not found.
-        BadRequestError: If purchase_config is invalid.
+        BadRequestError: If purchase_config is invalid, the company has
+            no active pool, or package_size exceeds pool.total_options.
+        RuntimeError: If the company has multiple active pools (data
+            integrity violation; the partial unique index should prevent
+            this, but we surface it explicitly).
     """
+    # Local import: avoids a top-level circular dependency between
+    # products and pools (pools/service.py is the canonical lookup site,
+    # but it imports nothing from products at the top level).
+    from app.modules.pools.service import get_active_pool
+
     company = await get_company(company_id, session)
 
     if purchase_config is not None:
         from app.modules.processors.validators import validate_purchase_config
         validate_purchase_config(purchase_config)
 
+    # Sprint 4.3: every product must belong to an active pool.
+    pool = await get_active_pool(company.id, session)
+
+    # Idiot-check: a single package must fit in the pool. This is a
+    # static guard at creation time; runtime availability is checked in
+    # purchases/service._get_pool_remaining (which accounts for already
+    # consumed options).
+    if package_size > pool.total_options:
+        raise BadRequestError(
+            f"package_size ({package_size}) exceeds pool.total_options "
+            f"({pool.total_options}) for company {company.id}"
+        )
+
     product = Product(
+        pool_id=pool.id,
         company_id=company.id,
         name=name,
         description=description,
-        units=units,
+        package_size=package_size,
         cover_url=cover_url,
         purchase_config=purchase_config,
         price_per_unit_cents=company.price_per_unit_cents,
@@ -116,8 +154,9 @@ async def create_product(
         target_id=product.id,
         data={
             "company_id": str(company_id),
+            "pool_id": str(pool.id),
             "name": name,
-            "units": units,
+            "package_size": package_size,
         },
     )
 
@@ -125,6 +164,8 @@ async def create_product(
         "product_created",
         product_id=str(product.id),
         company_id=str(company_id),
+        pool_id=str(pool.id),
+        package_size=package_size,
         staff_id=str(staff.id),
     )
 
@@ -342,9 +383,11 @@ async def create_installment(
     product = await get_product(product_id, session)
 
     # Validate plan_config against product context.
+    # Sprint 4.3: column renamed `units` -> `package_size`. The kwarg name
+    # `product_units` stays for backwards compat with test fixtures.
     validate_plan_config(
         plan_config,
-        product_units=product.units,
+        product_units=product.package_size,
         price_per_unit_cents=product.price_per_unit_cents,
     )
 
@@ -398,9 +441,10 @@ async def update_installment(
         changed_fields.append("name")
 
     if plan_config is not None:
+        # Sprint 4.3: same rename note as in create_installment.
         validate_plan_config(
             plan_config,
-            product_units=product.units,
+            product_units=product.package_size,
             price_per_unit_cents=product.price_per_unit_cents,
         )
         installment.set_jsonb("plan_config", plan_config)

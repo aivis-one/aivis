@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1 + F4.1)
+# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1 + F4.1
+#                                            + Sprint 4.3)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -23,6 +24,12 @@
 #   - Create/Update endpoints forward cover_url to the service layer.
 #     cover_url is NOT financial_operations-gated (same tier as name /
 #     description -- purely cosmetic media URL).
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - Create endpoint forwards body.package_size (renamed from body.units)
+#     to create_product(package_size=...).
+#   - The /staff/products/{id}/installments/preview endpoint (installment
+#     calculator) lives in B4 of this sprint, not here.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit().
@@ -87,7 +94,7 @@ async def create_product_endpoint(
     product = await create_product(
         body.company_id,
         body.name,
-        body.units,
+        body.package_size,
         staff,
         session,
         description=body.description,

@@ -1,10 +1,13 @@
 # =============================================================================
-# CBSHOME Backend -- Company Service (Sprint 4.1 + Sprint F4.1 + F4.1.1 hotfix)
+# CBSHOME Backend -- Company Service (Sprint 4.1 + Sprint F4.1 + F4.1.1 hotfix
+#                                       + Sprint 4.3)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   create_company()       -- create User (role=company) + CompanyProfile
+#                             with total_supply / shares_per_option
 #   update_company()       -- partial update profile/media/distribution_config
+#                             (NO supply fields here -- see Sprint 4.3 note)
 #   update_price()         -- change price + cascade to Products + history
 #   get_company()          -- load CompanyProfile by id
 #   list_companies()       -- paginated list (public: active only; staff: all;
@@ -27,6 +30,22 @@
 #   - WHERE construction uses sqlalchemy.and_(*conditions) instead of
 #     a hand-rolled left-fold -- single line, no accidents when a
 #     third filter is added.
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - create_company() persists total_supply and shares_per_option from
+#     the request. Both required (NOT NULL on the column).
+#   - update_company() intentionally does NOT support supply changes:
+#       * total_supply changes go through pool admin endpoints
+#         (PATCH /staff/companies/{id}/pool) so the pool / supply
+#         relationship stays consistent.
+#       * shares_per_option change is a split -- future scope, requires
+#         pool migration and double-entry purchase migration.
+#     UpdateCompanyRequest already excludes those fields, but the rule
+#     is documented here for the next reader.
+#   - Pool creation is NOT done here. Staff creates the company first,
+#     then issues a pool via the pools endpoints (B2). This keeps the
+#     two-step flow explicit and lets staff set equity_percent freely
+#     instead of forcing a default of 100%.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -85,6 +104,10 @@ async def create_company(
     Staff admin creates both the user account and the company profile.
     Credentials are passed to the company representative by admin.
 
+    Sprint 4.3: total_supply and shares_per_option are persisted from the
+    request. The OptionPool is created separately via the pool admin
+    endpoint -- this service does not auto-create one.
+
     Raises:
         BadRequestError: If distribution_config is invalid.
         ConflictError: If email already exists.
@@ -132,6 +155,9 @@ async def create_company(
         presentation_url=body.presentation_url,
         price_per_unit_cents=body.price_per_unit_cents,
         distribution_config=body.distribution_config,
+        # Sprint 4.3: supply.
+        total_supply=body.total_supply,
+        shares_per_option=body.shares_per_option,
         status=CompanyStatus.HIDDEN,
     )
     session.add(profile)
@@ -153,7 +179,12 @@ async def create_company(
         actor_type="staff",
         target_type="company",
         target_id=profile.id,
-        data={"name": body.name, "user_id": str(company_user.id)},
+        data={
+            "name": body.name,
+            "user_id": str(company_user.id),
+            "total_supply": body.total_supply,
+            "shares_per_option": body.shares_per_option,
+        },
     )
 
     logger.info(
@@ -161,6 +192,8 @@ async def create_company(
         company_id=str(profile.id),
         user_id=str(company_user.id),
         staff_id=str(staff.id),
+        total_supply=body.total_supply,
+        shares_per_option=body.shares_per_option,
     )
 
     return profile
@@ -176,6 +209,9 @@ async def update_company(
 
     If distribution_config is provided, it is re-validated.
     If status is provided, state machine transition is validated.
+
+    Sprint 4.3 note: total_supply and shares_per_option are NOT updatable
+    here. UpdateCompanyRequest does not expose them. See module docstring.
 
     Raises:
         NotFoundError: If company not found.

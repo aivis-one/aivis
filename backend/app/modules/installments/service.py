@@ -147,7 +147,7 @@ async def create_plan(
     agent_bonus_units = snapshot.get("agent_bonus_units", 0)
 
     total_price_cents = sum(t["amount_cents"] for t in tranches_config)
-    total_units = product.units
+    total_units = product.package_size  # Sprint 4.3: column renamed (units -> package_size)
 
     # -- 4a. Pre-check balance (happy-path optimisation) --
     # The frontend's "Confirm" button is gated by insufficientBalance,

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Constants (Sprint 4.2 + Sprint 6.2)
+# CBSHOME Backend -- Product Constants (Sprint 4.2 + Sprint 6.2 + Sprint 4.3)
 # =============================================================================
 #
 # PRODUCT STATUS:
@@ -19,11 +19,19 @@
 #     len(tranches) >= 2
 #     all amount_cents > 0
 #     all units_percent > 0
-#     sum(amount_cents) == product.units * company.price_per_unit_cents
+#     sum(amount_cents) == product.package_size * company.price_per_unit_cents
 #     sum(units_percent) == 100
 #     sum(units_percent[i] * product_units // 100) == product_units  (Sprint 6.2)
 #     bonus_units >= 0
 #     agent_bonus_units >= 0
+#
+# Sprint 4.3 NOTE (TD-071 / Share Pool Refactor):
+#   Product.units was renamed to Product.package_size.
+#   The validate_plan_config() parameter name `product_units` STAYS to
+#   avoid touching every test fixture that passes it as a kwarg --
+#   parameter name is just a label, what matters is that callers pass
+#   `product.package_size` as the value (see products/service.py and
+#   the installment calculator in B4).
 # =============================================================================
 
 import enum
@@ -66,7 +74,11 @@ def validate_plan_config(
 
     Args:
         config: plan_config dict to validate.
-        product_units: Product.units (package size).
+        product_units: Product.package_size (the package size). The
+            parameter name is `product_units` for backwards-compat with
+            existing test call sites; semantically this is the package
+            size of the product. Sprint 4.3 renamed the column itself
+            (units -> package_size) but kept this kwarg name.
         price_per_unit_cents: Product.price_per_unit_cents (current price).
 
     Raises:
@@ -112,7 +124,7 @@ def validate_plan_config(
                 f"plan_config.tranches[{i}] contains unknown keys: {extra}"
             )
 
-    # -- sum(amount_cents) == product.units * price_per_unit_cents --
+    # -- sum(amount_cents) == product.package_size * price_per_unit_cents --
     total_amount = sum(t["amount_cents"] for t in tranches)
     expected_total = product_units * price_per_unit_cents
     if total_amount != expected_total:
@@ -129,8 +141,8 @@ def validate_plan_config(
         )
 
     # -- Sprint 6.2: units_unlocked must decompose exactly --
-    # Each tranche unlocks: units_percent * product_units // 100
-    # The sum of all unlocked units must equal product_units exactly.
+    # Each tranche unlocks: units_percent * product.package_size // 100
+    # The sum of all unlocked units must equal product.package_size exactly.
     # This prevents rounding errors when tranches are expanded into
     # InstallmentTranche records with integer units_unlocked values.
     total_unlocked = sum(

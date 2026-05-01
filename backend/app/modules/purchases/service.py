@@ -1,12 +1,15 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Service (Sprint 6.1 + Sprint 6.2 refactor)
+# CBSHOME Backend -- Purchase Service (Sprint 6.1 + Sprint 6.2 refactor
+#                                       + Sprint 4.3)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   execute_purchase()           -- instant purchase: validate + build context
-#   get_investor_portfolio_cents -- SUM(paid_cents) for bonus conditions
-#   get_platform_user()          -- load Platform system user
-#   get_sold_units_map()         -- COUNT(purchases) per product_id (TD-031)
+#   execute_purchase()              -- instant purchase: validate + build context
+#   get_investor_portfolio_cents    -- SUM(paid_cents) for bonus conditions
+#   get_platform_user()             -- load Platform system user
+#   get_available_packages_map()    -- floor(pool_remaining / package_size)
+#                                      per product_id (Sprint 4.3, replaces
+#                                      get_sold_units_map)
 #
 # Sprint 6.2 REFACTOR:
 #   Financial execution core (advisory lock, balance check, registry,
@@ -15,17 +18,38 @@
 #   engine.execute(). This allows installments/service.py to reuse
 #   the same engine with a differently-built context.
 #
-# EXECUTE_PURCHASE FLOW (after refactor):
+# EXECUTE_PURCHASE FLOW (after refactor + Sprint 4.3):
 #   0. KYC guard (TD-038)
 #   1. Load Product (must be active)
 #   2. Load CompanyProfile (must be active) + Company User
 #   3. Load Platform user
-#   4. Compute frozen context (frozen_until, origin_payment_id)
-#   5. Resolve distribution_config (product override or company fallback)
-#   6. Resolve bonuses from purchase_config
-#   7. Get investor portfolio for gift conditions
-#   8. Build PurchaseContext
-#   9. Delegate to engine.execute()
+#   4. Sprint 4.3: load active pool, validate pool_remaining >= package_size.
+#      Reject the purchase BEFORE any money moves -- the user sees a
+#      clean 400 "sold out" instead of a half-applied transaction.
+#   5. Compute frozen context (frozen_until, origin_payment_id)
+#   6. Resolve distribution_config (product override or company fallback)
+#   7. Resolve bonuses from purchase_config
+#   8. Get investor portfolio for gift conditions
+#   9. Build PurchaseContext (units = product.package_size,
+#      amount_cents = package_size * price)
+#   10. Delegate to engine.execute()
+#
+# Sprint 4.3 NOTES:
+#   - get_sold_units_map (COUNT of active purchases per product) replaced
+#     by get_available_packages_map (floor of pool_remaining /
+#     package_size per product). The new helper takes a list of
+#     company_ids alongside product_ids so we can fetch the active pools
+#     in a single query rather than one-per-product.
+#   - PurchaseContext.units is named `units` (the field stays). What
+#     CHANGED is its source: product.package_size (previously product.units,
+#     same semantic, renamed column).
+#   - Race conditions on pool consumption are an accepted MVP risk
+#     (no advisory lock at the pool level). Two concurrent purchases
+#     can both pass the check and tip pool_remaining negative by one
+#     package; that overflow is treated as gifts spilling into owner
+#     supply (spec §3.7). For high-traffic operation we'd add an
+#     advisory_xact_lock on hash(pool_id) here, just like the engine
+#     already does on hash(investor_id).
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -47,6 +71,7 @@ from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.constants import CompanyStatus
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus
+from app.modules.pools.models import OptionPool
 from app.modules.processors.base import PurchaseContext
 from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
@@ -61,6 +86,11 @@ from app.modules.users.models import KYCStatus, User, UserRole
 
 
 logger = structlog.get_logger()
+
+
+# Pool status string. Matches OptionPool column literal; introduced as
+# a constant so the storefront helper and execute_purchase agree.
+_POOL_STATUS_ACTIVE = "active"
 
 
 # ---------------------------------------------------------------------------
@@ -105,34 +135,94 @@ async def get_investor_portfolio_cents(
     return result.scalar_one()
 
 
-async def get_sold_units_map(
+async def get_available_packages_map(
     session: AsyncSession,
+    *,
+    company_ids: list[UUID],
     product_ids: list[UUID],
 ) -> dict[UUID, int]:
-    """Count active purchases per product_id.
+    """Compute available packages per product from each product's pool.
 
-    Returns {product_id: count} for the given IDs.
-    Products with zero purchases are omitted from the dict.
+    Sprint 4.3 replacement for get_sold_units_map.
 
-    Used by public product endpoints for sold_units display (TD-031).
+    Algorithm:
+      1. Fetch all active pools for the given company_ids (single SELECT).
+      2. Fetch consumed = SUM(Purchase.units) per company_id for active
+         purchases, including gifts (single SELECT).
+      3. Fetch package_size for each product_id (single SELECT).
+      4. For each product:
+            pool = pools[product.company_id]
+            if no active pool -> 0  (shouldn't happen in steady state;
+                                     defensive against half-set-up data)
+            remaining = pool.total_options - consumed[company_id]
+            available = max(0, remaining // package_size)
+
+    Returns {product_id: available_packages}. Products are present in the
+    dict iff they were in product_ids; missing pool / data integrity
+    issues result in 0, not an exception (the storefront should not 500
+    because one company is misconfigured).
+
+    All inputs may be empty -- returns {} in that case.
     """
-    if not product_ids:
+    if not product_ids or not company_ids:
         return {}
 
-    stmt = (
+    # 1. Active pools by company.
+    pools_stmt = select(OptionPool).where(
+        OptionPool.company_id.in_(company_ids),
+        OptionPool.status == _POOL_STATUS_ACTIVE,
+    )
+    pools_result = await session.execute(pools_stmt)
+    pools_by_company: dict[UUID, OptionPool] = {}
+    for pool in pools_result.scalars().all():
+        # If a company somehow has multiple active pools (DB index would
+        # have stopped this; this branch is paranoia), keep the first
+        # and ignore extras. We do NOT raise here -- the storefront
+        # should still render.
+        pools_by_company.setdefault(pool.company_id, pool)
+
+    # 2. Consumed per company (all active purchases, gifts included).
+    consumed_stmt = (
         select(
-            Purchase.product_id,
-            func.count().label("cnt"),
+            Purchase.company_id,
+            func.coalesce(func.sum(Purchase.units), 0).label("consumed"),
         )
         .where(
-            Purchase.product_id.in_(product_ids),
+            Purchase.company_id.in_(company_ids),
             Purchase.status == PurchaseStatus.ACTIVE,
-            Purchase.legal_basis == PurchaseLegalBasis.SALE,
         )
-        .group_by(Purchase.product_id)
+        .group_by(Purchase.company_id)
     )
-    result = await session.execute(stmt)
-    return {row.product_id: row.cnt for row in result.all()}
+    consumed_result = await session.execute(consumed_stmt)
+    consumed_by_company: dict[UUID, int] = {
+        row.company_id: int(row.consumed) for row in consumed_result.all()
+    }
+
+    # 3. package_size + company_id per product.
+    products_stmt = select(
+        Product.id,
+        Product.company_id,
+        Product.package_size,
+    ).where(Product.id.in_(product_ids))
+    products_result = await session.execute(products_stmt)
+
+    available_map: dict[UUID, int] = {}
+    for row in products_result.all():
+        pool = pools_by_company.get(row.company_id)
+        if pool is None:
+            available_map[row.id] = 0
+            continue
+
+        consumed = consumed_by_company.get(row.company_id, 0)
+        remaining = pool.total_options - consumed
+
+        if remaining <= 0 or row.package_size <= 0:
+            available_map[row.id] = 0
+            continue
+
+        available_map[row.id] = remaining // row.package_size
+
+    return available_map
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +322,58 @@ async def _load_user(
     return user
 
 
+async def _get_active_pool(
+    company_id: UUID, session: AsyncSession
+) -> OptionPool:
+    """Load the single active pool of a company.
+
+    Local copy of pools/service.py:get_active_pool to keep this module
+    self-contained (no upward dependency on pools/service in the
+    purchase hot path).
+
+    Raises:
+        BadRequestError: Company has no active pool.
+        RuntimeError: Multiple active pools (data integrity).
+    """
+    stmt = select(OptionPool).where(
+        OptionPool.company_id == company_id,
+        OptionPool.status == _POOL_STATUS_ACTIVE,
+    )
+    result = await session.execute(stmt)
+    pools = list(result.scalars().all())
+
+    if len(pools) == 0:
+        raise BadRequestError(
+            f"Company {company_id} has no active pool"
+        )
+    if len(pools) > 1:
+        raise RuntimeError(
+            f"Data integrity: multiple active pools for company {company_id}"
+        )
+
+    return pools[0]
+
+
+async def _get_pool_remaining(
+    pool: OptionPool, session: AsyncSession
+) -> int:
+    """Options remaining in pool: total - SUM(active purchases, gifts incl.).
+
+    Can return a negative number when gifts have overflowed into owner
+    supply -- callers MUST treat negative as zero-or-less for any
+    "can the user buy" decision.
+    """
+    consumed_stmt = (
+        select(func.coalesce(func.sum(Purchase.units), 0))
+        .where(
+            Purchase.company_id == pool.company_id,
+            Purchase.status == PurchaseStatus.ACTIVE,
+        )
+    )
+    consumed = (await session.execute(consumed_stmt)).scalar_one()
+    return pool.total_options - int(consumed)
+
+
 def _resolve_distribution_config(
     product: Product,
     company: CompanyProfile,
@@ -270,20 +412,22 @@ async def execute_purchase(
 ) -> list[Purchase]:
     """Execute a full instant purchase.
 
-    Validates product/company status, builds PurchaseContext, and
-    delegates to engine.execute() for the financial operation.
+    Validates product/company status + pool capacity, builds
+    PurchaseContext, and delegates to engine.execute() for the financial
+    operation.
 
     Args:
         product_id: Product to purchase.
         investor: Authenticated investor User.
         session: Active DB session. Caller manages commit (P-01).
-        referral_link_id: Optional referral link (stub in Sprint 6.1).
+        referral_link_id: Optional referral link.
 
     Returns:
         List of Purchase records created (sale + optional gifts).
 
     Raises:
-        BadRequestError: Insufficient balance, product not active, KYC not approved.
+        BadRequestError: Insufficient balance, product not active, KYC
+            not approved, no active pool, or pool sold out.
         NotFoundError: Product or company not found.
     """
     now = datetime.now(UTC)
@@ -304,20 +448,36 @@ async def execute_purchase(
     # -- 3. Load Platform user --
     platform_user = await get_platform_user(session)
 
-    # -- 4. Compute frozen context --
+    # -- 4. Sprint 4.3: pool capacity check BEFORE any money moves. --
+    # Race condition note: no advisory lock here. Two concurrent buyers
+    # can both pass the check and push pool_remaining negative by one
+    # package. That overflow is treated as gifts spilling into owner
+    # supply per spec §3.7 -- accepted MVP risk.
+    pool = await _get_active_pool(company.id, session)
+    pool_remaining = await _get_pool_remaining(pool, session)
+    if pool_remaining < product.package_size:
+        raise BadRequestError(
+            f"Sold out: pool has {max(0, pool_remaining)} options remaining, "
+            f"package requires {product.package_size}"
+        )
+
+    # -- 5. Compute frozen context --
     frozen_until, origin_payment_id = await compute_frozen_context(
         session, investor.id
     )
 
-    # -- 5. Resolve configs --
+    # -- 6. Resolve configs --
     dist_config = _resolve_distribution_config(product, company)
     bonuses = _resolve_bonuses(product)
 
-    # -- 6. Portfolio for gift conditions --
+    # -- 7. Portfolio for gift conditions --
     portfolio_cents = await get_investor_portfolio_cents(session, investor.id)
 
-    # -- 7. Build context --
-    amount_cents = product.units * product.price_per_unit_cents
+    # -- 8. Build context --
+    # Sprint 4.3: source field renamed (product.units -> product.package_size).
+    # PurchaseContext.units field name stays; it is "options the investor
+    # receives", not a column reference.
+    amount_cents = product.package_size * product.price_per_unit_cents
 
     context = PurchaseContext(
         investor_id=investor.id,
@@ -326,7 +486,7 @@ async def execute_purchase(
         company_user_id=company.user_id,
         platform_user_id=platform_user.id,
         amount_cents=amount_cents,
-        units=product.units,
+        units=product.package_size,
         price_per_unit_cents=product.price_per_unit_cents,
         distribution_config=dist_config,
         purchase_config_bonuses=bonuses,
@@ -336,11 +496,11 @@ async def execute_purchase(
             investor.id,
             session,
             max_depth=len(dist_config.get("agent_levels", [])),
-        ),  # Stub in Sprint 6.1
+        ),
         triggered_at=now,
     )
 
-    # -- 8. Delegate to engine --
+    # -- 9. Delegate to engine --
     purchases = await engine.execute(
         context,
         session,
@@ -364,6 +524,7 @@ async def execute_purchase(
         product_id=str(product.id),
         amount_cents=amount_cents,
         purchase_count=len(purchases),
+        pool_remaining_before=pool_remaining,
     )
 
     return purchases

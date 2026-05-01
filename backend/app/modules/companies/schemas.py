@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Schemas (Sprint 4.1, fix Phase 4)
+# CBSHOME Backend -- Company Schemas (Sprint 4.1, fix Phase 4, Sprint 4.3)
 # =============================================================================
 #
 # REQUEST SCHEMAS:
@@ -19,6 +19,20 @@
 #
 # Phase 4 FIX:
 #   CreateCompanyRequest.email uses EmailStr (was: str)
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - CreateCompanyRequest: +total_supply (BigInt > 0), +shares_per_option
+#     (int > 0). Both required at creation.
+#   - UpdateCompanyRequest: NO total_supply / shares_per_option here.
+#     A change in total_supply is a pool-level operation (PATCH
+#     /staff/companies/{id}/pool). A change in shares_per_option is a
+#     split (future scope, see CBSHOME-Share-Pool-Refactor.md §4).
+#     Allowing scalar updates here would break the invariant
+#     `pool.equity_percent = pool.total_options / company.total_supply`.
+#   - CompanyResponse / PublicCompanyResponse: +total_supply,
+#     +shares_per_option. Public storefront needs them so the storefront
+#     can show how many options the company has issued and how that
+#     relates to the pool size shown on a product card.
 # =============================================================================
 
 from datetime import date, datetime
@@ -51,12 +65,22 @@ class CreateCompanyRequest(BaseModel):
     price_per_unit_cents: int = Field(gt=0)
     distribution_config: dict  # type: ignore[type-arg]
 
+    # Sprint 4.3: supply config.
+    # total_supply -- total number of options covering 100% of company shares.
+    # shares_per_option -- denomination ratio (default 1: one option = one share).
+    total_supply: int = Field(gt=0)
+    shares_per_option: int = Field(default=1, gt=0)
+
 
 class UpdateCompanyRequest(BaseModel):
     """Partial update of company profile.
 
     Only provided fields are updated. distribution_config triggers
     financial_operations permission check in router.
+
+    Sprint 4.3: total_supply and shares_per_option are NOT in this schema.
+    Pool size changes happen via PATCH /staff/companies/{id}/pool, and a
+    shares_per_option change is a split (future scope).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -155,6 +179,9 @@ class CompanyResponse(BaseModel):
     presentation_url: str | None
     price_per_unit_cents: int
     distribution_config: dict  # type: ignore[type-arg]
+    # Sprint 4.3: supply.
+    total_supply: int
+    shares_per_option: int
     status: str
     created_at: datetime
     updated_at: datetime | None
@@ -188,6 +215,11 @@ class PublicCompanyResponse(BaseModel):
     promo_video_url: str | None
     presentation_url: str | None
     price_per_unit_cents: int
+    # Sprint 4.3: supply -- public storefront shows total_supply alongside
+    # the per-product available_packages so investors see the company's
+    # full issuance, not just the pool slice.
+    total_supply: int
+    shares_per_option: int
     status: str
     created_at: datetime
 

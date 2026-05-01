@@ -1,6 +1,6 @@
 # =============================================================================
 # CBSHOME Backend -- Product Public Router (Sprint 4.2 + Sprint 6.1 + F4.1
-#                                            + F4.1.1 hotfix)
+#                                            + F4.1.1 hotfix + Sprint 4.3)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -31,6 +31,15 @@
 #     raises an explicit RuntimeError naming product_id AND company_id,
 #     yielding a 500 with a grep-able trace instead of a bare KeyError
 #     (list) or a misleading 404 NotFoundError (detail, via get_company).
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - sold_units (COUNT of purchases) replaced with available_packages
+#     (floor(pool_remaining / package_size)). Sourced from the new
+#     get_available_packages_map() in purchases/service.py, which keys
+#     by product_id and consults the active OptionPool of each product's
+#     company. The company-level batch SELECT was already happening for
+#     denormalisation -- we now also pass company_ids through to the
+#     packages map.
 # =============================================================================
 
 from uuid import UUID
@@ -50,7 +59,7 @@ from app.modules.products.schemas import (
     PublicProductResponse,
 )
 from app.modules.products.service import get_product_detail, list_products
-from app.modules.purchases.service import get_sold_units_map
+from app.modules.purchases.service import get_available_packages_map
 
 router = APIRouter(prefix="/api/v1/products", tags=["products"])
 
@@ -74,13 +83,17 @@ async def list_products_endpoint(
         per_page=per_page,
     )
 
-    # Fetch sold_units for all products in one query.
+    # Sprint 4.3: compute available packages per product from the active
+    # pool of each product's company. One pool-per-company SELECT inside
+    # the helper, not per product.
     product_ids = [p.id for p in products]
-    sold_map = await get_sold_units_map(session, product_ids)
+    company_ids = list({p.company_id for p in products})
+    available_map = await get_available_packages_map(
+        session, company_ids=company_ids, product_ids=product_ids
+    )
 
     # Batch-load companies for denormalisation (Sprint F4.1).
     # One SELECT per page, not per product.
-    company_ids = list({p.company_id for p in products})
     if company_ids:
         companies_stmt = select(CompanyProfile).where(
             CompanyProfile.id.in_(company_ids)
@@ -93,7 +106,7 @@ async def list_products_endpoint(
     items = []
     for p in products:
         resp = PublicProductResponse.model_validate(p)
-        resp.sold_units = sold_map.get(p.id, 0)
+        resp.available_packages = available_map.get(p.id, 0)
         # FK is RESTRICT -- missing company is a data integrity bug.
         # Surface it explicitly (500 with a grep-able message) rather
         # than a bare KeyError (F4.1.1 hotfix).
@@ -134,7 +147,12 @@ async def get_product_detail_endpoint(
     if product.status != ProductStatus.ACTIVE:
         raise NotFoundError("Product not found")
 
-    sold_map = await get_sold_units_map(session, [product.id])
+    # Sprint 4.3: single-product variant of the same packages helper.
+    available_map = await get_available_packages_map(
+        session,
+        company_ids=[product.company_id],
+        product_ids=[product.id],
+    )
 
     # Load the owning company directly. We intentionally do NOT call
     # get_company() here because its NotFoundError -> 404 would mislead
@@ -152,7 +170,7 @@ async def get_product_detail_endpoint(
         )
 
     response = PublicProductDetailResponse.model_validate(product)
-    response.sold_units = sold_map.get(product.id, 0)
+    response.available_packages = available_map.get(product.id, 0)
     response.company_name = company.name
     response.company_logo_url = company.logo_url
     response.company_cover_url = company.cover_url
