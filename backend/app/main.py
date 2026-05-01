@@ -19,6 +19,7 @@
 #   products_router           -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
+#   company_dashboard_router  -> /api/v1/company/* (Sprint 4.3 / B5)
 #   payments_router           -> /api/v1/payments/* (Sprint 5.1)
 #   payments_webhook_router   -> /api/v1/payments/webhooks/* (Sprint 5.2)
 #   staff_payments_router     -> /api/v1/staff/payments/* (Sprint 5.3)
@@ -47,6 +48,10 @@
 #   - +staff_pools_router for POST/PATCH /staff/companies/{id}/pool.
 #     Wired right after staff_products_router so the staff-side
 #     company/product/pool admin trio stays grouped.
+#   - +company_dashboard_router (B5) for the company-side read endpoints
+#     /api/v1/company/dashboard and /api/v1/company/analytics. Wired
+#     after staff_pools_router so the company self-service routes sit
+#     next to the company admin routes in the OpenAPI doc.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -93,6 +98,7 @@ from app.modules.referrals.router import router as referrals_router
 from app.modules.auth.router import router as auth_router
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
+from app.modules.company_dashboard.router import router as company_dashboard_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.installments.router import (
@@ -382,6 +388,8 @@ app.include_router(products_router)
 app.include_router(staff_products_router)
 # Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).
 app.include_router(staff_pools_router)
+# Sprint 4.3 / B5: company self-service dashboard + analytics.
+app.include_router(company_dashboard_router)
 app.include_router(payments_router)
 app.include_router(payments_webhook_router)
 app.include_router(staff_payments_router)
