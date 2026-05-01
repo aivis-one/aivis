@@ -914,16 +914,22 @@ def downgrade() -> None:
 
 Generated: 2026-04-30
 Repository: cbshome @ 31b5e28f671c3a98c5762de942b68ea981427a74
+Spec: CBSHOME-Share-Pool-Refactor.md v2.0
+
+> **Report revision v2:** corrected OptionPool field set, CompanyProfile field placement,
+> removed `consumed` column, `is_active→status`, fixed gift semantics, added
+> `products/router.py` to Files to Modify.
 
 ### Summary
 
 | Metric | Count |
 |--------|-------|
-| Backend source files to modify | 8 |
+| Backend source files to modify | 9 + 1 script |
 | Frontend files to modify | 5 |
 | Test files to modify | 6 |
 | New files to create | 11 |
 | Latest migration | 0026_products_cover_url |
+| Next migration | **0027** |
 
 ### Backend: Files to Modify (exact lines)
 
@@ -937,7 +943,14 @@ Repository: cbshome @ 31b5e28f671c3a98c5762de942b68ea981427a74
 - Line 49: docstring `units and company_id are immutable` → update
 - Line 112: `units: int` → `package_size` in `StaffProductResponse`
 - Line 150: `units: int` → `package_size` in `PublicProductResponse`
-- Line 153: `sold_units: int = 0` → `available_packages: int = 0`
+- Line 153: `sold_units: int = 0` → `available_packages: int = 0` (semantics change: now floor(pool_remaining / package_size) across whole company)
+
+**`products/router.py` (public)**
+- Line 53: import `get_sold_units_map` → `get_available_packages_map`
+- Lines 77–79: `sold_map = await get_sold_units_map(session, product_ids)` → `available_map = await get_available_packages_map(session, company_ids, product_ids)`; ⚠️ `company_ids` collected on line 83 must be moved **before** this call
+- Line 96: `resp.sold_units = sold_map.get(p.id, 0)` → `resp.available_packages = available_map.get(p.id, 0)`
+- Line 137: `sold_map = await get_sold_units_map(session, [product.id])` → `available_map = await get_available_packages_map(session, [product.company_id], [product.id])`
+- Line 155: `response.sold_units = sold_map.get(product.id, 0)` → `response.available_packages = available_map.get(product.id, 0)`
 
 **`products/staff_router.py`**
 - Line 90: `body.units,` → `body.package_size,`
@@ -950,11 +963,14 @@ Repository: cbshome @ 31b5e28f671c3a98c5762de942b68ea981427a74
 
 **`products/constants.py`**
 - Lines 22, 115, 132–143: comments referencing `product.units` → `product.package_size`
-- Line 52: param `product_units: int` — name can stay, but Line 69 comment update
+- Line 52: param `product_units: int` — name can stay; Line 69 comment update
 
 **`purchases/service.py`**
 - Line 320: `product.units * product.price_per_unit_cents` → `product.package_size`
 - Line 329: `units=product.units` → `units=product.package_size` (populates `PurchaseContext.units`, NOT renamed)
+- **New function:** `get_available_packages_map(session, company_ids, product_ids)` — replaces `get_sold_units_map`; formula: `floor(pool_remaining / product.package_size)`; gift purchases **included** in consumed (v2.0 decision)
+- **New function:** `_get_shares_remaining(company_id, session)` — SUM excludes nothing (all active purchases count against pool)
+- **`execute_purchase()`** — add pool validation after `_load_company`, before `PurchaseContext`; raise `BadRequestError` if `shares_remaining < product.package_size`
 
 **`installments/service.py`**
 - Line 150: `total_units = product.units` → `product.package_size`
@@ -966,13 +982,17 @@ Repository: cbshome @ 31b5e28f671c3a98c5762de942b68ea981427a74
 
 **`api/types.ts`**
 - Line 388: `units: number` → `package_size: number`
-- Line 391: `sold_units: number` → `available_packages: number`
+- Line 391: `sold_units: number` → `available_packages: number` (no frontend subtraction needed — pre-computed by backend)
+- Add `pool_id: string | null` to `PublicProductResponse`
+- Add `total_supply: number`, `shares_per_option: number` to Company responses
 
 **`components/shared/ProductCard.vue`**
-- Line 45: `props.product.units - props.product.sold_units` → `props.product.available_packages`
+- Line 45: `props.product.units - props.product.sold_units` → `props.product.available_packages` (no subtraction; pre-computed)
+- Line 73: update class name / label to reflect `packsAvailable` i18n key
 
 **`views/investor/ProductDetailView.vue`**
 - Line 90: `p.units - p.sold_units` → `p.available_packages`
+- `<CButton :disabled="...">` guard — update to `p.available_packages === 0`
 
 **`views/investor/PurchaseView.vue`**
 - Line 89: `p.units * p.price_per_unit_cents` → `p.package_size * p.price_per_unit_cents`
@@ -987,49 +1007,68 @@ Repository: cbshome @ 31b5e28f671c3a98c5762de942b68ea981427a74
 **`test_products.py`**
 - Line 111: helper param `units: int = 100` → `package_size`
 - Line 120: `"units": units` → `"package_size": package_size`
+- `_create_company()` helper: add `"total_supply": 10_000_000`
 - Line 169: `product["units"]` → `product["package_size"]`
 - Line 224: `"units": 50` → `"package_size": 50`
+- Line 563: `body["sold_units"]` → `body["available_packages"]`
 
 **`test_purchases.py`**
 - Line 113: `"units": units` → `"package_size": units` in helper
-- Line 427: ⚠️ MIXED: `data[0]["units"]` is `Purchase.units` (stays), `product["units"]` → `product["package_size"]`
+- `_create_company()` helper: add `"total_supply": 10_000_000`
+- Line 427: ⚠️ MIXED — `data[0]["units"]` is `Purchase.units` (stays), `product["units"]` → `product["package_size"]`
 - Line 428: `product["units"]` → `product["package_size"]`
+- Lines 577, 579: `Purchase.units` — stays
 
 **`test_installments.py`**
-- Line 146: `"units": units` → `"package_size": units` in helper
+- Line 146: `"units": units` → `"package_size": units`
+- `_create_company()` helper: add `"total_supply"`
 
 **`test_dashboard.py`**
 - Line 108: `"units": units` → `"package_size": units`
-- Line 436: ⚠️ AMBIGUOUS: verify if `p["units"]` is Purchase (stays) or Product (rename)
+- Line 436: ⚠️ AMBIGUOUS — verify if `p["units"]` is Purchase (stays) or Product (rename)
 
 **`test_leaderboard.py`**
 - Line 214: `"units": 100` → `"package_size": 100`
 
 **`test_referrals.py`**
-- Line 132: `"units": 10` → `"package_size": 10` in helper
+- Line 132: `"units": 10` → `"package_size": 10`
+
+### New Test Cases Needed
+
+- `test_pools.py` — Pool CRUD, one-active-per-company constraint, archive with remaining active purchases
+- `test_products.py` — `available_packages_decreases_on_purchase`, `purchase_fails_when_pool_exhausted`
+- `test_purchases.py` — `gift_consumes_pool`, `pool_exhausted_blocks_sale`
+- `test_installment_calculator.py` — preview endpoint roundtrip, tranche invariants
+- `test_company_dashboard.py` — auth, data shape, pool remaining
 
 ### Seed Script (`seed_storefront.py`)
 
-- 20 occurrences: `"units": <value>` → `"package_size": <value>` in PRODUCTS list
-- Line 675: `units=spec["units"]` → `package_size=spec["package_size"]`
-- Add pool seeding after each company creation
+- 20 occurrences: `"units": <value>` → `"package_size": <value>`
+- Add `"total_supply"`, `"shares_per_option"` to COMPANIES (IPI AG → 10M, Immo-Pro-Invest → 5M, CBS Home → 100K, Nordic → 50K, Tesla → 2M, Stealth → 100)
+- `_ensure_company()`: pass new fields to `CompanyProfile` constructor
+- `_ensure_product()`: `units=` → `package_size=`; pass `pool_id`
+- Add pool seeding: upsert `OptionPool(status='active')` per company
+
+### Migration Notes
+
+- Previous: `2026_04_17_0026_products_cover_url`
+- New: `0027_share_pool_refactor` (`down_revision = "0026_products_cover_url"`)
+- New table: `option_pools` (id, company_id FK, equity_percent NUMERIC, total_options BIGINT, status VARCHAR(20) DEFAULT 'active', timestamps). **No `consumed` column.**
+- Altered: `company_profiles` (+total_supply BIGINT, +shares_per_option INTEGER), `products` (rename units→package_size, +pool_id UUID FK)
+- New index: `uq_one_active_pool_per_company` — partial unique on `option_pools(company_id)` WHERE `status='active'`
+- Data migration: `shares_per_option=1`, `total_supply=SUM(package_size)` per company; create Pool per company
 
 ### Risk Areas
 
-1. **`products/constants.py` + `service.py`** — `validate_plan_config(product_units=product.units)` → все 3 точки (param def + 2 call sites) должны измениться атомарно
-2. **`processors/base.py:81`** — `PurchaseContext.units` НЕ переименовывается. Только комментарий. Риск: автозамена заденет
-3. **`test_purchases.py:427`** — mixed assertion: `data[0]["units"]` (Purchase, stays) vs `product["units"]` (Product, rename). Риск: переименовать оба по ошибке
-4. **`test_dashboard.py:436`** — контекст `p["units"]` неоднозначен без проверки фикстуры
-5. **`products/router.py`** — основная точка замены `get_sold_units_map` → `get_available_packages_map`. Также batch-load `company_ids` для Pool lookup
-
-### Расхождения репорта с v2.0 спекой (исправлены)
-
-| Репорт Claude Code | Спека v2.0 (правильно) |
-|---|---|
-| OptionPool: `total_supply`, `shares_per_option`, `consumed`, `is_active` | OptionPool: `equity_percent`, `total_options`, `status`. `total_supply`/`shares_per_option` — на CompanyProfile. `consumed` — вычисляемый, не хранимый |
-| `is_active: BOOL` | `status: String(20)` (active / archived) — расширяемо для сплита |
-| «gifts should NOT consume pool» | Gifts DO consume pool, overflow → owner supply |
-| Миграция 0027 | ✅ Подтверждено: 0027 (после 0026_products_cover_url) |
+1. **`products/router.py` line ordering** — `company_ids` collected on line 83 must be moved **before** the `get_available_packages_map` call (currently after `get_sold_units_map`). Two separate call sites (list endpoint line 79, detail endpoint line 137).
+2. **`products/constants.py` + `service.py`** — `validate_plan_config(product_units=product.units)` → all 3 points (param def + 2 call sites) must change atomically.
+3. **`processors/base.py:81`** — `PurchaseContext.units` shares the word "units" with renamed `Product.units`. Only comment changes. Risk: auto-replace catches it.
+4. **`test_purchases.py:427`** — mixed assertion: `data[0]["units"]` (Purchase, stays) vs `product["units"]` (Product, rename). Risk: rename both by accident.
+5. **`test_dashboard.py:436`** — `p["units"]` context ambiguous without fixture check.
+6. **Gift purchases consume pool (v2.0)** — `_get_shares_remaining()` must NOT filter out `legal_basis='gift'`. The v1.0 spec on disk says the opposite — **do not follow v1.0**.
+7. **Pool enforcement in `execute_purchase()`** — validation inserted between `_load_company` and `PurchaseContext` construction, inside same DB transaction. No advisory lock on pool (decided: business-acceptable race condition for MVP).
+8. **`pool_id` FK nullable** — existing products have no pool. `create_product()` must require active pool; migration populates pool_id for existing products.
+9. **`InstallmentView.vue:180`** — `getTrancheUnits` in `utils/installmentPlans.ts` may have own tests needing update.
 
 ---
 
