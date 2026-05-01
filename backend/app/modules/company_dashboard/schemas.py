@@ -3,10 +3,6 @@
 # =============================================================================
 #
 # RESPONSE SCHEMAS:
-#   BalanceResponse              -- {frozen, confirmed} cents (mirrors
-#                                   dashboard/schemas.BalanceResponse;
-#                                   kept local so company_dashboard does
-#                                   not import the investor-side module).
 #   PoolEmbedResponse            -- pool fields embedded in the dashboard
 #                                   payload. Not the full PoolResponse
 #                                   from pools/schemas.py: id and
@@ -21,6 +17,14 @@
 #   SalesByMonthEntry            -- one bucket of sales_by_month
 #   SalesByProductEntry          -- one row of sales_by_product
 #   CompanyAnalyticsResponse     -- GET /api/v1/company/analytics
+#
+# BalanceResponse:
+#   Reused from dashboard/schemas.py (the investor dashboard module).
+#   The two payloads have identical semantics -- a {frozen, confirmed}
+#   pair of ledger sums in cents -- so a single shared schema avoids
+#   OpenAPI emitting two name-mangled types
+#   (app__modules__*__schemas__BalanceResponse) which would leak as
+#   ugly identifiers into the auto-generated frontend types.
 #
 # RATIONALE FOR LOCAL TRANSACTION SHAPE:
 #   The transactions module's TransactionResponse exposes user_id, which
@@ -41,17 +45,25 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.modules.dashboard.schemas import BalanceResponse
+
+# Re-exported so callers of company_dashboard.schemas don't need to
+# know the canonical home of BalanceResponse. Keeps router /
+# CompanyDashboardResponse imports tidy.
+__all__ = [
+    "BalanceResponse",
+    "PoolEmbedResponse",
+    "CompanyTransactionResponse",
+    "CompanyDashboardResponse",
+    "SalesByMonthEntry",
+    "SalesByProductEntry",
+    "CompanyAnalyticsResponse",
+]
+
 
 # ---------------------------------------------------------------------------
 # Sub-shapes
 # ---------------------------------------------------------------------------
-
-
-class BalanceResponse(BaseModel):
-    """Ledger balance split by status (cents)."""
-
-    frozen: int
-    confirmed: int
 
 
 class PoolEmbedResponse(BaseModel):

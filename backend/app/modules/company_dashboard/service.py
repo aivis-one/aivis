@@ -33,7 +33,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.companies.models import CompanyProfile
 from app.modules.company_dashboard.schemas import (
-    BalanceResponse,
     CompanyAnalyticsResponse,
     CompanyDashboardResponse,
     CompanyTransactionResponse,
@@ -41,6 +40,7 @@ from app.modules.company_dashboard.schemas import (
     SalesByMonthEntry,
     SalesByProductEntry,
 )
+from app.modules.dashboard.schemas import BalanceResponse
 from app.modules.ledgers.service import get_passive_balance
 from app.modules.pools.models import OptionPool
 from app.modules.pools.service import with_consumed_remaining
