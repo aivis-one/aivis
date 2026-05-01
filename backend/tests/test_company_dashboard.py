@@ -73,6 +73,7 @@ async def _create_company_and_login(
     db_session: AsyncSession,
     suffix: str = "co1",
     *,
+    admin_token: str | None = None,
     total_supply: int = 1_000_000,
     with_pool: bool = True,
     equity_percent: str = "100.0",
@@ -80,9 +81,17 @@ async def _create_company_and_login(
     """Create a company via staff API + (optionally) its pool, then login
     as the freshly created company user.
 
+    If `admin_token` is given, it is reused. Without it, the helper
+    registers the s43d_admin@example.com admin itself. Tests that
+    already obtained a token (because they need it later for
+    _activate_company / _create_product) MUST pass it back in here --
+    otherwise the second registration of the same admin email inside
+    this helper conflicts with the caller's earlier one.
+
     Returns (company_dict, company_user_session_token).
     """
-    admin_token = await _admin_token(client, db_session)
+    if admin_token is None:
+        admin_token = await _admin_token(client, db_session)
 
     email = f"{EMAIL_PREFIX}{suffix}@example.com"
     password = "companypass123"
@@ -251,6 +260,7 @@ async def test_dashboard_with_pool_and_purchase(
     admin_token = await _admin_token(client, db_session)
     company, company_token = await _create_company_and_login(
         client, db_session, suffix="t2",
+        admin_token=admin_token,
         total_supply=1_000, with_pool=True, equity_percent="100.0",
     )
     await _activate_company(client, admin_token, company["id"])
@@ -412,6 +422,7 @@ async def test_analytics_with_purchase(
     admin_token = await _admin_token(client, db_session)
     company, company_token = await _create_company_and_login(
         client, db_session, suffix="t6",
+        admin_token=admin_token,
         total_supply=1_000, with_pool=True, equity_percent="100.0",
     )
     await _activate_company(client, admin_token, company["id"])
@@ -476,6 +487,7 @@ async def test_analytics_sales_by_product_includes_zero_sales(
     admin_token = await _admin_token(client, db_session)
     company, company_token = await _create_company_and_login(
         client, db_session, suffix="t7",
+        admin_token=admin_token,
         total_supply=1_000, with_pool=True, equity_percent="100.0",
     )
     await _activate_company(client, admin_token, company["id"])
