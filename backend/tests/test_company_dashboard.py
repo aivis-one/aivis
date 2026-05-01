@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.companies.models import CompanyProfile
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import record_active_ledger
+from app.modules.transactions.constants import TransactionType
 from app.modules.transactions.models import Transaction
 from app.modules.users.models import User
 from tests.helpers import (
@@ -308,11 +309,16 @@ async def test_dashboard_recent_transactions_limit(
     company_user_id = await _company_user_id(db_session, company["id"])
 
     # Distinct created_at values so ORDER BY DESC is deterministic.
+    # Type must be one of the values allowed by ck_transactions_type
+    # (see migrations/0012_transactions.py CHECK clause); we pick
+    # deposit:received because it has no side-effect on any other test
+    # invariant -- the dashboard query reads transactions by user_id +
+    # created_at, regardless of type.
     base_time = datetime.now(UTC) - timedelta(days=1)
     for i in range(25):
         txn = Transaction(
             user_id=company_user_id,
-            type="test:event",
+            type=TransactionType.DEPOSIT_RECEIVED,
             amount_cents=i * 100,
             currency="USD",
             details={"index": i},
@@ -338,7 +344,7 @@ async def test_dashboard_recent_transactions_limit(
 
     # Sanity: schema fields rendered correctly.
     first = recent[0]
-    assert first["type"] == "test:event"
+    assert first["type"] == TransactionType.DEPOSIT_RECEIVED.value
     assert first["currency"] == "USD"
     assert first["amount_cents"] == 24 * 100
 
