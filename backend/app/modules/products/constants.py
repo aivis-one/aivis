@@ -32,6 +32,16 @@
 #   parameter name is just a label, what matters is that callers pass
 #   `product.package_size` as the value (see products/service.py and
 #   the installment calculator in B4).
+#
+# Sprint 4.3 B4 (Installment Calculator):
+#   ALLOWED_TRANCHES, ALLOWED_AMOUNT_ROUNDINGS,
+#   LAST_TRANCHE_PERCENT_MIN/MAX -- input domain for
+#   calculate_installment_preview() (see calculator.py). These
+#   constraints are enforced both at the request schema layer
+#   (Pydantic Field bounds for what it can express) and inside the
+#   calculator (set membership for num_tranches /
+#   amount_rounding_cents). Single source of truth lives here so the
+#   schema and the calculator stay in sync.
 # =============================================================================
 
 import enum
@@ -53,6 +63,27 @@ VALID_PRODUCT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     ProductStatus.ACTIVE: frozenset({ProductStatus.HIDDEN, ProductStatus.ARCHIVED}),
     ProductStatus.ARCHIVED: frozenset(),  # terminal state
 }
+
+
+# ---------------------------------------------------------------------------
+# Sprint 4.3 B4 -- Installment Calculator inputs (spec §3.9)
+# ---------------------------------------------------------------------------
+
+# Number of tranches a generated plan can have. Frozenset for fast `in`
+# checks; staff UI surfaces these as a fixed dropdown.
+ALLOWED_TRANCHES: frozenset[int] = frozenset({3, 6, 12, 24, 36})
+
+# Rounding step for the regular tranche amount (cents). The calculator
+# rounds the per-tranche amount DOWN to a multiple of this step and
+# absorbs the remainder into the last tranche. Step values mirror
+# common product price rounding (5.00 / 10.00 / 50.00 / 100.00 EUR).
+ALLOWED_AMOUNT_ROUNDINGS: frozenset[int] = frozenset({500, 1000, 5000, 10000})
+
+# Bounds for `last_tranche_percent` (the staff-chosen options skew
+# towards the last tranche). Keep the motivational pressure meaningful
+# without making the last tranche dominate the plan.
+LAST_TRANCHE_PERCENT_MIN: int = 30
+LAST_TRANCHE_PERCENT_MAX: int = 50
 
 
 def validate_plan_config(

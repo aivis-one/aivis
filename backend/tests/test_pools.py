@@ -14,15 +14,15 @@
 #   8:  Gift purchase consumes the pool (consumed = sale_units + gift_units)
 #   9:  Gift overflows into owner supply when pool just fits the package
 #       (pool_remaining goes negative; purchase still succeeds, spec §3.7)
-#   10: POST /staff/products/{id}/installments/preview -> plan_config
-#       (DEFERRED to B4 -- installment calculator)
-#   11: Installment preview invariants: amounts sum, options sum, rounding
-#       (DEFERRED to B4 -- installment calculator)
+#   10: Installment calculator preview returns valid plan_config (B4)
+#   11: Calculator output passes all validate_plan_config invariants and
+#       can be POSTed back to /installments without modification (B4)
 #
 # Email prefix: "s43p_" -- unique to this test file, cleaned up in fixture.
 # helpers.cleanup_test_users() already removes OptionPool rows in the
 # correct order (products -> option_pools -> company_profiles, see
-# Sprint 4.3 note in helpers.py).
+# Sprint 4.3 note in helpers.py). ProductInstallment cleanup was added
+# in Sprint 6.2 and runs before Product deletion.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
@@ -662,34 +662,170 @@ async def test_gift_overflow_allowed(
 
 
 # ---------------------------------------------------------------------------
-# 10: Installment preview -- DEFERRED to B4 (calculator)
+# 10: Installment calculator preview returns valid plan_config (B4)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="depends on B4 -- installment calculator endpoint")
 @pytest.mark.asyncio
 async def test_installment_preview(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """B4: POST /staff/products/{id}/installments/preview -> plan_config.
+    """POST /staff/products/{id}/installments/preview -> plan_config + summary.
 
-    Will assert: response shape (tranches, bonus_units, agent_bonus_units),
-    correct number of tranches, total amount equals package_size *
-    price_per_unit_cents.
+    Setup: package_size=100, price=10000 cents/unit -> total=1_000_000 cents.
+    Inputs: num_tranches=6, last_tranche_percent=50, amount_rounding_cents=500.
+
+    Expected (spec §3.9 example):
+      regular_pct = (100 - 50) // 5 = 10, actual_last_pct = 50 (no remainder)
+      regular_units = 10 * 100 // 100 = 10, last_units = 50
+      regular_amount = (1_000_000 // 6 // 500) * 500 = 333 * 500 = 166_500
+      last_amount = 1_000_000 - 166_500 * 5 = 167_500
     """
-    pass
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(
+        client, admin_token, suffix="t10",
+        total_supply=10_000, with_pool=True, equity_percent="100.0",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=100, suffix="t10"
+    )
+    # Note: product.price_per_unit_cents is denormalised from company
+    # at creation time = 10000 (set in _create_company).
+
+    resp = await client.post(
+        f"/api/v1/staff/products/{product['id']}/installments/preview",
+        json={
+            "num_tranches": 6,
+            "last_tranche_percent": 50,
+            "amount_rounding_cents": 500,
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200, f"Preview failed: {resp.text}"
+    body = resp.json()
+
+    plan_config = body["plan_config"]
+    assert plan_config["bonus_units"] == 0
+    assert plan_config["agent_bonus_units"] == 0
+    assert len(plan_config["tranches"]) == 6
+
+    # Regular tranches: percent=10, amount=166_500.
+    for i in range(5):
+        tranche = plan_config["tranches"][i]
+        assert tranche["units_percent"] == 10
+        assert tranche["amount_cents"] == 166_500
+
+    # Last tranche: percent=50, amount=167_500 (absorbed remainder).
+    last = plan_config["tranches"][5]
+    assert last["units_percent"] == 50
+    assert last["amount_cents"] == 167_500
+
+    # Summary mirrors the tranche numbers.
+    summary = body["summary"]
+    assert summary["package_size"] == 100
+    assert summary["num_tranches"] == 6
+    assert summary["total_amount_cents"] == 1_000_000
+    assert summary["regular_amount_cents"] == 166_500
+    assert summary["last_amount_cents"] == 167_500
+    assert summary["regular_units"] == 10
+    assert summary["last_units"] == 50
+    assert summary["regular_units_percent"] == 10
+    assert summary["last_units_percent"] == 50
 
 
 # ---------------------------------------------------------------------------
-# 11: Installment preview invariants -- DEFERRED to B4 (calculator)
+# 11: Calculator output passes invariants and round-trips through create (B4)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="depends on B4 -- installment calculator endpoint")
 @pytest.mark.asyncio
 async def test_installment_preview_invariants(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """B4: tranche amounts sum to total, units_percent sums to 100,
-    rounding does not lose or invent units."""
-    pass
+    """Calculator output satisfies validate_plan_config invariants.
+
+    Non-trivial input: last_tranche_percent=33, num_tranches=6.
+    Integer division leaves a remainder which is absorbed by the last
+    tranche -- the actual last percent becomes 35 (not 33). The whole
+    plan_config must still be acceptable to POST /installments unchanged
+    (round-trip), proving the calculator's inputs and the validator's
+    invariants stay in sync.
+
+    Setup: package_size=100, price=10000 -> total=1_000_000.
+    Inputs: N=6, last=33, rounding=500.
+    Expected:
+      regular_pct = 67 // 5 = 13, actual_last_pct = 100 - 13 * 5 = 35
+      regular_units = 13, last_units = 35; sum = 13*5 + 35 = 100 ✓
+      regular_amount = (1_000_000 // 6 // 500) * 500 = 166_500
+      last_amount = 1_000_000 - 166_500 * 5 = 167_500
+    """
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(
+        client, admin_token, suffix="t11",
+        total_supply=10_000, with_pool=True, equity_percent="100.0",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=100, suffix="t11"
+    )
+
+    resp = await client.post(
+        f"/api/v1/staff/products/{product['id']}/installments/preview",
+        json={
+            "num_tranches": 6,
+            "last_tranche_percent": 33,
+            "amount_rounding_cents": 500,
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200, f"Preview failed: {resp.text}"
+    body = resp.json()
+    plan_config = body["plan_config"]
+    summary = body["summary"]
+
+    package_size = 100
+    price_per_unit = 10000
+    expected_total = package_size * price_per_unit  # 1_000_000
+
+    # -- Invariant 1: sum(amount_cents) == package_size * price --
+    sum_amount = sum(t["amount_cents"] for t in plan_config["tranches"])
+    assert sum_amount == expected_total
+    assert summary["total_amount_cents"] == expected_total
+
+    # -- Invariant 2: sum(units_percent) == 100 --
+    sum_pct = sum(t["units_percent"] for t in plan_config["tranches"])
+    assert sum_pct == 100
+
+    # -- Invariant 3: integer units decomposition is exact --
+    sum_units = sum(
+        t["units_percent"] * package_size // 100
+        for t in plan_config["tranches"]
+    )
+    assert sum_units == package_size
+
+    # -- Invariant 4: regular tranche amounts are multiples of rounding --
+    for tranche in plan_config["tranches"][:-1]:
+        assert tranche["amount_cents"] % 500 == 0
+
+    # -- Invariant 5: remainder absorbed in last tranche --
+    # Requested 33% -> actual 35% (33 + 2 from integer-division remainder).
+    assert summary["regular_units_percent"] == 13
+    assert summary["last_units_percent"] == 35
+    assert plan_config["tranches"][-1]["units_percent"] == 35
+
+    # -- Round-trip: calculator output is accepted by create_installment --
+    # If validate_plan_config rejects the config the create call returns
+    # 400; this test then fails with the validator's message in the body.
+    create_resp = await client.post(
+        f"/api/v1/staff/products/{product['id']}/installments",
+        json={
+            "name": "Preview round-trip",
+            "plan_config": plan_config,
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert create_resp.status_code == 201, (
+        f"plan_config from preview rejected by create_installment: "
+        f"{create_resp.text}"
+    )

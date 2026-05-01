@@ -4,17 +4,18 @@
 # =============================================================================
 #
 # ENDPOINTS:
-#   POST  /api/v1/staff/products                                -- create
-#   PATCH /api/v1/staff/products/{id}                            -- update
-#   PATCH /api/v1/staff/products/{id}/status                     -- change status
-#   POST  /api/v1/staff/products/{id}/installments               -- add installment
-#   PATCH /api/v1/staff/products/{id}/installments/{inst_id}     -- update installment
-#   DELETE /api/v1/staff/products/{id}/installments/{inst_id}    -- soft-delete
+#   POST  /api/v1/staff/products                                    -- create
+#   PATCH /api/v1/staff/products/{id}                                -- update
+#   PATCH /api/v1/staff/products/{id}/status                         -- change status
+#   POST  /api/v1/staff/products/{id}/installments                   -- add installment
+#   PATCH /api/v1/staff/products/{id}/installments/{inst_id}         -- update installment
+#   DELETE /api/v1/staff/products/{id}/installments/{inst_id}        -- soft-delete
+#   POST  /api/v1/staff/products/{id}/installments/preview           -- calculator (B4)
 #
 # PERMISSIONS:
 #   All endpoints require company_manage.
-#   Create product, purchase_config update, and all installment ops also
-#   require financial_operations.
+#   Create product, purchase_config update, and all installment ops
+#   (including preview) also require financial_operations.
 #
 # Phase 4 FIX:
 #   _require_financial_operations extracted to staff/permissions.py
@@ -28,8 +29,18 @@
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - Create endpoint forwards body.package_size (renamed from body.units)
 #     to create_product(package_size=...).
-#   - The /staff/products/{id}/installments/preview endpoint (installment
-#     calculator) lives in B4 of this sprint, not here.
+#
+# Sprint 4.3 B4 (Installment Calculator):
+#   - +POST /staff/products/{id}/installments/preview endpoint. Loads the
+#     Product (for package_size + price_per_unit_cents), runs the pure
+#     calculator function, returns the result. No DB writes -- this is
+#     a read-only POST (POST chosen over GET only because the body
+#     carries multiple structured parameters).
+#   - Permission tier mirrors create_installment_endpoint: company_manage
+#     plus financial_operations. Even though preview does not write
+#     anything, exposing the calculator without financial_operations
+#     would let a junior staff member shape investor offers without the
+#     compliance gate.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit().
@@ -43,9 +54,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.modules.auth.dependencies import require_staff_permission
+from app.modules.products.calculator import calculate_installment_preview
 from app.modules.products.schemas import (
     CreateInstallmentRequest,
     CreateProductRequest,
+    InstallmentPreviewRequest,
+    InstallmentPreviewResponse,
     InstallmentResponse,
     ProductDetailResponse,
     ProductResponse,
@@ -57,6 +71,7 @@ from app.modules.products.service import (
     create_installment,
     create_product,
     delete_installment,
+    get_product,
     get_product_detail,
     update_installment,
     update_product,
@@ -227,3 +242,43 @@ async def delete_installment_endpoint(
     await require_financial_operations(staff, session)
 
     await delete_installment(product_id, installment_id, staff, session)
+
+
+# ---------------------------------------------------------------------------
+# Installment Calculator (Sprint 4.3 B4)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{product_id}/installments/preview",
+    response_model=InstallmentPreviewResponse,
+)
+async def preview_installment_endpoint(
+    product_id: UUID,
+    body: InstallmentPreviewRequest,
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> InstallmentPreviewResponse:
+    """Compute a motivational installment plan_config from staff inputs.
+
+    Requires: company_manage + financial_operations.
+
+    Read-only: no DB writes. The returned plan_config is the same
+    shape consumed by POST /staff/products/{id}/installments -- staff
+    inspects, optionally edits bonus_units / agent_bonus_units, then
+    submits the same plan_config to the create endpoint. One algorithm
+    in one language -- no JS / Python drift.
+    """
+    await require_financial_operations(staff, session)
+
+    product = await get_product(product_id, session)
+
+    result = calculate_installment_preview(
+        package_size=product.package_size,
+        price_per_unit_cents=product.price_per_unit_cents,
+        num_tranches=body.num_tranches,
+        last_tranche_percent=body.last_tranche_percent,
+        amount_rounding_cents=body.amount_rounding_cents,
+    )
+
+    return InstallmentPreviewResponse.model_validate(result)

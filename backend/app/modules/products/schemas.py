@@ -33,12 +33,27 @@
 #   - UpdateProductRequest stays without size/pool fields: package_size
 #     is immutable per spec, and pool reassignment is a future split
 #     operation, not an edit.
+#
+# Sprint 4.3 B4 (Installment Calculator):
+#   - InstallmentPreviewRequest -- staff inputs for the calculator
+#     (num_tranches, last_tranche_percent, amount_rounding_cents).
+#     Bounds for last_tranche_percent come from constants.py so the
+#     schema and the calculator never disagree.
+#   - InstallmentPreviewSummary / InstallmentPreviewResponse -- the
+#     ready-to-submit plan_config and a flat summary for the staff UI.
+#     plan_config can be passed verbatim to POST
+#     /staff/products/{id}/installments.
 # =============================================================================
 
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.modules.products.constants import (
+    LAST_TRANCHE_PERCENT_MAX,
+    LAST_TRANCHE_PERCENT_MIN,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +118,27 @@ class UpdateInstallmentRequest(BaseModel):
     plan_config: dict | None = None  # type: ignore[type-arg]
 
 
+class InstallmentPreviewRequest(BaseModel):
+    """Staff inputs for the installment calculator (Sprint 4.3 B4).
+
+    Set membership for num_tranches and amount_rounding_cents is
+    enforced inside calculator.py so we get a clean BadRequestError
+    message; Pydantic does not natively validate membership in a
+    frozenset without a custom validator. last_tranche_percent uses
+    Field bounds (Pydantic understands ge/le) so the 422 path catches
+    obviously bad inputs before the calculator runs.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    num_tranches: int = Field(gt=0)
+    last_tranche_percent: int = Field(
+        ge=LAST_TRANCHE_PERCENT_MIN,
+        le=LAST_TRANCHE_PERCENT_MAX,
+    )
+    amount_rounding_cents: int = Field(gt=0)
+
+
 # ---------------------------------------------------------------------------
 # Responses
 # ---------------------------------------------------------------------------
@@ -118,6 +154,43 @@ class InstallmentResponse(BaseModel):
     name: str
     plan_config: dict  # type: ignore[type-arg]
     created_at: datetime
+
+
+class InstallmentPreviewSummary(BaseModel):
+    """Flat human-friendly numbers for the staff UI (Sprint 4.3 B4).
+
+    Derived from plan_config; here so the UI does not have to traverse
+    the tranches list to show key headline numbers (regular vs last
+    tranche amount/options, total).
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    total_amount_cents: int
+    package_size: int
+    num_tranches: int
+    regular_amount_cents: int
+    last_amount_cents: int
+    regular_units: int
+    last_units: int
+    # Surfaced so UI can show "you asked 33%, got 35% (rounding)"
+    # without recomputing.
+    regular_units_percent: int
+    last_units_percent: int
+
+
+class InstallmentPreviewResponse(BaseModel):
+    """Calculator output: ready-to-submit plan_config + summary.
+
+    plan_config is the same shape consumed by POST
+    /staff/products/{id}/installments -- staff can edit bonus_units /
+    agent_bonus_units in the UI, then submit unchanged.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    plan_config: dict  # type: ignore[type-arg]
+    summary: InstallmentPreviewSummary
 
 
 class ProductResponse(BaseModel):
