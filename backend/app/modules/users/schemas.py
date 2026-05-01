@@ -11,8 +11,6 @@
 #   credentials is NEVER exposed in UserResponse -- contains password
 #   hashes and auth tokens. Profile is exposed as-is (JSONB dict).
 #
-# UserUpdate is defined here for Sprint 1.3 (PATCH /users/me).
-#
 # NULL HANDLING IN UserUpdate:
 #   All fields are Optional with default=None. "Not sent" vs "explicit null"
 #   is distinguished by exclude_unset in the service layer:
@@ -41,7 +39,7 @@ class UserResponse(BaseModel):
 
     id: UUID
     role: str
-    email: str | None = None
+    email: str | None = Field(default=None, description="User email address")
     is_active: bool
     onboarding_step: str
     kyc_status: str
