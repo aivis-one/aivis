@@ -873,14 +873,18 @@ case_update() {
     echo "Updated: $CURRENT_COMMIT -> $NEW_COMMIT"
     echo ""
 
-    # Rebuild all images (app + frontend).
-    echo "Rebuilding Docker images..."
-    docker compose build
+    # Rebuild backend image only -- frontend is rebuilt later, after the
+    # OpenAPI schema is regenerated, so the resulting bundle includes the
+    # current generated.ts.
+    echo "Rebuilding backend image..."
+    docker compose build app
 
-    # Restart stack (down + up to ensure new image is used).
-    echo "Restarting services..."
+    # Restart stack: drop everything, bring up backend + infra first.
+    # Frontend stays down until after gen-types so its build picks up the
+    # freshly generated types.
+    echo "Restarting backend + infra (frontend deferred)..."
     docker compose down
-    docker compose up -d
+    docker compose up -d app postgres redis
 
     # Wait for app to be healthy.
     echo ""
@@ -941,6 +945,86 @@ case_update() {
         return 1
     fi
 
+    # ----------------------------------------------------------------------
+    # Regenerate frontend TypeScript types from live OpenAPI schema.
+    #
+    # If regeneration changes the file (or creates it for the first time),
+    # cbshome-bot commits and pushes it, so the next `cbshome update` on
+    # any environment pulls the up-to-date types via plain git.
+    #
+    # Frontend developers MUST NOT edit generated.ts manually -- the file
+    # is overwritten on every deploy. Frontend-only types live in
+    # frontend/src/api/types.ts.
+    # ----------------------------------------------------------------------
+    echo ""
+    echo "Regenerating frontend types from backend OpenAPI..."
+    if ! curl -sf "http://127.0.0.1:8000/openapi.json" -o /tmp/openapi.json; then
+        echo -e "${RED}✗ Cannot fetch /openapi.json from backend${NC}"
+        return 1
+    fi
+    python3 "$COMPOSE_DIR/backend/scripts/generate_ts_types.py" \
+        /tmp/openapi.json \
+        "$COMPOSE_DIR/frontend/src/api/generated.ts" || {
+        echo -e "${RED}✗ generate_ts_types.py failed${NC}"
+        rm -f /tmp/openapi.json
+        return 1
+    }
+    rm -f /tmp/openapi.json
+
+    # Did regeneration change anything? --porcelain reports both modified
+    # tracked files and untracked new ones (first-ever run).
+    if [ -n "$(git status --porcelain frontend/src/api/generated.ts)" ]; then
+        echo "Schema drift detected -- committing regenerated generated.ts"
+
+        BOT_NAME="cbshome-bot"
+        BOT_EMAIL="bot@cbshome.local"
+
+        git add frontend/src/api/generated.ts
+        git -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" commit -m \
+"chore(types): regenerate generated.ts
+
+Triggered by cbshome update on commit $NEW_COMMIT" || {
+            echo -e "${RED}✗ Bot commit failed${NC}"
+            return 1
+        }
+
+        # Push with one retry: if a parallel push hits the same branch,
+        # rebase on it once and try again. Anything beyond that is rare
+        # and warrants manual investigation.
+        PUSH_OK=0
+        for attempt in 1 2; do
+            if GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY" \
+                git push origin "$BRANCH"; then
+                PUSH_OK=1
+                break
+            fi
+            if [ "$attempt" = "1" ]; then
+                echo "Push failed (likely a parallel push). Rebasing and retrying..."
+                GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY" \
+                    git pull --rebase origin "$BRANCH" || break
+            fi
+        done
+
+        if [ "$PUSH_OK" = "0" ]; then
+            echo -e "${RED}✗ Failed to push regenerated types to GitHub${NC}"
+            echo "  Bot commit exists locally on $COMPOSE_DIR but is not on origin."
+            echo "  Resolve manually:"
+            echo "    cd $COMPOSE_DIR && GIT_SSH_COMMAND=\"ssh -i $DEPLOY_KEY\" git push"
+            return 1
+        fi
+        echo -e "${GREEN}✓ Bot pushed regenerated types${NC}"
+    else
+        echo -e "${GREEN}✓ Types are in sync, no commit needed${NC}"
+    fi
+
+    # ----------------------------------------------------------------------
+    # Now build the frontend with the fresh generated.ts in place.
+    # ----------------------------------------------------------------------
+    echo ""
+    echo "Building frontend with fresh types..."
+    docker compose build frontend
+    docker compose up -d frontend
+
     # Final health check.
     echo ""
     sleep 3
@@ -950,6 +1034,45 @@ case_update() {
     else
         echo -e "${RED}✗ Health check failed after update${NC}"
         return 1
+    fi
+}
+
+# ==============================================================================
+# GEN-TYPES
+# ==============================================================================
+#
+# Manual / on-demand regeneration of frontend/src/api/generated.ts from
+# the live backend OpenAPI schema. Useful when a developer wants to
+# refresh types without running a full `cbshome update` (e.g. while
+# iterating on a new Pydantic schema on the test VPS).
+#
+# This command does NOT commit or push -- it only writes the file.
+# `cbshome update` is what handles the bot commit/push cycle.
+# ==============================================================================
+
+case_gen_types() {
+    cd_compose
+
+    if ! curl -sf "http://127.0.0.1:8000/openapi.json" -o /tmp/openapi.json; then
+        echo -e "${RED}✗ Cannot fetch /openapi.json from backend${NC}"
+        echo "  Is the app container running? Check with: cbshome status"
+        return 1
+    fi
+
+    python3 "$COMPOSE_DIR/backend/scripts/generate_ts_types.py" \
+        /tmp/openapi.json \
+        "$COMPOSE_DIR/frontend/src/api/generated.ts" || {
+        echo -e "${RED}✗ generate_ts_types.py failed${NC}"
+        rm -f /tmp/openapi.json
+        return 1
+    }
+    rm -f /tmp/openapi.json
+
+    if [ -n "$(git status --porcelain frontend/src/api/generated.ts)" ]; then
+        echo -e "${YELLOW}⚠ generated.ts changed -- not committed${NC}"
+        echo "  Run 'cbshome update' to commit and push, or commit by hand."
+    else
+        echo -e "${GREEN}✓ generated.ts is already up to date${NC}"
     fi
 }
 
@@ -1224,6 +1347,7 @@ case "$CMD" in
     test)           case_test "$@" ;;
     lint)           case_lint ;;
     update|deploy)  case_update ;;
+    gen-types)      case_gen_types ;;
     restart)        case_restart "$@" ;;
     backup)         case_backup ;;
     db)             case_db "$@" ;;
@@ -1248,7 +1372,8 @@ case "$CMD" in
         echo "  lint                      — Run ruff + mypy + eslint"
         echo ""
         echo "Deployment:"
-        echo "  update                    — Pull, rebuild, migrate, test, restart"
+        echo "  update                    — Pull, rebuild, migrate, test, regen-types, restart"
+        echo "  gen-types                 — Regenerate frontend generated.ts from live OpenAPI"
         echo "  restart [service]         — Restart all or specific service"
         echo ""
         echo "Database:"
