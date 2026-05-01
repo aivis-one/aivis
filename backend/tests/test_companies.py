@@ -67,6 +67,9 @@ def _company_payload(
 
     Optional `name` override for search tests where a specific brand
     string matters.
+
+    Sprint 4.3: total_supply and shares_per_option are now required by
+    the schema. Defaults: 1_000_000 options total, 1 share per option.
     """
     return {
         "email": f"{EMAIL_PREFIX}{suffix}@example.com",
@@ -75,6 +78,9 @@ def _company_payload(
         "description": "A test company",
         "price_per_unit_cents": 10000,
         "distribution_config": VALID_DIST_CONFIG,
+        # Sprint 4.3:
+        "total_supply": 1_000_000,
+        "shares_per_option": 1,
     }
 
 
@@ -124,6 +130,9 @@ async def test_create_company(
     assert body["status"] == "hidden"
     assert body["price_per_unit_cents"] == 10000
     assert body["distribution_config"] == VALID_DIST_CONFIG
+    # Sprint 4.3: supply fields round-trip through Create -> Response.
+    assert body["total_supply"] == 1_000_000
+    assert body["shares_per_option"] == 1
 
 
 # ---------------------------------------------------------------------------

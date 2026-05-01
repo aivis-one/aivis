@@ -78,7 +78,11 @@ async def _admin_token(
 async def _create_company(
     client: AsyncClient, admin_token: str, suffix: str = "co1"
 ) -> dict:
-    """Helper: create a company via staff endpoint."""
+    """Helper: create a company via staff endpoint.
+
+    Sprint 4.3: also creates the active OptionPool with equity_percent=100,
+    so subsequent _create_product() calls can attach to it.
+    """
     resp = await client.post(
         "/api/v1/staff/companies",
         json={
@@ -91,11 +95,24 @@ async def _create_company(
                 "company_pct": 0.65,
                 "agent_levels": [0.10, 0.03, 0.01],
             },
+            # Sprint 4.3:
+            "total_supply": 1_000_000,
+            "shares_per_option": 1,
         },
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Create company failed: {resp.text}"
-    return resp.json()
+    company = resp.json()
+
+    # Sprint 4.3: products require an active pool.
+    pool_resp = await client.post(
+        f"/api/v1/staff/companies/{company['id']}/pool",
+        json={"equity_percent": "100.0"},
+        headers=auth_headers(admin_token),
+    )
+    assert pool_resp.status_code == 201, f"Create pool failed: {pool_resp.text}"
+
+    return company
 
 
 async def _create_product(
@@ -106,11 +123,16 @@ async def _create_product(
     units: int = 100,
     purchase_config: dict | None = None,
 ) -> dict:
-    """Helper: create a product via staff endpoint."""
+    """Helper: create a product via staff endpoint.
+
+    Sprint 4.3: the `units` kwarg name stays for backwards-compat with
+    test call sites; the value is forwarded as `package_size` in the
+    request body (the column was renamed).
+    """
     body: dict = {
         "company_id": company_id,
         "name": "Test Package",
-        "units": units,
+        "package_size": units,  # Sprint 4.3: column renamed
     }
     if purchase_config is not None:
         body["purchase_config"] = purchase_config
@@ -424,8 +446,10 @@ async def test_purchase_instant_buy(
     data = resp.json()
     assert len(data) >= 1
     assert data[0]["legal_basis"] == "sale"
-    assert data[0]["units"] == product["units"]
-    assert data[0]["paid_cents"] == product["units"] * product["price_per_unit_cents"]
+    # Sprint 4.3: data[0] is a Purchase response (Purchase.units stays);
+    # product["package_size"] was Product.units before the rename.
+    assert data[0]["units"] == product["package_size"]
+    assert data[0]["paid_cents"] == product["package_size"] * product["price_per_unit_cents"]
 
 
 @pytest.mark.asyncio

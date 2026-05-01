@@ -101,6 +101,7 @@ async def _admin_token(
 async def _create_company(
     client: AsyncClient, admin_token: str, suffix: str = "co1"
 ) -> dict:
+    """Sprint 4.3: also creates active OptionPool for the company."""
     resp = await client.post(
         "/api/v1/staff/companies",
         json={
@@ -113,11 +114,24 @@ async def _create_company(
                 "company_pct": 0.65,
                 "agent_levels": [0.10, 0.03, 0.01],
             },
+            # Sprint 4.3:
+            "total_supply": 1_000_000,
+            "shares_per_option": 1,
         },
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201
-    return resp.json()
+    company = resp.json()
+
+    # Sprint 4.3: products require an active pool.
+    pool_resp = await client.post(
+        f"/api/v1/staff/companies/{company['id']}/pool",
+        json={"equity_percent": "100.0"},
+        headers=auth_headers(admin_token),
+    )
+    assert pool_resp.status_code == 201, f"Create pool failed: {pool_resp.text}"
+
+    return company
 
 
 async def _activate_company(
@@ -138,12 +152,13 @@ async def _create_product(
     *,
     units: int = 100,
 ) -> dict:
+    """Sprint 4.3: kwarg `units` stays for call-site compat; column is package_size."""
     resp = await client.post(
         "/api/v1/staff/products",
         json={
             "company_id": company_id,
             "name": "Test Package",
-            "units": units,
+            "package_size": units,  # Sprint 4.3: column renamed
         },
         headers=auth_headers(admin_token),
     )

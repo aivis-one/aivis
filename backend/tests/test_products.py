@@ -14,7 +14,7 @@
 #   9:  Delete installment (soft) -> 204, not visible in detail
 #   10: Price cascade soft-deletes installments
 #   11: Public list shows only active products
-#   12: Public detail includes installments and sold_units
+#   12: Public detail includes installments and available_packages
 #   13: Product cover_url round-trip (create + update + staff response)
 #   14: Public list denormalises company_name / company_logo_url /
 #       company_cover_url + product cover_url
@@ -69,13 +69,20 @@ async def _create_company(
     logo_url: str | None = None,
     cover_url: str | None = None,
 ) -> dict:
-    """Helper: create a company and return response."""
+    """Helper: create a company and return response.
+
+    Sprint 4.3: also creates the active OptionPool with equity_percent=100,
+    so subsequent _create_product() calls can attach to it.
+    """
     body: dict = {
         "email": f"{EMAIL_PREFIX}{suffix}@example.com",
         "password": "companypass123",
         "name": f"Test Company {suffix}",
         "price_per_unit_cents": 10000,
         "distribution_config": VALID_DIST_CONFIG,
+        # Sprint 4.3:
+        "total_supply": 1_000_000,
+        "shares_per_option": 1,
     }
     if logo_url is not None:
         body["logo_url"] = logo_url
@@ -88,7 +95,20 @@ async def _create_company(
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Create company failed: {resp.text}"
-    return resp.json()
+    company = resp.json()
+
+    # Sprint 4.3: products require an active pool. Create one with the
+    # whole supply allocated (equity_percent=100) -- tests don't care
+    # about a partial allocation, they only need product creation to
+    # succeed.
+    pool_resp = await client.post(
+        f"/api/v1/staff/companies/{company['id']}/pool",
+        json={"equity_percent": "100.0"},
+        headers=auth_headers(admin_token),
+    )
+    assert pool_resp.status_code == 201, f"Create pool failed: {pool_resp.text}"
+
+    return company
 
 
 async def _activate_company(
@@ -117,7 +137,7 @@ async def _create_product(
         "company_id": company_id,
         "name": f"Package {suffix}",
         "description": f"Test package {suffix}",
-        "units": units,
+        "package_size": units,  # Sprint 4.3: column renamed
     }
     if cover_url is not None:
         body["cover_url"] = cover_url
@@ -166,9 +186,11 @@ async def test_create_product(
 
     assert product["name"] == "Package pkg"
     assert product["status"] == "hidden"
-    assert product["units"] == 100
+    assert product["package_size"] == 100  # Sprint 4.3: column renamed
     assert product["price_per_unit_cents"] == 10000
     assert product["company_id"] == company["id"]
+    # Sprint 4.3: product carries the pool it was attached to.
+    assert "pool_id" in product
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +243,7 @@ async def test_create_product_no_financial_ops(
         json={
             "company_id": company["id"],
             "name": "Blocked",
-            "units": 50,
+            "package_size": 50,  # Sprint 4.3: column renamed
         },
         headers=auth_headers(nofin_token),
     )
@@ -537,7 +559,7 @@ async def test_public_list_active_only(
 async def test_public_detail_with_installments(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Public detail includes installments and sold_units."""
+    """Public detail includes installments and available_packages."""
     token = await _admin_token(client, db_session)
     company = await _create_company(client, token, suffix="det")
     product = await _create_product(client, token, company["id"])
@@ -560,7 +582,10 @@ async def test_public_detail_with_installments(
     resp = await client.get(f"/api/v1/products/{product['id']}")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["sold_units"] == 0
+    # Sprint 4.3: was sold_units (count of purchases). Now available_packages
+    # = floor(pool_remaining / package_size). Empty company => 1_000_000 / 100
+    # = 10_000 packages.
+    assert body["available_packages"] == 10_000
     assert len(body["installments"]) == 1
     assert body["installments"][0]["name"] == "Visible Plan"
 

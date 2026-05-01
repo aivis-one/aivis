@@ -71,7 +71,10 @@ async def _create_company(
     *,
     price_per_unit_cents: int = 10000,
 ) -> dict:
-    """Create a company via staff endpoint."""
+    """Create a company via staff endpoint.
+
+    Sprint 4.3: also creates active OptionPool for the company.
+    """
     resp = await client.post(
         "/api/v1/staff/companies",
         json={
@@ -84,11 +87,24 @@ async def _create_company(
                 "company_pct": 0.65,
                 "agent_levels": [0.10, 0.03, 0.01],
             },
+            # Sprint 4.3:
+            "total_supply": 1_000_000,
+            "shares_per_option": 1,
         },
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Create company failed: {resp.text}"
-    return resp.json()
+    company = resp.json()
+
+    # Sprint 4.3: products require an active pool.
+    pool_resp = await client.post(
+        f"/api/v1/staff/companies/{company['id']}/pool",
+        json={"equity_percent": "100.0"},
+        headers=auth_headers(admin_token),
+    )
+    assert pool_resp.status_code == 201, f"Create pool failed: {pool_resp.text}"
+
+    return company
 
 
 async def _create_product(
@@ -105,7 +121,7 @@ async def _create_product(
         json={
             "company_id": company_id,
             "name": name,
-            "units": units,
+            "package_size": units,  # Sprint 4.3: column renamed
         },
         headers=auth_headers(admin_token),
     )

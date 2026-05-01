@@ -18,6 +18,7 @@
 #   staff_companies_router    -> /api/v1/staff/companies/* (Sprint 4.1)
 #   products_router           -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
+#   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
 #   payments_router           -> /api/v1/payments/* (Sprint 5.1)
 #   payments_webhook_router   -> /api/v1/payments/webhooks/* (Sprint 5.2)
 #   staff_payments_router     -> /api/v1/staff/payments/* (Sprint 5.3)
@@ -41,6 +42,11 @@
 #   investor_dashboard_router -> /api/v1/dashboard/* (Sprint 9.2)
 #   portfolio_router          -> /api/v1/portfolio/* (Sprint 9.2)
 #   certificate_router        -> /api/v1/purchases/* (Sprint 9.2)
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - +staff_pools_router for POST/PATCH /staff/companies/{id}/pool.
+#     Wired right after staff_products_router so the staff-side
+#     company/product/pool admin trio stays grouped.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -102,6 +108,7 @@ from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
 from app.modules.payments.webhook_router import router as payments_webhook_router
+from app.modules.pools.router import router as staff_pools_router
 from app.modules.portfolio.router import router as portfolio_router
 from app.modules.posts.router import events_router, posts_router
 from app.modules.posts.staff_router import staff_events_router, staff_posts_router
@@ -163,48 +170,40 @@ async def _payment_confirmation_worker() -> None:
 async def _installment_payment_worker() -> None:
     """Background task: pay due tranches and default overdue plans.
 
-    Runs daily at INSTALLMENT_WORKER_HOUR (UTC). Each cycle delegates
-    to run_installment_batch() in installments/worker.py.
+    Runs daily at INSTALLMENT_WORKER_HOUR. Each cycle delegates to
+    run_installment_batch() in installments/worker.py.
 
-    Fix #34: batch runs BEFORE first sleep so any tranches that accumulated
-    during downtime are processed immediately on startup, not deferred to
-    the next scheduled hour.
+    Fix #34: batch runs BEFORE sleep so overdue tranches are processed
+    immediately on startup, not after waiting one full day.
     """
     target_hour = settings.installment_worker_hour
     logger.info(
         "installment_worker_started",
-        target_hour_utc=target_hour,
+        target_hour=target_hour,
     )
 
     while True:
         try:
-            # Batch-first: process accumulated tranches immediately.
             await run_installment_batch()
 
-            # Calculate sleep until next target hour.
+            # Sleep until next target_hour.
             now = datetime.now(UTC)
             next_run = now.replace(
-                hour=target_hour, minute=0, second=0, microsecond=0
+                hour=target_hour,
+                minute=0,
+                second=0,
+                microsecond=0,
             )
             if next_run <= now:
-                # Target hour already passed today -- schedule for tomorrow.
                 next_run = next_run + timedelta(days=1)
-
             sleep_seconds = (next_run - now).total_seconds()
-            logger.info(
-                "installment_worker_sleeping",
-                next_run=next_run.isoformat(),
-                sleep_seconds=int(sleep_seconds),
-            )
-
             await asyncio.sleep(sleep_seconds)
-
         except asyncio.CancelledError:
             logger.info("installment_worker_stopped")
             break
         except Exception:
             logger.exception("installment_worker_error")
-            # Sleep 1 hour before retry to avoid tight error loop.
+            # Sleep an hour before retry to avoid tight error loop.
             await asyncio.sleep(3600)
 
 
@@ -381,6 +380,8 @@ app.include_router(companies_router)
 app.include_router(staff_companies_router)
 app.include_router(products_router)
 app.include_router(staff_products_router)
+# Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).
+app.include_router(staff_pools_router)
 app.include_router(payments_router)
 app.include_router(payments_webhook_router)
 app.include_router(staff_payments_router)

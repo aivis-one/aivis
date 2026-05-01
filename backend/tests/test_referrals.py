@@ -97,7 +97,11 @@ async def _create_company_and_product(
     db_session: AsyncSession,
     suffix: str = "co1",
 ) -> UUID:
-    """Create company + product + activate. Returns product_id."""
+    """Create company + pool + product + activate. Returns product_id.
+
+    Sprint 4.3: company carries supply fields; an active OptionPool is
+    created before the product so the product can attach to it.
+    """
     # Create company.
     resp = await client.post(
         "/api/v1/staff/companies",
@@ -110,11 +114,22 @@ async def _create_company_and_product(
                 "company_pct": 0.65,
                 "agent_levels": [0.10, 0.03, 0.01],
             },
+            # Sprint 4.3:
+            "total_supply": 1_000_000,
+            "shares_per_option": 1,
         },
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Company create failed: {resp.text}"
     company_id = resp.json()["id"]
+
+    # Sprint 4.3: pool before product.
+    pool_resp = await client.post(
+        f"/api/v1/staff/companies/{company_id}/pool",
+        json={"equity_percent": "100.0"},
+        headers=auth_headers(admin_token),
+    )
+    assert pool_resp.status_code == 201, f"Pool create failed: {pool_resp.text}"
 
     # Activate company.
     await client.patch(
@@ -129,7 +144,7 @@ async def _create_company_and_product(
         json={
             "company_id": company_id,
             "name": f"Product {suffix}",
-            "units": 10,
+            "package_size": 10,  # Sprint 4.3: column renamed
         },
         headers=auth_headers(admin_token),
     )

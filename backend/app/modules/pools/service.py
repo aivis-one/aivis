@@ -3,22 +3,28 @@
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   create_pool()      -- create the active OptionPool for a company.
-#                         Caller specifies equity_percent (the share of
-#                         company.total_supply to allocate). total_options
-#                         is derived: floor(total_supply * pct / 100).
-#                         At most one active pool per company is enforced
-#                         by a partial unique index on the column
-#                         (uq_one_active_pool_per_company, migration 0027).
-#                         Service does a pre-check SELECT for a clean
-#                         400 message, plus a SAVEPOINT + IntegrityError
-#                         catch as a race-condition safety net (P-05).
-#   update_pool()      -- update an active pool's total_options
-#                         (допэмиссия). equity_percent is recomputed.
-#                         Cannot reduce below already-consumed options.
-#   get_active_pool()  -- load the single active pool for a company.
-#                         Used by products/service.py at create time and
-#                         by purchases/service.py at purchase time.
+#   create_pool()             -- create the active OptionPool for a company.
+#                                Caller specifies equity_percent (the share of
+#                                company.total_supply to allocate). total_options
+#                                is derived: floor(total_supply * pct / 100).
+#                                At most one active pool per company is enforced
+#                                by a partial unique index on the column
+#                                (uq_one_active_pool_per_company, migration 0027).
+#                                Service does a pre-check SELECT for a clean
+#                                400 message, plus a SAVEPOINT + IntegrityError
+#                                catch as a race-condition safety net (P-05).
+#   update_pool()             -- update an active pool's total_options
+#                                (допэмиссия). equity_percent is recomputed.
+#                                Cannot reduce below already-consumed options.
+#   get_active_pool()         -- load the single active pool for a company.
+#                                Used by products/service.py at create time and
+#                                by purchases/service.py at purchase time.
+#   get_pool_consumed()       -- SUM(Purchase.units) for active purchases of
+#                                the company (gifts included).
+#   with_consumed_remaining() -- decorate a pool ORM row with computed
+#                                consumed + remaining for PoolResponse. Used
+#                                by the staff pool router and (later) by the
+#                                company dashboard module (B5).
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -116,6 +122,40 @@ async def get_pool_consumed(
     )
     result = await session.execute(stmt)
     return int(result.scalar_one())
+
+
+async def with_consumed_remaining(
+    pool: OptionPool,
+    session: AsyncSession,
+) -> "PoolResponseDict":
+    """Render a pool ORM row to a dict that PoolResponse can validate.
+
+    Computes consumed (sum of active Purchase.units for the company) and
+    remaining (total_options - consumed; can go negative when gifts have
+    overflowed into owner supply).
+
+    The router uses this helper before model_validate so the response
+    carries those derived numbers. Kept here (not in the router) so the
+    company dashboard module (B5) can reuse it without going through
+    the staff endpoint.
+    """
+    consumed = await get_pool_consumed(pool.company_id, session)
+    return {
+        "id": pool.id,
+        "company_id": pool.company_id,
+        "equity_percent": pool.equity_percent,
+        "total_options": pool.total_options,
+        "status": pool.status,
+        "created_at": pool.created_at,
+        "updated_at": pool.updated_at,
+        "consumed": consumed,
+        "remaining": pool.total_options - consumed,
+    }
+
+
+# Lightweight typing alias: PoolResponse expects this shape.
+# Defined as Any-typed dict to avoid a runtime import cycle with schemas.
+PoolResponseDict = dict  # type: ignore[type-arg, misc]
 
 
 # ---------------------------------------------------------------------------
