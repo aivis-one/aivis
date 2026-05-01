@@ -3,10 +3,10 @@
 **Tracking ID (Backend):** TD-071
 **Tracking ID (Frontend):** TD-F07
 **Sprint:** 4.3 (Phase 4)
-**Статус:** In Progress / 🔴 Blocker before Frontend Phase F5
-**Версия:** 2.0
+**Статус:** In Progress -- Backend B0-B2.1 + B6 deployed (✅), B3/B4/B5/B7/B8 pending
+**Версия:** 2.2
 **Дата создания:** 17 апреля 2026
-**Дата обновления:** 30 апреля 2026
+**Дата обновления:** 1 мая 2026
 
 **Зависимости:**
 - `CBSHOME-Backend.md` — Phase 4, реестр техдолга (TD-071)
@@ -863,30 +863,31 @@ def downgrade() -> None:
 
 ### Backend
 
-- [ ] Миграция `0027_option_pool_refactor` применена, БД консистентна
-- [ ] Таблица `option_pools` создана, partial unique index работает
-- [ ] `CompanyProfile` имеет `total_supply` и `shares_per_option`
-- [ ] `Product` имеет `pool_id` (FK) и `package_size` (renamed from `units`)
-- [ ] Pool CRUD endpoints работают (staff-only)
-- [ ] `get_available_packages_map()` — корректный расчёт через pool
-- [ ] `execute_purchase()` — валидация `pool_remaining >= package_size`
-- [ ] Gift purchases учитываются в расходе пула
-- [ ] Installment calculator endpoint возвращает корректный preview
-- [ ] Company dashboard endpoints возвращают данные
-- [ ] Все существующие тесты зелёные
-- [ ] Все новые тесты зелёные
+- [x] Миграция `0027_option_pool_refactor` применена, БД консистентна (B0)
+- [x] Таблица `option_pools` создана, partial unique index работает (B0)
+- [x] `CompanyProfile` имеет `total_supply` и `shares_per_option` (B0)
+- [x] `Product` имеет `pool_id` (FK) и `package_size` (renamed from `units`) (B0)
+- [x] Pool CRUD endpoints работают (staff-only) (B1+B2)
+- [x] `get_available_packages_map()` — корректный расчёт через pool (B1)
+- [x] `execute_purchase()` — валидация `pool_remaining >= package_size` (B1)
+- [x] Gift purchases учитываются в расходе пула (B1)
+- [ ] Installment calculator endpoint возвращает корректный preview (B4 — pending)
+- [ ] Company dashboard endpoints возвращают данные (B5 — pending)
+- [x] Все существующие тесты зелёные (341/341 после B2.1)
+- [ ] Все новые тесты зелёные (`tests/test_pools.py`, 11 тестов — B3 pending)
 
 ### Frontend (TD-F07)
 
-- [ ] Types обновлены: `package_size`, `available_packages`
-- [ ] Components используют `available_packages` напрямую
-- [ ] i18n ключи во всех 4 локалях
-- [ ] `npm run typecheck` — без ошибок
+- [ ] Types обновлены: `package_size`, `available_packages` (B7 — pending)
+- [ ] Components используют `available_packages` напрямую (B7 — pending)
+- [ ] i18n ключи во всех 4 локалях (B7 — pending)
+- [ ] `npm run typecheck` — без ошибок (B7 — pending)
 
 ### Data / seed
 
-- [ ] Seed создаёт Pool для каждой компании
-- [ ] Availability показывает реалистичные числа
+- [x] Seed создаёт Pool для каждой компании (B6)
+- [x] Availability показывает реалистичные числа (B6 — каждая компания получает 100% pool с total_options >> any package_size)
+- [x] Test accounts seed: investor / company / agent / staff (B6 — `seed_test_accounts.py`)
 
 ---
 
@@ -907,6 +908,16 @@ def downgrade() -> None:
   - Точный перечень файлов/строк для правок (Appendix A)
   - Зафиксированы Risk Areas
   - `generate_ts_types.py` — в scope Sprint 4.3
+- **v2.2 (2026-05-01):** прогресс реализации:
+  - Backend B0 (миграция + модели) — deployed
+  - Backend B1 (schemas + services + rename + pool wiring) — deployed
+  - Backend B2 (pool router + main.py + 7 test fixtures) — deployed
+  - Backend B2.1 (test_posts.py hotfix) — deployed
+  - Backend B6 (seed_storefront update + new seed_test_accounts) — deployed
+  - 341/341 тестов зелёные
+  - VPS DB volume пересобран (старые ручные purchases ломали `test_monthly_payout_distributes_pool` через грязный pool_cents)
+  - Добавлен раздел **15. Implementation Progress** с детальным журналом батчей
+  - Pending: B3 (test_pools.py), B4 (calculator), B5 (company dashboard), B7 (frontend rename), B8 (gen-types)
 
 ---
 
@@ -1069,6 +1080,148 @@ Spec: CBSHOME-Share-Pool-Refactor.md v2.0
 7. **Pool enforcement in `execute_purchase()`** — validation inserted between `_load_company` and `PurchaseContext` construction, inside same DB transaction. No advisory lock on pool (decided: business-acceptable race condition for MVP).
 8. **`pool_id` FK nullable** — existing products have no pool. `create_product()` must require active pool; migration populates pool_id for existing products.
 9. **`InstallmentView.vue:180`** — `getTrancheUnits` in `utils/installmentPlans.ts` may have own tests needing update.
+
+---
+
+## 15. Implementation Progress
+
+Журнал реализации Sprint 4.3 по батчам (B-нумерация — рабочая, не совпадает с номерами секций спеки).
+
+### B0 — Foundation: миграция + модели ✅
+
+**Status:** committed + deployed
+**Files:**
+- `backend/migrations/versions/2026_05_01_0027_option_pool_refactor.py` — NEW
+- `backend/app/modules/pools/__init__.py` — NEW
+- `backend/app/modules/pools/models.py` — NEW (`OptionPool`)
+- `backend/app/modules/companies/models.py` — `+total_supply`, `+shares_per_option`
+- `backend/app/modules/products/models.py` — `units → package_size`, `+pool_id` FK
+- `backend/migrations/env.py` — import `OptionPool`
+
+Миграция применена на чистую БД при volume reset (см. v2.2 changelog).
+
+### B1 — Backend core: schemas + services + rename ✅
+
+**Status:** committed + deployed
+**Files:** 11 (см. архив `cbshome_b1_backend_core.tar.gz`)
+
+Ключевые решения:
+- `validate_plan_config(product_units=...)` kwarg name **сохранён** (Appendix A разрешил)
+- `Decimal("0.0001")` quantization для `equity_percent`
+- Pool capacity check в `execute_purchase` **до** money moves; race условно принят как MVP-риск
+- `get_sold_units_map → get_available_packages_map(company_ids, product_ids)` — pool-keyed
+- Local import `pools.service` в `products/service.py` против top-level cycle
+
+### B2 — Pool router + main.py + 7 test fixtures ✅
+
+**Status:** committed + deployed
+**Files:** 10 (см. архив `cbshome_b2_pool_router_and_tests.tar.gz`)
+
+Ключевые решения:
+- Pool endpoints под `company_manage + financial_operations`
+- `with_consumed_remaining(pool, session)` helper в `pools/service.py` для DRY (роутер + B5 dashboard)
+- В тесте `test_purchases.py:427` хирургический фикс mixed-line: `data[0]["units"]` (Purchase, остаётся) vs `product["package_size"]` (был Product.units)
+- `_create_company` хелперы в 6 тест-файлах теперь сами POST-ят `/staff/companies/{id}/pool` с `equity_percent="100.0"` чтоб product creation не падал
+
+### B2.1 — test_posts.py hotfix ✅
+
+**Status:** committed + deployed
+
+`test_posts.py` не был в Appendix A grep-листе (нет references к `units`), но создаёт компании в своих хелперах. Sprint 4.3's required `total_supply / shares_per_option` поломали 2 теста. Фикс — добавил supply поля в helper. Pool не нужен — этот файл не создаёт продукты.
+
+### B6 — Seed scripts ✅
+
+**Status:** committed + deployed
+**Files:** 3 (см. архив `cbshome_b6_seeds.tar.gz`)
+
+`seed_storefront.py` updates:
+- COMPANIES: `+total_supply` (1M-10M на компанию), `+shares_per_option=1`
+- PRODUCTS: 21 rename `units → package_size`
+- NEW `_ensure_pool` helper: 100% pool на компанию
+- Orchestration: companies → pools → products → installments
+- `_ensure_product` принимает `pool=`, ставит `pool_id` + denormalised `company_id`
+- `_reset` удаляет OptionPool между Products и CompanyProfile (FK ondelete=RESTRICT)
+
+`seed_test_accounts.py` (NEW):
+- 4 dev-аккаунта: investor / company / agent / staff
+- Все используют `seedpass123`
+- Test Company [Auto] — отдельная от storefront, distribution 80/10/5/5
+- Agent: фикс. referral code `TEST_AGENT_LINK`
+- Staff: все permissions True (стенд-ин админ)
+
+`install_cbshome.sh`:
+- Удалена секция «Frontend Fonts (Self-hosted)» (-50 строк) — front уже шиппит локальные fonts
+- `seed_test_accounts` добавлен в 4 call sites: initial install, update flow, обе ветки `cbshome seed`
+
+### Pending batches
+
+#### B3 — Pool tests (NEW file)
+
+**File:** `backend/tests/test_pools.py` (NEW, 11 тестов из спеки §8.6)
+
+Покрытие:
+1. `test_create_pool` — POST → 201, equity_percent + total_options correct
+2. `test_one_active_pool_per_company` — второй POST → 400 / DB constraint
+3. `test_update_pool_total_options` — PATCH → equity_percent recomputed
+4. `test_update_pool_below_consumed` — PATCH below sold → 400
+5. `test_product_requires_active_pool` — Create product without pool → 400
+6. `test_available_packages_decreases` — Buy → availability decreases for ALL products of company
+7. `test_purchase_sold_out` — `pool_remaining < package_size` → 400
+8. `test_gift_consumes_pool` — Gift purchase reduces `pool_remaining`
+9. `test_gift_overflow_allowed` — Gift when `pool_remaining=0` → succeeds, pool goes negative
+10. `test_installment_preview` — Calculator returns correct plan_config (зависит от B4!)
+11. `test_installment_preview_invariants` — Amounts sum, options sum, rounding correct (B4!)
+
+**Зависимость:** тесты 10-11 требуют B4 готовым. Можно сначала B3 без них (9 тестов), потом B4 + добить.
+
+#### B4 — Installment Calculator
+
+**Files:**
+- `backend/app/modules/products/calculator.py` (NEW) — `calculate_installment_preview()` логика из §3.9
+- `backend/app/modules/products/schemas.py` — `+InstallmentPreviewRequest`, `+InstallmentPreviewResponse`
+- `backend/app/modules/products/staff_router.py` — `+POST /staff/products/{id}/installments/preview`
+- `backend/app/modules/products/constants.py` — `+ALLOWED_TRANCHES = (3, 6, 12, 24, 36)`
+
+#### B5 — Company Dashboard module (NEW)
+
+**Files:**
+- `backend/app/modules/companies/dependencies.py` (NEW) — `get_current_company_profile()`
+- `backend/app/modules/company_dashboard/__init__.py` (NEW)
+- `backend/app/modules/company_dashboard/schemas.py` (NEW)
+- `backend/app/modules/company_dashboard/service.py` (NEW)
+- `backend/app/modules/company_dashboard/router.py` (NEW)
+- `backend/app/main.py` — `+company_dashboard_router`
+
+Endpoints:
+- `GET /api/v1/company/dashboard` — pool info embedded (см. §6.4)
+- `GET /api/v1/company/analytics`
+
+#### B7 — Frontend mechanical rename (TD-F07)
+
+**Files:**
+- `frontend/src/api/types.ts` — `units → package_size`, `sold_units → available_packages`, `+total_supply / shares_per_option / pool fields`
+- `frontend/src/components/products/ProductCard.vue` — `p.units - p.sold_units → p.available_packages`
+- `frontend/src/views/products/ProductDetailView.vue` — same + sold-out state
+- `frontend/src/views/purchase/PurchaseView.vue` — `product.units → product.package_size`
+- `frontend/src/views/installments/InstallmentView.vue` — same
+- `frontend/src/utils/installmentPlans.ts` — `getTrancheUnits` обновить
+- 4 локали: `+inv.market.packsAvailable`, `+inv.product.packsAvailability`, `+inv.product.soldOut`
+
+#### B8 — generate_ts_types.py + cbshome gen-types
+
+**Files:**
+- `backend/scripts/generate_ts_types.py` (NEW) — OpenAPI → TS, по pattern VELO
+- `backend/install_cbshome.sh` — `+cbshome gen-types` subcommand, integrate в `cbshome update`
+- `frontend/src/api/generated.ts` — auto-generated, COMMITTED
+
+**VPS state на 2026-05-01:**
+- 27 миграций накатаны на чистую БД
+- 341/341 тестов зелёные (после volume reset + B2.1)
+- Storefront seed работает (6 компаний, 21 продукт, 19 installment plans)
+- Test accounts seed работает (4 аккаунта)
+- Backend здоров
+
+**Known frontend issue (вне scope):** `staff@test.cbshome.dev` после логина не попадает в админку, фронт показывает Identity Verification flow (KYC). Это баг роутинга на фронте, не имеет отношения к Sprint 4.3. Investor/agent/company логин работают.
 
 ---
 
