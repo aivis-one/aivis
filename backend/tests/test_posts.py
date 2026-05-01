@@ -88,7 +88,13 @@ async def _admin_token(
 async def _create_company(
     client: AsyncClient, admin_token: str, suffix: str = "co1"
 ) -> dict:
-    """Helper: create a company via staff endpoint."""
+    """Helper: create a company via staff endpoint.
+
+    Sprint 4.3 (B2.1 hotfix): total_supply / shares_per_option are now
+    required by CreateCompanyRequest. test_posts.py never creates products
+    against these companies, so no OptionPool is needed -- supply fields
+    alone unblock the schema.
+    """
     resp = await client.post(
         "/api/v1/staff/companies",
         json={
@@ -101,6 +107,9 @@ async def _create_company(
                 "company_pct": 0.65,
                 "agent_levels": [0.10, 0.03, 0.01],
             },
+            # Sprint 4.3:
+            "total_supply": 1_000_000,
+            "shares_per_option": 1,
         },
         headers=auth_headers(admin_token),
     )
