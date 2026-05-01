@@ -993,14 +993,14 @@ Triggered by cbshome update on commit $NEW_COMMIT" || {
         # and warrants manual investigation.
         PUSH_OK=0
         for attempt in 1 2; do
-            if GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY" \
+            if GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" \
                 git push origin "$BRANCH"; then
                 PUSH_OK=1
                 break
             fi
             if [ "$attempt" = "1" ]; then
                 echo "Push failed (likely a parallel push). Rebasing and retrying..."
-                GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY" \
+                GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" \
                     git pull --rebase origin "$BRANCH" || break
             fi
         done
@@ -1009,7 +1009,7 @@ Triggered by cbshome update on commit $NEW_COMMIT" || {
             echo -e "${RED}✗ Failed to push regenerated types to GitHub${NC}"
             echo "  Bot commit exists locally on $COMPOSE_DIR but is not on origin."
             echo "  Resolve manually:"
-            echo "    cd $COMPOSE_DIR && GIT_SSH_COMMAND=\"ssh -i $DEPLOY_KEY\" git push"
+            echo "    cd $COMPOSE_DIR && GIT_SSH_COMMAND=\"ssh -i /root/.ssh/id_ed25519_cbshome_deploy\" git push"
             return 1
         fi
         echo -e "${GREEN}✓ Bot pushed regenerated types${NC}"
