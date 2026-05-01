@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Processor Base Types (Sprint 6.1)
+# CBSHOME Backend -- Processor Base Types (Sprint 6.1, Sprint 4.3 comment)
 # =============================================================================
 #
 # Core data structures for the Distribution Engine.
@@ -25,6 +25,13 @@
 # ORIGIN_PAYMENT_ID:
 #   Linked to the Payment with MAX frozen_until. Used for reversal
 #   chain. May be None if all investor funds are confirmed.
+#
+# Sprint 4.3 NOTE:
+#   PurchaseContext.units stays named `units` -- this is "options the
+#   investor receives" (a Purchase-level value), not the immutable
+#   package size on Product. The data source on Product is now
+#   `package_size` (was `units`); see purchases/service.py where we
+#   populate context.units = product.package_size.
 # =============================================================================
 
 from __future__ import annotations
@@ -78,7 +85,7 @@ class PurchaseContext:
     company_user_id: UUID  # User.id for the company (for passive_ledger)
     platform_user_id: UUID  # Platform system user (double-entry anchor)
     amount_cents: int  # total purchase price (units * price_per_unit_cents)
-    units: int  # product.units
+    units: int  # product.package_size
     price_per_unit_cents: int  # snapshot at purchase time
     distribution_config: dict  # resolved: product override or company fallback
     purchase_config_bonuses: list[dict]  # bonuses from purchase_config or []

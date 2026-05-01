@@ -1,11 +1,13 @@
 # =============================================================================
-# CBSHOME Backend -- Product Models (Sprint 4.2 + Sprint 6.1 + Sprint F4.1)
+# CBSHOME Backend -- Product Models (Sprint 4.2 + Sprint 6.1 + Sprint F4.1
+#                                     + Sprint 4.3)
 # =============================================================================
 #
 # Product:
-#   Investment package belonging to a Company. Contains units (package
-#   size, immutable) and price_per_unit_cents (denormalized from Company,
-#   cascaded on price change).
+#   Investment package belonging to a Company. The package_size
+#   (renamed from `units` in Sprint 4.3) is the number of options sold in
+#   one package. Price (price_per_unit_cents) is denormalized from the
+#   Company and cascaded on price change.
 #
 # Sprint 6.1 CHANGES:
 #   - Removed gift_units column (replaced by purchase_config.bonuses[])
@@ -15,6 +17,19 @@
 # Sprint F4.1 CHANGES:
 #   - Added cover_url (nullable String(2000)): storefront hero image.
 #     When null, clients fall back to Company logo/cover.
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - Renamed `units` column to `package_size`. Semantics: number of options
+#     in one package of this product. Immutable after creation. The previous
+#     name conflated "package size" (its actual meaning) with "remaining
+#     inventory" (which was not its meaning). Inventory is now derived from
+#     OptionPool at runtime (see purchases/service.py
+#     get_available_packages_map).
+#   - Added pool_id FK -> option_pools.id (RESTRICT). Every product belongs
+#     to exactly one pool. A product cannot exist without an active pool.
+#   - company_id stays as a denormalised FK (it equals pool.company_id and
+#     is set on creation). Keeping it avoids JOINing through option_pools
+#     for fast queries (dashboard, portfolio, attribution).
 #
 # PURCHASE_CONFIG JSONB (nullable):
 #   {
@@ -31,7 +46,9 @@
 #   company price cascade (new templates must be created for new price).
 #   When an investor starts an installment, plan_config is snapshot-copied
 #   into InstallmentPlan (Sprint 6.2) -- changes to the template do not
-#   affect active plans.
+#   affect active plans. The snapshot already stores the absolute
+#   total_units, so the column rename `units -> package_size` does not
+#   break previously-created plans.
 #
 # ENUMS:
 #   ProductStatus is canonical in constants.py.
@@ -55,6 +72,20 @@ class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
 
     __tablename__ = "products"
 
+    # -- Pool (Sprint 4.3) --
+    # Every product belongs to exactly one OptionPool. A product cannot
+    # exist without a pool. RESTRICT on delete: pools are archived, not
+    # dropped, so a product's pool stays around even after a future split.
+    pool_id: Mapped[UUID] = mapped_column(
+        ForeignKey("option_pools.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    # -- Company (denormalised, Sprint 4.3) --
+    # Equal to pool.company_id at creation and immutable. Kept on the row
+    # so dashboard / portfolio / attribution queries do not have to JOIN
+    # through option_pools. Migration 0027 backfills this column.
     company_id: Mapped[UUID] = mapped_column(
         ForeignKey("company_profiles.id", ondelete="RESTRICT"),
         nullable=False,
@@ -71,8 +102,10 @@ class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # -- Package size (immutable after creation) --
-    units: Mapped[int] = mapped_column(
+    # -- Package size (immutable after creation, Sprint 4.3 rename) --
+    # Number of options in one package of this product. Renamed from
+    # `units` in migration 0027.
+    package_size: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
     )
@@ -111,7 +144,7 @@ class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     def __repr__(self) -> str:
         return (
             f"<Product id={self.id} name={self.name!r} "
-            f"units={self.units} status={self.status}>"
+            f"package_size={self.package_size} status={self.status}>"
         )
 
 

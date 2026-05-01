@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Models (Sprint 4.1, fix Phase 4)
+# CBSHOME Backend -- Company Models (Sprint 4.1, fix Phase 4, Sprint 4.3)
 # =============================================================================
 #
 # CompanyProfile:
@@ -24,6 +24,19 @@
 # PRICE:
 #   price_per_unit_cents uses BigInteger (64-bit) -- project standard
 #   for all monetary values.
+#
+# Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
+#   - Added total_supply (BigInteger NOT NULL): total number of options
+#     that cover 100% of company shares. When tokenised this is the full
+#     mint of the contract. Owners hold (total_supply - sum(active_pools))
+#     outside the platform.
+#   - Added shares_per_option (Integer NOT NULL): denomination ratio.
+#     total_supply = total_shares / shares_per_option. Changes only on a
+#     split (future scope -- new Pool, migration purchases, see
+#     CBSHOME-Share-Pool-Refactor.md section 4).
+#   - Price still lives here (NOT on OptionPool): price changes more often
+#     than the pool is restructured, and a re-valuation should not require
+#     a new pool.
 #
 # ENUMS:
 #   CompanyStatus and RoadmapItemStatus are canonical in constants.py.
@@ -86,6 +99,23 @@ class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         nullable=True,
     )
 
+    # -- Supply (Sprint 4.3) --
+    # Total number of options covering 100% of company shares.
+    # total_supply = total_shares / shares_per_option.
+    # When tokenised, this is the full mint of the contract.
+    total_supply: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+
+    # Denomination ratio: how many real shares one option represents.
+    # Default in seeds is 1 (one option = one share). Changes only on a
+    # split (new pool, future scope).
+    shares_per_option: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
     # -- Pricing --
     price_per_unit_cents: Mapped[int] = mapped_column(
         BigInteger,
@@ -112,7 +142,7 @@ class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     def __repr__(self) -> str:
         return (
             f"<CompanyProfile id={self.id} name={self.name!r} "
-            f"status={self.status}>"
+            f"supply={self.total_supply} status={self.status}>"
         )
 
 

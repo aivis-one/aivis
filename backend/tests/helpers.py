@@ -65,6 +65,13 @@
 #   _cleanup_user_related_data() extended with PostDismiss + Post + Event cleanup.
 #   Dismissals first (FK to posts.id), then posts by created_by, then posts
 #   by owner_id (inside company block), then events by created_by.
+#
+# Sprint 4.3 (TD-071, Share Pool Refactor):
+#   _cleanup_user_related_data() extended with OptionPool cleanup inside
+#   the company block. Order: products (FK pool_id RESTRICT) -> option_pools
+#   (FK company_id RESTRICT) -> company_profiles. The block runs only when
+#   the user owns at least one company; pools without a company cannot
+#   exist (FK NOT NULL).
 # =============================================================================
 
 import hashlib
@@ -383,6 +390,7 @@ async def _cleanup_user_related_data(
     from app.modules.ledgers.models import ActiveLedger, PassiveLedger
     from app.modules.notifications.models import Notification, NotificationDelivery
     from app.modules.payments.models import CryptoAddress, Payment
+    from app.modules.pools.models import OptionPool
     from app.modules.posts.models import Event, Post, PostDismiss
     from app.modules.products.models import Product, ProductInstallment
     from app.modules.purchases.models import Purchase
@@ -536,7 +544,7 @@ async def _cleanup_user_related_data(
         )
     )
 
-    # Phase 4.1+4.2: Company and product-related tables.
+    # Phase 4.1+4.2+4.3: Company, product, and pool tables.
     # Find company profiles owned by these users.
     cp_stmt = select(CompanyProfile.id).where(
         CompanyProfile.user_id.in_(user_ids)
@@ -595,12 +603,23 @@ async def _cleanup_user_related_data(
                     ProductInstallment.product_id.in_(product_ids)
                 )
             )
-            # Products reference company_profiles.
+            # Products reference company_profiles AND option_pools (RESTRICT).
             await session.execute(
                 delete(Product).where(
                     Product.id.in_(product_ids)
                 )
             )
+
+        # Sprint 4.3: Option pools reference company_profiles (RESTRICT).
+        # Must run AFTER Product deletion (products.pool_id RESTRICT) and
+        # BEFORE CompanyProfile deletion (option_pools.company_id RESTRICT).
+        # Pools may exist without products, so this stays outside the
+        # `if product_ids:` block.
+        await session.execute(
+            delete(OptionPool).where(
+                OptionPool.company_id.in_(company_ids)
+            )
+        )
 
         # Roadmap items reference company_profiles.
         await session.execute(

@@ -41,6 +41,9 @@ from app.modules.companies.models import CompanyProfile, CompanyPriceHistory, Co
 # Sprint 4.2: Products
 from app.modules.products.models import Product, ProductInstallment  # noqa: F401
 
+# Sprint 4.3: Option Pools (Share Pool Refactor, TD-071)
+from app.modules.pools.models import OptionPool  # noqa: F401
+
 # Sprint 5.2: Payments
 from app.modules.payments.models import Payment, CryptoAddress  # noqa: F401
 
