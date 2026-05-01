@@ -52,6 +52,7 @@ import argparse
 import base64
 import asyncio
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 # Ensure app package is importable when running as standalone script.
@@ -68,6 +69,7 @@ from app.core.logging import setup_logging
 from app.modules.auth.service import get_platform_user_id, hash_password
 from app.modules.companies.constants import CompanyStatus
 from app.modules.companies.models import CompanyProfile
+from app.modules.pools.models import OptionPool
 from app.modules.products.constants import ProductStatus
 from app.modules.products.models import Product, ProductInstallment
 from app.modules.purchases.models import Purchase
@@ -141,6 +143,8 @@ COMPANIES: list[dict] = [  # type: ignore[type-arg]
         "logo_initials": "IPI",
         "has_logo": True,
         "price_per_unit_cents": 100,
+        "total_supply": 10_000_000,
+        "shares_per_option": 1,
         "status": CompanyStatus.ACTIVE,
     },
     {
@@ -154,6 +158,8 @@ COMPANIES: list[dict] = [  # type: ignore[type-arg]
         "logo_initials": "IPG",
         "has_logo": True,
         "price_per_unit_cents": 95,
+        "total_supply": 5_000_000,
+        "shares_per_option": 1,
         "status": CompanyStatus.ACTIVE,
     },
     {
@@ -167,6 +173,8 @@ COMPANIES: list[dict] = [  # type: ignore[type-arg]
         "logo_initials": "CBS",
         "has_logo": True,
         "price_per_unit_cents": 500,
+        "total_supply": 1_000_000,
+        "shares_per_option": 1,
         "status": CompanyStatus.ACTIVE,
     },
     {
@@ -180,6 +188,8 @@ COMPANIES: list[dict] = [  # type: ignore[type-arg]
         "logo_initials": "NCH",
         "has_logo": False,  # test Building-icon fallback
         "price_per_unit_cents": 1000,
+        "total_supply": 2_000_000,
+        "shares_per_option": 1,
         "status": CompanyStatus.ACTIVE,
     },
     {
@@ -193,6 +203,8 @@ COMPANIES: list[dict] = [  # type: ignore[type-arg]
         "logo_initials": "T50",
         "has_logo": True,
         "price_per_unit_cents": 250,
+        "total_supply": 500_000,
+        "shares_per_option": 1,
         "status": CompanyStatus.ACTIVE,
     },
     {
@@ -203,6 +215,8 @@ COMPANIES: list[dict] = [  # type: ignore[type-arg]
         "logo_initials": "STF",
         "has_logo": True,
         "price_per_unit_cents": 10000,
+        "total_supply": 100_000,
+        "shares_per_option": 1,
         "status": CompanyStatus.HIDDEN,  # negative visibility test
     },
 ]
@@ -231,7 +245,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Entry-level pack for first-time investors. Build a small "
             "position and test the waters."
         ),
-        "units": 100,
+        "package_size": 100,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -242,7 +256,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Mid-tier pack for committed investors. +5% bonus shares on "
             "every purchase, funded by the company."
         ),
-        "units": 1000,
+        "package_size": 1000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(5)]},
     },
@@ -253,7 +267,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "High-volume pack. +10% bonus shares, multiple installment "
             "plans available."
         ),
-        "units": 10000,
+        "package_size": 10000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(10)]},
     },
@@ -264,7 +278,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Institutional-grade pack. Maximum bonus (+15%), long-term "
             "installment plans up to 24 months."
         ),
-        "units": 100000,
+        "package_size": 100000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(15)]},
     },
@@ -276,7 +290,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "properly (TD-F05), all products seeded here remain "
             "fully available."
         ),
-        "units": 500,
+        "package_size": 500,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -290,7 +304,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Wraps across two lines on narrow screens. Used to verify "
             "card ellipsis and header truncation."
         ),
-        "units": 1000,
+        "package_size": 1000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -298,7 +312,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "company_slug": "ipi-ag",
         "name": "IPI AG Dev Tranche",
         "description": "Internal tranche, not public.",
-        "units": 100,
+        "package_size": 100,
         "status": ProductStatus.HIDDEN,  # negative visibility test
         "purchase_config": None,
     },
@@ -310,7 +324,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Entry-level real estate exposure. 500 units, no volume "
             "bonus at this tier."
         ),
-        "units": 500,
+        "package_size": 500,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -321,7 +335,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Mid-tier real estate pack with +7% volume bonus and three "
             "installment options."
         ),
-        "units": 5000,
+        "package_size": 5000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(7)]},
     },
@@ -332,7 +346,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Large real estate allocation. +12% volume bonus, long "
             "installment plans."
         ),
-        "units": 50000,
+        "package_size": 50000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(12)]},
     },
@@ -343,7 +357,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Special programme -- bonus shares are funded by the "
             "platform rather than the company."
         ),
-        "units": 10000,
+        "package_size": 10000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(5, funded_by="platform")]},
     },
@@ -354,7 +368,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "description": (
             "Entry license for small operators. 100 units at $5 each."
         ),
-        "units": 100,
+        "package_size": 100,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -370,7 +384,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "top of the volume bonus applied at checkout. Review both "
             "layers before committing."
         ),
-        "units": 500,
+        "package_size": 500,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(10)]},
     },
@@ -378,7 +392,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "company_slug": "cbs-home",
         "name": "CBS Home Starter Kit",
         "description": None,  # empty-description test
-        "units": 50,
+        "package_size": 50,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -389,7 +403,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
             "Enterprise-grade license with +20% volume bonus, the "
             "highest tier available."
         ),
-        "units": 2000,
+        "package_size": 2000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(20)]},
     },
@@ -398,7 +412,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "company_slug": "nordic-construction",
         "name": "Nordic Starter",
         "description": "Entry pack for Nordic infrastructure projects.",
-        "units": 50,
+        "package_size": 50,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -408,7 +422,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "description": (
             "Mid-tier pack with +8% volume bonus for serious backers."
         ),
-        "units": 500,
+        "package_size": 500,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(8)]},
     },
@@ -416,7 +430,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "company_slug": "nordic-construction",
         "name": "Nordic Flagship",
         "description": "Top-tier Nordic pack with +15% volume bonus.",
-        "units": 2000,
+        "package_size": 2000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(15)]},
     },
@@ -425,7 +439,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "company_slug": "tesla-50pct",
         "name": "Tesla Solar Farm Starter",
         "description": "Small solar allocation.",
-        "units": 100,
+        "package_size": 100,
         "status": ProductStatus.ACTIVE,
         "purchase_config": None,
     },
@@ -433,7 +447,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "company_slug": "tesla-50pct",
         "name": "Tesla Solar Farm Pro",
         "description": "Pro-tier solar allocation with +6% volume bonus.",
-        "units": 1000,
+        "package_size": 1000,
         "status": ProductStatus.ACTIVE,
         "purchase_config": {"bonuses": [_bonus(6)]},
     },
@@ -442,7 +456,7 @@ PRODUCTS: list[dict] = [  # type: ignore[type-arg]
         "company_slug": "stealth-fund",
         "name": "Stealth Product",
         "description": None,
-        "units": 10,
+        "package_size": 10,
         "status": ProductStatus.ACTIVE,  # active, but company is hidden
         "purchase_config": None,
     },
@@ -559,6 +573,21 @@ async def _reset(session: AsyncSession) -> None:
         delete(Product).where(Product.name.in_(product_names))
     )
 
+    # 3b. OptionPools (Sprint 4.3) for the seeded companies.
+    # Done after Products because Product.pool_id has FK ondelete=RESTRICT.
+    company_ids_stmt = select(CompanyProfile.id).where(
+        CompanyProfile.name.in_(company_names)
+    )
+    seeded_company_ids = [
+        row[0] for row in (await session.execute(company_ids_stmt)).all()
+    ]
+    if seeded_company_ids:
+        await session.execute(
+            delete(OptionPool).where(
+                OptionPool.company_id.in_(seeded_company_ids)
+            )
+        )
+
     # 4. Company profiles.
     await session.execute(
         delete(CompanyProfile).where(
@@ -648,6 +677,9 @@ async def _ensure_company(
         promo_video_url=None,
         presentation_url=None,
         price_per_unit_cents=spec["price_per_unit_cents"],
+        # Sprint 4.3: tokenization parameters.
+        total_supply=spec["total_supply"],
+        shares_per_option=spec["shares_per_option"],
         distribution_config={"company_pct": 1.0, "agent_levels": []},
         status=spec["status"],
     )
@@ -656,13 +688,54 @@ async def _ensure_company(
     return profile
 
 
+async def _ensure_pool(
+    session: AsyncSession,
+    *,
+    company: CompanyProfile,
+) -> OptionPool:
+    """Return the active OptionPool for the company, creating it if missing.
+
+    Sprint 4.3: every Product needs a pool. The seed allocates 100% of
+    company.total_supply to one active pool -- enough headroom that no
+    product hits 'sold out' during dev/staging use, regardless of what
+    the storefront sells.
+
+    Idempotent: a pool with status='active' for this company is
+    returned as-is (a partial unique index on the table guarantees at
+    most one active pool per company).
+    """
+    stmt = select(OptionPool).where(
+        OptionPool.company_id == company.id,
+        OptionPool.status == "active",
+    )
+    existing = (await session.execute(stmt)).scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    pool = OptionPool(
+        company_id=company.id,
+        equity_percent=Decimal("100.0000"),
+        total_options=company.total_supply,
+        status="active",
+    )
+    session.add(pool)
+    await session.flush()
+    return pool
+
+
 async def _ensure_product(
     session: AsyncSession,
     *,
     spec: dict,  # type: ignore[type-arg]
     company: CompanyProfile,
+    pool: OptionPool,
 ) -> Product:
-    """Return the Product, creating it if missing."""
+    """Return the Product, creating it if missing.
+
+    Sprint 4.3: products attach to the company's active OptionPool via
+    pool_id. The denormalised company_id is still stored alongside for
+    fast queries (dashboard, portfolio) without a join through pool.
+    """
     stmt = select(Product).where(Product.name == spec["name"])
     existing = (await session.execute(stmt)).scalar_one_or_none()
     if existing is not None:
@@ -670,9 +743,10 @@ async def _ensure_product(
 
     product = Product(
         company_id=company.id,
+        pool_id=pool.id,
         name=spec["name"],
         description=spec["description"],
-        units=spec["units"],
+        package_size=spec["package_size"],  # Sprint 4.3: column renamed
         price_per_unit_cents=company.price_per_unit_cents,
         purchase_config=spec["purchase_config"],
         status=spec["status"],
@@ -697,7 +771,7 @@ async def _ensure_installments(
         row[0] for row in (await session.execute(stmt)).all()
     }
 
-    total_amount = product.units * product.price_per_unit_cents
+    total_amount = product.package_size * product.price_per_unit_cents
 
     for name, n_tranches, bonus_units, agent_bonus_units in specs:
         if name in existing_names:
@@ -748,18 +822,29 @@ async def seed_storefront(reset: bool) -> None:
                 companies_by_slug[spec["slug"]] = profile
             log(f"  {len(companies_by_slug)} companies ready")
 
-            # 2. Products.
+            # 2. Option pools (Sprint 4.3).
+            #    One active pool per company, equity_percent=100,
+            #    total_options=company.total_supply. Products attach via pool_id.
+            log("Ensuring option pools")
+            pools_by_slug: dict[str, OptionPool] = {}
+            for slug, profile in companies_by_slug.items():
+                pool = await _ensure_pool(session, company=profile)
+                pools_by_slug[slug] = pool
+            log(f"  {len(pools_by_slug)} pools ready")
+
+            # 3. Products.
             log("Ensuring products")
             products_by_name: dict[str, Product] = {}
             for spec in PRODUCTS:
                 company = companies_by_slug[spec["company_slug"]]
+                pool = pools_by_slug[spec["company_slug"]]
                 product = await _ensure_product(
-                    session, spec=spec, company=company
+                    session, spec=spec, company=company, pool=pool
                 )
                 products_by_name[spec["name"]] = product
             log(f"  {len(products_by_name)} products ready")
 
-            # 3. Installments.
+            # 4. Installments.
             log("Ensuring installment plans")
             plan_count = 0
             for product_name, specs in INSTALLMENTS.items():
