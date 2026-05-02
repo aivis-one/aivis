@@ -59,8 +59,8 @@ export interface AvatarStartResponse {
 
 /** Ledger balance split by status. */
 export interface BalanceResponse {
-  frozen?: number
-  confirmed?: number
+  frozen: number
+  confirmed: number
 }
 
 /** Request to block a user. */
