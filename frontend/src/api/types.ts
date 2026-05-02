@@ -47,40 +47,21 @@ export interface SelectRoleRequest {
 // Auth
 // ---------------------------------------------------------------------------
 
-export interface EmailRegisterRequest {
-  email: string
-  password: string
-  referral_code?: string | null
-}
+export type { EmailRegisterRequest } from './generated'
 
-export interface EmailLoginRequest {
-  email: string
-  password: string
-}
+export type { EmailLoginRequest } from './generated'
 
-export interface TelegramAuthRequest {
-  init_data: string
-  referral_code?: string | null
-}
+export type { TelegramAuthRequest } from './generated'
 
-export interface AuthResponse {
-  user: UserResponse
-  session_token: string
-}
+export type { AuthResponse } from './generated'
 
-export interface VerifyEmailRequest {
-  code: string
-}
+export type { VerifyEmailRequest } from './generated'
 
 // ---------------------------------------------------------------------------
 // KYC
 // ---------------------------------------------------------------------------
 
-export interface KYCSubmitResponse {
-  id: string
-  status: string
-  created_at: string
-}
+export type { KYCSubmitResponse } from './generated'
 
 export interface KYCStatusResponse {
   kyc_status: string
@@ -106,11 +87,7 @@ export interface DocumentResponse {
   is_signed: boolean
 }
 
-export interface DocumentSigningResponse {
-  id: string
-  document_id: string
-  signed_at: string
-}
+export type { DocumentSigningResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Pagination (generic)
@@ -188,12 +165,7 @@ export interface UserListItem {
   staff_profile: StaffProfileResponse | null
 }
 
-export interface UserListResponse {
-  items: UserListItem[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { UserListResponse } from './generated'
 
 export interface UserDetailResponse {
   id: string
@@ -213,9 +185,7 @@ export interface UserDetailResponse {
 // (block USER vs. any other future block target).
 export type BlockUserRequest = BlockRequest
 
-export interface CreateStaffRequest {
-  user_id: string
-}
+export type { CreateStaffRequest } from './generated'
 
 export interface UpdatePermissionsRequest {
   avatar_mode?: boolean
@@ -242,9 +212,7 @@ export interface KYCQueueItem {
   last_name: string | null
 }
 
-export interface KYCRejectRequest {
-  reason?: string | null
-}
+export type { KYCRejectRequest } from './generated'
 
 // ---------------------------------------------------------------------------
 // Staff: payments (Sprint 5.3)
@@ -266,24 +234,11 @@ export interface StaffPaymentResponse {
   updated_at: string | null
 }
 
-export interface StaffPaymentListResponse {
-  items: StaffPaymentResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { StaffPaymentListResponse } from './generated'
 
-export interface ReversePaymentRequest {
-  reason?: string | null
-}
+export type { ReversePaymentRequest } from './generated'
 
-export interface ReversalResponse {
-  payment_id: string
-  total_reversed_cents: number
-  active_entries_reversed: number
-  passive_entries_reversed: number
-  affected_user_ids: string[]
-}
+export type { ReversalResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Staff: withdrawals (Sprint 6.3)
@@ -310,22 +265,15 @@ export interface WithdrawalResponse {
   created_at: string
 }
 
-export interface RejectWithdrawalRequest {
-  reason: string
-}
+export type { RejectWithdrawalRequest } from './generated'
 
 // ---------------------------------------------------------------------------
 // Staff: avatar (Sprint 3.2)
 // ---------------------------------------------------------------------------
 
-export interface AvatarStartRequest {
-  target_user_id: string
-}
+export type { AvatarStartRequest } from './generated'
 
-export interface AvatarStartResponse {
-  avatar_session_id: string
-  session_token: string
-}
+export type { AvatarStartResponse } from './generated'
 
 export interface AvatarSessionResponse {
   id: string
@@ -368,21 +316,7 @@ export type RejectAgentApplicationRequest = RejectRequest
 // Products: installment plan template (public, surfaced on product detail)
 // ---------------------------------------------------------------------------
 
-export interface InstallmentResponse {
-  id: string
-  product_id: string
-  name: string
-  /**
-   * plan_config shape (Sprint 6.2):
-   *   {
-   *     "tranches": [{"amount_cents": int, "units_percent": int}, ...],
-   *     "bonus_units": int,
-   *     "agent_bonus_units": int
-   *   }
-   */
-  plan_config: Record<string, unknown>
-  created_at: string
-}
+export type { InstallmentResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Products: public storefront (Sprint 4.2 + F4.1 denormalisation)
@@ -409,27 +343,13 @@ export interface PublicProductDetailResponse extends PublicProductResponse {
   installments: InstallmentResponse[]
 }
 
-export interface PublicProductListResponse {
-  items: PublicProductResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { PublicProductListResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Companies: public storefront (Sprint 4.1)
 // ---------------------------------------------------------------------------
 
-export interface RoadmapItemResponse {
-  id: string
-  title: string
-  description: string | null
-  target_date: string | null
-  status: string
-  order: number
-  created_at: string
-  updated_at: string | null
-}
+export type { RoadmapItemResponse } from './generated'
 
 export interface PublicCompanyResponse {
   id: string
@@ -448,12 +368,7 @@ export interface PublicCompanyDetailResponse extends PublicCompanyResponse {
   roadmap: RoadmapItemResponse[]
 }
 
-export interface PublicCompanyListResponse {
-  items: PublicCompanyResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { PublicCompanyListResponse } from './generated'
 
 // ===========================================================================
 // Phase F4.2 -- Purchase + Installment + Dashboard summary
@@ -480,15 +395,7 @@ export type PurchaseLegalBasis =
 
 export type PurchaseStatusType = 'active' | 'reversed'
 
-/**
- * POST /api/v1/products/{id}/purchase -- request body.
- *
- * Empty body is valid (organic purchase). Pass referral_link_id
- * only when the flow originated from a referral link.
- */
-export interface CreatePurchaseRequest {
-  referral_link_id?: string | null
-}
+export type { CreatePurchaseRequest } from './generated'
 
 /**
  * Single purchase record. POST /products/{id}/purchase returns a
@@ -523,17 +430,7 @@ export type InstallmentTrancheStatusType =
   | 'overdue'
   | 'cancelled'
 
-/**
- * POST /api/v1/products/{id}/installment -- request body.
- *
- * product_installment_id picks which ProductInstallment template
- * to snapshot into the new plan. referral_link_id is optional
- * (Sprint 7.2 stub).
- */
-export interface CreateInstallmentPlanRequest {
-  product_installment_id: string
-  referral_link_id?: string | null
-}
+export type { CreateInstallmentPlanRequest } from './generated'
 
 export interface InstallmentTrancheResponse {
   id: string
@@ -567,12 +464,7 @@ export interface InstallmentPlanDetailResponse extends InstallmentPlanResponse {
   tranches: InstallmentTrancheResponse[]
 }
 
-export interface InstallmentPlanListResponse {
-  items: InstallmentPlanResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { InstallmentPlanListResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Dashboard summary (Sprint 9.2)
@@ -583,29 +475,11 @@ export interface InstallmentPlanListResponse {
 // frozen amounts are excluded by the backend when executing a sale.
 // ---------------------------------------------------------------------------
 
-export interface BalanceResponse {
-  frozen: number
-  confirmed: number
-}
+export type { BalanceResponse } from './generated'
 
-export interface CompanySummaryResponse {
-  company_id: string
-  company_name: string
-  logo_url: string | null
-  total_units: number
-  invested_cents: number
-  current_value_cents: number
-}
+export type { CompanySummaryResponse } from './generated'
 
-export interface DashboardSummaryResponse {
-  active_balance: BalanceResponse
-  passive_balance: BalanceResponse
-  total_invested_cents: number
-  total_units: number
-  current_value_cents: number
-  companies_count: number
-  companies: CompanySummaryResponse[]
-}
+export type { DashboardSummaryResponse } from './generated'
 
 // ===========================================================================
 // Phase F4.3 -- Investor payments (deposit) + transactions event log
@@ -644,11 +518,7 @@ export interface CreateAddressRequest {
   network: CryptoNetwork
 }
 
-export interface DepositAddressResponse {
-  address: string
-  network: string
-  user_id: string
-}
+export type { DepositAddressResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Payment history (Sprint 5.2) -- investor view
@@ -669,12 +539,7 @@ export interface PaymentResponse {
   updated_at: string | null
 }
 
-export interface PaymentHistoryResponse {
-  items: PaymentResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { PaymentHistoryResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Transactions: immutable event log (Sprint 6.4)
@@ -726,12 +591,7 @@ export interface TransactionResponse {
   created_at: string
 }
 
-export interface TransactionListResponse {
-  items: TransactionResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { TransactionListResponse } from './generated'
 
 // ===========================================================================
 // Phase F4.4 -- Portfolio + Certificates + Agent applications (investor)
@@ -777,9 +637,7 @@ export interface TransactionListResponse {
 
 export type PortfolioPositionResponse = CompanyPositionResponse
 
-export interface PortfolioResponse {
-  positions: PortfolioPositionResponse[]
-}
+export type { PortfolioResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Portfolio: per-company detail + paginated purchases (Sprint 9.2)
@@ -803,22 +661,7 @@ export interface PurchaseItemResponse {
   created_at: string
 }
 
-export interface CompanyPositionDetailResponse {
-  company_id: string
-  company_name: string
-  logo_url: string | null
-  total_units: number
-  sale_units: number
-  gift_units: number
-  total_paid_cents: number
-  avg_price_cents: number
-  current_price_cents: number
-  current_value_cents: number
-  purchases: PurchaseItemResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { CompanyPositionDetailResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Agent applications: status union (Sprint 7.1)
@@ -851,10 +694,7 @@ export type AgentApplicationStatusType = 'pending' | 'approved' | 'rejected'
 // needed before F4.4.
 // ---------------------------------------------------------------------------
 
-export interface AgentApplicationListResponse {
-  items: AgentApplicationResponse[]
-  total: number
-}
+export type { AgentApplicationListResponse } from './generated'
 
 // ===========================================================================
 // Phase F9.1 -- Posts + Events (public feed)
@@ -901,12 +741,7 @@ export interface PostResponse {
   is_dismissed: boolean
 }
 
-export interface PostListResponse {
-  items: PostResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { PostListResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Events (declared for F9.2 completeness, not consumed in F4.4)
@@ -927,9 +762,4 @@ export interface EventResponse {
   updated_at: string | null
 }
 
-export interface EventListResponse {
-  items: EventResponse[]
-  total: number
-  page: number
-  per_page: number
-}
+export type { EventListResponse } from './generated'
