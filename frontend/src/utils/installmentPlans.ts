@@ -103,7 +103,7 @@ export function getPlanBonus(plan: InstallmentResponse): number {
  *   - last tranche:     total_units - sum(previous)
  *
  * The floor + remainder split is how the backend prevents rounding
- * loss when decomposing a package into integer tranche slices (see
+ * loss when decomposing a plan's total_units into integer tranche slices (see
  * backend/app/modules/products/constants.py::validate_plan_config --
  * the invariant `sum(units_unlocked) == product_units` holds by
  * construction there and must hold here too).

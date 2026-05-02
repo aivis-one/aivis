@@ -87,7 +87,7 @@ const coverImage = computed<string | null>(() => {
 
 const available = computed<number>(() => {
   const p = product.value
-  return p ? p.units - p.sold_units : 0
+  return p ? p.available_packages ?? 0 : 0
 })
 
 function backToMarket(): void {
@@ -173,7 +173,7 @@ onMounted(loadProduct)
           </div>
           <div class="pd__stat">
             <div class="pd__stat-label">
-              {{ t('inv.product.availability') }}
+              {{ t('inv.product.packsAvailability') }}
             </div>
             <div class="pd__stat-value">
               {{ formatNumber(available, locale) }}

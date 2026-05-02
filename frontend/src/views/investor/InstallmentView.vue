@@ -177,7 +177,7 @@ function resolvePlanById(id: string): InstallmentResponse | null {
  */
 function unitsForTranche(index: number): number {
   if (!product.value || !planConfig.value) return 0
-  return getTrancheUnits(planConfig.value, product.value.units, index)
+  return getTrancheUnits(planConfig.value, product.value.package_size, index)
 }
 
 function installmentRouteName(): string {

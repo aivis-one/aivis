@@ -11,7 +11,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 
 import { api, setAuthToken, setOnUnauthorized } from '@/api/client'
-import type { AuthResponse, UserResponse, UserRole } from '@/api/types'
+import type { AuthResponse, UserResponse } from '@/api/types'
 import { platform } from '@/platform'
 import { setAvatarActive } from '@/composables/avatarState'
 import { setLocale } from '@/i18n'
@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
-  const role = computed<UserRole | null>(() => user.value?.role ?? null)
+  const role = computed<string | null>(() => user.value?.role ?? null)
 
   // ---------------------------------------------------------------------------
   // Internal helpers

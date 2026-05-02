@@ -289,7 +289,8 @@
         "desc": "Check back later for new investment opportunities",
         "filteredTitle": "No products for this company",
         "filteredDesc": "Try another filter or clear it"
-      }
+      },
+      "packsAvailable": "packs available"
     },
     "product": {
       "notFound": {
@@ -304,7 +305,8 @@
       "installmentsEmpty": "No installment plans available for this product",
       "installmentsBonus": "+{n} bonus units",
       "buy": "Buy now",
-      "soldOut": "Sold out"
+      "soldOut": "Sold out",
+      "packsAvailability": "Packs availability"
     },
     "purchase": {
       "title": "Purchase",

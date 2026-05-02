@@ -15,11 +15,13 @@ import { fetchUsers, fetchUserDetail, blockUser, createStaff, updatePermissions 
 import type {
   UserListItem,
   UserDetailResponse,
-  StaffPermissionKey,
 } from '@/api/types'
 
-// Full list of permission keys — ensures UI shows all toggles even if backend omits false values.
-const ALL_PERMISSION_KEYS: StaffPermissionKey[] = [
+// Full list of permission keys -- ensures UI shows all toggles even if
+// backend omits false values. File-local literal tuple so the toggle
+// call site can pass a key matching UpdatePermissionsRequest's named
+// fields without a string-index detour.
+const ALL_PERMISSION_KEYS = [
   'avatar_mode',
   'kyc_approve',
   'payment_review',
@@ -28,7 +30,8 @@ const ALL_PERMISSION_KEYS: StaffPermissionKey[] = [
   'agent_application_review',
   'translation_edit',
   'company_manage',
-]
+] as const
+type PermissionKey = (typeof ALL_PERMISSION_KEYS)[number]
 
 const { t } = useI18n()
 const { showToast } = useToast()
@@ -144,7 +147,7 @@ async function handlePromote(): Promise<void> {
   }
 }
 
-async function togglePermission(key: StaffPermissionKey, current: boolean): Promise<void> {
+async function togglePermission(key: PermissionKey, current: boolean): Promise<void> {
   if (!detailUser.value?.staff_profile) return
   try {
     const updated = await updatePermissions(detailUser.value.staff_profile.id, {

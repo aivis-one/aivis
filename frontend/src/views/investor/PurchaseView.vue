@@ -86,12 +86,12 @@ const agentShell = computed(() => isAgentShell(route))
 
 const totalCents = computed<number>(() => {
   const p = product.value
-  return p ? p.units * p.price_per_unit_cents : 0
+  return p ? p.package_size * p.price_per_unit_cents : 0
 })
 
 const available = computed<number>(() => {
   const p = product.value
-  return p ? Math.max(p.units - p.sold_units, 0) : 0
+  return p ? p.available_packages ?? 0 : 0
 })
 
 const soldOut = computed(() => available.value <= 0)
@@ -274,7 +274,7 @@ onMounted(load)
               {{ t('inv.purchase.packageSize') }}
             </span>
             <span class="pv__row-value">
-              {{ formatNumber(product.units, locale) }}
+              {{ formatNumber(product.package_size, locale) }}
               {{ t('inv.unit') }}
             </span>
           </div>

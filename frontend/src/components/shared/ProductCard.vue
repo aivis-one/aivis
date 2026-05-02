@@ -42,7 +42,7 @@ const { t, locale } = useI18n()
 const coverImage = computed(() => resolveCoverImage(props.product))
 
 const available = computed(
-  () => props.product.units - props.product.sold_units,
+  () => props.product.available_packages ?? 0,
 )
 </script>
 
@@ -71,7 +71,7 @@ const available = computed(
           <span class="product-card__unit">/ {{ t('inv.unit') }}</span>
         </span>
         <span class="product-card__units">
-          {{ formatNumber(available, locale) }} {{ t('inv.available') }}
+          {{ formatNumber(available, locale) }} {{ t('inv.market.packsAvailable') }}
         </span>
       </div>
     </div>
