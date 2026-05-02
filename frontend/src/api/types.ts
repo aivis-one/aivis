@@ -6,6 +6,13 @@
 // Source of truth: backend/app/modules/*/schemas.py
 // =============================================================================
 
+// Aliases from auto-generated OpenAPI types (B7 / VELO migration).
+import type {
+  BlockRequest,
+  CompanyPositionResponse,
+  RejectRequest,
+} from './generated'
+
 // ---------------------------------------------------------------------------
 // User
 // ---------------------------------------------------------------------------
@@ -202,9 +209,9 @@ export interface UserDetailResponse {
   staff_profile: StaffProfileResponse | null
 }
 
-export interface BlockUserRequest {
-  reason?: string | null
-}
+// Backend: BlockRequest. Aliased to keep the call-site name explicit
+// (block USER vs. any other future block target).
+export type BlockUserRequest = BlockRequest
 
 export interface CreateStaffRequest {
   user_id: string
@@ -345,9 +352,10 @@ export interface AgentApplicationResponse {
   created_at: string
 }
 
-export interface RejectAgentApplicationRequest {
-  reason: string
-}
+// Backend: RejectRequest (generic name -- bound to the agent-application
+// reject endpoint POST /staff/agent-applications/{id}/reject). Aliased
+// on the frontend to keep the intent explicit at the call site.
+export type RejectAgentApplicationRequest = RejectRequest
 
 // ===========================================================================
 // Phase F4.1 -- Public storefront (products + companies)
@@ -767,19 +775,7 @@ export interface TransactionListResponse {
 // is the intended empty state.
 // ---------------------------------------------------------------------------
 
-export interface PortfolioPositionResponse {
-  company_id: string
-  company_name: string
-  logo_url: string | null
-  total_units: number
-  sale_units: number
-  gift_units: number
-  total_paid_cents: number
-  avg_price_cents: number
-  current_price_cents: number
-  current_value_cents: number
-  purchases_count: number
-}
+export type PortfolioPositionResponse = CompanyPositionResponse
 
 export interface PortfolioResponse {
   positions: PortfolioPositionResponse[]
