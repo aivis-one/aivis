@@ -13,12 +13,12 @@
 #   is authentic and not forged. See:
 #   https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
 #
-# ANTI-REPLAY (WARNING-4 from VELO):
+# ANTI-REPLAY (WARNING-4):
 #   Each initData hash is stored in Redis with TTL=auth_init_data_ttl_seconds.
 #   A second request with the same initData within the window is rejected.
 #   Key: init_data_used:{sha256(init_data)}
 #
-# RATE LIMITING (CRITICAL-4 from VELO):
+# RATE LIMITING (CRITICAL-4):
 #   Max auth_rate_limit_max_requests per auth_rate_limit_window_seconds
 #   per telegram_id. Delegates to atomic Lua-based check_rate_limit()
 #   from core/rate_limit.py.

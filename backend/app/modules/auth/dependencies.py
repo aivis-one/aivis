@@ -11,7 +11,7 @@
 #   get_current_staff          -- staff role + StaffProfile (active) required
 #   require_staff_permission() -- factory: staff + specific permission check
 #
-# TD-029 PATTERN (from VELO):
+# TD-029 PATTERN:
 #   get_current_user_write uses get_db_session instead of get_db_reader.
 #   FastAPI caches Depends within a request, so if the router also
 #   declares Depends(get_db_session), both receive the SAME session
