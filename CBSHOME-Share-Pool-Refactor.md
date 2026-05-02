@@ -918,6 +918,15 @@ def downgrade() -> None:
   - VPS DB volume пересобран (старые ручные purchases ломали `test_monthly_payout_distributes_pool` через грязный pool_cents)
   - Добавлен раздел **15. Implementation Progress** с детальным журналом батчей
   - Pending: B3 (test_pools.py), B4 (calculator), B5 (company dashboard), B7 (frontend rename), B8 (gen-types)
+- **v2.3 (2026-05-02):** Backend Sprint 4.3 закрыт + B7 пересмотрен:
+  - Backend B3 (test_pools.py) — deployed, 350/350
+  - Backend B4 (Installment Calculator + 2 unleashed tests) — deployed, 352/352
+  - Backend B5 (Company Dashboard module + 8 tests) — deployed, 360/360
+  - Backend B5-pragmatic (shared `BalanceResponse` от dashboard) — deployed
+  - B8 (TS types pipeline + `cbshome-bot` auto-commit) — deployed
+  - B7 пересмотрен и расширен в **отдельный мини-спринт VELO Migration** (см. ниже)
+  - Audit от Claude Code обнаружил 24 типа с расхождениями между handwritten `types.ts` и `generated.ts` → решено: **strict-VELO**, single source of truth = generated.ts
+  - Pending: VELO Migration (8 коммитов), затем собственно B7 rename uniteв `package_size`/`available_packages`
 
 ---
 
@@ -1153,75 +1162,174 @@ Spec: CBSHOME-Share-Pool-Refactor.md v2.0
 - Удалена секция «Frontend Fonts (Self-hosted)» (-50 строк) — front уже шиппит локальные fonts
 - `seed_test_accounts` добавлен в 4 call sites: initial install, update flow, обе ветки `cbshome seed`
 
-### Pending batches
+### B3 — Pool tests ✅
 
-#### B3 — Pool tests (NEW file)
-
-**File:** `backend/tests/test_pools.py` (NEW, 11 тестов из спеки §8.6)
+**Status:** committed + deployed
+**File:** `backend/tests/test_pools.py` (NEW, 11 тестов из спеки §8.6, на момент B3 — 9 активных + 2 placeholder для B4)
 
 Покрытие:
 1. `test_create_pool` — POST → 201, equity_percent + total_options correct
-2. `test_one_active_pool_per_company` — второй POST → 400 / DB constraint
+2. `test_one_active_pool_per_company` — второй POST → 400
 3. `test_update_pool_total_options` — PATCH → equity_percent recomputed
 4. `test_update_pool_below_consumed` — PATCH below sold → 400
 5. `test_product_requires_active_pool` — Create product without pool → 400
-6. `test_available_packages_decreases` — Buy → availability decreases for ALL products of company
+6. `test_available_packages_decreases` — Buy → availability decreases for ALL products
 7. `test_purchase_sold_out` — `pool_remaining < package_size` → 400
 8. `test_gift_consumes_pool` — Gift purchase reduces `pool_remaining`
 9. `test_gift_overflow_allowed` — Gift when `pool_remaining=0` → succeeds, pool goes negative
-10. `test_installment_preview` — Calculator returns correct plan_config (зависит от B4!)
-11. `test_installment_preview_invariants` — Amounts sum, options sum, rounding correct (B4!)
+10/11. (placeholders, активированы в B4)
 
-**Зависимость:** тесты 10-11 требуют B4 готовым. Можно сначала B3 без них (9 тестов), потом B4 + добить.
+EMAIL_PREFIX `s43p_`. Результат: **350 passed, 2 skipped** на момент B3.
 
-#### B4 — Installment Calculator
+### B4 — Installment Calculator ✅
 
-**Files:**
-- `backend/app/modules/products/calculator.py` (NEW) — `calculate_installment_preview()` логика из §3.9
-- `backend/app/modules/products/schemas.py` — `+InstallmentPreviewRequest`, `+InstallmentPreviewResponse`
-- `backend/app/modules/products/staff_router.py` — `+POST /staff/products/{id}/installments/preview`
-- `backend/app/modules/products/constants.py` — `+ALLOWED_TRANCHES = (3, 6, 12, 24, 36)`
+**Status:** committed + deployed
+**Files:** 5
 
-#### B5 — Company Dashboard module (NEW)
+- `backend/app/modules/products/calculator.py` (NEW, 225 строк) — pure `calculate_installment_preview()`, keyword-only args
+- `backend/app/modules/products/constants.py` — `+ALLOWED_TRANCHES = frozenset({3,6,12,24,36})`, `+ALLOWED_AMOUNT_ROUNDINGS = frozenset({500,1000,5000,10000})`, `+LAST_TRANCHE_PERCENT_MIN/MAX = 30/50`
+- `backend/app/modules/products/schemas.py` — `+InstallmentPreviewRequest/Summary/Response`
+- `backend/app/modules/products/staff_router.py` — `+POST /staff/products/{id}/installments/preview` (требует `company_manage + financial_operations`)
+- `backend/tests/test_pools.py` — тесты 10-11 unleashed
 
-**Files:**
-- `backend/app/modules/companies/dependencies.py` (NEW) — `get_current_company_profile()`
+Алгоритм: `regular_pct = (100 - last_tranche_percent) // (N - 1)`; `actual_last_pct = 100 - regular_pct * (N - 1)` (остаток поглощается последним траншем). `regular_amount = (total // N // rounding) * rounding`; `last_amount = total - regular_amount * (N - 1)`. `bonus_units / agent_bonus_units` остаются 0 в выходе калькулятора.
+
+Тест 11 — round-trip: `plan_config` из калькулятора скармливается в `POST /installments` для подтверждения совместимости с `validate_plan_config`.
+
+Результат: **352 passed, 0 skipped**.
+
+### B5 — Company Dashboard module ✅
+
+**Status:** committed + deployed
+**Files:** 7
+
+- `backend/app/modules/companies/dependencies.py` (NEW) — `get_current_company_profile()`, raises `ForbiddenError` если у юзера нет CompanyProfile
 - `backend/app/modules/company_dashboard/__init__.py` (NEW)
-- `backend/app/modules/company_dashboard/schemas.py` (NEW)
-- `backend/app/modules/company_dashboard/service.py` (NEW)
+- `backend/app/modules/company_dashboard/schemas.py` (NEW) — `BalanceResponse`, `PoolEmbedResponse`, `CompanyTransactionResponse`, `CompanyDashboardResponse`, `SalesByMonthEntry`, `SalesByProductEntry`, `CompanyAnalyticsResponse`
+- `backend/app/modules/company_dashboard/service.py` (NEW, 333 строки) — `get_company_dashboard`, `get_company_analytics`
 - `backend/app/modules/company_dashboard/router.py` (NEW)
 - `backend/app/main.py` — `+company_dashboard_router`
+- `backend/tests/test_company_dashboard.py` (NEW) — 8 тестов, EMAIL_PREFIX `s43d_`
 
-Endpoints:
-- `GET /api/v1/company/dashboard` — pool info embedded (см. §6.4)
-- `GET /api/v1/company/analytics`
+Endpoints (см. §6.4):
+- `GET /api/v1/company/dashboard` — `passive_balance`, `total_revenue_cents` (paid_cents sum), `total_options_sold` (legal_basis='sale' only — gifts отдельно в `pool.consumed`), `products_count` (excluding archived), `pool` (None если не создан), `recent_transactions` (last 20 по `Transaction.user_id == company.user_id`, newest first)
+- `GET /api/v1/company/analytics` — totals + `revenue_this_month_cents` (`>= start_of_current_UTC_month`) + `sales_by_month` (через `func.date_trunc('month', created_at)`, последние 12 месяцев с продажами, oldest first) + `sales_by_product` (LEFT OUTER JOIN с `case` внутри SUM — все продукты, включая archived и zero-sales, sorted by `revenue_cents DESC` затем `name ASC`)
 
-#### B7 — Frontend mechanical rename (TD-F07)
+DRY: pool рендерится через тот же `with_consumed_remaining()` helper, что и staff pool router (§5.1), — единая семантика consumed/remaining.
 
-**Files:**
-- `frontend/src/api/types.ts` — `units → package_size`, `sold_units → available_packages`, `+total_supply / shares_per_option / pool fields`
-- `frontend/src/components/products/ProductCard.vue` — `p.units - p.sold_units → p.available_packages`
-- `frontend/src/views/products/ProductDetailView.vue` — same + sold-out state
-- `frontend/src/views/purchase/PurchaseView.vue` — `product.units → product.package_size`
-- `frontend/src/views/installments/InstallmentView.vue` — same
-- `frontend/src/utils/installmentPlans.ts` — `getTrancheUnits` обновить
-- 4 локали: `+inv.market.packsAvailable`, `+inv.product.packsAvailability`, `+inv.product.soldOut`
+Permissions: оба endpoint требуют только `get_current_company_profile()`. Investor/agent/staff без CompanyProfile получают 403.
 
-#### B8 — generate_ts_types.py + cbshome gen-types
+В процессе разработки выловлены 2 бага в тестах:
+1. CHECK constraint `ck_transactions_type` отвергал произвольное `type='test:event'` — заменено на `TransactionType.DEPOSIT_RECEIVED`
+2. Двойной вызов `_admin_token` в одном тесте давал email collision — добавлен `admin_token: str | None = None` в `_create_company_and_login` для переиспользования
 
-**Files:**
-- `backend/scripts/generate_ts_types.py` (NEW) — OpenAPI → TS, по pattern VELO
-- `backend/install_cbshome.sh` — `+cbshome gen-types` subcommand, integrate в `cbshome update`
-- `frontend/src/api/generated.ts` — auto-generated, COMMITTED
+Результат: **360 passed, 0 skipped**.
 
-**VPS state на 2026-05-01:**
-- 27 миграций накатаны на чистую БД
-- 341/341 тестов зелёные (после volume reset + B2.1)
-- Storefront seed работает (6 компаний, 21 продукт, 19 installment plans)
-- Test accounts seed работает (4 аккаунта)
-- Backend здоров
+### B5-pragmatic — Shared BalanceResponse ✅
 
-**Known frontend issue (вне scope):** `staff@test.cbshome.dev` после логина не попадает в админку, фронт показывает Identity Verification flow (KYC). Это баг роутинга на фронте, не имеет отношения к Sprint 4.3. Investor/agent/company логин работают.
+**Status:** committed + deployed
+**Files:** 2
+
+- `backend/app/modules/company_dashboard/schemas.py` — убран локальный `class BalanceResponse`, заменён на `from app.modules.dashboard.schemas import BalanceResponse` + `__all__` для re-export
+- `backend/app/modules/company_dashboard/service.py` — импорт `BalanceResponse` напрямую из `dashboard.schemas` (канонический дом)
+
+Причина: B5 продублировал `BalanceResponse` локально (frozen/confirmed cents) — OpenAPI после этого выдавал два name-mangled типа: `app__modules__company_dashboard__schemas__BalanceResponse` и `app__modules__dashboard__schemas__BalanceResponse`. Чтобы это уродство не утекло в auto-generated TS-типы (см. B8), классы объединены в один shared.
+
+Семантика идентична — оба возвращают `{"frozen": int, "confirmed": int}`. Бэк-тесты не упали.
+
+Результат: 360 passed; в `generated.ts` теперь одна `BalanceResponse` без mangled-имени.
+
+### B8 — TS types pipeline + cbshome-bot ✅
+
+**Status:** committed + deployed
+**Files:** 2
+
+- `backend/scripts/generate_ts_types.py` (NEW, 258 строк) — port VELO-генератора, stdlib only (`json`, `sys`, `pathlib`). Читает `openapi.json`, эмитит детерминированный `.ts` файл с интерфейсами + enum-union'ами
+- `install_cbshome.sh` — `case_update` реорганизован в VELO-стиль two-phase build:
+  1. `docker compose build app` (только бэк)
+  2. `up -d app postgres redis` (frontend deferred)
+  3. wait health → migrate → seed → backend tests
+  4. **NEW:** `curl :8000/openapi.json | python3 generate_ts_types.py → frontend/src/api/generated.ts`
+  5. **NEW:** `git status --porcelain` → если drift, commit от `cbshome-bot <bot@cbshome.local>` + push с retry через rebase
+  6. `docker compose build frontend` (с уже свежими типами)
+  7. `up -d frontend` → final health check
+- Новая команда `cbshome gen-types` — manual on-demand regeneration без коммита
+
+Workflow: разрабы НИКОГДА не правят `frontend/src/api/generated.ts` руками. Меняют Pydantic-схемы → push → `cbshome update` на тестовом VPS → бот сам коммитит обновлённый `generated.ts` в репо.
+
+Workaround на момент деплоя: захардкожен путь `/root/.ssh/id_ed25519_cbshome_deploy` вместо переменной `$DEPLOY_KEY` (она глобальная установочная, в управляющий скрипт не попадает через heredoc).
+
+Bot-push требует write-access на deploy-key — разрешено только на тестовом VPS. На прод-сервере (когда появится) deploy-key останется read-only, генерация будет в CI.
+
+### Pending: VELO Migration (заменяет изначальный план B7)
+
+При подготовке B7 (rename `units → package_size` / `sold_units → available_packages` в Vue) встал вопрос архитектуры `frontend/src/api/types.ts`. Сейчас 939 строк handwritten типов, которые расходятся с auto-generated `generated.ts` в **24 типах** (детальный аудит — `B7_AUDIT.md`).
+
+Решение: до самого rename'а — **полная миграция фронта на single source of truth = `generated.ts`**. Этот долг не хочется тащить в будущие спринты.
+
+Архитектура:
+- `types.ts` re-export'ит из `./generated`
+- В `types.ts` остаются только: `ApiError`, `ValidationErrorItem`, `PaginatedResponse<T>`, и 3 alias'а на handwritten-имена которые разъехались с бэком (`PortfolioPositionResponse`, `RejectAgentApplicationRequest`, `BlockUserRequest`)
+- Все narrowed unions (`UserRole`, `PaymentStatusType`, `KycStatus`, `TransactionType` и т.д., 19 штук) **удаляются**. Поля статусов становятся `string`. Принимаем потерю IDE-автокомплита на enum-литералах ради чистоты
+- Все required-vs-optional расхождения **разрешаются в пользу `generated.ts`**. Все downstream Vue/store-места правятся: `?? 0`, `?? ''`, `v-if`, null-guards
+
+#### План — 8 коммитов, каждый проверяется через `cbshome update` + `npm run typecheck`
+
+**Коммит 1:** Backend mini-fix
+- `backend/app/modules/dashboard/schemas.py::BalanceResponse` — убрать `= 0` defaults у `frozen`/`confirmed`. Сейчас defaults делают поля optional в OpenAPI; после удаления станут required, что согласуется с handwritten типом и не требует null-guards в PurchaseView/InstallmentView. Бэк-тесты не упадут — `get_passive_balance()` всегда возвращает оба ключа.
+
+**Коммит 2:** Aliases
+- В `types.ts` добавить три alias-export: `PortfolioPositionResponse = CompanyPositionResponse`, `RejectAgentApplicationRequest = RejectRequest`, `BlockUserRequest = BlockRequest`
+- Удалить локальные определения этих 3 интерфейсов
+
+**Коммит 3:** Re-export безопасных типов
+- ~39 типов с identical shape между handwritten и generated — re-export из `./generated`, удалить handwritten определения
+- Точный список — после grep'а в новом чате
+
+**Коммит 4:** Re-export типов с required→optional расхождениями
+- `AgentApplicationResponse`, `AvatarSessionResponse`, `EventResponse`, `KYCStatusResponse`, `PostResponse`, `UserDetailResponse`, `WithdrawalResponse`, etc.
+- TypeScript ожидаемо упадёт в downstream-местах → править: `obj.field` → `obj.field ?? fallback` или `v-if`
+
+**Коммит 5:** Удаление narrowed unions
+- 19 unions из `types.ts` уходят
+- Re-export response-типов где они использовались
+- Сравнения `status === 'literal'` остаются валидными (string === string), TS не падает; автокомплит исчезает — это принимаемая цена
+
+**Коммит 6:** `provider_data` resolution
+- Audit-step grep `provider_data` по `frontend/src/`. По результату:
+  - не используется → молча удаляем при re-export
+  - используется → backend-bug, добавить поле в `payments/schemas.py::StaffPaymentResponse`, потом миграция
+
+**Коммит 7:** B7 — собственно rename (то с чего всё начиналось)
+- `frontend/src/components/shared/ProductCard.vue` — `units - sold_units` → `available_packages ?? 0`
+- `frontend/src/views/investor/ProductDetailView.vue` — то же + sold-out CTA через `inv.product.soldOut`
+- `frontend/src/views/investor/PurchaseView.vue` — три места (`totalCents`, `available`, template label)
+- `frontend/src/views/investor/InstallmentView.vue` — `product.value.units` → `product.value.package_size` (одно место, line 180)
+- `frontend/src/i18n/locales/en.json` — добавить `inv.market.packsAvailable`, `inv.product.packsAvailability` (ключ `inv.product.soldOut` уже есть). Локали ru/de/ar — потом, после доработки en
+- `PublicProductResponse` / `PublicProductDetailResponse` — изменения уже на месте после re-export'а из `generated.ts` (Коммит 3)
+
+**Коммит 8:** Comment fix
+- `frontend/src/utils/installmentPlans.ts` — заменить в комментарии "decomposing a package into integer tranche slices" на "decomposing a plan's total_units into integer tranche slices". Логика не трогается.
+
+#### Файлы для аудита перед началом
+
+- `B7_AUDIT.md` — детальный аудит расхождений (лежит в репо в незакоммиченном виде, сделан Claude Code)
+- `frontend/src/api/types.ts`, `generated.ts` — источники для VELO-сравнения
+- 5 Vue/TS файлов из B7 — для финального rename
+- `frontend/src/i18n/locales/en.json`
+- `backend/app/modules/dashboard/schemas.py` — для Коммита 1
+
+Остальные Vue/store файлы которые упадут на typecheck в Коммитах 4-5 — подгружаются по запросу по мере падений.
+
+---
+
+**VPS state на 2026-05-02:**
+- 27 миграций накатаны
+- **360 backend тестов зелёные**
+- Storefront seed + test accounts seed работают
+- TS types pipeline (B8) работает: первый бот-push успешен, drift detection корректный
+- Backend здоров, фронт собран, frontend deferred-build pattern в `cbshome update` работает
+- Sprint 4.3 backend закрыт; остаётся VELO Migration + B7 rename как отдельная задача в новом чате
 
 ---
 
