@@ -9,6 +9,13 @@
 #
 # All amounts are in USD cents. current_value_cents is computed from
 # the company's current price_per_unit_cents * total_units.
+#
+# BalanceResponse fields are intentionally required (no defaults).
+# get_passive_balance() / get_active_balance() always emit both keys,
+# so a missing value would be a server bug, not a normal "empty"
+# state. Required-in-OpenAPI lets the frontend treat
+# active_balance.confirmed as a hard `number` without `?? 0` guards
+# in PurchaseView / InstallmentView (TD-071 / Sprint 4.3 VELO).
 # =============================================================================
 
 from uuid import UUID
@@ -19,8 +26,8 @@ from pydantic import BaseModel
 class BalanceResponse(BaseModel):
     """Ledger balance split by status."""
 
-    frozen: int = 0
-    confirmed: int = 0
+    frozen: int
+    confirmed: int
 
 
 class CompanySummaryResponse(BaseModel):
