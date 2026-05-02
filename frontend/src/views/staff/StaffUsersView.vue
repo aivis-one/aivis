@@ -74,7 +74,7 @@ const roleVariant = (role: string) => {
   return 'neutral'
 }
 
-function fullName(item: { first_name: string | null; last_name: string | null }): string {
+function fullName(item: { first_name?: string | null; last_name?: string | null }): string {
   const parts = [item.first_name, item.last_name].filter(Boolean)
   return parts.length ? parts.join(' ') : '—'
 }

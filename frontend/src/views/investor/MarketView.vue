@@ -61,7 +61,7 @@ const filterLabel = computed<string>(() => {
     return t('inv.market.filter.all')
   }
   const firstItem = productsStore.items[0]
-  if (firstItem) return firstItem.company_name
+  if (firstItem?.company_name) return firstItem.company_name
   const cached = companiesStore.items.find(
     (c) => c.id === productsStore.companyIdFilter,
   )

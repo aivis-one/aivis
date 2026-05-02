@@ -112,7 +112,7 @@ const queryPlanId = computed<string | null>(() => {
 })
 
 const noPlans = computed<boolean>(() => {
-  return product.value !== null && product.value.installments.length === 0
+  return product.value !== null && (product.value.installments ?? []).length === 0
 })
 
 const mode = computed<'select' | 'confirm'>(() => {

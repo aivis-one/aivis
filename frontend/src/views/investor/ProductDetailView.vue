@@ -196,14 +196,14 @@ onMounted(loadProduct)
             {{ t('inv.product.installments') }}
           </h2>
           <div
-            v-if="product.installments.length === 0"
+            v-if="(product.installments ?? []).length === 0"
             class="pd__empty"
           >
             {{ t('inv.product.installmentsEmpty') }}
           </div>
           <ul v-else class="pd__plans">
             <li
-              v-for="plan in product.installments"
+              v-for="plan in (product.installments ?? [])"
               :key="plan.id"
               class="pd__plan"
               :class="{ 'pd__plan--disabled': available <= 0 }"

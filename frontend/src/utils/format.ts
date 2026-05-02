@@ -76,8 +76,8 @@ export function formatNumber(n: number, locale: string): string {
  * the consumer then switches to a fallback class / element.
  */
 export function resolveCoverImage(source: {
-  cover_url: string | null
-  company_logo_url: string | null
+  cover_url?: string | null
+  company_logo_url?: string | null
 }): string | null {
   const raw = source.cover_url ?? source.company_logo_url
   return raw ? `url("${encodeURI(raw)}")` : null

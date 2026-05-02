@@ -27,7 +27,7 @@
 
 import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
-import type { PostListResponse, PostOwnerType } from '@/api/types'
+import type { PostListResponse } from '@/api/types'
 
 export interface ListPostsParams {
   page?: number
@@ -35,7 +35,7 @@ export interface ListPostsParams {
   // owner_type + company_id are the backend's published filter
   // surface; kept here for forward-compat with F9.2 even though
   // the B2 dashboard call does not use them.
-  owner_type?: PostOwnerType | string
+  owner_type?: string
   company_id?: string
   tag?: string
 }
