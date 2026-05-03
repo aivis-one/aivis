@@ -1,7 +1,7 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 3.3
-**Дата:** 17 апреля 2026
+**Версия:** 3.6
+**Дата:** 3 мая 2026
 **Статус:** В работе
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -1314,6 +1314,116 @@ backend/tests/
 **Score ревьюера:** 9.5/10. Единственный незакрытый пункт — TD-066 (legal stubs, **не код-блокер**, ждёт юр-текст).
 
 **Sprint 4.4 закрыт. Refactor TD-071 closed.**
+
+---
+
+### ✅ Sprint 4.5: GET /companies/me
+
+**Цель:** Дать роли `company` канонический путь к собственному полному профилю. Без этого Phase F5 (Company UI) не может ни взять `company_id` для фильтрации продуктов, ни прочитать `distribution_config` для секции Settings.
+
+**Проблема:**
+Публичный `GET /api/v1/companies/{id}` (Sprint 4.1) эмитит `PublicCompanyDetailResponse` — без `distribution_config`, без `user_id`, без `updated_at` — и возвращает 404 на non-active статусах. Для company-itself caller'а это неверно: hidden / archived компания должна видеть свой профиль. Staff-side `GET /api/v1/staff/companies/{id}` (Sprint 4.1) подходит по схеме (`CompanyResponse` с `distribution_config`), но требует staff-permission'а — недоступно company-роли.
+
+**Решение:**
+Новый endpoint `GET /api/v1/companies/me`, переиспользующий existing dependency `companies/dependencies.py:get_current_company_profile()` (тот же gate что у `/company/dashboard` и `/company/analytics`) и existing schema `CompanyResponse` (staff-side полный профиль). Без новых сервисных функций — endpoint целиком в роутере.
+
+**Что сделано:**
+- `backend/app/modules/companies/router.py` — `+GET /me` перед `GET /{company_id}` (route ordering: `/me` должен быть раньше, иначе FastAPI парсит `me` как UUID и падает на 422). Использует `Depends(get_current_company_profile)` → `CompanyResponse.model_validate(profile)`. No service-layer changes.
+- `backend/tests/test_companies_me.py` — **новый**: 3 теста (success / forbidden для non-company / unauthorized без токена). EMAIL_PREFIX=`s45_`.
+
+**Endpoints:**
+```
+GET /api/v1/companies/me  -> CompanyResponse  (auth: company role only)
+```
+
+**Ошибки:**
+- `401` — нет / невалидный Bearer token
+- `403` — auth есть, но `User` не привязан к `CompanyProfile` (investor / agent / staff / platform)
+
+**Сегментация:**
+Тот же error contract что у `/company/dashboard` и `/company/analytics`. Frontend получает один canonical путь и одинаковую error UX для всех company-side endpoints.
+
+**Файлы изменённые:**
+- `backend/app/modules/companies/router.py` — `+GET /me` route
+- `backend/tests/test_companies_me.py` — **новый**, 3 теста
+
+**Тесты:** 365/365 зелёные. VPS deploy log: `b539ee8 → b9d1fee`.
+
+**Sprint 4.5 закрыт.**
+
+---
+
+### ✅ Sprint 4.6: Portfolio + Company Dashboard installment hotfix
+
+**Цель:** Хотфикс продакшен-бага в агрегации портфолио и аналитики. Investor оплативший installment plan видел свои купленные units как «gifted», avg_price = $0.00, при ненулевом invested. Та же логическая ошибка — на стороне компании в `total_options_sold`.
+
+**Симптом (production):**
+Investor `cd5db920-6c55-4bd5-aa24-95e7f8024df3` viewing Immo-Pro-Invest GmbH:
+- `total_units = 1250`, `total_paid_cents = 118750` ($1187.50)
+- `sale_units = 0`, `gift_units = 1250` ❌
+- `avg_price_cents = 0` ❌
+
+Self-contradictory: $1187.50 invested, но каждый unit «gifted».
+
+**Root cause:**
+Sprint 9.2 (Portfolio) использует `case((Purchase.legal_basis == SALE, units))` для `sale_units` и **`case((Purchase.legal_basis != SALE, units))` для `gift_units`**. Это работало корректно когда было только два basis'а — `SALE` и `GIFT`. Sprint 6.2 (Installment) добавил `INSTALLMENT_TRANCHE`, но aggregate'ы в `portfolio/service.py` не обновили — `installment_tranche` тихо проваливается в `gift_units` через `!= SALE` else-branch.
+
+Та же ошибка реплицирована в `company_dashboard/service.py:_options_sold_sum()` и в `options_aggregate` внутри `sales_by_product` — компания видит revenue растущим (paid_cents всегда суммируется), но `total_options_sold` остаётся 0 при installment-продажах.
+
+**Решение (option A, согласовано):**
+Семантика "paid acquisition = sale + installment_tranche". Покупка в рассрочку — коммерческая продажа, юридически и семантически тождественна instant purchase. Объединяем оба в `_PAID_LEGAL_BASES` константу и используем `.in_()` для match'а. `gift_units` теперь явно `== GIFT` (не через `!= SALE`).
+
+Schema полей не меняется (`sale_units` / `gift_units` / `total_options_sold` / `options_sold` остались) — только математика за ними. Frontend type contract held, никаких миграций данных не нужно (агрегаты live-вычисляются по запросу).
+
+**Что сделано:**
+
+**`portfolio/service.py`:**
+- `_PAID_LEGAL_BASES = (SALE, INSTALLMENT_TRANCHE)` константа модуля.
+- `_sale_units_expr()` / `_gift_units_expr()` — DRY helper'ы, переиспользуются в обоих aggregate'ах (`get_portfolio` + `get_company_position`).
+- `sale_units` теперь matches `legal_basis.in_(_PAID_LEGAL_BASES)`.
+- `gift_units` теперь matches **explicitly** `legal_basis == GIFT` (никаких `!= SALE`).
+- `_compute_avg_price()` — параметр переименован `sale_units` → `paid_units`. Формула `total_paid / paid_units` с тем же `<= 0` guard.
+- Module docstring + Sprint 4.6 hotfix секция.
+
+**`company_dashboard/service.py`:**
+- `_options_sold_sum()` теперь `legal_basis.in_(_PAID_LEGAL_BASES)`.
+- `options_aggregate` в `sales_by_product` — то же самое.
+- Sprint 4.6 hotfix комментарии в module docstring и над expressions.
+
+**`tests/test_portfolio_installment.py` (NEW):**
+- EMAIL_PREFIX=`s46_`, 3 регрессионных теста.
+- `test_portfolio_me_installment_tranche_counts_as_sale` — investor создаёт installment plan (UX-01 платит tranche #1 inline), `GET /portfolio/me` показывает `sale_units > 0`, `gift_units == 0`, `avg_price > 0`.
+- `test_portfolio_company_detail_installment_tranche_counts_as_sale` — то же на `/portfolio/me/company/{id}` (separate aggregation query).
+- `test_company_dashboard_counts_installment_in_options_sold` — компания видит installment как продажу: `total_options_sold > 0`, `sales_by_product[i].options_sold > 0`.
+
+Все 3 теста используют `create_plan()` напрямую на service layer (UX-01 платит inline) — реалистичный path что воспроизводит production-баг.
+
+**Файлы изменённые:**
+- `backend/app/modules/portfolio/service.py` — `_PAID_LEGAL_BASES`, helper expressions, fixed aggregations, updated docstring + `_compute_avg_price` param rename
+- `backend/app/modules/company_dashboard/service.py` — `_PAID_LEGAL_BASES`, fixed `_options_sold_sum` + `options_aggregate`, updated docstring
+- `backend/tests/test_portfolio_installment.py` — **новый**, 3 регрессионных теста
+
+**Тесты:** 368/368 зелёные (365 + 3 новых). VPS deploy log: `b9d1fee → 75168f0`. Production verified: investor `cd5db920...` portfolio теперь показывает `sale_units=1250, gift_units=0, avg_price=$0.95, invested=$1187.50` — арифметика согласована.
+
+**Sprint 4.6 закрыт.**
+
+---
+
+### ✅ Sprint 4.5 prep (frontend wiring)
+
+**Цель:** Подвести фронт под Sprint 4.5 endpoint и Phase F5 типы — без этого F5 development блокирован на отсутствующих type re-exports и API wrappers.
+
+**Что сделано:**
+- `frontend/src/api/companies.ts` — `+getMyCompany(): Promise<CompanyResponse>` для `GET /api/v1/companies/me`. Existing `listCompanies` / `getCompany` без изменений.
+- `frontend/src/api/types.ts` — новая секция `Phase F5 -- Company UI` (между F4.1 и F4.2 блоками). Re-export'ит из `generated.ts`: `CompanyResponse`, `CompanyDashboardResponse`, `CompanyAnalyticsResponse`, `PoolEmbedResponse`, `CompanyTransactionResponse`, `SalesByMonthEntry`, `SalesByProductEntry`. Phase F5 компоненты теперь импортируют из `@/api/types`, не из `@/api/generated` напрямую.
+
+**Файлы изменённые:**
+- `frontend/src/api/companies.ts` — `+getMyCompany()` wrapper
+- `frontend/src/api/types.ts` — `+Phase F5` re-export секция
+
+**Тесты:** Frontend-only diff, бэкенд тесты 368/368 зелёные. VPS deploy log: `75168f0 → 0f11197`. `vue-tsc` прошёл, `Generated 116 types -> /opt/cbshome/repo/frontend/src/api/generated.ts`, `✓ Types are in sync, no commit needed`.
+
+**Sprint 4.5 prep закрыт.**
 
 ---
 
@@ -3247,6 +3357,8 @@ backend/app/modules/transactions/
 **Конец документа**
 
 ---
+
+*Version 3.6 | 2026-05-03 | Sprint 4.5: GET /companies/me canonical path для company-роли (CompanyResponse staff-side schema). Sprint 4.6 hotfix: portfolio + company_dashboard installment regression — installment_tranche purchases теперь корректно классифицируются как paid acquisitions (был silent fall-through в gift bucket из-за `!= SALE` else-branch, оставшегося с pre-Sprint-6.2 кода). Sprint 4.5 frontend prep: `getMyCompany()` wrapper + Phase F5 re-exports в types.ts. 368 tests, all green. Deploys: b539ee8 → b9d1fee (4.5) → 75168f0 (4.6) → 0f11197 (prep).*
 
 *Version 3.5 | 2026-05-03 | Sprint 4.3 + 4.4 закрыты. Share Pool refactor (TD-071) deployed: `OptionPool` модель, `Product.package_size` rename, `available_packages` через pool, `price_per_pack_cents` в public response, gift overflow в owner supply. Sprint 4.4: VELO Migration (frontend types pipeline), pack-pricing UX, code review hardening (POOL_STATUS_ACTIVE centralisation, dead-copies removal, explicit Pydantic constructors, ProductDetailResponse cleanup). 362 tests, all green.*
 

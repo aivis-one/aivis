@@ -1,17 +1,17 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.6
-**Дата:** 22 апреля 2026
+**Версия:** 2.7
+**Дата:** 3 мая 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
 **Зависимости (читать перед работой):**
 - `CBSHOME-Design-Document.md` — Конституция v1.5
-- `CBSHOME-Backend.md` — Backend ТЗ v2.9
+- `CBSHOME-Backend.md` — Backend ТЗ v3.6
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
 - `CBSHOME-Installment.md` — механика рассрочки
-- `CBSHOME-Share-Pool-Refactor.md` — TD-F07 follow-up (обязательно перед стартом F5)
+- `CBSHOME-Share-Pool-Refactor.md` — архитектурный референс OptionPool / Product Inventory (✅ closed Sprint 4.4, deployed `b539ee8`)
 - `mockups/` — UI-прототипы (auth-flow, investor-shell, agent-shell, company-shell, staff-shell)
 
 ---
@@ -1071,46 +1071,111 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ## PHASE F5: Company
 
-> ⚠ **BLOCKER:** перед стартом F5 должен быть завершён backend Sprint 4.3 (TD-071) — рефакторинг модели акций / пакетов. Витрины Company оперируют теми же `Product`-сущностями, но от лица владельца компании: там нельзя показывать заведомо неверные цифры `sold_units` / `units`. Детали — `CBSHOME-Share-Pool-Refactor.md`. После merge бэка на фронте остаётся парная follow-up задача (`TD-F07`): переименование поля в `api/types.ts` + точечные правки `ProductCard.vue`, `ProductDetailView.vue`, локалей. Формально отдельным спринтом во Frontend ТЗ не оформляется — это механическое переименование, идущее сразу после backend merge.
+> ✅ **Backend готов.** Sprint 4.5 deployed `b9d1fee` дал `GET /api/v1/companies/me` (canonical путь к собственному профилю с `distribution_config`, без 404 на non-active статусах). Sprint 4.3 B5 (`b9d1fee` ранее) дал `GET /api/v1/company/dashboard` + `GET /api/v1/company/analytics` — два специализированных company-side endpoint'а с правильным auth gate (`get_current_company_profile` → 403 без `CompanyProfile`). Sprint 4.6 hotfix (`75168f0`) починил installment_tranche-агрегацию в обоих response'ах. Sprint 4.5 frontend prep (`0f11197`) добавил `getMyCompany()` wrapper и Phase F5 type re-exports.
+>
+> **TD-F07 — закрыт в Sprint 4.4.** Пакет / pool-ребрендинг полей (`sold_units` → `available_packages`, `units` → `package_size`) выполнен на бэке (Sprint 4.3) и на фронте (Sprint 4.4) перед стартом F5.
 
 ### F5.1: Дашборд компании
 
-**Цель:** Компания видит свою статистику.
+**Цель:** Компания видит дашборд с метриками: passive balance, lifetime revenue, total options sold, active pool snapshot, последние транзакции.
+
+**API контракт (готов):**
+- `GET /api/v1/companies/me` → `CompanyResponse` — staff-side полный профиль (Sprint 4.5).
+- `GET /api/v1/company/dashboard` → `CompanyDashboardResponse` (Sprint 4.3 B5) — single-payload агрегат: `passive_balance`, `total_revenue_cents`, `total_options_sold` (sale + installment_tranche, Sprint 4.6 hotfix), `products_count`, `pool` (active OptionPool snapshot или `null` если pool ещё не создан staff'ом), `recent_transactions[20]` (last 20 по `user_id` company, newest first).
 
 **Задачи:**
-- [ ] src/views/company/CompanyDashboardView.vue:
-  - GET /api/v1/dashboard/summary → балансы и агрегаты (работает для любой роли)
-  - Виджеты: количество продуктов, passive balance, current_value_cents
-  - Последние транзакции: GET /api/v1/transactions
+- [ ] `src/api/company.ts` — **новый**: `getCompanyDashboard()`, `getCompanyAnalytics()` для `/company/dashboard` + `/company/analytics`. Тонкие wrapper'ы поверх `api.get`.
+- [ ] `src/stores/companyDashboard.ts` — **новый**: Pinia store, `summary: CompanyDashboardResponse | null`, `refresh()` с epoch-guard pattern (FP-17, F4.4 B5-post). `reset()` бампит epoch — post-logout in-flight fetch не repopulate'ит state.
+- [ ] `src/stores/companyProfile.ts` — **новый**: Pinia store, `profile: CompanyResponse | null`, `loadIfMissing()` идемпотентен (cached). Используется F5.1 для company name/logo в header, F5.2 для Settings и для `company_id` фильтрации в Products view.
+- [ ] `src/views/company/CompanyDashboardView.vue` — **новый**:
+  - `onMounted` → `loadIfMissing()` (companyProfile) + `refresh()` (companyDashboard) параллельно через `Promise.all`.
+  - Hero: company logo + name из `companyProfile.value`.
+  - Виджеты: `passive_balance.confirmed_cents` (доступно к выводу), `passive_balance.frozen_cents` (заморожено), `total_revenue_cents`, `total_options_sold`, `products_count`.
+  - Pool widget: `summary.pool` — `total_options`, `consumed`, `remaining`, `equity_percent`. Если `pool === null` → плашка «Pool не создан, обратитесь в support».
+  - Recent transactions: `summary.recent_transactions` (уже встроены в payload, отдельный fetch не нужен).
 
-**Зависимость от бэкенда:** Dashboard (Sprint 9.2 ✅), Transactions (Sprint 6.4 ✅).
+**Зависимости от бэкенда:** Sprint 4.3 B5 (Company Dashboard endpoint) ✅, Sprint 4.5 (`/companies/me`) ✅, Sprint 4.6 hotfix (installment_tranche в options_sold) ✅.
 
-**Критерий готовности:** Компания видит дашборд с метриками.
+**Не использовать:**
+- ❌ `GET /api/v1/dashboard/summary` — это endpoint Sprint 9.2 для **investor**-роли (active+passive balance, holdings across companies). Для company-роли он отдаст пустую `companies[]` и нерелевантные active_balance.
+- ❌ `GET /api/v1/transactions` — отдельный fetch не нужен, последние 20 уже embed'ятся в `dashboard` payload.
+- ❌ `GET /api/v1/companies/{id}` (public) для собственного профиля — 404'ится на non-active, не отдаёт `distribution_config`. Используй `getMyCompany()`.
+
+**Критерий готовности:** Компания видит дашборд с балансом, метриками продаж, snapshot'ом pool'а и последними 20 транзакциями. Один HTTP round trip на `/company/dashboard` + один на `/companies/me`.
+
+**Commit chain (план):**
+- B0: `api/company.ts` + types check.
+- B1: `companyProfile` store + `companyDashboard` store с epoch-guard.
+- B2: `CompanyDashboardView.vue` — каркас + hero + balance widgets.
+- B3: Pool widget + recent transactions list.
+- B4: i18n keys (`company.dashboard.*`), null-states (no pool, empty transactions).
 
 ---
 
-### F5.2: Продукты + Аналитика + Баланс
+### F5.2: Продукты + Аналитика + Баланс + Settings
 
-**Цель:** Компания видит свои продукты, аналитику и управляет балансом.
+**Цель:** Компания видит свои продукты, аналитику продаж, управляет выводами и видит профиль (read-only в MVP — редактирование через Staff).
+
+**API контракт (готов):**
+- `GET /api/v1/products?company_id={my_id}&active_only=true|false` (Sprint 4.2) — список продуктов компании.
+- `GET /api/v1/company/analytics` → `CompanyAnalyticsResponse` (Sprint 4.3 B5) — `total_revenue_cents`, `revenue_this_month_cents`, `total_options_sold` (Sprint 4.6 fix), `sales_by_month[]` (last 12 месяцев с продажами, oldest first), `sales_by_product[]` (ВСЕ продукты компании включая archived и zero-sales, sorted by revenue DESC).
+- `GET /api/v1/companies/me` → `CompanyResponse` (Sprint 4.5) — full профиль для Settings.
+- `GET /api/v1/withdrawals/me` (Sprint 6.3) — список выводов.
+- `POST /api/v1/withdrawals` (Sprint 6.3) — запрос вывода с body `{amount_cents}`.
+- `GET/PUT /api/v1/users/me/payout-details` — реквизиты.
 
 **Задачи:**
-- [ ] src/views/company/CompanyProductsView.vue:
-  - GET /api/v1/products?company_id={my_company_id} → список продуктов
-- [ ] src/views/company/CompanyProductEditView.vue:
-  - GET /api/v1/products/{id} — детали (readonly, редактирование через Staff)
-- [ ] src/views/company/CompanyAnalyticsView.vue:
-  - GET /api/v1/portfolio/me/company/{id} — аналитика продаж
-- [ ] src/views/company/CompanyBalanceView.vue:
-  - Passive balance из GET /api/v1/dashboard/summary → passive_balance
-  - Список выводов: GET /api/v1/withdrawals/me
-  - Кнопка "Вывести": POST /api/v1/withdrawals (body: `{ amount_cents }`)
-  - Настройка реквизитов: GET/PUT /api/v1/users/me/payout-details
-- [ ] src/views/company/CompanySettingsView.vue:
-  - GET /api/v1/companies/{id} — профиль компании (readonly)
+- [ ] `src/views/company/CompanyProductsView.vue` — **новый**:
+  - `companyProfile.loadIfMissing()` → `company_id`.
+  - `GET /products?company_id={my_id}` (по умолчанию public endpoint отдаёт `active_only=true` → активные в продаже). Для company-роли это OK для MVP — компания видит свои активные продукты как они показываются инвесторам. **Note:** для draft / archived продуктов нужен staff endpoint (`GET /api/v1/staff/products?...`) — за пределами F5 scope, в MVP компания управляет статусом продукта через staff.
+  - Карточки: pack-pricing (как в `ProductCard.vue` для Investor), `available_packages`, статус.
+- [ ] `src/views/company/CompanyAnalyticsView.vue` — **новый**:
+  - Использует `companyDashboard.refresh()` если ещё не загружено + `getCompanyAnalytics()`.
+  - Top metrics: `total_revenue_cents`, `revenue_this_month_cents`, `total_options_sold`.
+  - `sales_by_month` chart (last 12 months, oldest → newest).
+  - `sales_by_product` table (ВСЕ продукты, sorted by revenue DESC) — позволяет компании увидеть какие продукты не продаются (revenue=0 не скрыт).
+- [ ] `src/views/company/CompanyBalanceView.vue` — **новый**:
+  - `passive_balance` берётся из **уже-загруженного** `companyDashboard` store — не делать второй вызов `/company/dashboard` (или `/dashboard/summary`) ради того же объекта.
+  - Список выводов: `GET /api/v1/withdrawals/me`.
+  - Кнопка "Вывести" → `POST /api/v1/withdrawals`.
+  - Реквизиты: `GET/PUT /api/v1/users/me/payout-details`.
+- [ ] `src/views/company/CompanySettingsView.vue` — **новый**:
+  - `getMyCompany()` → `CompanyResponse`. **Не** `getCompany(id)` — public endpoint скрывает `distribution_config` и 404'ится на non-active.
+  - Read-only render: name, description, price_per_unit_cents, total_supply, shares_per_option, distribution_config (форматированный JSON view).
+  - Note: «Для редактирования профиля обратитесь в support» — редактирование через staff endpoints (Sprint 4.1), не через company-side UI в MVP.
 
-**Зависимость от бэкенда:** Products (Phase 4.2 ✅), Companies (Phase 4.1 ✅), Dashboard (Sprint 9.2 ✅), Withdrawals (Sprint 6.3 ✅).
+**Зависимости от бэкенда:** Sprint 4.1 (`/companies` public) ✅, Sprint 4.2 (`/products`) ✅, Sprint 4.3 B5 (`/company/analytics`) ✅, Sprint 4.5 (`/companies/me`) ✅, Sprint 4.6 hotfix (installment в options_sold) ✅, Sprint 6.3 (`/withdrawals`) ✅.
 
-**Критерий готовности:** Компания видит продукты, аналитику, управляет выводами.
+**Не использовать:**
+- ❌ `GET /api/v1/portfolio/me/company/{id}` для company-аналитики — это **investor**-side endpoint (показывает покупки одного investor'а в одной компании). Для аналитики продаж компании используй `/company/analytics`.
+- ❌ `GET /api/v1/companies/{id}` для собственного профиля — public projection без `distribution_config`. Используй `getMyCompany()`.
+- ❌ Двойной fetch `passive_balance` через `/dashboard/summary` — уже есть в `companyDashboard` store.
+
+**Критерий готовности:** Компания видит продукты, аналитику с графиками, управляет выводами, видит профиль (read-only).
+
+**Commit chain (план):**
+- B0: `CompanyProductsView.vue` (re-используем существующий `ProductCard.vue`).
+- B1: `CompanyAnalyticsView.vue` — top metrics + sales_by_month chart.
+- B2: `CompanyAnalyticsView.vue` — sales_by_product table.
+- B3: `CompanyBalanceView.vue` — passive balance + withdrawals list + payout details.
+- B4: `CompanyBalanceView.vue` — POST /withdrawals form.
+- B5: `CompanySettingsView.vue` — read-only profile render.
+
+---
+
+### Сводная таблица F5 endpoints
+
+| Endpoint | Метод | Schema | Sprint |
+|---|---|---|---|
+| `/api/v1/companies/me` | GET | `CompanyResponse` | 4.5 |
+| `/api/v1/company/dashboard` | GET | `CompanyDashboardResponse` | 4.3 B5 |
+| `/api/v1/company/analytics` | GET | `CompanyAnalyticsResponse` | 4.3 B5 |
+| `/api/v1/products?company_id=...` | GET | `PublicProductListResponse` | 4.2 |
+| `/api/v1/withdrawals/me` | GET | `WithdrawalListResponse` | 6.3 |
+| `/api/v1/withdrawals` | POST | `WithdrawalResponse` | 6.3 |
+| `/api/v1/users/me/payout-details` | GET/PUT | `PayoutDetailsResponse` | — |
+
+Все типы re-export'ятся из `frontend/src/api/types.ts` (секция `Phase F5 -- Company UI`, добавлена в Sprint 4.5 prep, `0f11197`).
 
 ---
 
