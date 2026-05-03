@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Portfolio Service (Sprint 9.2)
+# CBSHOME Backend -- Portfolio Service (Sprint 9.2 + Sprint 4.6 hotfix)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -7,9 +7,30 @@
 #   get_company_position()   -- single company position + paginated purchases
 #
 # AVERAGE PRICE:
-#   avg_price_cents = SUM(paid_cents) / SUM(units WHERE legal_basis='sale')
-#   Gift purchases (paid_cents=0, legal_basis=gift) are excluded from avg.
-#   If sale_units == 0, avg_price_cents = 0.
+#   avg_price_cents = SUM(paid_cents) / SUM(units WHERE legal_basis IN
+#                                            ('sale', 'installment_tranche'))
+#   Gift purchases (legal_basis='gift', paid_cents=0) are excluded from
+#   the average. If the resulting "paid_units" denominator is zero
+#   (gift-only portfolio for this company), avg_price_cents = 0.
+#
+# Sprint 4.6 hotfix:
+#   Pre-fix the aggregation classified `installment_tranche` purchases
+#   as gifts (because the case-when used `legal_basis != SALE` for
+#   gifts). An investor who paid a tranche then saw their portfolio
+#   row as `sale_units=0, gift_units=N, avg_price=$0.00, invested=$X` --
+#   contradictory: invested > 0 but every unit was "gifted". Reported
+#   from production: investor cd5db920... viewing Immo-Pro-Invest GmbH
+#   showed total_units=1250, gift_units=1250, sale_units=0,
+#   total_paid_cents=118750, avg_price=0.
+#
+#   Fix: classify by explicit enum membership. installment_tranche
+#   purchases are commercial sales-in-instalments, so they roll up
+#   into the same bucket as instant SALE purchases for the purpose
+#   of avg_price and the "purchased vs gifted" split shown in the UI.
+#   GIFT is the only basis that contributes to gift_units.
+#
+#   Schema fields are unchanged (sale_units / gift_units), so the
+#   frontend type contract holds. Only the math behind them changes.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Read-only queries via get_db_reader.
@@ -32,14 +53,70 @@ from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 
 
-def _compute_avg_price(total_paid_cents: int, sale_units: int) -> int:
-    """Compute average purchase price per unit (sale purchases only).
+# Legal-basis values that count as a paid acquisition for the purpose
+# of avg-price math and the "purchased" UI label. Instant SALE and
+# INSTALLMENT_TRANCHE are both money-moving events from the investor;
+# GIFT is free shares and lives in its own bucket.
+_PAID_LEGAL_BASES = (
+    PurchaseLegalBasis.SALE,
+    PurchaseLegalBasis.INSTALLMENT_TRANCHE,
+)
 
-    Returns 0 if investor has no sale units for a company.
+
+def _compute_avg_price(total_paid_cents: int, paid_units: int) -> int:
+    """Compute average purchase price per unit (paid acquisitions only).
+
+    `paid_units` is the sum of units across legal_basis IN
+    ('sale', 'installment_tranche') -- i.e. units the investor paid
+    money for, regardless of whether the payment was instant or
+    spread across tranches. Gifts are excluded.
+
+    Returns 0 when the denominator is non-positive (gift-only
+    portfolio for the company in question).
     """
-    if sale_units <= 0:
+    if paid_units <= 0:
         return 0
-    return round(total_paid_cents / sale_units)
+    return round(total_paid_cents / paid_units)
+
+
+# Reusable case-when fragments. Defined as helpers so the two
+# aggregation queries below share one source of truth -- if we ever
+# need to add another paid basis (e.g. a future "barter" type), one
+# edit instead of two.
+def _sale_units_expr() -> object:
+    """SUM(units) for paid acquisitions (sale + installment_tranche)."""
+    return func.coalesce(
+        func.sum(
+            case(
+                (
+                    Purchase.legal_basis.in_(_PAID_LEGAL_BASES),
+                    Purchase.units,
+                ),
+                else_=0,
+            )
+        ),
+        0,
+    )
+
+
+def _gift_units_expr() -> object:
+    """SUM(units) for legal_basis='gift'.
+
+    Sprint 4.6 hotfix: was `legal_basis != SALE`, which silently
+    captured installment_tranche as gift. Now matches GIFT explicitly.
+    """
+    return func.coalesce(
+        func.sum(
+            case(
+                (
+                    Purchase.legal_basis == PurchaseLegalBasis.GIFT,
+                    Purchase.units,
+                ),
+                else_=0,
+            )
+        ),
+        0,
+    )
 
 
 async def get_portfolio(
@@ -58,30 +135,8 @@ async def get_portfolio(
             CompanyProfile.logo_url.label("logo_url"),
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            Purchase.legal_basis == PurchaseLegalBasis.SALE,
-                            Purchase.units,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("sale_units"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            Purchase.legal_basis != PurchaseLegalBasis.SALE,
-                            Purchase.units,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("gift_units"),
+            _sale_units_expr().label("sale_units"),
+            _gift_units_expr().label("gift_units"),
             func.coalesce(func.sum(Purchase.paid_cents), 0).label("total_paid"),
             func.count().label("purchases_count"),
         )
@@ -150,30 +205,8 @@ async def get_company_position(
             CompanyProfile.logo_url.label("logo_url"),
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            Purchase.legal_basis == PurchaseLegalBasis.SALE,
-                            Purchase.units,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("sale_units"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            Purchase.legal_basis != PurchaseLegalBasis.SALE,
-                            Purchase.units,
-                        ),
-                        else_=0,
-                    )
-                ),
-                0,
-            ).label("gift_units"),
+            _sale_units_expr().label("sale_units"),
+            _gift_units_expr().label("gift_units"),
             func.coalesce(func.sum(Purchase.paid_cents), 0).label("total_paid"),
         )
         .join(CompanyProfile, Purchase.company_id == CompanyProfile.id)

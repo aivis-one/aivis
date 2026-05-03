@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Company Dashboard Service (Sprint 4.3 / B5 + Sprint 4.4)
+# CBSHOME Backend -- Company Dashboard Service (Sprint 4.3 / B5 + Sprint 4.4
+#                                                  + Sprint 4.6 hotfix)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -13,22 +14,33 @@
 #                                (ALL products including archived /
 #                                zero-sales, sorted by revenue DESC)
 #
-# Sprint 4.3 NOTE:
-#   `total_options_sold` reports SALE units only (legal_basis='sale'),
-#   while pool.consumed reports SALE + GIFT. The two numbers can diverge
-#   when gift bonuses are configured -- that divergence is intentional
-#   and visible in the dashboard payload (consumed - total_options_sold
-#   = gift units issued so far).
+# Sprint 4.3 NOTE (semantics):
+#   `total_options_sold` reports paid-acquisition units only -- both
+#   instant SALE and INSTALLMENT_TRANCHE (Sprint 4.6 hotfix). It does
+#   NOT include GIFT units, while pool.consumed includes everything.
+#   So `consumed - total_options_sold = gift units issued` is the
+#   intended interpretation, and it remains true after the hotfix.
 #
 # Sprint 4.4 CHANGES:
 #   - `_POOL_STATUS_ACTIVE` constant removed; imported from
-#     pools/constants.py instead. The "kept local for self-containment"
-#     comment was speculative; consolidating to one place removes a
-#     synchronisation point with no real cost.
+#     pools/constants.py instead.
 #   - with_consumed_remaining() now requires `consumed` as an argument.
-#     We compute it via get_pool_consumed (the same SELECT the helper
-#     used to run internally) so the dashboard call remains a 2-SELECT
-#     operation, just with explicit ownership.
+#     Computed via get_pool_consumed and passed explicitly.
+#
+# Sprint 4.6 hotfix (paired with portfolio/service.py):
+#   `_options_sold_sum` and the `options_aggregate` inside
+#   `sales_by_product` previously matched only `legal_basis='sale'`.
+#   When an investor paid via installment, their tranche purchase
+#   (legal_basis='installment_tranche') was excluded -- the company
+#   saw revenue rise (paid_cents was always counted) but
+#   `total_options_sold` and `sales_by_product[*].options_sold`
+#   stayed at 0. Fix: paid acquisitions now means
+#   `legal_basis IN ('sale', 'installment_tranche')`, matching
+#   the same definition applied on the portfolio side. Investor's
+#   "purchased" view and company's "options sold" view now agree.
+#
+#   Schema fields (`total_options_sold`, `options_sold`) are
+#   unchanged, so no frontend type churn. The values are now correct.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Read-only queries via get_db_reader.
@@ -73,22 +85,36 @@ _RECENT_TRANSACTIONS_LIMIT = 20
 _SALES_BY_MONTH_LOOKBACK_MONTHS = 12
 
 
+# Sprint 4.6: paid acquisitions for the "options sold" rollup. Both
+# instant SALE and INSTALLMENT_TRANCHE put units into the investor's
+# hands in exchange for money, so both belong in the company's
+# "options sold" line. GIFT is excluded (paid_cents=0 anyway).
+_PAID_LEGAL_BASES = (
+    PurchaseLegalBasis.SALE,
+    PurchaseLegalBasis.INSTALLMENT_TRANCHE,
+)
+
+
 # ---------------------------------------------------------------------------
 # Reusable aggregation expressions (case-when sums)
 # ---------------------------------------------------------------------------
 
 
 def _options_sold_sum() -> object:
-    """SUM(Purchase.units) for sale legal basis only (gifts excluded).
+    """SUM(Purchase.units) for paid acquisitions (sale + installment_tranche).
 
     Used inside SELECT lists where Purchase rows are already filtered
     to status=active by an outer WHERE clause.
+
+    Sprint 4.6 hotfix: was `legal_basis == SALE` only, which silently
+    dropped installment tranche purchases. Now uses the same paired
+    semantics as the portfolio service.
     """
     return func.coalesce(
         func.sum(
             case(
                 (
-                    Purchase.legal_basis == PurchaseLegalBasis.SALE,
+                    Purchase.legal_basis.in_(_PAID_LEGAL_BASES),
                     Purchase.units,
                 ),
                 else_=0,
@@ -221,7 +247,7 @@ async def get_company_analytics(
         now, _SALES_BY_MONTH_LOOKBACK_MONTHS
     )
 
-    # -- 1. Lifetime totals (revenue + sale options) --
+    # -- 1. Lifetime totals (revenue + paid options) --
     totals_stmt = (
         select(
             func.coalesce(func.sum(Purchase.paid_cents), 0).label("revenue"),
@@ -296,12 +322,15 @@ async def get_company_analytics(
         ),
         0,
     )
+    # Sprint 4.6 hotfix: paid acquisitions = sale + installment_tranche.
+    # Same definition as _options_sold_sum() so the per-product breakdown
+    # adds up to the lifetime total.
     options_aggregate = func.coalesce(
         func.sum(
             case(
                 (
                     (Purchase.status == PurchaseStatus.ACTIVE)
-                    & (Purchase.legal_basis == PurchaseLegalBasis.SALE),
+                    & (Purchase.legal_basis.in_(_PAID_LEGAL_BASES)),
                     Purchase.units,
                 ),
                 else_=0,
