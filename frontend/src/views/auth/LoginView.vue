@@ -1,8 +1,22 @@
 <script setup lang="ts">
 // Login screen — email + password form.
 // Emits 'go-register' to switch to RegisterView in App.vue auth gate.
+//
+// POST-LOGIN NAVIGATION.
+//   After loginViaEmail succeeds we explicitly router.push('/').
+//   Without an explicit push, App.vue's auth-gate flips
+//   <LoginView /> → <RouterView /> reactively but the URL is still
+//   /login, so RouterView simply re-mounts LoginView under the
+//   authenticated tree and the user sees no change until they
+//   refresh the page (which triggers globalGuard's "authenticated
+//   user on /login → role dashboard" redirect on a fresh
+//   navigation). Pushing to '/' triggers root.beforeEnter +
+//   globalGuard, which dispatch by role to the right dashboard --
+//   same pattern as VerifyEmailView.handleVerify after email
+//   confirmation.
 
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
@@ -12,6 +26,7 @@ const emit = defineEmits<{
   'go-register': []
 }>()
 
+const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
@@ -30,6 +45,9 @@ async function handleLogin(): Promise<void> {
 
   try {
     await authStore.loginViaEmail(email.value, password.value)
+    // Trigger a navigation so globalGuard + root.beforeEnter pick
+    // the right destination for the authenticated user. See header.
+    await router.push('/')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       if (err.status === 401) {
