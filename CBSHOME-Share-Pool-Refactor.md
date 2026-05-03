@@ -1,50 +1,26 @@
-# CBSHOME — Option Pool & Product Inventory Refactor
+# CBSHOME — Option Pool & Product Inventory Model
 
-**Tracking ID (Backend):** TD-071
-**Tracking ID (Frontend):** TD-F07
-**Sprint:** 4.3 (Phase 4)
-**Статус:** In Progress -- Backend B0-B2.1 + B6 deployed (✅), B3/B4/B5/B7/B8 pending
-**Версия:** 2.2
-**Дата создания:** 17 апреля 2026
-**Дата обновления:** 1 мая 2026
+**Tracking ID (Backend):** TD-071 (✅ Closed Sprint 4.4)
+**Tracking ID (Frontend):** TD-F07 (✅ Closed Sprint 4.4)
+**Sprints:** 4.3 + 4.4 — deployed on `b539ee8`
+**Версия:** 2.4-trimmed
+**Дата закрытия:** 3 мая 2026
+
+> **Status: Closed.** This is the **architectural reference** for the option pool model that powers product inventory.
+> Process artifacts (acceptance checklists, batch progress, impact analysis, file-by-file change lists) have been removed.
+> What remains: the model itself, the migration shape, edge cases, and what's intentionally left out of MVP scope.
+> If you need the implementation history, the git log on `b539ee8` and Backend.md / Frontend.md changelogs are the source of truth.
 
 **Зависимости:**
-- `CBSHOME-Backend.md` — Phase 4, реестр техдолга (TD-071)
-- `CBSHOME-Frontend.md` — PHASE F5, реестр техдолга (TD-F07)
+- `CBSHOME-Backend.md` — Phase 4, актуальный код модулей `pools/`, `products/`, `purchases/`, `company_dashboard/`
+- `CBSHOME-Frontend.md` — `types.ts` (VELO Migration), pack-pricing UX, типизированный auth store
 - `CBSHOME-Financial-System.md` — `Purchase.units`, `Purchase.paid_cents`, pricing
 
 ---
 
-## 1. Summary
+## 1. Проблема — детально
 
-Текущая модель `Product` конфликтует с бизнес-реальностью выпуска опционов и будущей токенизацией.
-
-**Одна фраза:** компания имеет фиксированный `total_supply` опционов (покрывающий 100% акций), часть из них выделяет в `OptionPool` для продажи через платформу, а продукты — это лишь **правила деноминации** (упаковки) пула на пакеты разных размеров.
-
-**Ключевые архитектурные решения v2.0:**
-
-1. **Три уровня владения:**
-   - **Акции** — юридическая реальность, вне системы.
-   - **Total Supply** — все опционы компании, покрывающие 100% акций. `total_supply = total_shares / shares_per_option`. При токенизации — полный mint контракта.
-   - **Option Pool** — доля Total Supply, выделенная на продажу через платформу. Owners компании держат оставшиеся опционы вне платформы.
-
-2. **`OptionPool` — отдельная модель**, не поле на CompanyProfile. Имеет свой lifecycle (`active` / `archived`), хранит `equity_percent` и `total_options`.
-
-3. **Product привязан к Pool** (`pool_id`), не к Company напрямую.
-
-4. **Цена живёт на Company**, не на Pool. Цена меняется чаще, чем пул (переоценка компании не требует нового пула). При токенизации цена будет жить в внешнем оракуле.
-
-5. **Gift/bonus опционы расходуют пул**, overflow идёт из owner supply (Total Supply за пределами пула).
-
-6. **Сплит** — архитектурно заложен (новый Pool, миграционные Products, двойная запись), реализация — future scope.
-
-7. **Допэмиссия** — редактирование `total_options` на существующем Pool (деноминация не меняется → покупки не мигрируются).
-
----
-
-## 2. Проблема — детально
-
-### 2.1. Текущая модель (broken)
+### 1.1. Текущая модель (broken)
 
 ```python
 class CompanyProfile:
@@ -67,7 +43,7 @@ async def get_sold_units_map(...) -> dict[UUID, int]:
     # Продукты одной компании не связаны между собой
 ```
 
-### 2.2. Конкретный баг
+### 1.2. Конкретный баг
 
 Продукт «IPI AG Sold Tranche» с `units=500`. Один инвестор купил пакет целиком → создаётся **одна** `Purchase` с `units=500`.
 
@@ -75,7 +51,7 @@ async def get_sold_units_map(...) -> dict[UUID, int]:
 - На фронте: `available = product.units - product.sold_units = 500 − 1 = 499`.
 - В UI пишется «499 available», хотя фактически пакет куплен целиком.
 
-### 2.3. Бизнес-реальность
+### 1.3. Бизнес-реальность
 
 Компания IPI AG готова продать 10% своих акций. Если у компании 100 000 000 акций и `shares_per_option = 10`, то `total_supply = 10 000 000` опционов. Из них в Pool выделено 10% = `1 000 000` опционов.
 
@@ -86,7 +62,7 @@ async def get_sold_units_map(...) -> dict[UUID, int]:
 
 Покупка пакета у **любого** продукта уменьшает `pool_remaining` для **всех** продуктов этой компании (каждый продукт по-своему, исходя из своего `package_size`).
 
-### 2.4. Правовой аспект и токенизация
+### 1.4. Правовой аспект и токенизация
 
 Юридически все опционы одной компании стоят одинаково. Цена фиксируется на уровне Company и каскадируется на Products.
 
@@ -99,9 +75,9 @@ async def get_sold_units_map(...) -> dict[UUID, int]:
 
 ---
 
-## 3. Правильная модель
+## 2. Правильная модель
 
-### 3.1. CompanyProfile — новые поля
+### 2.1. CompanyProfile — новые поля
 
 ```python
 class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
@@ -126,7 +102,7 @@ class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     # Determines denomination. Changes only on split (new Pool).
 ```
 
-### 3.2. OptionPool — новая модель
+### 2.2. OptionPool — новая модель
 
 ```python
 class OptionPool(UUIDMixin, TimestampMixin, Base):
@@ -185,7 +161,7 @@ WHERE status = 'active';
 | Pool edit (допэмиссия) | `total_options` (staff sets) | `equity_percent = total_options / total_supply * 100` |
 | Split | `equity_percent` inherits from old pool | `total_options` recomputed from new `total_supply` and new `shares_per_option` |
 
-### 3.3. Product — привязка к Pool
+### 2.3. Product — привязка к Pool
 
 ```python
 class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
@@ -216,7 +192,7 @@ class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
 
 **`company_id` на Product сохраняется** как денормализация — нужен для быстрых запросов (dashboard, portfolio) без JOIN через Pool. Заполняется при создании из `pool.company_id`, иммутабелен.
 
-### 3.4. Purchase — без структурных изменений
+### 2.4. Purchase — без структурных изменений
 
 ```python
 class Purchase:
@@ -226,7 +202,7 @@ class Purchase:
     # Поле НЕ переименовывается — это «сколько опционов получил инвестор»
 ```
 
-### 3.5. Вычисляемая доступность
+### 2.5. Вычисляемая доступность
 
 Не колонка в БД, а runtime-функция:
 
@@ -254,7 +230,7 @@ async def get_available_packages_map(
 
 **IMPORTANT:** В отличие от v1.0 спеки, gift purchases **учитываются** в расходе пула. Gift-опционы расходуют пул в первую очередь; если пул исчерпан, overflow берётся из owner supply (`total_supply` за пределами пула).
 
-### 3.6. Валидация покупки
+### 2.6. Валидация покупки
 
 В `execute_purchase()` добавляется проверка **перед** списанием денег:
 
@@ -300,7 +276,7 @@ async def _get_pool_remaining(pool: OptionPool, session: AsyncSession) -> int:
 
 **Race condition:** Нет advisory lock на `pool_id` / `company_id`. Два параллельных запроса теоретически могут пройти валидацию одновременно, и пул уйдёт в минус. Это **осознанный бизнес-риск**: компании предупреждены, что фактически проданный пул может незначительно превысить заявленный. Решается потом оперативным снятием с продажи. Для MVP с малым трафиком — не проблема.
 
-### 3.7. Gift / bonus shares — семантика
+### 2.7. Gift / bonus shares — семантика
 
 Bonus shares, создаваемые `GiftProcessor`, расходуют пул наравне с обычными покупками.
 
@@ -315,7 +291,7 @@ Gift **всегда выдаётся** — даже если пул кончил
 - Когда `pool_remaining < package_size` → sold out, купить нельзя
 - Но gift всё равно создаётся (пишется Purchase с `legal_basis='gift'`)
 
-### 3.8. Installments
+### 2.8. Installments
 
 `InstallmentPlan.total_units` — снапшот `product.package_size` на момент создания плана. Переименование поля не ломает снапшоты.
 
@@ -324,7 +300,7 @@ Gift **всегда выдаётся** — даже если пул кончил
 
 Активные планы в БД продолжают работать по снапшотам.
 
-### 3.9. Installment Calculator (NEW)
+### 2.9. Installment Calculator (NEW)
 
 Staff endpoint для расчёта `plan_config` с мотивационным распределением опционов.
 
@@ -369,17 +345,17 @@ last_options = package_size - regular_options * (num_tranches - 1)
 
 ---
 
-## 4. Сплит — архитектура (future scope)
+## 3. Сплит — архитектура (future scope)
 
 Реализация сплита НЕ входит в Sprint 4.3, но архитектура моделей спроектирована так, чтобы сплит был возможен без ломающих миграций.
 
-### 4.1. Когда нужен сплит
+### 3.1. Когда нужен сплит
 
 Сплит = изменение `shares_per_option` (деноминации). Одна старая акция = N новых → старый опцион ≠ новый опцион → нужна полная миграция.
 
 **Граница:** если `shares_per_option` не изменился — редактируем Pool (допэмиссия). Если изменился — новый Pool + миграция.
 
-### 4.2. Механика сплита
+### 3.2. Механика сплита
 
 1. **Новый Pool** создаётся с новой деноминацией. Старый Pool → `status = 'archived'`.
 
@@ -396,7 +372,7 @@ last_options = package_size - regular_options * (num_tranches - 1)
    - `plan_config_snapshot.tranches[].units_percent` — **не трогать** (проценты от деноминации не зависят)
    - Уже оплаченные транши → их Purchase мигрируются двойной записью
 
-### 4.3. ProductStatus расширяется
+### 3.3. ProductStatus расширяется
 
 ```python
 class ProductStatus(str, Enum):
@@ -406,7 +382,7 @@ class ProductStatus(str, Enum):
     POOL_MIGRATION = "pool_migration"  # NEW: invisible, for FK integrity at split
 ```
 
-### 4.4. Допэмиссия — НЕ сплит
+### 3.4. Допэмиссия — НЕ сплит
 
 Допэмиссия (увеличение/уменьшение количества опционов без изменения деноминации) — редактирование `total_options` на существующем Pool. Покупки не мигрируются. Products не трогаются. Availability пересчитывается динамически.
 
@@ -419,9 +395,9 @@ if new_total_options < consumed:
 
 ---
 
-## 5. Staff endpoints — новые и изменённые
+## 4. Staff endpoints — новые и изменённые
 
-### 5.1. Pool endpoints (NEW, staff-only)
+### 4.1. Pool endpoints (NEW, staff-only)
 
 Все под permissions: `company_manage` + `financial_operations`.
 
@@ -449,7 +425,7 @@ Body:
 - Валидация: `total_options >= consumed` (нельзя уменьшить ниже проданного)
 - Audit event: `pool.updated`
 
-### 5.2. Product creation — изменения
+### 4.2. Product creation — изменения
 
 **`POST /api/v1/staff/products`** — body по-прежнему содержит `company_id`.
 
@@ -460,7 +436,7 @@ Body:
 4. Создаём Product с `pool_id = pool.id`, `company_id = pool.company_id` (денормализация)
 5. Валидация: `package_size <= pool.total_options` (защита от дурака)
 
-### 5.3. Installment Calculator (NEW)
+### 4.3. Installment Calculator (NEW)
 
 **`POST /api/v1/staff/products/{id}/installments/preview`**
 
@@ -503,13 +479,13 @@ Validation:
 
 ---
 
-## 6. Company Dashboard — новый модуль (NEW)
+## 5. Company Dashboard — новый модуль (NEW)
 
-### 6.1. Обоснование
+### 5.1. Обоснование
 
 Investor dashboard (`dashboard/`) и Company dashboard — разные аудитории, разные запросы, разные schemas, разные permissions. Объединять бессмысленно.
 
-### 6.2. Структура
+### 5.2. Структура
 
 ```
 backend/app/modules/company_dashboard/
@@ -519,7 +495,7 @@ backend/app/modules/company_dashboard/
     schemas.py
 ```
 
-### 6.3. Dependency — `get_current_company_profile()`
+### 5.3. Dependency — `get_current_company_profile()`
 
 Новый dependency в `companies/dependencies.py`:
 
@@ -537,7 +513,7 @@ async def get_current_company_profile(
     return company
 ```
 
-### 6.4. Endpoints (read-only)
+### 5.4. Endpoints (read-only)
 
 **`GET /api/v1/company/dashboard`**
 
@@ -584,9 +560,9 @@ Pool info для company dashboard — можно сделать частью `/
 
 ---
 
-## 7. Миграция (Alembic)
+## 6. Миграция (Alembic)
 
-### 7.1. Стратегия
+### 6.1. Стратегия
 
 Одна ревизия `0027_option_pool_refactor`. Порядок:
 1. Создать таблицу `option_pools`
@@ -596,7 +572,7 @@ Pool info для company dashboard — можно сделать частью `/
 5. Rename `products.units` → `products.package_size`
 6. Добавить partial unique index на `option_pools`
 
-### 7.2. Upgrade
+### 6.2. Upgrade
 
 ```python
 """option pool refactor -- Sprint 4.3
@@ -709,147 +685,34 @@ def downgrade() -> None:
 
 ---
 
-## 8. Backend changes — полный чек-лист
-
-### 8.1. Модели
-
-| Файл | Правка |
-|------|--------|
-| `companies/models.py` | +`total_supply: BigInteger`, +`shares_per_option: Integer`. Обновить docstring, `__repr__` |
-| `companies/constants.py` | Без изменений |
-| `products/models.py` | `units` → `package_size`. +`pool_id: FK -> option_pools`. Обновить docstring, `__repr__` |
-| **NEW:** `pools/models.py` | Новая модель `OptionPool` (§3.2) |
-| **NEW:** `pools/__init__.py` | — |
-
-### 8.2. Схемы
-
-| Файл | Правка |
-|------|--------|
-| `companies/schemas.py` | +`total_supply`, +`shares_per_option` в Response/Create/Update |
-| `products/schemas.py` | `units` → `package_size` в Create/Response/Public. `sold_units` → `available_packages` в Public |
-| **NEW:** `pools/schemas.py` | `CreatePoolRequest`, `UpdatePoolRequest`, `PoolResponse` |
-
-### 8.3. Сервисы и роутеры
-
-| Файл | Правка |
-|------|--------|
-| `companies/service.py` | `create_company()`: +`total_supply`, +`shares_per_option`. `update_company()`: handle new fields |
-| **NEW:** `pools/service.py` | `create_pool()`, `update_pool()`, `get_active_pool()` |
-| **NEW:** `pools/router.py` | Staff endpoints: POST/PATCH `/staff/companies/{id}/pool` |
-| `products/service.py` | `create_product()`: `units` → `package_size`, lookup active Pool, set `pool_id`. Валидация `package_size <= pool.total_options` |
-| `products/constants.py` | `validate_plan_config()`: `product_units` → `product_package_size` |
-| `purchases/service.py` | `get_sold_units_map()` → `get_available_packages_map()`. `execute_purchase()`: +pool validation (§3.6). `amount_cents = product.package_size * ...`. +`_get_active_pool()`, +`_get_pool_remaining()` |
-| `products/router.py` (public) | `get_sold_units_map` → `get_available_packages_map`, `resp.sold_units =` → `resp.available_packages =`. Import: `get_sold_units_map` → `get_available_packages_map` |
-| `processors/base.py` | `PurchaseContext.units` — comment update only. Field name stays `units` |
-| `installments/service.py` | `product.units` → `product.package_size` (one line) |
-| **NEW:** `company_dashboard/` | Новый модуль (§6) |
-| **NEW:** `companies/dependencies.py` | `get_current_company_profile()` |
-
-### 8.4. Installment Calculator
-
-| Файл | Правка |
-|------|--------|
-| `products/staff_router.py` | +`POST /staff/products/{id}/installments/preview` |
-| `products/service.py` (или `products/calculator.py`) | `calculate_installment_preview()` — алгоритм из §3.9 |
-| `products/schemas.py` | +`InstallmentPreviewRequest`, +`InstallmentPreviewResponse` |
-| `products/constants.py` | +`ALLOWED_TRANCHES = [3, 6, 12, 24, 36]` (config) |
-
-### 8.5. Seed script
-
-`backend/scripts/seed_storefront.py`:
-
-| Место | Правка |
-|-------|--------|
-| `COMPANIES` list | +`total_supply`, +`shares_per_option` для каждой компании |
-| `PRODUCTS` list | `units` → `package_size` |
-| Seed logic | Создать Pool для каждой компании после создания CompanyProfile |
-
-### 8.6. Тесты
-
-#### Обновление существующих:
-
-| Файл | Правка |
-|------|--------|
-| `test_products.py` | Хелперы: +`total_supply`, +`shares_per_option` в company, `units` → `package_size`, +создание Pool. Ассёрты: `sold_units` → `available_packages` |
-| `test_purchases.py` | Хелперы: аналогично. `product["units"]` → `product["package_size"]` |
-| `test_installments.py` | Хелперы: аналогично |
-| `test_dashboard.py` | Хелперы: +`total_supply`, +`shares_per_option`, +Pool |
-| `test_companies.py` | +`total_supply`, +`shares_per_option` в Create/Response assertions |
-
-#### Новые тесты:
-
-| Тест | Описание |
-|------|----------|
-| `test_create_pool` | POST pool → 201, equity_percent + total_options correct |
-| `test_one_active_pool_per_company` | Второй POST pool → 400 или DB constraint error |
-| `test_update_pool_total_options` | PATCH → equity_percent recomputed |
-| `test_update_pool_below_consumed` | PATCH total_options below sold → 400 |
-| `test_product_requires_active_pool` | Create product without pool → 400 |
-| `test_available_packages_decreases` | Buy → availability decreases for ALL products of company |
-| `test_purchase_sold_out` | pool_remaining < package_size → 400 |
-| `test_gift_consumes_pool` | Gift purchase reduces pool_remaining |
-| `test_gift_overflow_allowed` | Gift when pool_remaining=0 → succeeds, pool goes negative |
-| `test_installment_preview` | Calculator returns correct plan_config |
-| `test_installment_preview_invariants` | Amounts sum, options sum, rounding correct |
-
----
-
-## 9. Frontend changes — полный чек-лист (TD-F07)
-
-Механическое переименование после backend merge. Не отдельный спринт.
-
-### 9.1. Types
-
-`frontend/src/api/types.ts`:
-
-```typescript
-// PublicProductResponse: units → package_size, sold_units → available_packages
-// PublicCompanyResponse: +total_supply, +shares_per_option
-// NEW: PoolResponse (for company dashboard)
-```
-
-### 9.2. Components
-
-| Файл | Правка |
-|------|--------|
-| `ProductCard.vue` | `p.units - p.sold_units` → `p.available_packages` |
-| `ProductDetailView.vue` | Аналогично + sold-out state |
-| `stores/products.ts` | Проверить passthrough |
-
-### 9.3. i18n
-
-4 локали: `+inv.market.packsAvailable`, `+inv.product.packsAvailability`, `+inv.product.soldOut`
-
----
-
-## 10. Price cascade — без изменений
+## 7. Price cascade — без изменений
 
 Цена живёт на Company, не на Pool. Price cascade работает как раньше: `Company.price_per_unit_cents` → каскад на все active/hidden Products → soft-delete всех installment templates. Pool не участвует.
 
 ---
 
-## 11. Edge cases и риски
+## 8. Edge cases и риски
 
-### 11.1. `pool.total_options` = 0
+### 8.1. `pool.total_options` = 0
 Все продукты компании: `available_packages = 0`. Покупка → `BadRequestError`. Корректное поведение.
 
-### 11.2. `package_size` > `pool.total_options`
+### 8.2. `package_size` > `pool.total_options`
 `available_packages = 0` с самого начала. Mitigation: валидация при `create_product()`.
 
-### 11.3. Параллельные покупки (race condition)
+### 8.3. Параллельные покупки (race condition)
 Без lock'а на pool. Два инвестора могут купить одновременно → пул уходит в минус. Бизнес-приемлемо для MVP.
 
-### 11.4. Gift overflow
+### 8.4. Gift overflow
 `pool_remaining < 0` после gift → overflow из owner supply. Вычисляется динамически, не хранится.
 
-### 11.5. Installment calculator: шаг округления слишком грубый
+### 8.5. Installment calculator: шаг округления слишком грубый
 `regular_amount * (N-1) >= total_amount` → `last_amount <= 0` → 400 error.
 
 ---
 
-## 12. Out of scope
+## 9. Out of scope
 
-- Split реализация (§4 — архитектура заложена)
+- Split реализация (§3 — архитектура заложена)
 - Advisory lock на pool при покупке
 - Staff UI для Pool management (F3 админка)
 - Multi-currency
@@ -859,478 +722,14 @@ def downgrade() -> None:
 
 ---
 
-## 13. Acceptance criteria
+## 10. Changelog
 
-### Backend
-
-- [x] Миграция `0027_option_pool_refactor` применена, БД консистентна (B0)
-- [x] Таблица `option_pools` создана, partial unique index работает (B0)
-- [x] `CompanyProfile` имеет `total_supply` и `shares_per_option` (B0)
-- [x] `Product` имеет `pool_id` (FK) и `package_size` (renamed from `units`) (B0)
-- [x] Pool CRUD endpoints работают (staff-only) (B1+B2)
-- [x] `get_available_packages_map()` — корректный расчёт через pool (B1)
-- [x] `execute_purchase()` — валидация `pool_remaining >= package_size` (B1)
-- [x] Gift purchases учитываются в расходе пула (B1)
-- [ ] Installment calculator endpoint возвращает корректный preview (B4 — pending)
-- [ ] Company dashboard endpoints возвращают данные (B5 — pending)
-- [x] Все существующие тесты зелёные (341/341 после B2.1)
-- [ ] Все новые тесты зелёные (`tests/test_pools.py`, 11 тестов — B3 pending)
-
-### Frontend (TD-F07)
-
-- [ ] Types обновлены: `package_size`, `available_packages` (B7 — pending)
-- [ ] Components используют `available_packages` напрямую (B7 — pending)
-- [ ] i18n ключи во всех 4 локалях (B7 — pending)
-- [ ] `npm run typecheck` — без ошибок (B7 — pending)
-
-### Data / seed
-
-- [x] Seed создаёт Pool для каждой компании (B6)
-- [x] Availability показывает реалистичные числа (B6 — каждая компания получает 100% pool с total_options >> any package_size)
-- [x] Test accounts seed: investor / company / agent / staff (B6 — `seed_test_accounts.py`)
+- **v1.0 (2026-04-17):** initial draft — simple rename + total_shares_issued.
+- **v2.0 (2026-04-30):** full architecture redesign. The model documented above is this version: `OptionPool` as a separate entity, `total_supply` + `shares_per_option` on Company, Product → Pool via FK, gift overflow into owner supply, installment calculator preview, company dashboard module, split as future scope, допэмиссия = pool resize without purchase migration.
+- **v2.1–v2.3 (2026-04-30 → 2026-05-02):** implementation rounds B0–B8 — model deployed, tests grew 322 → 360. Process detail (per-batch deploy notes, impact analysis, acceptance checklists) lived here and was removed when the doc was trimmed to a reference. The git log on `main` between `0c2a4d1` and `d9071ef` is the source of truth for what landed when.
+- **v2.4 (2026-05-03):** Sprint 4.4 closed. VELO Migration (frontend types pipeline → single source of truth = `generated.ts`), B7 pack-pricing UX (`price_per_pack_cents` server-computed, two-line price block), schema cleanup (`available_packages` / `company_name` / `installments` required, no defaults), pool architecture hardening (`POOL_STATUS_ACTIVE` centralised, dead copies in `purchases/service` removed, `update_pool` returns tuple, `with_consumed_remaining` requires `consumed`, `_compute_equity_percent` guards `total_supply <= 0`, ORM mutation antipattern → explicit Pydantic constructors, `ProductDetailResponse` dead class removed). Frontend type narrowing (`UserRole` / `KycStatus` runtime guards with compile-time exhaustiveness, `auth.ts` typed `role` + `kycStatus`). Final score 9.5/10. 362/362 tests green on `b539ee8`. Open: only TD-066 legal stubs, **not a code blocker**.
+- **v2.4-trimmed (2026-05-03):** doc trimmed from 1370 → ~780 lines. Removed: §1 summary (became stale), §8 backend changes checklist, §9 frontend changes checklist, §13 acceptance criteria, Appendix A impact analysis, §15 implementation progress. Renumbered §2–§14 → §1–§10. Cross-reference §4 → §3 fixed. Doc is now an architectural reference for the option pool model, not a project tracker.
 
 ---
 
-## 14. Changelog
-
-- **v1.0 (2026-04-17):** первая версия. Простое переименование + total_shares_issued.
-- **v2.0 (2026-04-30):** полная переработка архитектуры:
-  - `OptionPool` как отдельная модель
-  - `total_supply` + `shares_per_option` на Company
-  - Product привязан к Pool (`pool_id`), не к Company
-  - Gift shares расходуют пул (overflow → owner supply)
-  - Installment Calculator (preview endpoint)
-  - Company Dashboard — отдельный модуль
-  - Сплит — архитектура заложена (future scope)
-  - Допэмиссия — редактирование Pool (без миграции покупок)
-- **v2.1 (2026-04-30):** Impact analysis от Claude Code:
-  - Номер миграции: 0028 → 0027 (после 0026_products_cover_url)
-  - Точный перечень файлов/строк для правок (Appendix A)
-  - Зафиксированы Risk Areas
-  - `generate_ts_types.py` — в scope Sprint 4.3
-- **v2.2 (2026-05-01):** прогресс реализации:
-  - Backend B0 (миграция + модели) — deployed
-  - Backend B1 (schemas + services + rename + pool wiring) — deployed
-  - Backend B2 (pool router + main.py + 7 test fixtures) — deployed
-  - Backend B2.1 (test_posts.py hotfix) — deployed
-  - Backend B6 (seed_storefront update + new seed_test_accounts) — deployed
-  - 341/341 тестов зелёные
-  - VPS DB volume пересобран (старые ручные purchases ломали `test_monthly_payout_distributes_pool` через грязный pool_cents)
-  - Добавлен раздел **15. Implementation Progress** с детальным журналом батчей
-  - Pending: B3 (test_pools.py), B4 (calculator), B5 (company dashboard), B7 (frontend rename), B8 (gen-types)
-- **v2.3 (2026-05-02):** Backend Sprint 4.3 закрыт + B7 пересмотрен:
-  - Backend B3 (test_pools.py) — deployed, 350/350
-  - Backend B4 (Installment Calculator + 2 unleashed tests) — deployed, 352/352
-  - Backend B5 (Company Dashboard module + 8 tests) — deployed, 360/360
-  - Backend B5-pragmatic (shared `BalanceResponse` от dashboard) — deployed
-  - B8 (TS types pipeline + `cbshome-bot` auto-commit) — deployed
-  - B7 пересмотрен и расширен в **отдельный мини-спринт VELO Migration** (см. ниже)
-  - Audit от Claude Code обнаружил 24 типа с расхождениями между handwritten `types.ts` и `generated.ts` → решено: **strict-VELO**, single source of truth = generated.ts
-  - Pending: VELO Migration (8 коммитов), затем собственно B7 rename uniteв `package_size`/`available_packages`
-
----
-
-## Appendix A: Impact Analysis Report (Claude Code)
-
-Generated: 2026-04-30
-Repository: cbshome @ 31b5e28f671c3a98c5762de942b68ea981427a74
-Spec: CBSHOME-Share-Pool-Refactor.md v2.0
-
-> **Report revision v2:** corrected OptionPool field set, CompanyProfile field placement,
-> removed `consumed` column, `is_active→status`, fixed gift semantics, added
-> `products/router.py` to Files to Modify.
-
-### Summary
-
-| Metric | Count |
-|--------|-------|
-| Backend source files to modify | 9 + 1 script |
-| Frontend files to modify | 5 |
-| Test files to modify | 6 |
-| New files to create | 11 |
-| Latest migration | 0026_products_cover_url |
-| Next migration | **0027** |
-
-### Backend: Files to Modify (exact lines)
-
-**`products/models.py`**
-- Line 6: docstring — update `units` → `package_size`
-- Line 75: `units: Mapped[int]` → rename column to `package_size`; add `pool_id` FK
-- Line 114: `__repr__` — `units=` → `package_size=`
-
-**`products/schemas.py`**
-- Line 40: `units: int = Field(gt=0)` → `package_size` in `CreateProductRequest`
-- Line 49: docstring `units and company_id are immutable` → update
-- Line 112: `units: int` → `package_size` in `StaffProductResponse`
-- Line 150: `units: int` → `package_size` in `PublicProductResponse`
-- Line 153: `sold_units: int = 0` → `available_packages: int = 0` (semantics change: now floor(pool_remaining / package_size) across whole company)
-
-**`products/router.py` (public)**
-- Line 53: import `get_sold_units_map` → `get_available_packages_map`
-- Lines 77–79: `sold_map = await get_sold_units_map(session, product_ids)` → `available_map = await get_available_packages_map(session, company_ids, product_ids)`; ⚠️ `company_ids` collected on line 83 must be moved **before** this call
-- Line 96: `resp.sold_units = sold_map.get(p.id, 0)` → `resp.available_packages = available_map.get(p.id, 0)`
-- Line 137: `sold_map = await get_sold_units_map(session, [product.id])` → `available_map = await get_available_packages_map(session, [product.company_id], [product.id])`
-- Line 155: `response.sold_units = sold_map.get(product.id, 0)` → `response.available_packages = available_map.get(product.id, 0)`
-
-**`products/staff_router.py`**
-- Line 90: `body.units,` → `body.package_size,`
-
-**`products/service.py`**
-- Line 72: param `units: int` → `package_size: int`
-- Line 99: `units=units,` → `package_size=package_size,`
-- Line 120: audit dict `"units"` → `"package_size"`
-- Lines 347, 403: `product.units` → `product.package_size` (call sites to `validate_plan_config`)
-
-**`products/constants.py`**
-- Lines 22, 115, 132–143: comments referencing `product.units` → `product.package_size`
-- Line 52: param `product_units: int` — name can stay; Line 69 comment update
-
-**`purchases/service.py`**
-- Line 320: `product.units * product.price_per_unit_cents` → `product.package_size`
-- Line 329: `units=product.units` → `units=product.package_size` (populates `PurchaseContext.units`, NOT renamed)
-- **New function:** `get_available_packages_map(session, company_ids, product_ids)` — replaces `get_sold_units_map`; formula: `floor(pool_remaining / product.package_size)`; gift purchases **included** in consumed (v2.0 decision)
-- **New function:** `_get_shares_remaining(company_id, session)` — SUM excludes nothing (all active purchases count against pool)
-- **`execute_purchase()`** — add pool validation after `_load_company`, before `PurchaseContext`; raise `BadRequestError` if `shares_remaining < product.package_size`
-
-**`installments/service.py`**
-- Line 150: `total_units = product.units` → `product.package_size`
-
-**`processors/base.py`**
-- Line 81: comment `# product.units` → `# product.package_size` (field name `units` stays)
-
-### Frontend: Files to Modify (exact lines)
-
-**`api/types.ts`**
-- Line 388: `units: number` → `package_size: number`
-- Line 391: `sold_units: number` → `available_packages: number` (no frontend subtraction needed — pre-computed by backend)
-- Add `pool_id: string | null` to `PublicProductResponse`
-- Add `total_supply: number`, `shares_per_option: number` to Company responses
-
-**`components/shared/ProductCard.vue`**
-- Line 45: `props.product.units - props.product.sold_units` → `props.product.available_packages` (no subtraction; pre-computed)
-- Line 73: update class name / label to reflect `packsAvailable` i18n key
-
-**`views/investor/ProductDetailView.vue`**
-- Line 90: `p.units - p.sold_units` → `p.available_packages`
-- `<CButton :disabled="...">` guard — update to `p.available_packages === 0`
-
-**`views/investor/PurchaseView.vue`**
-- Line 89: `p.units * p.price_per_unit_cents` → `p.package_size * p.price_per_unit_cents`
-- Line 94: `p.units - p.sold_units` → `p.available_packages`
-- Line 277: `product.units` → `product.package_size`
-
-**`views/investor/InstallmentView.vue`**
-- Line 180: `product.value.units` → `product.value.package_size`
-
-### Tests: Files to Modify (exact lines)
-
-**`test_products.py`**
-- Line 111: helper param `units: int = 100` → `package_size`
-- Line 120: `"units": units` → `"package_size": package_size`
-- `_create_company()` helper: add `"total_supply": 10_000_000`
-- Line 169: `product["units"]` → `product["package_size"]`
-- Line 224: `"units": 50` → `"package_size": 50`
-- Line 563: `body["sold_units"]` → `body["available_packages"]`
-
-**`test_purchases.py`**
-- Line 113: `"units": units` → `"package_size": units` in helper
-- `_create_company()` helper: add `"total_supply": 10_000_000`
-- Line 427: ⚠️ MIXED — `data[0]["units"]` is `Purchase.units` (stays), `product["units"]` → `product["package_size"]`
-- Line 428: `product["units"]` → `product["package_size"]`
-- Lines 577, 579: `Purchase.units` — stays
-
-**`test_installments.py`**
-- Line 146: `"units": units` → `"package_size": units`
-- `_create_company()` helper: add `"total_supply"`
-
-**`test_dashboard.py`**
-- Line 108: `"units": units` → `"package_size": units`
-- Line 436: ⚠️ AMBIGUOUS — verify if `p["units"]` is Purchase (stays) or Product (rename)
-
-**`test_leaderboard.py`**
-- Line 214: `"units": 100` → `"package_size": 100`
-
-**`test_referrals.py`**
-- Line 132: `"units": 10` → `"package_size": 10`
-
-### New Test Cases Needed
-
-- `test_pools.py` — Pool CRUD, one-active-per-company constraint, archive with remaining active purchases
-- `test_products.py` — `available_packages_decreases_on_purchase`, `purchase_fails_when_pool_exhausted`
-- `test_purchases.py` — `gift_consumes_pool`, `pool_exhausted_blocks_sale`
-- `test_installment_calculator.py` — preview endpoint roundtrip, tranche invariants
-- `test_company_dashboard.py` — auth, data shape, pool remaining
-
-### Seed Script (`seed_storefront.py`)
-
-- 20 occurrences: `"units": <value>` → `"package_size": <value>`
-- Add `"total_supply"`, `"shares_per_option"` to COMPANIES (IPI AG → 10M, Immo-Pro-Invest → 5M, CBS Home → 100K, Nordic → 50K, Tesla → 2M, Stealth → 100)
-- `_ensure_company()`: pass new fields to `CompanyProfile` constructor
-- `_ensure_product()`: `units=` → `package_size=`; pass `pool_id`
-- Add pool seeding: upsert `OptionPool(status='active')` per company
-
-### Migration Notes
-
-- Previous: `2026_04_17_0026_products_cover_url`
-- New: `0027_share_pool_refactor` (`down_revision = "0026_products_cover_url"`)
-- New table: `option_pools` (id, company_id FK, equity_percent NUMERIC, total_options BIGINT, status VARCHAR(20) DEFAULT 'active', timestamps). **No `consumed` column.**
-- Altered: `company_profiles` (+total_supply BIGINT, +shares_per_option INTEGER), `products` (rename units→package_size, +pool_id UUID FK)
-- New index: `uq_one_active_pool_per_company` — partial unique on `option_pools(company_id)` WHERE `status='active'`
-- Data migration: `shares_per_option=1`, `total_supply=SUM(package_size)` per company; create Pool per company
-
-### Risk Areas
-
-1. **`products/router.py` line ordering** — `company_ids` collected on line 83 must be moved **before** the `get_available_packages_map` call (currently after `get_sold_units_map`). Two separate call sites (list endpoint line 79, detail endpoint line 137).
-2. **`products/constants.py` + `service.py`** — `validate_plan_config(product_units=product.units)` → all 3 points (param def + 2 call sites) must change atomically.
-3. **`processors/base.py:81`** — `PurchaseContext.units` shares the word "units" with renamed `Product.units`. Only comment changes. Risk: auto-replace catches it.
-4. **`test_purchases.py:427`** — mixed assertion: `data[0]["units"]` (Purchase, stays) vs `product["units"]` (Product, rename). Risk: rename both by accident.
-5. **`test_dashboard.py:436`** — `p["units"]` context ambiguous without fixture check.
-6. **Gift purchases consume pool (v2.0)** — `_get_shares_remaining()` must NOT filter out `legal_basis='gift'`. The v1.0 spec on disk says the opposite — **do not follow v1.0**.
-7. **Pool enforcement in `execute_purchase()`** — validation inserted between `_load_company` and `PurchaseContext` construction, inside same DB transaction. No advisory lock on pool (decided: business-acceptable race condition for MVP).
-8. **`pool_id` FK nullable** — existing products have no pool. `create_product()` must require active pool; migration populates pool_id for existing products.
-9. **`InstallmentView.vue:180`** — `getTrancheUnits` in `utils/installmentPlans.ts` may have own tests needing update.
-
----
-
-## 15. Implementation Progress
-
-Журнал реализации Sprint 4.3 по батчам (B-нумерация — рабочая, не совпадает с номерами секций спеки).
-
-### B0 — Foundation: миграция + модели ✅
-
-**Status:** committed + deployed
-**Files:**
-- `backend/migrations/versions/2026_05_01_0027_option_pool_refactor.py` — NEW
-- `backend/app/modules/pools/__init__.py` — NEW
-- `backend/app/modules/pools/models.py` — NEW (`OptionPool`)
-- `backend/app/modules/companies/models.py` — `+total_supply`, `+shares_per_option`
-- `backend/app/modules/products/models.py` — `units → package_size`, `+pool_id` FK
-- `backend/migrations/env.py` — import `OptionPool`
-
-Миграция применена на чистую БД при volume reset (см. v2.2 changelog).
-
-### B1 — Backend core: schemas + services + rename ✅
-
-**Status:** committed + deployed
-**Files:** 11 (см. архив `cbshome_b1_backend_core.tar.gz`)
-
-Ключевые решения:
-- `validate_plan_config(product_units=...)` kwarg name **сохранён** (Appendix A разрешил)
-- `Decimal("0.0001")` quantization для `equity_percent`
-- Pool capacity check в `execute_purchase` **до** money moves; race условно принят как MVP-риск
-- `get_sold_units_map → get_available_packages_map(company_ids, product_ids)` — pool-keyed
-- Local import `pools.service` в `products/service.py` против top-level cycle
-
-### B2 — Pool router + main.py + 7 test fixtures ✅
-
-**Status:** committed + deployed
-**Files:** 10 (см. архив `cbshome_b2_pool_router_and_tests.tar.gz`)
-
-Ключевые решения:
-- Pool endpoints под `company_manage + financial_operations`
-- `with_consumed_remaining(pool, session)` helper в `pools/service.py` для DRY (роутер + B5 dashboard)
-- В тесте `test_purchases.py:427` хирургический фикс mixed-line: `data[0]["units"]` (Purchase, остаётся) vs `product["package_size"]` (был Product.units)
-- `_create_company` хелперы в 6 тест-файлах теперь сами POST-ят `/staff/companies/{id}/pool` с `equity_percent="100.0"` чтоб product creation не падал
-
-### B2.1 — test_posts.py hotfix ✅
-
-**Status:** committed + deployed
-
-`test_posts.py` не был в Appendix A grep-листе (нет references к `units`), но создаёт компании в своих хелперах. Sprint 4.3's required `total_supply / shares_per_option` поломали 2 теста. Фикс — добавил supply поля в helper. Pool не нужен — этот файл не создаёт продукты.
-
-### B6 — Seed scripts ✅
-
-**Status:** committed + deployed
-**Files:** 3 (см. архив `cbshome_b6_seeds.tar.gz`)
-
-`seed_storefront.py` updates:
-- COMPANIES: `+total_supply` (1M-10M на компанию), `+shares_per_option=1`
-- PRODUCTS: 21 rename `units → package_size`
-- NEW `_ensure_pool` helper: 100% pool на компанию
-- Orchestration: companies → pools → products → installments
-- `_ensure_product` принимает `pool=`, ставит `pool_id` + denormalised `company_id`
-- `_reset` удаляет OptionPool между Products и CompanyProfile (FK ondelete=RESTRICT)
-
-`seed_test_accounts.py` (NEW):
-- 4 dev-аккаунта: investor / company / agent / staff
-- Все используют `seedpass123`
-- Test Company [Auto] — отдельная от storefront, distribution 80/10/5/5
-- Agent: фикс. referral code `TEST_AGENT_LINK`
-- Staff: все permissions True (стенд-ин админ)
-
-`install_cbshome.sh`:
-- Удалена секция «Frontend Fonts (Self-hosted)» (-50 строк) — front уже шиппит локальные fonts
-- `seed_test_accounts` добавлен в 4 call sites: initial install, update flow, обе ветки `cbshome seed`
-
-### B3 — Pool tests ✅
-
-**Status:** committed + deployed
-**File:** `backend/tests/test_pools.py` (NEW, 11 тестов из спеки §8.6, на момент B3 — 9 активных + 2 placeholder для B4)
-
-Покрытие:
-1. `test_create_pool` — POST → 201, equity_percent + total_options correct
-2. `test_one_active_pool_per_company` — второй POST → 400
-3. `test_update_pool_total_options` — PATCH → equity_percent recomputed
-4. `test_update_pool_below_consumed` — PATCH below sold → 400
-5. `test_product_requires_active_pool` — Create product without pool → 400
-6. `test_available_packages_decreases` — Buy → availability decreases for ALL products
-7. `test_purchase_sold_out` — `pool_remaining < package_size` → 400
-8. `test_gift_consumes_pool` — Gift purchase reduces `pool_remaining`
-9. `test_gift_overflow_allowed` — Gift when `pool_remaining=0` → succeeds, pool goes negative
-10/11. (placeholders, активированы в B4)
-
-EMAIL_PREFIX `s43p_`. Результат: **350 passed, 2 skipped** на момент B3.
-
-### B4 — Installment Calculator ✅
-
-**Status:** committed + deployed
-**Files:** 5
-
-- `backend/app/modules/products/calculator.py` (NEW, 225 строк) — pure `calculate_installment_preview()`, keyword-only args
-- `backend/app/modules/products/constants.py` — `+ALLOWED_TRANCHES = frozenset({3,6,12,24,36})`, `+ALLOWED_AMOUNT_ROUNDINGS = frozenset({500,1000,5000,10000})`, `+LAST_TRANCHE_PERCENT_MIN/MAX = 30/50`
-- `backend/app/modules/products/schemas.py` — `+InstallmentPreviewRequest/Summary/Response`
-- `backend/app/modules/products/staff_router.py` — `+POST /staff/products/{id}/installments/preview` (требует `company_manage + financial_operations`)
-- `backend/tests/test_pools.py` — тесты 10-11 unleashed
-
-Алгоритм: `regular_pct = (100 - last_tranche_percent) // (N - 1)`; `actual_last_pct = 100 - regular_pct * (N - 1)` (остаток поглощается последним траншем). `regular_amount = (total // N // rounding) * rounding`; `last_amount = total - regular_amount * (N - 1)`. `bonus_units / agent_bonus_units` остаются 0 в выходе калькулятора.
-
-Тест 11 — round-trip: `plan_config` из калькулятора скармливается в `POST /installments` для подтверждения совместимости с `validate_plan_config`.
-
-Результат: **352 passed, 0 skipped**.
-
-### B5 — Company Dashboard module ✅
-
-**Status:** committed + deployed
-**Files:** 7
-
-- `backend/app/modules/companies/dependencies.py` (NEW) — `get_current_company_profile()`, raises `ForbiddenError` если у юзера нет CompanyProfile
-- `backend/app/modules/company_dashboard/__init__.py` (NEW)
-- `backend/app/modules/company_dashboard/schemas.py` (NEW) — `BalanceResponse`, `PoolEmbedResponse`, `CompanyTransactionResponse`, `CompanyDashboardResponse`, `SalesByMonthEntry`, `SalesByProductEntry`, `CompanyAnalyticsResponse`
-- `backend/app/modules/company_dashboard/service.py` (NEW, 333 строки) — `get_company_dashboard`, `get_company_analytics`
-- `backend/app/modules/company_dashboard/router.py` (NEW)
-- `backend/app/main.py` — `+company_dashboard_router`
-- `backend/tests/test_company_dashboard.py` (NEW) — 8 тестов, EMAIL_PREFIX `s43d_`
-
-Endpoints (см. §6.4):
-- `GET /api/v1/company/dashboard` — `passive_balance`, `total_revenue_cents` (paid_cents sum), `total_options_sold` (legal_basis='sale' only — gifts отдельно в `pool.consumed`), `products_count` (excluding archived), `pool` (None если не создан), `recent_transactions` (last 20 по `Transaction.user_id == company.user_id`, newest first)
-- `GET /api/v1/company/analytics` — totals + `revenue_this_month_cents` (`>= start_of_current_UTC_month`) + `sales_by_month` (через `func.date_trunc('month', created_at)`, последние 12 месяцев с продажами, oldest first) + `sales_by_product` (LEFT OUTER JOIN с `case` внутри SUM — все продукты, включая archived и zero-sales, sorted by `revenue_cents DESC` затем `name ASC`)
-
-DRY: pool рендерится через тот же `with_consumed_remaining()` helper, что и staff pool router (§5.1), — единая семантика consumed/remaining.
-
-Permissions: оба endpoint требуют только `get_current_company_profile()`. Investor/agent/staff без CompanyProfile получают 403.
-
-В процессе разработки выловлены 2 бага в тестах:
-1. CHECK constraint `ck_transactions_type` отвергал произвольное `type='test:event'` — заменено на `TransactionType.DEPOSIT_RECEIVED`
-2. Двойной вызов `_admin_token` в одном тесте давал email collision — добавлен `admin_token: str | None = None` в `_create_company_and_login` для переиспользования
-
-Результат: **360 passed, 0 skipped**.
-
-### B5-pragmatic — Shared BalanceResponse ✅
-
-**Status:** committed + deployed
-**Files:** 2
-
-- `backend/app/modules/company_dashboard/schemas.py` — убран локальный `class BalanceResponse`, заменён на `from app.modules.dashboard.schemas import BalanceResponse` + `__all__` для re-export
-- `backend/app/modules/company_dashboard/service.py` — импорт `BalanceResponse` напрямую из `dashboard.schemas` (канонический дом)
-
-Причина: B5 продублировал `BalanceResponse` локально (frozen/confirmed cents) — OpenAPI после этого выдавал два name-mangled типа: `app__modules__company_dashboard__schemas__BalanceResponse` и `app__modules__dashboard__schemas__BalanceResponse`. Чтобы это уродство не утекло в auto-generated TS-типы (см. B8), классы объединены в один shared.
-
-Семантика идентична — оба возвращают `{"frozen": int, "confirmed": int}`. Бэк-тесты не упали.
-
-Результат: 360 passed; в `generated.ts` теперь одна `BalanceResponse` без mangled-имени.
-
-### B8 — TS types pipeline + cbshome-bot ✅
-
-**Status:** committed + deployed
-**Files:** 2
-
-- `backend/scripts/generate_ts_types.py` (NEW, 258 строк) — port VELO-генератора, stdlib only (`json`, `sys`, `pathlib`). Читает `openapi.json`, эмитит детерминированный `.ts` файл с интерфейсами + enum-union'ами
-- `install_cbshome.sh` — `case_update` реорганизован в VELO-стиль two-phase build:
-  1. `docker compose build app` (только бэк)
-  2. `up -d app postgres redis` (frontend deferred)
-  3. wait health → migrate → seed → backend tests
-  4. **NEW:** `curl :8000/openapi.json | python3 generate_ts_types.py → frontend/src/api/generated.ts`
-  5. **NEW:** `git status --porcelain` → если drift, commit от `cbshome-bot <bot@cbshome.local>` + push с retry через rebase
-  6. `docker compose build frontend` (с уже свежими типами)
-  7. `up -d frontend` → final health check
-- Новая команда `cbshome gen-types` — manual on-demand regeneration без коммита
-
-Workflow: разрабы НИКОГДА не правят `frontend/src/api/generated.ts` руками. Меняют Pydantic-схемы → push → `cbshome update` на тестовом VPS → бот сам коммитит обновлённый `generated.ts` в репо.
-
-Workaround на момент деплоя: захардкожен путь `/root/.ssh/id_ed25519_cbshome_deploy` вместо переменной `$DEPLOY_KEY` (она глобальная установочная, в управляющий скрипт не попадает через heredoc).
-
-Bot-push требует write-access на deploy-key — разрешено только на тестовом VPS. На прод-сервере (когда появится) deploy-key останется read-only, генерация будет в CI.
-
-### Pending: VELO Migration (заменяет изначальный план B7)
-
-При подготовке B7 (rename `units → package_size` / `sold_units → available_packages` в Vue) встал вопрос архитектуры `frontend/src/api/types.ts`. Сейчас 939 строк handwritten типов, которые расходятся с auto-generated `generated.ts` в **24 типах** (детальный аудит — `B7_AUDIT.md`).
-
-Решение: до самого rename'а — **полная миграция фронта на single source of truth = `generated.ts`**. Этот долг не хочется тащить в будущие спринты.
-
-Архитектура:
-- `types.ts` re-export'ит из `./generated`
-- В `types.ts` остаются только: `ApiError`, `ValidationErrorItem`, `PaginatedResponse<T>`, и 3 alias'а на handwritten-имена которые разъехались с бэком (`PortfolioPositionResponse`, `RejectAgentApplicationRequest`, `BlockUserRequest`)
-- Все narrowed unions (`UserRole`, `PaymentStatusType`, `KycStatus`, `TransactionType` и т.д., 19 штук) **удаляются**. Поля статусов становятся `string`. Принимаем потерю IDE-автокомплита на enum-литералах ради чистоты
-- Все required-vs-optional расхождения **разрешаются в пользу `generated.ts`**. Все downstream Vue/store-места правятся: `?? 0`, `?? ''`, `v-if`, null-guards
-
-#### План — 8 коммитов, каждый проверяется через `cbshome update` + `npm run typecheck`
-
-**Коммит 1:** Backend mini-fix
-- `backend/app/modules/dashboard/schemas.py::BalanceResponse` — убрать `= 0` defaults у `frozen`/`confirmed`. Сейчас defaults делают поля optional в OpenAPI; после удаления станут required, что согласуется с handwritten типом и не требует null-guards в PurchaseView/InstallmentView. Бэк-тесты не упадут — `get_passive_balance()` всегда возвращает оба ключа.
-
-**Коммит 2:** Aliases
-- В `types.ts` добавить три alias-export: `PortfolioPositionResponse = CompanyPositionResponse`, `RejectAgentApplicationRequest = RejectRequest`, `BlockUserRequest = BlockRequest`
-- Удалить локальные определения этих 3 интерфейсов
-
-**Коммит 3:** Re-export безопасных типов
-- ~39 типов с identical shape между handwritten и generated — re-export из `./generated`, удалить handwritten определения
-- Точный список — после grep'а в новом чате
-
-**Коммит 4:** Re-export типов с required→optional расхождениями
-- `AgentApplicationResponse`, `AvatarSessionResponse`, `EventResponse`, `KYCStatusResponse`, `PostResponse`, `UserDetailResponse`, `WithdrawalResponse`, etc.
-- TypeScript ожидаемо упадёт в downstream-местах → править: `obj.field` → `obj.field ?? fallback` или `v-if`
-
-**Коммит 5:** Удаление narrowed unions
-- 19 unions из `types.ts` уходят
-- Re-export response-типов где они использовались
-- Сравнения `status === 'literal'` остаются валидными (string === string), TS не падает; автокомплит исчезает — это принимаемая цена
-
-**Коммит 6:** `provider_data` resolution
-- Audit-step grep `provider_data` по `frontend/src/`. По результату:
-  - не используется → молча удаляем при re-export
-  - используется → backend-bug, добавить поле в `payments/schemas.py::StaffPaymentResponse`, потом миграция
-
-**Коммит 7:** B7 — собственно rename (то с чего всё начиналось)
-- `frontend/src/components/shared/ProductCard.vue` — `units - sold_units` → `available_packages ?? 0`
-- `frontend/src/views/investor/ProductDetailView.vue` — то же + sold-out CTA через `inv.product.soldOut`
-- `frontend/src/views/investor/PurchaseView.vue` — три места (`totalCents`, `available`, template label)
-- `frontend/src/views/investor/InstallmentView.vue` — `product.value.units` → `product.value.package_size` (одно место, line 180)
-- `frontend/src/i18n/locales/en.json` — добавить `inv.market.packsAvailable`, `inv.product.packsAvailability` (ключ `inv.product.soldOut` уже есть). Локали ru/de/ar — потом, после доработки en
-- `PublicProductResponse` / `PublicProductDetailResponse` — изменения уже на месте после re-export'а из `generated.ts` (Коммит 3)
-
-**Коммит 8:** Comment fix
-- `frontend/src/utils/installmentPlans.ts` — заменить в комментарии "decomposing a package into integer tranche slices" на "decomposing a plan's total_units into integer tranche slices". Логика не трогается.
-
-#### Файлы для аудита перед началом
-
-- `B7_AUDIT.md` — детальный аудит расхождений (лежит в репо в незакоммиченном виде, сделан Claude Code)
-- `frontend/src/api/types.ts`, `generated.ts` — источники для VELO-сравнения
-- 5 Vue/TS файлов из B7 — для финального rename
-- `frontend/src/i18n/locales/en.json`
-- `backend/app/modules/dashboard/schemas.py` — для Коммита 1
-
-Остальные Vue/store файлы которые упадут на typecheck в Коммитах 4-5 — подгружаются по запросу по мере падений.
-
----
-
-**VPS state на 2026-05-02:**
-- 27 миграций накатаны
-- **360 backend тестов зелёные**
-- Storefront seed + test accounts seed работают
-- TS types pipeline (B8) работает: первый бот-push успешен, drift detection корректный
-- Backend здоров, фронт собран, frontend deferred-build pattern в `cbshome update` работает
-- Sprint 4.3 backend закрыт; остаётся VELO Migration + B7 rename как отдельная задача в новом чате
-
----
-
-**Конец документа**
+**End of architectural reference.** Implementation is deployed and stable; this document captures the *why* and *what* of the model, not the *how it got built*.

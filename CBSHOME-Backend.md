@@ -10,7 +10,7 @@
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
 - `CBSHOME-Installment.md` — механика рассрочки
-- `CBSHOME-Share-Pool-Refactor.md` — TD-071 / Sprint 4.3 (обязательно к реализации перед Phase 5 фронта)
+- `CBSHOME-Share-Pool-Refactor.md` — TD-071 / Sprint 4.3 + 4.4 (✅ closed, deployed `b539ee8`)
 
 ---
 
@@ -1206,19 +1206,114 @@ backend/tests/
 
 ---
 
-### ⏸ Sprint 4.3: Share Pool & Product Inventory Refactor (planned — BLOCKER before Phase 5 frontend F5)
+### ✅ Sprint 4.3: Share Pool & Product Inventory Refactor
 
-**Цель:** Исправить архитектурную ошибку в модели акций. Сейчас `Product.units` трактуется одновременно как «размер пакета» и как «доступный инвентарь», а `sold_units` считается COUNT(Purchase), не SUM. Это противоречит бизнес-реальности: компания выпускает фиксированный пул акций, продукты — лишь правила деноминации этого пула на пакеты разного размера.
+**Цель:** Исправить архитектурную ошибку в модели акций. До рефакторинга `Product.units` трактовалось одновременно как «размер пакета» и как «доступный инвентарь», а `sold_units` считался COUNT(Purchase), не SUM. Это противоречило бизнес-реальности: компания выпускает фиксированный пул акций, продукты — лишь правила деноминации этого пула на пакеты разного размера.
 
-**Правильная модель:**
-- `CompanyProfile.total_shares_issued` — эмиссия, фиксированное число акций на продажу.
-- `Product.units` переименовывается в `Product.package_size` — размер одного пакета в акциях.
-- `available_packages` для продукта вычисляется динамически: `floor((total_shares_issued − SUM(Purchase.units WHERE company_id=X AND status=active)) / package_size)`.
-- `execute_purchase()` валидирует `company.shares_remaining >= product.package_size` перед списанием.
+**Реализованная модель:**
+- `CompanyProfile.total_supply` — эмиссия, фиксированное число акций.
+- `CompanyProfile.shares_per_option` — целочисленное соотношение «акций в опционе».
+- `OptionPool` — отдельная модель: company_id (FK), equity_percent (Numeric(7,4)), total_options (int), status (active|drained). Partial unique index `uq_one_active_pool_per_company` на `WHERE status='active'`.
+- `Product.pool_id` — FK на OptionPool.
+- `Product.units` → `Product.package_size` (rename, semantics — размер одного пакета в опционах).
+- `available_packages` для продукта вычисляется динамически: `floor((pool.total_options − SUM(active Purchase.units of pool's company including gifts)) / package_size)`.
+- `execute_purchase()` валидирует `pool_remaining >= product.package_size` перед списанием.
+- Gift overflow: при недостатке пула gift-units «протекают» в owner supply (отрицательный pool_remaining допустим, спецификация §3.7).
 
-**Детальная спецификация, миграция, пошаговый план, диффы кода и тестов, acceptance criteria — в отдельном документе:** `CBSHOME-Share-Pool-Refactor.md`.
+**Детальная спецификация, миграция, диффы кода и тестов, acceptance criteria:** `CBSHOME-Share-Pool-Refactor.md` (v2.4).
 
-**Статус:** в таблице реестра техдолга — `TD-071` (🔴 Blocker before F5).
+**Реализация — батчи:**
+- B0 (миграция 0027 + модели) — deployed
+- B1 (schemas + services + rename + pool wiring) — deployed
+- B2 (pool router + main.py + 7 test fixtures) — deployed
+- B2.1 (test_posts.py hotfix) — deployed
+- B3 (test_pools.py — 11 новых тестов: pool capacity, gift consumption, sold-out path, gift overflow, installment preview invariants) — deployed
+- B4 (Installment Calculator + `POST /staff/products/{id}/installments/preview` + 2 теста calculator) — deployed
+- B5 (Company Dashboard module: `GET /company/dashboard` + `GET /company/analytics` + 8 тестов) — deployed
+- B5-pragmatic: `BalanceResponse` shared между dashboard/company_dashboard (был name-mangled дубль в auto-generated TS типах) — deployed
+- B6 (seed_storefront update + новый `seed_test_accounts.py` для test fixtures) — deployed
+- B7 — пересмотрен и расширен в отдельный мини-спринт **VELO Migration**, перенесён в Sprint 4.4
+- B8 (TS types pipeline + `cbshome-bot` auto-commit) — deployed
+
+**Результат:** 360/360 тестов зелёные, OpenAPI types в sync с бэком, dashboard для company UI работает.
+
+**Sprint 4.3 закрыт.**
+
+---
+
+### ✅ Sprint 4.4: Pack Pricing UX + VELO Migration + Code Review Hardening
+
+**Цель:** Финализировать B7 (frontend) после VELO Migration; точечная UX-полировка цены (pack-pricing двухуровневый); закрыть найденные code-review замечания по архитектуре pool-модуля.
+
+**Что сделано:**
+
+**VELO Migration (frontend types pipeline).**
+- `frontend/src/api/types.ts` сжат с 939 строк handwritten union'ов до тонкого re-export слоя над `generated.ts`. Single source of truth = backend OpenAPI → `generated.ts`.
+- 24 типа с drift'ом (handwritten vs generated) ликвидированы.
+- 8 коммитов миграции, frontend backwards-compat сохранён через aliasing.
+
+**B7 — Pack Pricing UX hardening.**
+- `PublicProductResponse` получил поле `price_per_pack_cents: int` (computed в роутере как `package_size * price_per_unit_cents`).
+- `PublicProductResponse.available_packages` переведён в required (без `= 0` дефолта). Missing populate = server bug, не soft fallback.
+- ProductCard.vue, ProductDetailView.vue, PurchaseView.vue — двухуровневый price block: пакет primary (крупный, жирный), per-unit reference secondary (мелкий, тёмно-серый).
+- en.json: `+inv.pack`, `+inv.pricePerPack` (×2 контекста), `−inv.priceLabel`, `−inv.pricePerUnit`.
+- 2 новых теста в `tests/test_products_pack_pricing.py` — round-trip `price_per_pack_cents` через list + detail endpoints.
+
+**Schema cleanup.**
+- `PublicProductResponse.company_name` — `str = ""` → `str` (required). Empty-string дефолт был placeholder для контракта, который не должен легитимно его выдавать. Missing company = 500, не «render с пустой строкой».
+- `PublicProductDetailResponse.installments` — `list[...] = []` → required. Backend всегда возвращает массив (возможно пустой). Дефолт делал поле optional в OpenAPI → требовал `?? []` на фронте в трёх call-sites. Required + явный `installments=[...]` в роутере убрали компенсацию.
+- `products/router.py` (public) — ORM mutation antipattern заменён на explicit constructor.
+
+  Pre-review pattern (rejected):
+  ```python
+  p.available_packages = available_map.get(p.id, 0)   # mutate ORM row
+  resp = PublicProductResponse.model_validate(p)      # validate
+  resp.company_name = company.name                    # mutate response
+  ```
+  Two issues: (1) ORM-row dirty-state на read-only сессии safe, но brittle; (2) post-validate assignment обходит Pydantic для post-hoc полей.
+
+  Post-review pattern (этот файл):
+  ```python
+  PublicProductResponse(
+      id=..., name=..., available_packages=..., company_name=..., ...
+  )
+  ```
+  Все поля keyword-args в конструктор. No ORM mutation, no post-validate assignment. Trade-off: новое поле в схеме требует обновления каждого call-site → TypeError при старте. Намеренно громкий сбой против тихого fallback.
+
+**Pool architecture hardening (post-review).**
+- `POOL_STATUS_ACTIVE` извлечён в `backend/app/modules/pools/constants.py`. Тройной локальный дубль `_POOL_STATUS_ACTIVE` (pools/service, purchases/service, company_dashboard/service) ликвидирован.
+- `_get_active_pool` / `_get_pool_remaining` — приватные копии в `purchases/service.py` удалены. Модуль теперь импортирует публичные `get_active_pool` / `get_pool_remaining` из `pools/service.py`. Комментарий «no upward dependency» снят как устаревший: `products/service.py` уже импортирует из pools, микросервисная нарезка не запланирована.
+- `update_pool()` возвращает `tuple[OptionPool, int]` — `consumed` уже вычислялся для `new_total < consumed` guard, теперь повторно используется в роутере. Double SELECT на PATCH /pool устранён.
+- `with_consumed_remaining()` — `consumed: int` обязательный аргумент. Helper стал чистой трансформацией без implicit SELECT. Параметр `_session` сохранён в сигнатуре с underscore-префиксом (Python convention для intentionally unused) для forward-compat.
+- `_compute_equity_percent()` — guard на `total_supply <= 0` (`ValueError` с явным сообщением вместо `decimal.DivisionByZero`).
+- `PoolResponseDict` алиас удалён — `with_consumed_remaining()` декларирует возврат как `dict[str, Any]` напрямую.
+- `+ public get_pool_remaining(pool, session)` в `pools/service.py` — encapsulation `total - consumed` для переиспользования.
+
+**Sprint 4.4 follow-up (второй раунд ревью).**
+- **Регресс fix:** `sessionStorage.removeItem('cbs_referral_code')` восстановлен в обоих flow `auth.ts` (email register + telegram login). При rewrite строки были потеряны → риск дублирования агентских комиссий при повторной регистрации в той же сессии.
+- **Type narrowing:** `UserRole` / `KycStatus` runtime guards с compile-time exhaustiveness assertions (паттерн `as const satisfies readonly UserRole[]` + assert на полное покрытие union'а). `auth.ts` экспонирует `role: UserRole | null` + `kycStatus: KycStatus | null`. `InvestorSettingsView.vue` использует typed compares.
+- **Style:** `del session` antipattern → `_session` префикс в `with_consumed_remaining()`.
+
+**Cleanup коммит (`b539ee8`).**
+- `ProductDetailResponse` (staff variant detail-with-installments) удалён — ноль call-sites в коде. Импорт в `products/staff_router.py` тоже удалён. Решение лучше дропа класса, чем фикс дефолта `installments = []` на мёртвом коде. Если staff `GET /staff/products/{id}` детальный эндпоинт понадобится — response model пишется с нуля под тот же явный-конструктор паттерн.
+
+**Файлы изменённые (Sprint 4.4):**
+- `backend/app/modules/pools/constants.py` — **новый**: `POOL_STATUS_ACTIVE`
+- `backend/app/modules/pools/service.py` — refactor (импорт constants, tuple-return, get_pool_remaining, _compute_equity_percent guard, alias drop)
+- `backend/app/modules/pools/router.py` — unpack tuple, pass consumed explicitly
+- `backend/app/modules/purchases/service.py` — drop dead copies, import from pools
+- `backend/app/modules/company_dashboard/service.py` — import POOL_STATUS_ACTIVE, drop local
+- `backend/app/modules/products/schemas.py` — required fields (company_name, installments), drop ProductDetailResponse, +Sprint 4.4 follow-up note
+- `backend/app/modules/products/router.py` — explicit Pydantic constructors
+- `backend/app/modules/products/staff_router.py` — drop dead imports
+- `backend/tests/test_products_pack_pricing.py` — **новый**: 2 теста на price_per_pack_cents
+- (frontend) `src/api/types.ts`, `src/stores/auth.ts`, `src/views/investor/{InvestorSettingsView,ProductDetailView,InstallmentView,PurchaseView}.vue`, `src/components/shared/ProductCard.vue`, `src/i18n/locales/en.json`
+
+**Тесты:** 362/362 зелёные. VPS deploy log: `d9071ef → b539ee8`, `Generated 116 types`, `Types are in sync, no commit needed`.
+
+**Score ревьюера:** 9.5/10. Единственный незакрытый пункт — TD-066 (legal stubs, **не код-блокер**, ждёт юр-текст).
+
+**Sprint 4.4 закрыт. Refactor TD-071 closed.**
 
 ---
 
@@ -3145,13 +3240,15 @@ backend/app/modules/transactions/
 | TD-068 | `docker-compose.yml`, `backend/tests/conftest.py` | Нет изолированной тестовой БД: тесты гоняются по тому же `postgres` сервису что и приложение. Нужен `test-postgres` service + `TEST_DATABASE_URL`. Снимет TD-067 и вернёт тестам нормальные fixtures-scoped cleanups | Before Scale | ⬜ |
 | TD-069 | `backend/tests/test_dashboard.py::test_certificate_email` | Исходный мок был на `aiosmtplib.send` — `core/email.py` реально ходит Mailgun primary, SMTP только как fallback. Тест случайно проходил только потому что Mailgun placeholder-key давал ошибку и падало в SMTP, который мок ловил. Фикс: мок на `send_certificate_email` router-level. Настоящий долг — явный sender-contract (protocol), mock на который не ломается от ротации primary/fallback | Backlog | ⬜ |
 | TD-070 | `backend/app/modules/documents/service.py` | `list_documents_for_role` делает два запроса (candidates + distinct types) чтобы отличить "юзер в миноритарной локали" от "платформа сломана". Можно сократить до одного запроса с `GROUP BY type` + агрегатом по наличию en/user_lang, но читаемость пострадает. Приемлемо при <20 типов | Backlog | ⬜ |
-| **TD-071** | `companies/models.py`, `products/models.py`, `purchases/service.py`, `processors/base.py`, `tests/` | **Share Pool & Product Inventory refactor.** `Product.units` ошибочно трактуется как «инвентарь пакета», `sold_units = COUNT(Purchase)` не отражает акции. Правильная модель: `Company.total_shares_issued` — эмиссия, `Product.package_size` — размер пакета, `available_packages` вычисляется динамически. Детальная спецификация — `CBSHOME-Share-Pool-Refactor.md`. Sprint 4.3 (planned) | 🔴 **Blocker before F5** | ⬜ |
+| TD-071 | `companies/models.py`, `products/models.py`, `purchases/service.py`, `processors/base.py`, `tests/` | ~~**Share Pool & Product Inventory refactor.** `Product.units` ошибочно трактуется как «инвентарь пакета», `sold_units = COUNT(Purchase)` не отражает акции~~ → Реализован полностью в Sprint 4.3 + 4.4: новая модель `OptionPool`, `Product.package_size`, `available_packages` через pool. Code review hardening (Sprint 4.4): `POOL_STATUS_ACTIVE` централизован, dead copies в purchases/service удалены, ORM mutation antipattern заменён explicit constructor, schema cleanup (no defaults on populated fields). 362/362 тестов зелёные. Детальная спецификация — `CBSHOME-Share-Pool-Refactor.md` (v2.4) | Sprint 4.3 + 4.4 | ✅ Sprint 4.4 |
 
 ---
 
 **Конец документа**
 
 ---
+
+*Version 3.5 | 2026-05-03 | Sprint 4.3 + 4.4 закрыты. Share Pool refactor (TD-071) deployed: `OptionPool` модель, `Product.package_size` rename, `available_packages` через pool, `price_per_pack_cents` в public response, gift overflow в owner supply. Sprint 4.4: VELO Migration (frontend types pipeline), pack-pricing UX, code review hardening (POOL_STATUS_ACTIVE centralisation, dead-copies removal, explicit Pydantic constructors, ProductDetailResponse cleanup). 362 tests, all green.*
 
 *Version 3.4 | 2026-04-17 | Sprint 2.2 UPDATE: `content_url` dropped, Document body moved to static HTML in `frontend/public/legal/<lang>/<type>.html`, `required_for_roles` JSONB replaces `ROLE_REQUIRED_DOCUMENT_TYPES` dict, localisation (en/ru/de/ar) via `Document.language` + `UNIQUE (type, version, language)`, seed_documents.py syncs hash-based. 336 tests, all green.*
 

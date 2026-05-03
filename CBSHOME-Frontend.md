@@ -472,7 +472,8 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
   - `token: string | null`
   - `loading: boolean`
   - `isAuthenticated: boolean` (computed: `!!token && !!user`)
-  - `role: UserRole | null` (computed из `user.role ?? null`)
+  - `role: UserRole | null` (computed через `asUserRole(user.value?.role)` — runtime guard из `api/types.ts`; неизвестное значение становится `null`, не unsafe-cast)
+  - `kycStatus: KycStatus | null` (computed через `asKycStatus(user.value?.kyc_status)` — тот же паттерн; добавлено в Sprint 4.4 follow-up)
   - `loginViaEmail(email, password)` — POST /auth/email/login → set token + user
   - `registerViaEmail(email, password, referral_code?)` — POST /auth/email/register → set token + user
   - `loginViaTelegram(initData, referral_code?)` — POST /auth/telegram → set token + user
@@ -908,7 +909,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - [x] src/stores/products.ts (Pinia) — `products`, `total`, `filters`, `loading`, `fetchProducts()`
 - [x] src/api/products.ts — `listProducts(params)`, `getProduct(id)`
 - [x] src/api/companies.ts — `listCompanies(params)` для фильтра
-- [x] src/components/shared/ProductCard.vue — обложка + название + компания + цена + `sold_units`, клик → `/investor/products/:id`
+- [x] src/components/shared/ProductCard.vue — обложка + название + компания + двухуровневый price block (pack primary + per-unit reference, Sprint 4.4) + `available_packages` (Sprint 4.3 — было `sold_units`), клик → `/investor/products/:id`
 - [x] src/components/shared/CompanyFilterSheet.vue — bottom-sheet фильтр по компании
 - [x] src/composables/usePagination.ts — бесконечный скролл / страницы
 - [x] src/views/investor/MarketView.vue — список + фильтр + пагинация + empty states (`inv.market.empty.*`)
@@ -968,7 +969,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 **Follow-ups (TD-F08 блок, секция 8):** TD-F08a currency multi-value contract, TD-F08b YAGNI wrappers, TD-F08c backend `error_code`, TD-F08d `/installments/preview`, TD-F08e `buildQueryString` util.
 
-**После F4.4 → Sprint 4.3 + TD-F07** (Share Pool Refactor). Views F4.2 подлежат ревизии по TD-F07b/c: поля `units`/`sold_units` → `package_size`/`available_packages`, availability-вычисления мигрируют.
+**После F4.4 → Sprint 4.3 + TD-F07** (Share Pool Refactor) → **закрыты в Sprint 4.4**: `units` / `sold_units` мигрированы на `package_size` / `available_packages` во всех 5 затронутых вьюхах, добавлены `UserRole` / `KycStatus` typed guards в `auth.ts`, ProductDetailView и InstallmentView дропнули `?? []` после schema cleanup на бэке (installments стал required). Двухуровневый pack-pricing (B7 UX) deployed.
 
 ---
 
@@ -1680,20 +1681,28 @@ function reset(): void {
 | TD-F06c | `OnboardingDocsView` не использует `doc.required_for_roles` в UI. Поле есть в типе, но никакой chip `"For agents only"` рядом с названием не показывается. Решение: не показывать — юзер и так видит только свои документы. Оставлено как nice-to-have только если продукт потребует | 🟢 | Nice-to-have |
 | TD-F06d | Нет frontend-тестов вообще (backend: 33 файла `test_*`). Установка `vitest` + тесты на guards / stores / api.client — TD-F02a/b/c/d уже заведены | 🟡 | Отдельный спринт после F5 |
 
-### TD-F07: Share Pool Alignment (follow-up к backend Sprint 4.3)
+### TD-F07: Share Pool Alignment (follow-up к backend Sprint 4.3) — ✅ Closed in Sprint 4.4
 
-Парная задача к backend TD-071. После merge backend-рефакторинга поле `sold_units` исчезает из API, появляется `available_packages`; `Product.units` переименовывается в `package_size`. На фронте это чисто механический rename + обновление текстов UI.
+Парная задача к backend TD-071 — закрыта полностью одним каскадом коммитов в Sprint 4.4 (после VELO Migration). Все шесть подпунктов реализованы; механический rename `units`/`sold_units` → `package_size`/`available_packages` плюс пара UX-апгрейдов из B7 (двухуровневый pack-price) сверху.
 
 | # | Описание | Приоритет | Когда |
 |---|----------|-----------|-------|
-| TD-F07a | `frontend/src/api/types.ts` — в `PublicProductResponse` / `PublicProductDetailResponse`: `units` → `package_size`, `sold_units` → `available_packages`. Импортеры TypeScript покажут все места использования — пройтись по ним | 🔴 | Сразу после backend Sprint 4.3 merge |
-| TD-F07b | `frontend/src/components/shared/ProductCard.vue` — вместо расчёта `available = p.units - p.sold_units` использовать `p.available_packages` напрямую. Переписать ключ i18n из `inv.market.available` («N available» — акции) на `inv.market.packsAvailable` («N packs available» — пакеты) | 🔴 | С TD-F07a |
-| TD-F07c | `frontend/src/views/investor/ProductDetailView.vue` — те же правки что в ProductCard. Availability-статистика в `<CStat>` блоке: label из «AVAILABILITY» в «PACKS AVAILABLE», значение из `product.available_packages`. Sold-out условие (disabled CTA) → `product.available_packages === 0` | 🔴 | С TD-F07a |
-| TD-F07d | `frontend/src/i18n/locales/{en,ru,de,ar}.json` — добавить ключ `inv.market.packsAvailable` с вариантами пакетов во всех 4 локалях. Старый `inv.market.available` можно оставить — он может пригодиться для других контекстов (или удалить, если нигде более не используется — проверить grep'ом) | 🔴 | С TD-F07a |
-| TD-F07e | `frontend/src/stores/products.ts` — убедиться что store корректно прокидывает новое поле из API-ответа без трансформаций. Типы автоматически проверятся | 🔴 | С TD-F07a |
-| TD-F07f | Ручная проверка: seed-скрипт после `--reset` + `docker compose restart app` — все 18 видимых продуктов должны показывать realistic `available_packages` (ниже `total_shares_issued / package_size` если были покупки, равно — если не было) | 🔴 | После всех TD-F07a..e |
+| TD-F07a | ✅ **Закрыт в Sprint 4.4 (B7 + VELO).** `frontend/src/api/types.ts` — handwritten unions удалены, `PublicProductResponse` и `PublicProductDetailResponse` берутся напрямую из `generated.ts` (single source of truth = backend OpenAPI). Поля `package_size` / `available_packages` приходят из бэка через автоген, drift невозможен. | 🔴 | ✅ Done |
+| TD-F07b | ✅ **Закрыт в Sprint 4.4 B7.** `frontend/src/components/shared/ProductCard.vue` использует `p.available_packages` напрямую (без вычитания). Двухуровневый price block: `inv.pricePerPack` (primary) + `inv.priceLabel` per-unit reference (secondary). Ключ `inv.market.packsAvailable` добавлен. | 🔴 | ✅ Done |
+| TD-F07c | ✅ **Закрыт в Sprint 4.4 B7.** `frontend/src/views/investor/ProductDetailView.vue` мигрирован: первый stat — pack price, sold-out CTA через `product.available_packages === 0`, label «AVAILABILITY» → «PACKS AVAILABLE». В Sprint 4.4 follow-up здесь же дропнут `?? []` на `product.installments` (бэк сделал поле required). | 🔴 | ✅ Done |
+| TD-F07d | ✅ **Закрыт в Sprint 4.4 B7.** `frontend/src/i18n/locales/{en,ru,de,ar}.json` — `inv.pack`, `inv.pricePerPack` (×2 контекста — карточка + детали), `inv.market.packsAvailable` добавлены. Старые `inv.priceLabel` / `inv.pricePerUnit` удалены за ненужностью. | 🔴 | ✅ Done |
+| TD-F07e | ✅ **Закрыт в Sprint 4.4 B7.** `frontend/src/stores/products.ts` прокидывает поля без трансформаций — типы автоматически проверились через `vue-tsc` (zero errors на финальном build'е). | 🔴 | ✅ Done |
+| TD-F07f | ✅ **Закрыт в Sprint 4.4 deploy.** Реальная VPS-проверка: `cbshome update` выполнен, `seed_storefront` создаёт 21 продукт + 6 пулов с `equity_percent=100%`, `available_packages` показывает realistic числа (`1_000_000 / 100 = 10_000` packages по дефолту). 362/362 теста зелёные, фронт собирается чистым vue-tsc. | 🔴 | ✅ Done |
 
-Детальная спецификация, включая пример до/после диффов кода и текстов локалей — в `CBSHOME-Share-Pool-Refactor.md`, раздел «Frontend changes».
+**Дополнительно в Sprint 4.4 (за рамками изначального TD-F07 scope):**
+- `auth.ts` получил `role: UserRole | null` через `asUserRole()` runtime guard и новый `kycStatus: KycStatus | null` через `asKycStatus()`. Compile-time exhaustiveness на union'ах (паттерн `as const satisfies readonly UserRole[]`) — добавление новой роли в union без обновления runtime массива становится ошибкой компиляции.
+- `InvestorSettingsView.vue` использует `authStore.role === 'investor'` / `authStore.kycStatus === 'approved'` (typed compares вместо raw user-объекта).
+- `InstallmentView.vue` дропнул `?? []` в `noPlans` computed (schema-cleanup на бэке гарантирует массив).
+- ProductCard.vue получил `align-self: flex-start` вместо magic-number `padding-top: 4px` для выравнивания availability-counter с pack-price line.
+- 2 новых backend теста на `price_per_pack_cents` (round-trip через list + detail) — `tests/test_products_pack_pricing.py`.
+- Регресс fix: `sessionStorage.removeItem('cbs_referral_code')` восстановлен в обоих flow `auth.ts` (был потерян при rewrite в коммите B7).
+
+Детальная спецификация — в `CBSHOME-Share-Pool-Refactor.md` (v2.4).
 
 ### TD-F08: F4.2 Polish & Follow-ups
 
