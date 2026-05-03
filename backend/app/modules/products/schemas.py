@@ -66,6 +66,18 @@
 #     `?? []` compensation in three frontend call sites. Required + the
 #     router passing `installments=[...]` explicitly removes the noise
 #     on both sides.
+#
+# Sprint 4.4 follow-up:
+#   - Removed `ProductDetailResponse` (staff variant of detail-with-
+#     installments). The class had no callers anywhere in the codebase
+#     -- imported once in products/staff_router.py and never used by
+#     any handler. Reviewers kept flagging the lingering `= []` default
+#     on its `installments` field; rather than fix a default on a dead
+#     class, the cleaner answer is to drop the class. If a staff
+#     `GET /staff/products/{id}` detail endpoint is added later, the
+#     response model gets written from scratch with the same explicit-
+#     constructor + required-installments pattern as
+#     PublicProductDetailResponse.
 # =============================================================================
 
 from datetime import datetime
@@ -235,12 +247,6 @@ class ProductResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime | None
-
-
-class ProductDetailResponse(ProductResponse):
-    """Full product detail with installment plans (staff)."""
-
-    installments: list[InstallmentResponse] = []
 
 
 class ProductListResponse(BaseModel):
