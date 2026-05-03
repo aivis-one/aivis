@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Pool Schemas (Sprint 4.3)
+# CBSHOME Backend -- Pool Schemas (Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #
 # REQUEST SCHEMAS:
@@ -28,6 +28,13 @@
 #   is what we want -- the frontend should parse it back as a
 #   number explicitly. Service layer accepts Decimal-or-int from
 #   Pydantic and stores Decimal.
+#
+# Sprint 4.4 CHANGES:
+#   - PoolResponse.consumed and .remaining: dropped the `= 0` defaults.
+#     Both fields are required from the router, which always builds
+#     PoolResponse via pools.service.with_consumed_remaining().
+#     Verified by grep: no other call site builds PoolResponse;
+#     company_dashboard uses its own PoolEmbedResponse shape.
 # =============================================================================
 
 from datetime import datetime
@@ -87,6 +94,10 @@ class PoolResponse(BaseModel):
     consumed and remaining are NOT columns on OptionPool -- they are
     aggregated at request time from active Purchase rows of the same
     company. Service layer fills them.
+
+    Sprint 4.4: consumed and remaining are required fields (no defaults).
+    The router always calls with_consumed_remaining() before validating
+    into this schema; a missing populate would be a server bug.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -101,9 +112,9 @@ class PoolResponse(BaseModel):
 
     # Computed (not on the model):
     # SUM(Purchase.units) for active purchases of this company.
-    consumed: int = 0
+    consumed: int
     # total_options - consumed. Can be negative when gifts have
     # overflowed into owner supply (see spec §3.7). The router
     # renders both numbers as-is; clients decide how to display
     # the overflow case.
-    remaining: int = 0
+    remaining: int

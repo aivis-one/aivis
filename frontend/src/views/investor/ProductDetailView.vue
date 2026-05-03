@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 + F4.2 + F4.2.2)
+// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 + F4.2 + F4.2.2
+//                                          + F4.4 B7 UX)
 // =============================================================================
 //
 // Public product detail screen. Shared across /investor/products/:id
@@ -32,6 +33,17 @@
 //   - Buy CTA label switches to "Sold out" when available <= 0.
 //   - Hero fallback stacks icon + text vertically.
 //   - Description breaks long unbroken tokens.
+//
+// F4.4 B7 UX:
+//   First stat now anchors on the pack: heading "Price per pack",
+//   value = formatPrice(price_per_pack_cents). The small caption under
+//   the value carries the per-unit reference price ("$X / unit") so
+//   the user can still see the underlying share price without making
+//   it the headline. The second stat (Packs availability) is unchanged.
+//
+//   Sprint 4.4 also dropped the `= 0` default on `available_packages`
+//   on the backend schema. The `?? 0` fallback here is gone -- a
+//   missing populate would be a server bug, not a soft default.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -85,9 +97,10 @@ const coverImage = computed<string | null>(() => {
   return p ? resolveCoverImage(p) : null
 })
 
+// F4.4: backend guarantees available_packages is populated; no `?? 0`.
 const available = computed<number>(() => {
   const p = product.value
-  return p ? p.available_packages ?? 0 : 0
+  return p ? p.available_packages : 0
 })
 
 function backToMarket(): void {
@@ -164,12 +177,15 @@ onMounted(loadProduct)
         <div class="pd__stats">
           <div class="pd__stat">
             <div class="pd__stat-label">
-              {{ t('inv.product.priceLabel') }}
+              {{ t('inv.product.pricePerPack') }}
             </div>
             <div class="pd__stat-value pd__stat-value--price">
-              {{ formatPrice(product.price_per_unit_cents, product.currency) }}
+              {{ formatPrice(product.price_per_pack_cents, product.currency) }}
             </div>
-            <div class="pd__stat-unit">/ {{ t('inv.unit') }}</div>
+            <div class="pd__stat-unit">
+              {{ formatPrice(product.price_per_unit_cents, product.currency) }}
+              / {{ t('inv.unit') }}
+            </div>
           </div>
           <div class="pd__stat">
             <div class="pd__stat-label">

@@ -1,6 +1,6 @@
 # =============================================================================
 # CBSHOME Backend -- Product Schemas (Sprint 4.2 + Sprint 6.1 + Sprint F4.1
-#                                       + Sprint 4.3)
+#                                       + Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #
 # Sprint 6.1 CHANGES:
@@ -43,6 +43,17 @@
 #     ready-to-submit plan_config and a flat summary for the staff UI.
 #     plan_config can be passed verbatim to POST
 #     /staff/products/{id}/installments.
+#
+# Sprint 4.4 CHANGES (B7 UX hardening):
+#   - PublicProductResponse: + price_per_pack_cents. Computed in the
+#     public router as package_size * price_per_unit_cents. The
+#     storefront UX (Sprint 4.4) anchors pricing on the pack, not the
+#     unit; precomputing on the server keeps the contract authoritative
+#     and avoids client-side multiplication drift.
+#   - PublicProductResponse.available_packages: dropped the `= 0`
+#     default. The field is required from the router via
+#     get_available_packages_map(); a missing populate is a server bug,
+#     not a 0-fallback. Frontend mirrors by removing `?? 0`.
 # =============================================================================
 
 from datetime import datetime
@@ -240,6 +251,10 @@ class PublicProductResponse(BaseModel):
     (renamed from sold_units, now COMPUTED from the pool, not from
     purchase counts). pool_id is intentionally NOT exposed here -- it is
     a staff-side identifier.
+
+    Sprint 4.4: price_per_pack_cents added; available_packages is now
+    required (no `= 0` default). Both are populated by the public
+    router; missing populate is a server bug, not a soft fallback.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -251,11 +266,16 @@ class PublicProductResponse(BaseModel):
     # Sprint 4.3: renamed from `units`.
     package_size: int
     price_per_unit_cents: int
+    # Sprint 4.4: package_size * price_per_unit_cents. Computed in the
+    # router alongside available_packages. Storefront UX anchors price
+    # on the pack; this avoids client-side multiplication.
+    price_per_pack_cents: int
     cover_url: str | None = None
     # Sprint 4.3: renamed from `sold_units` and re-defined.
+    # Sprint 4.4: dropped the `= 0` default -- field is required.
     # Now: floor(pool_remaining / package_size). 0 means sold out.
     # Populated by router via get_available_packages_map().
-    available_packages: int = 0
+    available_packages: int
 
     # Denormalised company fields (Sprint F4.1). Populated by router.
     company_name: str = ""

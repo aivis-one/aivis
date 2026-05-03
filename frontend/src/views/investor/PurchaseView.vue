@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PurchaseView (Phase F4.2 + F4.2.1 polish + F4.3 fix)
+// CBSHOME Frontend -- PurchaseView (Phase F4.2 + F4.2.1 polish + F4.3 fix
+//                                     + F4.4 B7 UX)
 // =============================================================================
 //
 // Instant-purchase confirmation screen. Shared across
@@ -40,6 +41,23 @@
 //   scroll/state for free) and only falls through to push() when
 //   there is no back entry -- i.e. the user deep-linked into this
 //   screen.
+//
+// F4.4 B7 UX:
+//   Order summary row 2 anchors on the pack: label "Price per pack",
+//   value = formatPrice(price_per_pack_cents). Row 1 ("Package size")
+//   and row 3 ("Total") are unchanged -- Total stays as a separate
+//   line because it equals the pack price for a 1-pack purchase, and
+//   keeping it visually distinct preserves the "final amount" anchor
+//   pattern users expect on a checkout screen.
+//
+//   `totalCents` formula is unchanged (package_size * price_per_unit_cents).
+//   It is mathematically equal to product.price_per_pack_cents but
+//   computed locally so the screen never desyncs from the package
+//   numbers it just rendered above.
+//
+//   Sprint 4.4 also dropped the `= 0` default on `available_packages`
+//   on the backend schema. The `?? 0` fallback here is gone -- a
+//   missing populate would be a server bug, not a soft default.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -89,9 +107,10 @@ const totalCents = computed<number>(() => {
   return p ? p.package_size * p.price_per_unit_cents : 0
 })
 
+// F4.4: backend guarantees available_packages is populated; no `?? 0`.
 const available = computed<number>(() => {
   const p = product.value
-  return p ? p.available_packages ?? 0 : 0
+  return p ? p.available_packages : 0
 })
 
 const soldOut = computed(() => available.value <= 0)
@@ -281,10 +300,10 @@ onMounted(load)
 
           <div class="pv__row">
             <span class="pv__row-label">
-              {{ t('inv.purchase.pricePerUnit') }}
+              {{ t('inv.purchase.pricePerPack') }}
             </span>
             <span class="pv__row-value">
-              {{ formatPrice(product.price_per_unit_cents, product.currency) }}
+              {{ formatPrice(product.price_per_pack_cents, product.currency) }}
             </span>
           </div>
 

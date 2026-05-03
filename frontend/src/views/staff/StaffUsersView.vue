@@ -5,6 +5,21 @@
 // PATCH /api/v1/staff/users/{id}/block
 // POST /api/v1/staff/users (promote to staff, admin only)
 // PATCH /api/v1/staff/users/{id}/permissions (admin only)
+//
+// Sprint 4.4 (Block C):
+//   PermissionKey is derived from the backend's UpdatePermissionsRequest
+//   and the runtime list ALL_PERMISSION_KEYS is checked both ways at
+//   compile time:
+//
+//     1. `as const satisfies readonly PermissionKey[]`
+//        rejects keys in the array that are NOT valid PermissionKey
+//        values (typos and removed-on-backend keys).
+//
+//     2. The `_PermissionKeysExhaustive` assertion below rejects valid
+//        PermissionKey values that are MISSING from the array (a new
+//        permission added to the backend that this UI forgot). The
+//        use-site assignment is what actually fails the build -- a
+//        bare type alias is just a tooltip warning.
 
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -13,14 +28,19 @@ import { CAvatar, CBadge, CLoader, CButton, CModal, CEmptyState, CInput } from '
 import { useToast } from '@/composables/useToast'
 import { fetchUsers, fetchUserDetail, blockUser, createStaff, updatePermissions } from '@/api/admin'
 import type {
+  UpdatePermissionsRequest,
   UserListItem,
   UserDetailResponse,
 } from '@/api/types'
 
+// PermissionKey derived from the backend schema -- single source of
+// truth. Required<> strips the `?` so `keyof` returns every permission
+// regardless of optional-on-the-wire shape.
+type PermissionKey = keyof Required<UpdatePermissionsRequest>
+
 // Full list of permission keys -- ensures UI shows all toggles even if
-// backend omits false values. File-local literal tuple so the toggle
-// call site can pass a key matching UpdatePermissionsRequest's named
-// fields without a string-index detour.
+// backend omits false values. `as const satisfies readonly PermissionKey[]`
+// catches typos and removed-on-backend keys at compile time.
 const ALL_PERMISSION_KEYS = [
   'avatar_mode',
   'kyc_approve',
@@ -30,8 +50,19 @@ const ALL_PERMISSION_KEYS = [
   'agent_application_review',
   'translation_edit',
   'company_manage',
-] as const
-type PermissionKey = (typeof ALL_PERMISSION_KEYS)[number]
+] as const satisfies readonly PermissionKey[]
+
+// Compile-time exhaustiveness: if the backend adds a new permission to
+// UpdatePermissionsRequest and this array forgets it, the assignment
+// below fails to typecheck -- the type on the right resolves to the
+// error-object literal, which is not assignable to `true`.
+type _PermissionKeysExhaustive =
+  Exclude<PermissionKey, (typeof ALL_PERMISSION_KEYS)[number]> extends never
+    ? true
+    : { readonly error: 'ALL_PERMISSION_KEYS missing keys from UpdatePermissionsRequest' }
+
+const _permissionKeysExhaustive: _PermissionKeysExhaustive = true
+void _permissionKeysExhaustive
 
 const { t } = useI18n()
 const { showToast } = useToast()

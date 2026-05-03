@@ -272,6 +272,7 @@
   },
   "inv": {
     "unit": "unit",
+    "pack": "pack",
     "available": "available",
     "market": {
       "title": "Marketplace",
@@ -298,7 +299,7 @@
         "desc": "This product may have been removed or is no longer available"
       },
       "backToMarket": "Back to marketplace",
-      "priceLabel": "Price per unit",
+      "pricePerPack": "Price per pack",
       "availability": "Availability",
       "description": "About",
       "installments": "Installment plans",
@@ -312,7 +313,7 @@
       "title": "Purchase",
       "orderSummary": "Order summary",
       "packageSize": "Package size",
-      "pricePerUnit": "Price per unit",
+      "pricePerPack": "Price per pack",
       "total": "Total",
       "yourBalance": "Your balance",
       "insufficientHint": "Not enough balance to complete this purchase",

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductCard (Phase F4.1 + F4.1.4 polish)
+// CBSHOME Frontend -- ProductCard (Phase F4.1 + F4.1.4 polish + F4.4 B7 UX)
 // =============================================================================
 //
 // Storefront grid card. Emits @click with the full product so the
@@ -12,6 +12,18 @@
 //   3. Building icon              -- final fallback (no image)
 //
 // F4.1.4 polish: formatters moved to utils/format.ts (TD-F04 closed).
+//
+// F4.4 B7 UX:
+//   The pack is the unit of purchase, not the share -- B7 wants the
+//   storefront to anchor pricing on it. Left meta block now shows
+//   `$N / pack` as the primary line, with `$X / unit` below as a
+//   reference. The right meta block ("X packs available") is unchanged.
+//   `price_per_pack_cents` comes from the backend pre-computed
+//   (package_size * price_per_unit_cents) so the client doesn't multiply.
+//
+//   Sprint 4.4 also dropped the `= 0` default on `available_packages`
+//   on the backend schema. The `?? 0` fallback here is gone -- a
+//   missing populate would be a server bug, not a soft default.
 // =============================================================================
 
 import { computed } from 'vue'
@@ -41,9 +53,8 @@ const { t, locale } = useI18n()
 
 const coverImage = computed(() => resolveCoverImage(props.product))
 
-const available = computed(
-  () => props.product.available_packages ?? 0,
-)
+// F4.4: backend now guarantees this field is populated; no `?? 0`.
+const available = computed(() => props.product.available_packages)
 </script>
 
 <template>
@@ -66,10 +77,16 @@ const available = computed(
         {{ product.description }}
       </div>
       <div class="product-card__meta">
-        <span class="product-card__price">
-          {{ formatPrice(product.price_per_unit_cents, product.currency) }}
-          <span class="product-card__unit">/ {{ t('inv.unit') }}</span>
-        </span>
+        <div class="product-card__price-block">
+          <span class="product-card__price">
+            {{ formatPrice(product.price_per_pack_cents, product.currency) }}
+            <span class="product-card__unit">/ {{ t('inv.pack') }}</span>
+          </span>
+          <span class="product-card__price-secondary">
+            {{ formatPrice(product.price_per_unit_cents, product.currency) }}
+            / {{ t('inv.unit') }}
+          </span>
+        </div>
         <span class="product-card__units">
           {{ formatNumber(available, locale) }} {{ t('inv.market.packsAvailable') }}
         </span>
@@ -145,9 +162,21 @@ const available = computed(
   overflow: hidden;
 }
 
+/* F4.4 B7: meta is now a 2-column row where the left column is itself
+   a 2-line block (pack price + unit price reference). Right column
+   ("packs available") stays single-line. align-items shifted from
+   baseline to flex-start so the right column anchors to the top of
+   the price block, lining up with the bigger pack price. */
 .product-card__meta {
-  display: flex; justify-content: space-between; align-items: baseline;
+  display: flex; justify-content: space-between; align-items: flex-start;
   gap: 8px;
+}
+
+.product-card__price-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .product-card__price {
@@ -159,9 +188,20 @@ const available = computed(
   color: var(--text-secondary);
 }
 
+/* F4.4 B7: secondary line under the pack price -- the per-unit
+   reference. Quiet typography so it does not compete with the
+   primary pack price. */
+.product-card__price-secondary {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 .product-card__units {
   font-size: 12px; color: var(--text-tertiary);
   text-align: end;
   white-space: nowrap;
+  /* Visual nudge to align the availability counter with the bigger
+     pack price line above the secondary reference. */
+  padding-top: 4px;
 }
 </style>

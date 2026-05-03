@@ -1,6 +1,7 @@
 # =============================================================================
 # CBSHOME Backend -- Product Public Router (Sprint 4.2 + Sprint 6.1 + F4.1
-#                                            + F4.1.1 hotfix + Sprint 4.3)
+#                                            + F4.1.1 hotfix + Sprint 4.3
+#                                            + Sprint 4.4)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -40,6 +41,21 @@
 #     company. The company-level batch SELECT was already happening for
 #     denormalisation -- we now also pass company_ids through to the
 #     packages map.
+#
+# Sprint 4.4 CHANGES (B7 UX hardening):
+#   - Both endpoints populate the new price_per_pack_cents field on the
+#     response right next to available_packages. Pure int arithmetic
+#     (package_size * price_per_unit_cents) -- no extra SELECTs, no
+#     Decimal/float drift.
+#   - The schema now REQUIRES available_packages and price_per_pack_cents
+#     (Sprint 4.4 dropped the `= 0` default on available_packages). Both
+#     fields are absent on the ORM row, so the previous post-assignment
+#     pattern (`resp = model_validate(p); resp.available_packages = ...`)
+#     no longer works -- model_validate would fail before we get to the
+#     assignment. Pattern below: pre-populate the computed values onto
+#     the ORM row as plain attributes, then model_validate picks them up
+#     via the from_attributes path. Read-only session (get_db_reader),
+#     so the dirty attributes never get flushed.
 # =============================================================================
 
 from uuid import UUID
@@ -105,8 +121,15 @@ async def list_products_endpoint(
 
     items = []
     for p in products:
+        # Sprint 4.4: pre-populate computed fields on the ORM row so
+        # Pydantic's from_attributes path picks them up at model_validate
+        # time. Both fields are now required on the schema, so the old
+        # post-assignment pattern (validate first, set after) no longer
+        # works -- validation would fail before we got to the assignment.
+        # Read-only session, so the dirty attributes never get flushed.
+        p.available_packages = available_map.get(p.id, 0)
+        p.price_per_pack_cents = p.package_size * p.price_per_unit_cents
         resp = PublicProductResponse.model_validate(p)
-        resp.available_packages = available_map.get(p.id, 0)
         # FK is RESTRICT -- missing company is a data integrity bug.
         # Surface it explicitly (500 with a grep-able message) rather
         # than a bare KeyError (F4.1.1 hotfix).
@@ -169,8 +192,15 @@ async def get_product_detail_endpoint(
             f"missing company {product.company_id}"
         )
 
+    # Sprint 4.4: pre-populate computed fields on the ORM row so
+    # Pydantic's from_attributes path picks them up at model_validate
+    # time (same pattern as the list endpoint above). Both fields are
+    # required on the schema; read-only session, no flush risk.
+    product.available_packages = available_map.get(product.id, 0)
+    product.price_per_pack_cents = (
+        product.package_size * product.price_per_unit_cents
+    )
     response = PublicProductDetailResponse.model_validate(product)
-    response.available_packages = available_map.get(product.id, 0)
     response.company_name = company.name
     response.company_logo_url = company.logo_url
     response.company_cover_url = company.cover_url
