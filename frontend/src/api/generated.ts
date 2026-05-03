@@ -697,7 +697,7 @@ export interface PublicCompanyResponse {
   created_at: string
 }
 
-/** Public product detail with installment plans. */
+/** Public product detail with installment plans. Sprint 4.4: installments is required (no `= []` default). Backend always returns an array; the optional-by-default trip through OpenAPI was forcing `?? []` on the frontend. Router populates explicitly, even if empty. */
 export interface PublicProductDetailResponse {
   id: string
   company_id: string
@@ -708,10 +708,10 @@ export interface PublicProductDetailResponse {
   price_per_pack_cents: number
   cover_url?: string | null
   available_packages: number
-  company_name?: string
+  company_name: string
   company_logo_url?: string | null
   company_cover_url?: string | null
-  installments?: InstallmentResponse[]
+  installments: InstallmentResponse[]
 }
 
 /** Paginated list of products (public). */
@@ -733,7 +733,7 @@ export interface PublicProductResponse {
   price_per_pack_cents: number
   cover_url?: string | null
   available_packages: number
-  company_name?: string
+  company_name: string
   company_logo_url?: string | null
   company_cover_url?: string | null
 }
