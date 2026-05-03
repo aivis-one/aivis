@@ -171,7 +171,7 @@ async def get_pool_remaining(
 
 async def with_consumed_remaining(
     pool: OptionPool,
-    session: AsyncSession,
+    _session: AsyncSession,
     consumed: int,
 ) -> dict[str, Any]:
     """Render a pool ORM row to a dict that PoolResponse can validate.
@@ -182,16 +182,17 @@ async def with_consumed_remaining(
     duplicated SELECT on the PATCH /pool path where update_pool already
     needed consumed for its "below-consumed" guard.
 
-    `session` is kept in the signature for forward-compat (a future
-    schema field might need to look something up); current implementation
-    doesn't use it.
+    `_session` is kept in the signature (with the underscore prefix
+    that signals "intentionally unused" in Python) for forward-compat:
+    a future schema field might need to look something up. Removing
+    the parameter now would force every caller to update its kwargs
+    when that day comes; keeping it is cheap.
 
     The router uses this helper before model_validate so the response
     carries the derived numbers. Kept in the service module so other
     consumers (company dashboard) can reuse the exact shape without
     going through the staff endpoint.
     """
-    del session  # unused; reserved for future-proofing
     return {
         "id": pool.id,
         "company_id": pool.company_id,

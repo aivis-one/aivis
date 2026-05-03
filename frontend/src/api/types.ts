@@ -108,13 +108,36 @@ export type UserRole =
   | 'staff'
   | 'platform'
 
-const _USER_ROLE_VALUES: ReadonlySet<UserRole> = new Set<UserRole>([
+// Single source of truth for the runtime value list.
+//
+// `as const satisfies readonly UserRole[]` catches the first
+// direction: a typo or a value that is NOT a UserRole fails the array
+// literal -- the type checker rejects the file before the build.
+//
+// _USER_ROLE_VALUES_COMPLETE catches the OTHER direction: if a new
+// value is added to the UserRole union but forgotten here, the
+// conditional resolves to the error-object type, which is not
+// assignable to `true`. The use-site assignment `const _: ... = true`
+// is what fails -- a bare type alias would only show as a tooltip.
+//
+// Same paranoia pattern that StaffUsersView.vue uses for
+// ALL_PERMISSION_KEYS / UpdatePermissionsRequest.
+const _USER_ROLE_VALUES_ARRAY = [
   'investor',
   'agent',
   'company',
   'staff',
   'platform',
-])
+] as const satisfies readonly UserRole[]
+
+type _UserRoleValuesComplete =
+  Exclude<UserRole, (typeof _USER_ROLE_VALUES_ARRAY)[number]> extends never
+    ? true
+    : { readonly error: 'UserRole has values missing from _USER_ROLE_VALUES_ARRAY' }
+const _userRoleValuesComplete: _UserRoleValuesComplete = true
+void _userRoleValuesComplete
+
+const _USER_ROLE_VALUES: ReadonlySet<UserRole> = new Set(_USER_ROLE_VALUES_ARRAY)
 
 /**
  * Narrow an unknown `string | null | undefined` from the wire into
@@ -136,12 +159,22 @@ export type KycStatus =
   | 'approved'
   | 'rejected'
 
-const _KYC_STATUS_VALUES: ReadonlySet<KycStatus> = new Set<KycStatus>([
+// Same two-direction guard as UserRole above.
+const _KYC_STATUS_VALUES_ARRAY = [
   'not_started',
   'submitted',
   'approved',
   'rejected',
-])
+] as const satisfies readonly KycStatus[]
+
+type _KycStatusValuesComplete =
+  Exclude<KycStatus, (typeof _KYC_STATUS_VALUES_ARRAY)[number]> extends never
+    ? true
+    : { readonly error: 'KycStatus has values missing from _KYC_STATUS_VALUES_ARRAY' }
+const _kycStatusValuesComplete: _KycStatusValuesComplete = true
+void _kycStatusValuesComplete
+
+const _KYC_STATUS_VALUES: ReadonlySet<KycStatus> = new Set(_KYC_STATUS_VALUES_ARRAY)
 
 /**
  * Narrow an unknown `string | null | undefined` from the wire into

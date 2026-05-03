@@ -134,9 +134,19 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await api.post<AuthResponse>(
         '/api/v1/auth/email/register',
-        { email, password, referral_code: referralCode ?? null },
+        // `|| null` (not `?? null`) so an empty referralCode "" is
+        // treated as missing rather than sent to the backend as the
+        // literal "" -- the backend's referral_code field has no
+        // min_length, so empty string would silently masquerade as a
+        // valid (always-missed) referral lookup.
+        { email, password, referral_code: referralCode || null },
       )
       _setSession(response)
+      // Clear referral code after successful registration.
+      // Without this, the next register/login in the same browser
+      // session would re-attribute under the same referrer (commission
+      // duplication on the agent payout side).
+      sessionStorage.removeItem('cbs_referral_code')
     } finally {
       loading.value = false
     }
@@ -151,9 +161,15 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await api.post<AuthResponse>(
         '/api/v1/auth/telegram',
-        { init_data: initData, referral_code: referralCode ?? null },
+        // `|| null` -- same rationale as registerViaEmail above.
+        { init_data: initData, referral_code: referralCode || null },
       )
       _setSession(response)
+      // Same cleanup as the email register path -- the Telegram login
+      // endpoint also creates a User on first call (when there is no
+      // matching telegram credential), so the referral attribution
+      // applies and must be one-shot.
+      sessionStorage.removeItem('cbs_referral_code')
     } finally {
       loading.value = false
     }
