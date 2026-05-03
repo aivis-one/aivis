@@ -208,10 +208,14 @@ type AgentState =
   | 'can_reapply'
 
 const isInvestor = computed<boolean>(
-  () => authStore.user?.role === 'investor',
+  // Sprint 4.4: typed compare via authStore.role (UserRole | null).
+  // A typo in the literal becomes a compile-time error rather than
+  // a silent runtime miss.
+  () => authStore.role === 'investor',
 )
 const kycApproved = computed<boolean>(
-  () => authStore.user?.kyc_status === 'approved',
+  // Sprint 4.4: typed compare via authStore.kycStatus (KycStatus | null).
+  () => authStore.kycStatus === 'approved',
 )
 
 const agentApps = ref<AgentApplicationResponse[]>([])

@@ -75,6 +75,90 @@ export interface ValidationErrorItem {
 }
 
 // ===========================================================================
+// Frontend-only narrowing types (Sprint 4.4 / B7 follow-up)
+//
+// Backend stores user role and KYC status as bare `String(20)` columns
+// (no DB-side enum) and the OpenAPI generator surfaces them as plain
+// `string` on UserResponse / UserListItem / UserDetailResponse. That
+// makes ` === 'investor'` and ` === 'approved'` checks unsafe -- a
+// typo in the literal is a silent runtime miss, not a compile-time
+// error.
+//
+// Two pieces here:
+//   1. The string-literal unions themselves -- the canonical list of
+//      values the backend can actually emit. Sourced from
+//      backend/app/modules/users/models.py (UserRole, KYCStatus).
+//   2. Runtime guards that convert an unknown `string | null | undefined`
+//      from the wire into `UserRole | null` (or `KycStatus | null`) by
+//      checking against the union's value set. Unknown values resolve
+//      to `null`, never to an unsafe cast -- so adding a new role on
+//      the backend without rebuilding the frontend gives `null` and a
+//      visible "fallback" path, not a silent type lie.
+//
+// Used by stores/auth.ts (computed role + kycStatus) and by any
+// component that wants typed comparisons against UserResponse.role
+// or UserResponse.kyc_status. The runtime guard lives next to the
+// union so the two cannot drift.
+// ===========================================================================
+
+export type UserRole =
+  | 'investor'
+  | 'agent'
+  | 'company'
+  | 'staff'
+  | 'platform'
+
+const _USER_ROLE_VALUES: ReadonlySet<UserRole> = new Set<UserRole>([
+  'investor',
+  'agent',
+  'company',
+  'staff',
+  'platform',
+])
+
+/**
+ * Narrow an unknown `string | null | undefined` from the wire into
+ * `UserRole | null`. Returns `null` for missing or unrecognised values
+ * -- callers MUST handle the null path (block the action, redirect to
+ * a generic dashboard, etc.) rather than assuming a default role.
+ *
+ * The function is the only authorised entry point from `string` into
+ * `UserRole`. Direct `as UserRole` casts elsewhere are a code smell.
+ */
+export function asUserRole(raw: string | null | undefined): UserRole | null {
+  if (raw === null || raw === undefined) return null
+  return _USER_ROLE_VALUES.has(raw as UserRole) ? (raw as UserRole) : null
+}
+
+export type KycStatus =
+  | 'not_started'
+  | 'submitted'
+  | 'approved'
+  | 'rejected'
+
+const _KYC_STATUS_VALUES: ReadonlySet<KycStatus> = new Set<KycStatus>([
+  'not_started',
+  'submitted',
+  'approved',
+  'rejected',
+])
+
+/**
+ * Narrow an unknown `string | null | undefined` from the wire into
+ * `KycStatus | null`. Same contract as `asUserRole`: unknown values
+ * become `null`, never an unsafe cast.
+ *
+ * Used by stores/auth.ts to expose `kycStatus: KycStatus | null` so
+ * gating checks like `kycStatus === 'approved'` are typed.
+ */
+export function asKycStatus(
+  raw: string | null | undefined,
+): KycStatus | null {
+  if (raw === null || raw === undefined) return null
+  return _KYC_STATUS_VALUES.has(raw as KycStatus) ? (raw as KycStatus) : null
+}
+
+// ===========================================================================
 // Staff (Phase F3) -- matches backend/app/modules/staff/* and related schemas
 // ===========================================================================
 

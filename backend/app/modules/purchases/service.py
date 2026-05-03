@@ -1,6 +1,6 @@
 # =============================================================================
 # CBSHOME Backend -- Purchase Service (Sprint 6.1 + Sprint 6.2 refactor
-#                                       + Sprint 4.3)
+#                                       + Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -51,6 +51,18 @@
 #     advisory_xact_lock on hash(pool_id) here, just like the engine
 #     already does on hash(investor_id).
 #
+# Sprint 4.4 CHANGES:
+#   - Removed the local `_POOL_STATUS_ACTIVE` constant -- now imported
+#     from pools/constants.py (single source of truth).
+#   - Removed the local `_get_active_pool` helper -- it was a near-copy
+#     of pools/service.get_active_pool. Replaced with a direct import.
+#     The "no upward dependency on pools/service" comment was speculative
+#     architecture for a future microservice split that is not on the
+#     roadmap; products/service.py already imports from pools, and
+#     purchases/service has no fan-out problem.
+#   - Removed the local `_get_pool_remaining` helper -- replaced with
+#     pools/service.get_pool_remaining (same SQL, public name).
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
 #
@@ -71,7 +83,9 @@ from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.constants import CompanyStatus
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus
+from app.modules.pools.constants import POOL_STATUS_ACTIVE
 from app.modules.pools.models import OptionPool
+from app.modules.pools.service import get_active_pool, get_pool_remaining
 from app.modules.processors.base import PurchaseContext
 from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
@@ -86,11 +100,6 @@ from app.modules.users.models import KYCStatus, User, UserRole
 
 
 logger = structlog.get_logger()
-
-
-# Pool status string. Matches OptionPool column literal; introduced as
-# a constant so the storefront helper and execute_purchase agree.
-_POOL_STATUS_ACTIVE = "active"
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +179,7 @@ async def get_available_packages_map(
     # 1. Active pools by company.
     pools_stmt = select(OptionPool).where(
         OptionPool.company_id.in_(company_ids),
-        OptionPool.status == _POOL_STATUS_ACTIVE,
+        OptionPool.status == POOL_STATUS_ACTIVE,
     )
     pools_result = await session.execute(pools_stmt)
     pools_by_company: dict[UUID, OptionPool] = {}
@@ -322,58 +331,6 @@ async def _load_user(
     return user
 
 
-async def _get_active_pool(
-    company_id: UUID, session: AsyncSession
-) -> OptionPool:
-    """Load the single active pool of a company.
-
-    Local copy of pools/service.py:get_active_pool to keep this module
-    self-contained (no upward dependency on pools/service in the
-    purchase hot path).
-
-    Raises:
-        BadRequestError: Company has no active pool.
-        RuntimeError: Multiple active pools (data integrity).
-    """
-    stmt = select(OptionPool).where(
-        OptionPool.company_id == company_id,
-        OptionPool.status == _POOL_STATUS_ACTIVE,
-    )
-    result = await session.execute(stmt)
-    pools = list(result.scalars().all())
-
-    if len(pools) == 0:
-        raise BadRequestError(
-            f"Company {company_id} has no active pool"
-        )
-    if len(pools) > 1:
-        raise RuntimeError(
-            f"Data integrity: multiple active pools for company {company_id}"
-        )
-
-    return pools[0]
-
-
-async def _get_pool_remaining(
-    pool: OptionPool, session: AsyncSession
-) -> int:
-    """Options remaining in pool: total - SUM(active purchases, gifts incl.).
-
-    Can return a negative number when gifts have overflowed into owner
-    supply -- callers MUST treat negative as zero-or-less for any
-    "can the user buy" decision.
-    """
-    consumed_stmt = (
-        select(func.coalesce(func.sum(Purchase.units), 0))
-        .where(
-            Purchase.company_id == pool.company_id,
-            Purchase.status == PurchaseStatus.ACTIVE,
-        )
-    )
-    consumed = (await session.execute(consumed_stmt)).scalar_one()
-    return pool.total_options - int(consumed)
-
-
 def _resolve_distribution_config(
     product: Product,
     company: CompanyProfile,
@@ -453,8 +410,11 @@ async def execute_purchase(
     # can both pass the check and push pool_remaining negative by one
     # package. That overflow is treated as gifts spilling into owner
     # supply per spec §3.7 -- accepted MVP risk.
-    pool = await _get_active_pool(company.id, session)
-    pool_remaining = await _get_pool_remaining(pool, session)
+    #
+    # Sprint 4.4: get_active_pool / get_pool_remaining now imported
+    # from pools/service (was a private duplicate inside this module).
+    pool = await get_active_pool(company.id, session)
+    pool_remaining = await get_pool_remaining(pool, session)
     if pool_remaining < product.package_size:
         raise BadRequestError(
             f"Sold out: pool has {max(0, pool_remaining)} options remaining, "

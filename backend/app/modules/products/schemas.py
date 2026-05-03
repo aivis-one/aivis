@@ -54,6 +54,18 @@
 #     default. The field is required from the router via
 #     get_available_packages_map(); a missing populate is a server bug,
 #     not a 0-fallback. Frontend mirrors by removing `?? 0`.
+#   - PublicProductResponse.company_name: dropped the `= ""` default.
+#     The router populates this from a batch CompanyProfile lookup
+#     (F4.1). Empty-string was a placeholder for a contract that should
+#     never legitimately produce one -- a missing company on a product
+#     is a 500, not a "render with empty string". OpenAPI now generates
+#     the field as required; frontend gets a stricter type.
+#   - PublicProductDetailResponse.installments: dropped the `= []`
+#     default. Backend always returns an array (possibly empty) -- the
+#     default made OpenAPI mark the field optional, which forced a
+#     `?? []` compensation in three frontend call sites. Required + the
+#     router passing `installments=[...]` explicitly removes the noise
+#     on both sides.
 # =============================================================================
 
 from datetime import datetime
@@ -278,15 +290,24 @@ class PublicProductResponse(BaseModel):
     available_packages: int
 
     # Denormalised company fields (Sprint F4.1). Populated by router.
-    company_name: str = ""
+    # Sprint 4.4: company_name dropped its `= ""` default -- a missing
+    # company on a product is a 500 (raised in the router as
+    # RuntimeError), not a soft empty-string fallback.
+    company_name: str
     company_logo_url: str | None = None
     company_cover_url: str | None = None
 
 
 class PublicProductDetailResponse(PublicProductResponse):
-    """Public product detail with installment plans."""
+    """Public product detail with installment plans.
 
-    installments: list[InstallmentResponse] = []
+    Sprint 4.4: installments is required (no `= []` default). Backend
+    always returns an array; the optional-by-default trip through
+    OpenAPI was forcing `?? []` on the frontend. Router populates
+    explicitly, even if empty.
+    """
+
+    installments: list[InstallmentResponse]
 
 
 class PublicProductListResponse(BaseModel):

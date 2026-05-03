@@ -200,8 +200,10 @@ const available = computed(() => props.product.available_packages)
   font-size: 12px; color: var(--text-tertiary);
   text-align: end;
   white-space: nowrap;
-  /* Visual nudge to align the availability counter with the bigger
-     pack price line above the secondary reference. */
-  padding-top: 4px;
+  /* Sprint 4.4: align with the top of the bigger pack price line above
+     the secondary reference. align-self trumps the magic-number
+     padding-top from the first B7 cut -- it tracks line-height changes
+     for free and survives any future font-size tweak on the price. */
+  align-self: flex-start;
 }
 </style>

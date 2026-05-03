@@ -112,7 +112,10 @@ const queryPlanId = computed<string | null>(() => {
 })
 
 const noPlans = computed<boolean>(() => {
-  return product.value !== null && (product.value.installments ?? []).length === 0
+  // Sprint 4.4: PublicProductDetailResponse.installments is now
+  // required server-side -- always an array, never absent. Drop the
+  // `?? []` compensation that B7 carried over from the previous schema.
+  return product.value !== null && product.value.installments.length === 0
 })
 
 const mode = computed<'select' | 'confirm'>(() => {

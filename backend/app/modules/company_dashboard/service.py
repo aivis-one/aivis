@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Dashboard Service (Sprint 4.3 / B5)
+# CBSHOME Backend -- Company Dashboard Service (Sprint 4.3 / B5 + Sprint 4.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -19,6 +19,16 @@
 #   when gift bonuses are configured -- that divergence is intentional
 #   and visible in the dashboard payload (consumed - total_options_sold
 #   = gift units issued so far).
+#
+# Sprint 4.4 CHANGES:
+#   - `_POOL_STATUS_ACTIVE` constant removed; imported from
+#     pools/constants.py instead. The "kept local for self-containment"
+#     comment was speculative; consolidating to one place removes a
+#     synchronisation point with no real cost.
+#   - with_consumed_remaining() now requires `consumed` as an argument.
+#     We compute it via get_pool_consumed (the same SELECT the helper
+#     used to run internally) so the dashboard call remains a 2-SELECT
+#     operation, just with explicit ownership.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Read-only queries via get_db_reader.
@@ -42,8 +52,9 @@ from app.modules.company_dashboard.schemas import (
 )
 from app.modules.dashboard.schemas import BalanceResponse
 from app.modules.ledgers.service import get_passive_balance
+from app.modules.pools.constants import POOL_STATUS_ACTIVE
 from app.modules.pools.models import OptionPool
-from app.modules.pools.service import with_consumed_remaining
+from app.modules.pools.service import get_pool_consumed, with_consumed_remaining
 from app.modules.products.constants import ProductStatus
 from app.modules.products.models import Product
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
@@ -52,10 +63,6 @@ from app.modules.transactions.models import Transaction
 
 logger = structlog.get_logger()
 
-
-# Pool status string, mirrors pools.service._POOL_STATUS_ACTIVE. Kept
-# local to keep this module self-contained on the read path.
-_POOL_STATUS_ACTIVE = "active"
 
 # Cap for the recent transactions feed.
 _RECENT_TRANSACTIONS_LIMIT = 20
@@ -133,7 +140,7 @@ async def get_company_dashboard(
     # -- 4. Active pool (optional -- new companies have no pool yet) --
     pool_stmt = select(OptionPool).where(
         OptionPool.company_id == company.id,
-        OptionPool.status == _POOL_STATUS_ACTIVE,
+        OptionPool.status == POOL_STATUS_ACTIVE,
     )
     pool = (await session.execute(pool_stmt)).scalar_one_or_none()
     pool_embed: PoolEmbedResponse | None = None
@@ -141,7 +148,10 @@ async def get_company_dashboard(
         # DRY with the staff pool router: same helper computes consumed
         # and remaining so the dashboard never disagrees with the staff
         # pool admin view.
-        payload = await with_consumed_remaining(pool, session)
+        # Sprint 4.4: compute consumed explicitly and feed it to
+        # with_consumed_remaining (which no longer runs an implicit SELECT).
+        consumed = await get_pool_consumed(pool.company_id, session)
+        payload = await with_consumed_remaining(pool, session, consumed=consumed)
         pool_embed = PoolEmbedResponse(
             total_options=payload["total_options"],
             equity_percent=payload["equity_percent"],

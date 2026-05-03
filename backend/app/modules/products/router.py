@@ -42,20 +42,41 @@
 #     denormalisation -- we now also pass company_ids through to the
 #     packages map.
 #
-# Sprint 4.4 CHANGES (B7 UX hardening):
+# Sprint 4.4 CHANGES (B7 UX hardening + post-review hardening):
 #   - Both endpoints populate the new price_per_pack_cents field on the
 #     response right next to available_packages. Pure int arithmetic
 #     (package_size * price_per_unit_cents) -- no extra SELECTs, no
 #     Decimal/float drift.
-#   - The schema now REQUIRES available_packages and price_per_pack_cents
-#     (Sprint 4.4 dropped the `= 0` default on available_packages). Both
-#     fields are absent on the ORM row, so the previous post-assignment
-#     pattern (`resp = model_validate(p); resp.available_packages = ...`)
-#     no longer works -- model_validate would fail before we get to the
-#     assignment. Pattern below: pre-populate the computed values onto
-#     the ORM row as plain attributes, then model_validate picks them up
-#     via the from_attributes path. Read-only session (get_db_reader),
-#     so the dirty attributes never get flushed.
+#   - Sprint 4.4 dropped the `= 0` default on available_packages, the
+#     `= ""` default on company_name, and the `= []` default on
+#     installments.
+#
+#   - PRE-REVIEW PATTERN (rejected by code review):
+#       p.available_packages = available_map.get(p.id, 0)  # mutate ORM
+#       resp = PublicProductResponse.model_validate(p)     # validate
+#       resp.company_name = company.name                   # mutate response
+#     Two issues. (1) Mutating an ORM-loaded row reaches into SQLAlchemy
+#     session bookkeeping; safe today on read-only sessions, brittle if
+#     the session ever switches to write mode. (2) Mutating the response
+#     object after model_validate sidesteps Pydantic validation for the
+#     fields that get assigned post-hoc -- they happen to be plain
+#     str/int, but the pattern erodes the schema's authority.
+#
+#   - POST-REVIEW PATTERN (this file):
+#       PublicProductResponse(
+#           id=..., name=..., available_packages=..., company_name=...,
+#       )
+#     Every field passed by keyword to the constructor. No ORM mutation,
+#     no post-validate assignment. Trade-off: a new schema field must be
+#     added at every constructor call site or the build fails at
+#     server-start with a clear TypeError. That tradeoff is intentional --
+#     a missing field on the response is a contract bug we want loud,
+#     not a soft `model_validate(p)` slipping through with a default.
+#
+#   - The detail endpoint passes installments=[...] explicitly even
+#     when the list is empty. The schema now requires the field; the
+#     router must always populate it. No `?? []` compensation needed
+#     on the frontend.
 # =============================================================================
 
 from uuid import UUID
@@ -115,21 +136,14 @@ async def list_products_endpoint(
             CompanyProfile.id.in_(company_ids)
         )
         companies_result = await session.execute(companies_stmt)
-        companies_map = {c.id: c for c in companies_result.scalars().all()}
+        companies_map: dict[UUID, CompanyProfile] = {
+            c.id: c for c in companies_result.scalars().all()
+        }
     else:
         companies_map = {}
 
-    items = []
+    items: list[PublicProductResponse] = []
     for p in products:
-        # Sprint 4.4: pre-populate computed fields on the ORM row so
-        # Pydantic's from_attributes path picks them up at model_validate
-        # time. Both fields are now required on the schema, so the old
-        # post-assignment pattern (validate first, set after) no longer
-        # works -- validation would fail before we got to the assignment.
-        # Read-only session, so the dirty attributes never get flushed.
-        p.available_packages = available_map.get(p.id, 0)
-        p.price_per_pack_cents = p.package_size * p.price_per_unit_cents
-        resp = PublicProductResponse.model_validate(p)
         # FK is RESTRICT -- missing company is a data integrity bug.
         # Surface it explicitly (500 with a grep-able message) rather
         # than a bare KeyError (F4.1.1 hotfix).
@@ -139,10 +153,25 @@ async def list_products_endpoint(
                 f"Data integrity: product {p.id} references "
                 f"missing company {p.company_id}"
             )
-        resp.company_name = company.name
-        resp.company_logo_url = company.logo_url
-        resp.company_cover_url = company.cover_url
-        items.append(resp)
+
+        # Sprint 4.4: explicit constructor. Every field passed by
+        # keyword. No ORM mutation, no post-validate assignment.
+        items.append(
+            PublicProductResponse(
+                id=p.id,
+                company_id=p.company_id,
+                name=p.name,
+                description=p.description,
+                package_size=p.package_size,
+                price_per_unit_cents=p.price_per_unit_cents,
+                price_per_pack_cents=p.package_size * p.price_per_unit_cents,
+                cover_url=p.cover_url,
+                available_packages=available_map.get(p.id, 0),
+                company_name=company.name,
+                company_logo_url=company.logo_url,
+                company_cover_url=company.cover_url,
+            )
+        )
 
     return PublicProductListResponse(
         items=items,
@@ -192,19 +221,24 @@ async def get_product_detail_endpoint(
             f"missing company {product.company_id}"
         )
 
-    # Sprint 4.4: pre-populate computed fields on the ORM row so
-    # Pydantic's from_attributes path picks them up at model_validate
-    # time (same pattern as the list endpoint above). Both fields are
-    # required on the schema; read-only session, no flush risk.
-    product.available_packages = available_map.get(product.id, 0)
-    product.price_per_pack_cents = (
-        product.package_size * product.price_per_unit_cents
+    # Sprint 4.4: explicit constructor. installments is passed
+    # explicitly even when empty -- the schema requires it (no `= []`
+    # default on the response model), so the frontend can drop its
+    # `?? []` compensation in three places.
+    return PublicProductDetailResponse(
+        id=product.id,
+        company_id=product.company_id,
+        name=product.name,
+        description=product.description,
+        package_size=product.package_size,
+        price_per_unit_cents=product.price_per_unit_cents,
+        price_per_pack_cents=product.package_size * product.price_per_unit_cents,
+        cover_url=product.cover_url,
+        available_packages=available_map.get(product.id, 0),
+        company_name=company.name,
+        company_logo_url=company.logo_url,
+        company_cover_url=company.cover_url,
+        installments=[
+            InstallmentResponse.model_validate(inst) for inst in installments
+        ],
     )
-    response = PublicProductDetailResponse.model_validate(product)
-    response.company_name = company.name
-    response.company_logo_url = company.logo_url
-    response.company_cover_url = company.cover_url
-    response.installments = [
-        InstallmentResponse.model_validate(inst) for inst in installments
-    ]
-    return response

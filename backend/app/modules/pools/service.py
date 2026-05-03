@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Pool Service (Sprint 4.3)
+# CBSHOME Backend -- Pool Service (Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -16,15 +16,23 @@
 #   update_pool()             -- update an active pool's total_options
 #                                (допэмиссия). equity_percent is recomputed.
 #                                Cannot reduce below already-consumed options.
+#                                Sprint 4.4: returns (pool, consumed) so the
+#                                caller (router) does not have to re-SELECT
+#                                consumed for the response.
 #   get_active_pool()         -- load the single active pool for a company.
 #                                Used by products/service.py at create time and
 #                                by purchases/service.py at purchase time.
 #   get_pool_consumed()       -- SUM(Purchase.units) for active purchases of
 #                                the company (gifts included).
+#   get_pool_remaining()      -- pool.total_options - consumed. Sprint 4.4:
+#                                replaces purchases.service._get_pool_remaining
+#                                so the read path lives in one place.
 #   with_consumed_remaining() -- decorate a pool ORM row with computed
-#                                consumed + remaining for PoolResponse. Used
-#                                by the staff pool router and (later) by the
-#                                company dashboard module (B5).
+#                                consumed + remaining for PoolResponse. Sprint
+#                                4.4: consumed is now a REQUIRED argument --
+#                                the helper is a pure transformation, never
+#                                runs an implicit SELECT. Callers compute
+#                                consumed once and pass it.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -39,9 +47,28 @@
 #   equity_percent is stored Numeric(7, 4). We compute total_options as
 #   integer floor of (total_supply * pct / 100) using Decimal arithmetic
 #   to avoid float rounding on values near integer boundaries.
+#
+# Sprint 4.4 CHANGES:
+#   - POOL_STATUS_ACTIVE moved to pools/constants.py (was a private
+#     `_POOL_STATUS_ACTIVE` here, duplicated in two other modules).
+#   - update_pool() now returns (OptionPool, int). The int is `consumed`
+#     -- already computed for the "new_total < consumed" guard. Closes
+#     the duplicated SELECT on PATCH /pool path.
+#   - with_consumed_remaining() now takes consumed as a required arg --
+#     no implicit SELECT. Callers (pool router, company dashboard) pass
+#     the value they already have.
+#   - +get_pool_remaining(pool, session) public helper, replaces the
+#     local copy in purchases/service.py. Encapsulates "remaining =
+#     total - consumed".
+#   - _compute_equity_percent() now guards against total_supply <= 0 so
+#     the contract is explicit; previously the call site was the only
+#     thing keeping it safe.
+#   - PoolResponseDict alias removed; with_consumed_remaining now
+#     declares its return type as dict[str, Any] directly.
 # =============================================================================
 
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -52,6 +79,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.service import get_company
+from app.modules.pools.constants import POOL_STATUS_ACTIVE
 from app.modules.pools.models import OptionPool
 from app.modules.pools.schemas import CreatePoolRequest, UpdatePoolRequest
 from app.modules.purchases.constants import PurchaseStatus
@@ -59,11 +87,6 @@ from app.modules.purchases.models import Purchase
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
-
-
-# Pool status values. Kept as strings (no enum module yet) to mirror
-# the column type; OptionPool.status is String(20).
-_POOL_STATUS_ACTIVE = "active"
 
 
 # ---------------------------------------------------------------------------
@@ -81,13 +104,16 @@ async def get_active_pool(
     this function still defensively rejects multi-active states so a
     bug in migrations / direct DB writes surfaces immediately.
 
+    Used by products/service.py (at product creation), purchases/service.py
+    (at purchase time), and the staff router (POST/PATCH /pool).
+
     Raises:
         BadRequestError: If the company has no active pool yet.
         RuntimeError: If multiple active pools exist (data integrity).
     """
     stmt = select(OptionPool).where(
         OptionPool.company_id == company_id,
-        OptionPool.status == _POOL_STATUS_ACTIVE,
+        OptionPool.status == POOL_STATUS_ACTIVE,
     )
     result = await session.execute(stmt)
     pools = list(result.scalars().all())
@@ -124,22 +150,48 @@ async def get_pool_consumed(
     return int(result.scalar_one())
 
 
+async def get_pool_remaining(
+    pool: OptionPool,
+    session: AsyncSession,
+) -> int:
+    """Options remaining in pool: total_options - consumed.
+
+    Sprint 4.4: consolidated from the local copy in purchases/service.py
+    (`_get_pool_remaining`). Single source of truth so future changes
+    to the consumption query (logging, new statuses, etc.) land in one
+    place.
+
+    Can return a negative number when gifts have overflowed into owner
+    supply (spec §3.7). Callers MUST treat negative as zero-or-less for
+    any "can the user buy" decision.
+    """
+    consumed = await get_pool_consumed(pool.company_id, session)
+    return pool.total_options - consumed
+
+
 async def with_consumed_remaining(
     pool: OptionPool,
     session: AsyncSession,
-) -> "PoolResponseDict":
+    consumed: int,
+) -> dict[str, Any]:
     """Render a pool ORM row to a dict that PoolResponse can validate.
 
-    Computes consumed (sum of active Purchase.units for the company) and
-    remaining (total_options - consumed; can go negative when gifts have
-    overflowed into owner supply).
+    Sprint 4.4: `consumed` is a REQUIRED argument. The helper is now a
+    pure transformation -- it never runs a SELECT. Callers compute
+    consumed once (via get_pool_consumed) and pass it. This avoids the
+    duplicated SELECT on the PATCH /pool path where update_pool already
+    needed consumed for its "below-consumed" guard.
+
+    `session` is kept in the signature for forward-compat (a future
+    schema field might need to look something up); current implementation
+    doesn't use it.
 
     The router uses this helper before model_validate so the response
-    carries those derived numbers. Kept here (not in the router) so the
-    company dashboard module (B5) can reuse it without going through
-    the staff endpoint.
+    carries the derived numbers. Kept in the service module so other
+    consumers (company dashboard) can reuse the exact shape without
+    going through the staff endpoint.
     """
-    consumed = await get_pool_consumed(pool.company_id, session)
+    del session  # unused; reserved for future-proofing
     return {
         "id": pool.id,
         "company_id": pool.company_id,
@@ -151,11 +203,6 @@ async def with_consumed_remaining(
         "consumed": consumed,
         "remaining": pool.total_options - consumed,
     }
-
-
-# Lightweight typing alias: PoolResponse expects this shape.
-# Defined as Any-typed dict to avoid a runtime import cycle with schemas.
-PoolResponseDict = dict  # type: ignore[type-arg, misc]
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +224,18 @@ def _compute_equity_percent(total_options: int, total_supply: int) -> Decimal:
     """Derive pool.equity_percent from total_options and total_supply.
 
     Quantized to 4 decimal places to match Numeric(7, 4) column type.
+
+    Sprint 4.4: explicit guard on total_supply <= 0. The original
+    implementation relied on the call site (update_pool, which loads a
+    company that previously passed CreateCompanyRequest.total_supply>0).
+    A direct call from another module would silently throw
+    decimal.DivisionByZero, which is harder to trace than a clean
+    ValueError naming the bad input.
     """
+    if total_supply <= 0:
+        raise ValueError(
+            f"total_supply must be positive, got {total_supply}"
+        )
     raw = Decimal(total_options) * Decimal(100) / Decimal(total_supply)
     # Quantize to 4 dp without rounding surprises: the column is Numeric(7,4),
     # so anything beyond is silently dropped at write. Explicit quantize
@@ -224,7 +282,7 @@ async def create_pool(
     # Pre-check: any active pool already?
     existing_stmt = select(OptionPool.id).where(
         OptionPool.company_id == company_id,
-        OptionPool.status == _POOL_STATUS_ACTIVE,
+        OptionPool.status == POOL_STATUS_ACTIVE,
     )
     existing = (await session.execute(existing_stmt)).scalar_one_or_none()
     if existing is not None:
@@ -244,7 +302,7 @@ async def create_pool(
         company_id=company.id,
         equity_percent=body.equity_percent,
         total_options=total_options,
-        status=_POOL_STATUS_ACTIVE,
+        status=POOL_STATUS_ACTIVE,
     )
     session.add(pool)
 
@@ -296,7 +354,7 @@ async def update_pool(
     body: UpdatePoolRequest,
     staff: User,
     session: AsyncSession,
-) -> OptionPool:
+) -> tuple[OptionPool, int]:
     """Update the active pool's total_options (допэмиссия).
 
     equity_percent is recomputed from the new total_options.
@@ -304,6 +362,10 @@ async def update_pool(
     Cannot reduce total_options below already-consumed options. Consumed
     is SUM(Purchase.units) for active purchases of this company,
     including gifts.
+
+    Sprint 4.4: returns (pool, consumed). consumed is computed once for
+    the "new_total < consumed" guard and reused by the caller (router)
+    for the response. Closes the duplicated SELECT on the PATCH path.
 
     Raises:
         NotFoundError: Company not found.
@@ -365,4 +427,4 @@ async def update_pool(
         staff_id=str(staff.id),
     )
 
-    return pool
+    return pool, consumed

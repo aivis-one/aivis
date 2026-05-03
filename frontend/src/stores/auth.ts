@@ -5,13 +5,38 @@
 // Manages authentication state: user, token, role.
 // Token persisted via platform.getStorageDriver() under key 'cbs_token'.
 // Registers _onUnauthorized callback in API client.
+//
+// Sprint 4.4 (post-VELO hardening):
+//   `role` is now exposed as `UserRole | null`, not `string | null`.
+//   The narrowing happens through `asUserRole` (api/types.ts) which
+//   returns `null` for unknown values rather than an unsafe cast --
+//   that means `authStore.role === 'investor'` checks across the
+//   codebase get a typo guard (compile-time error if the literal isn't
+//   a member of UserRole) without any runtime-typed-cast tricks.
+//
+//   New computed `kycStatus: KycStatus | null` mirrors the same shape
+//   for KYC-gated checks (purchase, agent application). Callers like
+//   InvestorSettingsView can drop their inline `=== 'approved'` raw
+//   comparisons in favour of `authStore.kycStatus === 'approved'`,
+//   typed.
+//
+//   Router guards still receive a string-compatible value (UserRole is
+//   a subset of string) so the existing `roles?: string[]` route meta
+//   contract works without changes.
 // =============================================================================
 
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 
 import { api, setAuthToken, setOnUnauthorized } from '@/api/client'
-import type { AuthResponse, UserResponse } from '@/api/types'
+import {
+  asKycStatus,
+  asUserRole,
+  type AuthResponse,
+  type KycStatus,
+  type UserResponse,
+  type UserRole,
+} from '@/api/types'
 import { platform } from '@/platform'
 import { setAvatarActive } from '@/composables/avatarState'
 import { setLocale } from '@/i18n'
@@ -32,7 +57,15 @@ export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
-  const role = computed<string | null>(() => user.value?.role ?? null)
+
+  // Sprint 4.4: role / kycStatus pass through narrowing guards from
+  // api/types.ts. Unknown values become `null`, never an unsafe cast.
+  const role = computed<UserRole | null>(
+    () => asUserRole(user.value?.role),
+  )
+  const kycStatus = computed<KycStatus | null>(
+    () => asKycStatus(user.value?.kyc_status),
+  )
 
   // ---------------------------------------------------------------------------
   // Internal helpers
@@ -71,22 +104,27 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ---------------------------------------------------------------------------
-  // Actions
+  // Login flows
   // ---------------------------------------------------------------------------
 
-  async function loginViaEmail(email: string, password: string): Promise<void> {
+  /** Email + password login. */
+  async function loginViaEmail(
+    email: string,
+    password: string,
+  ): Promise<void> {
     loading.value = true
     try {
-      const response = await api.post<AuthResponse>('/api/v1/auth/email/login', {
-        email,
-        password,
-      })
+      const response = await api.post<AuthResponse>(
+        '/api/v1/auth/email/login',
+        { email, password },
+      )
       _setSession(response)
     } finally {
       loading.value = false
     }
   }
 
+  /** Email + password registration. */
   async function registerViaEmail(
     email: string,
     password: string,
@@ -94,48 +132,51 @@ export const useAuthStore = defineStore('auth', () => {
   ): Promise<void> {
     loading.value = true
     try {
-      const response = await api.post<AuthResponse>('/api/v1/auth/email/register', {
-        email,
-        password,
-        referral_code: referralCode || undefined,
-      })
+      const response = await api.post<AuthResponse>(
+        '/api/v1/auth/email/register',
+        { email, password, referral_code: referralCode ?? null },
+      )
       _setSession(response)
-      // Clear referral code after successful registration.
-      sessionStorage.removeItem('cbs_referral_code')
     } finally {
       loading.value = false
     }
   }
 
+  /** Telegram WebApp login. */
   async function loginViaTelegram(
     initData: string,
     referralCode?: string | null,
   ): Promise<void> {
     loading.value = true
     try {
-      const response = await api.post<AuthResponse>('/api/v1/auth/telegram', {
-        init_data: initData,
-        referral_code: referralCode || undefined,
-      })
+      const response = await api.post<AuthResponse>(
+        '/api/v1/auth/telegram',
+        { init_data: initData, referral_code: referralCode ?? null },
+      )
       _setSession(response)
-      sessionStorage.removeItem('cbs_referral_code')
     } finally {
       loading.value = false
     }
   }
 
-  /** Try to restore session from persisted token. Returns true on success. */
+  // ---------------------------------------------------------------------------
+  // Session persistence
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Restore persisted session from storage. Returns true if a valid
+   * session was restored, false otherwise (storage empty or token
+   * rejected by /users/me).
+   */
   async function restoreSession(): Promise<boolean> {
     const storage = _getStorage()
-    const savedToken = storage.getItem(TOKEN_KEY)
-    if (!savedToken) return false
+    const stored = storage.getItem(TOKEN_KEY)
+    if (!stored) return false
 
-    // Set token first so API client can send it.
-    _persistToken(savedToken)
+    _persistToken(stored)
     try {
       const me = await api.get<UserResponse>('/api/v1/users/me')
       user.value = me
-      // Persisted session restored -- align UI with stored language.
       void setLocale(me.language)
       return true
     } catch {
@@ -175,6 +216,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     isAuthenticated,
     role,
+    kycStatus,
     loginViaEmail,
     registerViaEmail,
     loginViaTelegram,

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Pool Staff Router (Sprint 4.3)
+# CBSHOME Backend -- Pool Staff Router (Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -17,6 +17,17 @@
 #   consumed/remaining derivation is centralised in
 #   pools/service.with_consumed_remaining() so the company dashboard
 #   module (B5) can reuse it without re-running this query through HTTP.
+#
+# Sprint 4.4 CHANGES:
+#   - update_pool() now returns (pool, consumed). The router unpacks
+#     the tuple and feeds the existing `consumed` value straight into
+#     with_consumed_remaining(), saving the duplicated SELECT.
+#   - create_pool path passes consumed=0 explicitly. A freshly-created
+#     pool cannot have any active purchases against it (the only way
+#     to consume options is to buy a product, which requires the pool
+#     to exist first).
+#   - with_consumed_remaining() now requires `consumed` as a positional
+#     argument; callers compute it once and pass it.
 #
 # COMMIT RULE (P-01):
 #   Router never calls session.commit(). get_db_session commits
@@ -77,7 +88,10 @@ async def create_pool_endpoint(
     await require_financial_operations(staff, session)
 
     pool = await create_pool(company_id, body, staff, session)
-    payload = await with_consumed_remaining(pool, session)
+    # Sprint 4.4: with_consumed_remaining now requires `consumed` as an
+    # argument. A freshly created pool has zero active purchases by
+    # construction (you can't buy from a pool that didn't exist yet).
+    payload = await with_consumed_remaining(pool, session, consumed=0)
     return PoolResponse.model_validate(payload)
 
 
@@ -106,6 +120,9 @@ async def update_pool_endpoint(
     """
     await require_financial_operations(staff, session)
 
-    pool = await update_pool(company_id, body, staff, session)
-    payload = await with_consumed_remaining(pool, session)
+    # Sprint 4.4: update_pool returns (pool, consumed). The service
+    # already had to SELECT consumed for its "below-consumed" guard,
+    # so reuse that value here -- no second SELECT.
+    pool, consumed = await update_pool(company_id, body, staff, session)
+    payload = await with_consumed_remaining(pool, session, consumed=consumed)
     return PoolResponse.model_validate(payload)
