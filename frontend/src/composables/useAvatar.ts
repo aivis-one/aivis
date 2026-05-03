@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useAvatar Composable (Phase F3)
+// CBSHOME Frontend -- useAvatar Composable (Phase F3 + F5.1 B1)
 // =============================================================================
 //
 // Avatar mode state management. Staff operates as another user.
@@ -21,6 +21,20 @@
 //   - cbs_staff_token in sessionStorage = original staff token backup
 //   - restoreSession() loads avatar token → fetchMe → target user
 //   - App.vue checks isAvatarActive → shows banner
+//
+// F5.1 B1 -- data store reset on identity flip.
+//   Both transitions call resetAllDataStores() right before fetchMe().
+//   Without this, dashboard/portfolio/transactions etc. carry the
+//   PREVIOUS identity's data through the token swap until the next
+//   view's onMounted refresh fires. That window was visible on slow
+//   networks (200ms+ between fetchMe resolve and the destination
+//   view mounting). Reset before fetchMe means:
+//     - the new identity's first render is from a clean baseline
+//     - any in-flight fetch from the previous identity (each store's
+//       reset bumps its FP-17 epoch first) drops silently on resolve
+//   Catch paths reset too: token may have been swapped before the
+//   error fired, leaving stores keyed against a different identity
+//   than the restored token.
 // =============================================================================
 
 import { computed, ref } from 'vue'
@@ -33,6 +47,7 @@ import { useToast } from '@/composables/useToast'
 import { getRoleDashboard } from '@/router/guards'
 import { platform } from '@/platform'
 import { avatarActive, setAvatarActive, STAFF_TOKEN_KEY } from '@/composables/avatarState'
+import { resetAllDataStores } from '@/stores/sessionReset'
 
 const TOKEN_KEY = 'cbs_token'
 
@@ -67,15 +82,20 @@ export function useAvatar() {
       storage.setItem(TOKEN_KEY, resp.session_token)
       setAuthToken(resp.session_token)
 
-      // 4. Refresh user — now returns target user.
+      // 4. Reset data stores BEFORE fetchMe -- staff's prior state
+      // (if any) must not leak into target user's first render. See
+      // file header "F5.1 B1".
+      resetAllDataStores()
+
+      // 5. Refresh user — now returns target user.
       await authStore.fetchMe()
 
-      // 5. Update reactive flag.
+      // 6. Update reactive flag.
       setAvatarActive(true)
 
       showToast(t('staff.avatar.started'), 'success')
 
-      // 6. Redirect to target user's dashboard.
+      // 7. Redirect to target user's dashboard.
       const targetDashboard = getRoleDashboard(authStore.role)
       await router.push(targetDashboard)
     } catch {
@@ -86,6 +106,11 @@ export function useAvatar() {
         _getMainStorage().setItem(TOKEN_KEY, savedToken)
       }
       setAvatarActive(false)
+      // The token may already have been swapped to the avatar's by
+      // the time the error fired. Reset so a successful login that
+      // follows starts from a clean baseline rather than from
+      // whichever identity the in-flight fetchMe was reaching for.
+      resetAllDataStores()
       showToast(t('common.error'), 'error')
     } finally {
       loading.value = false
@@ -123,12 +148,17 @@ export function useAvatar() {
       // 4. Cleanup.
       setAvatarActive(false)
 
-      // 5. Refresh user — now returns staff user.
+      // 5. Reset data stores BEFORE fetchMe -- target user's
+      // dashboard/portfolio/transactions data must not survive into
+      // the staff session. See file header "F5.1 B1".
+      resetAllDataStores()
+
+      // 6. Refresh user — now returns staff user.
       await authStore.fetchMe()
 
       showToast(t('staff.avatar.ended'), 'success')
 
-      // 6. Redirect to staff dashboard.
+      // 7. Redirect to staff dashboard.
       await router.push('/staff/dashboard')
     } catch {
       // Even if endAvatar API call fails, restore staff token to prevent desync.
@@ -136,6 +166,11 @@ export function useAvatar() {
       setAuthToken(staffToken)
       _getMainStorage().setItem(TOKEN_KEY, staffToken)
       setAvatarActive(false)
+      // Clear any target-user state that might have been loaded
+      // before the error fired. fetchMe in this catch is best-effort
+      // and we want stores to start from a clean baseline regardless
+      // of whether it succeeds.
+      resetAllDataStores()
       await authStore.fetchMe().catch(() => { /* best effort */ })
       await router.push('/staff/dashboard')
       showToast(t('common.error'), 'error')

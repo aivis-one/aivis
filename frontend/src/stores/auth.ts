@@ -23,6 +23,23 @@
 //   Router guards still receive a string-compatible value (UserRole is
 //   a subset of string) so the existing `roles?: string[]` route meta
 //   contract works without changes.
+//
+// F5.1 B1 -- session reset wiring:
+//   _clearSession() now calls resetAllDataStores() and explicitly
+//   clears `loading`. Before this commit, every data store's
+//   `reset()` existed but was never called -- a logout / 401 left
+//   user A's dashboard, portfolio, transactions etc. sitting in
+//   memory until B's first onMounted refresh overwrote them, with
+//   a brief render window where B could see A's financial state.
+//   In addition, an in-flight fetch resolving AFTER _clearSession()
+//   would write A's data back into the surviving store because
+//   nothing bumped the FP-17 epoch on logout. The reset() calls
+//   close both holes (each one bumps its store's epoch first).
+//   `loading.value = false` covers a parallel gap: a 401 firing
+//   while loginViaEmail / registerViaEmail / loginViaTelegram is
+//   awaiting would have left `loading` pinned to true forever,
+//   freezing every spinner-gated UI element. See sessionReset.ts
+//   header for the why-a-helper rationale.
 // =============================================================================
 
 import { ref, computed } from 'vue'
@@ -40,6 +57,7 @@ import {
 import { platform } from '@/platform'
 import { setAvatarActive } from '@/composables/avatarState'
 import { setLocale } from '@/i18n'
+import { resetAllDataStores } from '@/stores/sessionReset'
 
 const TOKEN_KEY = 'cbs_token'
 
@@ -97,10 +115,23 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function _clearSession(): void {
+    // Clear `loading` first. If a login / register / restoreSession
+    // is mid-flight and a 401 fires the unauthorized callback, the
+    // in-flight promise still resolves to its `finally` block and
+    // would set loading=false anyway -- but so might a brand-new
+    // login attempt that started AFTER the callback fired. Setting
+    // it false up-front gives spinner-gated UI a clean baseline.
+    loading.value = false
     _persistToken(null)
     user.value = null
     // Reset avatar flag + clean sessionStorage marker.
     setAvatarActive(false)
+    // Drop every data store so user A's state cannot bleed into
+    // user B's session in the same tab. Each store's reset() bumps
+    // its FP-17 epoch first -- in-flight fetches that resolve after
+    // us drop silently instead of repopulating the cleared state.
+    // No circular import risk: see sessionReset.ts header.
+    resetAllDataStores()
   }
 
   // ---------------------------------------------------------------------------

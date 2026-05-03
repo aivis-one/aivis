@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Portfolio Store (Phase F4.4 B1 + B1-post)
+// CBSHOME Frontend -- Portfolio Store (Phase F4.4 B1 + B1-post + F5.1 B1)
 // =============================================================================
 //
 // Pinia store for the investor portfolio. Drives PortfolioView
@@ -58,6 +58,23 @@
 //   `paused` parameter so the IntersectionObserver stops firing after
 //   a failure. User-tapped Retry calls clearLoadMoreError() and, if
 //   the sentinel is still on-screen, the composable re-fires once.
+//
+// RESET POLICY (F5.1 B1).
+//   The store now exposes BOTH clearCurrent() and reset() because they
+//   serve different scopes:
+//     clearCurrent() -- view unmount of CompanyPositionView. Bumps
+//                       only currentEpoch, clears only the `current*`
+//                       group. Leaves the top-level positions list
+//                       intact -- the parent tab still owns it.
+//     reset()        -- session boundary (logout / 401 / avatar swap).
+//                       Bumps BOTH epochs and clears EVERYTHING.
+//                       Wired into stores/sessionReset.ts. The
+//                       previously-existing epoch guard alone could
+//                       not protect against logout because nothing
+//                       ever bumped portfolioEpoch on a session drop
+//                       -- a mid-flight fetchPortfolio() resolved
+//                       after _clearSession() would write A's
+//                       positions back into a surviving store.
 // =============================================================================
 
 import { computed, ref } from 'vue'
@@ -233,9 +250,40 @@ export const usePortfolioStore = defineStore('portfolio', () => {
    * currentEpoch so any in-flight fetch for this company resolves
    * to a no-op. Does not touch portfolioEpoch -- the positions list
    * belongs to the parent tab, not to the detail view.
+   *
+   * NOT a session-boundary reset. See `reset()` below for that.
    */
   function clearCurrent(): void {
     currentEpoch++
+    currentCompanyId.value = null
+    currentDetail.value = null
+    currentPurchases.value = []
+    currentPage.value = 1
+    currentTotal.value = 0
+    currentLoading.value = false
+    currentErrored.value = false
+    currentLoadMoreErrored.value = false
+  }
+
+  /**
+   * Full session reset. See "RESET POLICY" in the file header.
+   *
+   * Bumps BOTH epochs first so any in-flight fetch in either group
+   * (fetchPortfolio in the positions group, setCompanyId /
+   * loadMorePurchases in the current-company group) drops silently
+   * on resolve. Then clears both groups of refs.
+   *
+   * Wired into stores/sessionReset.ts.
+   */
+  function reset(): void {
+    ++portfolioEpoch
+    ++currentEpoch
+    // positions group
+    positions.value = []
+    positionsLoaded.value = false
+    positionsLoading.value = false
+    positionsErrored.value = false
+    // current-company group
     currentCompanyId.value = null
     currentDetail.value = null
     currentPurchases.value = []
@@ -268,5 +316,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     loadMorePurchases,
     clearLoadMoreError,
     clearCurrent,
+
+    // session boundary
+    reset,
   }
 })

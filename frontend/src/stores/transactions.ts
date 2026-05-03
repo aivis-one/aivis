@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Transactions Store (Phase F4.3 B3 + F4.4 B1-post)
+// CBSHOME Frontend -- Transactions Store (Phase F4.3 B3 + F4.4 B1-post + F5.1 B1)
 // =============================================================================
 //
 // Pinia store for the investor transaction event log. Drives
@@ -34,6 +34,16 @@
 //   works because the backend dispatches on a trailing ':'. Keeping
 //   the raw value in state also makes tab-active matching a cheap
 //   equality check in the view.
+//
+// RESET POLICY (F5.1 B1).
+//   reset() bumps fetchEpoch (so any in-flight fetch resolves to a
+//   no-op) then clears every public ref. Wired into
+//   stores/sessionReset.ts which auth.ts._clearSession() and
+//   useAvatar's transitions call -- user A's transaction rows cannot
+//   bleed into user B's session in the same tab. The pre-existing
+//   epoch guard alone was insufficient: nothing bumped fetchEpoch on
+//   logout, so a mid-flight resolve would have written A's rows back
+//   into a surviving store.
 // =============================================================================
 
 import { computed, ref } from 'vue'
@@ -145,6 +155,26 @@ export const useTransactionsStore = defineStore('transactions', () => {
     await fetchFirstPage()
   }
 
+  /**
+   * Reset every ref to its initial state. See "RESET POLICY" in the
+   * file header.
+   *
+   * FP-17 ordering: bump epoch FIRST so any in-flight resolve drops
+   * silently, then clear refs, then loading/errored last so a UI
+   * watching `loading` doesn't race-paint against a partially-cleared
+   * state.
+   */
+  function reset(): void {
+    ++fetchEpoch
+    items.value = []
+    total.value = 0
+    page.value = 1
+    typeFilter.value = null
+    loadMoreErrored.value = false
+    loading.value = false
+    errored.value = false
+  }
+
   return {
     items,
     total,
@@ -158,5 +188,6 @@ export const useTransactionsStore = defineStore('transactions', () => {
     loadMore,
     clearLoadMoreError,
     setTypeFilter,
+    reset,
   }
 })
