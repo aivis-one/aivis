@@ -596,7 +596,7 @@ export interface PoolEmbedResponse {
   status: string
 }
 
-/** Pool info with computed consumption and remaining options. consumed and remaining are NOT columns on OptionPool -- they are aggregated at request time from active Purchase rows of the same company. Service layer fills them. */
+/** Pool info with computed consumption and remaining options. consumed and remaining are NOT columns on OptionPool -- they are aggregated at request time from active Purchase rows of the same company. Service layer fills them. Sprint 4.4: consumed and remaining are required fields (no defaults). The router always calls with_consumed_remaining() before validating into this schema; a missing populate would be a server bug. */
 export interface PoolResponse {
   id: string
   company_id: string
@@ -605,8 +605,8 @@ export interface PoolResponse {
   status: string
   created_at: string
   updated_at: string | null
-  consumed?: number
-  remaining?: number
+  consumed: number
+  remaining: number
 }
 
 /** Full portfolio: list of company positions. */
@@ -705,8 +705,9 @@ export interface PublicProductDetailResponse {
   description: string | null
   package_size: number
   price_per_unit_cents: number
+  price_per_pack_cents: number
   cover_url?: string | null
-  available_packages?: number
+  available_packages: number
   company_name?: string
   company_logo_url?: string | null
   company_cover_url?: string | null
@@ -721,7 +722,7 @@ export interface PublicProductListResponse {
   per_page: number
 }
 
-/** Product info for public storefront. company_name / company_logo_url / company_cover_url are denormalised from CompanyProfile by the public router (Sprint F4.1) so the storefront can render a card without a second API call. Sprint 4.3: package_size (renamed from units), available_packages (renamed from sold_units, now COMPUTED from the pool, not from purchase counts). pool_id is intentionally NOT exposed here -- it is a staff-side identifier. */
+/** Product info for public storefront. company_name / company_logo_url / company_cover_url are denormalised from CompanyProfile by the public router (Sprint F4.1) so the storefront can render a card without a second API call. Sprint 4.3: package_size (renamed from units), available_packages (renamed from sold_units, now COMPUTED from the pool, not from purchase counts). pool_id is intentionally NOT exposed here -- it is a staff-side identifier. Sprint 4.4: price_per_pack_cents added; available_packages is now required (no `= 0` default). Both are populated by the public router; missing populate is a server bug, not a soft fallback. */
 export interface PublicProductResponse {
   id: string
   company_id: string
@@ -729,8 +730,9 @@ export interface PublicProductResponse {
   description: string | null
   package_size: number
   price_per_unit_cents: number
+  price_per_pack_cents: number
   cover_url?: string | null
-  available_packages?: number
+  available_packages: number
   company_name?: string
   company_logo_url?: string | null
   company_cover_url?: string | null
