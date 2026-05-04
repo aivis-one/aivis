@@ -1,10 +1,13 @@
 # =============================================================================
-# CBSHOME Backend -- KYC Service (Sprint 2.1)
+# CBSHOME Backend -- KYC Service (Sprint 2.1, F5.1 BP-15 follow-up)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   submit_kyc()       -- create KYCApplication, sync User.kyc_status,
-#                         advance onboarding_step immediately (non-blocking)
+#                         advance onboarding_step immediately (non-blocking),
+#                         and trigger maybe_complete_onboarding() so a role
+#                         with zero required documents skips the docs page
+#                         (BP-15).
 #   get_kyc_status()   -- return current status + latest application
 #   process_webhook()  -- update application + User.kyc_status (stub)
 #
@@ -13,6 +16,17 @@
 #   User proceeds through onboarding while KYC verification runs
 #   in background. Staff can approve/reject later without blocking
 #   the user's ability to use the platform.
+#
+# BP-15 (no-docs auto-advance):
+#   After moving to KYC_DONE, submit_kyc() calls
+#   documents.service.maybe_complete_onboarding(). When the user's
+#   role has no active required documents, that helper advances step
+#   straight to ONBOARDING_COMPLETE -- previously the frontend's docs
+#   page was reachable with an empty list and the user could not get
+#   off it (sign_document() never fires, so the helper was never
+#   invoked, so the step stayed on KYC_DONE forever). Symmetric with
+#   the sign_document() callsite -- the helper is safe to call from
+#   either path because of its own `step != KYC_DONE -> return` guard.
 #
 # SYNC RULE:
 #   Every status change on KYCApplication MUST also update User.kyc_status.
@@ -30,6 +44,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.modules.documents.service import maybe_complete_onboarding
 from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
 from app.modules.kyc.schemas import KYCStatusResponse
 from app.modules.users.models import OnboardingStep, User
@@ -50,8 +65,10 @@ async def submit_kyc(
     """Submit a new KYC application.
 
     Creates a KYCApplication with status=submitted, syncs
-    User.kyc_status to "submitted", and advances onboarding_step
-    to KYC_DONE immediately (non-blocking KYC).
+    User.kyc_status to "submitted", advances onboarding_step
+    to KYC_DONE immediately (non-blocking KYC), and (BP-15)
+    advances further to ONBOARDING_COMPLETE if the role has no
+    required documents.
 
     Raises:
         ConflictError: If user already has a pending (submitted) application.
@@ -87,6 +104,13 @@ async def submit_kyc(
 
     await session.flush()
     await session.refresh(application)
+
+    # BP-15: if the role requires zero documents, auto-advance past
+    # the docs page. The helper is a no-op when step != KYC_DONE
+    # (e.g. user came in on a re-submit), so the unconditional call
+    # is safe.
+    await maybe_complete_onboarding(user.id, session)
+
     await session.refresh(user)
 
     await record_audit(

@@ -15,6 +15,11 @@
 #     get_document()             -- single document with is_signed flag
 #     sign_document()            -- record checkbox consent
 #
+#   Cross-module:
+#     maybe_complete_onboarding() -- BP-15 step advance helper. Public so
+#                                    submit_kyc() can call it for the
+#                                    no-documents-required edge case.
+#
 # STATUS TRANSITIONS (State Machines v1.4 section 5):
 #     draft  -> active    (Staff: publish)
 #     active -> draft     (Staff: unpublish for edits)
@@ -421,7 +426,7 @@ async def sign_document(
     )
 
     # Check if all required documents are now signed.
-    await _maybe_complete_onboarding(user_id, session)
+    await maybe_complete_onboarding(user_id, session)
 
     return signing
 
@@ -431,19 +436,29 @@ async def sign_document(
 # ---------------------------------------------------------------------------
 
 
-async def _maybe_complete_onboarding(
+async def maybe_complete_onboarding(
     user_id: UUID,
     session: AsyncSession,
 ) -> None:
     """Advance onboarding to complete if the user signed every required type.
 
-    Called after each document signing. Only acts when
-    onboarding_step == kyc_done (the step right before completion).
+    Two callers cover BP-15 ("Auto-advance при 0 элементов"):
+      - sign_document() in this module: fires after every successful
+        signing; advances when the last required type gets signed.
+      - submit_kyc() in kyc/service.py: fires right after step is
+        moved to KYC_DONE; advances immediately if the user's role
+        has zero required documents (otherwise stays on KYC_DONE so
+        the frontend can render the docs list).
 
-    We group by `type`, not by document id: a user who signed the
-    English Privacy Policy in one session and (after a locale switch)
-    the Russian one in another session is still considered done on
-    the `privacy_policy` type.
+    Public (no leading underscore) because submit_kyc imports it
+    cross-module. The internal guard `step != KYC_DONE -> return`
+    keeps the function safe to call from any callsite without
+    pre-check ceremony.
+
+    Group-by `type`, not document id: a user who signed the English
+    Privacy Policy in one session and (after a locale switch) the
+    Russian one in another session is still considered done on the
+    `privacy_policy` type.
     """
     stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)

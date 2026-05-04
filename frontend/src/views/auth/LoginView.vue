@@ -2,22 +2,19 @@
 // Login screen — email + password form.
 // Emits 'go-register' to switch to RegisterView in App.vue auth gate.
 //
-// POST-LOGIN NAVIGATION.
-//   After loginViaEmail succeeds we explicitly router.push('/').
-//   Without an explicit push, App.vue's auth-gate flips
-//   <LoginView /> → <RouterView /> reactively but the URL is still
-//   /login, so RouterView simply re-mounts LoginView under the
-//   authenticated tree and the user sees no change until they
-//   refresh the page (which triggers globalGuard's "authenticated
-//   user on /login → role dashboard" redirect on a fresh
-//   navigation). Pushing to '/' triggers root.beforeEnter +
-//   globalGuard, which dispatch by role to the right dashboard --
-//   same pattern as VerifyEmailView.handleVerify after email
-//   confirmation.
+// Post-login navigation:
+//   loginViaEmail succeeds → router.push('/') → root.beforeEnter
+//   resolves the role-specific dashboard → globalGuard runs and either
+//   passes through (onboarding_complete) or redirects to the next
+//   onboarding step. Without this push, App.vue's reactive switch from
+//   <LoginView> to <RouterView /> mounts RouterView at URL=/login and
+//   renders LoginView again -- no navigation event fires, so the guard
+//   is never invoked. Mirrors the pattern in VerifyEmailView and every
+//   onboarding view; LoginView was the only handler missing the call.
 
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
@@ -26,8 +23,8 @@ const emit = defineEmits<{
   'go-register': []
 }>()
 
-const router = useRouter()
 const { t } = useI18n()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const email = ref('')
@@ -45,8 +42,8 @@ async function handleLogin(): Promise<void> {
 
   try {
     await authStore.loginViaEmail(email.value, password.value)
-    // Trigger a navigation so globalGuard + root.beforeEnter pick
-    // the right destination for the authenticated user. See header.
+    // Trigger a navigation event so globalGuard fires; it routes to
+    // the role's dashboard or to the correct onboarding step.
     await router.push('/')
   } catch (err) {
     if (err instanceof ApiResponseError) {

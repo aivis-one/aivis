@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Onboarding Flow Tests (F2.3, updated by 0024, 0025)
+# CBSHOME Backend -- Onboarding Flow Tests (F2.3, updated by 0024, 0025, F5.1 BP-15)
 # =============================================================================
 #
 # Tests cover the full onboarding pipeline:
@@ -8,14 +8,25 @@
 #   3: Select role when step != profile_complete → 400
 #   4: Select invalid role (staff) → 422
 #   5: Select role success → step = role_selected, role changed
-#   6: KYC approval advances step to kyc_done
+#   6: KYC approval keeps step at kyc_done (non-blocking + docs pending)
 #   7: Signing all docs advances step to onboarding_complete
+#   8: KYC submit with zero required docs → onboarding_complete (BP-15)
+#   9: KYC submit with required docs → step stays kyc_done (regression guard)
 #
 # Email prefix: "onb_" -- unique to this test file, cleaned up in fixture.
 #
 # The cleanup fixture also wipes documents + document_signings. Otherwise
 # the rows seeded by install_cbshome.sh would (a) clash with active docs
 # this test tries to create and (b) skew the onboarding_complete assertion.
+#
+# F5.1 BP-15 NOTE.
+#   submit_kyc() now calls maybe_complete_onboarding() right after the
+#   step advance. That means tests asserting kyc_done after submit MUST
+#   create the role's required documents BEFORE submitting -- otherwise
+#   the no-docs branch fires and the user lands on onboarding_complete.
+#   This matches production reality: documents are seeded by
+#   seed_documents.py during cbshome update, long before any user
+#   reaches the KYC step.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
@@ -133,8 +144,24 @@ async def _create_active_doc(
 async def test_full_onboarding_flow(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Complete onboarding: register → verify → profile → role → kyc → docs → complete."""
+    """Complete onboarding: register → verify → profile → role → kyc → docs → complete.
+
+    BP-15 layout: documents are seeded BEFORE the user reaches KYC, mirroring
+    the production flow where seed_documents.py populates the legal table
+    during cbshome update -- long before any user clicks "Start verification".
+    """
     email = f"{EMAIL_PREFIX}full@example.com"
+
+    # -- 0. Pre-seed required documents (analogous to seed_documents.py). --
+    # Investor requires: privacy_policy, terms_of_service, investment_agreement.
+    # Helper defaults language="en" and required_for_roles=["investor"].
+    _, staff_token = await create_staff_user(
+        client, db_session, email=f"{EMAIL_PREFIX}staff@example.com"
+    )
+    doc_ids = []
+    for doc_type in ["privacy_policy", "terms_of_service", "investment_agreement"]:
+        doc_id = await _create_active_doc(client, staff_token, doc_type)
+        doc_ids.append(doc_id)
 
     # -- 1. Register --
     data = await register_user(client, email=email)
@@ -191,22 +218,11 @@ async def test_full_onboarding_flow(
     )
     assert resp.status_code == 200
 
+    # Docs exist for the role -> step stays at kyc_done.
     step = await _get_step(client, token)
     assert step == "kyc_done"
 
-    # -- 6. Create and sign all required docs --
-    _, staff_token = await create_staff_user(
-        client, db_session, email=f"{EMAIL_PREFIX}staff@example.com"
-    )
-
-    # Investor requires: privacy_policy, terms_of_service, investment_agreement.
-    # Helper defaults language="en" and required_for_roles=["investor"].
-    doc_ids = []
-    for doc_type in ["privacy_policy", "terms_of_service", "investment_agreement"]:
-        doc_id = await _create_active_doc(client, staff_token, doc_type)
-        doc_ids.append(doc_id)
-
-    # Sign all documents.
+    # -- 6. Sign all required docs --
     for doc_id in doc_ids:
         resp = await client.post(
             f"/api/v1/documents/{doc_id}/sign",
@@ -349,11 +365,23 @@ async def test_select_role_agent(
 async def test_kyc_approval_advances_step(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """KYC webhook approved advances step from role_selected to kyc_done."""
+    """KYC submit moves role_selected -> kyc_done; webhook approval keeps it.
+
+    submit_kyc() advances step to kyc_done immediately (non-blocking KYC).
+    The webhook only updates kyc_status, never onboarding_step. With at
+    least one required document present for the role, BP-15 does NOT fire,
+    so the user stays on kyc_done as expected.
+    """
     email = f"{EMAIL_PREFIX}kyc@example.com"
     data = await register_user(client, email=email)
     token = data["session_token"]
     user_id = data["user"]["id"]
+
+    # Pre-seed an active doc so BP-15 (no-docs auto-complete) does not fire.
+    _, staff_token = await create_staff_user(
+        client, db_session, email=f"{EMAIL_PREFIX}staff@example.com"
+    )
+    await _create_active_doc(client, staff_token, "privacy_policy")
 
     # Fast-track to role_selected.
     code = await _get_verification_code(db_session, email)
@@ -390,6 +418,120 @@ async def test_kyc_approval_advances_step(
         json={"user_id": user_id, "status": "approved"},
         headers=webhook_headers(),
     )
+
+    step = await _get_step(client, token)
+    assert step == "kyc_done"
+
+
+# ---------------------------------------------------------------------------
+# BP-15: KYC submit must auto-complete when role has zero required docs
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_kyc_submit_no_docs_auto_completes(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """BP-15: submit_kyc() with zero required docs -> onboarding_complete.
+
+    Reproduces the production hang where the legal table held no active
+    rows for the user's role. Before BP-15, the user advanced to kyc_done,
+    landed on /onboarding/docs with an empty list, and was bounced back
+    by the router guard on every Sign-documents click. After BP-15,
+    submit_kyc() detects the empty list and advances straight to
+    onboarding_complete.
+    """
+    email = f"{EMAIL_PREFIX}nodocs@example.com"
+    data = await register_user(client, email=email)
+    token = data["session_token"]
+
+    # Cleanup fixture wipes the documents table at test start, so the role
+    # has zero active required documents -- exactly the BP-15 trigger.
+
+    # Fast-track to role_selected.
+    code = await _get_verification_code(db_session, email)
+    await client.post(
+        "/api/v1/auth/verify-email",
+        json={"code": code},
+        headers=auth_headers(token),
+    )
+    await client.patch(
+        "/api/v1/users/me",
+        json={
+            "profile": {
+                "first_name": "N",
+                "last_name": "D",
+                "country": "DE",
+            }
+        },
+        headers=auth_headers(token),
+    )
+    await client.post(
+        "/api/v1/users/me/select-role",
+        json={"role": "investor"},
+        headers=auth_headers(token),
+    )
+
+    # Submit KYC -- with no active docs, step must auto-advance to complete.
+    resp = await client.post(
+        "/api/v1/kyc/submit", headers=auth_headers(token)
+    )
+    assert resp.status_code == 201
+
+    step = await _get_step(client, token)
+    assert step == "onboarding_complete"
+
+
+@pytest.mark.asyncio
+async def test_kyc_submit_with_docs_stays_kyc_done(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Regression guard: with required docs present, submit_kyc() must NOT
+    auto-complete -- user must reach the docs page and sign them.
+
+    Pairs with test_kyc_submit_no_docs_auto_completes to lock the BP-15
+    branch behaviour: the helper differentiates on the documents table,
+    not on a global flag.
+    """
+    email = f"{EMAIL_PREFIX}withdocs@example.com"
+    data = await register_user(client, email=email)
+    token = data["session_token"]
+
+    # Pre-seed an active investor doc -- BP-15 must NOT fire.
+    _, staff_token = await create_staff_user(
+        client, db_session, email=f"{EMAIL_PREFIX}staff@example.com"
+    )
+    await _create_active_doc(client, staff_token, "privacy_policy")
+
+    # Fast-track to role_selected.
+    code = await _get_verification_code(db_session, email)
+    await client.post(
+        "/api/v1/auth/verify-email",
+        json={"code": code},
+        headers=auth_headers(token),
+    )
+    await client.patch(
+        "/api/v1/users/me",
+        json={
+            "profile": {
+                "first_name": "W",
+                "last_name": "D",
+                "country": "DE",
+            }
+        },
+        headers=auth_headers(token),
+    )
+    await client.post(
+        "/api/v1/users/me/select-role",
+        json={"role": "investor"},
+        headers=auth_headers(token),
+    )
+
+    # Submit KYC -- doc exists, so step must NOT auto-advance to complete.
+    resp = await client.post(
+        "/api/v1/kyc/submit", headers=auth_headers(token)
+    )
+    assert resp.status_code == 201
 
     step = await _get_step(client, token)
     assert step == "kyc_done"
