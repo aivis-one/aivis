@@ -72,7 +72,6 @@ import {
 
 import {
   CBottomSheet,
-  CButton,
   CEmptyState,
   CLoader,
 } from '@/components/ui'
@@ -561,9 +560,13 @@ watch(payoutSheetOpen, (open) => {
     <!-- Error -->
     <div v-else-if="hasError" class="cbal__center">
       <CEmptyState :title="t('comp.balance.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="loadAll">
+      <button
+        type="button"
+        class="cbal__btn cbal__btn--outline cbal__btn--sm"
+        @click="loadAll"
+      >
         {{ t('comp.balance.errorRetry') }}
-      </CButton>
+      </button>
     </div>
 
     <!-- Loaded -->
@@ -586,14 +589,15 @@ watch(payoutSheetOpen, (open) => {
              configured (most common blocker) or balance is below the
              minimum withdrawal floor. -->
         <div class="cbal__cta-row">
-          <CButton
-            variant="primary"
+          <button
+            type="button"
+            class="cbal__btn cbal__btn--primary"
             :disabled="withdrawCtaState.disabled"
             @click="openWithdrawSheet"
           >
             <ArrowUpFromLine :size="16" />
             {{ t('comp.balance.withdrawals.newButton') }}
-          </CButton>
+          </button>
           <span
             v-if="withdrawCtaState.hintKey"
             class="cbal__cta-hint"
@@ -678,15 +682,15 @@ watch(payoutSheetOpen, (open) => {
              handles both the empty-initial and the edit-existing
              cases via openPayoutSheet's pre-fill logic. -->
         <div class="cbal__cta-row">
-          <CButton
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
+            class="cbal__btn cbal__btn--outline cbal__btn--sm"
             @click="openPayoutSheet"
           >
             <Pencil :size="14" />
             {{ t('comp.balance.payout.editButton') }}
             <ChevronRight :size="14" />
-          </CButton>
+          </button>
         </div>
       </section>
     </template>
@@ -744,22 +748,24 @@ watch(payoutSheetOpen, (open) => {
         </p>
 
         <div class="cbal__form-actions">
-          <CButton
-            variant="outline"
+          <button
             type="button"
+            class="cbal__btn cbal__btn--outline"
             :disabled="withdrawSubmitting"
             @click="closeWithdrawSheet"
           >
             {{ t('comp.balance.withdrawals.form.cancel') }}
-          </CButton>
-          <CButton
-            variant="primary"
+          </button>
+          <button
             type="submit"
+            class="cbal__btn cbal__btn--primary"
             :disabled="!canSubmitWithdraw"
-            :loading="withdrawSubmitting"
           >
-            {{ t('comp.balance.withdrawals.form.submit') }}
-          </CButton>
+            <span v-if="withdrawSubmitting" class="cbal__btn-spinner" />
+            <span v-else>
+              {{ t('comp.balance.withdrawals.form.submit') }}
+            </span>
+          </button>
         </div>
       </form>
     </CBottomSheet>
@@ -802,22 +808,24 @@ watch(payoutSheetOpen, (open) => {
         </p>
 
         <div class="cbal__form-actions">
-          <CButton
-            variant="outline"
+          <button
             type="button"
+            class="cbal__btn cbal__btn--outline"
             :disabled="payoutSubmitting"
             @click="closePayoutSheet"
           >
             {{ t('comp.balance.payout.form.cancel') }}
-          </CButton>
-          <CButton
-            variant="primary"
+          </button>
+          <button
             type="submit"
+            class="cbal__btn cbal__btn--primary"
             :disabled="!canSubmitPayout"
-            :loading="payoutSubmitting"
           >
-            {{ t('comp.balance.payout.form.submit') }}
-          </CButton>
+            <span v-if="payoutSubmitting" class="cbal__btn-spinner" />
+            <span v-else>
+              {{ t('comp.balance.payout.form.submit') }}
+            </span>
+          </button>
         </div>
       </form>
     </CBottomSheet>
@@ -1156,5 +1164,74 @@ watch(payoutSheetOpen, (open) => {
   gap: 8px;
   justify-content: flex-end;
   margin-top: 4px;
+}
+
+/*
+ * Native button styles -- mirrors the CButton visuals (primary
+ * filled accent, outline neutral, small variant) without going
+ * through the component, because @click on <CButton> isn't being
+ * picked up in this view (suspected attrs-fallthrough quirk).
+ * Logout-style native <button> works reliably in the rest of the
+ * project, so we follow that pattern here too.
+ */
+.cbal__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.cbal__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.cbal__btn--primary {
+  background: var(--accent, var(--primary));
+  color: #fff;
+}
+.cbal__btn--primary:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.cbal__btn--primary:disabled {
+  background: var(--border);
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+.cbal__btn--outline {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid var(--border);
+}
+.cbal__btn--outline:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.cbal__btn--sm {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.cbal__btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: cbal-spin 0.8s linear infinite;
+  display: inline-block;
+}
+@keyframes cbal-spin {
+  to { transform: rotate(360deg); }
 }
 </style>
