@@ -773,7 +773,7 @@
         "form": {
           "title": "Edit payout details",
           "label": "Payout details (JSON)",
-          "placeholder": "{\n  \"method\": \"iban\",\n  \"iban\": \"...\"\n}",
+          "placeholder": "Enter JSON object",
           "hint": "Free-form JSON object. Replaces existing details on save.",
           "submit": "Save",
           "cancel": "Cancel",
