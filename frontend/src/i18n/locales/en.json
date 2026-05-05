@@ -705,6 +705,23 @@
         "title": "Account",
         "logout": "Sign out"
       }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "subtitle": "Sales performance",
+      "errorTitle": "Could not load analytics",
+      "errorRetry": "Retry",
+      "metrics": {
+        "totalRevenue": "Total revenue",
+        "thisMonth": "This month",
+        "optionsSold": "Options sold"
+      },
+      "chart": {
+        "title": "Sales by month",
+        "empty": "No sales data yet",
+        "range": "{start} — {end}",
+        "tooltipUnits": "{units} units"
+      }
     }
   }
 }
