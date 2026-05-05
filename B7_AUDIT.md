@@ -1,703 +1,267 @@
-# B7 Frontend Rename — Audit Report
+# B7 Frontend Rename — Audit Report (Re-run on updated main)
 
-**Branch:** `main`
-**Date:** 2026-05-01
-**Scope:** Sprint 4.3 TD-F07 / Batch B7 — `units → package_size`, `sold_units → available_packages` in `PublicProductResponse` and related
+**Branch audited:** `origin/main` (commit `19b5840`)
+**Date:** 2026-05-05
+**Scope:** Sprint 4.3 TD-F07 / Batch B7 — `units → package_size`, `sold_units → available_packages` in `PublicProductResponse` and related; Sprint 4.4 B7 UX follow-up (`price_per_pack_cents`, `available_packages` made required)
 **Status:** Read-only audit. No files were modified.
+
+> **Δ vs first audit** (branch point `e5779c8`): B8 + Sprint 4.4 B7 UX have both landed on main since the original report. All changes are reflected here. Differences from the first audit are called out inline.
 
 ---
 
 ## Section 1: `generated.ts` inventory
 
-Command run:
-```bash
-grep -E "^export (interface|type) " frontend/src/api/generated.ts \
-  | sed -E 's/^export (interface|type) ([A-Za-z_]+).*/\2/' | sort -u
-```
+### Full list (116 names — unchanged from first audit)
 
-### Full list (116 names)
+| # | Name | # | Name |
+|---|------|---|------|
+| 1 | AgentApplicationListResponse | 59 | NotificationListResponse |
+| 2 | AgentApplicationResponse | 60 | PaymentHistoryResponse |
+| 3 | AuthResponse | 61 | PaymentResponse |
+| 4 | AvatarSessionResponse | 62 | PayoutDetailsResponse |
+| 5 | AvatarStartRequest | 63 | PoolEmbedResponse |
+| 6 | AvatarStartResponse | 64 | PoolResponse |
+| 7 | BalanceResponse | 65 | PortfolioResponse |
+| 8 | BlockRequest | 66 | PostListResponse |
+| 9 | CommissionEntry | 67 | PostResponse |
+| 10 | CommissionListResponse | 68 | ProductResponse |
+| 11 | CompanyAnalyticsResponse | 69 | PublicCompanyDetailResponse |
+| 12 | CompanyDashboardResponse | 70 | PublicCompanyListResponse |
+| 13 | CompanyPositionDetailResponse | 71 | PublicCompanyResponse |
+| 14 | CompanyPositionResponse | 72 | PublicProductDetailResponse |
+| 15 | CompanyResponse | 73 | PublicProductListResponse |
+| 16 | CompanySummaryResponse | 74 | PublicProductResponse |
+| 17 | CompanyTransactionResponse | 75 | PurchaseItemResponse |
+| 18 | ConsistencyResponse | 76 | PurchaseResponse |
+| 19 | CreateAddressRequest | 77 | ReadAllResponse |
+| 20 | CreateCompanyRequest | 78 | ReferralLinkListResponse |
+| 21 | CreateEventRequest | 79 | ReferralLinkResponse |
+| 22 | CreateInstallmentPlanRequest | 80 | ReferralStatsResponse |
+| 23 | CreateInstallmentRequest | 81 | RejectRequest |
+| 24 | CreatePoolRequest | 82 | RejectWithdrawalRequest |
+| 25 | CreatePostRequest | 83 | ReorderRoadmapRequest |
+| 26 | CreateProductRequest | 84 | ReversalResponse |
+| 27 | CreatePurchaseRequest | 85 | ReversePaymentRequest |
+| 28 | CreateRoadmapItemRequest | 86 | RoadmapItemResponse |
+| 29 | CreateStaffRequest | 87 | SalesByMonthEntry |
+| 30 | CreateWithdrawalRequest | 88 | SalesByProductEntry |
+| 31 | CryptoWebhookRequest | 89 | SelectRoleRequest |
+| 32 | DashboardStatsResponse | 90 | SemaphoreResult |
+| 33 | DashboardSummaryResponse | 91 | StaffPaymentListResponse |
+| 34 | DepositAddressResponse | 92 | StaffPaymentResponse |
+| 35 | DocumentCreateRequest | 93 | StaffProfileResponse |
+| 36 | DocumentResponse | 94 | TelegramAuthRequest |
+| 37 | DocumentSigningResponse | 95 | TransactionListResponse |
+| 38 | DocumentUpdateRequest | 96 | TransactionResponse |
+| 39 | EmailLoginRequest | 97 | UnreadCountResponse |
+| 40 | EmailRegisterRequest | 98 | UpdateCompanyRequest |
+| 41 | EventListResponse | 99 | UpdateEventRequest |
+| 42 | EventResponse | 100 | UpdateInstallmentRequest |
+| 43 | InstallmentPlanDetailResponse | 101 | UpdatePayoutDetailsRequest |
+| 44 | InstallmentPlanListResponse | 102 | UpdatePermissionsRequest |
+| 45 | InstallmentPlanResponse | 103 | UpdatePoolRequest |
+| 46 | InstallmentPreviewRequest | 104 | UpdatePostRequest |
+| 47 | InstallmentPreviewResponse | 105 | UpdatePriceRequest |
+| 48 | InstallmentPreviewSummary | 106 | UpdateProductRequest |
+| 49 | InstallmentResponse | 107 | UpdateProductStatusRequest |
+| 50 | InstallmentTrancheResponse | 108 | UpdateRoadmapItemRequest |
+| 51 | KYCQueueItem | 109 | UserDetailResponse |
+| 52 | KYCRejectRequest | 110 | UserListItem |
+| 53 | KYCStatusResponse | 111 | UserListResponse |
+| 54 | KYCSubmitResponse | 112 | UserResponse |
+| 55 | KYCWebhookRequest | 113 | UserUpdate |
+| 56 | LeaderboardEntry | 114 | VerifyEmailRequest |
+| 57 | LeaderboardResponse | 115 | WithdrawalListResponse |
+| 58 | NotificationDeliveryResponse | 116 | WithdrawalResponse |
 
-| # | Name |
-|---|------|
-| 1 | AgentApplicationListResponse |
-| 2 | AgentApplicationResponse |
-| 3 | AuthResponse |
-| 4 | AvatarSessionResponse |
-| 5 | AvatarStartRequest |
-| 6 | AvatarStartResponse |
-| 7 | BalanceResponse |
-| 8 | BlockRequest |
-| 9 | CommissionEntry |
-| 10 | CommissionListResponse |
-| 11 | CompanyAnalyticsResponse |
-| 12 | CompanyDashboardResponse |
-| 13 | CompanyPositionDetailResponse |
-| 14 | CompanyPositionResponse |
-| 15 | CompanyResponse |
-| 16 | CompanySummaryResponse |
-| 17 | CompanyTransactionResponse |
-| 18 | ConsistencyResponse |
-| 19 | CreateAddressRequest |
-| 20 | CreateCompanyRequest |
-| 21 | CreateEventRequest |
-| 22 | CreateInstallmentPlanRequest |
-| 23 | CreateInstallmentRequest |
-| 24 | CreatePoolRequest |
-| 25 | CreatePostRequest |
-| 26 | CreateProductRequest |
-| 27 | CreatePurchaseRequest |
-| 28 | CreateRoadmapItemRequest |
-| 29 | CreateStaffRequest |
-| 30 | CreateWithdrawalRequest |
-| 31 | CryptoWebhookRequest |
-| 32 | DashboardStatsResponse |
-| 33 | DashboardSummaryResponse |
-| 34 | DepositAddressResponse |
-| 35 | DocumentCreateRequest |
-| 36 | DocumentResponse |
-| 37 | DocumentSigningResponse |
-| 38 | DocumentUpdateRequest |
-| 39 | EmailLoginRequest |
-| 40 | EmailRegisterRequest |
-| 41 | EventListResponse |
-| 42 | EventResponse |
-| 43 | InstallmentPlanDetailResponse |
-| 44 | InstallmentPlanListResponse |
-| 45 | InstallmentPlanResponse |
-| 46 | InstallmentPreviewRequest |
-| 47 | InstallmentPreviewResponse |
-| 48 | InstallmentPreviewSummary |
-| 49 | InstallmentResponse |
-| 50 | InstallmentTrancheResponse |
-| 51 | KYCQueueItem |
-| 52 | KYCRejectRequest |
-| 53 | KYCStatusResponse |
-| 54 | KYCSubmitResponse |
-| 55 | KYCWebhookRequest |
-| 56 | LeaderboardEntry |
-| 57 | LeaderboardResponse |
-| 58 | NotificationDeliveryResponse |
-| 59 | NotificationListResponse |
-| 60 | PaymentHistoryResponse |
-| 61 | PaymentResponse |
-| 62 | PayoutDetailsResponse |
-| 63 | PoolEmbedResponse |
-| 64 | PoolResponse |
-| 65 | PortfolioResponse |
-| 66 | PostListResponse |
-| 67 | PostResponse |
-| 68 | ProductResponse |
-| 69 | PublicCompanyDetailResponse |
-| 70 | PublicCompanyListResponse |
-| 71 | PublicCompanyResponse |
-| 72 | PublicProductDetailResponse |
-| 73 | PublicProductListResponse |
-| 74 | PublicProductResponse |
-| 75 | PurchaseItemResponse |
-| 76 | PurchaseResponse |
-| 77 | ReadAllResponse |
-| 78 | ReferralLinkListResponse |
-| 79 | ReferralLinkResponse |
-| 80 | ReferralStatsResponse |
-| 81 | RejectRequest |
-| 82 | RejectWithdrawalRequest |
-| 83 | ReorderRoadmapRequest |
-| 84 | ReversalResponse |
-| 85 | ReversePaymentRequest |
-| 86 | RoadmapItemResponse |
-| 87 | SalesByMonthEntry |
-| 88 | SalesByProductEntry |
-| 89 | SelectRoleRequest |
-| 90 | SemaphoreResult |
-| 91 | StaffPaymentListResponse |
-| 92 | StaffPaymentResponse |
-| 93 | StaffProfileResponse |
-| 94 | TelegramAuthRequest |
-| 95 | TransactionListResponse |
-| 96 | TransactionResponse |
-| 97 | UnreadCountResponse |
-| 98 | UpdateCompanyRequest |
-| 99 | UpdateEventRequest |
-| 100 | UpdateInstallmentRequest |
-| 101 | UpdatePayoutDetailsRequest |
-| 102 | UpdatePermissionsRequest |
-| 103 | UpdatePoolRequest |
-| 104 | UpdatePostRequest |
-| 105 | UpdatePriceRequest |
-| 106 | UpdateProductRequest |
-| 107 | UpdateProductStatusRequest |
-| 108 | UpdateRoadmapItemRequest |
-| 109 | UserDetailResponse |
-| 110 | UserListItem |
-| 111 | UserListResponse |
-| 112 | UserResponse |
-| 113 | UserUpdate |
-| 114 | VerifyEmailRequest |
-| 115 | WithdrawalListResponse |
-| 116 | WithdrawalResponse |
-
-**Total count: 116**
-
-> Note: The repo intro described 117 types; the actual grep count is 116. No discrepancy in content — just a documentation drift.
+**Total: 116**
 
 ### Double-underscore names (`__`)
-
-**(none found)** — all names are clean identifiers. Backend B-pragmatic has already resolved any OpenAPI name-mangling.
+**(none)** ✓
 
 ### `BalanceResponse` presence
+Appears **exactly once** (line 7 of interface list). ✓
 
-`BalanceResponse` appears **exactly once** in `generated.ts` (line 61). ✓
+### ⚠️ New in Sprint 4.4 — schema changes on key B7 types
+
+**`PublicProductResponse`** (was the B7 rename subject):
+```typescript
+export interface PublicProductResponse {
+  id: string
+  company_id: string
+  name: string
+  description: string | null
+  package_size: number
+  price_per_unit_cents: number
+  price_per_pack_cents: number          // ← NEW (Sprint 4.4)
+  cover_url?: string | null
+  available_packages: number            // ← was `?: number` in B8; NOW REQUIRED
+  company_name: string                  // ← was `?: string`; NOW REQUIRED
+  company_logo_url?: string | null
+  company_cover_url?: string | null
+}
+```
+
+**`PublicProductDetailResponse`** — same changes plus `installments` guaranteed:
+```typescript
+export interface PublicProductDetailResponse {
+  id: string
+  company_id: string
+  name: string
+  description: string | null
+  package_size: number
+  price_per_unit_cents: number
+  price_per_pack_cents: number          // ← NEW (Sprint 4.4)
+  cover_url?: string | null
+  available_packages: number            // ← now required
+  company_name: string                  // ← now required
+  company_logo_url?: string | null
+  company_cover_url?: string | null
+  installments: InstallmentResponse[]
+}
+```
+
+**`BalanceResponse`** — fixed from first audit (was `?: number`, now required):
+```typescript
+export interface BalanceResponse {
+  frozen: number
+  confirmed: number
+}
+```
 
 ---
 
 ## Section 2: `types.ts` inventory
 
-Command run:
-```bash
-grep -E "^export (interface|type) " frontend/src/api/types.ts \
-  | sed -E 's/^export (interface|type) ([A-Za-z_]+).*/\2/' | sort -u
-```
+`types.ts` is now a **VELO-style facade** (433 lines, down from 939). It contains:
 
-### Full list (84 names)
+### Re-exports from `./generated` (70 names)
+AgentApplicationListResponse, AgentApplicationResponse, AuthResponse, AvatarSessionResponse, AvatarStartRequest, AvatarStartResponse, BalanceResponse, CompanyAnalyticsResponse, CompanyDashboardResponse, CompanyPositionDetailResponse, CompanyResponse, CompanySummaryResponse, CompanyTransactionResponse, CreateAddressRequest, CreateInstallmentPlanRequest, CreatePurchaseRequest, CreateStaffRequest, DashboardStatsResponse, DashboardSummaryResponse, DepositAddressResponse, DocumentResponse, DocumentSigningResponse, EmailLoginRequest, EmailRegisterRequest, EventListResponse, EventResponse, InstallmentPlanDetailResponse, InstallmentPlanListResponse, InstallmentPlanResponse, InstallmentResponse, InstallmentTrancheResponse, KYCQueueItem, KYCRejectRequest, KYCStatusResponse, KYCSubmitResponse, PaymentHistoryResponse, PaymentResponse, PayoutDetailsResponse, PoolEmbedResponse, PortfolioResponse, PostListResponse, PostResponse, PublicCompanyDetailResponse, PublicCompanyListResponse, PublicCompanyResponse, PublicProductDetailResponse, PublicProductListResponse, PublicProductResponse, PurchaseItemResponse, PurchaseResponse, RejectWithdrawalRequest, ReversalResponse, ReversePaymentRequest, RoadmapItemResponse, SalesByMonthEntry, SalesByProductEntry, SelectRoleRequest, StaffPaymentListResponse, StaffPaymentResponse, StaffProfileResponse, TelegramAuthRequest, TransactionListResponse, TransactionResponse, UpdatePermissionsRequest, UserDetailResponse, UserListItem, UserListResponse, UserResponse, UserUpdate, VerifyEmailRequest, WithdrawalListResponse, WithdrawalResponse
 
-| # | Name |
-|---|------|
-| 1 | AgentApplicationListResponse |
-| 2 | AgentApplicationResponse |
-| 3 | AgentApplicationStatusType |
-| 4 | AuthResponse |
-| 5 | AvatarSessionResponse |
-| 6 | AvatarStartRequest |
-| 7 | AvatarStartResponse |
-| 8 | BalanceResponse |
-| 9 | BlockUserRequest |
-| 10 | CompanyPositionDetailResponse |
-| 11 | CompanySummaryResponse |
-| 12 | CreateAddressRequest |
-| 13 | CreateInstallmentPlanRequest |
-| 14 | CreatePurchaseRequest |
-| 15 | CreateStaffRequest |
-| 16 | CryptoNetwork |
-| 17 | DashboardStatsResponse |
-| 18 | DashboardSummaryResponse |
-| 19 | DepositAddressResponse |
-| 20 | DocumentResponse |
-| 21 | DocumentSigningResponse |
-| 22 | EmailLoginRequest |
-| 23 | EmailRegisterRequest |
-| 24 | EventListResponse |
-| 25 | EventResponse |
-| 26 | InstallmentPlanDetailResponse |
-| 27 | InstallmentPlanListResponse |
-| 28 | InstallmentPlanResponse |
-| 29 | InstallmentPlanStatusType |
-| 30 | InstallmentResponse |
-| 31 | InstallmentTrancheResponse |
-| 32 | InstallmentTrancheStatusType |
-| 33 | KYCQueueItem |
-| 34 | KYCRejectRequest |
-| 35 | KYCStatusResponse |
-| 36 | KYCSubmitResponse |
-| 37 | KycStatus |
-| 38 | PaginatedResponse |
-| 39 | PaymentHistoryResponse |
-| 40 | PaymentResponse |
-| 41 | PaymentStatusType |
-| 42 | PaymentType |
-| 43 | PortfolioPositionResponse |
-| 44 | PortfolioResponse |
-| 45 | PostListResponse |
-| 46 | PostOwnerType |
-| 47 | PostResponse |
-| 48 | PublicCompanyDetailResponse |
-| 49 | PublicCompanyListResponse |
-| 50 | PublicCompanyResponse |
-| 51 | PublicProductDetailResponse |
-| 52 | PublicProductListResponse |
-| 53 | PublicProductResponse |
-| 54 | PurchaseItemResponse |
-| 55 | PurchaseLegalBasis |
-| 56 | PurchaseResponse |
-| 57 | PurchaseStatusType |
-| 58 | ReferenceType |
-| 59 | RejectAgentApplicationRequest |
-| 60 | RejectWithdrawalRequest |
-| 61 | ReversalResponse |
-| 62 | ReversePaymentRequest |
-| 63 | RoadmapItemResponse |
-| 64 | SelectRoleRequest |
-| 65 | StaffPaymentListResponse |
-| 66 | StaffPaymentResponse |
-| 67 | StaffPermissionKey |
-| 68 | StaffPermissions |
-| 69 | StaffProfileResponse |
-| 70 | TelegramAuthRequest |
-| 71 | TransactionListResponse |
-| 72 | TransactionResponse |
-| 73 | TransactionType |
-| 74 | UpdatePermissionsRequest |
-| 75 | UserDetailResponse |
-| 76 | UserListItem |
-| 77 | UserListResponse |
-| 78 | UserResponse |
-| 79 | UserRole |
-| 80 | UserUpdate |
-| 81 | ValidationErrorItem |
-| 82 | VerifyEmailRequest |
-| 83 | WithdrawalResponse |
-| 84 | WithdrawalStatusType |
+### Type aliases (5 names)
+| Alias | Points to |
+|-------|-----------|
+| `BlockUserRequest` | `BlockRequest` |
+| `RejectAgentApplicationRequest` | `RejectRequest` |
+| `PortfolioPositionResponse` | `CompanyPositionResponse` |
+| `UserRole` | *(frontend union — see Section 9)* |
+| `KycStatus` | *(frontend union — see Section 9)* |
 
-**Total count: 84**
+### Handwritten interfaces + functions (4 names)
+| Name | Kind |
+|------|------|
+| `PaginatedResponse<T>` | generic interface |
+| `ValidationErrorItem` | interface |
+| `asUserRole(raw)` | runtime narrowing function |
+| `asKycStatus(raw)` | runtime narrowing function |
+
+**Total exports: 79** (70 re-exports + 5 aliases/unions + 4 handwritten)
 
 ---
 
 ## Section 3: Diff between `types.ts` and `generated.ts`
 
-### 3a. In handwritten `types.ts` BUT NOT in `generated.ts` (21 frontend-only types)
+### 3a. In `types.ts` BUT NOT in `generated.ts` — frontend-only (7 names)
 
-These must remain in handwritten form after the VELO refactor.
+| Name | Kind | Definition / notes |
+|------|------|-------------------|
+| `UserRole` | union | `'investor' \| 'agent' \| 'company' \| 'staff' \| 'platform'` + completeness guard + `asUserRole()` |
+| `KycStatus` | union | `'not_started' \| 'submitted' \| 'approved' \| 'rejected'` + completeness guard + `asKycStatus()` |
+| `PaginatedResponse<T>` | generic interface | Generic pagination helper |
+| `ValidationErrorItem` | interface | FastAPI 422 error body |
+| `BlockUserRequest` | alias | `= BlockRequest` (see Section 8) |
+| `RejectAgentApplicationRequest` | alias | `= RejectRequest` (see Section 8) |
+| `PortfolioPositionResponse` | alias | `= CompanyPositionResponse` (see Section 8) |
 
-| Name | Kind | Definition |
-|------|------|------------|
-| `AgentApplicationStatusType` | union | `type AgentApplicationStatusType = 'pending' \| 'approved' \| 'rejected'` |
-| `BlockUserRequest` | interface | `interface BlockUserRequest { reason?: string \| null }` — **name differs** from generated `BlockRequest`; see Section 8 |
-| `CryptoNetwork` | union | `type CryptoNetwork = 'TRC20' \| 'ERC20' \| 'BEP20' \| 'PoS'` |
-| `InstallmentPlanStatusType` | union | `type InstallmentPlanStatusType = 'active' \| 'completed' \| 'defaulted'` |
-| `InstallmentTrancheStatusType` | union | `type InstallmentTrancheStatusType = 'pending' \| 'paid' \| 'overdue' \| 'cancelled'` |
-| `KycStatus` | union | `type KycStatus = 'not_started' \| 'submitted' \| 'approved' \| 'rejected'` |
-| `PaginatedResponse` | generic interface | `interface PaginatedResponse<T> { items: T[]; total: number; page: number; per_page: number }` |
-| `PaymentStatusType` | union | `type PaymentStatusType = 'frozen' \| 'confirmed' \| 'reversed' \| 'failed'` |
-| `PaymentType` | union | `type PaymentType = 'crypto' \| 'card' \| 'bank'` |
-| `PortfolioPositionResponse` | interface | Frontend rename of backend `CompanyPositionResponse`; see Section 8 |
-| `PostOwnerType` | union | `type PostOwnerType = 'platform' \| 'company'` |
-| `PurchaseLegalBasis` | union | `type PurchaseLegalBasis = 'sale' \| 'gift' \| 'installment_tranche'` |
-| `PurchaseStatusType` | union | `type PurchaseStatusType = 'active' \| 'reversed'` |
-| `ReferenceType` | union | `type ReferenceType = 'payment' \| 'purchase' \| 'withdrawal' \| 'installment_plan'` |
-| `RejectAgentApplicationRequest` | interface | `interface RejectAgentApplicationRequest { reason: string }` — **name differs** from generated `RejectRequest`; see Section 8 |
-| `StaffPermissionKey` | union | Long union of 8 permission key strings |
-| `StaffPermissions` | alias | `type StaffPermissions = Partial<Record<StaffPermissionKey, boolean>>` |
-| `TransactionType` | union | Long union of 14 `entity:event` string literals |
-| `UserRole` | union | `type UserRole = 'investor' \| 'agent' \| 'company' \| 'staff' \| 'platform'` |
-| `ValidationErrorItem` | interface | `interface ValidationErrorItem { loc: (string \| number)[]; msg: string; type: string }` — FastAPI 422 shape |
-| `WithdrawalStatusType` | union | `type WithdrawalStatusType = 'pending' \| 'confirmed' \| 'processing' \| 'completed' \| 'rejected' \| 'failed'` |
+> **Δ vs first audit:** The original 21 frontend-only types are now down to 7. All narrowing unions (`PaymentStatusType`, `PaymentType`, `PurchaseLegalBasis`, `PurchaseStatusType`, `ReferenceType`, `TransactionType`, `InstallmentPlanStatusType`, `InstallmentTrancheStatusType`, `PostOwnerType`, `AgentApplicationStatusType`, `WithdrawalStatusType`, `StaffPermissionKey`, `StaffPermissions`, `CryptoNetwork`) have been **removed** in the VELO refactor. `UserRole` and `KycStatus` were also briefly removed but restored with upgraded runtime guards (`asUserRole` / `asKycStatus`).
 
-### 3b. In `generated.ts` BUT NOT in `types.ts` (53 names — re-export candidates)
+### 3b. In `generated.ts` BUT NOT re-exported via `types.ts` (42 names)
 
-These are backend types not yet surfaced in the frontend. Wire them in during the VELO refactor.
+These are backend types not yet surfaced to the frontend. They are available in `generated.ts` and can be re-exported as needed.
 
-BlockRequest, CommissionEntry, CommissionListResponse, CompanyAnalyticsResponse, CompanyDashboardResponse, CompanyPositionResponse, CompanyResponse, CompanyTransactionResponse, ConsistencyResponse, CreateCompanyRequest, CreateEventRequest, CreateInstallmentRequest, CreatePoolRequest, CreatePostRequest, CreateProductRequest, CreateRoadmapItemRequest, CreateWithdrawalRequest, CryptoWebhookRequest, DocumentCreateRequest, DocumentUpdateRequest, InstallmentPreviewRequest, InstallmentPreviewResponse, InstallmentPreviewSummary, KYCWebhookRequest, LeaderboardEntry, LeaderboardResponse, NotificationDeliveryResponse, NotificationListResponse, PayoutDetailsResponse, PoolEmbedResponse, PoolResponse, ProductResponse, ReadAllResponse, ReferralLinkListResponse, ReferralLinkResponse, ReferralStatsResponse, RejectRequest, ReorderRoadmapRequest, SalesByMonthEntry, SalesByProductEntry, SemaphoreResult, UnreadCountResponse, UpdateCompanyRequest, UpdateEventRequest, UpdateInstallmentRequest, UpdatePayoutDetailsRequest, UpdatePoolRequest, UpdatePostRequest, UpdatePriceRequest, UpdateProductRequest, UpdateProductStatusRequest, UpdateRoadmapItemRequest, WithdrawalListResponse
+BlockRequest, CommissionEntry, CommissionListResponse, CompanyPositionResponse *(only via alias)*, ConsistencyResponse, CreateCompanyRequest, CreateEventRequest, CreateInstallmentRequest, CreatePoolRequest, CreatePostRequest, CreateProductRequest, CreateRoadmapItemRequest, CreateWithdrawalRequest, CryptoWebhookRequest, DocumentCreateRequest, DocumentUpdateRequest, InstallmentPreviewRequest, InstallmentPreviewResponse, InstallmentPreviewSummary, KYCWebhookRequest, LeaderboardEntry, LeaderboardResponse, NotificationDeliveryResponse, NotificationListResponse, PoolResponse, ProductResponse, ReadAllResponse, ReferralLinkListResponse, ReferralLinkResponse, ReferralStatsResponse, RejectRequest *(only via alias)*, ReorderRoadmapRequest, SemaphoreResult, UnreadCountResponse, UpdateCompanyRequest, UpdateEventRequest, UpdateInstallmentRequest, UpdatePayoutDetailsRequest, UpdatePoolRequest, UpdatePostRequest, UpdatePriceRequest, UpdateProductRequest, UpdateProductStatusRequest, UpdateRoadmapItemRequest
 
-> Note: `BlockRequest` and `RejectRequest` are name-alias candidates (see Section 8), not straight re-exports.
+> **Δ vs first audit:** `WithdrawalListResponse` and `PayoutDetailsResponse` have been added to `types.ts` (F5.2 needed them). `CompanyResponse`, `CompanyDashboardResponse`, `CompanyAnalyticsResponse`, `PoolEmbedResponse`, `CompanyTransactionResponse`, `SalesByMonthEntry`, `SalesByProductEntry` also added (F5.2 company dashboard/analytics).
 
-### 3c. In BOTH (63 names — safe re-export candidates pending shape verification)
+### 3c. In BOTH (70 names — all re-exported from generated, zero handwritten duplicates)
 
-**Count: 63**
-
-AgentApplicationListResponse, AgentApplicationResponse, AuthResponse, AvatarSessionResponse, AvatarStartRequest, AvatarStartResponse, BalanceResponse, CompanyPositionDetailResponse, CompanySummaryResponse, CreateAddressRequest, CreateInstallmentPlanRequest, CreatePurchaseRequest, CreateStaffRequest, DashboardStatsResponse, DashboardSummaryResponse, DepositAddressResponse, DocumentResponse, DocumentSigningResponse, EmailLoginRequest, EmailRegisterRequest, EventListResponse, EventResponse, InstallmentPlanDetailResponse, InstallmentPlanListResponse, InstallmentPlanResponse, InstallmentResponse, InstallmentTrancheResponse, KYCQueueItem, KYCRejectRequest, KYCStatusResponse, KYCSubmitResponse, PaymentHistoryResponse, PaymentResponse, PortfolioResponse, PostListResponse, PostResponse, PublicCompanyDetailResponse, PublicCompanyListResponse, PublicCompanyResponse, PublicProductDetailResponse, PublicProductListResponse, PublicProductResponse, PurchaseItemResponse, PurchaseResponse, RejectWithdrawalRequest, ReversalResponse, ReversePaymentRequest, RoadmapItemResponse, SelectRoleRequest, StaffPaymentListResponse, StaffPaymentResponse, StaffProfileResponse, TelegramAuthRequest, TransactionListResponse, TransactionResponse, UpdatePermissionsRequest, UserDetailResponse, UserListItem, UserListResponse, UserResponse, UserUpdate, VerifyEmailRequest, WithdrawalResponse
+Since all 70 shared types are now pure `export type { X } from './generated'`, there are **zero handwritten duplicates** that could drift from the generated shape. The type facade is consistent by construction.
 
 ---
 
 ## Section 4: Field-shape mismatches between `types.ts` and `generated.ts`
 
-For every name in Section 3c, only cases with at least one field mismatch are listed. Types that match exactly are omitted.
+**Result: ZERO mismatches.**
 
-Legend: **G** = generated.ts, **H** = handwritten types.ts. `?:` means optional-and-nullable; `:` means required.
+All shared types in `types.ts` are `export type { X } from './generated'` — they are literally the same type object. There is no handwritten interface that could diverge from the generated one. The entire class of drift bugs identified in the first audit has been eliminated by the VELO refactor.
 
----
+> **Δ vs first audit:** The first audit found 25 types with field-shape mismatches (optionality, narrowed unions, missing fields, different field names). All resolved.
 
-### `AgentApplicationResponse`
+**Residual shape notes (not mismatches — informational):**
 
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `rejection_reason` | `: string \| null` | `?: string \| null` | required vs optional |
-| `cooldown_until` | `: string \| null` | `?: string \| null` | required vs optional |
-| `reviewed_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `reviewed_by` | `: string \| null` | `?: string \| null` | required vs optional |
-
----
-
-### `AvatarSessionResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `ended_at` | `: string \| null` | `?: string \| null` | required vs optional |
-
----
-
-### `BalanceResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `frozen` | `: number` | `?: number` | required vs optional |
-| `confirmed` | `: number` | `?: number` | required vs optional |
-
-> **Impact:** `dashboardStore.activeBalance.confirmed` is used as a hard number in PurchaseView and InstallmentView. If naively re-exported from generated.ts, `confirmed` becomes optional and those lines will require null-guards.
-
----
-
-### `CreateAddressRequest`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `network` | `: CryptoNetwork` | `: string` | narrowed union vs bare string |
-
----
-
-### `DashboardStatsResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `users_by_role` | `: Record<string, number>` | `: Record<string, unknown>` | typed value vs unknown |
-
----
-
-### `DocumentResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `required_for_roles` | `: string[]` | `?: string[]` | required vs optional |
-| `updated_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `is_signed` | `: boolean` | `?: boolean \| null` | required non-null vs optional nullable |
-
----
-
-### `EventResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `description` | `: string \| null` | `?: string \| null` | required vs optional |
-| `cover_url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `ends_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `location` | `: string \| null` | `?: string \| null` | required vs optional |
-| `url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `updated_at` | `: string \| null` | `?: string \| null` | required vs optional |
-
----
-
-### `InstallmentPlanDetailResponse`
-
-In `types.ts` this is declared as `extends InstallmentPlanResponse { tranches: InstallmentTrancheResponse[] }`. In `generated.ts` it is a standalone flat interface.
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `tranches` | `: InstallmentTrancheResponse[]` (required) | `?: InstallmentTrancheResponse[]` | required vs optional |
-| `status` | `: InstallmentPlanStatusType \| string` | `: string` | narrowed vs bare |
-
----
-
-### `InstallmentPlanResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `status` | `: InstallmentPlanStatusType \| string` | `: string` | narrowed vs bare |
-
----
-
-### `InstallmentTrancheResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `status` | `: InstallmentTrancheStatusType \| string` | `: string` | narrowed vs bare |
-
----
-
-### `KYCQueueItem`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `email` | `: string \| null` | `?: string \| null` | required vs optional |
-| `first_name` | `: string \| null` | `?: string \| null` | required vs optional |
-| `last_name` | `: string \| null` | `?: string \| null` | required vs optional |
-
----
-
-### `KYCStatusResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `application_id` | `: string \| null` | `?: string \| null` | required vs optional |
-| `application_status` | `: string \| null` | `?: string \| null` | required vs optional |
-
----
-
-### `PaymentResponse` (investor-facing)
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `payment_type` | `: PaymentType \| string` | `: string` | narrowed vs bare |
-| `status` | `: PaymentStatusType \| string` | `: string` | narrowed vs bare |
-| `frozen_until` | `: string \| null` | `?: string \| null` | required vs optional |
-| `updated_at` | `: string \| null` | `?: string \| null` | required vs optional |
-
----
-
-### `PortfolioResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `positions` | `: PortfolioPositionResponse[]` | `: CompanyPositionResponse[]` | different element type identifier (same shape — see Section 8) |
-
----
-
-### `PostResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `owner_type` | `: PostOwnerType \| string` | `: string` | narrowed vs bare |
-| `owner_id` | `: string \| null` | `?: string \| null` | required vs optional |
-| `cover_url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `tags` | `: string[] \| null` | `?: string[] \| null` | required vs optional |
-| `published_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `updated_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `is_dismissed` | `: boolean` | `?: boolean` | required vs optional |
-
----
-
-### `PublicCompanyDetailResponse`
-
-In `types.ts` this is `extends PublicCompanyResponse { roadmap: RoadmapItemResponse[] }`.
-In `generated.ts` this is a flat interface.
-
-| Field | Handwritten (combined) | Generated | Issue |
-|-------|------------------------|-----------|-------|
-| `total_supply` | **absent** (not in `PublicCompanyResponse`) | `: number` | missing field in handwritten |
-| `shares_per_option` | **absent** | `: number` | missing field in handwritten |
-| `roadmap` | `: RoadmapItemResponse[]` (required) | `?: RoadmapItemResponse[]` | required vs optional |
-
----
-
-### `PublicCompanyResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `total_supply` | **absent** | `: number` | missing field in handwritten |
-| `shares_per_option` | **absent** | `: number` | missing field in handwritten |
-
----
-
-### `PublicProductDetailResponse` ⚠️ B7 critical
-
-In `types.ts` this is `extends PublicProductResponse { installments: InstallmentResponse[] }`.
-In `generated.ts` this is a flat interface.
-
-| Field | Handwritten (combined) | Generated | Issue |
-|-------|------------------------|-----------|-------|
-| `units` | `: number` (required) | **absent** — replaced by `package_size: number` | **B7 RENAME TARGET** |
-| `sold_units` | `: number` (required) | **absent** — replaced by `available_packages?: number` | **B7 RENAME TARGET** |
-| `package_size` | **absent** | `: number` (required) | new field name |
-| `available_packages` | **absent** | `?: number` (optional) | new field name; semantics inverted (remaining packs, not sold count) |
-| `cover_url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `company_name` | `: string` | `?: string` | required vs optional |
-| `company_logo_url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `company_cover_url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `installments` | `: InstallmentResponse[]` (required) | `?: InstallmentResponse[]` | required vs optional |
-
----
-
-### `PublicProductResponse` ⚠️ B7 critical
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `units` | `: number` (required) | **absent** — replaced by `package_size: number` | **B7 RENAME TARGET** |
-| `sold_units` | `: number` (required) | **absent** — replaced by `available_packages?: number` | **B7 RENAME TARGET** |
-| `package_size` | **absent** | `: number` | new field name |
-| `available_packages` | **absent** | `?: number` | new field name; now OPTIONAL |
-| `cover_url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `company_name` | `: string` | `?: string` | required vs optional |
-| `company_logo_url` | `: string \| null` | `?: string \| null` | required vs optional |
-| `company_cover_url` | `: string \| null` | `?: string \| null` | required vs optional |
-
-> **Critical note on `available_packages` optionality:** The generated type marks this `?: number`. All consumers that currently compute `units - sold_units` must be rewritten to use `available_packages ?? 0` (not just `available_packages`). Forgetting the nullish-coalescing guard will silently render `NaN` in the UI.
-
----
-
-### `PurchaseItemResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `legal_basis` | `: PurchaseLegalBasis \| string` | `: string` | narrowed vs bare |
-| `status` | `: PurchaseStatusType \| string` | `: string` | narrowed vs bare |
-
----
-
-### `PurchaseResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `legal_basis` | `: PurchaseLegalBasis \| string` | `: string` | narrowed vs bare |
-| `status` | `: PurchaseStatusType \| string` | `: string` | narrowed vs bare |
-
----
-
-### `SelectRoleRequest`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `role` | `'investor' \| 'agent' \| 'company'` | `: string` | narrowed vs bare |
-
----
-
-### `StaffPaymentResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `payment_type` | `: PaymentType \| string` | `: string` | narrowed vs bare |
-| `status` | `: PaymentStatusType \| string` | `: string` | narrowed vs bare |
-| `frozen_until` | **absent** | `?: string \| null` | missing field in handwritten |
-| `provider_data` | `: Record<string, unknown> \| null` | **absent** | extra field in handwritten (not in generated) |
-| `updated_at` | `: string \| null` | `?: string \| null` | required vs optional |
-
-> **Highest risk mismatch:** `provider_data` exists in `types.ts` but not in `generated.ts`. If any Vue component reads `payment.provider_data`, removing the handwritten definition will break that code silently. Verify before deleting.
-
----
-
-### `StaffProfileResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `permissions` | `: StaffPermissions` | `: Record<string, unknown>` | typed alias vs unknown |
-
----
-
-### `TransactionResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `type` | `: TransactionType \| string` | `: string` | narrowed vs bare |
-| `reference_id` | `: string \| null` | `?: string \| null` | required vs optional |
-| `reference_type` | `: ReferenceType \| string \| null` | `?: string \| null` | required + narrowed vs optional bare |
-| `details` | `: Record<string, unknown> \| null` | `?: Record<string, unknown> \| null` | required vs optional |
-
----
-
-### `UpdatePermissionsRequest`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| All 8 fields | `?: boolean` | `?: boolean \| null` | non-nullable vs nullable optional |
-
----
-
-### `UserDetailResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `role` | `: UserRole` | `: string` | narrowed vs bare |
-| `kyc_status` | `: KycStatus` | `: string` | narrowed vs bare |
-| `updated_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `email` | `: string \| null` | `?: string \| null` | required vs optional |
-| `staff_profile` | `: StaffProfileResponse \| null` | `?: StaffProfileResponse \| null` | required vs optional |
-
----
-
-### `UserListItem`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `role` | `: UserRole` | `: string` | narrowed vs bare |
-| `kyc_status` | `: KycStatus` | `: string` | narrowed vs bare |
-| `email` | `: string \| null` | `?: string \| null` | required vs optional |
-| `first_name` | `: string \| null` | `?: string \| null` | required vs optional |
-| `last_name` | `: string \| null` | `?: string \| null` | required vs optional |
-| `staff_profile` | `: StaffProfileResponse \| null` | `?: StaffProfileResponse \| null` | required vs optional |
-
----
-
-### `UserResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `role` | `: UserRole` | `: string` | narrowed vs bare |
-| `email` | `: string \| null` | `?: string \| null` | required vs optional |
-| `kyc_status` | `: KycStatus` | `: string` | narrowed vs bare |
-| `payout_details` | `: Record<string, unknown> \| null` | `?: Record<string, unknown> \| null` | required vs optional |
-| `updated_at` | `: string \| null` | `?: string \| null` | required vs optional |
-
----
-
-### `UserUpdate`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `profile` | `?: Record<string, unknown>` | `?: Record<string, unknown> \| null` | non-nullable vs nullable optional |
-| `language` | `?: string` | `?: string \| null` | non-nullable vs nullable optional |
-
----
-
-### `WithdrawalResponse`
-
-| Field | Handwritten | Generated | Issue |
-|-------|-------------|-----------|-------|
-| `status` | `: WithdrawalStatusType \| string` | `: string` | narrowed vs bare |
-| `payout_details_snapshot` | **absent** | `: Record<string, unknown>` | missing required field in handwritten |
-| `rejection_reason` | `: string \| null` | `?: string \| null` | required vs optional |
-| `confirmed_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `processing_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `completed_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `rejected_at` | `: string \| null` | `?: string \| null` | required vs optional |
-| `failed_at` | **absent** | `?: string \| null` | missing field in handwritten |
+| Type | Note |
+|------|-------|
+| `BalanceResponse` | `frozen`/`confirmed` are now required `number` — first audit flagged them as `?: number`. Fixed in generated.ts. |
+| `PublicProductResponse` | `available_packages` is now required `number` (was `?: number`). All consumer `?? 0` guards correctly removed. |
+| `StaffPaymentResponse` | `provider_data` that existed in old `types.ts` is gone. Correct — it was never in generated.ts. |
+| `WithdrawalResponse` | `payout_details_snapshot` and `failed_at` now correctly surfaced via re-export. |
 
 ---
 
 ## Section 5: Vue/TS consumers of the renamed fields
 
-### Search results
-
-#### `\bunits\b` (excluding exempt patterns)
+### `\bunits\b` (excluding exempt patterns) — on main
 
 | File | Line | Content | In-scope? | Notes |
 |------|------|---------|-----------|-------|
-| `frontend/src/api/types.ts` | 388 | `  units: number` | ✓ | `PublicProductResponse.units` — **B7 rename target** |
-| `frontend/src/api/types.ts` | 496 | `  units: number` | context only | `PurchaseResponse.units` — NOT renamed in B7 |
-| `frontend/src/api/types.ts` | 803 | `  units: number` | context only | `PurchaseItemResponse.units` — NOT renamed in B7 |
-| `frontend/src/components/shared/ProductCard.vue` | 45 | `() => props.product.units - props.product.sold_units,` | ✓ | availability computed |
-| `frontend/src/views/investor/ProductDetailView.vue` | 90 | `return p ? p.units - p.sold_units : 0` | ✓ | availability computed |
-| `frontend/src/views/investor/PurchaseView.vue` | 89 | `return p ? p.units * p.price_per_unit_cents : 0` | ✓ | `totalCents` computed |
-| `frontend/src/views/investor/PurchaseView.vue` | 94 | `return p ? Math.max(p.units - p.sold_units, 0) : 0` | ✓ | `available` computed |
-| `frontend/src/views/investor/PurchaseView.vue` | 277 | `{{ formatNumber(product.units, locale) }}` | ✓ | template — "Package size" label |
-| `frontend/src/views/investor/InstallmentView.vue` | 180 | `return getTrancheUnits(planConfig.value, product.value.units, index)` | ✓ | passes `units` as `totalUnits` arg |
-| `frontend/src/views/investor/CompanyPositionView.vue` | 304 | `{{ formatNumber(p.units, locale) }}` | ⚠️ OUT-OF-SCOPE | `p` is `PurchaseItemResponse` — `units` here is NOT the B7 renamed field; no change needed |
+| `frontend/src/api/types.ts` | — | *(no hits)* | ✓ | No `units` field definitions remain |
+| `frontend/src/components/shared/ProductCard.vue` | — | *(no hits)* | ✓ | Clean |
+| `frontend/src/views/investor/ProductDetailView.vue` | — | *(no hits)* | ✓ | Clean |
+| `frontend/src/views/investor/PurchaseView.vue` | — | *(no hits)* | ✓ | Clean |
+| `frontend/src/views/investor/InstallmentView.vue` | 178 | `* Tranche row units -- thin wrapper...` | context | JSDoc comment, not a field access |
+| `frontend/src/utils/installmentPlans.ts` | — | *(no hits)* | ✓ | Clean |
 
-#### `sold_units`
+### `sold_units` — on main
 
-| File | Line | Content | In-scope? |
-|------|------|---------|-----------|
-| `frontend/src/api/types.ts` | 391 | `  sold_units: number` | ✓ |
-| `frontend/src/components/shared/ProductCard.vue` | 45 | `() => props.product.units - props.product.sold_units,` | ✓ |
-| `frontend/src/views/investor/ProductDetailView.vue` | 90 | `return p ? p.units - p.sold_units : 0` | ✓ |
-| `frontend/src/views/investor/PurchaseView.vue` | 94 | `return p ? Math.max(p.units - p.sold_units, 0) : 0` | ✓ |
+**(no hits anywhere in `frontend/src/`)** ✓
 
-#### `package_size`
+### `package_size` — on main (consumers)
 
-| File | Line | Content | Notes |
-|------|------|---------|-------|
-| `frontend/src/api/generated.ts` | 259 | `  package_size: number` | `CreateProductRequest` field |
-| `frontend/src/api/generated.ts` | 457 | `  package_size: number` | `InstallmentPreviewSummary` field |
-| `frontend/src/api/generated.ts` | 650 | `  package_size: number` | `ProductResponse` (staff) field |
-| `frontend/src/api/generated.ts` | 706 | `  package_size: number` | `PublicProductDetailResponse` field |
-| `frontend/src/api/generated.ts` | 730 | `  package_size: number` | `PublicProductResponse` field |
+| File | Line | Content |
+|------|------|---------|
+| `frontend/src/api/generated.ts` | multiple | Field definitions in `CreateProductRequest`, `InstallmentPreviewSummary`, `ProductResponse`, `PublicProductDetailResponse`, `PublicProductResponse` |
+| `frontend/src/views/investor/PurchaseView.vue` | 107 | `return p ? p.package_size * p.price_per_unit_cents : 0` |
+| `frontend/src/views/investor/PurchaseView.vue` | 296 | `{{ formatNumber(product.package_size, locale) }}` |
+| `frontend/src/views/investor/InstallmentView.vue` | 183 | `return getTrancheUnits(planConfig.value, product.value.package_size, index)` |
 
-No hits in any Vue component files yet. `package_size` is not yet referenced in Vue/TS consumers — the rename from B7 will introduce it.
+### `available_packages` — on main (consumers)
 
-#### `available_packages`
+| File | Line | Content |
+|------|------|---------|
+| `frontend/src/api/generated.ts` | multiple | Field definitions in `PublicProductResponse`, `PublicProductDetailResponse` |
+| `frontend/src/components/shared/ProductCard.vue` | 57 | `const available = computed(() => props.product.available_packages)` |
+| `frontend/src/views/investor/ProductDetailView.vue` | 103 | `return p ? p.available_packages : 0` |
+| `frontend/src/views/investor/PurchaseView.vue` | 113 | `return p ? p.available_packages : 0` |
 
-| File | Line | Content | Notes |
-|------|------|---------|-------|
-| `frontend/src/api/generated.ts` | 709 | `  available_packages?: number` | `PublicProductDetailResponse` field |
-| `frontend/src/api/generated.ts` | 733 | `  available_packages?: number` | `PublicProductResponse` field |
+### `price_per_pack_cents` — on main (NEW field, Sprint 4.4)
 
-No hits in any Vue component files yet. Same as `package_size` — not yet consumed.
+| File | Line | Content |
+|------|------|---------|
+| `frontend/src/api/generated.ts` | 708, 733 | Field in `PublicProductDetailResponse`, `PublicProductResponse` |
+| `frontend/src/components/shared/ProductCard.vue` | 82 | `formatPrice(product.price_per_pack_cents, product.currency)` |
+| `frontend/src/views/investor/ProductDetailView.vue` | 183 | `formatPrice(product.price_per_pack_cents, product.currency)` |
+| `frontend/src/views/investor/PurchaseView.vue` | 306 | `formatPrice(product.price_per_pack_cents, product.currency)` |
 
-### Summary of files needing changes in B7
+### Summary: B7 rename — COMPLETE on main ✓
 
-| File | Changes needed |
-|------|----------------|
-| `frontend/src/api/types.ts` | Replace `units: number` + `sold_units: number` with `package_size: number` + `available_packages?: number` in `PublicProductResponse`; fix `PublicProductDetailResponse` extension accordingly |
-| `frontend/src/components/shared/ProductCard.vue` | Line 45: `props.product.units - props.product.sold_units` → `props.product.available_packages ?? 0` |
-| `frontend/src/views/investor/ProductDetailView.vue` | Line 90: `p.units - p.sold_units` → `p.available_packages ?? 0` |
-| `frontend/src/views/investor/PurchaseView.vue` | Line 89: `p.units * p.price_per_unit_cents` → `p.package_size * p.price_per_unit_cents`; Line 94: `Math.max(p.units - p.sold_units, 0)` → `p.available_packages ?? 0`; Line 277: `product.units` → `product.package_size` |
-| `frontend/src/views/investor/InstallmentView.vue` | Line 180: `product.value.units` → `product.value.package_size` |
-| `frontend/src/utils/installmentPlans.ts` | **No changes needed.** `getTrancheUnits` accepts `totalUnits` as a plain `number` parameter; the call-site change in `InstallmentView.vue` is sufficient. |
+| File | Status |
+|------|--------|
+| `frontend/src/api/types.ts` | ✅ VELO re-export; `units`/`sold_units` gone |
+| `frontend/src/components/shared/ProductCard.vue` | ✅ `available_packages` (no `?? 0` — field now required) |
+| `frontend/src/views/investor/ProductDetailView.vue` | ✅ `available_packages` (no `?? 0`) |
+| `frontend/src/views/investor/PurchaseView.vue` | ✅ `package_size` + `available_packages` |
+| `frontend/src/views/investor/InstallmentView.vue` | ✅ `package_size` |
+| `frontend/src/utils/installmentPlans.ts` | ✅ No changes needed |
 
 ---
 
@@ -705,58 +269,58 @@ No hits in any Vue component files yet. Same as `package_size` — not yet consu
 
 ### Specified keys
 
-| Key | Status | Value (if present) |
-|-----|--------|-------------------|
-| `inv.market.packsAvailable` | **ABSENT** | — |
-| `inv.product.packsAvailability` | **ABSENT** | — |
-| `inv.product.soldOut` | **PRESENT** | `"Sold out"` |
-| `inv.market.available` | **ABSENT** | — (but see note below) |
+| Key | Status | Value |
+|-----|--------|-------|
+| `inv.market.packsAvailable` | **PRESENT** ✓ | `'packs available'` |
+| `inv.product.packsAvailability` | **PRESENT** ✓ | `'Packs availability'` |
+| `inv.product.soldOut` | **PRESENT** ✓ | `'Sold out'` |
+| `inv.market.available` | **ABSENT** | — (legacy key, never added; `inv.available` exists at top level) |
 
-> Note on `inv.market.available`: There is no `inv.market.available` key. The "available" label used in ProductCard.vue (line 74) and ProductDetailView.vue (line 181) resolves from `inv.available` (top-level under the `inv` namespace), which is `"available"`. This is the legacy key referenced in the spec.
+> **Δ vs first audit:** The two previously-absent keys (`packsAvailable`, `packsAvailability`) have been added. Audit recommendation fulfilled.
 
 ### All keys under `inv.market.*`
 
 ```
-inv.market.title          = "Marketplace"
-inv.market.subtitle       = "Available Investment Products"
-inv.market.filter.all     = "All companies"
-inv.market.filter.company = "Company"
-inv.market.filter.title   = "Filter by company"
-inv.market.filter.search  = "Search companies..."
-inv.market.filter.clear   = "Clear filter"
-inv.market.filter.empty   = "No companies found"
-inv.market.empty.title          = "No products available"
-inv.market.empty.desc           = "Check back later for new investment opportunities"
-inv.market.empty.filteredTitle  = "No products for this company"
-inv.market.empty.filteredDesc   = "Try another filter or clear it"
+inv.market.title              = 'Marketplace'
+inv.market.subtitle           = 'Available Investment Products'
+inv.market.filter.all         = 'All companies'
+inv.market.filter.company     = 'Company'
+inv.market.filter.title       = 'Filter by company'
+inv.market.filter.search      = 'Search companies...'
+inv.market.filter.clear       = 'Clear filter'
+inv.market.filter.empty       = 'No companies found'
+inv.market.empty.title        = 'No products available'
+inv.market.empty.desc         = 'Check back later for new investment opportunities'
+inv.market.empty.filteredTitle = 'No products for this company'
+inv.market.empty.filteredDesc  = 'Try another filter or clear it'
+inv.market.packsAvailable     = 'packs available'         ← NEW (Sprint 4.4 B7)
 ```
-
-> No `inv.market.packsAvailable` key exists. B7 will need to add it if the spec requires a "N packs available" label on the marketplace card.
 
 ### All keys under `inv.product.*`
 
 ```
-inv.product.notFound.title   = "Product not found"
-inv.product.notFound.desc    = "This product may have been removed or is no longer available"
-inv.product.backToMarket     = "Back to marketplace"
-inv.product.priceLabel       = "Price per unit"
-inv.product.availability     = "Availability"
-inv.product.description      = "About"
-inv.product.installments     = "Installment plans"
-inv.product.installmentsEmpty = "No installment plans available for this product"
-inv.product.installmentsBonus = "+{n} bonus units"
-inv.product.buy              = "Buy now"
-inv.product.soldOut          = "Sold out"
+inv.product.notFound.title    = 'Product not found'
+inv.product.notFound.desc     = 'This product may have been removed...'
+inv.product.backToMarket      = 'Back to marketplace'
+inv.product.pricePerPack      = 'Price per pack'          ← NEW (replaced priceLabel)
+inv.product.availability      = 'Availability'
+inv.product.description       = 'About'
+inv.product.installments      = 'Installment plans'
+inv.product.installmentsEmpty = 'No installment plans available for this product'
+inv.product.installmentsBonus = '+{n} bonus units'
+inv.product.buy               = 'Buy now'
+inv.product.soldOut           = 'Sold out'
+inv.product.packsAvailability = 'Packs availability'      ← NEW (Sprint 4.4 B7)
 ```
 
-> No `inv.product.packsAvailability` key exists. B7 will need to add it if the spec requires a "packs available" label on the product detail stats grid.
+> **Note:** `inv.product.priceLabel` has been **removed** and replaced by `inv.product.pricePerPack`. The old key does not exist in `en.json`. The view code (`ProductDetailView.vue`) already uses `t('inv.product.pricePerPack')`.
 
-### Adjacent relevant keys
+### Newly required keys (Sprint 4.4 B7)
 
 ```
-inv.unit                    = "unit"          ← used as "/ unit" price suffix
-inv.available               = "available"     ← used as "N available" suffix (legacy; to review in B7)
-inv.purchase.packageSize    = "Package size"  ← already updated; used in PurchaseView.vue template
+inv.pack       = 'pack'        ← NEW; used as "/ pack" price suffix in ProductCard + ProductDetailView
+inv.unit       = 'unit'        (unchanged)
+inv.available  = 'available'   (unchanged; still used in ProductDetailView stat block)
 ```
 
 ---
@@ -766,183 +330,138 @@ inv.purchase.packageSize    = "Package size"  ← already updated; used in Purch
 ### `ProductCard.vue`
 
 ```
-Line 44-46:
-  const available = computed(
-    () => props.product.units - props.product.sold_units,
-  )
+Line 57:
+  const available = computed(() => props.product.available_packages)
 ```
 
-The card renders availability as plain text (`{{ formatNumber(available, locale) }} {{ t('inv.available') }}`). There is **no sold-out indicator on the card** itself — no disabled state, no "Sold out" badge, no class binding tied to `available <= 0`. The card only shows how many units are available; sold-out state is only communicated implicitly by the number reaching 0.
+Template (line 91):
+```html
+{{ formatNumber(available, locale) }} {{ t('inv.market.packsAvailable') }}
+```
 
-**After B7:** `available` computed becomes `props.product.available_packages ?? 0`. The `?? 0` guard is mandatory because `available_packages` is optional in generated.ts (the backend may omit it).
+The card renders "N packs available". There is **no sold-out indicator** on the card (no disabled state, no "Sold out" badge). Sold-out state is communicated only implicitly when the count reaches 0.
+
+> **Δ vs first audit:** `available_packages` is now required — no `?? 0` guard needed. Label changed from `t('inv.available')` to `t('inv.market.packsAvailable')`. Price display expanded to show both pack price and per-unit reference.
 
 ### `ProductDetailView.vue`
 
 ```
-Line 88-91:
+Lines 101-103:
   const available = computed<number>(() => {
     const p = product.value
-    return p ? p.units - p.sold_units : 0
+    return p ? p.available_packages : 0
   })
 ```
 
-Three bindings depend on `available`:
+Four bindings depend on `available`:
 
 ```
-Line 209 (plan card class binding):
+Line 122 (openInstallmentPlan guard):
+  if (available.value <= 0) return
+
+Line 225 (plan card class):
   :class="{ 'pd__plan--disabled': available <= 0 }"
 
-Line 237 (buy button disabled):
+Line 253 (buy button disabled):
   :disabled="available <= 0"
 
-Lines 242-244 (buy button label):
+Lines 258-260 (buy button label):
   available > 0
     ? t('inv.product.buy')       → "Buy now"
     : t('inv.product.soldOut')   → "Sold out"
 ```
 
-Additionally in `openInstallmentPlan()` (line 109):
-```
-  if (available.value <= 0) return
-```
-
-All four places gate on the same `available` computed. After B7, replacing the computed with `p.available_packages ?? 0` updates all four simultaneously.
+Price stat label (line 180) now uses `t('inv.product.pricePerPack')` = "Price per pack" (was `priceLabel` = "Price per unit").
+Availability stat block (line 197) still uses `t('inv.available')` = "available" as the unit suffix.
 
 ---
 
-## Section 8: Aliases needed
+## Section 8: Aliases — status on main
 
-Three handwritten names have no exact match in generated.ts but map to a semantically identical generated name.
+All three aliases from the first audit recommendation are in place:
 
-### 8a. `BlockUserRequest` → `BlockRequest`
+### `BlockUserRequest = BlockRequest`
+```typescript
+export type BlockUserRequest = BlockRequest
+// BlockRequest: { reason?: string | null }
+```
+Shape identical ✓. Alias in `types.ts` line ~104.
 
-| | Handwritten `BlockUserRequest` | Generated `BlockRequest` |
-|-|-------------------------------|--------------------------|
-| Definition | `interface BlockUserRequest { reason?: string \| null }` | `interface BlockRequest { reason?: string \| null }` |
-| Shape identical? | **Yes** | |
+### `RejectAgentApplicationRequest = RejectRequest`
+```typescript
+export type RejectAgentApplicationRequest = RejectRequest
+// RejectRequest: { reason: string }
+```
+Shape identical ✓. Alias in `types.ts` line ~158.
 
-**Recommendation:** `export type BlockUserRequest = BlockRequest` alias re-export. Any Vue component calling a block-user endpoint passes this type; keeping the name avoids a rename sweep.
-
-### 8b. `RejectAgentApplicationRequest` → `RejectRequest`
-
-| | Handwritten `RejectAgentApplicationRequest` | Generated `RejectRequest` |
-|-|---------------------------------------------|--------------------------|
-| Definition | `interface RejectAgentApplicationRequest { reason: string }` | `interface RejectRequest { reason: string }` |
-| Shape identical? | **Yes** | |
-
-**Recommendation:** `export type RejectAgentApplicationRequest = RejectRequest` alias re-export.
-
-> Note: `RejectRequest` in `generated.ts` is the body for rejecting *agent applications* specifically (per the backend endpoint `POST /staff/agent-applications/{id}/reject`). The name `RejectRequest` is generic enough that it could confuse — the alias keeps the intent explicit on the frontend side.
-
-### 8c. `PortfolioPositionResponse` → `CompanyPositionResponse`
-
-| | Handwritten `PortfolioPositionResponse` | Generated `CompanyPositionResponse` |
-|-|-----------------------------------------|-------------------------------------|
-| All fields | `company_id, company_name, logo_url: string \| null, total_units, sale_units, gift_units, total_paid_cents, avg_price_cents, current_price_cents, current_value_cents, purchases_count: number` | Identical |
-| Shape identical? | **Yes** | |
-
-**Recommendation:** `export type PortfolioPositionResponse = CompanyPositionResponse` alias re-export. The renaming rationale is documented inline in `types.ts` (to distinguish from `CompanySummaryResponse`). That rationale is still valid.
-
-**Important downstream effect:** `PortfolioResponse.positions` in `types.ts` is `PortfolioPositionResponse[]` but in `generated.ts` it is `CompanyPositionResponse[]`. After re-export, `PortfolioPositionResponse` and `CompanyPositionResponse` are the same TypeScript type, so this mismatch becomes structural and resolves automatically. No further action needed on `PortfolioResponse` itself.
+### `PortfolioPositionResponse = CompanyPositionResponse`
+```typescript
+export type PortfolioPositionResponse = CompanyPositionResponse
+// CompanyPositionResponse: { company_id, company_name, logo_url, total_units,
+//   sale_units, gift_units, total_paid_cents, avg_price_cents,
+//   current_price_cents, current_value_cents, purchases_count }
+```
+Shape identical ✓. Alias in `types.ts` line ~347. `PortfolioResponse.positions` typed as `CompanyPositionResponse[]` in generated.ts; the alias makes `PortfolioPositionResponse[]` structurally equivalent — no conflict.
 
 ---
 
 ## Section 9: Frontend-only types beyond plain re-export
 
-These all remain in `types.ts` after the VELO refactor. None is a rename target in B7.
+Reduced from 21 (first audit) to **7** after VELO refactor. All other narrowing unions removed.
 
-| Name | Kind | Keep-reason summary |
-|------|------|---------------------|
-| `AgentApplicationStatusType` | union | Narrows `AgentApplicationResponse.status: string`; no backend enum exported |
-| `CryptoNetwork` | union | Frontend-owned selector; `CreateAddressRequest.network` is plain `string` in generated |
-| `InstallmentPlanStatusType` | union | Narrows `InstallmentPlanResponse.status: string` |
-| `InstallmentTrancheStatusType` | union | Narrows `InstallmentTrancheResponse.status: string` |
-| `KycStatus` | union | Narrows `UserResponse.kyc_status: string`; also used in router guards |
-| `PaginatedResponse<T>` | generic interface | Generic pagination helper not in OpenAPI (backend emits concrete types) |
-| `PaymentStatusType` | union | Narrows payment status; reused by both investor and staff shapes |
-| `PaymentType` | union | Narrows payment type; same |
-| `PortfolioPositionResponse` | alias interface | Intentional rename of `CompanyPositionResponse` for frontend disambiguation (see Section 8c) |
-| `PostOwnerType` | union | Narrows `PostResponse.owner_type: string` |
-| `PurchaseLegalBasis` | union | Narrows `PurchaseResponse.legal_basis: string`; used in portfolio detail |
-| `PurchaseStatusType` | union | Narrows `PurchaseResponse.status: string` |
-| `ReferenceType` | union | Narrows `TransactionResponse.reference_type`; used in transaction detail sheet |
-| `StaffPermissionKey` | union | Typed key for the permissions record; keeps UpdatePermissionsRequest fields type-safe |
-| `StaffPermissions` | alias | `Partial<Record<StaffPermissionKey, boolean>>` helper; replaces `Record<string, unknown>` from generated |
-| `TransactionType` | union | 14-literal union; used for transaction tab filtering and type display in TransactionListView |
-| `UserRole` | union | Narrows `UserResponse.role: string`; used in routing and conditional rendering across many views |
-| `ValidationErrorItem` | interface | FastAPI 422 error body shape; HTTP-boundary type, not in OpenAPI schema |
-| `WithdrawalStatusType` | union | Narrows `WithdrawalResponse.status: string` |
+| Name | Kind | Keep-reason |
+|------|------|-------------|
+| `UserRole` | union + runtime guard | Narrows `UserResponse.role: string`; `asUserRole()` is the only authorised entry point from `string` into `UserRole`. Exhaustiveness check via `satisfies readonly UserRole[]` catches missing values at compile time. |
+| `KycStatus` | union + runtime guard | Same pattern. `asKycStatus()` used by `stores/auth.ts` to expose `kycStatus: KycStatus \| null` for typed comparisons in route guards and onboarding logic. |
+| `PaginatedResponse<T>` | generic interface | Generic pagination helper; backend emits concrete list types, not a generic. |
+| `ValidationErrorItem` | interface | FastAPI 422 error body; HTTP-boundary type, not in OpenAPI schema. |
+| `BlockUserRequest` | alias | `= BlockRequest`; keeps call-site name explicit. |
+| `RejectAgentApplicationRequest` | alias | `= RejectRequest`; keeps intent explicit at the call site. |
+| `PortfolioPositionResponse` | alias | `= CompanyPositionResponse`; prevents confusion with `CompanySummaryResponse`. |
+
+> **Δ vs first audit:** `UserRole` and `KycStatus` were removed during the initial B8 refactor but restored with runtime guards (`asUserRole`, `asKycStatus`) in the Sprint 4.4 follow-up. This is a strict improvement: types are narrower AND safe (no unsafe casts; unknown values resolve to `null`).
 
 ---
 
 ## Section 10: Risks / surprises
 
-### 10.1 No direct `@/api/generated` imports found
+### 10.1 No direct `@/api/generated` imports ✓
+No Vue component or utility file imports from `@/api/generated` directly. All types flow through `@/api/types`. ✓
 
-All Vue components and utility files import exclusively from `@/api/types`. No file bypasses the types facade. ✓
+### 10.2 No actionable TODO/FIXME/TD-F07 markers ✓
+The "B7" references found in source files are retrospective documentation comments (`// F4.4 B7 UX:`, `// B7 / VELO migration`), not pending tasks. ✓
 
-### 10.2 No TODO/FIXME/TD-F07 comments in frontend source
+### 10.3 `available_packages` is now required — `?? 0` guards correctly removed
+Sprint 4.4 made `available_packages: number` required (not `?: number`) in both `PublicProductResponse` and `PublicProductDetailResponse`. All three Vue consumers have correctly removed the `?? 0` fallback. The backend comment in generated.ts confirms: *"missing populate is a server bug, not a soft fallback."*
 
-No inline markers referencing B7, TD-F07, or any pending fixme related to the rename were found. ✓
+### 10.4 `price_per_pack_cents` is a new Sprint 4.4 field — verify backend deploy
+`price_per_pack_cents: number` (required) was added to `PublicProductResponse` and `PublicProductDetailResponse`. Three Vue files already consume it. If the backend deploy lags the frontend, this field will be missing from API responses and render as `NaN` / `$NaN`. Confirm backend version matches generated.ts before releasing the frontend.
 
-### 10.3 `available_packages` is optional — `NaN` risk in all consumers
+### 10.5 `inv.product.priceLabel` removed — check other locale files
+`en.json` no longer has `inv.product.priceLabel` (replaced by `inv.product.pricePerPack`). The ru/de/ar i18n catchup commits (series `i18n: ru/de/ar catchup for F4.4 B2-B6 keys`) appear to cover this sprint range, but it is worth verifying that the `pricePerPack` key exists and `priceLabel` is absent in all four locale files to avoid missing-key fallbacks in non-English UIs.
 
-`PublicProductResponse.available_packages?: number` is marked optional in `generated.ts`. The current pattern `units - sold_units` always produces a number. After B7, if any consumer writes `product.available_packages` without `?? 0`, the computed will be `undefined` and any arithmetic (e.g., `available <= 0`) will silently evaluate to `false`, making every product appear available. **Every B7-consumer site must use `?? 0`.**
+### 10.6 `InstallmentView.vue` — `?? []` guard retained from B7 era
+Line 117 comment: *"`?? []` compensation that B7 carried over from the previous schema."* Line 131: `const tranches = planConfig.value?.tranches ?? []`. This guard is for `plan_config.tranches` (JSONB parsing, not a B7-renamed field) and remains valid. No action needed, but the comment creates minor confusion — it refers to a B7 schema state, not a current issue.
 
-### 10.4 `StaffPaymentResponse.provider_data` exists in `types.ts` but not in `generated.ts`
+### 10.7 `CompanyPositionResponse` not directly exported — only via alias
+`CompanyPositionResponse` is imported in `types.ts` for the alias (`PortfolioPositionResponse = CompanyPositionResponse`) but is not itself re-exported. Code that tries to import `CompanyPositionResponse` from `@/api/types` will fail to resolve. Currently no Vue file does this (all use `PortfolioPositionResponse`), but the gap is worth noting for future consumers.
 
-`types.ts` declares `provider_data: Record<string, unknown> | null` on `StaffPaymentResponse`. The generated type has no such field. Either:
-- The backend never emitted `provider_data` and the field was added speculatively, or
-- It was removed in a backend refactor that was not reflected in `types.ts`.
+### 10.8 42 generated types still not surfaced via `types.ts`
+These are primarily staff-facing admin/operational types (pool management, consistency checks, leaderboard, referral links, etc.) and not needed by current frontend views. No immediate risk, but any new view that reaches into `generated.ts` directly (bypassing `types.ts`) is a code smell — route those through `types.ts` instead.
 
-Search for any Vue component reading `payment.provider_data` before deleting it.
-
-### 10.5 `WithdrawalResponse` is missing `payout_details_snapshot` and `failed_at`
-
-`generated.ts` declares `payout_details_snapshot: Record<string, unknown>` (required) and `failed_at?: string | null`. Neither appears in `types.ts`. If any staff view renders payout details from a withdrawal object, it is currently untyped. This is independent of B7 but should be caught before the VELO re-export.
-
-### 10.6 `PublicCompanyResponse` and `PublicCompanyDetailResponse` are missing `total_supply` / `shares_per_option`
-
-Both fields are present in `generated.ts` but absent from the handwritten types. If any company-detail view wants to render total supply or shares-per-option, it currently has no typed path. After VELO re-export, they will appear automatically.
-
-### 10.7 `InstallmentView.vue` line 180 IS a B7 rename target
-
-`InstallmentView.vue` is listed in the spec file list. Line 180 passes `product.value.units` as the `totalUnits` argument to `getTrancheUnits`. The product is typed as `PublicProductDetailResponse`. This is a B7 rename target. Only the call-site changes (`product.value.units` → `product.value.package_size`); the `getTrancheUnits` signature in `installmentPlans.ts` does not change.
-
-### 10.8 `CompanyPositionView.vue` is an out-of-scope `units` reference
-
-`CompanyPositionView.vue:304` (`{{ formatNumber(p.units, locale) }}`) references `PurchaseItemResponse.units`, which is **not** being renamed in B7. The grep will produce a hit on this line during the B7 rename, but it is a false positive. The file is not in the spec list and should not be touched.
-
-### 10.9 `ProductCard.vue` has no sold-out card state
-
-After B7, `available_packages` will be `0` (or missing) when sold out. ProductCard currently shows `"0 available"` with no visual sold-out indicator. The spec's mention of `inv.product.soldOut` key only applies to ProductDetailView's CTA button. Whether the card itself needs a "Sold out" badge is not addressed by B7 spec, but worth flagging.
-
-### 10.10 `PortfolioResponse` mismatch resolves automatically via alias
-
-The `PortfolioResponse.positions` field is typed `PortfolioPositionResponse[]` in `types.ts` and `CompanyPositionResponse[]` in `generated.ts`. Once `PortfolioPositionResponse` is declared as a type alias for `CompanyPositionResponse` (Section 8c), TypeScript will treat them as the same type and the mismatch disappears. No additional change to `PortfolioResponse` is needed.
-
-### 10.11 `PublicProductDetailResponse` extends pattern will break on VELO refactor
-
-In `types.ts`, `PublicProductDetailResponse extends PublicProductResponse`. In `generated.ts`, it is a flat standalone interface. After VELO re-export, the extension pattern must be dropped — the generated flat interface already includes all fields from `PublicProductResponse` plus the detail-only fields. Keeping the `extends` after switching to the generated type would result in a duplicate-field conflict.
-
-### 10.12 `inv.purchase.packageSize` key exists but `inv.product.packsAvailability` does not
-
-PurchaseView already uses `t('inv.purchase.packageSize')` on line 274 to label the package size row — this i18n key was presumably added in an earlier sprint as part of Sprint 4.3 prep. However the `inv.product.packsAvailability` and `inv.market.packsAvailable` keys specified in the B7 spec are absent and must be added.
+### 10.9 `inv.available` still in use alongside `inv.market.packsAvailable`
+`ProductDetailView.vue` line 197 uses `t('inv.available')` = "available" as the suffix in the availability stat block ("N available"). `ProductCard.vue` now uses `t('inv.market.packsAvailable')` = "packs available". These are two different screens showing the same data with slightly different labels. Intentional or inconsistency — worth confirming with design.
 
 ---
 
 ## Final state check
 
 ```
-git status output: On branch claude/audit-cbshome-frontend-rename-8X5oY
-Untracked files:
-  B7_AUDIT.md
-
-No modified tracked files.
+git status: On branch claude/audit-cbshome-frontend-rename-8X5oY
+Modified: B7_AUDIT.md (this report — only file changed)
+No other tracked files touched.
 ```
-
-Only `B7_AUDIT.md` is new. No existing tracked files were touched.
 
 ---
 
-Audit complete. Review B7_AUDIT.md.
+Audit complete. Review `B7_AUDIT.md`.
