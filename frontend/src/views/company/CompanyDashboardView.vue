@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyDashboardView (Phase F5.1 B2)
+// CBSHOME Frontend -- CompanyDashboardView (Phase F5.1 B2 + B3)
 // =============================================================================
 //
 // Company home screen. Rendered by CompanyShell at /company/dashboard
@@ -21,16 +21,32 @@
 //      "On hold" hint for frozen > 0. Non-clickable in B2 -- the
 //      Balance view is a stub until F5.2 B3.
 //
-//   4. Metrics row -- three CStatCard tiles: total revenue, options
+//   4. Pool widget (B3) -- only when summary.pool is non-null.
+//      consumed / total progress bar + equity_percent + remaining
+//      caption. The pool is created by staff during company setup;
+//      a freshly-created company without a pool is a legitimate
+//      transient state, not an error -- so we hide the widget
+//      entirely instead of rendering a placeholder. Non-clickable:
+//      pool management is a staff-side concern.
+//
+//   5. Metrics row -- three CStatCard tiles: total revenue, options
 //      sold (sale + installment_tranche, Sprint 4.6 hotfix on the
 //      backend), products count.
 //
+//   6. Recent transactions (B3) -- list of summary.recent_transactions
+//      (last 20, embedded in the dashboard payload by the backend).
+//      Read-only feed: no detail-sheet click in B3 -- the full
+//      transactions view for the company role is a future scope item.
+//      MUST NOT issue a separate /transactions fetch -- the embed is
+//      the contract.
+//
 // DEFERRED.
-//   Pool widget + recent transactions list = B3.
 //   i18n JSON keys (`comp.dashboard.*`) + null-state polish = B4.
 //   Until B4 lands, vue-i18n's missing-key fallback echoes the raw
-//   key; that is intentionally visible-but-non-blocking so a missed
-//   key in this file gets caught at QA time before B4 ships.
+//   key for static labels; for transaction TYPE labels we use
+//   tOrRaw so the bare type token (e.g. "purchase:completed")
+//   shows instead of the dotted i18n path -- considerably more
+//   readable while we wait for the catalogue.
 //
 // DATA FLOW.
 //   onMounted fires Promise.all over loadIfMissing() (profile,
@@ -66,12 +82,31 @@
 
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Layers, Package, TrendingUp, Wallet } from 'lucide-vue-next'
+import {
+  ArrowUpRight,
+  CreditCard,
+  Layers,
+  Package,
+  RefreshCw,
+  Repeat,
+  ShoppingBag,
+  TrendingUp,
+  Wallet,
+} from 'lucide-vue-next'
+import type { Component } from 'vue'
 
-import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import {
+  CButton,
+  CEmptyState,
+  CLoader,
+  CProgressBar,
+  CStatCard,
+} from '@/components/ui'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
-import { formatNumber, formatPrice } from '@/utils/format'
+import type { CompanyTransactionResponse, PoolEmbedResponse } from '@/api/types'
+import { formatNumber, formatPrice, formatSignedPrice } from '@/utils/format'
+import { tOrRaw } from '@/utils/i18n'
 
 const { t, locale } = useI18n()
 const profileStore = useCompanyProfileStore()
@@ -106,12 +141,13 @@ const initials = computed<string>(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Balance + metrics -- dashboard-derived
+// Balance + metrics + pool -- dashboard-derived
 //
-// These computed fields default to 0 via `?? 0` so the template never
-// needs a null guard. The all-or-nothing render policy guarantees
-// they are not read until summary is non-null, so the defaults never
-// actually surface to the user -- they exist to keep the type narrow.
+// These computed fields default to 0 / null via `?? 0` / `?? null` so the
+// template never needs a null guard on summary itself. The
+// all-or-nothing render policy guarantees they are not read until
+// summary is non-null, so the defaults never actually surface to the
+// user -- they exist to keep the type narrow.
 // ---------------------------------------------------------------------------
 
 const passiveConfirmed = computed<number>(
@@ -131,6 +167,85 @@ const totalOptionsSold = computed<number>(
 const productsCount = computed<number>(
   () => dashboardStore.summary?.products_count ?? 0,
 )
+
+// pool is `PoolEmbedResponse | null | undefined` on the wire; coerce
+// the undefined case to null so the template's v-if check is clean.
+const pool = computed<PoolEmbedResponse | null>(
+  () => dashboardStore.summary?.pool ?? null,
+)
+
+// recent_transactions is required (non-optional) on the response
+// schema, but we still default to [] so the v-for is safe in the
+// (impossible) interim state where summary is non-null but the field
+// somehow isn't.
+const recentTransactions = computed<CompanyTransactionResponse[]>(
+  () => dashboardStore.summary?.recent_transactions ?? [],
+)
+
+// ---------------------------------------------------------------------------
+// Transaction row helpers (B3)
+//
+// Mirrors the investor-side TransactionsView icon + label + signed-
+// amount pattern. We deliberately reuse the `inv.transactions.type.*`
+// catalogue for typeLabel because the type strings themselves are
+// identical (purchase:completed, withdrawal:completed, etc.) -- the
+// row of a withdrawal looks the same to a company seeing money leave
+// as it does to an investor seeing money leave. B4 may rename to a
+// shared `tx.type.*` namespace; the tOrRaw fallback covers both
+// futures without breaking today.
+// ---------------------------------------------------------------------------
+
+/**
+ * Pick a lucide icon for a transaction type. Match by prefix so any
+ * future ":completed" / ":pending" / ":failed" suffix variant routes
+ * to the same icon without an exhaustive allow-list.
+ */
+function iconForType(type: string): Component {
+  if (type.startsWith('purchase:')) return ShoppingBag
+  if (type.startsWith('installment:')) return Repeat
+  if (type.startsWith('withdrawal:')) return ArrowUpRight
+  if (type.startsWith('reversal:') || type.startsWith('refund:')) {
+    return RefreshCw
+  }
+  return CreditCard
+}
+
+/**
+ * Translate the type token. Falls back to the bare token (e.g.
+ * "purchase:completed") rather than the i18n dotted path so the
+ * pre-B4 view is readable.
+ */
+function typeLabel(type: string): string {
+  return tOrRaw(t, `inv.transactions.type.${type}`, type)
+}
+
+/**
+ * CSS modifier class for amount colour. Positive = revenue (credit,
+ * green), negative = withdrawal / refund (debit, red), zero = neutral.
+ */
+function amountClass(amountCents: number): string {
+  if (amountCents > 0) return 'dash__tx-amount--credit'
+  if (amountCents < 0) return 'dash__tx-amount--debit'
+  return ''
+}
+
+/**
+ * Format a transaction timestamp. Short locale-aware date + time --
+ * the recent feed is contextual (last 20), so a minute-precise
+ * timestamp helps the operator scan it.
+ */
+function formatTxDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
 
 // ---------------------------------------------------------------------------
 // View states (see RENDER POLICY in the file header)
@@ -234,6 +349,36 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Pool widget (B3) -- hidden when staff hasn't created a pool -->
+      <div v-if="pool" class="dash__pool">
+        <div class="dash__pool-head">
+          <span class="dash__pool-label">
+            <Layers :size="14" />
+            {{ t('comp.dashboard.pool.title') }}
+          </span>
+          <span class="dash__pool-equity">
+            {{ pool.equity_percent }}%
+            {{ t('comp.dashboard.pool.equity') }}
+          </span>
+        </div>
+        <CProgressBar
+          :value="pool.consumed"
+          :max="pool.total_options"
+        />
+        <div class="dash__pool-stats">
+          <span>
+            {{ formatNumber(pool.consumed, locale) }}
+            /
+            {{ formatNumber(pool.total_options, locale) }}
+            {{ t('comp.dashboard.pool.consumed') }}
+          </span>
+          <span>
+            {{ formatNumber(pool.remaining, locale) }}
+            {{ t('comp.dashboard.pool.remaining') }}
+          </span>
+        </div>
+      </div>
+
       <!-- Metrics row -- 3 stat tiles -->
       <div class="dash__metrics">
         <CStatCard
@@ -260,6 +405,48 @@ onMounted(() => {
             <Layers :size="20" />
           </template>
         </CStatCard>
+      </div>
+
+      <!-- Recent transactions (B3) -- embedded list, no extra fetch -->
+      <div class="dash__recent">
+        <h2 class="dash__recent-title">
+          {{ t('comp.dashboard.recent.title') }}
+        </h2>
+
+        <p
+          v-if="recentTransactions.length === 0"
+          class="dash__recent-empty"
+        >
+          {{ t('comp.dashboard.recent.empty') }}
+        </p>
+
+        <ul v-else class="dash__tx-list">
+          <li
+            v-for="tx in recentTransactions"
+            :key="tx.id"
+            class="dash__tx-item"
+          >
+            <div class="dash__tx-icon">
+              <component :is="iconForType(tx.type)" :size="18" />
+            </div>
+            <div class="dash__tx-body">
+              <div class="dash__tx-line">
+                <span class="dash__tx-type">
+                  {{ typeLabel(tx.type) }}
+                </span>
+                <span
+                  class="dash__tx-amount"
+                  :class="amountClass(tx.amount_cents)"
+                >
+                  {{ formatSignedPrice(tx.amount_cents, tx.currency) }}
+                </span>
+              </div>
+              <div class="dash__tx-date">
+                {{ formatTxDate(tx.created_at) }}
+              </div>
+            </div>
+          </li>
+        </ul>
       </div>
     </template>
   </div>
@@ -377,6 +564,44 @@ onMounted(() => {
   color: var(--warning, var(--text-secondary));
 }
 
+/* Pool widget (B3) */
+.dash__pool {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+}
+.dash__pool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dash__pool-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.dash__pool-equity {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.dash__pool-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* Metrics row */
 .dash__metrics {
   display: grid;
@@ -387,5 +612,91 @@ onMounted(() => {
   .dash__metrics {
     grid-template-columns: 1fr;
   }
+}
+
+/* Recent transactions (B3) */
+.dash__recent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dash__recent-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 4px 0 0 0;
+}
+.dash__recent-empty {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated, var(--bg));
+  border: 1px dashed var(--border);
+  text-align: center;
+}
+
+/* Transaction list -- compact two-line rows */
+.dash__tx-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dash__tx-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+}
+.dash__tx-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.dash__tx-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash__tx-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dash__tx-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash__tx-amount {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.dash__tx-amount--credit { color: var(--success, var(--primary)); }
+.dash__tx-amount--debit  { color: var(--danger,  var(--text)); }
+.dash__tx-date {
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 </style>
