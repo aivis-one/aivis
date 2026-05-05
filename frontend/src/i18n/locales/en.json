@@ -721,6 +721,12 @@
         "empty": "No sales data yet",
         "range": "{start} — {end}",
         "tooltipUnits": "{units} units"
+      },
+      "byProduct": {
+        "title": "By product",
+        "empty": "No products yet",
+        "units": "{n} units",
+        "noSales": "No sales yet"
       }
     }
   }

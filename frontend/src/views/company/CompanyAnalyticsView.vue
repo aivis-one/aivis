@@ -8,11 +8,19 @@
 // with an inline page-header (mirrors the dashboard / products /
 // settings views).
 //
-// SCOPE -- B1 SUBSET.
-//   This commit ships top metrics + the sales_by_month bar chart.
-//   The sales_by_product breakdown table is B2 and lands as a
-//   separate section in this same file. The data is already in the
-//   payload (sales_by_product[]), B1 just doesn't render it.
+// SCOPE -- B1 + B2.
+//   This file now ships top metrics, the sales_by_month bar chart
+//   (B1), and the sales_by_product breakdown table (B2). All three
+//   render from a single getCompanyAnalytics() round trip -- the
+//   payload contract puts the table data into sales_by_product[]
+//   alongside the time series.
+//
+//   sales_by_product semantics (per backend Sprint 4.3 B5):
+//     "ALL products of the company including archived and zero-sales,
+//      sorted by revenue_cents DESC". The point of showing zero-sales
+//      rows is so the company sees what isn't selling -- so we render
+//      them, do not dim them, and label units as "No sales yet" instead
+//      of "0 units" to make the message explicit.
 //
 // LAYOUT, in render order:
 //
@@ -86,7 +94,11 @@ import { useI18n } from 'vue-i18n'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { getCompanyAnalytics } from '@/api/company'
 import { formatNumber, formatPrice } from '@/utils/format'
-import type { CompanyAnalyticsResponse, SalesByMonthEntry } from '@/api/types'
+import type {
+  CompanyAnalyticsResponse,
+  SalesByMonthEntry,
+  SalesByProductEntry,
+} from '@/api/types'
 
 const { t, locale } = useI18n()
 
@@ -248,6 +260,35 @@ function barHeightPercent(entry: SalesByMonthEntry): number {
   if (pct < 4) return 4
   return pct
 }
+
+// ---------------------------------------------------------------------------
+// B2 -- sales_by_product table
+// ---------------------------------------------------------------------------
+
+const salesByProduct = computed<SalesByProductEntry[]>(
+  () => analytics.value?.sales_by_product ?? [],
+)
+
+const hasProductData = computed<boolean>(
+  () => salesByProduct.value.length > 0,
+)
+
+/**
+ * Sub-line label for each row. Zero-sales products show "No sales yet"
+ * instead of "0 units" -- explicit about the situation rather than
+ * leaving the reader to translate a numeric zero. Backend includes
+ * zero-sales rows on purpose (Sprint 4.3 B5) so the company sees what
+ * isn't moving; the label has to carry that intent in plain English
+ * (and locale equivalents in B7 i18n catchup).
+ */
+function unitsLabelFor(entry: SalesByProductEntry): string {
+  if (entry.options_sold <= 0) {
+    return t('comp.analytics.byProduct.noSales')
+  }
+  return t('comp.analytics.byProduct.units', {
+    n: formatNumber(entry.options_sold, locale.value),
+  })
+}
 </script>
 
 <template>
@@ -338,6 +379,35 @@ function barHeightPercent(entry: SalesByMonthEntry): number {
             </div>
           </div>
         </div>
+      </section>
+
+      <!-- B2: sales by product breakdown -->
+      <section class="canl__table-section">
+        <div class="canl__chart-header">
+          <h2 class="canl__chart-title">
+            {{ t('comp.analytics.byProduct.title') }}
+          </h2>
+        </div>
+
+        <p v-if="!hasProductData" class="canl__chart-empty">
+          {{ t('comp.analytics.byProduct.empty') }}
+        </p>
+
+        <ul v-else class="canl__table">
+          <li
+            v-for="entry in salesByProduct"
+            :key="entry.product_id"
+            class="canl__row"
+          >
+            <div class="canl__row-body">
+              <div class="canl__row-name">{{ entry.product_name }}</div>
+              <div class="canl__row-sub">{{ unitsLabelFor(entry) }}</div>
+            </div>
+            <div class="canl__row-revenue">
+              {{ formatPrice(entry.revenue_cents) }}
+            </div>
+          </li>
+        </ul>
       </section>
     </template>
   </div>
@@ -525,6 +595,63 @@ function barHeightPercent(entry: SalesByMonthEntry): number {
   text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* B2 -- sales by product table */
+.canl__table-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.canl__table {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.canl__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+}
+
+.canl__row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.canl__row-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canl__row-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.canl__row-revenue {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
   white-space: nowrap;
 }
 </style>
