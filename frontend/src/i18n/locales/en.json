@@ -728,6 +728,61 @@
         "units": "{n} units",
         "noSales": "No sales yet"
       }
+    },
+    "balance": {
+      "title": "Balance",
+      "subtitle": "Earnings, withdrawals, and payout details",
+      "errorTitle": "Could not load balance",
+      "errorRetry": "Retry",
+      "card": {
+        "title": "Available to withdraw",
+        "frozen": "On hold"
+      },
+      "withdrawals": {
+        "title": "Withdrawal history",
+        "empty": "No withdrawals yet",
+        "newButton": "Request withdrawal",
+        "status": {
+          "pending": "Pending review",
+          "confirmed": "Confirmed",
+          "processing": "Processing",
+          "completed": "Completed",
+          "rejected": "Rejected",
+          "failed": "Failed"
+        },
+        "form": {
+          "title": "Request withdrawal",
+          "amountLabel": "Amount (USD)",
+          "amountPlaceholder": "0.00",
+          "amountHint": "Min {min}, max {max}, available {available}",
+          "submit": "Request",
+          "cancel": "Cancel",
+          "errorBelowMin": "Minimum withdrawal is {min}",
+          "errorAboveMax": "Maximum withdrawal is {max}",
+          "errorInsuff": "Amount exceeds available balance ({available})",
+          "errorInsuffCard": "Insufficient balance",
+          "errorPayout": "Configure payout details first",
+          "error": "Could not create withdrawal",
+          "successToast": "Withdrawal request submitted"
+        }
+      },
+      "payout": {
+        "title": "Payout details",
+        "empty": "No payout details set yet",
+        "editButton": "Edit details",
+        "form": {
+          "title": "Edit payout details",
+          "label": "Payout details (JSON)",
+          "placeholder": "{\n  \"method\": \"iban\",\n  \"iban\": \"...\"\n}",
+          "hint": "Free-form JSON object. Replaces existing details on save.",
+          "submit": "Save",
+          "cancel": "Cancel",
+          "errorJson": "Must be valid JSON",
+          "errorObject": "Must be a JSON object",
+          "error": "Could not save payout details",
+          "successToast": "Payout details updated"
+        }
+      }
     }
   }
 }
