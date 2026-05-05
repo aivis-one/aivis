@@ -914,30 +914,47 @@ case_update() {
     }
     echo -e "${GREEN}✓ Migrations applied${NC}"
 
-    # Seed Platform user (idempotent).
+    # Seed Platform user BEFORE tests (singleton row some tests rely on).
     echo ""
     echo "Seeding Platform user..."
     docker compose exec -T app python scripts/seed_platform.py
 
-    # Seed legal documents (idempotent; reads frontend/public/legal/*.html).
+    # ----------------------------------------------------------------------
+    # Run tests, THEN re-seed data fixtures.
+    #
+    # Why this order:
+    #   pytest runs against the same Postgres instance the dev site reads
+    #   from. Some test files (e.g. tests/test_onboarding.py) wipe rows in
+    #   tables they share with seed scripts -- documents, signings, etc.
+    #   If we seed BEFORE pytest, those wipes destroy seed data and the
+    #   dev site comes back up with empty tables (login passes, onboarding
+    #   /docs returns []).
+    #
+    # Why the dance with pytest_status:
+    #   Even when tests fail, we still re-seed so the dev environment stays
+    #   usable while the dev fixes the code. The test failure is propagated
+    #   AFTER the seeds run, so `cbshome update` still exits non-zero on a
+    #   broken commit -- it just leaves a working dev DB behind.
+    # ----------------------------------------------------------------------
+    echo ""
+    echo "Running backend tests..."
+    pytest_status=0
+    docker compose exec -T app python -m pytest tests/ -v --tb=short || pytest_status=$?
+
+    # Always re-seed -- tests may have wiped shared tables.
     echo ""
     echo "Seeding legal documents..."
     docker compose exec -T app python scripts/seed_documents.py
 
-    # Seed storefront (idempotent; dev/staging fixtures).
     echo ""
     echo "Seeding storefront..."
     docker compose exec -T app python -m scripts.seed_storefront
 
-    # Seed test accounts (idempotent; investor / company / agent / staff).
     echo ""
     echo "Seeding test accounts..."
     docker compose exec -T app python -m scripts.seed_test_accounts
 
-    # Run backend tests.
-    echo ""
-    echo "Running backend tests..."
-    if docker compose exec -T app python -m pytest tests/ -v --tb=short; then
+    if [ $pytest_status -eq 0 ]; then
         echo -e "${GREEN}✓ All tests passed${NC}"
     else
         echo -e "${RED}✗ Tests failed -- app is running but code may be broken${NC}"

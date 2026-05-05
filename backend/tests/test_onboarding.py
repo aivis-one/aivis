@@ -15,10 +15,6 @@
 #
 # Email prefix: "onb_" -- unique to this test file, cleaned up in fixture.
 #
-# The cleanup fixture also wipes documents + document_signings. Otherwise
-# the rows seeded by install_cbshome.sh would (a) clash with active docs
-# this test tries to create and (b) skew the onboarding_complete assertion.
-#
 # F5.1 BP-15 NOTE.
 #   submit_kyc() now calls maybe_complete_onboarding() right after the
 #   step advance. That means tests asserting kyc_done after submit MUST
@@ -27,6 +23,22 @@
 #   This matches production reality: documents are seeded by
 #   seed_documents.py during cbshome update, long before any user
 #   reaches the KYC step.
+#
+# CLEANUP POLICY (F5.1 audit follow-up).
+#   Earlier versions of this fixture ran `delete(Document)` and
+#   `delete(DocumentSigning)` -- a full table wipe. That ran against the
+#   shared dev Postgres on every `cbshome update` (because pytest in the
+#   update flow points at the same DB), so a real legal documents table
+#   would be empty after every CI run. Result: the seed_documents step
+#   that ran BEFORE pytest was effectively useless; users hit
+#   /onboarding/docs and saw an empty list.
+#
+#   The fixture now scopes both deletes to test users (email prefix
+#   onb_): we delete only signings authored by test users and only
+#   documents whose `created_by` is a test staff user. install_cbshome.sh
+#   was independently changed to re-seed AFTER pytest as defense in
+#   depth, but this scoped fixture is the actual fix -- destructive table
+#   wipes have no business running on a shared DB.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
@@ -54,22 +66,59 @@ def webhook_headers() -> dict[str, str]:
     return {"X-Webhook-Secret": settings.kyc_webhook_secret}
 
 
-async def _cleanup_documents(session: AsyncSession) -> None:
-    """Wipe documents + signings. Seed rows from install_cbshome.sh would
-    otherwise collide with active documents these tests create and also
-    skew the onboarding_complete assertion."""
-    await session.execute(delete(DocumentSigning))
-    await session.execute(delete(Document))
+async def _cleanup_test_documents(session: AsyncSession) -> None:
+    """Remove signings + documents owned by users with EMAIL_PREFIX.
+
+    Order matters:
+      1. Resolve test user ids (rolled-back stale state would block the
+         credentials JSONB lookup, so rollback first).
+      2. Delete signings authored by those users (FK on user_id).
+      3. Delete documents whose `created_by` is one of those users (test
+         staff users created via create_staff_user). Real seeded
+         documents have `created_by` set to the Platform user, so they
+         survive untouched.
+      4. Commit -- the autouse fixture runs in its own session, separate
+         from the per-test transaction.
+
+    No-op when no test users exist (clean fresh DB).
+    """
+    await session.rollback()
+
+    user_ids_stmt = select(User.id).where(
+        User.credentials["email"]["email"]
+        .as_string()
+        .like(f"{EMAIL_PREFIX}%")
+    )
+    result = await session.execute(user_ids_stmt)
+    test_user_ids = [row[0] for row in result.all()]
+
+    if not test_user_ids:
+        return
+
+    await session.execute(
+        delete(DocumentSigning).where(
+            DocumentSigning.user_id.in_(test_user_ids)
+        )
+    )
+    await session.execute(
+        delete(Document).where(Document.created_by.in_(test_user_ids))
+    )
     await session.commit()
 
 
 @pytest.fixture(autouse=True)
 async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean docs + test users before and after each test."""
-    await _cleanup_documents(db_session)
+    """Scoped cleanup -- removes only this file's test data.
+
+    Runs both pre-test (in case a previous run died mid-test and left
+    stragglers under EMAIL_PREFIX) and post-test (normal teardown).
+    Documents must be deleted before users: cleanup_test_users blows
+    the User rows away and we lose the join key for Document.created_by.
+    """
+    await _cleanup_test_documents(db_session)
     await cleanup_test_users(db_session, EMAIL_PREFIX)
     yield
-    await _cleanup_documents(db_session)
+    await _cleanup_test_documents(db_session)
     await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
@@ -149,6 +198,10 @@ async def test_full_onboarding_flow(
     BP-15 layout: documents are seeded BEFORE the user reaches KYC, mirroring
     the production flow where seed_documents.py populates the legal table
     during cbshome update -- long before any user clicks "Start verification".
+
+    Test docs are created with required_for_roles=["investor"] so they
+    don't shadow real seeded rows for other roles -- the scoped cleanup
+    fixture only removes documents this test created.
     """
     email = f"{EMAIL_PREFIX}full@example.com"
 
@@ -432,7 +485,14 @@ async def test_kyc_approval_advances_step(
 async def test_kyc_submit_no_docs_auto_completes(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """BP-15: submit_kyc() with zero required docs -> onboarding_complete.
+    """BP-15: submit_kyc() with zero required docs for the user's role.
+
+    Role 'company' is used here precisely because the seeded
+    company_agreement is now the only company-required doc -- and the
+    scoped cleanup leaves it intact. To exercise the no-docs branch we
+    register the user as 'investor', then change the role at DB level to
+    'agent_unused' (a string the legal seed never references) so the
+    `required_for_roles.contains([role])` lookup returns nothing.
 
     Reproduces the production hang where the legal table held no active
     rows for the user's role. Before BP-15, the user advanced to kyc_done,
@@ -444,9 +504,7 @@ async def test_kyc_submit_no_docs_auto_completes(
     email = f"{EMAIL_PREFIX}nodocs@example.com"
     data = await register_user(client, email=email)
     token = data["session_token"]
-
-    # Cleanup fixture wipes the documents table at test start, so the role
-    # has zero active required documents -- exactly the BP-15 trigger.
+    user_id = data["user"]["id"]
 
     # Fast-track to role_selected.
     code = await _get_verification_code(db_session, email)
@@ -472,14 +530,29 @@ async def test_kyc_submit_no_docs_auto_completes(
         headers=auth_headers(token),
     )
 
-    # Submit KYC -- with no active docs, step must auto-advance to complete.
+    # Forcibly set role to a string the legal seed never references so
+    # documents.required_for_roles can't match anything. We do this via
+    # raw SQL because the API would reject an invalid role enum value.
+    await db_session.rollback()
+    user = await db_session.get(User, user_id)
+    assert user is not None
+    user.role = "agent_unused"
+    await db_session.commit()
+
+    # Submit KYC -- no docs match this fake role, so step must auto-advance.
     resp = await client.post(
         "/api/v1/kyc/submit", headers=auth_headers(token)
     )
     assert resp.status_code == 201
 
-    step = await _get_step(client, token)
-    assert step == "onboarding_complete"
+    # Read step from the DB directly: GET /users/me would try to
+    # serialize the bogus 'agent_unused' role through UserResponse,
+    # which may or may not validate strictly depending on the schema.
+    # The DB-level assertion is what we actually care about anyway.
+    await db_session.rollback()
+    user_after = await db_session.get(User, user_id)
+    assert user_after is not None
+    assert user_after.onboarding_step == "onboarding_complete"
 
 
 @pytest.mark.asyncio
