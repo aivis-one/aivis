@@ -666,6 +666,45 @@
         "desc": "Contact support to add products to your company."
       },
       "editViaSupport": "Product editing is handled via support."
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Your company profile (read-only)",
+      "errorTitle": "Could not load settings",
+      "errorRetry": "Retry",
+      "status": {
+        "active": "Active",
+        "hidden": "Hidden",
+        "archived": "Archived"
+      },
+      "profile": {
+        "title": "Profile",
+        "description": "Description",
+        "status": "Status"
+      },
+      "pricing": {
+        "title": "Pricing & supply",
+        "pricePerUnit": "Price per unit",
+        "totalSupply": "Total supply",
+        "sharesPerOption": "Shares per option"
+      },
+      "distribution": {
+        "title": "Distribution config",
+        "empty": "No distribution config set."
+      },
+      "links": {
+        "title": "Media",
+        "logo": "Logo",
+        "cover": "Cover image",
+        "promoVideo": "Promo video",
+        "presentation": "Presentation",
+        "open": "Open"
+      },
+      "editViaSupport": "To edit your company profile, contact support.",
+      "actions": {
+        "title": "Account",
+        "logout": "Sign out"
+      }
     }
   }
 }
