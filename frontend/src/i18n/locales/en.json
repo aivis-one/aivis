@@ -655,6 +655,17 @@
         "title": "Recent activity",
         "empty": "No recent activity yet"
       }
+    },
+    "products": {
+      "title": "Products",
+      "subtitle": "Your products on the marketplace",
+      "errorTitle": "Could not load products",
+      "errorRetry": "Retry",
+      "empty": {
+        "title": "No products yet",
+        "desc": "Contact support to add products to your company."
+      },
+      "editViaSupport": "Product editing is handled via support."
     }
   }
 }
