@@ -246,10 +246,20 @@ export type { ReversePaymentRequest } from './generated'
 export type { ReversalResponse } from './generated'
 
 // ---------------------------------------------------------------------------
-// Staff: withdrawals (Sprint 6.3)
+// Withdrawals + payout details (Sprint 6.3)
+//
+// Mix of user-side and staff-side schemas:
+//   - User:  WithdrawalResponse, WithdrawalListResponse,
+//            PayoutDetailsResponse  (consumed by F5.2 B3/B4 in
+//            CompanyBalanceView and api/{withdrawals,users}.ts)
+//   - Staff: RejectWithdrawalRequest (consumed by staff queue UI)
 // ---------------------------------------------------------------------------
 
 export type { WithdrawalResponse } from './generated'
+
+export type { WithdrawalListResponse } from './generated'
+
+export type { PayoutDetailsResponse } from './generated'
 
 export type { RejectWithdrawalRequest } from './generated'
 
