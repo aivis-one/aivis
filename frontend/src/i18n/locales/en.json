@@ -629,5 +629,32 @@
         "desc": "Profile, preferences, and agent programme"
       }
     }
+  },
+  "comp": {
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Performance overview",
+      "errorTitle": "Could not load dashboard",
+      "errorRetry": "Retry",
+      "balance": {
+        "title": "Balance",
+        "frozen": "On hold"
+      },
+      "pool": {
+        "title": "Option pool",
+        "equity": "equity",
+        "consumed": "consumed",
+        "remaining": "remaining"
+      },
+      "metrics": {
+        "revenue": "Total revenue",
+        "optionsSold": "Options sold",
+        "products": "Products"
+      },
+      "recent": {
+        "title": "Recent activity",
+        "empty": "No recent activity yet"
+      }
+    }
   }
 }
