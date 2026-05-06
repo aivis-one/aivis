@@ -1834,5 +1834,33 @@ function reset(): void {
 |---|----------|-----------|-------|
 | TD-F13 | Заменить `api.patch<UserResponse>('/api/v1/users/me', { profile, language })` на `updateMe({ profile, language })` в `OnboardingProfileView.vue`. Чистый code swap, без изменения поведения, тип отдаётся через UserResponse от updateMe | 🟢 | В любом следующем grooming-коммите (до F5) |
 
+### TD-F14: Withdrawal bounds duplicated frontend↔backend
+
+`CompanyBalanceView.vue` (F5.2 B4) объявляет `MIN_WITHDRAWAL_CENTS = 1000` / `MAX_WITHDRAWAL_CENTS = 10_000_000` как локальные константы. Реальные значения живут в `backend/app/core/config.py` (`min_withdrawal_cents` / `max_withdrawal_cents`). Если backend поменяет лимит — frontend выдаст устаревшую валидацию + неточный hint в форме («Min $10.00, max $100,000.00»), пользователь упрётся в backend 400 или, наоборот, не сможет ввести валидную сумму.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F14 | Добавить `GET /api/v1/config` endpoint (или включить `withdrawal_min_cents` / `withdrawal_max_cents` в `/company/dashboard` response). Frontend читает значения при mount или хранит в `companyDashboard` store. Заменить локальные константы в `CompanyBalanceView` на reactive bindings. Code review F5.2 follow-up | 🟡 | Перед prod release / после backend `/config` endpoint'а |
+
+### TD-F15: vue-i18n placeholder pitfall в локалях
+
+Во время F5.2 B4 (Edit payout details bottom sheet) обнаружен runtime SyntaxError vue-i18n при первом вызове `t('comp.balance.payout.form.placeholder')`. Причина: ключ содержал JSON-пример `"{\\n  \\"method\\": \\"iban\\"\\n}"` — vue-i18n считает `{` началом плейсхолдера для интерполяции (`{name}`) и требует валидный идентификатор после. `{\\n` → SyntaxError на лексере. В production build error съедается Vue error-boundary молча — рендер ломается без diagnostic, кнопка визуально «мёртвая», повторные клики не дают эффекта. В dev-режиме видно сразу.
+
+**Правило:** любой `{` в локали-строке должен быть либо валидным `{name}` плейсхолдером для известного параметра, либо escape'нут как `{{` (рендерится как литерал `{`). Никаких JSON-примеров, кодовых snippet'ов, CSS-фрагментов, формул в локалях.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F15a | Документировать правило в Style Guide / Frontend.md секцию `7. LLM Code Review Guide`. Любая локаль-строка с `{` без валидного `{name}` идентификатора — баг | 🟡 | В следующий grooming-коммит |
+| TD-F15b | Добавить CI-проверку `pnpm i18n:lint` (или ручной `pre-commit` hook): regex-сканер всех `*.json` локалей на подозрительные `{` (не за `{{` escape, не часть `{validIdent}`). Альтернатива — vue-i18n предоставляет `@intlify/eslint-plugin-vue-i18n`, у которого есть rule `valid-message-syntax` | 🟢 | После TD-F15a, опционально |
+| TD-F15c | F5.2 B4 baseline: `comp.balance.payout.form.placeholder = "Enter JSON object"` (заменено с JSON-примера). Если позже найдутся другие случаи «строка с `{`» в `{en,ru,de,ar}.json` — починить точечно | 🟢 | На каждом ru/de/ar catchup |
+
+
+
+---
+
+*Version 3.7 | 2026-05-05 | Phase F5 (Company UI) closed. F5.1 deployed: dashboard with hero / balance / pool widget / metrics row / recent transactions. F5.2 deployed: B0 Products list (read-only), B1+B2 Analytics (top metrics + sales-by-month chart + sales-by-product table), B3+B4 Balance (passive balance card + withdrawals history with status badges + payout details preview + write forms for POST /withdrawals and PUT /users/me/payout-details), B5 Settings (read-only profile). Code review TD batch: +TD-F14 (withdrawal bounds frontend↔backend duplication) + TD-F15 (vue-i18n placeholder pitfall, обнаружен в B4 — JSON-пример в локали ломал bottom sheet рендер). en.json: +comp.{dashboard,products,settings,analytics,balance}.* (~75 keys). ru / de / ar — i18n catchup отложен до отдельного спринта (объём + native-speaker review).*
+
+*Version 3.6 | 2026-05-03 | Sprint 4.5 prep: Phase F5 re-exports в types.ts (CompanyDashboardResponse, CompanyAnalyticsResponse, CompanyTransactionResponse, PoolEmbedResponse, SalesByMonthEntry, SalesByProductEntry). `getMyCompany()` wrapper в companies.ts (singular vs plural file split mirrors backend module split: `companies` для public storefront + `/me`, `company` для company-side dashboard + analytics). Frontend готов к Phase F5 имплементации.*
+
 
 
