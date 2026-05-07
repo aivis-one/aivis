@@ -5,20 +5,23 @@
 # ==============================================================================
 #
 # WHAT THIS SCRIPT DOES:
-#   1.  Pre-flight checks (OS, RAM, disk, DNS)
+#   1.  Pre-flight checks (OS, RAM, disk, DNS for 4 domains)
 #   2.  Fix locale (en_US.UTF-8)
-#   3.  Install system deps (Docker, Nginx, Certbot, UFW, git, dnsutils)
+#   3.  Install system deps (Docker, Nginx, Certbot, UFW, git, dnsutils,
+#       apache2-utils, mc binary)
 #   4.  Configure firewall (22/80/443 only)
 #   5.  Create deploy user `cbshome` (non-root, docker group)
 #   6.  Generate SSH deploy key -> add to GitHub -> clone repo
-#   7.  Generate .env with random passwords
+#   7.  Generate .env with random passwords (incl. MinIO secrets)
 #   8.  Prompt for sensitive secrets (bot token, API keys)
 #   9.  Configure Nginx reverse proxy (api.cbshome.org, cbshome.org)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
 #   11. Install and configure mail server (Postfix + OpenDKIM)
-#   12. Start Docker stack -> healthcheck -> migrations -> seed Platform user
-#   13. Create `cbshome` management script -> symlink /usr/local/bin/cbshome
-#   14. Set up backup cron (4 AM daily, 7-day rotation)
+#   12. Set up MinIO Web UI proxy (storage-mc-admin.cbshome.org + basic-auth)
+#   13. Start Docker stack -> healthcheck -> mc alias on host -> migrations
+#       -> seed Platform user
+#   14. Create `cbshome` management script -> symlink /usr/local/bin/cbshome
+#   15. Set up backup cron (4 AM daily, 7-day rotation)
 #
 # USAGE:
 #   curl -fsSL https://raw.githubusercontent.com/aivis-one/cbshome/main/scripts/install_cbshome.sh | bash
@@ -26,6 +29,10 @@
 # REQUIREMENTS:
 #   - Ubuntu 22.04+ (fresh VPS, root access)
 #   - Domain cbshome.org pointing to this server
+#   - Subdomains (A records to server IP):
+#       api.cbshome.org
+#       mail.cbshome.org
+#       storage-mc-admin.cbshome.org
 #   - GitHub repository aivis-one/cbshome exists
 # ==============================================================================
 
@@ -41,6 +48,7 @@ DEPLOY_USER="cbshome"
 API_DOMAIN="api.cbshome.org"
 FRONTEND_DOMAIN="cbshome.org"
 MAIL_DOMAIN="mail.cbshome.org"
+STORAGE_DOMAIN="storage-mc-admin.cbshome.org"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
 
@@ -122,19 +130,28 @@ preflight_checks() {
         success "Disk: ${FREE_GB}GB free ✓"
     fi
 
-    # DNS check
-    local RESOLVED_IP
-    RESOLVED_IP=$(dig +short "$API_DOMAIN" 2>/dev/null | head -1 || true)
+    # DNS check for all 4 domains. We warn (not error) on mismatch / missing
+    # so that an operator running the script on a fresh VPS without all DNS
+    # records yet can still see what's missing and fix it before certbot
+    # attempts HTTP-01 challenge.
     local SERVER_IP
     SERVER_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || true)
-
-    if [ -z "$RESOLVED_IP" ]; then
-        warn "DNS: $API_DOMAIN does not resolve. SSL setup may fail."
-    elif [ "$RESOLVED_IP" = "$SERVER_IP" ]; then
-        success "DNS: $API_DOMAIN -> $RESOLVED_IP ✓"
-    else
-        warn "DNS: $API_DOMAIN -> $RESOLVED_IP (server IP: $SERVER_IP). SSL may fail."
+    if [ -z "$SERVER_IP" ]; then
+        warn "Could not detect server's public IP via ifconfig.me"
     fi
+
+    local DOMAIN
+    for DOMAIN in "$API_DOMAIN" "$FRONTEND_DOMAIN" "$MAIL_DOMAIN" "$STORAGE_DOMAIN"; do
+        local RESOLVED_IP
+        RESOLVED_IP=$(dig +short "$DOMAIN" 2>/dev/null | head -1 || true)
+        if [ -z "$RESOLVED_IP" ]; then
+            warn "DNS: $DOMAIN does not resolve. Add A record -> $SERVER_IP. SSL setup will fail."
+        elif [ -n "$SERVER_IP" ] && [ "$RESOLVED_IP" = "$SERVER_IP" ]; then
+            success "DNS: $DOMAIN -> $RESOLVED_IP ✓"
+        else
+            warn "DNS: $DOMAIN -> $RESOLVED_IP (server IP: $SERVER_IP). SSL may fail."
+        fi
+    done
 
     success "Pre-flight checks complete"
 }
@@ -194,9 +211,12 @@ apt-get install -y \
     dnsutils \
     software-properties-common \
     python3-certbot-nginx \
+    apache2-utils \
     > /dev/null 2>&1
 
-success "Base packages installed"
+# apache2-utils provides htpasswd, used to create basic-auth file for the
+# MinIO Console nginx proxy (storage-mc-admin.cbshome.org).
+success "Base packages installed (incl. apache2-utils for htpasswd)"
 
 # Docker
 if command -v docker &>/dev/null; then
@@ -238,6 +258,20 @@ else
     log "Installing Certbot..."
     apt-get install -y certbot python3-certbot-nginx > /dev/null 2>&1
     success "Certbot installed"
+fi
+
+# MinIO Client (mc) on host -- used by management script for backup,
+# storage stats, and (in later iterations) reconcile commands. Installed
+# host-side (not via docker compose run) so backup cron works even when
+# the docker stack is degraded.
+if command -v mc &>/dev/null; then
+    success "mc already installed: $(mc --version 2>/dev/null | head -1)"
+else
+    log "Installing MinIO Client (mc)..."
+    curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc \
+        -o /usr/local/bin/mc
+    chmod +x /usr/local/bin/mc
+    success "mc installed: $(mc --version 2>/dev/null | head -1)"
 fi
 
 # ==============================================================================
@@ -332,6 +366,12 @@ gen_secret() {
     openssl rand -base64 64 | tr -d '\n'
 }
 
+# Short identifier (16 chars) for usernames / access keys -- MinIO root user
+# and service account key, where 32-char random looks unwieldy in admin UIs.
+gen_short_id() {
+    openssl rand -base64 32 | tr -d "=+/" | cut -c1-16
+}
+
 log "Generating .env with random passwords..."
 
 # Generate all secrets ONCE before writing -- ensures DATABASE_URL and
@@ -341,6 +381,16 @@ REDIS_PASS=$(gen_password)
 SECRET=$(gen_secret)
 KYC_SECRET=$(gen_password)
 CRYPTO_SECRET=$(gen_password)
+
+# MinIO secrets. Root credentials are used by MinIO server itself and by
+# minio-init to bootstrap; service account (ACCESS/SECRET) is what backend
+# actually uses at runtime. CONSOLE_BASIC_AUTH password gates nginx in
+# front of the Web UI.
+MINIO_ROOT_USER_VAL=$(gen_short_id)
+MINIO_ROOT_PASS=$(gen_password)
+MINIO_ACCESS_KEY_VAL=$(gen_short_id)
+MINIO_SECRET_KEY_VAL=$(gen_password)
+MINIO_CONSOLE_PASS=$(gen_password)
 
 # Write atomically via temp file -- if interrupted, .env is never half-written.
 cat > "${ENV_FILE}.tmp" << ENV_TEMPLATE
@@ -364,6 +414,27 @@ POSTGRES_PASSWORD=${DB_PASS}
 REDIS_PASSWORD=${REDIS_PASS}
 REDIS_URL=redis://:${REDIS_PASS}@redis:6379/0
 
+# -- MinIO (S3-compatible object storage) --
+# Root credentials -- consumed by MinIO server (docker-compose) and minio-init
+# bootstrap only. Backend MUST use the service account below, never root.
+MINIO_ROOT_USER=${MINIO_ROOT_USER_VAL}
+MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASS}
+# Backend service account (created by minio-init).
+MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY_VAL}
+MINIO_SECRET_KEY=${MINIO_SECRET_KEY_VAL}
+# Endpoint as seen from inside the docker network.
+MINIO_ENDPOINT=http://minio:9000
+MINIO_BUCKET=cbshome-attachments
+MINIO_REGION=us-east-1
+# Presigned URL TTL: 15 min for auth flow, 24h for public flow.
+MINIO_PRESIGNED_TTL_AUTH=900
+MINIO_PRESIGNED_TTL_PUBLIC=86400
+# Hard limit on uploaded file size (MB). Mirrored in nginx client_max_body_size
+# and in backend Pydantic validators (next iteration).
+MINIO_MAX_FILE_SIZE_MB=100
+# Password for nginx basic-auth in front of MinIO Web UI (login is fixed: admin).
+MINIO_CONSOLE_BASIC_AUTH_PASSWORD=${MINIO_CONSOLE_PASS}
+
 # -- Auth --
 SECRET_KEY=${SECRET}
 SESSION_TTL_DAYS=30
@@ -371,6 +442,12 @@ MAX_CONCURRENT_SESSIONS=5
 
 # -- Telegram --
 TELEGRAM_BOT_TOKEN=PLACEHOLDER
+
+# -- Telegram Auth Security --
+AUTH_RATE_LIMIT_MAX_REQUESTS=5
+AUTH_RATE_LIMIT_WINDOW_SECONDS=60
+AUTH_INIT_DATA_TTL_SECONDS=300
+AUTH_CLOCK_SKEW_SECONDS=60
 
 # -- KYC (SumSub) --
 SUMSUB_API_KEY=PLACEHOLDER
@@ -405,7 +482,7 @@ AGENT_APPLICATION_COOLDOWN_DAYS=30
 ENV_TEMPLATE
 
 mv "${ENV_FILE}.tmp" "$ENV_FILE"
-success ".env generated with random passwords"
+success ".env generated with random passwords (incl. MinIO secrets)"
 
 # Interactive secrets
 echo ""
@@ -438,11 +515,19 @@ success ".env secured (chmod 600)"
 
 section "Nginx Configuration"
 
-# API (backend)
+# API (backend).
+#
+# client_max_body_size 100M -- mirrors MINIO_MAX_FILE_SIZE_MB hard limit
+# (see Refactor 2 §1.6). Multipart attachment upload endpoint
+# `POST /api/v1/staff/companies/{id}/attachments` arrives in a later
+# iteration; setting the limit now means we don't have to come back and
+# reload nginx when the endpoint goes live.
 cat > /etc/nginx/sites-available/cbshome-api << NGINX_API
 server {
     listen 80;
     server_name ${API_DOMAIN};
+
+    client_max_body_size 100M;
 
     location / {
         proxy_pass http://127.0.0.1:${APP_PORT};
@@ -622,6 +707,81 @@ read -r < /dev/tty
 success "Mail server setup complete"
 
 # ==============================================================================
+# MINIO STORAGE -- Web UI proxy (nginx + basic-auth + Let's Encrypt)
+# ==============================================================================
+#
+# Sets up host-side infrastructure that lives in front of the MinIO Console.
+# The MinIO server itself runs as a docker container (started below in the
+# Docker Stack section), but its 9001 console port is bound to loopback only.
+# Public access happens through nginx at https://storage-mc-admin.cbshome.org
+# with HTTP basic-auth (login: admin, password: MINIO_CONSOLE_BASIC_AUTH_PASSWORD).
+#
+# The mc host alias is configured later, once the docker stack is up and
+# MinIO is healthy -- `mc alias set` validates the endpoint.
+# ==============================================================================
+
+section "MinIO Storage (Web UI proxy)"
+
+# 1. Basic-auth file: login is the fixed string `admin`, password is the
+#    generated MINIO_CONSOLE_BASIC_AUTH_PASSWORD from .env. -c creates /
+#    truncates the file. Permissions: readable by www-data so nginx can use it.
+log "Creating basic-auth file for MinIO Console..."
+htpasswd -cb /etc/nginx/.htpasswd-storage-mc-admin admin "$MINIO_CONSOLE_PASS" > /dev/null 2>&1
+chmod 640 /etc/nginx/.htpasswd-storage-mc-admin
+chown root:www-data /etc/nginx/.htpasswd-storage-mc-admin
+success "Basic-auth file: /etc/nginx/.htpasswd-storage-mc-admin"
+
+# 2. Nginx site config for storage-mc-admin.cbshome.org.
+#    - basic-auth gates everything before MinIO sees it.
+#    - WebSocket upgrade headers are required: the MinIO Console uses WS
+#      for real-time bucket updates.
+#    - client_max_body_size 100M matches MINIO_MAX_FILE_SIZE_MB (Refactor 2 §1.6),
+#      so Staff can upload files up to that size through the Web UI.
+cat > /etc/nginx/sites-available/cbshome-storage-mc-admin << NGINX_STORAGE
+server {
+    listen 80;
+    server_name ${STORAGE_DOMAIN};
+
+    client_max_body_size 100M;
+
+    auth_basic "MinIO Console";
+    auth_basic_user_file /etc/nginx/.htpasswd-storage-mc-admin;
+
+    location / {
+        proxy_pass http://127.0.0.1:9001;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # WebSocket upgrade -- MinIO Console pushes real-time updates.
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_read_timeout 60s;
+        proxy_connect_timeout 10s;
+    }
+}
+NGINX_STORAGE
+
+ln -sf /etc/nginx/sites-available/cbshome-storage-mc-admin \
+    /etc/nginx/sites-enabled/cbshome-storage-mc-admin
+
+nginx -t && systemctl reload nginx
+success "Nginx configured for $STORAGE_DOMAIN"
+
+# 3. SSL via Let's Encrypt for the new subdomain.
+certbot --nginx \
+    -d "$STORAGE_DOMAIN" \
+    --non-interactive \
+    --agree-tos \
+    --email "admin@${FRONTEND_DOMAIN}" \
+    --redirect || warn "SSL setup for $STORAGE_DOMAIN failed. Run manually: certbot --nginx -d $STORAGE_DOMAIN"
+
+success "SSL configured for $STORAGE_DOMAIN"
+
+# ==============================================================================
 # START DOCKER STACK
 # ==============================================================================
 
@@ -648,6 +808,21 @@ for i in $(seq 1 24); do
 done
 echo ""
 
+# ------------------------------------------------------------------------------
+# mc alias on host -- now that MinIO is healthy (app waited for it via
+# depends_on chain), we can set up the host-side mc alias used by
+# `cbshome backup` and `cbshome storage` commands. mc alias set validates
+# the endpoint, so it only runs after the stack is up.
+# ------------------------------------------------------------------------------
+log "Configuring mc alias 'local' on host..."
+mkdir -p /root/.mc
+chmod 700 /root/.mc
+mc alias set local http://127.0.0.1:9000 \
+    "$MINIO_ROOT_USER_VAL" \
+    "$MINIO_ROOT_PASS" > /dev/null 2>&1
+chmod 600 /root/.mc/config.json
+success "mc alias 'local' configured (config: /root/.mc/config.json)"
+
 # Run Alembic migrations
 log "Running database migrations..."
 docker compose exec -T app python -m alembic upgrade head
@@ -673,6 +848,28 @@ log "Seeding test accounts (dev fixtures)..."
 docker compose exec -T app python -m scripts.seed_test_accounts
 success "Test accounts seeded"
 
+# ------------------------------------------------------------------------------
+# TODO(refactor-2-iter-2): seed platform default templates
+#
+# Blocked by:
+#   - backend/scripts/seed_platform_templates.py (next iteration)
+#   - backend/seed/templates/_default/<kind>/<lang>/{template.html,
+#     logo.png, signature.png, stamp.png} directory tree (next iteration)
+#
+# Implementation (when unblocked, place between seed_test_accounts above
+# and the management script section below):
+#
+#   log "Seeding platform default templates to MinIO..."
+#   mc cp -r "$INSTALL_BASE/repo/backend/seed/templates/_default/" \
+#       local/cbshome-attachments/_platform/templates/
+#
+#   log "Seeding platform default templates to DB..."
+#   docker compose exec -T app python backend/scripts/seed_platform_templates.py
+#   success "Platform default templates seeded"
+#
+# Reference: CBSHOME-Refactor-Company-Docs.md §1.4 + §4.9
+# ------------------------------------------------------------------------------
+
 # ==============================================================================
 # MANAGEMENT SCRIPT
 # ==============================================================================
@@ -691,6 +888,7 @@ INSTALL_BASE="/opt/cbshome"
 COMPOSE_DIR="$INSTALL_BASE/repo"
 API_DOMAIN="api.cbshome.org"
 FRONTEND_DOMAIN="cbshome.org"
+STORAGE_DOMAIN="storage-mc-admin.cbshome.org"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -732,6 +930,18 @@ case_status() {
     fi
     echo ""
 
+    echo -e "${CYAN}=== MinIO ===${NC}"
+    if docker compose ps --status running --services 2>/dev/null | grep -q "^minio$"; then
+        if curl -sf --max-time 5 "http://127.0.0.1:9000/minio/health/live" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ MinIO healthy (S3 API on 127.0.0.1:9000)${NC}"
+        else
+            echo -e "${RED}✗ MinIO container running but /minio/health/live not responding${NC}"
+        fi
+    else
+        echo -e "${RED}✗ MinIO container not running${NC}"
+    fi
+    echo ""
+
     echo -e "${CYAN}=== External Access ===${NC}"
     if curl -sf --max-time 5 "https://${API_DOMAIN}/health" > /dev/null 2>&1; then
         echo -e "${GREEN}✓ https://${API_DOMAIN}/health OK${NC}"
@@ -743,6 +953,14 @@ case_status() {
     else
         echo -e "${YELLOW}⚠ https://${FRONTEND_DOMAIN} not available (frontend not deployed yet)${NC}"
     fi
+    # storage-mc-admin -- expect 401 (basic-auth gate); 401 means nginx is
+    # serving the site correctly, anything else is broken.
+    STORAGE_CODE=$(curl -sk --max-time 5 -o /dev/null -w "%{http_code}" "https://${STORAGE_DOMAIN}/" 2>/dev/null || echo "000")
+    if [ "$STORAGE_CODE" = "401" ]; then
+        echo -e "${GREEN}✓ https://${STORAGE_DOMAIN} OK (401 -- basic-auth gate active)${NC}"
+    else
+        echo -e "${RED}✗ https://${STORAGE_DOMAIN} unexpected status: $STORAGE_CODE${NC}"
+    fi
 }
 
 # ==============================================================================
@@ -752,12 +970,13 @@ case_status() {
 case_logs() {
     cd_compose
     case "${1:-app}" in
-        app)      docker compose logs -f --tail=100 app ;;
+        app)         docker compose logs -f --tail=100 app ;;
         db|postgres) docker compose logs -f --tail=100 postgres ;;
-        redis)    docker compose logs -f --tail=100 redis ;;
-        frontend) docker compose logs -f --tail=100 frontend 2>/dev/null || echo "Frontend not running" ;;
-        all|"")   docker compose logs -f --tail=100 ;;
-        *)        echo "Usage: cbshome logs [app|db|redis|frontend|all]" ;;
+        redis)       docker compose logs -f --tail=100 redis ;;
+        minio)       docker compose logs -f --tail=100 minio ;;
+        frontend)    docker compose logs -f --tail=100 frontend 2>/dev/null || echo "Frontend not running" ;;
+        all|"")      docker compose logs -f --tail=100 ;;
+        *)           echo "Usage: cbshome logs [app|db|redis|minio|frontend|all]" ;;
     esac
 }
 
@@ -884,7 +1103,7 @@ case_update() {
     # freshly generated types.
     echo "Restarting backend + infra (frontend deferred)..."
     docker compose down
-    docker compose up -d app postgres redis
+    docker compose up -d app postgres redis minio
 
     # Wait for app to be healthy.
     echo ""
@@ -1113,28 +1332,55 @@ case_restart() {
 # ==============================================================================
 # BACKUP
 # ==============================================================================
+#
+# Tarball includes:
+#   - PostgreSQL dump (pg_dump)
+#   - backend/.env
+#   - MinIO bucket snapshot (mc mirror local/cbshome-attachments)
+#
+# Rotation: 7 days. The MinIO mirror step is best-effort -- if mc fails
+# (network blip, MinIO down), we proceed with DB-only backup and warn.
+# ==============================================================================
 
 case_backup() {
     cd_compose
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     BACKUP_DIR="$INSTALL_BASE/backups"
     BACKUP_FILE="$BACKUP_DIR/cbshome_backup_${TIMESTAMP}.tar.gz"
+    DB_DUMP_FILE="/tmp/cbshome_db_${TIMESTAMP}.sql"
+    MINIO_DUMP_DIR="/tmp/cbshome_minio_${TIMESTAMP}"
     mkdir -p "$BACKUP_DIR"
 
     echo "Creating backup..."
 
-    # Dump database.
+    # 1. Dump database.
+    echo "  Dumping PostgreSQL..."
     docker compose exec -T postgres pg_dump \
-        -U cbshome cbshome > "/tmp/cbshome_db_${TIMESTAMP}.sql"
+        -U cbshome cbshome > "$DB_DUMP_FILE"
 
-    # Archive DB dump + .env.
+    # 2. Mirror MinIO bucket (best-effort).
+    echo "  Mirroring MinIO bucket..."
+    mkdir -p "$MINIO_DUMP_DIR"
+    if mc mirror --quiet local/cbshome-attachments "$MINIO_DUMP_DIR/" 2>/dev/null; then
+        MINIO_OBJECTS=$(find "$MINIO_DUMP_DIR" -type f 2>/dev/null | wc -l)
+        echo "  MinIO: $MINIO_OBJECTS objects mirrored"
+    else
+        echo -e "${YELLOW}  ⚠ MinIO mirror failed -- proceeding with DB-only backup${NC}"
+        # Keep the empty dir so tar doesn't choke on a missing path.
+    fi
+
+    # 3. Archive: DB dump + .env + MinIO snapshot.
+    echo "  Creating archive..."
     tar -czf "$BACKUP_FILE" \
         -C /tmp "cbshome_db_${TIMESTAMP}.sql" \
-        -C "$COMPOSE_DIR/backend" ".env"
+        -C "$COMPOSE_DIR/backend" ".env" \
+        -C /tmp "cbshome_minio_${TIMESTAMP}"
 
-    rm -f "/tmp/cbshome_db_${TIMESTAMP}.sql"
+    # 4. Cleanup tmp.
+    rm -f "$DB_DUMP_FILE"
+    rm -rf "$MINIO_DUMP_DIR"
 
-    # Rotate: keep last 7 days.
+    # 5. Rotate: keep last 7 days.
     find "$BACKUP_DIR" -name "cbshome_backup_*.tar.gz" -mtime +7 -delete
 
     echo -e "${GREEN}✓ Backup: $BACKUP_FILE${NC}"
@@ -1270,6 +1516,89 @@ case_nginx() {
 }
 
 # ==============================================================================
+# STORAGE (MinIO)
+# ==============================================================================
+#
+# Subcommands:
+#   stats                            — bucket size + object count
+#   console                          — print Web UI URL + credentials
+#   reconcile <id>                   — sync inbox/ -> attachments/
+#                                      (stub: requires Python in next iter)
+#   reconcile-templates <id>         — sync templates-inbox/ -> templates/
+#                                      (stub: next iter)
+#   reconcile-platform-templates     — sync _platform/templates-inbox/ ...
+#                                      (stub: next iter)
+# ==============================================================================
+
+case_storage() {
+    cd_compose
+    case "${1:-}" in
+        stats)
+            echo -e "${CYAN}=== MinIO Storage Stats ===${NC}"
+            echo ""
+            echo "Bucket size:"
+            mc du local/cbshome-attachments 2>/dev/null || {
+                echo -e "${RED}✗ Cannot reach MinIO via mc alias 'local'${NC}"
+                echo "  Check: mc alias list  |  cbshome status"
+                return 1
+            }
+            echo ""
+            echo "Object count:"
+            local COUNT
+            COUNT=$(mc ls --recursive local/cbshome-attachments 2>/dev/null | wc -l)
+            echo "  $COUNT objects"
+            ;;
+        console)
+            local CONSOLE_PASS ROOT_USER ROOT_PASS
+            CONSOLE_PASS=$(grep "^MINIO_CONSOLE_BASIC_AUTH_PASSWORD=" "$COMPOSE_DIR/backend/.env" | cut -d= -f2-)
+            ROOT_USER=$(grep "^MINIO_ROOT_USER=" "$COMPOSE_DIR/backend/.env" | cut -d= -f2-)
+            ROOT_PASS=$(grep "^MINIO_ROOT_PASSWORD=" "$COMPOSE_DIR/backend/.env" | cut -d= -f2-)
+            echo -e "${CYAN}=== MinIO Console Access ===${NC}"
+            echo ""
+            echo "URL:      https://${STORAGE_DOMAIN}"
+            echo ""
+            echo "Step 1 -- nginx basic-auth:"
+            echo "  Login:    admin"
+            echo "  Password: $CONSOLE_PASS"
+            echo ""
+            echo "Step 2 -- MinIO Console login (root credentials):"
+            echo "  User:     $ROOT_USER"
+            echo "  Password: $ROOT_PASS"
+            ;;
+        reconcile)
+            local CID="${2:-}"
+            if [ -z "$CID" ]; then
+                echo "Usage: cbshome storage reconcile <company_id> [--all|--dry-run|--orphans-only|--broken-only]"
+                exit 1
+            fi
+            echo -e "${YELLOW}Not implemented yet, requires backend/scripts/reconcile_attachments.py from next iteration${NC}"
+            echo "Reference: CBSHOME-Refactor-Company-Docs.md §3.7"
+            ;;
+        reconcile-templates)
+            local CID="${2:-}"
+            if [ -z "$CID" ]; then
+                echo "Usage: cbshome storage reconcile-templates <company_id> [--all|--dry-run]"
+                exit 1
+            fi
+            echo -e "${YELLOW}Not implemented yet, requires backend/scripts/reconcile_templates.py from next iteration${NC}"
+            echo "Reference: CBSHOME-Refactor-Company-Docs.md §4.8"
+            ;;
+        reconcile-platform-templates)
+            echo -e "${YELLOW}Not implemented yet, requires backend/scripts/reconcile_platform_templates.py from next iteration${NC}"
+            echo "Reference: CBSHOME-Refactor-Company-Docs.md §4.9"
+            ;;
+        ""|help|*)
+            echo "Storage commands:"
+            echo "  cbshome storage stats                              — Bucket size + object count"
+            echo "  cbshome storage console                            — Print MinIO Console URL + credentials"
+            echo "  cbshome storage reconcile <company_id>             — Sync inbox -> attachments (stub: next iter)"
+            echo "  cbshome storage reconcile-templates <company_id>   — Sync templates-inbox -> templates (stub: next iter)"
+            echo "  cbshome storage reconcile-platform-templates       — Sync _platform/templates-inbox -> platform (stub: next iter)"
+            ;;
+    esac
+}
+
+# ==============================================================================
 # VERSION
 # ==============================================================================
 
@@ -1372,6 +1701,7 @@ case "$CMD" in
     seed-portfolio) case_seed_portfolio "$@" ;;
     ssl)            case_ssl "$@" ;;
     nginx)          case_nginx "$@" ;;
+    storage)        case_storage "$@" ;;
     version)        case_version ;;
     test-email)     case_test_email "$@" ;;
     help|*)
@@ -1380,34 +1710,41 @@ case "$CMD" in
         echo "Usage: cbshome <command> [options]"
         echo ""
         echo "Monitoring:"
-        echo "  status                    — Docker status + health + external access"
-        echo "  logs [app|db|redis|all]   — View logs (default: app)"
-        echo "  version                   — Git log + runtime versions"
+        echo "  status                                    — Docker + health + external access + MinIO"
+        echo "  logs [app|db|redis|minio|frontend|all]    — View logs (default: app)"
+        echo "  version                                   — Git log + runtime versions"
         echo ""
         echo "Testing:"
-        echo "  test [backend|frontend|all] — Run tests (default: all)"
-        echo "  lint                      — Run ruff + mypy + eslint"
+        echo "  test [backend|frontend|all]               — Run tests (default: all)"
+        echo "  lint                                      — Run ruff + mypy + eslint"
         echo ""
         echo "Deployment:"
-        echo "  update                    — Pull, rebuild, migrate, test, regen-types, restart"
-        echo "  gen-types                 — Regenerate frontend generated.ts from live OpenAPI"
-        echo "  restart [service]         — Restart all or specific service"
+        echo "  update                                    — Pull, rebuild, migrate, test, regen-types, restart"
+        echo "  gen-types                                 — Regenerate frontend generated.ts from live OpenAPI"
+        echo "  restart [service]                         — Restart all or specific service"
         echo ""
         echo "Database:"
-        echo "  db connect                — Open psql session"
-        echo "  db dump                   — Create SQL dump"
-        echo "  db restore <file>         — Restore from dump"
-        echo "  db migrate                — Run Alembic migrations"
-        echo "  seed                      — Seed Platform user + legal docs + storefront + test accounts"
-        echo "  seed --reset              — Reset everything seeded by 'seed' and re-seed"
-        echo "  seed-portfolio <email>    — Dev: fill user's dashboard with deposit + purchases"
+        echo "  db connect                                — Open psql session"
+        echo "  db dump                                   — Create SQL dump"
+        echo "  db restore <file>                         — Restore from dump"
+        echo "  db migrate                                — Run Alembic migrations"
+        echo "  seed                                      — Seed Platform user + legal docs + storefront + test accounts"
+        echo "  seed --reset                              — Reset everything seeded by 'seed' and re-seed"
+        echo "  seed-portfolio <email>                    — Dev: fill user's dashboard with deposit + purchases"
+        echo ""
+        echo "Storage (MinIO):"
+        echo "  storage stats                             — Bucket size + object count"
+        echo "  storage console                           — Print MinIO Console URL + credentials"
+        echo "  storage reconcile <id>                    — Sync inbox -> DB (stub: next iter)"
+        echo "  storage reconcile-templates <id>          — Sync templates-inbox -> DB (stub: next iter)"
+        echo "  storage reconcile-platform-templates      — Sync platform templates (stub: next iter)"
         echo ""
         echo "Maintenance:"
-        echo "  backup                    — Backup DB + .env (7-day rotation)"
-        echo "  ssl renew                 — Renew SSL certificates"
-        echo "  ssl status                — Show certificate info"
-        echo "  nginx reload              — Test config and reload Nginx"
-        echo "  test-email <email>        — Test Mailgun + SMTP delivery"
+        echo "  backup                                    — Backup DB + .env + MinIO (7-day rotation)"
+        echo "  ssl renew                                 — Renew SSL certificates"
+        echo "  ssl status                                — Show certificate info"
+        echo "  nginx reload                              — Test config and reload Nginx"
+        echo "  test-email <email>                        — Test Mailgun + SMTP delivery"
         ;;
 esac
 MANAGE_EOF
@@ -1436,10 +1773,11 @@ echo "╔═══════════════════════�
 echo "║           CBSHOME Installation Complete!         ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo -e "${NC}"
-echo -e "API:      ${CYAN}https://${API_DOMAIN}/health${NC}"
-echo -e "Frontend: ${CYAN}https://${FRONTEND_DOMAIN}${NC}"
+echo -e "API:           ${CYAN}https://${API_DOMAIN}/health${NC}"
+echo -e "Frontend:      ${CYAN}https://${FRONTEND_DOMAIN}${NC}"
+echo -e "MinIO Console: ${CYAN}https://${STORAGE_DOMAIN}${NC}  (login: admin / see .env)"
 echo ""
-echo -e "Management: ${CYAN}cbshome status | cbshome logs | cbshome update${NC}"
+echo -e "Management: ${CYAN}cbshome status | cbshome logs | cbshome update | cbshome storage console${NC}"
 echo ""
 echo -e "${YELLOW}NEXT STEPS:${NC}"
 echo "1. Edit $INSTALL_BASE/repo/backend/.env"
@@ -1451,4 +1789,5 @@ echo "2. Add DKIM DNS record (printed above during mail setup)"
 echo "3. Verify DKIM: opendkim-testkey -d ${MAIL_DOMAIN} -s cbshome -vvv"
 echo "4. Run: cbshome restart app"
 echo "5. Test email: cbshome test-email your@email.com"
+echo "6. Open MinIO Console: cbshome storage console  (prints URL + credentials)"
 echo ""

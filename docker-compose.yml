@@ -2,7 +2,7 @@
 # CBSHOME -- Docker Compose
 # =============================================================================
 #
-# Full stack: app + frontend + postgres + redis
+# Full stack: app + frontend + postgres + redis + minio
 #
 # Usage:
 #   cbshome update   -- pull, build, migrate, test, restart
@@ -29,6 +29,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')\""]
       interval: 10s
@@ -92,6 +93,90 @@ services:
     restart: unless-stopped
     # No published ports -- internal network only (security)
 
+  # ---------------------------------------------------------------------------
+  # MinIO -- S3-compatible object storage for company attachments and templates.
+  #
+  # Two ports exposed on loopback only:
+  #   9000 -- S3 API. Backend talks to it through docker network as
+  #           http://minio:9000; never exposed beyond the host.
+  #   9001 -- Web UI / Object Browser. Reachable from outside ONLY via nginx
+  #           reverse proxy at https://storage-mc-admin.cbshome.org with
+  #           basic-auth (configured in install_cbshome.sh).
+  #
+  # Healthcheck uses the live endpoint shipped with MinIO; curl is included
+  # in the official minio/minio image, so no extra deps are needed.
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: cbshome-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - cbshome_minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # MinIO init -- one-shot bootstrap of buckets, anonymous policy, and
+  # backend service account. Idempotent: reruns on every `docker compose up`
+  # do not break anything; existing buckets / svcacct are detected and skipped.
+  #
+  # `restart: "no"` -- this container exits 0 after init and stays stopped.
+  # `docker compose up -d` will not flag it as unhealthy because it has no
+  # healthcheck and no restart policy.
+  # ---------------------------------------------------------------------------
+  minio-init:
+    image: minio/mc:latest
+    container_name: cbshome-minio-init
+    depends_on:
+      minio: { condition: service_healthy }
+    env_file:
+      - ./backend/.env
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        # Configure mc alias inside the container -- talks to minio service
+        # over the docker network (not 127.0.0.1).
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+
+        # Create main bucket (production attachments + templates) and test
+        # bucket (used by backend integration tests). `mb -p` is idempotent.
+        mc mb -p local/cbshome-attachments
+        mc mb -p local/cbshome-attachments-test
+
+        # Force private (no anonymous access). Even if a previous run set
+        # a different policy, this resets it.
+        mc anonymous set none local/cbshome-attachments
+        mc anonymous set none local/cbshome-attachments-test
+
+        # Backend service account (one for both buckets). Idempotent: list
+        # existing svcaccts for root user and skip creation if our access
+        # key is already there.
+        if mc admin user svcacct ls local "$$MINIO_ROOT_USER" 2>/dev/null | grep -q "$$MINIO_ACCESS_KEY"; then
+          echo "Service account $$MINIO_ACCESS_KEY already exists, skipping"
+        else
+          mc admin user svcacct add local "$$MINIO_ROOT_USER" \
+            --access-key "$$MINIO_ACCESS_KEY" \
+            --secret-key "$$MINIO_SECRET_KEY"
+          echo "Service account $$MINIO_ACCESS_KEY created"
+        fi
+
+        echo "MinIO init completed"
+    restart: "no"
+
 volumes:
   cbshome_postgres_data:
   cbshome_redis_data:
+  cbshome_minio_data:

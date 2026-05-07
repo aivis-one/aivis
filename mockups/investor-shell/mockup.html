@@ -290,11 +290,17 @@
       font-size: 11px; color: var(--text-tertiary);
       display: flex; gap: 6px; align-items: center;
     }
-    .attachment-lang-badge {
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
-      padding: 1px 5px; border-radius: var(--radius-sm);
-      background: var(--bg-elevated); color: var(--text-secondary);
-      letter-spacing: 0.05em;
+    .attachment-breadcrumb {
+      font-size: 10px; color: var(--text-tertiary);
+      margin: 2px 0 4px 0;
+      letter-spacing: 0.02em;
+      font-feature-settings: "tnum";
+      opacity: 0.85;
+    }
+    .attachment-breadcrumb i, .attachment-breadcrumb svg {
+      width: 10px; height: 10px;
+      vertical-align: middle; margin-right: 3px;
+      opacity: 0.7;
     }
 
     /* ========== PRODUCT CARDS ========== */
@@ -1072,64 +1078,27 @@
                   <p data-i18n="inv.company.aboutIpi">IPI AG разрабатывает и реализует жилые и коммерческие строительные проекты в Германии. Компания применяет патентованную технологию CBS HOME, которая обеспечивает строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах. Портфель проектов в стадии реализации — 4 объекта суммарной площадью более 12 000 м².</p>
                 </div>
 
-                <!-- Documents (attachments grouped by category, per Refactor 2 §3, §7.1) -->
+                <!-- Documents (path-tree L1 grouping per Refactor 2 v0.4 §7.1):
+                     - Group by first path-tree segment (legal / marketing / patents / reports).
+                     - Localized group names via i18n key inv.path.<segment>, fallback to title-case.
+                     - Subcategory shown as breadcrumb under title.
+                     - Mime-based icons by file type, NOT by category.
+                     - No language badges -- frontend filters attachments by user locale (here: de).
+                     - Section hides entirely when empty (F-A1, not demonstrated since data is present).
+                -->
                 <div class="detail-section">
                   <h3 data-i18n="inv.company.documents">Документы компании</h3>
 
+                  <!-- L1: legal -->
                   <div class="attachments-group">
-                    <div class="attachments-group-title" data-i18n="inv.attachments.licenses">Лицензии и сертификаты</div>
+                    <div class="attachments-group-title" data-i18n="inv.path.legal">Юридические</div>
                     <div class="attachment-item" onclick="showToast('Открыть документ — финальная точка')">
-                      <div class="attachment-icon"><i data-lucide="award"></i></div>
+                      <div class="attachment-icon"><i data-lucide="file-text"></i></div>
                       <div class="attachment-info">
                         <div class="attachment-title" data-i18n="inv.attachments.incorporation">Сертификат инкорпорации</div>
+                        <div class="attachment-breadcrumb">legal / incorporation</div>
                         <div class="attachment-meta">
-                          <span class="attachment-lang-badge">DE</span>
-                          <span>PDF</span>
-                          <span>•</span>
-                          <span>2.3 MB</span>
-                        </div>
-                      </div>
-                      <i data-lucide="external-link" style="width:16px;height:16px;color:var(--text-tertiary)"></i>
-                    </div>
-                    <div class="attachment-item" onclick="showToast('Открыть документ — финальная точка')">
-                      <div class="attachment-icon"><i data-lucide="file-check"></i></div>
-                      <div class="attachment-info">
-                        <div class="attachment-title" data-i18n="inv.attachments.stockLicense">Лицензия на выпуск ценных бумаг</div>
-                        <div class="attachment-meta">
-                          <span class="attachment-lang-badge">DE</span>
-                          <span>PDF</span>
-                          <span>•</span>
-                          <span>1.8 MB</span>
-                        </div>
-                      </div>
-                      <i data-lucide="external-link" style="width:16px;height:16px;color:var(--text-tertiary)"></i>
-                    </div>
-                  </div>
-
-                  <div class="attachments-group">
-                    <div class="attachments-group-title" data-i18n="inv.attachments.presentations">Презентации</div>
-                    <div class="attachment-item" onclick="showToast('Открыть презентацию — финальная точка')">
-                      <div class="attachment-icon"><i data-lucide="presentation"></i></div>
-                      <div class="attachment-info">
-                        <div class="attachment-title" data-i18n="inv.attachments.investorDeck">Investor Deck Q2 2026</div>
-                        <div class="attachment-meta">
-                          <span class="attachment-lang-badge">EN</span>
-                          <span>PDF</span>
-                          <span>•</span>
-                          <span>8.4 MB</span>
-                        </div>
-                      </div>
-                      <i data-lucide="external-link" style="width:16px;height:16px;color:var(--text-tertiary)"></i>
-                    </div>
-                    <div class="attachment-item" onclick="showToast('Открыть презентацию — финальная точка')">
-                      <div class="attachment-icon"><i data-lucide="presentation"></i></div>
-                      <div class="attachment-info">
-                        <div class="attachment-title" data-i18n="inv.attachments.investorDeck">Investor Deck Q2 2026</div>
-                        <div class="attachment-meta">
-                          <span class="attachment-lang-badge">DE</span>
-                          <span>PDF</span>
-                          <span>•</span>
-                          <span>8.6 MB</span>
+                          <span>PDF</span><span>•</span><span>2.3 MB</span>
                         </div>
                       </div>
                       <i data-lucide="external-link" style="width:16px;height:16px;color:var(--text-tertiary)"></i>
@@ -1137,29 +1106,47 @@
                     <div class="attachment-item" onclick="showToast('Открыть документ — финальная точка')">
                       <div class="attachment-icon"><i data-lucide="file-text"></i></div>
                       <div class="attachment-info">
-                        <div class="attachment-title" data-i18n="inv.attachments.onepager">One-Pager: технология CBS HOME</div>
+                        <div class="attachment-title" data-i18n="inv.attachments.stockLicense">Лицензия на выпуск ценных бумаг</div>
+                        <div class="attachment-breadcrumb">legal / licenses / stock</div>
                         <div class="attachment-meta">
-                          <span class="attachment-lang-badge">EN</span>
-                          <span>PDF</span>
-                          <span>•</span>
-                          <span>0.4 MB</span>
+                          <span>PDF</span><span>•</span><span>1.8 MB</span>
                         </div>
                       </div>
                       <i data-lucide="external-link" style="width:16px;height:16px;color:var(--text-tertiary)"></i>
                     </div>
                   </div>
 
+                  <!-- L1: marketing.
+                       Note: Investor Deck has DE/EN versions in DB; on de locale only de version is shown.
+                       One-Pager is EN-only -- not visible to de user (reflects real frontend filter behaviour).
+                  -->
                   <div class="attachments-group">
-                    <div class="attachments-group-title" data-i18n="inv.attachments.patents">Патенты</div>
+                    <div class="attachments-group-title" data-i18n="inv.path.marketing">Маркетинг</div>
+                    <div class="attachment-item" onclick="showToast('Открыть презентацию — финальная точка')">
+                      <div class="attachment-icon"><i data-lucide="presentation"></i></div>
+                      <div class="attachment-info">
+                        <div class="attachment-title" data-i18n="inv.attachments.investorDeck">Investor Deck Q2 2026</div>
+                        <div class="attachment-breadcrumb">marketing / presentations</div>
+                        <div class="attachment-meta">
+                          <span>PDF</span><span>•</span><span>8.6 MB</span>
+                        </div>
+                      </div>
+                      <i data-lucide="external-link" style="width:16px;height:16px;color:var(--text-tertiary)"></i>
+                    </div>
+                  </div>
+
+                  <!-- L1: patents.
+                       Patents typically language=null (EN by default), visible regardless of user locale.
+                  -->
+                  <div class="attachments-group">
+                    <div class="attachments-group-title" data-i18n="inv.path.patents">Патенты</div>
                     <div class="attachment-item" onclick="showToast('Открыть документ — финальная точка')">
-                      <div class="attachment-icon"><i data-lucide="file-badge"></i></div>
+                      <div class="attachment-icon"><i data-lucide="file-text"></i></div>
                       <div class="attachment-info">
                         <div class="attachment-title">EP 3 574 160 B1</div>
+                        <div class="attachment-breadcrumb">patents</div>
                         <div class="attachment-meta">
-                          <span class="attachment-lang-badge">EN</span>
-                          <span>PDF</span>
-                          <span>•</span>
-                          <span>3.1 MB</span>
+                          <span>PDF</span><span>•</span><span>3.1 MB</span>
                         </div>
                       </div>
                       <i data-lucide="external-link" style="width:16px;height:16px;color:var(--text-tertiary)"></i>
