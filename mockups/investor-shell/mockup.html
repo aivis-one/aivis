@@ -473,6 +473,48 @@
     .portfolio-stat-label { font-size: 11px; color: var(--text-tertiary); }
     .portfolio-stat-value { font-size: 14px; font-weight: 600; color: var(--text); }
 
+    /* ========== STICKY CTA BAR (company overview "Смотреть продукты") ========== */
+    .sticky-cta-bar {
+      position: sticky;
+      bottom: 0;
+      left: 0; right: 0;
+      margin: 16px -20px 0;          /* break out of main padding */
+      padding: 12px 20px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+    .sticky-cta-bar .btn { width: 100%; }
+
+    /* End-of-list marker for the (otherwise unbounded) roadmap timeline */
+    .roadmap-end-marker {
+      position: relative;
+      padding: 16px 0 0 0;
+      margin-top: 4px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-style: italic;
+    }
+    .roadmap-end-marker::before {
+      /* Terminal node on the vertical axis */
+      content: '';
+      position: absolute;
+      left: -22px;
+      top: 14px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+      border: 2px solid var(--bg);
+    }
+    .roadmap-end-marker i, .roadmap-end-marker svg {
+      width: 12px; height: 12px;
+      vertical-align: middle; margin-right: 4px;
+    }
+
     /* ========== COMPANY POSITION (portfolio drill-down per Refactor 2 §5.5) ========== */
     .position-summary-card {
       background: var(--bg-subtle); border-radius: var(--radius-lg);
@@ -1030,79 +1072,6 @@
                   <p data-i18n="inv.company.aboutIpi">IPI AG разрабатывает и реализует жилые и коммерческие строительные проекты в Германии. Компания применяет патентованную технологию CBS HOME, которая обеспечивает строительство в 6-9 раз быстрее традиционных методов при экономии 15-20% на материалах. Портфель проектов в стадии реализации — 4 объекта суммарной площадью более 12 000 м².</p>
                 </div>
 
-                <!-- Roadmap Timeline -->
-                <div class="detail-section">
-                  <div class="roadmap-toolbar">
-                    <h3 style="margin:0" data-i18n="inv.company.roadmap">Дорожная карта</h3>
-                    <button class="roadmap-toggle-archive" onclick="showToast('Архив этапов — финальная точка')" data-i18n="inv.company.showArchive">Показать архив</button>
-                  </div>
-
-                  <div class="roadmap-timeline">
-
-                    <!-- Active event with external Zoom -->
-                    <div class="roadmap-card event" onclick="showToast('Открыть Zoom — финальная точка')">
-                      <div class="roadmap-badges">
-                        <span class="roadmap-kind event" data-i18n="inv.roadmap.kindEvent">Событие</span>
-                      </div>
-                      <div class="roadmap-title" data-i18n="inv.roadmap.amaTitle">AMA-сессия с командой IPI AG</div>
-                      <div class="roadmap-date">
-                        <i data-lucide="calendar"></i>
-                        <span>15 <span data-i18n="inv.month.may">мая</span> 2026, 19:00 CET</span>
-                      </div>
-                      <div class="roadmap-desc" data-i18n="inv.roadmap.amaDesc">Открытая сессия вопросов и ответов с CEO и техническим директором. Обсуждаем дорожную карту 2026, новые объекты, ответим на любые вопросы инвесторов.</div>
-                      <div class="roadmap-actions">
-                        <span class="roadmap-action-link"><i data-lucide="external-link"></i> <span data-i18n="inv.roadmap.openZoom">Открыть в Zoom</span></span>
-                      </div>
-                    </div>
-
-                    <!-- In-progress milestone with linked product -->
-                    <div class="roadmap-card" onclick="showToast('Перейти к продукту — финальная точка')">
-                      <img class="roadmap-cover" src="../assets/photo-1.jpg" alt="">
-                      <div class="roadmap-badges">
-                        <span class="roadmap-kind milestone" data-i18n="inv.roadmap.kindMilestone">Веха</span>
-                        <span class="roadmap-status in_progress" data-i18n="inv.roadmap.statusInProgress">В работе</span>
-                      </div>
-                      <div class="roadmap-title" data-i18n="inv.roadmap.berlinPhase2">Старт Phase 2 в Берлине</div>
-                      <div class="roadmap-date">
-                        <i data-lucide="calendar"></i>
-                        <span>Q3 2026</span>
-                      </div>
-                      <div class="roadmap-desc" data-i18n="inv.roadmap.berlinPhase2Desc">Запуск второй очереди жилого комплекса. Дополнительно 4 800 м², финансируется через продажу IPI AG Shares.</div>
-                      <div class="roadmap-actions">
-                        <span class="roadmap-action-link" onclick="event.stopPropagation();showProduct('ipi');"><i data-lucide="package"></i> <span data-i18n="inv.roadmap.viewProduct">К продукту</span></span>
-                      </div>
-                    </div>
-
-                    <!-- Milestone + linked Post (embedded snippet) -->
-                    <div class="roadmap-card" onclick="showToast('Открыть пост — финальная точка')">
-                      <div class="roadmap-badges">
-                        <span class="roadmap-kind milestone" data-i18n="inv.roadmap.kindMilestone">Веха</span>
-                        <span class="roadmap-status completed" data-i18n="inv.roadmap.statusCompleted">Выполнено</span>
-                      </div>
-                      <div class="roadmap-title" data-i18n="inv.roadmap.patentTitle">Получен европейский патент EP 3 574 160 B1</div>
-                      <div class="roadmap-date">
-                        <i data-lucide="calendar"></i>
-                        <span>22 <span data-i18n="inv.month.feb">февраля</span> 2026</span>
-                      </div>
-                      <div class="roadmap-post-snippet">
-                        <div class="roadmap-post-snippet-label" data-i18n="inv.roadmap.linkedPost">Связанная статья</div>
-                        <div class="roadmap-post-snippet-title" data-i18n="inv.post.patentTitle">Патент EP 3 574 160 B1: что это значит для CBS HOME и инвесторов</div>
-                        <div class="roadmap-post-snippet-excerpt" data-i18n="inv.post.patentExcerpt">Европейское патентное ведомство выдало нам исключительные права на технологию модульного строительства. Это укрепляет конкурентное преимущество и…</div>
-                      </div>
-                    </div>
-
-                    <!-- Announcement (no date) -->
-                    <div class="roadmap-card announcement">
-                      <div class="roadmap-badges">
-                        <span class="roadmap-kind announcement" data-i18n="inv.roadmap.kindAnnouncement">Анонс</span>
-                      </div>
-                      <div class="roadmap-title" data-i18n="inv.roadmap.partnerTitle">Партнёрство с Bauer Bauunternehmen</div>
-                      <div class="roadmap-desc" data-i18n="inv.roadmap.partnerDesc">Заключено стратегическое партнёрство с одним из крупнейших строительных холдингов Германии. Расширяем географию проектов до Bayern.</div>
-                    </div>
-
-                  </div>
-                </div>
-
                 <!-- Documents (attachments grouped by category, per Refactor 2 §3, §7.1) -->
                 <div class="detail-section">
                   <h3 data-i18n="inv.company.documents">Документы компании</h3>
@@ -1198,11 +1167,92 @@
                   </div>
                 </div>
 
-                <!-- Action: go to products -->
-                <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="navigateTo('screen-products-by-company')">
-                  <i data-lucide="package" style="width:16px;height:16px"></i>
-                  <span data-i18n="inv.company.viewProducts">Смотреть продукты компании</span>
-                </button>
+                <!-- Roadmap Timeline (last section -- chronological depth, can extend indefinitely) -->
+                <div class="detail-section">
+                  <div class="roadmap-toolbar">
+                    <h3 style="margin:0" data-i18n="inv.company.roadmap">Дорожная карта</h3>
+                    <button class="roadmap-toggle-archive" onclick="showToast('Архив этапов — финальная точка')" data-i18n="inv.company.showArchive">Показать архив</button>
+                  </div>
+
+                  <div class="roadmap-timeline">
+
+                    <!-- Active event with external Zoom -->
+                    <div class="roadmap-card event" onclick="showToast('Открыть Zoom — финальная точка')">
+                      <div class="roadmap-badges">
+                        <span class="roadmap-kind event" data-i18n="inv.roadmap.kindEvent">Событие</span>
+                      </div>
+                      <div class="roadmap-title" data-i18n="inv.roadmap.amaTitle">AMA-сессия с командой IPI AG</div>
+                      <div class="roadmap-date">
+                        <i data-lucide="calendar"></i>
+                        <span>15 <span data-i18n="inv.month.may">мая</span> 2026, 19:00 CET</span>
+                      </div>
+                      <div class="roadmap-desc" data-i18n="inv.roadmap.amaDesc">Открытая сессия вопросов и ответов с CEO и техническим директором. Обсуждаем дорожную карту 2026, новые объекты, ответим на любые вопросы инвесторов.</div>
+                      <div class="roadmap-actions">
+                        <span class="roadmap-action-link"><i data-lucide="external-link"></i> <span data-i18n="inv.roadmap.openZoom">Открыть в Zoom</span></span>
+                      </div>
+                    </div>
+
+                    <!-- In-progress milestone with linked product -->
+                    <div class="roadmap-card" onclick="showToast('Перейти к продукту — финальная точка')">
+                      <img class="roadmap-cover" src="../assets/photo-1.jpg" alt="">
+                      <div class="roadmap-badges">
+                        <span class="roadmap-kind milestone" data-i18n="inv.roadmap.kindMilestone">Веха</span>
+                        <span class="roadmap-status in_progress" data-i18n="inv.roadmap.statusInProgress">В работе</span>
+                      </div>
+                      <div class="roadmap-title" data-i18n="inv.roadmap.berlinPhase2">Старт Phase 2 в Берлине</div>
+                      <div class="roadmap-date">
+                        <i data-lucide="calendar"></i>
+                        <span>Q3 2026</span>
+                      </div>
+                      <div class="roadmap-desc" data-i18n="inv.roadmap.berlinPhase2Desc">Запуск второй очереди жилого комплекса. Дополнительно 4 800 м², финансируется через продажу IPI AG Shares.</div>
+                      <div class="roadmap-actions">
+                        <span class="roadmap-action-link" onclick="event.stopPropagation();showProduct('ipi');"><i data-lucide="package"></i> <span data-i18n="inv.roadmap.viewProduct">К продукту</span></span>
+                      </div>
+                    </div>
+
+                    <!-- Milestone + linked Post (embedded snippet) -->
+                    <div class="roadmap-card" onclick="showToast('Открыть пост — финальная точка')">
+                      <div class="roadmap-badges">
+                        <span class="roadmap-kind milestone" data-i18n="inv.roadmap.kindMilestone">Веха</span>
+                        <span class="roadmap-status completed" data-i18n="inv.roadmap.statusCompleted">Выполнено</span>
+                      </div>
+                      <div class="roadmap-title" data-i18n="inv.roadmap.patentTitle">Получен европейский патент EP 3 574 160 B1</div>
+                      <div class="roadmap-date">
+                        <i data-lucide="calendar"></i>
+                        <span>22 <span data-i18n="inv.month.feb">февраля</span> 2026</span>
+                      </div>
+                      <div class="roadmap-post-snippet">
+                        <div class="roadmap-post-snippet-label" data-i18n="inv.roadmap.linkedPost">Связанная статья</div>
+                        <div class="roadmap-post-snippet-title" data-i18n="inv.post.patentTitle">Патент EP 3 574 160 B1: что это значит для CBS HOME и инвесторов</div>
+                        <div class="roadmap-post-snippet-excerpt" data-i18n="inv.post.patentExcerpt">Европейское патентное ведомство выдало нам исключительные права на технологию модульного строительства. Это укрепляет конкурентное преимущество и…</div>
+                      </div>
+                    </div>
+
+                    <!-- Announcement (no date) -->
+                    <div class="roadmap-card announcement">
+                      <div class="roadmap-badges">
+                        <span class="roadmap-kind announcement" data-i18n="inv.roadmap.kindAnnouncement">Анонс</span>
+                      </div>
+                      <div class="roadmap-title" data-i18n="inv.roadmap.partnerTitle">Партнёрство с Bauer Bauunternehmen</div>
+                      <div class="roadmap-desc" data-i18n="inv.roadmap.partnerDesc">Заключено стратегическое партнёрство с одним из крупнейших строительных холдингов Германии. Расширяем географию проектов до Bayern.</div>
+                    </div>
+
+                    <!-- End marker: roadmap is unbounded but visually closed -->
+                    <div class="roadmap-end-marker">
+                      <i data-lucide="flag-triangle-right"></i>
+                      <span data-i18n="inv.roadmap.endMarker">Начало истории компании · 2019</span>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- Sticky CTA: always visible while scrolling -->
+                <div class="sticky-cta-bar">
+                  <button class="btn btn-primary" onclick="navigateTo('screen-products-by-company')">
+                    <i data-lucide="package" style="width:16px;height:16px"></i>
+                    <span data-i18n="inv.company.viewProducts">Смотреть продукты компании</span>
+                  </button>
+                </div>
 
               </div>
             </main>
