@@ -34,6 +34,25 @@ class Settings(BaseSettings):
     # -- Redis --
     redis_url: str = "redis://localhost:6379/0"
 
+    # -- MinIO (S3-compatible object storage, Refactor 2 iter 2.1) --
+    # Backend uses the service account credentials (ACCESS_KEY/SECRET_KEY),
+    # NOT the root credentials. Root creds live in .env only because
+    # docker-compose and minio-init need them at bootstrap. They are not
+    # mapped here -- the BaseSettings extra="ignore" silently drops them.
+    minio_endpoint: str = ""
+    minio_access_key: str = ""
+    minio_secret_key: str = ""
+    minio_bucket: str = "cbshome-attachments"
+    minio_region: str = "us-east-1"
+    # Presigned URL TTL: short for authenticated download, long for public.
+    minio_presigned_ttl_auth: int = 900       # 15 minutes
+    minio_presigned_ttl_public: int = 86400   # 24 hours
+    # Hard limit on uploaded file size. Mirrored in nginx client_max_body_size.
+    # Files larger than this are rejected at ingress; backend trusts the
+    # ingress because Staff-driven upload happens exclusively via MinIO Web
+    # UI (see Refactor 2 §3.7), not through the API.
+    minio_max_file_size_mb: int = 100
+
     # -- Auth --
     secret_key: str = ""
     session_ttl_days: int = 30
@@ -125,6 +144,11 @@ class Settings(BaseSettings):
         """Parsed list of high-secured email domains (Mailgun-only delivery)."""
         return [d.strip().lower() for d in self.high_secured_domains.split(",") if d.strip()]
 
+    @property
+    def minio_max_file_size_bytes(self) -> int:
+        """Hard upload limit converted to bytes."""
+        return self.minio_max_file_size_mb * 1024 * 1024
+
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
         """Apply dev defaults and enforce production requirements."""
@@ -192,6 +216,29 @@ class Settings(BaseSettings):
                     "TELEGRAM_BOT_TOKEN must be set to a real token "
                     "in production (not 'TEST')."
                 )
+
+        # -- MinIO credentials (Refactor 2 iter 2.1) --
+        # Required at runtime in any environment because the storage
+        # abstraction is in the hot path of attachments / templates /
+        # roadmap covers. Dev-only fallbacks would silently mask a
+        # broken docker-compose stack.
+        if not self.minio_endpoint:
+            if is_dev:
+                self.minio_endpoint = "http://localhost:9000"
+            else:
+                raise ValueError("MINIO_ENDPOINT is required in production.")
+
+        if not self.minio_access_key:
+            if is_dev:
+                self.minio_access_key = "minioadmin"
+            else:
+                raise ValueError("MINIO_ACCESS_KEY is required in production.")
+
+        if not self.minio_secret_key:
+            if is_dev:
+                self.minio_secret_key = "minioadmin"
+            else:
+                raise ValueError("MINIO_SECRET_KEY is required in production.")
 
         return self
 

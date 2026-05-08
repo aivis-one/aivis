@@ -29,6 +29,10 @@ dependencies = [
     "httpx>=0.27.0,<1.0",
     "jinja2>=3.1.0,<4.0",
     "xhtml2pdf>=0.2.13,<1.0",
+    # Refactor 2 iter 2.1: async S3 client for MinIO-backed object storage.
+    # Pulls in botocore, aiohttp, aioitertools as transitive deps. boto3
+    # (sync) is intentionally NOT pinned -- everything async via aiobotocore.
+    "aiobotocore>=2.13.0,<3.0",
 ]
 
 [project.optional-dependencies]
