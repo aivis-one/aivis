@@ -53,6 +53,8 @@
 
 ### 1.1. MinIO в docker-compose
 
+**✓ Реализовано (iter 1).**
+
 Новый сервис `minio` в существующем `docker-compose.yml`:
 
 - Образ `minio/minio:latest`.
@@ -67,6 +69,8 @@
 
 ### 1.2. Init-сервис для bucket
 
+**✓ Реализовано (iter 1).**
+
 Отдельный one-shot сервис `minio-init` (запускается с `restart: "no"`), который через `mc` (mc -- official MinIO client) создаёт bucket'ы и применяет policy:
 
 ```
@@ -78,6 +82,8 @@ mc anonymous set none local/cbshome-attachments  # explicitly private
 Запускается каждый раз вместе с `docker compose up -d`. Идемпотентен -- повторный запуск ничего не ломает.
 
 ### 1.3. Конфиг (backend/.env)
+
+**✓ Реализовано (iter 1).**
 
 Добавляются переменные:
 
@@ -100,6 +106,8 @@ Service account (`MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) создаётся `mi
 Login для basic-auth перед Web UI -- фиксированный `admin`. `.htpasswd` генерируется в `install_cbshome.sh` из `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` и кладётся по пути `/etc/nginx/.htpasswd-storage-mc-admin`.
 
 ### 1.4. install_cbshome.sh -- что добавляется
+
+**◐ Реализовано частично (iter 1).** Открыто: seed platform default templates -- `mc cp -r backend/seed/templates/_default/ ...` и `python backend/scripts/seed_platform_templates.py`. Закрывается в iter 2.3.
 
 Новая секция в скрипте после `Mail Server`, перед `Docker Stack`:
 
@@ -136,6 +144,8 @@ AAAA / CAA / TXT для этого поддомена не требуются.
 
 ### 1.5. cbshome management script -- что меняется
 
+**◐ Реализовано частично (iter 1).** Сделаны: backup с `mc mirror`, status с healthcheck minio, `logs minio`, `storage stats`, `storage console`. Открыто: `storage reconcile`, `storage reconcile-templates`, `storage reconcile-platform-templates` -- сейчас stub'ы, печатают "next iteration"; реальные команды появляются вместе с Python-скриптами в iter 2.1 / 2.2 / 2.3 соответственно.
+
 `cbshome backup` сейчас делает только `pg_dump` + копию `.env`. Расширяется:
 
 - Добавляется `mc mirror local/cbshome-attachments /tmp/minio_backup_$TIMESTAMP/`.
@@ -166,6 +176,8 @@ AAAA / CAA / TXT для этого поддомена не требуются.
 Под капотом эти команды запускают соответствующие Python-скрипты в `backend/scripts/` через `docker compose exec`.
 
 ### 1.6. Размеры и лимиты
+
+**✓ Реализовано (iter 1).**
 
 - Initial volume для MinIO -- `20GB`. На три компании по 5-10 файлов (1-30MB каждый) хватит с большим запасом. Отдельный volume, не общий с postgres.
 - Max file size -- `100MB`. Применяется в трёх местах: nginx `client_max_body_size`, backend Pydantic-валидатор `Field(max_length=...)` на `multipart/form-data`, MinIO принимает любой размер.

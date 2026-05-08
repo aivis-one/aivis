@@ -1347,14 +1347,14 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 | F1: Auth | 1.1, 1.2, 1.3 | ✅ | Нет |
 | F2: Компоненты + Layout | 1.3 | ✅ | Нет |
 | F3: Staff | 3.1–3.3, 5.2, 5.3, 7.1 | ✅ | Нет |
-| F4: Investor | 4.2, 5.1, 5.2, 6.1, 6.2, 6.4, 9.2 | ✅ | Нет |
+| F4: Investor | 4.2, 5.1, 5.2, 6.1, 6.2, 6.4, 9.2 | ✅ | ⚠ части F4 (CompanyOverviewView, CompanyPositionView, MarketView) переписываются в Refactor 1 §1 + Refactor 2 §5.5/§7.1 |
 | F5: Company | 4.1, 4.2, 6.3, 6.4, 9.2 | ✅ | Нет |
-| F6: Agent | 7.1, 7.2, 7.3, 6.3 | ✅ | Нет |
+| F6: Agent | 7.1, 7.2, 7.3, 6.3 | ✅ | ⚠ Agent зеркалит investor-views; ждёт переписи Refactor 1 §1.4 + Refactor 2 §5.5/§7.1 |
 | F7: i18n | — | — | Нет |
 | F8: Notifications | 8.1–8.3 | ✅ | Нет |
 | F9: Полировка + Posts | 9.1, 6.4 | ✅ | Нет |
 
-**Стратегия:** Все фазы можно начинать — бэкенд полностью готов. Все backend gaps (G1–G5) закрыты.
+**Стратегия:** F5 можно начинать сейчас. F4 правится частично, F6 ждёт после Refactor 1 + Refactor 2 (см. `CBSHOME-Refactor-Investor-Market-And-Staff.md` + `CBSHOME-Refactor-Company-Docs.md`). Новый раздел **F-Staff: Platform tab** (Refactor 1 §2-4) -- расширение F3, в Frontend ТЗ v2.7 не описан, реализуется по тексту Refactor 1. Все backend gaps (G1–G5) закрыты.
 
 ---
 
