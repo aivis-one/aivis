@@ -492,13 +492,23 @@ echo ""
 prompt_secret() {
     local VAR="$1"
     local LABEL="$2"
-    read -rp "  $LABEL: " VALUE < /dev/tty
-    if [ -n "$VALUE" ]; then
+    local MIN_LEN="${3:-0}"
+    local VALUE
+
+    while true; do
+        read -rp "  $LABEL: " VALUE < /dev/tty
+        if [ -z "$VALUE" ]; then
+            warn "  $LABEL: keeping current value"
+            return 0
+        fi
+        if [ "$MIN_LEN" -gt 0 ] && [ "${#VALUE}" -lt "$MIN_LEN" ]; then
+            warn "  $LABEL: must be at least $MIN_LEN characters (got ${#VALUE}). Try again, or press ENTER to keep current."
+            continue
+        fi
         sed -i "s|${VAR}=.*|${VAR}=${VALUE}|" "$ENV_FILE"
         success "  $LABEL set"
-    else
-        warn "  $LABEL: keeping current value"
-    fi
+        return 0
+    done
 }
 
 prompt_secret "TELEGRAM_BOT_TOKEN" "Telegram Bot Token"
@@ -514,8 +524,8 @@ prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (optional)"
 # prompts in case the user replaced them.
 echo ""
 log "MinIO Console credentials (used to log in at https://${STORAGE_DOMAIN}):"
-prompt_secret "MINIO_ROOT_USER"                   "MinIO Root User (Console login, Step 2)"
-prompt_secret "MINIO_ROOT_PASSWORD"               "MinIO Root Password (Console login, Step 2)"
+prompt_secret "MINIO_ROOT_USER"                   "MinIO Root User (Console login, Step 2)" 3
+prompt_secret "MINIO_ROOT_PASSWORD"               "MinIO Root Password (Console login, Step 2)" 8
 prompt_secret "MINIO_CONSOLE_BASIC_AUTH_PASSWORD" "MinIO Console basic-auth password (nginx gate, Step 1)"
 
 MINIO_ROOT_USER_VAL=$(grep "^MINIO_ROOT_USER=" "$ENV_FILE" | cut -d= -f2-)
@@ -763,9 +773,22 @@ server {
     auth_basic "MinIO Console";
     auth_basic_user_file /etc/nginx/.htpasswd-storage-mc-admin;
 
+    # Streaming -- required for large uploads/downloads and WebSocket.
+    proxy_buffering off;
+    proxy_request_buffering off;
+    chunked_transfer_encoding off;
+
     location / {
         proxy_pass http://127.0.0.1:9001;
-        proxy_set_header Host \$host;
+
+        # CRITICAL: strip Authorization after nginx basic-auth check, otherwise
+        # the browser's basic-auth header is forwarded to MinIO Console and
+        # MinIO tries to parse it as S3 signature v4 -> 401 on every request
+        # (Object Browser appears as a blank page after a successful login).
+        proxy_set_header Authorization "";
+
+        # \$http_host preserves the port; MinIO Console uses Host for cookie domain.
+        proxy_set_header Host \$http_host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
@@ -775,8 +798,9 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
 
-        proxy_read_timeout 60s;
-        proxy_connect_timeout 10s;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
     }
 }
 NGINX_STORAGE
