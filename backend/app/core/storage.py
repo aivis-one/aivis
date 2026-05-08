@@ -16,8 +16,15 @@
 #   list_objects(prefix) -> list[str]      # extension, used by reconcile
 #
 # EXCEPTIONS:
-#   StorageError              -- generic upstream failure
-#   StorageNotFoundError      -- object not found (404 / NoSuchKey)
+#   StorageError              -- generic upstream failure, including a
+#                                missing bucket (NoSuchBucket).
+#   StorageNotFoundError      -- the requested KEY does not exist in an
+#                                otherwise-healthy bucket.
+#
+#   These are intentionally distinct: NoSuchBucket points at a broken
+#   stack (typo in MINIO_BUCKET, failed minio-init) and must NOT be
+#   silently treated as "object missing". Only NoSuchKey / 404 collapse
+#   into StorageNotFoundError.
 #
 # CLIENT LIFECYCLE:
 #   aiobotocore session is a module-level lazy singleton. Each public
@@ -31,8 +38,8 @@
 #   `cbshome-attachments-test` via monkeypatch on settings.
 #
 # DELETE IDEMPOTENCY:
-#   delete_object on a missing key is a no-op (logged, no raise).
-#   Mirrors S3 default semantics and lets reconcile run repeatedly.
+#   delete_object on a missing KEY is a no-op (logged, no raise). A
+#   missing BUCKET still raises StorageError -- see exception note above.
 # =============================================================================
 
 from __future__ import annotations
@@ -55,11 +62,16 @@ logger = structlog.get_logger()
 
 
 class StorageError(Exception):
-    """Generic upstream storage failure (network, auth, server-side error)."""
+    """Generic upstream storage failure (network, auth, missing bucket, etc).
+
+    NoSuchBucket lands here, not in StorageNotFoundError -- a missing
+    bucket means the deployment is broken, not that we're looking up a
+    missing object.
+    """
 
 
 class StorageNotFoundError(StorageError):
-    """The requested object does not exist in the bucket."""
+    """The requested object KEY does not exist (bucket is otherwise OK)."""
 
 
 # ---------------------------------------------------------------------------
@@ -101,16 +113,21 @@ def _client_context() -> Any:
 # ---------------------------------------------------------------------------
 
 
-# Error codes that S3 (or MinIO) returns when an object or bucket is
-# missing. botocore normalises some HTTP 404s into "404" while named
-# operations (head_object) return "NoSuchKey".
-_NOT_FOUND_CODES = frozenset({"404", "NoSuchKey", "NoSuchBucket"})
+# Codes that mean "the KEY does not exist" -- bucket is fine.
+# NoSuchBucket is intentionally NOT here. botocore normalises some HTTP
+# 404s into the literal "404" while named operations (head_object) return
+# "NoSuchKey".
+_KEY_NOT_FOUND_CODES = frozenset({"404", "NoSuchKey"})
 
 
-def _is_not_found(exc: ClientError) -> bool:
-    """True when the ClientError represents a missing-object / -bucket."""
+def _is_key_not_found(exc: ClientError) -> bool:
+    """True iff the ClientError specifically signals a missing key.
+
+    Returns False for NoSuchBucket / auth / network errors -- callers
+    should let those propagate as StorageError.
+    """
     code = exc.response.get("Error", {}).get("Code", "")
-    return code in _NOT_FOUND_CODES
+    return code in _KEY_NOT_FOUND_CODES
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +151,7 @@ async def upload_object(
         The stored key (echoed for caller convenience).
 
     Raises:
-        StorageError: On any upstream failure.
+        StorageError: On any upstream failure, including a missing bucket.
     """
     try:
         async with _client_context() as client:
@@ -163,13 +180,13 @@ async def upload_object(
 
 
 async def delete_object(key: str) -> None:
-    """Delete an object. Idempotent: missing object is logged and ignored.
+    """Delete an object. Idempotent on a missing KEY; raises on a missing BUCKET.
 
     Args:
         key: Object key.
 
     Raises:
-        StorageError: On any upstream failure other than "missing".
+        StorageError: Missing bucket, auth failure, network error, etc.
     """
     try:
         async with _client_context() as client:
@@ -178,8 +195,8 @@ async def delete_object(key: str) -> None:
                 Key=key,
             )
     except ClientError as exc:
-        if _is_not_found(exc):
-            logger.info("storage_delete_missing", key=key)
+        if _is_key_not_found(exc):
+            logger.info("storage_delete_missing_key", key=key)
             return
         logger.error("storage_delete_failed", key=key, error=str(exc))
         raise StorageError(f"Failed to delete {key}: {exc}") from exc
@@ -225,8 +242,8 @@ async def generate_presigned_url(key: str, ttl_seconds: int) -> str:
 async def object_exists(key: str) -> bool:
     """Check whether the object exists.
 
-    Returns False on missing object. Raises StorageError on any other
-    upstream failure (auth, network, etc).
+    Returns False on a missing KEY. Raises StorageError on a missing
+    BUCKET or any other upstream failure.
     """
     try:
         async with _client_context() as client:
@@ -235,7 +252,7 @@ async def object_exists(key: str) -> bool:
                 Key=key,
             )
     except ClientError as exc:
-        if _is_not_found(exc):
+        if _is_key_not_found(exc):
             return False
         logger.error("storage_head_failed", key=key, error=str(exc))
         raise StorageError(f"Failed to HEAD {key}: {exc}") from exc
@@ -253,8 +270,8 @@ async def get_object_metadata(key: str) -> dict[str, Any]:
             "last_modified" -- datetime (timezone-aware UTC)
 
     Raises:
-        StorageNotFoundError: When the object is missing.
-        StorageError: On any other upstream failure.
+        StorageNotFoundError: When the KEY is missing in an existing bucket.
+        StorageError: When the BUCKET is missing or on any other failure.
     """
     try:
         async with _client_context() as client:
@@ -263,7 +280,7 @@ async def get_object_metadata(key: str) -> dict[str, Any]:
                 Key=key,
             )
     except ClientError as exc:
-        if _is_not_found(exc):
+        if _is_key_not_found(exc):
             raise StorageNotFoundError(f"Object not found: {key}") from exc
         logger.error("storage_head_failed", key=key, error=str(exc))
         raise StorageError(f"Failed to HEAD {key}: {exc}") from exc
@@ -278,13 +295,18 @@ async def get_object_metadata(key: str) -> dict[str, Any]:
 async def get_object_bytes(key: str) -> bytes:
     """Download the full object body as bytes.
 
+    WARNING: loads the entire object into memory. Suitable for templates
+    and metadata files (typically under 2 MB). For arbitrary attachments,
+    prefer generate_presigned_url() so the client downloads directly
+    from MinIO without going through the backend process.
+
     Used by the templates module (Refactor 2 iter 2.2 §4.4) to render
     HTML stored in MinIO, and by reconcile scripts that need to inspect
     companion `.cbsmeta.json` files.
 
     Raises:
-        StorageNotFoundError: When the object is missing.
-        StorageError: On any other upstream failure.
+        StorageNotFoundError: When the KEY is missing in an existing bucket.
+        StorageError: When the BUCKET is missing or on any other failure.
     """
     try:
         async with _client_context() as client:
@@ -297,7 +319,7 @@ async def get_object_bytes(key: str) -> bytes:
                 payload: bytes = await stream.read()
                 return payload
     except ClientError as exc:
-        if _is_not_found(exc):
+        if _is_key_not_found(exc):
             raise StorageNotFoundError(f"Object not found: {key}") from exc
         logger.error("storage_get_failed", key=key, error=str(exc))
         raise StorageError(f"Failed to GET {key}: {exc}") from exc
@@ -323,7 +345,7 @@ async def list_objects(prefix: str) -> list[str]:
         List of full object keys. Empty list if no matches.
 
     Raises:
-        StorageError: On any upstream failure.
+        StorageError: On any upstream failure, including missing bucket.
     """
     keys: list[str] = []
     try:

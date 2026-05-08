@@ -16,13 +16,20 @@
 #   can inspect manually via `mc ls local/cbshome-attachments-test`.
 #
 # COVERAGE PER PUBLIC API:
-#   upload_object            -> tests 1, 2, 5, 8, 10
-#   delete_object            -> tests 8, 9
+#   upload_object            -> tests 1, 2, 5, 8, 10, 13
+#   delete_object            -> tests 8, 9, 14
 #   generate_presigned_url   -> test 10
-#   object_exists            -> tests 3, 4, 8
-#   get_object_metadata      -> tests 1, 7
-#   get_object_bytes         -> tests 5, 6
+#   object_exists            -> tests 3, 4, 8, 15
+#   get_object_metadata      -> tests 1, 7, 16
+#   get_object_bytes         -> tests 5, 6, 17
 #   list_objects             -> tests 11, 12
+#
+# MISSING-BUCKET GUARDS (tests 13-17):
+#   Regression coverage after splitting "key not found" from
+#   "bucket not found". NoSuchBucket must surface as StorageError, not
+#   silent-success (delete), False (exists), or StorageNotFoundError
+#   (metadata / bytes). Each test points settings at a non-existent
+#   bucket and verifies the exception type.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
@@ -45,6 +52,10 @@ from app.core.storage import (
 
 TEST_BUCKET = "cbshome-attachments-test"
 TEST_PREFIX = "test_storage/"
+
+# Bucket name guaranteed to never exist. Used by the missing-bucket
+# regression tests.
+MISSING_BUCKET = "definitely-does-not-exist-xyz"
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +271,7 @@ async def test_list_objects_with_prefix_filter() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 13: StorageError surfaces unexpected ClientError (smoke -- bad bucket)
+# 13: upload_object raises StorageError when bucket is missing
 # ---------------------------------------------------------------------------
 
 
@@ -268,8 +279,87 @@ async def test_list_objects_with_prefix_filter() -> None:
 async def test_upload_to_nonexistent_bucket_raises_storage_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Pointing at a bucket that doesn't exist raises StorageError, not raw ClientError."""
-    monkeypatch.setattr(settings, "minio_bucket", "definitely-does-not-exist-xyz")
+    """upload_object on a non-existent bucket raises StorageError."""
+    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
 
     with pytest.raises(StorageError):
         await upload_object("any-key", b"x", "text/plain")
+
+
+# ---------------------------------------------------------------------------
+# 14: delete_object raises StorageError on missing bucket
+#     (regression: previously NoSuchBucket was silently absorbed)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_delete_object_raises_storage_error_on_missing_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """delete_object on a non-existent bucket raises StorageError, NOT silent no-op.
+
+    Regression guard: NoSuchBucket must NOT be confused with NoSuchKey.
+    A missing bucket is a misconfiguration (typo in MINIO_BUCKET, failed
+    minio-init) and must be surfaced.
+    """
+    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+
+    with pytest.raises(StorageError):
+        await delete_object("any-key")
+
+
+# ---------------------------------------------------------------------------
+# 15: object_exists raises StorageError on missing bucket
+#     (regression: previously returned False, masking misconfiguration)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_object_exists_raises_storage_error_on_missing_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """object_exists on a non-existent bucket raises StorageError, NOT False."""
+    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+
+    with pytest.raises(StorageError):
+        await object_exists("any-key")
+
+
+# ---------------------------------------------------------------------------
+# 16: get_object_metadata raises StorageError (NOT StorageNotFoundError)
+#     on missing bucket
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_object_metadata_raises_storage_error_on_missing_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """get_object_metadata on a missing bucket raises StorageError, NOT StorageNotFoundError.
+
+    The two exception types must stay distinct so callers can tell the
+    difference between "key missing in healthy bucket" and "stack broken".
+    """
+    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+
+    with pytest.raises(StorageError) as exc_info:
+        await get_object_metadata("any-key")
+    assert not isinstance(exc_info.value, StorageNotFoundError)
+
+
+# ---------------------------------------------------------------------------
+# 17: get_object_bytes raises StorageError (NOT StorageNotFoundError)
+#     on missing bucket
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_object_bytes_raises_storage_error_on_missing_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """get_object_bytes on a missing bucket raises StorageError, NOT StorageNotFoundError."""
+    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+
+    with pytest.raises(StorageError) as exc_info:
+        await get_object_bytes("any-key")
+    assert not isinstance(exc_info.value, StorageNotFoundError)
