@@ -17,14 +17,27 @@
 #
 # EXCEPTIONS:
 #   StorageError              -- generic upstream failure, including a
-#                                missing bucket (NoSuchBucket).
+#                                missing bucket.
 #   StorageNotFoundError      -- the requested KEY does not exist in an
 #                                otherwise-healthy bucket.
 #
-#   These are intentionally distinct: NoSuchBucket points at a broken
+#   These are intentionally distinct: a missing bucket points at a broken
 #   stack (typo in MINIO_BUCKET, failed minio-init) and must NOT be
-#   silently treated as "object missing". Only NoSuchKey / 404 collapse
-#   into StorageNotFoundError.
+#   silently treated as "object missing".
+#
+# HEAD-BASED DISAMBIGUATION:
+#   MinIO returns a generic HTTP 404 for `head_object` on both
+#   "key missing" and "bucket missing" cases (it does NOT echo
+#   NoSuchBucket the way put_object / get_object / delete_object do).
+#   So object_exists() and get_object_metadata() additionally call
+#   head_bucket() when they receive a 404, to tell the two apart.
+#   This costs one extra round-trip in the negative path; we accept it
+#   because these functions are called from read endpoints that are not
+#   in any hot path.
+#
+#   delete_object and get_object_bytes do NOT need this disambiguation
+#   because their underlying S3 calls (DeleteObject, GetObject) report
+#   NoSuchBucket explicitly.
 #
 # CLIENT LIFECYCLE:
 #   aiobotocore session is a module-level lazy singleton. Each public
@@ -64,7 +77,7 @@ logger = structlog.get_logger()
 class StorageError(Exception):
     """Generic upstream storage failure (network, auth, missing bucket, etc).
 
-    NoSuchBucket lands here, not in StorageNotFoundError -- a missing
+    A missing bucket lands here, not in StorageNotFoundError -- a missing
     bucket means the deployment is broken, not that we're looking up a
     missing object.
     """
@@ -114,20 +127,50 @@ def _client_context() -> Any:
 
 
 # Codes that mean "the KEY does not exist" -- bucket is fine.
-# NoSuchBucket is intentionally NOT here. botocore normalises some HTTP
-# 404s into the literal "404" while named operations (head_object) return
-# "NoSuchKey".
+# botocore normalises some HTTP 404s into the literal "404" while named
+# operations (head_object) return "NoSuchKey". On MinIO specifically,
+# head_object also returns "404" when the BUCKET is missing, which is
+# why object_exists() / get_object_metadata() additionally probe with
+# head_bucket() to disambiguate.
 _KEY_NOT_FOUND_CODES = frozenset({"404", "NoSuchKey"})
 
 
 def _is_key_not_found(exc: ClientError) -> bool:
-    """True iff the ClientError specifically signals a missing key.
+    """True iff the ClientError code is in the "key missing" set.
 
-    Returns False for NoSuchBucket / auth / network errors -- callers
-    should let those propagate as StorageError.
+    Note: on MinIO head_object also returns "404" for a missing bucket,
+    so callers that use head_object must additionally verify the bucket
+    via _assert_bucket_exists() before treating the error as "key gone".
     """
     code = exc.response.get("Error", {}).get("Code", "")
     return code in _KEY_NOT_FOUND_CODES
+
+
+async def _assert_bucket_exists(client: Any) -> None:
+    """Raise StorageError if the configured bucket is missing or unreachable.
+
+    Used by head_object-based functions to disambiguate "key not found"
+    from "bucket not found", because MinIO collapses both into HTTP 404
+    on head_object responses.
+
+    Args:
+        client: An open aiobotocore S3 client (from _client_context()).
+
+    Raises:
+        StorageError: If head_bucket fails for any reason -- bucket
+            missing, auth refused, network broken, etc.
+    """
+    try:
+        await client.head_bucket(Bucket=settings.minio_bucket)
+    except ClientError as exc:
+        logger.error(
+            "storage_bucket_missing",
+            bucket=settings.minio_bucket,
+            error=str(exc),
+        )
+        raise StorageError(
+            f"Bucket {settings.minio_bucket!r} is missing or unreachable: {exc}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +224,9 @@ async def upload_object(
 
 async def delete_object(key: str) -> None:
     """Delete an object. Idempotent on a missing KEY; raises on a missing BUCKET.
+
+    DeleteObject on MinIO reports NoSuchBucket explicitly (not as a
+    generic 404), so we don't need head_bucket disambiguation here.
 
     Args:
         key: Object key.
@@ -242,22 +288,30 @@ async def generate_presigned_url(key: str, ttl_seconds: int) -> str:
 async def object_exists(key: str) -> bool:
     """Check whether the object exists.
 
-    Returns False on a missing KEY. Raises StorageError on a missing
-    BUCKET or any other upstream failure.
+    Returns False on a missing KEY in a healthy bucket. Raises
+    StorageError on a missing BUCKET or any other upstream failure.
+
+    Implementation note: MinIO's head_object returns HTTP 404 for both
+    "key missing" and "bucket missing", so we disambiguate by probing
+    head_bucket on every 404. One extra round-trip in the negative path.
     """
-    try:
-        async with _client_context() as client:
+    async with _client_context() as client:
+        try:
             await client.head_object(
                 Bucket=settings.minio_bucket,
                 Key=key,
             )
-    except ClientError as exc:
-        if _is_key_not_found(exc):
+            return True
+        except ClientError as exc:
+            if not _is_key_not_found(exc):
+                logger.error("storage_head_failed", key=key, error=str(exc))
+                raise StorageError(f"Failed to HEAD {key}: {exc}") from exc
+            # Got a "key not found"-style code. On MinIO this also fires
+            # for missing buckets -- verify the bucket independently.
+            # _assert_bucket_exists raises StorageError if the bucket is
+            # missing; otherwise execution continues and we return False.
+            await _assert_bucket_exists(client)
             return False
-        logger.error("storage_head_failed", key=key, error=str(exc))
-        raise StorageError(f"Failed to HEAD {key}: {exc}") from exc
-
-    return True
 
 
 async def get_object_metadata(key: str) -> dict[str, Any]:
@@ -272,18 +326,22 @@ async def get_object_metadata(key: str) -> dict[str, Any]:
     Raises:
         StorageNotFoundError: When the KEY is missing in an existing bucket.
         StorageError: When the BUCKET is missing or on any other failure.
+
+    Implementation note: same head_bucket disambiguation as object_exists.
     """
-    try:
-        async with _client_context() as client:
+    async with _client_context() as client:
+        try:
             response = await client.head_object(
                 Bucket=settings.minio_bucket,
                 Key=key,
             )
-    except ClientError as exc:
-        if _is_key_not_found(exc):
+        except ClientError as exc:
+            if not _is_key_not_found(exc):
+                logger.error("storage_head_failed", key=key, error=str(exc))
+                raise StorageError(f"Failed to HEAD {key}: {exc}") from exc
+            # Key-not-found code received. Disambiguate vs missing bucket.
+            await _assert_bucket_exists(client)
             raise StorageNotFoundError(f"Object not found: {key}") from exc
-        logger.error("storage_head_failed", key=key, error=str(exc))
-        raise StorageError(f"Failed to HEAD {key}: {exc}") from exc
 
     return {
         "size": int(response.get("ContentLength", 0)),
@@ -303,6 +361,9 @@ async def get_object_bytes(key: str) -> bytes:
     Used by the templates module (Refactor 2 iter 2.2 §4.4) to render
     HTML stored in MinIO, and by reconcile scripts that need to inspect
     companion `.cbsmeta.json` files.
+
+    GetObject on MinIO reports NoSuchBucket explicitly (not as a generic
+    404), so we don't need head_bucket disambiguation here.
 
     Raises:
         StorageNotFoundError: When the KEY is missing in an existing bucket.
