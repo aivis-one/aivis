@@ -497,7 +497,7 @@ prompt_secret() {
         sed -i "s|${VAR}=.*|${VAR}=${VALUE}|" "$ENV_FILE"
         success "  $LABEL set"
     else
-        warn "  $LABEL: keeping PLACEHOLDER"
+        warn "  $LABEL: keeping current value"
     fi
 }
 
@@ -505,6 +505,22 @@ prompt_secret "TELEGRAM_BOT_TOKEN" "Telegram Bot Token"
 prompt_secret "SUMSUB_API_KEY"     "SumSub API Key (optional)"
 prompt_secret "SUMSUB_SECRET_KEY"  "SumSub Secret Key (optional)"
 prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (optional)"
+
+# MinIO credentials -- user supplies memorable values OR ENTERs to keep the
+# random defaults generated above by gen_short_id / gen_password. The three
+# shell variables (MINIO_ROOT_USER_VAL, MINIO_ROOT_PASS, MINIO_CONSOLE_PASS)
+# are consumed downstream by htpasswd (MinIO Storage section) and `mc alias
+# set` (Docker Stack section), so they MUST be re-read from .env after the
+# prompts in case the user replaced them.
+echo ""
+log "MinIO Console credentials (used to log in at https://${STORAGE_DOMAIN}):"
+prompt_secret "MINIO_ROOT_USER"                   "MinIO Root User (Console login, Step 2)"
+prompt_secret "MINIO_ROOT_PASSWORD"               "MinIO Root Password (Console login, Step 2)"
+prompt_secret "MINIO_CONSOLE_BASIC_AUTH_PASSWORD" "MinIO Console basic-auth password (nginx gate, Step 1)"
+
+MINIO_ROOT_USER_VAL=$(grep "^MINIO_ROOT_USER=" "$ENV_FILE" | cut -d= -f2-)
+MINIO_ROOT_PASS=$(grep "^MINIO_ROOT_PASSWORD=" "$ENV_FILE" | cut -d= -f2-)
+MINIO_CONSOLE_PASS=$(grep "^MINIO_CONSOLE_BASIC_AUTH_PASSWORD=" "$ENV_FILE" | cut -d= -f2-)
 
 chmod 600 "$ENV_FILE"
 success ".env secured (chmod 600)"
