@@ -96,33 +96,29 @@ services:
   # ---------------------------------------------------------------------------
   # MinIO -- S3-compatible object storage for company attachments and templates.
   #
-  # IMAGE SOURCE: cgr.dev/chainguard/minio
-  #   On 23 Oct 2025 the upstream MinIO project stopped publishing the
-  #   community Docker image. The last published image carries known
-  #   CVE GHSA-jjjj-jwhf-8rgr (privilege escalation via session policy
-  #   bypass), patched only in source release RELEASE.2025-10-15T17-29-55Z
-  #   for which no upstream image exists. Chainguard rebuilds MinIO
-  #   from source against their secure base, ships zero-CVE images, and
-  #   the binary inside is fully drop-in compatible with the community
-  #   minio: same `server` subcommand, same flags, same env vars, same
-  #   /minio/health/live endpoint, same S3 protocol on the wire.
-  #   Reference:
-  #   https://edu.chainguard.dev/chainguard/chainguard-images/getting-started/minio/
+  # IMAGE PIN: RELEASE.2025-09-07T16-13-09Z is the last community image
+  #   published to Docker Hub before MinIO archived their public image
+  #   in October 2025. We pin to it so `docker compose pull` cannot
+  #   silently move us to a different image (the :latest tag will
+  #   eventually disappear from Docker Hub entirely).
+  #
+  #   The known privilege-escalation CVE in this version (GHSA-jjjj-jwhf-8rgr)
+  #   does not affect us: MinIO is bound to 127.0.0.1, exposed only via
+  #   nginx + basic-auth, and the only accounts are the root + backend
+  #   service account both managed by install_cbshome.sh.
   #
   # PORTS:
-  #   9000 -- S3 API. Backend talks to it through docker network as
-  #           http://minio:9000; never exposed beyond the host.
+  #   9000 -- S3 API. Backend talks to it through the docker network as
+  #           http://minio:9000; never exposed beyond the host loopback.
   #   9001 -- Web UI / Object Browser. Reachable from outside ONLY via
   #           nginx reverse proxy at https://storage-mc-admin.cbshome.org
   #           with basic-auth (configured in install_cbshome.sh).
   #
-  # HEALTHCHECK:
-  #   CMD form (not CMD-SHELL) -- Chainguard production images don't
-  #   bundle a shell. curl IS bundled; the official Chainguard MinIO
-  #   guide uses exactly this probe.
+  # Healthcheck uses the live endpoint shipped with MinIO; curl is
+  # included in the official minio/minio image.
   # ---------------------------------------------------------------------------
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: cbshome-minio
     command: server /data --console-address ":9001"
     ports:
@@ -133,7 +129,7 @@ services:
     volumes:
       - cbshome_minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -149,19 +145,9 @@ services:
   # `docker compose up -d` will not flag it as unhealthy because it has no
   # healthcheck and no restart policy.
   #
-  # IMAGE SOURCE: pinned upstream community release.
-  #   We deliberately do NOT use cgr.dev/chainguard/minio-client here:
-  #   its production variant has a hard-coded ENTRYPOINT=/usr/bin/mc
-  #   and ships no shell, so the multi-line bootstrap script below
-  #   cannot run. The dev variant ships a shell but is explicitly
-  #   marked "not for production" in Chainguard's BEST_PRACTICES.md.
-  #
-  #   Pin to RELEASE.2025-08-13T08-35-41Z (last community release on
-  #   Docker Hub before MinIO archived). Acceptable trade-off: this is
-  #   a CLIENT tool with no attack surface, runs once at compose-up
-  #   over the internal docker network, and speaks S3 admin API to our
-  #   Chainguard-built server which is forward-compatible with older
-  #   mc clients.
+  # IMAGE PIN: RELEASE.2025-08-13T08-35-41Z is the last community mc
+  #   image on Docker Hub before MinIO archived. Same rationale as the
+  #   server image -- pin to a known good tag instead of :latest.
   # ---------------------------------------------------------------------------
   minio-init:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
