@@ -21,6 +21,9 @@
 #   public_attachments_router -> /api/v1/public/companies/{id}/attachments/*
 #                                (Refactor 2 iter 2.2, public-flow, no auth,
 #                                 rate-limited per IP)
+#   staff_attachments_router  -> /api/v1/staff/companies/{id}/attachments/*
+#                                (Refactor 2 iter 2.2, staff-flow, multipart
+#                                 upload + replace + hard-delete admin-only)
 #   products_router           -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
@@ -59,17 +62,16 @@
 #     next to the company admin routes in the OpenAPI doc.
 #
 # Refactor 2 iter 2.2 CHANGES:
-#   - +attachments_router (auth-flow) for /api/v1/companies/{id}/attachments
-#     and the matching /download. Wired right after staff_companies_router
-#     so the company / staff-company / attachments trio stays adjacent in
-#     the OpenAPI doc.
-#   - +public_attachments_router (public-flow, no auth) for
-#     /api/v1/public/companies/{id}/attachments and /download. Rate-limited
-#     per IP via core.rate_limit.check_rate_limit with explicit
-#     PUBLIC_LIST_RATE_LIMIT / PUBLIC_DOWNLOAD_RATE_LIMIT presets. Wired
+#   - +attachments_router (auth-flow): /api/v1/companies/{id}/attachments
+#     and /download. Wired right after staff_companies_router so the
+#     company / staff-company / attachments group stays adjacent.
+#   - +public_attachments_router (public-flow, no auth, rate-limited):
+#     /api/v1/public/companies/{id}/attachments and /download. Wired
 #     right after attachments_router.
-#   - Staff attachment router lands in a subsequent batch of the same
-#     iteration.
+#   - +staff_attachments_router (staff-flow, multipart upload, hard-delete
+#     admin-only): /api/v1/staff/companies/{id}/attachments/*. Wired
+#     right after public_attachments_router so all three attachment
+#     routers sit together in the OpenAPI doc.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -118,6 +120,9 @@ from app.modules.companies.attachments_public_router import (
     router as public_attachments_router,
 )
 from app.modules.companies.attachments_router import router as attachments_router
+from app.modules.companies.attachments_staff_router import (
+    router as staff_attachments_router,
+)
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.company_dashboard.router import router as company_dashboard_router
@@ -407,10 +412,10 @@ app.include_router(dashboard_router)
 app.include_router(kyc_admin_router)
 app.include_router(companies_router)
 app.include_router(staff_companies_router)
-# Refactor 2 iter 2.2: company attachments (auth-flow + public-flow). Staff
-# attachment router is wired in a subsequent batch of the same iteration.
+# Refactor 2 iter 2.2: company attachments (auth-flow + public-flow + staff-flow).
 app.include_router(attachments_router)
 app.include_router(public_attachments_router)
+app.include_router(staff_attachments_router)
 app.include_router(products_router)
 app.include_router(staff_products_router)
 # Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).
