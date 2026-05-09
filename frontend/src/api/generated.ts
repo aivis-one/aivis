@@ -29,6 +29,24 @@ export interface AgentApplicationResponse {
   created_at: string
 }
 
+/** Attachment as seen by investors / public consumers. Excludes storage_key (internal MinIO path), created_by (audit-only identity), and is_deleted (always False for these flows -- soft-deleted rows are filtered out by the service layer). */
+export interface AttachmentResponse {
+  id: string
+  company_id: string
+  category: string
+  language: string | null
+  title: string
+  description: string | null
+  original_filename: string
+  mime_type: string
+  file_size_bytes: number
+  order: number
+  is_published: boolean
+  is_public: boolean
+  created_at: string
+  updated_at: string | null
+}
+
 /** Response for all auth endpoints (register, login, telegram). */
 export interface AuthResponse {
   user: UserResponse
