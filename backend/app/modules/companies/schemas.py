@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Company Schemas (Sprint 4.1, fix Phase 4, Sprint 4.3)
+# CBSHOME Backend -- Company Schemas (Sprint 4.1, fix Phase 4, Sprint 4.3,
+#                                       Refactor 2 iter 2.2)
 # =============================================================================
 #
 # REQUEST SCHEMAS:
@@ -33,12 +34,25 @@
 #     +shares_per_option. Public storefront needs them so the storefront
 #     can show how many options the company has issued and how that
 #     relates to the pool size shown on a product card.
+#
+# Refactor 2 iter 2.2 ADDITIONS (Company Attachments):
+#   - AttachmentInboxMetadata   -- cbsmeta.json format AND multipart POST/PATCH
+#                                  body (R2 §3.7). One schema, two surfaces.
+#   - AttachmentPatchBody       -- subset for PATCH metadata (everything Optional).
+#   - AttachmentResponse        -- read for auth-flow + public-flow. Excludes
+#                                  storage_key / created_by / is_deleted to
+#                                  minimise public surface.
+#   - StaffAttachmentResponse   -- read for staff-flow. Extends with
+#                                  storage_key, created_by_id, is_deleted.
 # =============================================================================
 
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from app.modules.companies.constants import ATTACHMENT_CATEGORY_REGEX
 
 
 # ---------------------------------------------------------------------------
@@ -237,3 +251,124 @@ class PublicCompanyListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+# ---------------------------------------------------------------------------
+# Attachments (Refactor 2 iter 2.2)
+# ---------------------------------------------------------------------------
+#
+# AttachmentInboxMetadata serves both the cbsmeta.json companion-file format
+# (R2 §3.7, used by reconcile_attachments.py) and the multipart POST/replace
+# body shape (Staff API). Single schema -- one source of truth -- so the
+# inbox flow and the future UI-driven flow stay byte-compatible.
+#
+# Defaults are safety-first per R2 §3.7: a freshly seeded attachment is
+# invisible to investors until staff explicitly flips is_published=true.
+#
+# `original_filename` is intentionally NOT a field here: for multipart it
+# comes from UploadFile.filename, for inbox it comes from the file sitting
+# next to the cbsmeta.json. Decoupling that field from the metadata schema
+# keeps the JSON portable across companies / uploads.
+
+
+# Allowed values for the `language` field. NULL = language-agnostic.
+AttachmentLanguage = Literal["en", "ru", "de", "ar"]
+
+
+class AttachmentInboxMetadata(BaseModel):
+    """Metadata for a CompanyAttachment.
+
+    Used as:
+      - cbsmeta.json companion-file body (R2 §3.7), parsed via
+        model_validate_json() in reconcile_attachments.py.
+      - multipart POST /staff/companies/{id}/attachments body
+        (form field `metadata` containing the same JSON).
+      - multipart PATCH /staff/.../{att_id}/replace body
+        (same form field).
+
+    Required: title only. Everything else has safety-first defaults.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=5000)
+    category: str = Field(
+        default="unsorted",
+        max_length=200,
+        pattern=ATTACHMENT_CATEGORY_REGEX,
+    )
+    language: AttachmentLanguage | None = None
+    order: int = Field(default=0, ge=0)
+    is_published: bool = False
+    is_public: bool = False
+
+
+class AttachmentPatchBody(BaseModel):
+    """Partial update of attachment metadata.
+
+    Used by PATCH /staff/companies/{id}/attachments/{att_id}.
+
+    Every field is optional; the service applies model_dump(exclude_unset=True)
+    and only mutates fields that were explicitly sent. `description` accepts
+    explicit null to clear the value.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=5000)
+    category: str | None = Field(
+        default=None,
+        max_length=200,
+        pattern=ATTACHMENT_CATEGORY_REGEX,
+    )
+    language: AttachmentLanguage | None = None
+    order: int | None = Field(default=None, ge=0)
+    is_published: bool | None = None
+    is_public: bool | None = None
+
+
+class AttachmentResponse(BaseModel):
+    """Attachment as seen by investors / public consumers.
+
+    Excludes storage_key (internal MinIO path), created_by (audit-only
+    identity), and is_deleted (always False for these flows -- soft-deleted
+    rows are filtered out by the service layer).
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    company_id: UUID
+    category: str
+    language: str | None
+    title: str
+    description: str | None
+    original_filename: str
+    mime_type: str
+    file_size_bytes: int
+    order: int
+    is_published: bool
+    is_public: bool
+    created_at: datetime
+    updated_at: datetime | None
+
+
+class StaffAttachmentResponse(AttachmentResponse):
+    """Attachment as seen by staff: includes operational fields hidden
+    from auth/public flows.
+
+    The model column is `created_by` (UUID NOT NULL today, FK ondelete=RESTRICT);
+    we expose it as `created_by_id` at the API boundary for naming clarity
+    and type it as Optional to leave room for a future ondelete=SET NULL.
+    `validation_alias="created_by"` lets Pydantic populate this field from
+    the ORM attribute without renaming the column.
+    """
+
+    storage_key: str
+    is_deleted: bool
+    created_by_id: UUID | None = Field(
+        default=None,
+        validation_alias="created_by",
+    )
