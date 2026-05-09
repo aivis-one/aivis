@@ -74,6 +74,9 @@ from app.modules.notifications.models import Notification, NotificationDelivery 
 # Sprint 9.1: Posts
 from app.modules.posts.models import Post, PostDismiss, Event  # noqa: F401
 
+# Refactor 2 iter 2.2: Company Attachments
+from app.modules.companies.models import CompanyAttachment  # noqa: F401
+
 # ---------------------------------------------------------------------------
 
 config = context.config

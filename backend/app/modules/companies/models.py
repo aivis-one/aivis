@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Company Models (Sprint 4.1, fix Phase 4, Sprint 4.3)
+# CBSHOME Backend -- Company Models (Sprint 4.1, fix Phase 4, Sprint 4.3,
+#                                     Refactor 2 iter 2.2)
 # =============================================================================
 #
 # CompanyProfile:
@@ -15,6 +16,15 @@
 #   Ordered list of roadmap milestones. Soft-delete only (status -> archived
 #   pattern not applicable; items are hidden via is_deleted flag).
 #   order column controls display sequence.
+#
+# CompanyAttachment (Refactor 2 iter 2.2):
+#   Arbitrary binary files attached to a company (business licenses,
+#   incorporation certificates, presentations, patents, etc.) stored in
+#   MinIO under `companies/<company_id>/attachments/<attachment_id>/...`
+#   (R2 §2.2). Metadata only in Postgres -- the actual bytes are streamed
+#   through presigned URLs from the storage layer (app/core/storage.py).
+#   Soft-deleted via is_deleted; hard-delete is a separate admin-only path
+#   that also removes the MinIO object.
 #
 # DISTRIBUTION CONFIG (JSONB):
 #   {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
@@ -228,4 +238,125 @@ class CompanyRoadmapItem(UUIDMixin, TimestampMixin, Base):
         return (
             f"<CompanyRoadmapItem id={self.id} title={self.title!r} "
             f"order={self.order}>"
+        )
+
+
+class CompanyAttachment(UUIDMixin, TimestampMixin, Base):
+    """Binary file attached to a company.
+
+    Refactor 2 iter 2.2 (R2 §3.2). Metadata only -- bytes live in MinIO
+    under storage_key. Soft-deleted via is_deleted; hard-delete is admin-only
+    and removes the MinIO object as well (handled in the service layer).
+
+    `category` is a path-tree string with `/` as level separator (max 5
+    levels, lowercase, regex enforced via Pydantic at the API edge -- see
+    ATTACHMENT_CATEGORY_REGEX in constants.py). Slashes are NOT directory
+    separators in MinIO -- the storage key uses UUID-based paths instead
+    (companies/<company_id>/attachments/<attachment_id>/<filename>).
+
+    `language` is ISO 639-1 (en/ru/de/ar) or NULL for language-agnostic
+    documents (R2 §3.6). Multilingual docs are stored as separate rows
+    sharing (category, title) -- the backend exposes a flat list and the
+    UI groups client-side.
+
+    `order` controls display sequence inside a (company_id, category)
+    scope (Q-ATT-4). The service layer shifts existing rows to make room
+    when an explicit order is requested.
+
+    `is_published` controls visibility for the auth-flow investor view;
+    `is_public` AND `is_published` together enable the public-flow
+    download endpoint without authentication (R2 §3.4).
+
+    NOTE: `order` is a Postgres reserved word; SQLAlchemy + the DB driver
+    quote it correctly without an explicit `mapped_column("order", ...)`,
+    matching the existing CompanyRoadmapItem.order convention.
+    """
+
+    __tablename__ = "company_attachments"
+
+    company_id: Mapped[UUID] = mapped_column(
+        ForeignKey("company_profiles.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    # -- Categorisation --
+    category: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+        index=True,
+    )
+    language: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+    )
+
+    # -- Display --
+    title: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+    )
+    description: Mapped[str | None] = mapped_column(
+        String(5000),
+        nullable=True,
+    )
+
+    # -- Storage pointer --
+    storage_key: Mapped[str] = mapped_column(
+        String(1000),
+        nullable=False,
+    )
+    original_filename: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+    )
+    mime_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+    file_size_bytes: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+
+    # -- Ordering inside (company_id, category) --
+    order: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+
+    # -- Visibility flags (safety-first defaults: invisible) --
+    is_published: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
+    is_public: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
+
+    # -- Audit --
+    created_by: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+
+    # -- Soft-delete --
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<CompanyAttachment id={self.id} company={self.company_id} "
+            f"category={self.category!r} title={self.title!r}>"
         )

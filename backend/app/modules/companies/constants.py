@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Constants (Sprint 4.1)
+# CBSHOME Backend -- Company Constants (Sprint 4.1, Refactor 2 iter 2.2)
 # =============================================================================
 #
 # COMPANY STATUS:
@@ -20,6 +20,18 @@
 #   active  -> hidden    (unpublish)
 #   active  -> archived  (soft-delete)
 #   hidden  -> archived  (soft-delete)
+#
+# Refactor 2 iter 2.2 ADDITIONS (Company Attachments):
+#   ATTACHMENT_CATEGORY_REGEX      -- path-tree regex for `category`
+#                                     (max 5 levels, lowercase, no spaces)
+#   KNOWN_ATTACHMENT_PATHS         -- recommended path hints surfaced as
+#                                     UI chips. Hint only, not a constraint.
+#   ALLOWED_ATTACHMENT_MIME_TYPES  -- whitelist for multipart upload
+#                                     (R2 Q-ATT-3). Mime strings, not extensions.
+#   PUBLIC_LIST_RATE_LIMIT,
+#   PUBLIC_DOWNLOAD_RATE_LIMIT     -- (max_requests, window_seconds) tuples
+#                                     for rate-limiting public-flow attachment
+#                                     endpoints (R2 Q-ATT-2).
 # =============================================================================
 
 import enum
@@ -112,3 +124,71 @@ def validate_distribution_config(config: dict) -> None:  # type: ignore[type-arg
         raise BadRequestError(
             f"distribution_config contains unknown keys: {extra_keys}"
         )
+
+
+# =============================================================================
+# Refactor 2 iter 2.2 -- Company Attachments
+# =============================================================================
+
+# Path-tree regex for CompanyAttachment.category.
+# Format: lowercase a-z + digits + `_-`, segments separated by `/`, max 5 levels.
+# Examples that match: "legal/licenses/business", "marketing/presentations",
+# "patents", "other".
+# Examples that don't: "Legal" (uppercase), "a/b/c/d/e/f" (6 levels),
+# "a b" (space), "a/" (trailing slash).
+ATTACHMENT_CATEGORY_REGEX: str = r"^[a-z0-9_-]+(/[a-z0-9_-]+){0,4}$"
+
+
+# Recommended category paths surfaced in Staff UI as chips. Hint only --
+# Staff may type custom paths matching ATTACHMENT_CATEGORY_REGEX. Backend
+# does NOT enforce membership in this set; the frozen set is exposed via
+# OpenAPI / Pydantic for the UI to read.
+KNOWN_ATTACHMENT_PATHS: frozenset[str] = frozenset({
+    # Legal
+    "legal/incorporation",
+    "legal/licenses/business",
+    "legal/licenses/stock",
+    # Marketing
+    "marketing/presentations",
+    "marketing/onepagers",
+    "marketing/press",
+    # IP
+    "patents",
+    # Reports
+    "reports/annual",
+    "reports/audit",
+    "reports/quarterly",
+    # Generic
+    "other",
+})
+
+
+# Mime-type whitelist for multipart upload (R2 Q-ATT-3).
+# Stored as full mime strings (not extensions) so we compare against
+# UploadFile.content_type directly.
+ALLOWED_ATTACHMENT_MIME_TYPES: frozenset[str] = frozenset({
+    # Documents
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # pptx
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",    # docx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",          # xlsx
+    # Images
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "image/svg+xml",
+    # Video
+    "video/mp4",
+    "video/webm",
+    # Plain text
+    "text/plain",
+    "text/markdown",
+})
+
+
+# Rate limits for public-flow attachment endpoints (R2 Q-ATT-2).
+# Tuple shape: (max_requests, window_seconds). Consumed by
+# attachments_public_router via the extended core.rate_limit API.
+PUBLIC_LIST_RATE_LIMIT: tuple[int, int] = (60, 60)
+PUBLIC_DOWNLOAD_RATE_LIMIT: tuple[int, int] = (300, 60)
