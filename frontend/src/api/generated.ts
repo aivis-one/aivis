@@ -29,6 +29,17 @@ export interface AgentApplicationResponse {
   created_at: string
 }
 
+/** Partial update of attachment metadata. Used by PATCH /staff/companies/{id}/attachments/{att_id}. Every field is optional; the service applies model_dump(exclude_unset=True) and only mutates fields that were explicitly sent. `description` accepts explicit null to clear the value. */
+export interface AttachmentPatchBody {
+  title?: string | null
+  description?: string | null
+  category?: string | null
+  language?: 'en' | 'ru' | 'de' | 'ar' | null
+  order?: number | null
+  is_published?: boolean | null
+  is_public?: boolean | null
+}
+
 /** Attachment as seen by investors / public consumers. Excludes storage_key (internal MinIO path), created_by (audit-only identity), and is_deleted (always False for these flows -- soft-deleted rows are filtered out by the service layer). */
 export interface AttachmentResponse {
   id: string
@@ -84,6 +95,15 @@ export interface BalanceResponse {
 /** Request to block a user. */
 export interface BlockRequest {
   reason?: string | null
+}
+
+export interface Body_create_attachment_staff_endpoint_api_v1_staff_companies__company_id__attachments_post {
+  metadata: string
+  file: string
+}
+
+export interface Body_replace_attachment_staff_endpoint_api_v1_staff_companies__company_id__attachments__attachment_id__replace_patch {
+  file: string
 }
 
 /** Single commission or volume bonus entry. */
@@ -877,6 +897,27 @@ export interface SemaphoreResult {
   status: string
   severity: string
   details?: Record<string, unknown> | null
+}
+
+/** Attachment as seen by staff: includes operational fields hidden from auth/public flows. The model column is `created_by` (UUID NOT NULL today, FK ondelete=RESTRICT); we expose it as `created_by_id` at the API boundary for naming clarity and type it as Optional to leave room for a future ondelete=SET NULL. `validation_alias="created_by"` lets Pydantic populate this field from the ORM attribute without renaming the column. */
+export interface StaffAttachmentResponse {
+  id: string
+  company_id: string
+  category: string
+  language: string | null
+  title: string
+  description: string | null
+  original_filename: string
+  mime_type: string
+  file_size_bytes: number
+  order: number
+  is_published: boolean
+  is_public: boolean
+  created_at: string
+  updated_at: string | null
+  storage_key: string
+  is_deleted: boolean
+  created_by_id?: string | null
 }
 
 /** Paginated payment list for staff. */
