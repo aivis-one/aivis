@@ -1563,7 +1563,7 @@ case_nginx() {
 #   stats                            — bucket size + object count
 #   console                          — print Web UI URL + credentials
 #   reconcile <id>                   — sync inbox/ -> attachments/
-#                                      (stub: requires Python in next iter)
+#                                      (Refactor 2 iter 2.2)
 #   reconcile-templates <id>         — sync templates-inbox/ -> templates/
 #                                      (stub: next iter)
 #   reconcile-platform-templates     — sync _platform/templates-inbox/ ...
@@ -1606,13 +1606,16 @@ case_storage() {
             echo "  Password: $ROOT_PASS"
             ;;
         reconcile)
-            local CID="${2:-}"
-            if [ -z "$CID" ]; then
-                echo "Usage: cbshome storage reconcile <company_id> [--all|--dry-run|--orphans-only|--broken-only]"
+            shift
+            if [ $# -eq 0 ]; then
+                echo "Usage: cbshome storage reconcile <company_id> [--dry-run|--orphans-only|--broken-only]"
+                echo "       cbshome storage reconcile --all          [--dry-run|--orphans-only|--broken-only]"
                 exit 1
             fi
-            echo -e "${YELLOW}Not implemented yet, requires backend/scripts/reconcile_attachments.py from next iteration${NC}"
-            echo "Reference: CBSHOME-Refactor-Company-Docs.md §3.7"
+            # Refactor 2 iter 2.2: pass-through to the Python reconcile script.
+            # Argument validation (company_id XOR --all, mutually exclusive
+            # --orphans-only / --broken-only) happens inside argparse.
+            docker compose exec -T app python -m scripts.reconcile_attachments "$@"
             ;;
         reconcile-templates)
             local CID="${2:-}"
@@ -1631,7 +1634,8 @@ case_storage() {
             echo "Storage commands:"
             echo "  cbshome storage stats                              — Bucket size + object count"
             echo "  cbshome storage console                            — Print MinIO Console URL + credentials"
-            echo "  cbshome storage reconcile <company_id>             — Sync inbox -> attachments (stub: next iter)"
+            echo "  cbshome storage reconcile <company_id>             — Sync inbox -> attachments"
+            echo "  cbshome storage reconcile --all                    — Sync inbox for every company"
             echo "  cbshome storage reconcile-templates <company_id>   — Sync templates-inbox -> templates (stub: next iter)"
             echo "  cbshome storage reconcile-platform-templates       — Sync _platform/templates-inbox -> platform (stub: next iter)"
             ;;
@@ -1775,7 +1779,7 @@ case "$CMD" in
         echo "Storage (MinIO):"
         echo "  storage stats                             — Bucket size + object count"
         echo "  storage console                           — Print MinIO Console URL + credentials"
-        echo "  storage reconcile <id>                    — Sync inbox -> DB (stub: next iter)"
+        echo "  storage reconcile <id>                    — Sync inbox -> DB"
         echo "  storage reconcile-templates <id>          — Sync templates-inbox -> DB (stub: next iter)"
         echo "  storage reconcile-platform-templates      — Sync platform templates (stub: next iter)"
         echo ""
