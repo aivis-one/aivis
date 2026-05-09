@@ -16,6 +16,8 @@
 #   kyc_admin_router          -> /api/v1/staff/kyc/* (Sprint 3.3)
 #   companies_router          -> /api/v1/companies/* (Sprint 4.1)
 #   staff_companies_router    -> /api/v1/staff/companies/* (Sprint 4.1)
+#   attachments_router        -> /api/v1/companies/{id}/attachments/*
+#                                (Refactor 2 iter 2.2, auth-flow only)
 #   products_router           -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
@@ -52,6 +54,13 @@
 #     /api/v1/company/dashboard and /api/v1/company/analytics. Wired
 #     after staff_pools_router so the company self-service routes sit
 #     next to the company admin routes in the OpenAPI doc.
+#
+# Refactor 2 iter 2.2 CHANGES:
+#   - +attachments_router (auth-flow) for /api/v1/companies/{id}/attachments
+#     and the matching /download. Wired right after staff_companies_router
+#     so the company / staff-company / attachments trio stays adjacent in
+#     the OpenAPI doc. Public + Staff attachment routers are added in
+#     subsequent batches of the same iteration.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -96,6 +105,7 @@ from app.modules.commissions.worker import (
 from app.modules.dashboard.router import router as investor_dashboard_router
 from app.modules.referrals.router import router as referrals_router
 from app.modules.auth.router import router as auth_router
+from app.modules.companies.attachments_router import router as attachments_router
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.company_dashboard.router import router as company_dashboard_router
@@ -202,6 +212,7 @@ async def _installment_payment_worker() -> None:
             )
             if next_run <= now:
                 next_run = next_run + timedelta(days=1)
+
             sleep_seconds = (next_run - now).total_seconds()
             await asyncio.sleep(sleep_seconds)
         except asyncio.CancelledError:
@@ -384,6 +395,9 @@ app.include_router(dashboard_router)
 app.include_router(kyc_admin_router)
 app.include_router(companies_router)
 app.include_router(staff_companies_router)
+# Refactor 2 iter 2.2: company attachments (auth-flow). Public + Staff
+# attachment routers are wired in subsequent batches of the same iteration.
+app.include_router(attachments_router)
 app.include_router(products_router)
 app.include_router(staff_products_router)
 # Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).

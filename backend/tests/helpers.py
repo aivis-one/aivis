@@ -72,6 +72,18 @@
 #   (FK company_id RESTRICT) -> company_profiles. The block runs only when
 #   the user owns at least one company; pools without a company cannot
 #   exist (FK NOT NULL).
+#
+# Refactor 2 iter 2.2 (Company Attachments):
+#   _cleanup_user_related_data() extended with CompanyAttachment cleanup
+#   in two places:
+#     1. User-level (FK created_by RESTRICT) -- clears attachments any
+#        of these users created, regardless of which company owns them.
+#     2. Inside the company block (FK company_id RESTRICT) -- clears
+#        attachments belonging to the user's own companies before the
+#        CompanyProfile rows are dropped.
+#   Both are required: skipping the user-level pass leaves attachments
+#   pinning a deleted staff user; skipping the company-level pass leaves
+#   attachments pinning a deleted company.
 # =============================================================================
 
 import hashlib
@@ -380,6 +392,7 @@ async def _cleanup_user_related_data(
     """
     from app.modules.agent_applications.models import AgentApplication
     from app.modules.companies.models import (
+        CompanyAttachment,
         CompanyPriceHistory,
         CompanyProfile,
         CompanyRoadmapItem,
@@ -414,6 +427,16 @@ async def _cleanup_user_related_data(
     # Events created by these users (created_by RESTRICT).
     await session.execute(
         delete(Event).where(Event.created_by.in_(user_ids))
+    )
+
+    # Refactor 2 iter 2.2: Company attachments created by these users
+    # (created_by RESTRICT). Must run before the User delete; the
+    # company-level pass below catches attachments owned by these users'
+    # companies regardless of who created them.
+    await session.execute(
+        delete(CompanyAttachment).where(
+            CompanyAttachment.created_by.in_(user_ids)
+        )
     )
 
     # Sprint 8.1: Notification deliveries (FK to users.id CASCADE).
@@ -631,6 +654,16 @@ async def _cleanup_user_related_data(
         await session.execute(
             delete(CompanyPriceHistory).where(
                 CompanyPriceHistory.company_id.in_(company_ids)
+            )
+        )
+        # Refactor 2 iter 2.2: Attachments belonging to these companies
+        # (FK company_id RESTRICT). The user-level pass at the top of
+        # this function deleted attachments by created_by; this catches
+        # rows that were created by some other (still-living) user but
+        # belong to a company about to be deleted.
+        await session.execute(
+            delete(CompanyAttachment).where(
+                CompanyAttachment.company_id.in_(company_ids)
             )
         )
         # Sprint 9.1: Posts owned by these companies (owner_id RESTRICT).
