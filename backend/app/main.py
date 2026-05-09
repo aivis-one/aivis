@@ -17,7 +17,10 @@
 #   companies_router          -> /api/v1/companies/* (Sprint 4.1)
 #   staff_companies_router    -> /api/v1/staff/companies/* (Sprint 4.1)
 #   attachments_router        -> /api/v1/companies/{id}/attachments/*
-#                                (Refactor 2 iter 2.2, auth-flow only)
+#                                (Refactor 2 iter 2.2, auth-flow)
+#   public_attachments_router -> /api/v1/public/companies/{id}/attachments/*
+#                                (Refactor 2 iter 2.2, public-flow, no auth,
+#                                 rate-limited per IP)
 #   products_router           -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
@@ -59,8 +62,14 @@
 #   - +attachments_router (auth-flow) for /api/v1/companies/{id}/attachments
 #     and the matching /download. Wired right after staff_companies_router
 #     so the company / staff-company / attachments trio stays adjacent in
-#     the OpenAPI doc. Public + Staff attachment routers are added in
-#     subsequent batches of the same iteration.
+#     the OpenAPI doc.
+#   - +public_attachments_router (public-flow, no auth) for
+#     /api/v1/public/companies/{id}/attachments and /download. Rate-limited
+#     per IP via core.rate_limit.check_rate_limit with explicit
+#     PUBLIC_LIST_RATE_LIMIT / PUBLIC_DOWNLOAD_RATE_LIMIT presets. Wired
+#     right after attachments_router.
+#   - Staff attachment router lands in a subsequent batch of the same
+#     iteration.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -105,6 +114,9 @@ from app.modules.commissions.worker import (
 from app.modules.dashboard.router import router as investor_dashboard_router
 from app.modules.referrals.router import router as referrals_router
 from app.modules.auth.router import router as auth_router
+from app.modules.companies.attachments_public_router import (
+    router as public_attachments_router,
+)
 from app.modules.companies.attachments_router import router as attachments_router
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
@@ -395,9 +407,10 @@ app.include_router(dashboard_router)
 app.include_router(kyc_admin_router)
 app.include_router(companies_router)
 app.include_router(staff_companies_router)
-# Refactor 2 iter 2.2: company attachments (auth-flow). Public + Staff
-# attachment routers are wired in subsequent batches of the same iteration.
+# Refactor 2 iter 2.2: company attachments (auth-flow + public-flow). Staff
+# attachment router is wired in a subsequent batch of the same iteration.
 app.include_router(attachments_router)
+app.include_router(public_attachments_router)
 app.include_router(products_router)
 app.include_router(staff_products_router)
 # Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).
