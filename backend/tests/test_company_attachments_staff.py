@@ -409,13 +409,12 @@ async def test_soft_delete_flips_is_deleted(
     assert resp.status_code == 204
 
     # Confirm via DB read -- row exists, is_deleted=True.
-    refreshed = (
-        await db_session.execute(
-            select(CompanyAttachment).where(CompanyAttachment.id == attachment.id)
-        )
-    ).scalar_one_or_none()
-    assert refreshed is not None
-    assert refreshed.is_deleted is True
+    # NOTE: a plain `select` would return the stale instance from
+    # db_session's Identity Map (the row was committed to the DB by the
+    # app's separate session, but db_session still has its pre-DELETE
+    # snapshot cached). Use refresh() to force an UPDATE-from-DB.
+    await db_session.refresh(attachment)
+    assert attachment.is_deleted is True
 
 
 # ---------------------------------------------------------------------------
