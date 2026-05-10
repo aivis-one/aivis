@@ -393,6 +393,7 @@ async def _cleanup_user_related_data(
     from app.modules.agent_applications.models import AgentApplication
     from app.modules.companies.models import (
         CompanyAttachment,
+        CompanyDocumentTemplate,
         CompanyPriceHistory,
         CompanyProfile,
         CompanyRoadmapItem,
@@ -436,6 +437,19 @@ async def _cleanup_user_related_data(
     await session.execute(
         delete(CompanyAttachment).where(
             CompanyAttachment.created_by.in_(user_ids)
+        )
+    )
+
+    # Refactor 2 iter 2.3: Company document templates created by these
+    # users (created_by RESTRICT, nullable). Same two-pass shape as
+    # CompanyAttachment -- this user-level pass clears templates pinned
+    # to a staff user about to be deleted; the company-level pass below
+    # catches templates whose company is about to be deleted regardless
+    # of who created them. Platform defaults (company_id IS NULL,
+    # created_by IS NULL) are never matched here.
+    await session.execute(
+        delete(CompanyDocumentTemplate).where(
+            CompanyDocumentTemplate.created_by.in_(user_ids)
         )
     )
 
@@ -664,6 +678,18 @@ async def _cleanup_user_related_data(
         await session.execute(
             delete(CompanyAttachment).where(
                 CompanyAttachment.company_id.in_(company_ids)
+            )
+        )
+        # Refactor 2 iter 2.3: Document templates belonging to these
+        # companies (FK company_id RESTRICT). Symmetric to the
+        # attachment pass above: the user-level pass at the top cleared
+        # templates with created_by IN user_ids; this catches templates
+        # whose created_by is NULL (platform-style row authored without
+        # a staff user) or some other living user, but whose company is
+        # about to be deleted.
+        await session.execute(
+            delete(CompanyDocumentTemplate).where(
+                CompanyDocumentTemplate.company_id.in_(company_ids)
             )
         )
         # Sprint 9.1: Posts owned by these companies (owner_id RESTRICT).
