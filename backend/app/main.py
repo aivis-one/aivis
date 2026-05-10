@@ -24,6 +24,10 @@
 #   staff_attachments_router  -> /api/v1/staff/companies/{id}/attachments/*
 #                                (Refactor 2 iter 2.2, staff-flow, multipart
 #                                 upload + replace + hard-delete admin-only)
+#   staff_templates_router    -> /api/v1/staff/companies/{id}/templates/*
+#                                (Refactor 2 iter 2.3, staff-flow, read-only
+#                                 inspection of per-company + platform-default
+#                                 templates)
 #   products_router           -> /api/v1/products/* (Sprint 4.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
@@ -72,6 +76,14 @@
 #     admin-only): /api/v1/staff/companies/{id}/attachments/*. Wired
 #     right after public_attachments_router so all three attachment
 #     routers sit together in the OpenAPI doc.
+#
+# Refactor 2 iter 2.3 CHANGES:
+#   - +staff_templates_router (staff-flow, read-only): /api/v1/staff/
+#     companies/{id}/templates/*. Wired right after staff_attachments_router
+#     so the staff company-content trio (attachments + templates) sits
+#     together in the OpenAPI doc. MVP exposes only GET endpoints --
+#     templates are uploaded through MinIO Web UI + reconcile (R2 §4.8);
+#     the post-MVP UI editor will add POST/PATCH on the same prefix.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -125,6 +137,9 @@ from app.modules.companies.attachments_staff_router import (
 )
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
+from app.modules.companies.templates_staff_router import (
+    router as staff_templates_router,
+)
 from app.modules.company_dashboard.router import router as company_dashboard_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
@@ -416,6 +431,8 @@ app.include_router(staff_companies_router)
 app.include_router(attachments_router)
 app.include_router(public_attachments_router)
 app.include_router(staff_attachments_router)
+# Refactor 2 iter 2.3: company doc templates (staff-flow, read-only).
+app.include_router(staff_templates_router)
 app.include_router(products_router)
 app.include_router(staff_products_router)
 # Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).
