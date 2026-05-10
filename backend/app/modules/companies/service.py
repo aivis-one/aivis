@@ -1,6 +1,6 @@
 # =============================================================================
 # CBSHOME Backend -- Company Service (Sprint 4.1 + Sprint F4.1 + F4.1.1 hotfix
-#                                       + Sprint 4.3 + Refactor 2 iter 2.2)
+#                                       + Sprint 4.3 + Refactor 2 iter 2.2 + 2.3)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -32,6 +32,31 @@
 #   hard_delete_attachment()      -- DELETE row + drop MinIO object
 #   shift_orders_to_make_room()  -- bulk +1 on order inside (company_id,
 #                                    category) to insert at target_order
+#
+# Refactor 2 iter 2.3 ADDITIONS (Company Document Templates):
+#   find_active_template()           -- 4-stage fallback lookup (R2 §4.7) in
+#                                       a single SQL query, prioritised by
+#                                       per-company-locale > per-company-en >
+#                                       platform-locale > platform-en.
+#   get_template_html_cached()       -- read <storage_prefix>/template.html
+#                                       through a 5-min Redis cache
+#                                       (R2 §4.10).
+#   invalidate_template_html_cache() -- drop the Redis entry for one prefix
+#                                       (called by reconcile scripts after
+#                                       upload).
+#   make_asset_data_uri_func()       -- pre-fetch every binary asset for one
+#                                       template, return a sync callable
+#                                       suitable for a Jinja2 global so the
+#                                       renderer can stay sync (R2 §4.4).
+#   get_template()                   -- load one template by id, scoped so
+#                                       the caller's company_id matches OR
+#                                       the row is a platform default
+#                                       (company_id IS NULL).
+#   list_templates()                 -- per-company rows + platform default
+#                                       active rows for any (kind, language)
+#                                       not covered by a per-company active.
+#                                       Surfaces "what the renderer would
+#                                       actually use" for staff inspection.
 #
 # Sprint F4.1 CHANGES:
 #   - list_companies(): +search kwarg (case-insensitive ILIKE on name).
@@ -83,30 +108,37 @@
 #   a more complex two-phase commit.
 # =============================================================================
 
+import base64
+import mimetypes
+from collections.abc import Callable
 from typing import BinaryIO
 from uuid import UUID, uuid4
 
-import mimetypes
-
 import structlog
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.core.redis import get_redis
 from app.core.storage import (
     delete_object,
+    get_object_bytes,
     upload_object,
 )
 from app.modules.auth.service import hash_password, get_platform_user_id
 from app.modules.companies.constants import (
     ALLOWED_ATTACHMENT_MIME_TYPES,
+    DocumentTemplateKind,
+    TEMPLATE_ASSET_EXTENSION_TO_MIME,
+    TemplateStatus,
     VALID_COMPANY_STATUS_TRANSITIONS,
     validate_distribution_config,
 )
 from app.modules.companies.models import (
     CompanyAttachment,
+    CompanyDocumentTemplate,
     CompanyPriceHistory,
     CompanyProfile,
     CompanyRoadmapItem,
@@ -1264,3 +1296,423 @@ async def hard_delete_attachment(
         staff_id=str(staff.id),
         storage_key=storage_key,
     )
+
+
+# ---------------------------------------------------------------------------
+# Document templates (Refactor 2 iter 2.3)
+# ---------------------------------------------------------------------------
+#
+# Template metadata lives in `company_document_templates`; bytes (HTML +
+# binary assets) live in MinIO under storage_prefix. R2 §4.
+#
+# 4-stage fallback (R2 §4.7):
+#   1. company_id = X     AND language = user_lang AND status = active
+#   2. company_id = X     AND language = 'en'      AND status = active
+#   3. company_id IS NULL AND language = user_lang AND status = active
+#   4. company_id IS NULL AND language = 'en'      AND status = active
+# A miss is a 5xx -- platform defaults are guaranteed to be seeded.
+#
+# Redis cache (R2 §4.10):
+#   key   ``template_html:<storage_prefix>``
+#   value utf-8 decoded body of <storage_prefix>/template.html
+#   TTL   5 minutes
+#   Reconcile scripts call invalidate_template_html_cache() to drop the
+#   entry on every replace; the next reader warms it again.
+
+
+# Redis cache for the HTML body of templates. Key is the storage_prefix
+# (which already encodes company_id / kind / language). 5-minute TTL is
+# the upper bound on how stale a template render can be after staff
+# uploads a new version through MinIO Web UI without running reconcile.
+# Reconcile invalidates the entry explicitly, so the TTL only kicks in
+# for unattended cluster nodes that miss the invalidation broadcast --
+# which Redis handles centrally, so in practice the TTL is just a
+# correctness backstop.
+_TEMPLATE_HTML_CACHE_KEY_PREFIX: str = "template_html:"
+_TEMPLATE_HTML_CACHE_TTL_SECONDS: int = 300
+
+
+def _template_html_cache_key(storage_prefix: str) -> str:
+    """Build the Redis key for the cached template.html body.
+
+    Module-private helper so the prefix lives in exactly one place.
+    """
+    return f"{_TEMPLATE_HTML_CACHE_KEY_PREFIX}{storage_prefix}"
+
+
+async def find_active_template(
+    company_id: UUID,
+    kind: DocumentTemplateKind | str,
+    language: str,
+    session: AsyncSession,
+) -> CompanyDocumentTemplate | None:
+    """Resolve the active template for (kind, language) using the 4-stage
+    fallback (R2 §4.7).
+
+    Single SQL query. The CASE-based ranking column is what enforces the
+    stage order; ORDER BY priority + LIMIT 1 picks the winner. Stages 3-4
+    are the platform default series (company_id IS NULL).
+
+    Args:
+        company_id: Caller's company. Stage 1-2 search rows owned by this
+            company; stage 3-4 search the platform fallback (NULL).
+        kind: DocumentTemplateKind value. Accepted as the StrEnum or as a
+            bare string -- both compare equal to the column.
+        language: Investor / staff locale. ISO 639-1.
+        session: Async DB session (read-only here, no flush expected).
+
+    Returns:
+        The chosen CompanyDocumentTemplate row, or None if even the
+        platform-default English fallback is missing -- which the caller
+        MUST surface as a 5xx system error per R2 §4.7.
+    """
+    # Deduplicate when language == "en" so we don't generate
+    # `language IN ('en','en')` (still correct, just noisy in EXPLAIN).
+    languages = list({language, "en"})
+
+    # CASE expression builds the 1-2-3-4 priority directly in SQL so the
+    # query planner can use the composite index (company_id, kind,
+    # language, status) without an extra application-side sort.
+    priority = case(
+        (
+            and_(
+                CompanyDocumentTemplate.company_id == company_id,
+                CompanyDocumentTemplate.language == language,
+            ),
+            1,
+        ),
+        (
+            and_(
+                CompanyDocumentTemplate.company_id == company_id,
+                CompanyDocumentTemplate.language == "en",
+            ),
+            2,
+        ),
+        (
+            and_(
+                CompanyDocumentTemplate.company_id.is_(None),
+                CompanyDocumentTemplate.language == language,
+            ),
+            3,
+        ),
+        (
+            and_(
+                CompanyDocumentTemplate.company_id.is_(None),
+                CompanyDocumentTemplate.language == "en",
+            ),
+            4,
+        ),
+        # Should not be reachable: WHERE clause already restricts both
+        # company_id and language to the four-stage subset, but a sane
+        # else_ keeps the column NOT NULL on weird PG plans.
+        else_=999,
+    )
+
+    stmt = (
+        select(CompanyDocumentTemplate)
+        .where(
+            CompanyDocumentTemplate.kind == kind,
+            CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+            or_(
+                CompanyDocumentTemplate.company_id == company_id,
+                CompanyDocumentTemplate.company_id.is_(None),
+            ),
+            CompanyDocumentTemplate.language.in_(languages),
+        )
+        .order_by(priority.asc())
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_template_html_cached(storage_prefix: str) -> str:
+    """Fetch <storage_prefix>/template.html via the 5-min Redis cache (R2 §4.10).
+
+    On hit: return the cached utf-8 string with no MinIO round-trip.
+    On miss: read from MinIO, decode utf-8, write through the cache, return.
+
+    The cache holds the decoded string (not raw bytes) because the Redis
+    client in this stack runs with decode_responses=True; storing bytes
+    would round-trip via str() and add no value over caching the decoded
+    form directly.
+
+    Raises:
+        StorageNotFoundError: If template.html is missing in MinIO.
+        StorageError: If the bucket itself is unavailable.
+    """
+    redis = get_redis()
+    cache_key = _template_html_cache_key(storage_prefix)
+
+    cached = await redis.get(cache_key)
+    if cached is not None:
+        return cached
+
+    object_key = f"{storage_prefix}template.html"
+    body_bytes = await get_object_bytes(object_key)
+    body = body_bytes.decode("utf-8")
+
+    await redis.setex(cache_key, _TEMPLATE_HTML_CACHE_TTL_SECONDS, body)
+
+    logger.debug(
+        "template_html_cache_miss",
+        storage_prefix=storage_prefix,
+        size=len(body),
+    )
+    return body
+
+
+async def invalidate_template_html_cache(storage_prefix: str) -> None:
+    """Drop the cached HTML body for one storage_prefix.
+
+    Called by reconcile_templates / reconcile_platform_templates after
+    moving a new template into place so the next render hits MinIO once
+    and re-warms the cache (R2 §4.10).
+    """
+    redis = get_redis()
+    cache_key = _template_html_cache_key(storage_prefix)
+    await redis.delete(cache_key)
+    logger.info(
+        "template_html_cache_invalidated",
+        storage_prefix=storage_prefix,
+    )
+
+
+def _resolve_asset_mime(filename: str) -> str:
+    """Map a bare asset filename to its MIME type using the template-asset
+    whitelist (R2 §4.4).
+
+    Reconcile already validated this list when the template was activated,
+    but we re-check here to defend against direct DB writes that bypass
+    reconcile.
+
+    Raises:
+        BadRequestError: filename has no extension or its extension is
+            not in TEMPLATE_ASSET_EXTENSION_TO_MIME.
+    """
+    if "." not in filename:
+        raise BadRequestError(
+            f"Template asset {filename!r} has no extension"
+        )
+    ext = "." + filename.rsplit(".", 1)[-1].lower()
+    mime = TEMPLATE_ASSET_EXTENSION_TO_MIME.get(ext)
+    if mime is None:
+        raise BadRequestError(
+            f"Template asset {filename!r} has unsupported extension {ext!r}"
+        )
+    return mime
+
+
+async def make_asset_data_uri_func(
+    storage_prefix: str,
+    asset_files: list[str],
+) -> Callable[[str], str]:
+    """Pre-fetch every binary asset for one template and return a sync
+    callable suitable for a Jinja2 global (R2 §4.4).
+
+    Why pre-fetch: Jinja2's default Environment renders synchronously,
+    but storage.get_object_bytes is async. Pre-loading every asset into
+    a dict before the renderer runs lets `asset_data_uri('logo.png')`
+    inside the template stay sync -- one async pass at setup time, zero
+    async I/O during render.
+
+    The returned callable raises BadRequestError when called with a
+    filename that wasn't declared in `asset_files`. This duplicates the
+    Pydantic-driven check reconcile already performed, so a malicious or
+    typo'd template can't reach into MinIO outside its asset set even if
+    it slips past reconcile validation.
+
+    Args:
+        storage_prefix: The MinIO folder path for this template.
+            Must include the trailing slash; we append `filename` to it
+            verbatim.
+        asset_files: List of bare filenames (no path) declared on the
+            CompanyDocumentTemplate row.
+
+    Returns:
+        A sync callable `(filename: str) -> str` that returns a
+        ``data:<mime>;base64,<...>`` URI for one of the pre-loaded assets.
+
+    Raises:
+        BadRequestError: An asset filename has no / unsupported extension,
+            or one of the assets is missing from MinIO at fetch time
+            (StorageNotFoundError is wrapped to keep the Jinja2 surface
+            uniform).
+        StorageError: The bucket itself is unavailable.
+    """
+    cache: dict[str, str] = {}
+
+    for filename in asset_files:
+        if filename in cache:
+            # Same asset listed twice -- skip the duplicate fetch.
+            continue
+        mime = _resolve_asset_mime(filename)
+        object_key = f"{storage_prefix}{filename}"
+        data = await get_object_bytes(object_key)
+        b64 = base64.b64encode(data).decode("ascii")
+        cache[filename] = f"data:{mime};base64,{b64}"
+
+    def asset_data_uri(filename: str) -> str:
+        """Resolve `filename` to an inline data URI.
+
+        Raises:
+            BadRequestError: filename was not part of asset_files. The
+                template referenced an asset the row doesn't know about.
+        """
+        if filename not in cache:
+            raise BadRequestError(
+                f"Template asset {filename!r} is not declared in asset_files"
+            )
+        return cache[filename]
+
+    return asset_data_uri
+
+
+async def get_template(
+    session: AsyncSession,
+    company_id: UUID,
+    template_id: UUID,
+) -> CompanyDocumentTemplate:
+    """Load one template, scoped so the caller's company sees its own
+    rows AND the platform-default rows (company_id IS NULL).
+
+    The platform-default scoping is intentional: staff inspecting a
+    company's templates legitimately needs to see whatever rendering
+    would actually use, including platform fallbacks for languages
+    the company hasn't overridden.
+
+    Args:
+        session: Async DB session.
+        company_id: Caller's company. The router validates it exists
+            before reaching this helper.
+        template_id: Template row id.
+
+    Returns:
+        The CompanyDocumentTemplate row.
+
+    Raises:
+        NotFoundError: The template doesn't exist, OR it belongs to a
+            different (non-platform) company.
+    """
+    stmt = select(CompanyDocumentTemplate).where(
+        CompanyDocumentTemplate.id == template_id,
+        or_(
+            CompanyDocumentTemplate.company_id == company_id,
+            CompanyDocumentTemplate.company_id.is_(None),
+        ),
+    )
+    result = await session.execute(stmt)
+    template = result.scalar_one_or_none()
+    if template is None:
+        raise NotFoundError("Template not found")
+    return template
+
+
+async def list_templates(
+    session: AsyncSession,
+    company_id: UUID,
+    *,
+    kind: str | None = None,
+    language: str | None = None,
+    status: str | None = None,
+) -> list[CompanyDocumentTemplate]:
+    """List templates seen for a company.
+
+    Returns:
+      - All per-company rows matching the user-supplied filters.
+      - Plus the platform-default `active` row for every (kind, language)
+        pair NOT covered by a per-company `active` row -- so the staff
+        view shows what the renderer would actually pick (R2 §4.5).
+
+    "Covered" is decided independently of the user's status filter: it
+    is always relative to per-company `active` rows, because that is the
+    state the renderer cares about. The status filter only controls
+    which per-company rows show up:
+
+      status=None     -> all per-company rows + platform fallbacks
+                         (for pairs not covered by an active per-company
+                         row).
+      status=active   -> active per-company rows + platform fallbacks
+                         (for pairs without one).
+      status=draft    -> draft per-company rows ONLY. Platform series
+                         has no drafts -- including platform actives
+                         here would mix two unrelated states.
+      status=archived -> archived per-company rows ONLY. Same reasoning.
+
+    Ordering: (kind ASC, language ASC, version DESC) so newest version
+    of each (kind, language) sits at the top of its bucket; platform
+    fallback rows are appended at the end of the list since they belong
+    to a different scope conceptually.
+
+    Args:
+        session: Async DB session.
+        company_id: The company whose templates we're listing. The
+            router validates it exists before reaching this helper.
+        kind: Optional kind filter applied to both branches.
+        language: Optional language filter applied to both branches.
+        status: Optional status filter; affects the per-company branch
+            and gates platform fallback inclusion as documented above.
+
+    Returns:
+        A merged list of CompanyDocumentTemplate rows.
+    """
+    # -- Per-company branch --
+    co_conditions = [CompanyDocumentTemplate.company_id == company_id]
+    if kind is not None:
+        co_conditions.append(CompanyDocumentTemplate.kind == kind)
+    if language is not None:
+        co_conditions.append(CompanyDocumentTemplate.language == language)
+    if status is not None:
+        co_conditions.append(CompanyDocumentTemplate.status == status)
+
+    co_stmt = (
+        select(CompanyDocumentTemplate)
+        .where(*co_conditions)
+        .order_by(
+            CompanyDocumentTemplate.kind.asc(),
+            CompanyDocumentTemplate.language.asc(),
+            CompanyDocumentTemplate.version.desc(),
+        )
+    )
+    co_rows = list((await session.execute(co_stmt)).scalars().all())
+
+    # If the user asked for a non-active status, the platform-default
+    # series is irrelevant -- it has no drafts or archived rows. Bail
+    # out early.
+    if status is not None and status != TemplateStatus.ACTIVE:
+        return co_rows
+
+    # Pairs already covered by a per-company active row -- platform
+    # fallbacks for these are intentionally hidden so staff doesn't see
+    # both lines for the same (kind, language).
+    covered_pairs: set[tuple[str, str]] = {
+        (row.kind, row.language)
+        for row in co_rows
+        if row.status == TemplateStatus.ACTIVE
+    }
+
+    # -- Platform-default branch (active rows only) --
+    pf_conditions: list = [
+        CompanyDocumentTemplate.company_id.is_(None),
+        CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+    ]
+    if kind is not None:
+        pf_conditions.append(CompanyDocumentTemplate.kind == kind)
+    if language is not None:
+        pf_conditions.append(CompanyDocumentTemplate.language == language)
+
+    pf_stmt = (
+        select(CompanyDocumentTemplate)
+        .where(*pf_conditions)
+        .order_by(
+            CompanyDocumentTemplate.kind.asc(),
+            CompanyDocumentTemplate.language.asc(),
+        )
+    )
+    pf_rows = [
+        row
+        for row in (await session.execute(pf_stmt)).scalars().all()
+        if (row.kind, row.language) not in covered_pairs
+    ]
+
+    return co_rows + pf_rows
