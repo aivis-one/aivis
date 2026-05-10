@@ -1,9 +1,20 @@
 # CBSHOME -- Refactor: Company Attachments, Templates & Purchase Docs
 
-**Версия:** 0.4 final / decision-locked
-**Дата:** 7 мая 2026
+**Версия:** 0.5 / decision-locked
+**Дата:** 10 мая 2026
 
 **Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
+
+**Changelog v0.5 (10 May 2026):**
+- Bootstrap path для platform default templates: `backend/seed/templates/_default/` -> `backend/scripts/seed_data/templates/_default/` (§1.4, §4.9, §10). Causes: `backend/seed/` в корне backend выпадал из существующей структуры (всё под `app/` или `scripts/`). Seed-данные кладутся рядом с seed-скриптами под `scripts/seed_data/`.
+- "Sentry" заменён на "structlog + audit event" во всём документе (§5.1, §10). Causes: Sentry в проекте не подключен, alarm-канал -- structlog (структурный лог) + audit_log row.
+- §2.1 список public API storage layer обновлён под реальную реализацию iter 2.1 (добавлены `get_object_bytes`, `list_objects`, `download_filename` и `content_length` kwargs).
+- §3.5 убрано устаревшее "(или новый permission, см. Q-ATT-1)" -- Q-ATT-1 закрыт.
+- §3.4 убрано "TBD, см. Q-ATT-2" -- Q-ATT-2 закрыт (rate-limits зафиксированы в §10).
+- §3.7 + §4.8 reconcile-описание: вместо "`mc cp` + `mc rm`" указано "через storage layer (`upload_object` + `delete_object`)" -- reconcile это Python-скрипт, mc CLI ему не доступен.
+- §4.10 убрана несуществующая env `MINIO_TEMPLATE_CACHE_TTL=0`. Конкретный механизм отключения кэша в тестах -- через monkeypatch константы `TEMPLATE_HTML_CACHE_TTL_SECONDS`. Уточнено что Redis-клиент имеет `decode_responses=True`, поэтому HTML кэшируется как base64-encoded строка.
+- §5.2 устаревшая двухступенчатая fallback-логика заменена ссылкой на §4.7 (4 ступени с platform default).
+- Маркеры реализации проставлены в §2 (✓ iter 2.1), §3 (✓ iter 2.2), §4 (в работе iter 2.3), §5 (впереди iter 2.4).
 
 **Связанные документы:**
 - `CBSHOME-Refactor-Investor-Market-And-Staff.md` v0.3 -- параллельный рефакторинг. **Двусторонняя зависимость:** этот документ предоставляет storage layer (§2), которым пользуются и attachments здесь, и roadmap covers в Refactor 1 §5.5. Refactor 1 §1.6 определяет public investor flow, в котором public attachments из этого документа отображаются на public-странице компании.
@@ -107,7 +118,7 @@ Login для basic-auth перед Web UI -- фиксированный `admin`.
 
 ### 1.4. install_cbshome.sh -- что добавляется
 
-**◐ Реализовано частично (iter 1).** Открыто: seed platform default templates -- `mc cp -r backend/seed/templates/_default/ ...` и `python backend/scripts/seed_platform_templates.py`. Закрывается в iter 2.3.
+**◐ Реализовано частично (iter 1).** Открыто: seed platform default templates -- `mc cp -r backend/scripts/seed_data/templates/_default/ ...` и `python backend/scripts/seed_platform_templates.py`. Закрывается в iter 2.3.
 
 Новая секция в скрипте после `Mail Server`, перед `Docker Stack`:
 
@@ -127,7 +138,7 @@ Login для basic-auth перед Web UI -- фиксированный `admin`.
 - В шаге запуска стека `docker compose up -d` явно ждём healthcheck сервиса `minio` перед запуском `app` (зависимость в compose).
 - В шаге миграций -- стандартный alembic upgrade head (новые миграции для таблиц `company_attachments`, `company_document_templates` плюс поле `purchase_agreement_template_id` в `purchases`).
 - **Новый шаг -- seed platform default templates (см. §4.9):**
-  1. `mc cp -r backend/seed/templates/_default/ local/cbshome-attachments/_platform/templates/` -- копирует HTML + ассеты (logo placeholder, signature placeholder, stamp placeholder) для всех 4 kind'ов и поддерживаемых языков (en/de/ru/ar) в MinIO под префикс `_platform/templates/`.
+  1. `mc cp -r backend/scripts/seed_data/templates/_default/ local/cbshome-attachments/_platform/templates/` -- копирует HTML + ассеты (logo placeholder, signature placeholder, stamp placeholder) для всех 4 kind'ов и поддерживаемых языков (en/de/ru/ar) в MinIO под префикс `_platform/templates/`.
   2. `python backend/scripts/seed_platform_templates.py` -- создаёт rows в `company_document_templates` с `company_id=NULL`, `status=active`, `storage_prefix='_platform/templates/<kind>/<lang>/'` для каждой пары `(kind, language)`. Идемпотентен -- повторный запуск не создаёт дубли.
 
 После этого backend стартует с гарантированным fallback'ом для рендера договоров и сертификатов: даже свежесозданная компания без своих кастомных шаблонов получает рабочий рендер через platform default.
@@ -186,16 +197,22 @@ AAAA / CAA / TXT для этого поддомена не требуются.
 
 ## 2. Backend: Storage abstraction layer
 
+**✓ Реализовано (iter 2.1).** Все четыре подраздела закрыты, тесты против реального MinIO зелёные.
+
 ### 2.1. Новый модуль `app/core/storage.py`
 
 Тонкая обёртка над `aiobotocore` для работы с MinIO как S3. Backend нигде в business-коде не должен знать про MinIO напрямую -- всегда через этот слой.
 
-Public API:
-- `upload_object(key: str, data: bytes | BinaryIO, content_type: str) -> str` -- кладёт объект, возвращает stored key.
-- `delete_object(key: str) -> None` -- удаляет.
-- `generate_presigned_url(key: str, ttl_seconds: int) -> str` -- presigned GET для скачивания.
-- `object_exists(key: str) -> bool` -- проверка наличия.
+Public API (фактическая реализация iter 2.1):
+- `upload_object(key: str, data: bytes | BinaryIO, content_type: str, *, content_length: int | None = None) -> str` -- кладёт объект (поддержка bytes и потоковая загрузка через BinaryIO + явный Content-Length для multipart-router пути), возвращает stored key.
+- `delete_object(key: str) -> None` -- удаляет, идемпотентен на missing key.
+- `generate_presigned_url(key: str, ttl_seconds: int, *, download_filename: str | None = None) -> str` -- presigned GET для скачивания. `download_filename` задаёт `Content-Disposition: attachment; filename=...` через `ResponseContentDisposition` -- защита от stored-XSS на download-эндпоинтах.
+- `object_exists(key: str) -> bool` -- проверка наличия (с disambiguation missing key vs missing bucket).
 - `get_object_metadata(key: str) -> dict` -- HEAD объекта (size, last_modified, content_type).
+- `get_object_bytes(key: str) -> bytes` -- выкачивает payload в bytes. Используется reconcile-скриптами и (в перспективе iter 2.3) кэшем HTML template'ов.
+- `list_objects(prefix: str) -> list[str]` -- список keys по префиксу. Используется reconcile-скриптами для скана inbox'а.
+
+Исключения: `StorageError` (общая ошибка upstream), `StorageNotFoundError` (для `get_object_*` на missing key).
 
 Все функции -- async. Используют общий `aiobotocore.session()` через connection pool.
 
@@ -245,6 +262,14 @@ Storage layer используется в нескольких местах:
 Тестовый bucket -- отдельный, `cbshome-attachments-test`, создаётся `minio-init` рядом с основным. Очищается перед каждым тестом через fixture (mc rm --recursive --force, либо через aiobotocore list_objects + delete).
 
 ## 3. Backend: модуль `company_attachments`
+
+**✓ Реализовано (iter 2.2).** Все подразделы закрыты. Deviations от спеки:
+- §3.7 reconcile-скрипт реализован чисто на Python через storage layer (`upload_object` / `delete_object`), не через `mc cp` / `mc rm`. Спека уточнена в этом документе.
+- §3.7 missing sidecar при reconcile = skip + WARNING (как в спеке). Mismatched mime по filename = skip + ERROR (через единый валидатор `validate_attachment_mime_by_filename` в `companies/service.py`, разделяемый router'ом и reconcile'ом).
+- 100MB upload limit -- валидируется на уровне nginx (`client_max_body_size 100M`). Backend не дублирует -- предложение в спеке про "Pydantic-валидатор `Field(max_length=...)` на multipart" не было реализовано (multipart body нельзя валидировать через Pydantic length-limit без буферизации в память; nginx ловит раньше, дешевле).
+- Auth-flow GET download дополнительно фильтрует `is_published=True`. Спека этого явно не требовала, но без фильтра investor с прямой ссылкой мог бы скачать draft. Документировано в роутере.
+- `storage_key` UNIQUE constraint добавлен в follow-up миграции `0030_storage_key_unique` (защита от UUID4-коллизии и manual DB pokes).
+- In-category drag-and-drop reorder API -- не реализован (frontend-only в §6.2; PATCH `order` per-item достаточно для MVP).
 
 ### 3.1. Назначение
 
@@ -326,7 +351,7 @@ Staff (управление):
 - `PATCH /api/v1/staff/companies/{id}/attachments/{att_id}` -- метаданные (title, description, language, category, is_published, is_public, order).
 - `PATCH /api/v1/staff/companies/{id}/attachments/{att_id}/replace` -- multipart, замена файла. Удаляет старый объект из MinIO, кладёт новый, обновляет storage_key/mime_type/file_size.
 - `DELETE /api/v1/staff/companies/{id}/attachments/{att_id}` -- soft-delete. Объект в MinIO остаётся (для возможного восстановления).
-- `DELETE /api/v1/staff/companies/{id}/attachments/{att_id}/hard` -- hard-delete: убирает из MinIO + DELETE row. Только admin или с дополнительным confirm-токеном (TBD, см. Q-ATT-1).
+- `DELETE /api/v1/staff/companies/{id}/attachments/{att_id}/hard` -- hard-delete: убирает из MinIO + DELETE row. Только admin (Q-ATT-1, см. §10).
 
 ### 3.4. Эндпоинты (public flow)
 
@@ -335,7 +360,7 @@ Staff (управление):
 - `GET /api/v1/public/companies/{id}/attachments` -- список только public + published. Используется для "deep link"-показа презентаций без логина (например, Заказчик публикует ссылку в LinkedIn).
 - `GET /api/v1/public/companies/{id}/attachments/{att_id}/download` -- presigned URL (TTL `MINIO_PRESIGNED_TTL_PUBLIC` = 24h), 302 redirect. Без auth. Если файл не `is_public` или не `is_published` -- 404 (не 403, чтобы не подтверждать существование).
 
-Rate-limit на public-эндпоинт строже, чем auth (TBD, см. Q-ATT-2). Подойдёт rate-limit per IP, чтобы защитить от перебора attachment-ID.
+Rate-limit на public-эндпоинты (Q-ATT-2, см. §10): `60 req/min/IP` для list, `300 req/min/IP` для download. Per-IP, отдельные Redis-ключи для list и download так чтобы перебор по download'у не мог исчерпать list quota и наоборот.
 
 ### 3.5. Permissions
 
@@ -343,7 +368,7 @@ Rate-limit на public-эндпоинт строже, чем auth (TBD, см. Q-
 |----------|-----------|
 | Создать / редактировать / удалить attachment | `company_manage` |
 | Просмотр Staff (включая unpublished) | любой staff (без специального гейта) |
-| Hard-delete | admin (или новый permission, см. Q-ATT-1) |
+| Hard-delete | admin (Q-ATT-1, см. §10) |
 
 `content_manage` НЕ используется -- attachments относятся к конфигурации компании, не к контентной работе (новости/события).
 
@@ -391,7 +416,7 @@ Rate-limit на public-эндпоинт строже, чем auth (TBD, см. Q-
    - Для каждого файла ищет companion `.cbsmeta.json` рядом.
    - **Если JSON отсутствует** -- skip + WARNING в лог: `WARN: orphan in inbox without metadata: <key>`. Файл остаётся в inbox.
    - **Если JSON есть** -- валидирует через Pydantic-схему `AttachmentInboxMetadata`. На ошибке валидации -- skip + ERROR в лог.
-   - **Если валидация прошла** -- генерирует `attachment_id = uuid4()`, перемещает файл (`mc cp` + `mc rm`) из `inbox/<slug>.<ext>` в `attachments/<attachment_id>/<slug>.<ext>`, удаляет `.cbsmeta.json`, создаёт row в БД с полями из JSON + `storage_key`, `mime_type` (из HEAD объекта), `file_size_bytes`.
+   - **Если валидация прошла** -- генерирует `attachment_id = uuid4()`, через storage layer (`upload_object` для нового объекта в `attachments/<attachment_id>/<slug>.<ext>` + `delete_object` для inbox-файла и его `.cbsmeta.json`), создаёт row в БД с полями из JSON + `storage_key`, `mime_type` (валидированный по extension через `validate_attachment_mime_by_filename`), `file_size_bytes`.
    - **Match check:** если в БД для этой компании уже есть row с теми же `(title, category, language)` -- это **replace existing**. Старый объект удаляется из MinIO, row обновляется (новый `storage_key`, `mime_type`, `file_size_bytes`, `updated_at`).
 5. После reconcile папка `inbox/` пуста, всё в `attachments/<id>/`. Staff проверяет на стороне инвестора что документы видны.
 
@@ -450,6 +475,8 @@ Drag-drop всю папку в Web UI в `inbox/`, потом один `cbshome 
 ---
 
 ## 4. Backend: модуль `company_doc_templates`
+
+**В работе (iter 2.3).** Templates backend + platform default seed реализуются одной итерацией -- без platform default rows fallback в §4.7 не покрывает свежесозданную компанию, и реалистичные тесты не пишутся.
 
 ### 4.1. Назначение
 
@@ -589,7 +616,7 @@ Validation шаблона при reconcile (см. §4.8): парсинг чер�
    - Читает `_meta.cbsmeta.json`. Валидирует через Pydantic-схему `TemplateInboxMetadata`. На ошибке -- skip + ERROR в лог.
    - Валидирует `template.html` через Jinja2 `Environment.parse`. На ошибке -- skip + ERROR.
    - Проверяет что все `asset_data_uri('<filename>')` в HTML ссылаются на файлы, которые присутствуют рядом. На несовпадении -- skip + ERROR.
-   - Перемещает файлы (`mc cp` + `mc rm`) из `templates-inbox/<kind>__<lang>/` в canonical path `templates/<kind>/<lang>/`. Удаляет `_meta.cbsmeta.json`.
+   - Через storage layer (`upload_object` для нового места + `delete_object` для inbox-источников и `_meta.cbsmeta.json`) переносит файлы из `templates-inbox/<kind>__<lang>/` в canonical path `templates/<kind>/<lang>/`.
    - Если для пары `(company_id, kind, language)` уже есть active row -- старый row становится `archived`, новый становится `active` с `version + 1`.
    - Создаёт row в `company_document_templates` со списком `asset_files` (имена .png/.jpg, найденные в папке).
 
@@ -624,7 +651,7 @@ Platform default templates -- общие fallback-шаблоны для всех
 **Структура в репо** (источник truth для install-скрипта):
 
 ```
-backend/seed/templates/_default/
+backend/scripts/seed_data/templates/_default/
 ├── purchase_agreement/
 │   ├── en/
 │   │   ├── template.html
@@ -642,9 +669,11 @@ backend/seed/templates/_default/
     └── ...
 ```
 
+Bootstrap-данные лежат под `backend/scripts/seed_data/`, рядом со seed-скриптами в `backend/scripts/`. В корне `backend/` отдельной папки `seed/` нет -- структура backend держится на двух top-level директориях `app/` (runtime) и `scripts/` (seed/management/dev tools).
+
 **Установка (часть install_cbshome.sh, см. §1.4):**
 
-1. `mc cp -r backend/seed/templates/_default/ local/cbshome-attachments/_platform/templates/` -- заливает все файлы.
+1. `mc cp -r backend/scripts/seed_data/templates/_default/ local/cbshome-attachments/_platform/templates/` -- заливает все файлы.
 2. `python backend/scripts/seed_platform_templates.py` -- создаёт rows для каждой пары `(kind, language)` с `company_id=NULL`, `storage_prefix='_platform/templates/<kind>/<lang>/'`, `status=active`. Идемпотентен.
 
 **Обновление platform default'ов (если юристы платформы захотят поправить общий шаблон):**
@@ -664,15 +693,17 @@ backend/seed/templates/_default/
 
 Чтение `template.html` из MinIO при каждом рендере -- не оптимально (плата ~50-100ms latency). Делаем простой кэш:
 
-- В Redis: ключ `template_html:<storage_prefix>` (TTL 5 минут), значение -- bytes файла.
-- При reconcile (любого типа: per-company или platform) -- скрипт инвалидирует кэш для затронутых prefix'ов через `redis.delete()`.
-- В тестах кэш либо отключён (через `MINIO_TEMPLATE_CACHE_TTL=0` env), либо очищается фикстурой autouse.
+- В Redis: ключ `template_html:<storage_prefix>` с TTL 5 минут (константа `TEMPLATE_HTML_CACHE_TTL_SECONDS = 300` в `companies/constants.py`). Redis-клиент проекта инициализируется с `decode_responses=True`, поэтому значение хранится как **base64-encoded string** (на запись `b64encode(html_bytes).decode("ascii")`, на чтение `b64decode(cached_str)` -> bytes).
+- При reconcile (любого типа: per-company или platform) -- скрипт инвалидирует кэш для затронутых prefix'ов через `redis.delete(key)` (helper `invalidate_template_html_cache(storage_prefix)` в `companies/service.py`).
+- В тестах кэш контролируется через `monkeypatch` константы `TEMPLATE_HTML_CACHE_TTL_SECONDS` (на 0 для отключения) либо очищается autouse-фикстурой по ключу.
 
 Ассеты не кэшируем в Redis -- они большие (могут быть до 500KB-1MB на ассет), пуляем через `storage.get_object_bytes()` каждый раз. Если потребуется оптимизация -- кэшируем в process-memory с LRU, но это post-MVP.
 
 ---
 
 ## 5. Backend: Purchase docs fix
+
+**Впереди (iter 2.4).** Зависит от §4 (templates module).
 
 ### 5.1. Изменения в модели `Purchase`
 
@@ -686,9 +717,10 @@ backend/seed/templates/_default/
 
 - При создании Purchase -- `find_active_template()` (4-ступенчатый fallback, см. §4.7) гарантированно находит template, потому что platform default есть для всех `(kind, language)` пар, заданных в `install_cbshome.sh`.
 - Если `find_active_template()` возвращает None -- это **ошибка инфраструктуры** (что-то сломалось в seed'е или MinIO). Логика создания Purchase в этом случае:
-  - Пишет в Sentry/structured log: `ERROR: no template found for company=X, kind=Y, language=Z, falling through with NULL`.
+  - Пишет structured лог через `structlog`: `logger.error("template_missing", company_id=X, kind=Y, language=Z)`.
+  - Пишет audit event `purchase.template_missing` (через `record_audit`) с теми же полями + `purchase_id` -- так Staff видит broken Purchase в audit dashboard.
   - Создаёт Purchase с `purchase_agreement_template_id=NULL`. Продажа всё равно проходит -- финансовая транзакция важнее, чем рендер документа.
-  - При попытке сделать `GET /purchases/{id}/agreement` -- 500 (system error, см. §5.3), Staff видит broken Purchase в audit dashboard.
+  - При попытке сделать `GET /purchases/{id}/agreement` -- 500 (system error, см. §5.3).
 
 Mapping `Purchase.legal_basis -> DocumentTemplateKind`:
 - `sale` -> `purchase_agreement`
@@ -712,7 +744,7 @@ template = await find_active_template(
 purchase.purchase_agreement_template_id = template.id if template else None
 ```
 
-`find_active_template()` -- helper в `companies/service.py`, делает один запрос с `OR` по language (preferred + fallback) и сортирует. Если ничего не нашёл -- возвращает None. Не raise.
+`find_active_template()` -- helper в `companies/service.py`, реализует 4-ступенчатый fallback (см. §4.7): per-company-locale, per-company-en, platform-default-locale, platform-default-en. Если ничего не нашёл -- возвращает None. **Не raise.**
 
 ### 5.3. Эндпоинты вместо `GET /purchases/{id}/certificate`
 
@@ -860,12 +892,12 @@ URL вида `https://cbshome.org/public/companies/{id}/attachments/{att_id}` --
 | Reconcile-script `backend/scripts/reconcile_templates.py` (per-company) | §4.8 |
 | Reconcile-script `backend/scripts/reconcile_platform_templates.py` | §4.9 |
 | Seed-script `backend/scripts/seed_platform_templates.py` (idempotent) | §4.9 |
-| Bootstrap файлы в `backend/seed/templates/_default/<kind>/<lang>/` (HTML + 3 placeholder PNG для всех 4 kinds × 4 lang) | §4.9 |
+| Bootstrap файлы в `backend/scripts/seed_data/templates/_default/<kind>/<lang>/` (HTML + 3 placeholder PNG для всех 4 kinds × 4 lang) | §4.9 |
 | Jinja-функция `asset_data_uri(filename)` + helper `make_asset_data_uri_func()` | §4.4 |
 | Redis-кэш `template_html:<storage_prefix>` (TTL 5 мин), invalidation в reconcile-скриптах | §4.10 |
 | `find_active_template()` 4-stage fallback с `company_id IS NULL` | §4.7 |
 | Поле `Purchase.purchase_agreement_template_id` (nullable, ondelete=SET NULL) + миграция | §5.1 |
-| Логика snapshot template_id в `purchase_processor` (с alarm на NULL fallthrough) | §5.1 |
+| Логика snapshot template_id в `purchase_processor` (с structlog + audit event на NULL fallthrough) | §5.1 |
 | Переименование эндпоинтов purchase certificate -> agreement (breaking change) | §5.3 |
 | Новые эндпоинты ownership_certificate | §5.3 |
 | 500 (а не 404) при `purchase.template_id IS NULL` -- сигнал поломки инфраструктуры | §5.3 |
@@ -917,9 +949,9 @@ Post-MVP (вне scope refactor'а):
 - **Canonical path для template'ов в MinIO** (§2.2): `companies/<id>/templates/<kind>/<lang>/template.html`, `_platform/templates/<kind>/<lang>/template.html`. Один active per `(kind, language)`, версионирование делает БД, MinIO перезаписывает.
 - **Workflow Staff per-company templates -- через MinIO Web UI + `cbshome storage reconcile-templates`** (§4.8). Inbox pattern в `companies/<id>/templates-inbox/<kind>__<lang>/`, companion `_meta.cbsmeta.json`. UI editor templates -- post-MVP.
 - **Workflow Platform default updates -- через MinIO Web UI + `cbshome storage reconcile-platform-templates`** (§4.9). Inbox pattern в `_platform/templates-inbox/`. Обновляются юристами платформы.
-- **Bootstrap defaults в репозитории**: `backend/seed/templates/_default/<kind>/<lang>/{template.html, logo.png, signature.png, stamp.png}` для всех 4 kind × 4 lang. Заливаются в MinIO при `install_cbshome.sh` (§1.4) + `seed_platform_templates.py` создаёт rows с `company_id=NULL`.
-- **Redis-кэш HTML template'ов** (§4.10), TTL 5 мин, key `template_html:<storage_prefix>`, инвалидация в reconcile-скриптах. Ассеты не кэшируем.
-- **`Purchase.purchase_agreement_template_id` остаётся nullable** (§5.1) для устойчивости к удалению, но в production гарантированно non-NULL благодаря platform default fallback. NULL = ошибка инфраструктуры, alarm в Sentry.
+- **Bootstrap defaults в репозитории**: `backend/scripts/seed_data/templates/_default/<kind>/<lang>/{template.html, logo.png, signature.png, stamp.png}` для всех 4 kind × 4 lang. Заливаются в MinIO при `install_cbshome.sh` (§1.4) + `seed_platform_templates.py` создаёт rows с `company_id=NULL`.
+- **Redis-кэш HTML template'ов** (§4.10), TTL 5 мин, key `template_html:<storage_prefix>`, инвалидация в reconcile-скриптах. Значение -- base64-encoded строка (Redis-клиент проекта инициализируется с `decode_responses=True`). Ассеты не кэшируем.
+- **`Purchase.purchase_agreement_template_id` остаётся nullable** (§5.1) для устойчивости к удалению, но в production гарантированно non-NULL благодаря platform default fallback. NULL = ошибка инфраструктуры -- structlog `error`-event + audit event `purchase.template_missing`.
 - **`GET /purchases/{id}/agreement` отдаёт 500 (не 404) при NULL template_id** (§5.3) -- сигнал поломки, не штатное "не сконфигурировано".
 
 ### v0.4 -- UI follow-ups закрыты
@@ -927,7 +959,7 @@ Post-MVP (вне scope refactor'а):
 - **F-A1**: при empty list (после language-фильтра) -- секция "Документы компании" на CompanyOverview **скрывается целиком**. Никакого empty-state. Контентом управляет Staff (§7.1).
 - **F-A2**: иконки -- **mime-based** (PDF/PNG/PPTX/...), не category-based (§7.1).
 - **F-A3**: **L1-группировка** (один уровень) по верхнему сегменту path-tree, внутри группы -- плоский список карточек. Subcategory как breadcrumb на карточке. Локализация имён сегментов через i18n с title-case fallback. **Без language-табов** -- юзер видит документы своей локали + null. Empty-фильтр результат -> секция скрыта (см. F-A1) (§7.1).
-- **F-T1 ОТМЕНЁН**: вопрос про bootstrap для editor'а отпадает -- editor templates в MVP не делаем (§6.3, §4.5). Bootstrap'ы в репо как `backend/seed/templates/_default/` используются install-скриптом для platform default'ов, не для editor'а.
+- **F-T1 ОТМЕНЁН**: вопрос про bootstrap для editor'а отпадает -- editor templates в MVP не делаем (§6.3, §4.5). Bootstrap'ы в репо как `backend/scripts/seed_data/templates/_default/` используются install-скриптом для platform default'ов, не для editor'а.
 
 ### v0.3 closed (без изменений в v0.4)
 

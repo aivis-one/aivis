@@ -889,26 +889,31 @@ docker compose exec -T app python -m scripts.seed_test_accounts
 success "Test accounts seeded"
 
 # ------------------------------------------------------------------------------
-# TODO(refactor-2-iter-2): seed platform default templates
+# Refactor 2 iter 2.3: seed platform default templates (R2 §1.4 + §4.9).
 #
-# Blocked by:
-#   - backend/scripts/seed_platform_templates.py (next iteration)
-#   - backend/seed/templates/_default/<kind>/<lang>/{template.html,
-#     logo.png, signature.png, stamp.png} directory tree (next iteration)
+# Two-step bootstrap:
+#   1. mc cp -r backend/scripts/templates/_default/ -> _platform/templates/
+#      copies 4 kinds x 4 languages = 16 folders (template.html + logo /
+#      signature / stamp PNG placeholders) into MinIO.
+#   2. seed_platform_templates.py inserts one active row per (kind, language)
+#      into company_document_templates with company_id IS NULL. Idempotent --
+#      a re-install with previously-seeded rows is a no-op.
 #
-# Implementation (when unblocked, place between seed_test_accounts above
-# and the management script section below):
+# Order matters: (1) puts files in MinIO; (2) creates DB rows that point
+# at those files. Reverse order would leave the DB pointing at empty
+# storage and the renderer 500ing on the first render attempt.
 #
-#   log "Seeding platform default templates to MinIO..."
-#   mc cp -r "$INSTALL_BASE/repo/backend/seed/templates/_default/" \
-#       local/cbshome-attachments/_platform/templates/
-#
-#   log "Seeding platform default templates to DB..."
-#   docker compose exec -T app python backend/scripts/seed_platform_templates.py
-#   success "Platform default templates seeded"
-#
-# Reference: CBSHOME-Refactor-Company-Docs.md §1.4 + §4.9
+# Runs after `cbshome seed` (Platform user is already in the DB --
+# seed_platform_templates.py needs it for system-actor audit attribution).
 # ------------------------------------------------------------------------------
+
+log "Seeding platform default templates to MinIO..."
+mc cp -r "$INSTALL_BASE/repo/backend/scripts/templates/_default/" \
+    local/cbshome-attachments/_platform/templates/
+
+log "Seeding platform default templates to DB..."
+docker compose exec -T app python -m scripts.seed_platform_templates
+success "Platform default templates seeded"
 
 # ==============================================================================
 # MANAGEMENT SCRIPT
@@ -1565,9 +1570,9 @@ case_nginx() {
 #   reconcile <id>                   — sync inbox/ -> attachments/
 #                                      (Refactor 2 iter 2.2)
 #   reconcile-templates <id>         — sync templates-inbox/ -> templates/
-#                                      (stub: next iter)
+#                                      (Refactor 2 iter 2.3)
 #   reconcile-platform-templates     — sync _platform/templates-inbox/ ...
-#                                      (stub: next iter)
+#                                      (Refactor 2 iter 2.3)
 # ==============================================================================
 
 case_storage() {
@@ -1618,17 +1623,23 @@ case_storage() {
             docker compose exec -T app python -m scripts.reconcile_attachments "$@"
             ;;
         reconcile-templates)
-            local CID="${2:-}"
-            if [ -z "$CID" ]; then
-                echo "Usage: cbshome storage reconcile-templates <company_id> [--all|--dry-run]"
+            shift
+            if [ $# -eq 0 ]; then
+                echo "Usage: cbshome storage reconcile-templates <company_id> [--dry-run]"
                 exit 1
             fi
-            echo -e "${YELLOW}Not implemented yet, requires backend/scripts/reconcile_templates.py from next iteration${NC}"
-            echo "Reference: CBSHOME-Refactor-Company-Docs.md §4.8"
+            # Refactor 2 iter 2.3: pass-through to the Python reconcile script.
+            # No --all here -- per-company templates are uploaded one company
+            # at a time, and a bulk pass would mask single-company errors
+            # behind aggregate stats. See CBSHOME-Refactor-Company-Docs.md §4.8.
+            docker compose exec -T app python -m scripts.reconcile_templates "$@"
             ;;
         reconcile-platform-templates)
-            echo -e "${YELLOW}Not implemented yet, requires backend/scripts/reconcile_platform_templates.py from next iteration${NC}"
-            echo "Reference: CBSHOME-Refactor-Company-Docs.md §4.9"
+            shift
+            # Refactor 2 iter 2.3: pass-through to the Python reconcile script.
+            # No company_id argument -- there is exactly one platform default
+            # series (company_id IS NULL). See CBSHOME-Refactor-Company-Docs.md §4.9.
+            docker compose exec -T app python -m scripts.reconcile_platform_templates "$@"
             ;;
         ""|help|*)
             echo "Storage commands:"
@@ -1636,8 +1647,8 @@ case_storage() {
             echo "  cbshome storage console                            — Print MinIO Console URL + credentials"
             echo "  cbshome storage reconcile <company_id>             — Sync inbox -> attachments"
             echo "  cbshome storage reconcile --all                    — Sync inbox for every company"
-            echo "  cbshome storage reconcile-templates <company_id>   — Sync templates-inbox -> templates (stub: next iter)"
-            echo "  cbshome storage reconcile-platform-templates       — Sync _platform/templates-inbox -> platform (stub: next iter)"
+            echo "  cbshome storage reconcile-templates <company_id>   — Sync templates-inbox -> templates"
+            echo "  cbshome storage reconcile-platform-templates       — Sync _platform/templates-inbox -> platform default rows"
             ;;
     esac
 }
@@ -1780,8 +1791,8 @@ case "$CMD" in
         echo "  storage stats                             — Bucket size + object count"
         echo "  storage console                           — Print MinIO Console URL + credentials"
         echo "  storage reconcile <id>                    — Sync inbox -> DB"
-        echo "  storage reconcile-templates <id>          — Sync templates-inbox -> DB (stub: next iter)"
-        echo "  storage reconcile-platform-templates      — Sync platform templates (stub: next iter)"
+        echo "  storage reconcile-templates <id>          — Sync templates-inbox -> DB"
+        echo "  storage reconcile-platform-templates      — Sync platform templates"
         echo ""
         echo "Maintenance:"
         echo "  backup                                    — Backup DB + .env + MinIO (7-day rotation)"

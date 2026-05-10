@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <title>Kaufvertrag</title>
+  <style>
+    @page { size: A4 portrait; margin: 18mm 20mm; }
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      color: #1a1a2e;
+      font-size: 12px;
+    }
+    .header { width: 100%; margin-bottom: 8mm; }
+    .header td { vertical-align: middle; padding: 0; }
+    .header td.logo { width: 30mm; }
+    .header img { width: 24mm; height: auto; }
+    .header td.brand { text-align: right; }
+    .header h1 { margin: 0; font-size: 16px; color: #1a1a2e; }
+    h2.kind-title {
+      text-align: center;
+      margin: 6mm 0 8mm 0;
+      font-size: 22px;
+      letter-spacing: 0.5px;
+      color: #1a1a2e;
+    }
+    .details {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 auto 6mm auto;
+    }
+    .details td { padding: 1.5mm 3mm; vertical-align: top; }
+    .details td.label {
+      width: 40%;
+      color: #7a7a8a;
+      text-align: right;
+    }
+    .details td.value {
+      color: #1a1a2e;
+      font-weight: bold;
+      text-align: left;
+    }
+    .note { font-size: 10px; color: #7a7a8a; margin: 0 0 6mm 0; }
+    .purchases-h {
+      font-size: 14px;
+      margin: 6mm 0 3mm 0;
+      color: #1a1a2e;
+    }
+    .purchases {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8mm;
+    }
+    .purchases th, .purchases td {
+      padding: 2mm 3mm;
+      border-bottom: 1px solid #e0e0e8;
+      text-align: left;
+    }
+    .purchases th { color: #7a7a8a; font-weight: normal; font-size: 11px; }
+    .footer {
+      width: 100%;
+      margin-top: 10mm;
+    }
+    .footer td {
+      width: 50%;
+      vertical-align: bottom;
+      text-align: center;
+      padding: 0 4mm;
+    }
+    .footer img { width: 28mm; height: auto; }
+    .footer .label {
+      font-size: 10px;
+      color: #7a7a8a;
+      margin-top: 2mm;
+    }
+    .footer-note {
+      font-size: 9px;
+      color: #a0a0b0;
+      text-align: center;
+      margin-top: 8mm;
+    }
+  </style>
+</head>
+<body>
+  <table class="header">
+    <tr>
+      <td class="logo"><img src="{{ asset_data_uri('logo.png') }}" alt="logo"></td>
+      <td class="brand"><h1>{{ company_name }}</h1></td>
+    </tr>
+  </table>
+
+  <h2 class="kind-title">Kaufvertrag</h2>
+
+    <table class="details">
+      <tr><td class="label">Urkunde Nr.:</td><td class="value">{{ certificate_number }}</td></tr>
+      <tr><td class="label">Investor:</td><td class="value">{{ investor_name }}</td></tr>
+      <tr><td class="label">E-Mail:</td><td class="value">{{ investor_email }}</td></tr>
+      <tr><td class="label">Unternehmen:</td><td class="value">{{ company_name }}</td></tr>
+      <tr><td class="label">Rechtstraeger:</td><td class="value">{{ company_legal_name }}</td></tr>
+      <tr><td class="label">Produkt:</td><td class="value">{{ product_name }}</td></tr>
+      <tr><td class="label">Anteile:</td><td class="value">{{ units }}</td></tr>
+      <tr><td class="label">Gezahlter Betrag:</td><td class="value">{{ paid_cents }}</td></tr>
+      <tr><td class="label">Preis pro Anteil:</td><td class="value">{{ price_per_unit_cents }}</td></tr>
+      <tr><td class="label">Datum:</td><td class="value">{{ purchase_date }}</td></tr>
+      <tr><td class="label">Rechtsgrundlage:</td><td class="value">{{ legal_basis }}</td></tr>
+    </table>
+    <p class="note">Betraege in Cents (USD).</p>
+
+
+  <table class="footer">
+    <tr>
+      <td>
+        <img src="{{ asset_data_uri('stamp.png') }}" alt="stamp">
+        <div class="label">Firmensiegel</div>
+      </td>
+      <td>
+        <img src="{{ asset_data_uri('signature.png') }}" alt="signature">
+        <div class="label">Bevollmaechtigter Unterzeichner</div>
+      </td>
+    </tr>
+  </table>
+
+  <p class="footer-note">Dieses Dokument wurde von der CBSHOME-Plattform als Platzhalter erstellt. Vor dem Produktiveinsatz durch eine massgebliche Version ersetzen.</p>
+</body>
+</html>
