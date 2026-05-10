@@ -1,7 +1,7 @@
 """company_attachments.storage_key unique
 
-Revision ID: 2026_05_10_0030
-Revises: 2026_05_09_0028
+Revision ID: 0030_company_attachment_storage_key_unique
+Revises: 0028_company_attachments
 Create Date: 2026-05-10 00:55:00.000000
 
 Round 4 (MINOR-03). The storage_key column was nullable=False from the
@@ -23,8 +23,8 @@ from alembic import op
 
 
 # revision identifiers, used by Alembic.
-revision = "2026_05_10_0030"
-down_revision = "2026_05_09_0028"
+revision = "0030_company_attachment_storage_key_unique"
+down_revision = "0028_company_attachments"
 branch_labels = None
 depends_on = None
 
