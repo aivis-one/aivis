@@ -1,6 +1,6 @@
 """company_attachments.storage_key unique
 
-Revision ID: 0030_company_attachment_storage_key_unique
+Revision ID: 0030_storage_key_unique
 Revises: 0028_company_attachments
 Create Date: 2026-05-10 00:55:00.000000
 
@@ -23,7 +23,7 @@ from alembic import op
 
 
 # revision identifiers, used by Alembic.
-revision = "0030_company_attachment_storage_key_unique"
+revision = "0030_storage_key_unique"
 down_revision = "0028_company_attachments"
 branch_labels = None
 depends_on = None
