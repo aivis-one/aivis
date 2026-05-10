@@ -529,3 +529,147 @@ async def test_replace_invalidates_html_cache(
     fresh = await get_template_html_cached(canonical)
     assert "v2" in fresh
     assert "v1" not in fresh
+
+
+# ---------------------------------------------------------------------------
+# 9: draft status creates draft row WITHOUT archiving previous active (BUG-NEW-01)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_draft_status_creates_draft_without_touching_active(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """sidecar status=draft inserts a draft row alongside the active v1.
+
+    The previous active is NOT archived -- the operator stages a candidate
+    that find_active_template will skip (it filters on status=active),
+    so production rendering keeps using v1 until a follow-up reconcile
+    with status=active flips the page.
+    """
+    _, company_id = await _admin_and_company(client, db_session)
+
+    # Land an active v1 first.
+    await _seed_inbox_folder(
+        company_id,
+        kind="purchase_agreement",
+        language="en",
+        sidecar=_default_sidecar("purchase_agreement", "en", "PA EN v1 active"),
+    )
+    await reconcile_company_templates(db_session, company_id)
+
+    # Now upload a draft.
+    await _seed_inbox_folder(
+        company_id,
+        kind="purchase_agreement",
+        language="en",
+        sidecar={
+            "kind": "purchase_agreement",
+            "language": "en",
+            "title": "PA EN v2 draft",
+            "status": "draft",
+        },
+    )
+    stats = await reconcile_company_templates(db_session, company_id)
+
+    assert stats.inspected == 1
+    assert stats.created == 0
+    assert stats.created_draft == 1
+    assert stats.archived_and_replaced == 0
+    assert stats.skipped == 0
+
+    rows = (
+        await db_session.execute(
+            select(CompanyDocumentTemplate)
+            .where(
+                CompanyDocumentTemplate.company_id == company_id,
+                CompanyDocumentTemplate.kind == DocumentTemplateKind.PURCHASE_AGREEMENT,
+                CompanyDocumentTemplate.language == "en",
+            )
+            .order_by(CompanyDocumentTemplate.version)
+        )
+    ).scalars().all()
+    assert len(rows) == 2
+
+    active, draft = rows
+    assert active.version == 1
+    assert active.status == TemplateStatus.ACTIVE
+    assert active.title == "PA EN v1 active"
+    assert draft.version == 2
+    assert draft.status == TemplateStatus.DRAFT
+    assert draft.title == "PA EN v2 draft"
+
+
+# ---------------------------------------------------------------------------
+# 10: dry-run outcome reflects what real run WOULD do (BUG-NEW-02)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_dry_run_reports_archived_outcome_when_active_exists(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """When an active row exists, dry-run reports archived_and_replaced,
+    not "created" -- the previous tautology is fixed."""
+    _, company_id = await _admin_and_company(client, db_session)
+
+    # Real first pass to land v1 active.
+    await _seed_inbox_folder(
+        company_id,
+        kind="purchase_agreement",
+        language="en",
+        sidecar=_default_sidecar("purchase_agreement", "en"),
+    )
+    first = await reconcile_company_templates(db_session, company_id)
+    assert first.created == 1
+
+    # Second pass in dry-run mode: outcome must be archived_and_replaced.
+    await _seed_inbox_folder(
+        company_id,
+        kind="purchase_agreement",
+        language="en",
+        sidecar=_default_sidecar("purchase_agreement", "en", "PA EN v2"),
+    )
+    stats = await reconcile_company_templates(db_session, company_id, dry_run=True)
+
+    assert stats.inspected == 1
+    assert stats.created == 0
+    assert stats.archived_and_replaced == 1
+    assert stats.created_draft == 0
+    assert stats.skipped == 0
+
+
+# ---------------------------------------------------------------------------
+# 11: created_by attribution -- BUG-NEW-03 fix
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_created_by_is_platform_user_for_per_company_reconcile(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Per-company reconcile rows attribute created_by to the platform
+    user (system actor), not NULL. This matches the audit actor and
+    keeps the FK referencing a real user.
+    """
+    from app.modules.auth.service import get_platform_user_id
+
+    _, company_id = await _admin_and_company(client, db_session)
+    platform_user_id = await get_platform_user_id(db_session)
+
+    await _seed_inbox_folder(
+        company_id,
+        kind="purchase_agreement",
+        language="en",
+        sidecar=_default_sidecar("purchase_agreement", "en"),
+    )
+    await reconcile_company_templates(db_session, company_id)
+
+    row = (
+        await db_session.execute(
+            select(CompanyDocumentTemplate).where(
+                CompanyDocumentTemplate.company_id == company_id
+            )
+        )
+    ).scalar_one()
+    assert row.created_by == platform_user_id

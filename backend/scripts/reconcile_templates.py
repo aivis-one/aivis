@@ -107,7 +107,7 @@ if str(_backend_dir) not in sys.path:
 import structlog
 from jinja2 import Environment, TemplateSyntaxError, meta as jinja_meta
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -153,6 +153,14 @@ CANONICAL_PREFIX_TEMPLATE = "companies/{company_id}/templates/{kind}/{language}/
 # Matches asset_data_uri('<filename>') / asset_data_uri("<filename>") with
 # optional whitespace inside the parens. Captures the bare filename so
 # reconcile can verify each reference resolves to a file in the folder.
+#
+# LIMITATION (QC-NEW-03): only string-literal calls are validated. A call
+# like `{% set f = 'logo.png' %}{{ asset_data_uri(f) }}` won't be caught
+# by this regex; the template will activate, then fall through to a
+# runtime BadRequestError inside make_asset_data_uri_func when the
+# render attempts to resolve `f` against asset_files. In production all
+# legitimate templates use literal filenames (R2 §4.4), so this is an
+# accepted trade-off rather than a full Jinja2 AST walker.
 ASSET_DATA_URI_RE = re.compile(r"asset_data_uri\(\s*['\"]([^'\"]+)['\"]\s*\)")
 
 # ANSI colours -- match scripts/reconcile_attachments.py.
@@ -187,6 +195,11 @@ class ReconcileStats:
     Fields:
       inspected             -- number of <kind>__<lang>/ folders found.
       created               -- new active row inserted (no previous active).
+      created_draft         -- new draft row inserted. Drafts do NOT archive
+                                the previous active and are not visible to
+                                find_active_template; activation comes from
+                                a subsequent reconcile pass with status=active
+                                in the sidecar.
       archived_and_replaced -- previous active row archived, new active
                                 inserted with version+1.
       skipped               -- folder failed validation. See skipped_reasons
@@ -195,6 +208,7 @@ class ReconcileStats:
 
     inspected: int = 0
     created: int = 0
+    created_draft: int = 0
     archived_and_replaced: int = 0
     skipped: int = 0
     skipped_reasons: list[str] = field(default_factory=list)
@@ -258,6 +272,13 @@ def _parse_folder_name(folder_name: str) -> tuple[str, str]:
 
 # ---------------------------------------------------------------------------
 # Per-folder validation + activation
+#
+# NOTE (QC-NEW-02): the helpers in this section + the next one
+# (_classify_folder_files / _validate_html_against_kind /
+# _move_to_canonical / _archive_previous_active / _get_max_version_for_pair)
+# are duplicated verbatim in reconcile_platform_templates.py. Logic
+# changes here MUST be mirrored there or the two reconcile flows
+# diverge silently.
 # ---------------------------------------------------------------------------
 
 
@@ -359,15 +380,22 @@ async def _archive_previous_active(
 ) -> CompanyDocumentTemplate | None:
     """Flip the existing active row (if any) to archived and return it.
 
-    Caller uses the return value to compute version+1 and to populate
-    the audit row.
+    The caller uses the return value for the audit row. Version computation
+    has moved to _get_max_version_for_pair (BUG-NEW-01 fix): with drafts in
+    the picture, version+1 off the previous active collides with whatever
+    drafts already sit at higher versions for the same (kind, language).
+
+    QC-NEW-01: with_for_update() takes a row-level lock so two concurrent
+    reconcile invocations can't both read the same active row, both
+    flip it to archived, both insert version=N+1 and one of them blow up
+    on the UniqueConstraint with no rollback.
     """
     stmt = select(CompanyDocumentTemplate).where(
         CompanyDocumentTemplate.company_id == company_id,
         CompanyDocumentTemplate.kind == kind,
         CompanyDocumentTemplate.language == language,
         CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
-    )
+    ).with_for_update()
     result = await session.execute(stmt)
     previous = result.scalar_one_or_none()
     if previous is None:
@@ -375,6 +403,31 @@ async def _archive_previous_active(
     previous.status = TemplateStatus.ARCHIVED
     await session.flush()
     return previous
+
+
+async def _get_max_version_for_pair(
+    session: AsyncSession,
+    *,
+    company_id: UUID,
+    kind: DocumentTemplateKind | str,
+    language: str,
+) -> int:
+    """Return max(version) for (company_id, kind, language) across all
+    statuses. Returns 0 when no rows exist so the caller inserts version=1.
+
+    Why max-of-everything rather than `previous.version + 1`: drafts and
+    historical archived rows can sit alongside the current active. With
+    R2 §4.8 draft support (BUG-NEW-01 fix), a freshly-uploaded draft
+    can be at version=2 while the active is at version=1; the next
+    active reconcile must land on version=3, not version=2.
+    """
+    stmt = select(func.max(CompanyDocumentTemplate.version)).where(
+        CompanyDocumentTemplate.company_id == company_id,
+        CompanyDocumentTemplate.kind == kind,
+        CompanyDocumentTemplate.language == language,
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
 
 
 async def _activate_folder(
@@ -386,11 +439,15 @@ async def _activate_folder(
     platform_user_id: UUID,
     dry_run: bool,
 ) -> tuple[str, str | None]:
-    """Validate + activate one inbox folder.
+    """Validate + activate-or-stage one inbox folder.
 
     Returns (status, reason) where status is one of:
-      "created"               -- new active inserted, no previous.
-      "archived_and_replaced" -- previous active archived, new active inserted.
+      "created"               -- new active inserted, no previous active.
+      "archived_and_replaced" -- previous active archived, new active
+                                  inserted with bumped version.
+      "created_draft"         -- new draft inserted (sidecar status=draft).
+                                  No archive, no cache invalidation -- the
+                                  draft is not visible to find_active_template.
       "skipped"               -- validation failed; reason is human-readable.
     """
     # Step 1: classify folder contents.
@@ -436,18 +493,52 @@ async def _activate_folder(
     if html_error is not None:
         return "skipped", html_error
 
-    # Validation passed; in dry-run we stop here without touching DB or MinIO.
-    if dry_run:
-        return ("created", None) if asset_filenames else ("created", None)
+    # The sidecar status drives the rest of the flow:
+    #   "active" -> archive previous active (if any), insert new active.
+    #   "draft"  -> insert draft alongside; do NOT touch any active row.
+    sidecar_active = metadata.status == "active"
 
-    # Step 5: archive previous active (if any), get its version.
-    previous = await _archive_previous_active(
+    # Validation passed. In dry-run we report the outcome the real run
+    # WOULD reach without touching DB or MinIO. BUG-NEW-02: previous
+    # tautology always returned "created"; we now peek the existing
+    # active to choose between "created" and "archived_and_replaced".
+    if dry_run:
+        if not sidecar_active:
+            return "created_draft", None
+        peek_stmt = select(CompanyDocumentTemplate).where(
+            CompanyDocumentTemplate.company_id == company_id,
+            CompanyDocumentTemplate.kind == metadata.kind,
+            CompanyDocumentTemplate.language == metadata.language,
+            CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+        )
+        peek_existing = (await session.execute(peek_stmt)).scalar_one_or_none()
+        return (
+            "archived_and_replaced" if peek_existing is not None else "created",
+            None,
+        )
+
+    # Step 5: pick the version off the full series, not just the active
+    # row. BUG-NEW-01 fix: drafts and historical archived rows can
+    # already occupy version slots; we always insert at max+1.
+    max_version = await _get_max_version_for_pair(
         session,
         company_id=company_id,
         kind=metadata.kind,
         language=metadata.language,
     )
-    new_version = (previous.version + 1) if previous is not None else 1
+    new_version = max_version + 1
+
+    # Step 6: archive previous active iff the new row will be active.
+    # Drafts must NOT archive the previous active -- the operator wants
+    # to stage a candidate without taking production offline.
+    previous: CompanyDocumentTemplate | None = None
+    if sidecar_active:
+        previous = await _archive_previous_active(
+            session,
+            company_id=company_id,
+            kind=metadata.kind,
+            language=metadata.language,
+        )
 
     canonical_prefix = CANONICAL_PREFIX_TEMPLATE.format(
         company_id=company_id,
@@ -455,7 +546,7 @@ async def _activate_folder(
         language=metadata.language,
     )
 
-    # Step 6: move files. template.html first so a partial failure leaves
+    # Step 7: move files. template.html first so a partial failure leaves
     # a usable previous-active intact (we already flipped it to archived,
     # but the canonical bytes haven't been touched yet -- a re-run will
     # find the previous-archived row and increment from there).
@@ -473,7 +564,13 @@ async def _activate_folder(
     # Sidecar metadata is captured in the DB row; we drop it from MinIO.
     await delete_object(sidecar_key)
 
-    # Step 7: insert new active row.
+    # Step 8: insert new row. BUG-NEW-03 fix: created_by is the platform
+    # user (system actor) rather than NULL -- audit attribution lives on
+    # actor_id, but created_by is the persistent author pointer on the
+    # row itself; both should reflect "system".
+    new_row_status = (
+        TemplateStatus.ACTIVE if sidecar_active else TemplateStatus.DRAFT
+    )
     new_row = CompanyDocumentTemplate(
         company_id=company_id,
         kind=metadata.kind,
@@ -482,14 +579,27 @@ async def _activate_folder(
         title=metadata.title,
         storage_prefix=canonical_prefix,
         asset_files=sorted(asset_filenames),
-        status=TemplateStatus.ACTIVE,
-        created_by=None,
+        status=new_row_status,
+        created_by=platform_user_id,
     )
     session.add(new_row)
     await session.flush()
 
-    # Step 8: audit + cache invalidation.
-    if previous is None:
+    # Step 9: audit + cache invalidation. Cache only matters for active
+    # rows -- find_active_template never touches drafts, so a stale
+    # template_html:* entry for a draft prefix can't surface to a render.
+    if not sidecar_active:
+        event = "company.template_reconciled_draft_created"
+        audit_data = {
+            "company_id": str(company_id),
+            "kind": str(metadata.kind),
+            "language": metadata.language,
+            "version": new_version,
+            "storage_prefix": canonical_prefix,
+            "asset_files": sorted(asset_filenames),
+        }
+        outcome = "created_draft"
+    elif previous is None:
         event = "company.template_reconciled_created"
         audit_data = {
             "company_id": str(company_id),
@@ -524,7 +634,8 @@ async def _activate_folder(
         data=audit_data,
     )
 
-    await invalidate_template_html_cache(canonical_prefix)
+    if sidecar_active:
+        await invalidate_template_html_cache(canonical_prefix)
     return outcome, None
 
 
@@ -581,14 +692,19 @@ async def reconcile_company_templates(
             # No commit; no DB changes were made.
             if outcome == "created":
                 stats.created += 1
+            elif outcome == "created_draft":
+                stats.created_draft += 1
             else:
                 stats.archived_and_replaced += 1
             continue
 
         await session.commit()
         if outcome == "created":
-            log(f"{folder_name}: created (id={...})")  # id resolved by audit row already
+            log(f"{folder_name}: created")
             stats.created += 1
+        elif outcome == "created_draft":
+            log(f"{folder_name}: created_draft")
+            stats.created_draft += 1
         else:
             log(f"{folder_name}: archived_and_replaced")
             stats.archived_and_replaced += 1
@@ -649,6 +765,7 @@ async def _run_cli(*, company_id: UUID, dry_run: bool) -> int:
         log(
             f"done: inspected={stats.inspected} "
             f"created={stats.created} "
+            f"created_draft={stats.created_draft} "
             f"archived_and_replaced={stats.archived_and_replaced} "
             f"skipped={stats.skipped}"
             + (" (dry-run)" if dry_run else "")

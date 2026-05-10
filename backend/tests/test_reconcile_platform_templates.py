@@ -352,3 +352,91 @@ async def test_dry_run_makes_no_changes(
         )
     ).scalars().all()
     assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# 5: draft status creates draft row WITHOUT archiving previous active (BUG-NEW-01)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_draft_status_creates_draft_without_touching_active(
+    db_session: AsyncSession,
+) -> None:
+    """sidecar status=draft inserts a draft platform-default row alongside
+    the active v1 -- the active is left alone."""
+    # Land active v1 first.
+    await _seed_inbox_folder(
+        kind="purchase_agreement",
+        language="en",
+        sidecar=_default_sidecar("purchase_agreement", "en", "Platform PA EN v1"),
+    )
+    await reconcile_platform_templates(db_session)
+
+    # Upload a draft.
+    await _seed_inbox_folder(
+        kind="purchase_agreement",
+        language="en",
+        sidecar={
+            "kind": "purchase_agreement",
+            "language": "en",
+            "title": "Platform PA EN v2 draft",
+            "status": "draft",
+        },
+    )
+    stats = await reconcile_platform_templates(db_session)
+
+    assert stats.created == 0
+    assert stats.created_draft == 1
+    assert stats.archived_and_replaced == 0
+    assert stats.skipped == 0
+
+    rows = (
+        await db_session.execute(
+            select(CompanyDocumentTemplate)
+            .where(
+                CompanyDocumentTemplate.company_id.is_(None),
+                CompanyDocumentTemplate.kind == DocumentTemplateKind.PURCHASE_AGREEMENT,
+                CompanyDocumentTemplate.language == "en",
+            )
+            .order_by(CompanyDocumentTemplate.version)
+        )
+    ).scalars().all()
+    assert len(rows) == 2
+
+    active, draft = rows
+    assert active.version == 1
+    assert active.status == TemplateStatus.ACTIVE
+    assert draft.version == 2
+    assert draft.status == TemplateStatus.DRAFT
+
+
+# ---------------------------------------------------------------------------
+# 6: dry-run reflects archived outcome correctly (BUG-NEW-02)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_dry_run_reports_archived_outcome_when_active_exists(
+    db_session: AsyncSession,
+) -> None:
+    """Dry-run after a real first pass reports archived_and_replaced."""
+    await _seed_inbox_folder(
+        kind="purchase_agreement",
+        language="en",
+        sidecar=_default_sidecar("purchase_agreement", "en"),
+    )
+    first = await reconcile_platform_templates(db_session)
+    assert first.created == 1
+
+    await _seed_inbox_folder(
+        kind="purchase_agreement",
+        language="en",
+        sidecar=_default_sidecar("purchase_agreement", "en", "Platform PA EN v2"),
+    )
+    stats = await reconcile_platform_templates(db_session, dry_run=True)
+
+    assert stats.created == 0
+    assert stats.archived_and_replaced == 1
+    assert stats.created_draft == 0
+    assert stats.skipped == 0

@@ -71,7 +71,7 @@ if str(_backend_dir) not in sys.path:
 import structlog
 from jinja2 import Environment, TemplateSyntaxError, meta as jinja_meta
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -113,6 +113,12 @@ CANONICAL_PREFIX_TEMPLATE = "_platform/templates/{kind}/{language}/"
 
 # Matches asset_data_uri('<filename>') / asset_data_uri("<filename>"),
 # capturing the bare filename. Identical to the per-company reconcile.
+#
+# LIMITATION (QC-NEW-03): only string-literal calls are validated. A call
+# like `{% set f = 'logo.png' %}{{ asset_data_uri(f) }}` won't be caught
+# by this regex; the template will activate, then fall through to a
+# runtime BadRequestError inside make_asset_data_uri_func when the
+# render attempts to resolve `f` against asset_files.
 ASSET_DATA_URI_RE = re.compile(r"asset_data_uri\(\s*['\"]([^'\"]+)['\"]\s*\)")
 
 # ANSI colours -- match scripts/reconcile_templates.py.
@@ -141,10 +147,15 @@ def err(msg: str) -> None:
 
 @dataclass
 class ReconcileStats:
-    """Tally returned by reconcile_platform_templates."""
+    """Tally returned by reconcile_platform_templates.
+
+    Mirror of reconcile_templates.ReconcileStats; see the per-company
+    docstring for the meaning of each counter.
+    """
 
     inspected: int = 0
     created: int = 0
+    created_draft: int = 0
     archived_and_replaced: int = 0
     skipped: int = 0
     skipped_reasons: list[str] = field(default_factory=list)
@@ -186,6 +197,12 @@ def _parse_folder_name(folder_name: str) -> tuple[str, str]:
 
 # ---------------------------------------------------------------------------
 # Per-folder validation + activation
+#
+# NOTE (QC-NEW-02): the helpers in this section + the next one
+# (_classify_folder_files / _validate_html_against_kind /
+# _move_to_canonical / _archive_previous_active / _get_max_version_for_pair)
+# are duplicated verbatim in reconcile_templates.py. Logic changes here
+# MUST be mirrored there or the two reconcile flows diverge silently.
 # ---------------------------------------------------------------------------
 
 
@@ -267,13 +284,17 @@ async def _archive_previous_active(
     kind: DocumentTemplateKind,
     language: str,
 ) -> CompanyDocumentTemplate | None:
-    """Flip the previous platform-default active row (if any) to archived."""
+    """Flip the previous platform-default active row (if any) to archived.
+
+    See reconcile_templates._archive_previous_active for the shared
+    rationale (BUG-NEW-01 version split, QC-NEW-01 row lock).
+    """
     stmt = select(CompanyDocumentTemplate).where(
         CompanyDocumentTemplate.company_id.is_(None),
         CompanyDocumentTemplate.kind == kind,
         CompanyDocumentTemplate.language == language,
         CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
-    )
+    ).with_for_update()
     result = await session.execute(stmt)
     previous = result.scalar_one_or_none()
     if previous is None:
@@ -281,6 +302,28 @@ async def _archive_previous_active(
     previous.status = TemplateStatus.ARCHIVED
     await session.flush()
     return previous
+
+
+async def _get_max_version_for_pair(
+    session: AsyncSession,
+    *,
+    kind: DocumentTemplateKind | str,
+    language: str,
+) -> int:
+    """Return max(version) for (company_id IS NULL, kind, language) across
+    all statuses. Returns 0 when no rows exist so the caller inserts
+    version=1.
+
+    See reconcile_templates._get_max_version_for_pair for the shared
+    rationale (BUG-NEW-01 draft support).
+    """
+    stmt = select(func.max(CompanyDocumentTemplate.version)).where(
+        CompanyDocumentTemplate.company_id.is_(None),
+        CompanyDocumentTemplate.kind == kind,
+        CompanyDocumentTemplate.language == language,
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
 
 
 async def _activate_folder(
@@ -291,10 +334,11 @@ async def _activate_folder(
     platform_user_id: UUID,
     dry_run: bool,
 ) -> tuple[str, str | None]:
-    """Validate + activate one platform-default inbox folder.
+    """Validate + activate-or-stage one platform-default inbox folder.
 
-    Returns (status, reason); status is "created" / "archived_and_replaced"
-    / "skipped".
+    Returns (status, reason); status is one of:
+      "created" / "archived_and_replaced" / "created_draft" / "skipped".
+    See reconcile_templates._activate_folder for the shared decision tree.
     """
     sidecar_key, html_key, assets, stray = _classify_folder_files(files)
     if sidecar_key is None:
@@ -335,19 +379,39 @@ async def _activate_folder(
     if html_error is not None:
         return "skipped", html_error
 
-    if dry_run:
-        return "created", None  # the CLI distinguishes new vs replace by
-                                # peeking the previous-active separately;
-                                # for dry-run we report as "created" --
-                                # exact previous-row peek would add a
-                                # read for marginal benefit.
+    sidecar_active = metadata.status == "active"
 
-    previous = await _archive_previous_active(
+    # Dry-run: report the outcome without mutating. BUG-NEW-02 fix.
+    if dry_run:
+        if not sidecar_active:
+            return "created_draft", None
+        peek_stmt = select(CompanyDocumentTemplate).where(
+            CompanyDocumentTemplate.company_id.is_(None),
+            CompanyDocumentTemplate.kind == metadata.kind,
+            CompanyDocumentTemplate.language == metadata.language,
+            CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+        )
+        peek_existing = (await session.execute(peek_stmt)).scalar_one_or_none()
+        return (
+            "archived_and_replaced" if peek_existing is not None else "created",
+            None,
+        )
+
+    # Compute new version off the full series (BUG-NEW-01).
+    max_version = await _get_max_version_for_pair(
         session,
         kind=metadata.kind,
         language=metadata.language,
     )
-    new_version = (previous.version + 1) if previous is not None else 1
+    new_version = max_version + 1
+
+    previous: CompanyDocumentTemplate | None = None
+    if sidecar_active:
+        previous = await _archive_previous_active(
+            session,
+            kind=metadata.kind,
+            language=metadata.language,
+        )
 
     canonical_prefix = CANONICAL_PREFIX_TEMPLATE.format(
         kind=metadata.kind,
@@ -367,6 +431,15 @@ async def _activate_folder(
         )
     await delete_object(sidecar_key)
 
+    new_row_status = (
+        TemplateStatus.ACTIVE if sidecar_active else TemplateStatus.DRAFT
+    )
+    # Platform defaults keep created_by=NULL: there is no staff author
+    # for the platform-fallback series, only the system actor recorded
+    # in audit. This is the documented invariant from R2 §4.2 ("NULL
+    # для platform default") and the symmetric counterpart of
+    # reconcile_templates' fix to set created_by=platform_user_id for
+    # per-company rows.
     new_row = CompanyDocumentTemplate(
         company_id=None,
         kind=metadata.kind,
@@ -375,13 +448,23 @@ async def _activate_folder(
         title=metadata.title,
         storage_prefix=canonical_prefix,
         asset_files=sorted(asset_filenames),
-        status=TemplateStatus.ACTIVE,
+        status=new_row_status,
         created_by=None,
     )
     session.add(new_row)
     await session.flush()
 
-    if previous is None:
+    if not sidecar_active:
+        event = "platform.template_reconciled_draft_created"
+        audit_data = {
+            "kind": str(metadata.kind),
+            "language": metadata.language,
+            "version": new_version,
+            "storage_prefix": canonical_prefix,
+            "asset_files": sorted(asset_filenames),
+        }
+        outcome = "created_draft"
+    elif previous is None:
         event = "platform.template_reconciled_created"
         audit_data = {
             "kind": str(metadata.kind),
@@ -414,7 +497,8 @@ async def _activate_folder(
         data=audit_data,
     )
 
-    await invalidate_template_html_cache(canonical_prefix)
+    if sidecar_active:
+        await invalidate_template_html_cache(canonical_prefix)
     return outcome, None
 
 
@@ -468,6 +552,8 @@ async def reconcile_platform_templates(
             log(f"{folder_name}: would activate ({outcome})")
             if outcome == "created":
                 stats.created += 1
+            elif outcome == "created_draft":
+                stats.created_draft += 1
             else:
                 stats.archived_and_replaced += 1
             continue
@@ -476,6 +562,9 @@ async def reconcile_platform_templates(
         if outcome == "created":
             log(f"{folder_name}: created")
             stats.created += 1
+        elif outcome == "created_draft":
+            log(f"{folder_name}: created_draft")
+            stats.created_draft += 1
         else:
             log(f"{folder_name}: archived_and_replaced")
             stats.archived_and_replaced += 1
@@ -515,6 +604,7 @@ async def _run_cli(*, dry_run: bool) -> int:
         log(
             f"done: inspected={stats.inspected} "
             f"created={stats.created} "
+            f"created_draft={stats.created_draft} "
             f"archived_and_replaced={stats.archived_and_replaced} "
             f"skipped={stats.skipped}"
             + (" (dry-run)" if dry_run else "")

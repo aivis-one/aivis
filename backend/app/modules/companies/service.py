@@ -1522,6 +1522,23 @@ async def make_asset_data_uri_func(
     typo'd template can't reach into MinIO outside its asset set even if
     it slips past reconcile validation.
 
+    SECURITY (SEC-NEW-01) -- TODO for R2 §2.4 (renderer rewrite):
+        When the actual rendering code is built, the Jinja2 Environment
+        used to render the template MUST be configured with:
+
+            env = Environment(
+                autoescape=True,        # XSS in HTML / PDF output
+                undefined=StrictUndefined,  # explicit error on missing vars
+            )
+
+        autoescape protects against XSS when an investor-supplied field
+        like `investor_name = "<script>alert(1)</script>"` flows into the
+        HTML body. StrictUndefined turns silent placeholder typos into a
+        loud failure during the render rather than producing a document
+        with literal "{{ certificate_number }}" text. Neither setting
+        affects this helper -- we only build the data URI dictionary
+        here -- but they're required everywhere the dict is consumed.
+
     Args:
         storage_prefix: The MinIO folder path for this template.
             Must include the trailing slash; we append `filename` to it
