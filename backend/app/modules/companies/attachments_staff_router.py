@@ -34,11 +34,17 @@
 #   We parse it via AttachmentInboxMetadata.model_validate_json() so the
 #   inbox flow (cbsmeta.json) and the multipart flow share one schema.
 #
-# MIME WHITELIST:
-#   ALLOWED_ATTACHMENT_MIME_TYPES (companies/constants.py). Validated at
-#   the router boundary -- 400 BadRequest before the bytes touch MinIO.
-#   The reconcile script applies the same whitelist via python-magic
-#   on inbox files.
+# MIME WHITELIST (Round 4 SEC-01 / QC-02):
+#   ALLOWED_ATTACHMENT_MIME_TYPES (companies/constants.py). Validated by
+#   filename extension via companies.service.validate_attachment_mime_by_filename
+#   -- 400 BadRequest before the bytes touch MinIO. We deliberately do
+#   NOT trust file.content_type (multipart header from the client), so a
+#   request claiming "application/pdf" while uploading evil.svg gets
+#   rejected by extension. The reconcile script reuses the same helper.
+#   Defence-in-depth: download endpoints add Content-Disposition:
+#   attachment to the presigned URL so the browser saves rather than
+#   renders, neutralising stored-XSS even if a bad payload sneaks past
+#   extension validation.
 #
 # 100MB SIZE LIMIT (technical debt, R2 Q-ATT-3):
 #   Enforced by Nginx (client_max_body_size 100m) at the proxy layer.
@@ -59,9 +65,8 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
-from app.core.exceptions import BadRequestError, ForbiddenError
+from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import require_staff_permission
-from app.modules.companies.constants import ALLOWED_ATTACHMENT_MIME_TYPES
 from app.modules.companies.schemas import (
     AttachmentInboxMetadata,
     AttachmentPatchBody,
@@ -75,6 +80,7 @@ from app.modules.companies.service import (
     patch_attachment_metadata,
     replace_attachment_file,
     soft_delete_attachment,
+    validate_attachment_mime_by_filename,
 )
 from app.modules.staff.constants import is_admin
 from app.modules.staff.service import (
@@ -109,19 +115,6 @@ async def _require_admin(staff: User, session: AsyncSession) -> None:
     effective = get_effective_permissions(profile)
     if not is_admin(effective):
         raise ForbiddenError("Admin access required")
-
-
-def _validate_mime_type(content_type: str | None) -> str:
-    """Validate the MIME type against ALLOWED_ATTACHMENT_MIME_TYPES.
-
-    Raises BadRequestError when the type is missing or not whitelisted.
-    Returns the normalised content_type string for downstream use.
-    """
-    if not content_type:
-        raise BadRequestError("Missing Content-Type for uploaded file")
-    if content_type not in ALLOWED_ATTACHMENT_MIME_TYPES:
-        raise BadRequestError(f"Unsupported MIME type: {content_type}")
-    return content_type
 
 
 # ---------------------------------------------------------------------------
@@ -184,9 +177,13 @@ async def create_attachment_staff_endpoint(
     parses out of cbsmeta.json -- one schema, two transport surfaces).
     """
     metadata_obj = AttachmentInboxMetadata.model_validate_json(metadata)
-    content_type = _validate_mime_type(file.content_type)
-    file_bytes = await file.read()
+    # Round 4 (SEC-01 / QC-02): validate by extension, not by client-
+    # supplied multipart Content-Type. The filename is what reaches the
+    # router from the browser/curl; spoofing a different MIME header
+    # while keeping a real extension was the original attack vector.
     original_filename = file.filename or "untitled"
+    content_type = validate_attachment_mime_by_filename(original_filename)
+    file_bytes = await file.read()
 
     attachment = await create_attachment(
         session=session,
@@ -244,9 +241,11 @@ async def replace_attachment_staff_endpoint(
     Metadata stays untouched -- title / category / publish flags carry
     over. Use the regular PATCH endpoint when only metadata changes.
     """
-    content_type = _validate_mime_type(file.content_type)
-    file_bytes = await file.read()
+    # Round 4 (SEC-01 / QC-02): same extension-based validation as the
+    # POST endpoint. See create_attachment_staff_endpoint for rationale.
     original_filename = file.filename or "untitled"
+    content_type = validate_attachment_mime_by_filename(original_filename)
+    file_bytes = await file.read()
 
     attachment = await replace_attachment_file(
         session=session,

@@ -250,7 +250,12 @@ async def delete_object(key: str) -> None:
     logger.info("storage_deleted", key=key, bucket=settings.minio_bucket)
 
 
-async def generate_presigned_url(key: str, ttl_seconds: int) -> str:
+async def generate_presigned_url(
+    key: str,
+    ttl_seconds: int,
+    *,
+    download_filename: str | None = None,
+) -> str:
     """Generate a presigned GET URL for downloading the object.
 
     The URL is signed with the backend service account; the caller does
@@ -261,6 +266,14 @@ async def generate_presigned_url(key: str, ttl_seconds: int) -> str:
         key: Object key.
         ttl_seconds: URL validity (in seconds). Spec mandates 900 for
             authenticated downloads, 86400 for public downloads.
+        download_filename: When provided, instructs the browser via
+            Content-Disposition: attachment; filename="..." to download
+            the object instead of rendering it inline. This is the
+            primary defence against stored-XSS through an SVG/HTML
+            payload uploaded under a "trusted" extension (Round 4
+            SEC-01). MinIO honours the boto3 `ResponseContentDisposition`
+            param by adding `response-content-disposition=...` to the
+            signed URL, so the browser sees the header on GET.
 
     Returns:
         Full HTTPS URL.
@@ -268,14 +281,23 @@ async def generate_presigned_url(key: str, ttl_seconds: int) -> str:
     Raises:
         StorageError: On any upstream failure.
     """
+    params: dict[str, str] = {
+        "Bucket": settings.minio_bucket,
+        "Key": key,
+    }
+    if download_filename:
+        # Quote the filename to keep RFC-6266-friendly and safe against
+        # whitespace / unicode in the attachment name.
+        safe_name = download_filename.replace('"', "")
+        params["ResponseContentDisposition"] = (
+            f'attachment; filename="{safe_name}"'
+        )
+
     try:
         async with _client_context() as client:
             url = await client.generate_presigned_url(
                 "get_object",
-                Params={
-                    "Bucket": settings.minio_bucket,
-                    "Key": key,
-                },
+                Params=params,
                 ExpiresIn=ttl_seconds,
             )
     except ClientError as exc:

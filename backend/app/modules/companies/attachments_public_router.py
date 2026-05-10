@@ -168,9 +168,13 @@ async def download_public_attachment_endpoint(
     if not (attachment.is_public and attachment.is_published):
         raise NotFoundError("Attachment not found")
 
+    # Round 4 (SEC-01): force-download via Content-Disposition: attachment.
+    # See attachments_router.py for rationale -- the public flow has the
+    # widest blast radius (24h TTL, no auth) so the same defence applies.
     url = await generate_presigned_url(
         attachment.storage_key,
         ttl_seconds=settings.minio_presigned_ttl_public,
+        download_filename=attachment.original_filename,
     )
 
     logger.info(

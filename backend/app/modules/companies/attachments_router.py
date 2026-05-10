@@ -116,9 +116,13 @@ async def download_attachment_endpoint(
     if not attachment.is_published:
         raise NotFoundError("Attachment not found")
 
+    # Round 4 (SEC-01): force-download via Content-Disposition: attachment.
+    # Closes the SVG-as-XSS vector -- the browser saves the file to disk
+    # instead of executing any active content inside it.
     url = await generate_presigned_url(
         attachment.storage_key,
         ttl_seconds=settings.minio_presigned_ttl_auth,
+        download_filename=attachment.original_filename,
     )
 
     logger.info(

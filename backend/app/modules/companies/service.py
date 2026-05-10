@@ -30,7 +30,7 @@
 #   soft_delete_attachment()      -- is_deleted=True; MinIO object preserved
 #                                    so admins can restore via reconcile
 #   hard_delete_attachment()      -- DELETE row + drop MinIO object
-#   _shift_orders_to_make_room()  -- bulk +1 on order inside (company_id,
+#   shift_orders_to_make_room()  -- bulk +1 on order inside (company_id,
 #                                    category) to insert at target_order
 #
 # Sprint F4.1 CHANGES:
@@ -85,6 +85,8 @@
 
 from uuid import UUID, uuid4
 
+import mimetypes
+
 import structlog
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.exc import IntegrityError
@@ -98,6 +100,7 @@ from app.core.storage import (
 )
 from app.modules.auth.service import hash_password, get_platform_user_id
 from app.modules.companies.constants import (
+    ALLOWED_ATTACHMENT_MIME_TYPES,
     VALID_COMPANY_STATUS_TRANSITIONS,
     validate_distribution_config,
 )
@@ -749,22 +752,26 @@ async def _get_roadmap_item(
 # Order semantics (Q-ATT-4): `order` is unique per (company_id, category)
 # scope conceptually, but not enforced as a UNIQUE constraint in the DB --
 # parallel inserts can briefly produce duplicates. Service callers that
-# specify an explicit `order` go through _shift_orders_to_make_room()
+# specify an explicit `order` go through shift_orders_to_make_room()
 # which moves existing rows down by 1 to free the slot. New inserts with
 # the schema's default order=0 land at the top of the category, pushing
 # existing rows down. Reconcile-script inserts also go through this path.
 
 
-def _build_storage_key(company_id: UUID, attachment_id: UUID, filename: str) -> str:
+def build_storage_key(company_id: UUID, attachment_id: UUID, filename: str) -> str:
     """Build the canonical MinIO key for an attachment object.
 
     Mirrors the convention used by reconcile_attachments.py so direct DB
     inserts and inbox-driven inserts produce identical keys.
+
+    Round 4 (QC-01): public name -- the reconcile script imports this
+    helper directly and the underscore prefix would falsely signal an
+    internal-only contract.
     """
     return f"companies/{company_id}/attachments/{attachment_id}/{filename}"
 
 
-async def _shift_orders_to_make_room(
+async def shift_orders_to_make_room(
     session: AsyncSession,
     company_id: UUID,
     category: str,
@@ -776,6 +783,8 @@ async def _shift_orders_to_make_room(
 
     Soft-deleted rows are not shifted; they no longer have a meaningful
     position in the displayed list.
+
+    Round 4 (QC-01): public name -- see build_storage_key above.
     """
     stmt = (
         update(CompanyAttachment)
@@ -788,6 +797,46 @@ async def _shift_orders_to_make_room(
         .values(order=CompanyAttachment.order + 1)
     )
     await session.execute(stmt)
+
+
+def validate_attachment_mime_by_filename(filename: str) -> str:
+    """Resolve the MIME type from a filename's extension and enforce the
+    attachment whitelist.
+
+    Round 4 (SEC-01 / QC-02 / REF-01): unifies validation across the
+    staff multipart router, the reconcile script, and any future
+    consumer. The router used to trust `file.content_type` from the
+    multipart header (client-controlled, trivial to spoof). Switching
+    to extension-based detection means the filename is the source of
+    truth -- the browser sets it from the OS extension mapping by
+    default, and an explicitly-typed extension is what staff will type
+    when uploading.
+
+    Combined with `Content-Disposition: attachment` in the presigned
+    URL (storage.generate_presigned_url), this closes the SVG-as-XSS
+    vector: even if a bad actor wraps a malicious payload in a
+    "trusted" extension, the browser downloads instead of rendering.
+
+    Args:
+        filename: Original filename from the upload (with extension).
+
+    Returns:
+        The validated MIME type from ALLOWED_ATTACHMENT_MIME_TYPES.
+
+    Raises:
+        BadRequestError: filename has no extension, or the extension
+            does not map to a whitelisted MIME type.
+    """
+    if not filename:
+        raise BadRequestError("Filename is required")
+    guess, _ = mimetypes.guess_type(filename)
+    if guess is None:
+        raise BadRequestError(
+            f"Cannot determine MIME type from filename: {filename!r}"
+        )
+    if guess not in ALLOWED_ATTACHMENT_MIME_TYPES:
+        raise BadRequestError(f"Unsupported MIME type: {guess}")
+    return guess
 
 
 async def get_attachment(
@@ -912,14 +961,14 @@ async def create_attachment(
     await get_company(company_id, session)
 
     attachment_id = uuid4()
-    storage_key = _build_storage_key(company_id, attachment_id, original_filename)
+    storage_key = build_storage_key(company_id, attachment_id, original_filename)
 
     # Upload to MinIO first. A subsequent transaction rollback leaves an
     # orphan that reconcile_attachments will reap.
     await upload_object(storage_key, file_bytes, content_type)
 
     # Make room at the requested order inside (company_id, category).
-    await _shift_orders_to_make_room(
+    await shift_orders_to_make_room(
         session, company_id, metadata.category, metadata.order
     )
 
@@ -982,7 +1031,7 @@ async def patch_attachment_metadata(
 ) -> CompanyAttachment:
     """Partially update attachment metadata.
 
-    The order column is rebalanced via _shift_orders_to_make_room when
+    The order column is rebalanced via shift_orders_to_make_room when
     a new `order` is supplied. The shift target category is the new
     category if it's part of the same patch, otherwise the existing one.
 
@@ -1002,7 +1051,7 @@ async def patch_attachment_metadata(
 
     if new_order is not None:
         # Free up a slot in the (possibly new) category before assigning.
-        await _shift_orders_to_make_room(
+        await shift_orders_to_make_room(
             session, company_id, new_category, new_order
         )
 
@@ -1057,7 +1106,7 @@ async def replace_attachment_file(
     """
     attachment = await get_attachment(session, company_id, attachment_id)
 
-    new_storage_key = _build_storage_key(
+    new_storage_key = build_storage_key(
         company_id, attachment.id, original_filename
     )
     old_storage_key = attachment.storage_key

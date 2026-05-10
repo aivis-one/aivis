@@ -343,10 +343,19 @@ async def test_download_public_returns_302(
     location = resp.headers.get("location")
     assert location and location.startswith("http")
 
+    # Round 4 (SEC-01): Content-Disposition: attachment guard, same as
+    # the auth-flow download test. Critical here because the public TTL
+    # is 24h -- a leaked URL must not become a stored-XSS vector.
+    assert "response-content-disposition" in location.lower()
+    assert "attachment" in location.lower()
+
     async with httpx.AsyncClient() as http:
         follow = await http.get(location)
     assert follow.status_code == 200
     assert follow.content == payload
+    cd = follow.headers.get("content-disposition", "").lower()
+    assert "attachment" in cd
+    assert "doc.pdf" in cd
 
 
 # ---------------------------------------------------------------------------

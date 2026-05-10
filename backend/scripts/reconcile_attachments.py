@@ -53,7 +53,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import mimetypes
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -71,6 +70,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.database import dispose_engine, get_session_factory
+from app.core.exceptions import BadRequestError
 from app.core.logging import setup_logging
 from app.core.storage import (
     delete_object,
@@ -80,12 +80,15 @@ from app.core.storage import (
     upload_object,
 )
 from app.modules.auth.service import get_platform_user_id
-from app.modules.companies.constants import ALLOWED_ATTACHMENT_MIME_TYPES
 from app.modules.companies.models import CompanyAttachment, CompanyProfile
 from app.modules.companies.schemas import AttachmentInboxMetadata
+# Round 4 (QC-01): import the now-public helpers + the unified MIME
+# validator from companies.service. Reconcile and the staff router both
+# share one validation path -- see SEC-01 / QC-02 / REF-01.
 from app.modules.companies.service import (
-    _build_storage_key,
-    _shift_orders_to_make_room,
+    build_storage_key,
+    shift_orders_to_make_room,
+    validate_attachment_mime_by_filename,
 )
 
 logger = structlog.get_logger()
@@ -140,19 +143,6 @@ class ReconcileStats:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _guess_mime_type(filename: str) -> str | None:
-    """Resolve MIME type by filename extension. Returns None if unknown.
-
-    We intentionally use stdlib `mimetypes` rather than python-magic --
-    the staff router already enforces the same whitelist on uploads, so
-    misclassification at the inbox boundary just means staff fixes the
-    extension or the sidecar JSON. Adding python-magic for one script
-    is overkill.
-    """
-    guess, _ = mimetypes.guess_type(filename)
-    return guess
 
 
 async def _get_all_company_ids(session: AsyncSession) -> list[UUID]:
@@ -271,9 +261,14 @@ async def reconcile_orphans(
             continue
 
         # --- Validate MIME by extension ---
-        mime_type = _guess_mime_type(filename)
-        if mime_type is None or mime_type not in ALLOWED_ATTACHMENT_MIME_TYPES:
-            reason = f"unsupported MIME for {main_key} (guessed: {mime_type!r})"
+        # Round 4 (REF-01): use the unified validator from companies.service
+        # so reconcile and the staff router can never disagree on what's
+        # acceptable. Skip-on-fail rather than raise -- one bad sidecar
+        # shouldn't abort the whole sweep.
+        try:
+            mime_type = validate_attachment_mime_by_filename(filename)
+        except BadRequestError as exc:
+            reason = f"unsupported MIME for {main_key}: {exc}"
             warn(reason)
             stats.skipped += 1
             stats.skipped_reasons.append(reason)
@@ -361,11 +356,11 @@ async def _create_from_inbox(
     the audit trail makes the provenance obvious.
     """
     attachment_id = uuid4()
-    storage_key = _build_storage_key(company_id, attachment_id, original_filename)
+    storage_key = build_storage_key(company_id, attachment_id, original_filename)
 
     await upload_object(storage_key, file_bytes, content_type)
 
-    await _shift_orders_to_make_room(
+    await shift_orders_to_make_room(
         session, company_id, metadata.category, metadata.order
     )
 
@@ -437,7 +432,7 @@ async def _replace_from_inbox(
     as they were in DB -- the match key already pinned them; the inbox
     is the source of truth for bytes only.
     """
-    new_storage_key = _build_storage_key(
+    new_storage_key = build_storage_key(
         company_id, attachment.id, original_filename
     )
     old_storage_key = attachment.storage_key

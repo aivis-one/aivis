@@ -386,11 +386,23 @@ async def test_download_published_returns_302_with_working_url(
     location = resp.headers.get("location")
     assert location and location.startswith("http")
 
+    # Round 4 (SEC-01): the presigned URL must instruct the browser to
+    # download the file rather than render it inline. boto3 surfaces
+    # ResponseContentDisposition as a `response-content-disposition`
+    # query parameter on the signed URL; MinIO echoes it back in the
+    # Content-Disposition header when the browser fetches the URL.
+    assert "response-content-disposition" in location.lower()
+    assert "attachment" in location.lower()
+
     # The presigned URL must be self-sufficient -- no auth headers added.
     async with httpx.AsyncClient() as http:
         follow = await http.get(location)
     assert follow.status_code == 200
     assert follow.content == payload
+    # And the actual response carries Content-Disposition: attachment.
+    cd = follow.headers.get("content-disposition", "").lower()
+    assert "attachment" in cd
+    assert "doc.pdf" in cd
 
 
 # ---------------------------------------------------------------------------

@@ -306,24 +306,50 @@ async def test_post_multipart_creates_attachment(
 async def test_post_invalid_mime_returns_400(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """application/zip is not in ALLOWED_ATTACHMENT_MIME_TYPES."""
+    """Round 4 (SEC-01 / QC-02): MIME is resolved by filename extension,
+    not by the multipart Content-Type header.
+
+    Sub-case A: bad extension (.zip) -> 400, regardless of content_type.
+    Sub-case B: spoofed header (claims application/pdf) on a clearly
+        non-whitelisted extension (.html) -> still 400. This is the
+        explicit XSS attack vector the SEC-01 fix closes: the header
+        is now untrusted input.
+    """
     _, admin_token = await _admin_user_and_token(client, db_session)
     company_id = await _create_company_via_api(client, admin_token)
 
+    # Sub-case A: extension outside the whitelist.
     args = _multipart_upload_args(
         metadata={"title": "Archive"},
         file_bytes=b"PK\x03\x04...",
         filename="bundle.zip",
         content_type="application/zip",
     )
-
     resp = await client.post(
         f"/api/v1/staff/companies/{company_id}/attachments",
         headers=auth_headers(admin_token),
         **args,
     )
     assert resp.status_code == 400, resp.text
-    assert "MIME" in resp.json().get("message", "") or "mime" in resp.json().get("message", "")
+    msg = resp.json().get("message", "")
+    assert "MIME" in msg or "mime" in msg
+
+    # Sub-case B: header spoof. evil.html with a polite content_type
+    # claim must NOT bypass the extension whitelist.
+    args = _multipart_upload_args(
+        metadata={"title": "Spoofed"},
+        file_bytes=b"<html><body>boom</body></html>",
+        filename="evil.html",
+        content_type="application/pdf",  # lying header
+    )
+    resp = await client.post(
+        f"/api/v1/staff/companies/{company_id}/attachments",
+        headers=auth_headers(admin_token),
+        **args,
+    )
+    assert resp.status_code == 400, resp.text
+    msg = resp.json().get("message", "")
+    assert "MIME" in msg or "mime" in msg
 
 
 # ---------------------------------------------------------------------------
