@@ -267,14 +267,29 @@ async def render_agreement_html(
     now = datetime.now(UTC)
     context = {
         "investor_name": data.investor_name,
+        # Bootstrap purchase_agreement templates (R2 §4.4) reference
+        # `investor_email` directly. NULL credentials would Jinja-print
+        # as "None" inside autoescape; force an empty string instead.
+        "investor_email": data.investor_email or "",
         "company_name": data.company.name,
+        # R2 §4.4 lists `company_legal_name` as a required placeholder.
+        # CompanyProfile has no dedicated legal-name column yet -- fall
+        # back to `name` so the bootstrap templates render cleanly. A
+        # follow-up will add CompanyProfile.legal_name (TODO iter 2.5+).
+        "company_legal_name": data.company.name,
         "company_logo_url": data.company.logo_url,
         "product_name": data.product.name,
         "units": data.purchase.units,
+        # Bootstrap templates take raw cents (they format inline in the
+        # locale-specific HTML). The pre-formatted *_display strings are
+        # kept alongside for any company-overridden template that wants
+        # them, but a bootstrap render uses the raw ints.
+        "paid_cents": data.purchase.paid_cents,
+        "paid_display": _format_cents(data.purchase.paid_cents),
+        "price_per_unit_cents": data.purchase.price_per_unit_cents,
         "price_per_unit_display": _format_cents(
             data.purchase.price_per_unit_cents
         ),
-        "paid_display": _format_cents(data.purchase.paid_cents),
         "legal_basis": data.purchase.legal_basis,
         "purchase_date": data.purchase.created_at.strftime("%B %d, %Y"),
         "issue_date": now.strftime("%B %d, %Y"),

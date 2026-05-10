@@ -273,6 +273,9 @@ async def render_ownership_html(
     # Build the template context. Numeric fields are surfaced both raw
     # (for templates that want their own formatting) and pre-formatted
     # via _format_cents so simple templates don't need a custom filter.
+    # The per-item `date` key (not `purchase_date`) matches the bootstrap
+    # ownership_certificate templates which iterate {% for p in purchases %}
+    # and render {{ p.date }} (R2 §4.4).
     purchases_for_template = [
         {
             "id": str(item.id),
@@ -282,7 +285,7 @@ async def render_ownership_html(
             "paid_display": _format_cents(item.paid_cents),
             "price_per_unit_cents": item.price_per_unit_cents,
             "price_per_unit_display": _format_cents(item.price_per_unit_cents),
-            "purchase_date": item.purchase_date.strftime("%B %d, %Y"),
+            "date": item.purchase_date.strftime("%B %d, %Y"),
         }
         for item in data.purchases
     ]
