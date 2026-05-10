@@ -76,24 +76,40 @@ async def _create_company(
     *,
     price_per_unit_cents: int = 10000,
 ) -> dict:
+    """Create a company via staff endpoint + activate its OptionPool.
+
+    Body shape matches tests/test_purchases.py::_create_company: the staff
+    endpoint creates the company-owner User in the same call, so email,
+    password, distribution_config, total_supply, shares_per_option are all
+    required by the request schema. Pool POST uses {equity_percent: "100.0"}
+    rather than total_options.
+    """
     resp = await client.post(
         "/api/v1/staff/companies",
         json={
+            "email": f"{EMAIL_PREFIX}co_{suffix}@example.com",
+            "password": "companypass123",
             "name": f"Ownership Co {suffix}",
             "description": f"Company for ownership tests {suffix}",
             "price_per_unit_cents": price_per_unit_cents,
+            "distribution_config": {
+                "company_pct": 0.65,
+                "agent_levels": [0.10, 0.03, 0.01],
+            },
+            "total_supply": 1_000_000,
+            "shares_per_option": 1,
         },
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 201, f"Create company failed: {resp.text}"
     company = resp.json()
 
-    resp = await client.post(
+    pool_resp = await client.post(
         f"/api/v1/staff/companies/{company['id']}/pool",
-        json={"total_options": 10_000},
+        json={"equity_percent": "100.0"},
         headers=auth_headers(admin_token),
     )
-    assert resp.status_code == 201, f"Create pool failed: {resp.text}"
+    assert pool_resp.status_code == 201, f"Create pool failed: {pool_resp.text}"
 
     return company
 
@@ -117,12 +133,16 @@ async def _create_product(
     package_size: int = 50,
     suffix: str = "pkg",
 ) -> dict:
+    """Create a product via staff endpoint.
+
+    Matches tests/test_purchases.py shape: only company_id + name +
+    package_size; the staff endpoint doesn't accept description here.
+    """
     resp = await client.post(
         "/api/v1/staff/products",
         json={
             "company_id": company_id,
             "name": f"Ownership Package {suffix}",
-            "description": f"Test package {suffix}",
             "package_size": package_size,
         },
         headers=auth_headers(admin_token),

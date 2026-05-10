@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Dashboard + Portfolio + Certificate Tests (Sprint 9.2)
+# CBSHOME Backend -- Dashboard + Portfolio Tests (Sprint 9.2,
+#                                                  Refactor 2 iter 2.4)
 # =============================================================================
 #
 # Tests cover:
@@ -11,15 +12,16 @@
 #   6:  GET /portfolio/me -- sale purchase -> correct avg_price
 #   7:  GET /portfolio/me/company/{id} -- flat aggregate + paginated purchases
 #   8:  GET /portfolio/me/company/{id} -- no purchases -> 404
-#   9:  GET /purchases/{id}/certificate -- 200 HTML with investor name
-#   10: GET /purchases/{id}/certificate -- other user -> 404
-#   11: POST /purchases/{id}/certificate/email -- 204 (mocked SMTP)
+#
+# Refactor 2 iter 2.4: per-Purchase certificate tests (formerly 9-11)
+# moved to tests/test_purchase_agreement.py with broader coverage
+# (happy path, owner-scope 404, template_missing 500, email 204,
+# XSS autoescape). Endpoint also renamed /certificate -> /agreement.
 #
 # Email prefix: "s92_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
 from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
@@ -472,103 +474,3 @@ async def test_portfolio_company_no_purchases(
         headers=auth_headers(inv_token),
     )
     assert resp.status_code == 404
-
-
-# ===========================================================================
-# Certificate Tests (9-11)
-# ===========================================================================
-
-
-@pytest.mark.asyncio
-async def test_certificate_html(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """GET /purchases/{id}/certificate -> 200 HTML with investor data."""
-    admin_token = await _admin_token(client, db_session)
-    inv_token, inv_id, company, product, purchases = (
-        await _setup_company_product_purchase(
-            client, db_session, admin_token,
-            company_suffix="cert1", investor_suffix="inv_cert",
-        )
-    )
-
-    sale_purchase = next(
-        p for p in purchases if p["legal_basis"] == "sale"
-    )
-
-    resp = await client.get(
-        f"/api/v1/purchases/{sale_purchase['id']}/certificate",
-        headers=auth_headers(inv_token),
-    )
-    assert resp.status_code == 200
-    assert "text/html" in resp.headers["content-type"]
-
-    html = resp.text
-    assert "Investment Certificate" in html
-    assert company["name"] in html
-    assert "Test Package" in html
-
-
-@pytest.mark.asyncio
-async def test_certificate_other_user(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """GET /purchases/{id}/certificate by another user -> 404."""
-    admin_token = await _admin_token(client, db_session)
-    inv_token, inv_id, company, product, purchases = (
-        await _setup_company_product_purchase(
-            client, db_session, admin_token,
-            company_suffix="cert2", investor_suffix="inv_cert2",
-        )
-    )
-
-    sale_purchase = next(
-        p for p in purchases if p["legal_basis"] == "sale"
-    )
-
-    # Create another investor.
-    other_token, _ = await _create_investor_with_balance(
-        client, db_session, suffix="inv_other",
-    )
-
-    resp = await client.get(
-        f"/api/v1/purchases/{sale_purchase['id']}/certificate",
-        headers=auth_headers(other_token),
-    )
-    assert resp.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_certificate_email(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """POST /purchases/{id}/certificate/email -> 204 (mocked send)."""
-    admin_token = await _admin_token(client, db_session)
-    inv_token, inv_id, company, product, purchases = (
-        await _setup_company_product_purchase(
-            client, db_session, admin_token,
-            company_suffix="cert3", investor_suffix="inv_cert3",
-        )
-    )
-
-    sale_purchase = next(
-        p for p in purchases if p["legal_basis"] == "sale"
-    )
-
-    # Patch the function as used by the router, not a low-level SMTP helper.
-    # core/email.send_email() routes Mailgun (primary) -> SMTP (fallback);
-    # mocking aiosmtplib.send only catches the fallback path, so whenever a
-    # real MAILGUN_API_KEY is set in .env the email goes out via HTTP and the
-    # mock never fires. Patching send_certificate_email bypasses both paths.
-    with patch(
-        "app.modules.purchases.certificate_router.send_certificate_email",
-        new_callable=AsyncMock,
-        return_value=True,
-    ) as mock_send:
-        resp = await client.post(
-            f"/api/v1/purchases/{sale_purchase['id']}/certificate/email",
-            headers=auth_headers(inv_token),
-        )
-
-    assert resp.status_code == 204
-    mock_send.assert_called_once()
