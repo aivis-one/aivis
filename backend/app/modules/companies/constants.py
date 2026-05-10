@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Constants (Sprint 4.1, Refactor 2 iter 2.2)
+# CBSHOME Backend -- Company Constants (Sprint 4.1, Refactor 2 iter 2.2 + 2.3)
 # =============================================================================
 #
 # COMPANY STATUS:
@@ -32,6 +32,18 @@
 #   PUBLIC_DOWNLOAD_RATE_LIMIT     -- (max_requests, window_seconds) tuples
 #                                     for rate-limiting public-flow attachment
 #                                     endpoints (R2 Q-ATT-2).
+#
+# Refactor 2 iter 2.3 ADDITIONS (Company Document Templates):
+#   DocumentTemplateKind            -- StrEnum: 4 hard-coded kinds (R2 §4.3).
+#   TemplateStatus                  -- StrEnum: draft / active / archived (R2 §4.2).
+#   TEMPLATE_PLACEHOLDERS           -- per-kind allow-list of Jinja2 variables
+#                                      (R2 §4.4). Used by reconcile to validate
+#                                      uploaded template.html files.
+#   TEMPLATE_ASSET_MIME_WHITELIST   -- mimes accepted as binary assets next
+#                                      to template.html (logo / signature /
+#                                      stamp). PNG + JPEG only.
+#   TEMPLATE_ASSET_EXTENSION_TO_MIME -- ext -> mime resolver used by reconcile
+#                                      to classify files in the inbox folder.
 # =============================================================================
 
 import enum
@@ -192,3 +204,141 @@ ALLOWED_ATTACHMENT_MIME_TYPES: frozenset[str] = frozenset({
 # attachments_public_router via the extended core.rate_limit API.
 PUBLIC_LIST_RATE_LIMIT: tuple[int, int] = (60, 60)
 PUBLIC_DOWNLOAD_RATE_LIMIT: tuple[int, int] = (300, 60)
+
+
+# =============================================================================
+# Refactor 2 iter 2.3 -- Company Document Templates
+# =============================================================================
+#
+# Templates are Jinja2 HTML files plus companion binary assets (logo,
+# signature, stamp) stored in MinIO; the DB row is a metadata pointer
+# (R2 §4.2). Unlike attachment categories -- which are free-form within a
+# regex -- template kinds are a hard-coded enum because the renderer
+# branches on `kind` and the placeholder context is kind-specific
+# (R2 §4.3 / §4.4).
+
+
+class DocumentTemplateKind(enum.StrEnum):
+    """Document template kinds. Maps onto Purchase.legal_basis for the
+    per-purchase variants; OWNERSHIP_CERTIFICATE is the live aggregate.
+
+    R2 §4.3:
+      purchase_agreement       -> Purchase.legal_basis = sale
+      gift_certificate         -> Purchase.legal_basis = gift
+      installment_subcontract  -> Purchase.legal_basis = installment_tranche
+      ownership_certificate    -> live aggregate of investor's purchases
+                                  for one company (no per-purchase snapshot)
+    """
+
+    PURCHASE_AGREEMENT = "purchase_agreement"
+    GIFT_CERTIFICATE = "gift_certificate"
+    INSTALLMENT_SUBCONTRACT = "installment_subcontract"
+    OWNERSHIP_CERTIFICATE = "ownership_certificate"
+
+
+class TemplateStatus(enum.StrEnum):
+    """Template lifecycle status (R2 §4.2).
+
+    State machine:
+      draft  <-> active
+      draft   -> archived
+      active  -> archived
+
+    When reconcile activates a new template for a (company_id, kind, lang)
+    triple, the previous active row is automatically archived.
+    """
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+# Per-kind Jinja2 placeholder allow-list (R2 §4.4).
+#
+# Reconcile uses this to validate uploaded template.html: any undeclared
+# variable found in the parsed AST must be in this set OR equal to
+# "asset_data_uri" (the registered Jinja-global function). Anything else
+# is a user typo or an attempt to reach into the rendering process and
+# blocks activation.
+#
+# The exact set of variables passed at render time is set by the rendering
+# code in 2.4 -- the contract here is "no template can reference a variable
+# the renderer has not been taught to provide". `purchases` is a list of
+# objects iterated by Jinja inside the template; we only validate top-level
+# names, attribute access on each `purchases[*]` element is the template's
+# responsibility.
+TEMPLATE_PLACEHOLDERS: dict[DocumentTemplateKind, frozenset[str]] = {
+    DocumentTemplateKind.PURCHASE_AGREEMENT: frozenset({
+        "investor_name",
+        "investor_email",
+        "company_name",
+        "company_legal_name",
+        "product_name",
+        "units",
+        "paid_cents",
+        "price_per_unit_cents",
+        "purchase_date",
+        "certificate_number",
+        "legal_basis",
+    }),
+    DocumentTemplateKind.GIFT_CERTIFICATE: frozenset({
+        "investor_name",
+        "investor_email",
+        "company_name",
+        "company_legal_name",
+        "product_name",
+        "units",
+        "paid_cents",
+        "price_per_unit_cents",
+        "purchase_date",
+        "certificate_number",
+        "legal_basis",
+    }),
+    DocumentTemplateKind.INSTALLMENT_SUBCONTRACT: frozenset({
+        "investor_name",
+        "investor_email",
+        "company_name",
+        "company_legal_name",
+        "product_name",
+        "units",
+        "paid_cents",
+        "price_per_unit_cents",
+        "purchase_date",
+        "certificate_number",
+        "legal_basis",
+    }),
+    DocumentTemplateKind.OWNERSHIP_CERTIFICATE: frozenset({
+        "investor_name",
+        "company_name",
+        "total_units",
+        "sale_units",
+        "gift_units",
+        "total_paid_cents",
+        "current_value_cents",
+        "as_of_date",
+        "purchases",
+    }),
+}
+
+
+# Allowed mime-types for files sitting next to template.html in the
+# template's MinIO folder (logo.png, signature.png, stamp.png and similar).
+#
+# PNG + JPEG only. SVG is intentionally excluded -- xhtml2pdf does not
+# render SVG reliably, so an SVG asset would silently break PDF output
+# (and only PDF; HTML preview would still look fine, masking the bug).
+TEMPLATE_ASSET_MIME_WHITELIST: frozenset[str] = frozenset({
+    "image/png",
+    "image/jpeg",
+})
+
+
+# Filename-extension -> mime resolver used by the template reconcile
+# scripts when classifying files in the inbox folder. Keys MUST be the
+# full extension including the leading dot, lowercase. The set of values
+# MUST be a subset of TEMPLATE_ASSET_MIME_WHITELIST.
+TEMPLATE_ASSET_EXTENSION_TO_MIME: dict[str, str] = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+}
