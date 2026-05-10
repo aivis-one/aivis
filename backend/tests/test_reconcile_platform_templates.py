@@ -364,19 +364,35 @@ async def test_draft_status_creates_draft_without_touching_active(
     db_session: AsyncSession,
 ) -> None:
     """sidecar status=draft inserts a draft platform-default row alongside
-    the active v1 -- the active is left alone."""
-    # Land active v1 first.
+    the active v1 -- the active is left alone.
+
+    BUG-DRAFT-01 regression coverage: a draft upload must NOT overwrite
+    the active template.html bytes in MinIO. Drafts route to a versioned
+    `.draft-v<N>/` subfolder; the active row's storage_prefix continues
+    to point at the canonical platform path with its original bytes intact.
+    """
+    # Land active v1 first with a unique marker.
+    v1_html = (
+        "<html><body>v1-ACTIVE-MARKER "
+        "{{ asset_data_uri('logo.png') }}</body></html>"
+    )
     await _seed_inbox_folder(
         kind="purchase_agreement",
         language="en",
+        html=v1_html,
         sidecar=_default_sidecar("purchase_agreement", "en", "Platform PA EN v1"),
     )
     await reconcile_platform_templates(db_session)
 
-    # Upload a draft.
+    # Upload a draft with a different marker.
+    v2_html = (
+        "<html><body>v2-DRAFT-MARKER "
+        "{{ asset_data_uri('logo.png') }}</body></html>"
+    )
     await _seed_inbox_folder(
         kind="purchase_agreement",
         language="en",
+        html=v2_html,
         sidecar={
             "kind": "purchase_agreement",
             "language": "en",
@@ -409,6 +425,25 @@ async def test_draft_status_creates_draft_without_touching_active(
     assert active.status == TemplateStatus.ACTIVE
     assert draft.version == 2
     assert draft.status == TemplateStatus.DRAFT
+
+    # storage_prefix divergence + MinIO bytes assertion (BUG-DRAFT-01).
+    assert active.storage_prefix != draft.storage_prefix
+    assert active.storage_prefix == "_platform/templates/purchase_agreement/en/"
+    assert draft.storage_prefix == (
+        "_platform/templates/purchase_agreement/en/.draft-v2/"
+    )
+
+    from app.core.storage import get_object_bytes
+    active_bytes = await get_object_bytes(
+        active.storage_prefix + "template.html"
+    )
+    draft_bytes = await get_object_bytes(
+        draft.storage_prefix + "template.html"
+    )
+    assert b"v1-ACTIVE-MARKER" in active_bytes
+    assert b"v2-DRAFT-MARKER" not in active_bytes
+    assert b"v2-DRAFT-MARKER" in draft_bytes
+    assert b"v1-ACTIVE-MARKER" not in draft_bytes
 
 
 # ---------------------------------------------------------------------------

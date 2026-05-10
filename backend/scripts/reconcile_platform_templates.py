@@ -111,6 +111,13 @@ HTML_CONTENT_TYPE = "text/html; charset=utf-8"
 INBOX_PREFIX = "_platform/templates-inbox/"
 CANONICAL_PREFIX_TEMPLATE = "_platform/templates/{kind}/{language}/"
 
+# BUG-DRAFT-01 fix: draft files live under a versioned `.draft-v<N>/`
+# subfolder so the canonical platform template.html is never overwritten
+# by a draft upload. See the per-company reconcile for the full rationale.
+DRAFT_PREFIX_TEMPLATE = (
+    "_platform/templates/{kind}/{language}/.draft-v{version}/"
+)
+
 # Matches asset_data_uri('<filename>') / asset_data_uri("<filename>"),
 # capturing the bare filename. Identical to the per-company reconcile.
 #
@@ -417,16 +424,28 @@ async def _activate_folder(
         kind=metadata.kind,
         language=metadata.language,
     )
+    # BUG-DRAFT-01 fix: drafts route to a versioned `.draft-v<N>/`
+    # subfolder so the canonical platform template.html is never
+    # overwritten. See reconcile_templates._activate_folder for the
+    # full rationale.
+    if sidecar_active:
+        target_prefix = canonical_prefix
+    else:
+        target_prefix = DRAFT_PREFIX_TEMPLATE.format(
+            kind=metadata.kind,
+            language=metadata.language,
+            version=new_version,
+        )
 
     await _move_to_canonical(
         inbox_key=html_key,
-        canonical_key=canonical_prefix + HTML_NAME,
+        canonical_key=target_prefix + HTML_NAME,
         content_type=HTML_CONTENT_TYPE,
     )
     for filename, (asset_key, mime) in assets.items():
         await _move_to_canonical(
             inbox_key=asset_key,
-            canonical_key=canonical_prefix + filename,
+            canonical_key=target_prefix + filename,
             content_type=mime,
         )
     await delete_object(sidecar_key)
@@ -446,7 +465,7 @@ async def _activate_folder(
         language=metadata.language,
         version=new_version,
         title=metadata.title,
-        storage_prefix=canonical_prefix,
+        storage_prefix=target_prefix,
         asset_files=sorted(asset_filenames),
         status=new_row_status,
         created_by=None,
@@ -460,7 +479,7 @@ async def _activate_folder(
             "kind": str(metadata.kind),
             "language": metadata.language,
             "version": new_version,
-            "storage_prefix": canonical_prefix,
+            "storage_prefix": target_prefix,
             "asset_files": sorted(asset_filenames),
         }
         outcome = "created_draft"
@@ -470,7 +489,7 @@ async def _activate_folder(
             "kind": str(metadata.kind),
             "language": metadata.language,
             "version": new_version,
-            "storage_prefix": canonical_prefix,
+            "storage_prefix": target_prefix,
             "asset_files": sorted(asset_filenames),
         }
         outcome = "created"
@@ -482,7 +501,7 @@ async def _activate_folder(
             "old_template_id": str(previous.id),
             "old_version": previous.version,
             "new_version": new_version,
-            "storage_prefix": canonical_prefix,
+            "storage_prefix": target_prefix,
             "asset_files": sorted(asset_filenames),
         }
         outcome = "archived_and_replaced"

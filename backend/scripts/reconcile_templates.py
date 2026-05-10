@@ -150,6 +150,17 @@ HTML_CONTENT_TYPE = "text/html; charset=utf-8"
 INBOX_PREFIX_TEMPLATE = "companies/{company_id}/templates-inbox/"
 CANONICAL_PREFIX_TEMPLATE = "companies/{company_id}/templates/{kind}/{language}/"
 
+# BUG-DRAFT-01 fix: draft files live under a versioned `.draft-v<N>/`
+# subfolder inside the canonical (kind, lang) tree, so the active row's
+# canonical template.html / logo.png / signature.png / stamp.png are
+# never overwritten by a draft upload. The dot prefix keeps drafts
+# visually distinct in MinIO Web UI listings; the trailing version
+# means consecutive drafts at the same (kind, lang) don't clobber each
+# other either.
+DRAFT_PREFIX_TEMPLATE = (
+    "companies/{company_id}/templates/{kind}/{language}/.draft-v{version}/"
+)
+
 # Matches asset_data_uri('<filename>') / asset_data_uri("<filename>") with
 # optional whitespace inside the parens. Captures the bare filename so
 # reconcile can verify each reference resolves to a file in the folder.
@@ -545,6 +556,20 @@ async def _activate_folder(
         kind=metadata.kind,
         language=metadata.language,
     )
+    # BUG-DRAFT-01 fix: draft uploads route to a versioned `.draft-v<N>/`
+    # subfolder so the active template.html / logo.png / etc. are never
+    # overwritten. The DB row's storage_prefix points at this same
+    # draft path so staff inspect (and any future activation flow)
+    # reaches the right bytes.
+    if sidecar_active:
+        target_prefix = canonical_prefix
+    else:
+        target_prefix = DRAFT_PREFIX_TEMPLATE.format(
+            company_id=company_id,
+            kind=metadata.kind,
+            language=metadata.language,
+            version=new_version,
+        )
 
     # Step 7: move files. template.html first so a partial failure leaves
     # a usable previous-active intact (we already flipped it to archived,
@@ -552,13 +577,13 @@ async def _activate_folder(
     # find the previous-archived row and increment from there).
     await _move_to_canonical(
         inbox_key=html_key,
-        canonical_key=canonical_prefix + HTML_NAME,
+        canonical_key=target_prefix + HTML_NAME,
         content_type=HTML_CONTENT_TYPE,
     )
     for filename, (asset_key, mime) in assets.items():
         await _move_to_canonical(
             inbox_key=asset_key,
-            canonical_key=canonical_prefix + filename,
+            canonical_key=target_prefix + filename,
             content_type=mime,
         )
     # Sidecar metadata is captured in the DB row; we drop it from MinIO.
@@ -577,7 +602,7 @@ async def _activate_folder(
         language=metadata.language,
         version=new_version,
         title=metadata.title,
-        storage_prefix=canonical_prefix,
+        storage_prefix=target_prefix,
         asset_files=sorted(asset_filenames),
         status=new_row_status,
         created_by=platform_user_id,
@@ -595,7 +620,7 @@ async def _activate_folder(
             "kind": str(metadata.kind),
             "language": metadata.language,
             "version": new_version,
-            "storage_prefix": canonical_prefix,
+            "storage_prefix": target_prefix,
             "asset_files": sorted(asset_filenames),
         }
         outcome = "created_draft"
@@ -606,7 +631,7 @@ async def _activate_folder(
             "kind": str(metadata.kind),
             "language": metadata.language,
             "version": new_version,
-            "storage_prefix": canonical_prefix,
+            "storage_prefix": target_prefix,
             "asset_files": sorted(asset_filenames),
         }
         outcome = "created"
@@ -619,7 +644,7 @@ async def _activate_folder(
             "old_template_id": str(previous.id),
             "old_version": previous.version,
             "new_version": new_version,
-            "storage_prefix": canonical_prefix,
+            "storage_prefix": target_prefix,
             "asset_files": sorted(asset_filenames),
         }
         outcome = "archived_and_replaced"

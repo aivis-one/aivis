@@ -546,23 +546,38 @@ async def test_draft_status_creates_draft_without_touching_active(
     that find_active_template will skip (it filters on status=active),
     so production rendering keeps using v1 until a follow-up reconcile
     with status=active flips the page.
+
+    BUG-DRAFT-01 regression coverage: a draft upload must NOT overwrite
+    the active template.html bytes in MinIO. Drafts route to a versioned
+    `.draft-v<N>/` subfolder; the active row's storage_prefix continues
+    to point at the canonical path with its original bytes intact.
     """
     _, company_id = await _admin_and_company(client, db_session)
 
-    # Land an active v1 first.
+    # Land an active v1 first with a unique marker in the HTML body.
+    v1_html = (
+        "<html><body>v1-ACTIVE-MARKER "
+        "{{ asset_data_uri('logo.png') }}</body></html>"
+    )
     await _seed_inbox_folder(
         company_id,
         kind="purchase_agreement",
         language="en",
+        html=v1_html,
         sidecar=_default_sidecar("purchase_agreement", "en", "PA EN v1 active"),
     )
     await reconcile_company_templates(db_session, company_id)
 
-    # Now upload a draft.
+    # Now upload a draft with a DIFFERENT marker.
+    v2_html = (
+        "<html><body>v2-DRAFT-MARKER "
+        "{{ asset_data_uri('logo.png') }}</body></html>"
+    )
     await _seed_inbox_folder(
         company_id,
         kind="purchase_agreement",
         language="en",
+        html=v2_html,
         sidecar={
             "kind": "purchase_agreement",
             "language": "en",
@@ -598,6 +613,32 @@ async def test_draft_status_creates_draft_without_touching_active(
     assert draft.version == 2
     assert draft.status == TemplateStatus.DRAFT
     assert draft.title == "PA EN v2 draft"
+
+    # storage_prefix must diverge: active stays canonical, draft drops
+    # into the versioned subfolder.
+    assert active.storage_prefix != draft.storage_prefix
+    assert active.storage_prefix == (
+        f"companies/{company_id}/templates/purchase_agreement/en/"
+    )
+    assert draft.storage_prefix == (
+        f"companies/{company_id}/templates/purchase_agreement/en/.draft-v2/"
+    )
+
+    # MinIO bytes -- active's template.html still carries v1, draft's
+    # template.html carries v2. This is the assert that would have
+    # caught BUG-DRAFT-01 (single shared canonical path overwriting on
+    # draft upload).
+    from app.core.storage import get_object_bytes
+    active_bytes = await get_object_bytes(
+        active.storage_prefix + "template.html"
+    )
+    draft_bytes = await get_object_bytes(
+        draft.storage_prefix + "template.html"
+    )
+    assert b"v1-ACTIVE-MARKER" in active_bytes
+    assert b"v2-DRAFT-MARKER" not in active_bytes
+    assert b"v2-DRAFT-MARKER" in draft_bytes
+    assert b"v1-ACTIVE-MARKER" not in draft_bytes
 
 
 # ---------------------------------------------------------------------------
