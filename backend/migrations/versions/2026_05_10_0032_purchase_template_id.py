@@ -1,6 +1,6 @@
 """purchase_agreement_template_id -- Refactor 2 iter 2.4
 
-Revision ID: 0032_purchase_agreement_template_id
+Revision ID: 0032_purchase_template_id
 Revises: 0031_company_document_templates
 Create Date: 2026-05-10 18:00:00.000000
 
@@ -15,6 +15,14 @@ Adds Purchase.purchase_agreement_template_id (R2 §5.1):
 
   - No index. The column is only read by the agreement render path
     (one Purchase at a time, scanned via the existing id PK).
+
+NOTE on revision_id length:
+  alembic_version.version_num is VARCHAR(32) by default. The previous
+  attempt used `0032_purchase_agreement_template_id` (42 chars) which
+  passed the DDL phase but failed on the UPDATE alembic_version step
+  with `value too long for type character varying(32)`. This file
+  uses a 25-char id that fits. Future migrations in iter 2.4 stay
+  under the same ceiling.
 """
 
 from typing import Sequence, Union
@@ -23,7 +31,7 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision: str = "0032_purchase_agreement_template_id"
+revision: str = "0032_purchase_template_id"
 down_revision: Union[str, None] = "0031_company_document_templates"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
