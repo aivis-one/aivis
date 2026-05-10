@@ -9,6 +9,14 @@
 // API version: 0.1.0
 // =============================================================================
 
+// -- Enums --------------------------------------------------------------------
+
+/** Document template kinds. Maps onto Purchase.legal_basis for the per-purchase variants; OWNERSHIP_CERTIFICATE is the live aggregate. R2 §4.3: purchase_agreement -> Purchase.legal_basis = sale gift_certificate -> Purchase.legal_basis = gift installment_subcontract -> Purchase.legal_basis = installment_tranche ownership_certificate -> live aggregate of investor's purchases for one company (no per-purchase snapshot) */
+export type DocumentTemplateKind = 'purchase_agreement' | 'gift_certificate' | 'installment_subcontract' | 'ownership_certificate'
+
+/** Template lifecycle status (R2 §4.2). State machine: draft <-> active draft -> archived active -> archived When reconcile activates a new template for a (company_id, kind, lang) triple, the previous active row is automatically archived. */
+export type TemplateStatus = 'draft' | 'active' | 'archived'
+
 // -- Interfaces ---------------------------------------------------------------
 
 /** Paginated list of agent applications. */
@@ -955,6 +963,40 @@ export interface StaffProfileResponse {
 export interface TelegramAuthRequest {
   init_data: string
   referral_code?: string | null
+}
+
+/** Single template with full body for staff inspection (R2 §4.5). Adds: - html_content: utf-8 decoded body of <storage_prefix>/template.html fetched from MinIO at request time. Read-through the Redis HTML cache (R2 §4.10) so the staff inspect flow shares cache warmth with the renderer. - storage_prefix: the MinIO folder path for this template. Useful when staff wants to jump into MinIO Web UI to see the asset files alongside the parsed HTML. */
+export interface TemplateDetailResponse {
+  id: string
+  company_id: string | null
+  kind: string
+  language: string
+  version: number
+  title: string
+  status: string
+  asset_files: string[]
+  created_by: string | null
+  created_at: string
+  updated_at: string | null
+  storage_prefix: string
+  html_content: string
+  is_platform_default: boolean
+}
+
+/** Template as seen by staff in the list view (R2 §4.5). Excludes html_content and storage_prefix to keep list payloads small; use TemplateDetailResponse for the per-template inspection endpoint that includes the full HTML body. `is_platform_default` is a computed flag: True for the platform fallback rows (company_id IS NULL), False for per-company overrides. Pydantic recomputes it from company_id on every serialisation, so the flag cannot drift away from the row. */
+export interface TemplateResponse {
+  id: string
+  company_id: string | null
+  kind: string
+  language: string
+  version: number
+  title: string
+  status: string
+  asset_files: string[]
+  created_by: string | null
+  created_at: string
+  updated_at: string | null
+  is_platform_default: boolean
 }
 
 /** GET /api/v1/transactions -- paginated event log. */
