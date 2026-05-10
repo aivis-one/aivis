@@ -342,11 +342,15 @@ async def reject_withdrawal(
     )
 
     # -- Transaction log (Sprint 6.4) --
+    # Round 4 (BUG-01): compensating entry. The user's funds were debited
+    # at WITHDRAWAL_CREATED with -X; on reject we credit them back with
+    # +X (matches passive_ledger above). Convention in transactions.service:
+    # positive=in, negative=out.
     await record_transaction(
         session,
         user_id=withdrawal.user_id,
         type=TransactionType.WITHDRAWAL_REJECTED,
-        amount_cents=-withdrawal.amount_cents,
+        amount_cents=withdrawal.amount_cents,
         reference_id=withdrawal.id,
         reference_type=ReferenceType.WITHDRAWAL,
         details={"reason": reason, "staff_id": str(staff.id)},
@@ -487,11 +491,14 @@ async def fail_withdrawal(
     )
 
     # -- Transaction log (Sprint 6.4) --
+    # Round 4 (BUG-01): compensating entry. Symmetric to reject_withdrawal
+    # above -- payout failed at the provider side, the funds debited at
+    # WITHDRAWAL_CREATED are credited back with +X.
     await record_transaction(
         session,
         user_id=withdrawal.user_id,
         type=TransactionType.WITHDRAWAL_FAILED,
-        amount_cents=-withdrawal.amount_cents,
+        amount_cents=withdrawal.amount_cents,
         reference_id=withdrawal.id,
         reference_type=ReferenceType.WITHDRAWAL,
     )

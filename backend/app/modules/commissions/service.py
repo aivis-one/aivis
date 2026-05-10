@@ -163,6 +163,46 @@ async def get_my_commissions(
     result = await session.execute(entries_stmt)
     ledger_entries = list(result.scalars().all())
 
+    # -- Batched preload (Round 4 fix: collapse N+1 into 2 queries) --
+    # The enrichment loop below used to issue one Purchase+Product+User
+    # SELECT per commission entry and one VolumePayout SELECT per bonus
+    # entry, i.e. up to 2*limit round-trips. Collect every id first,
+    # then load both lookup tables in two batched queries.
+    purchase_ids: list[UUID] = []
+    payout_ids: list[UUID] = []
+    for entry in ledger_entries:
+        reason = entry.reason or ""
+        if (m := _COMMISSION_RE.match(reason)) is not None:
+            try:
+                purchase_ids.append(UUID(m.group(3)))
+            except ValueError:
+                pass
+        elif (m := _VOLUME_BONUS_RE.match(reason)) is not None:
+            try:
+                payout_ids.append(UUID(m.group(2)))
+            except ValueError:
+                pass
+
+    purchases_by_id: dict[UUID, tuple[Purchase, Product, User]] = {}
+    if purchase_ids:
+        purchase_stmt = (
+            select(Purchase, Product, User)
+            .join(Product, Purchase.product_id == Product.id)
+            .join(User, Purchase.investor_id == User.id)
+            .where(Purchase.id.in_(purchase_ids))
+        )
+        for row in (await session.execute(purchase_stmt)).all():
+            purchase, product, investor = row
+            purchases_by_id[purchase.id] = (purchase, product, investor)
+
+    payouts_by_id: dict[UUID, VolumePayout] = {}
+    if payout_ids:
+        payout_stmt = select(VolumePayout).where(VolumePayout.id.in_(payout_ids))
+        payouts_by_id = {
+            p.id: p
+            for p in (await session.execute(payout_stmt)).scalars().all()
+        }
+
     # -- Enrich entries --
     items: list[CommissionEntry] = []
 
@@ -180,16 +220,8 @@ async def get_my_commissions(
 
             try:
                 purchase_id = UUID(purchase_id_str)
-                purchase_stmt = (
-                    select(Purchase, Product, User)
-                    .join(Product, Purchase.product_id == Product.id)
-                    .join(User, Purchase.investor_id == User.id)
-                    .where(Purchase.id == purchase_id)
-                )
-                purchase_result = await session.execute(purchase_stmt)
-                row = purchase_result.one_or_none()
-
-                if row:
+                row = purchases_by_id.get(purchase_id)
+                if row is not None:
                     _purchase, product, investor = row
                     investor_name = _extract_name(investor)
                     product_name = product.name
@@ -215,12 +247,7 @@ async def get_my_commissions(
             rank: int | None = None
             try:
                 payout_id = UUID(payout_id_str)
-                payout_stmt = (
-                    select(VolumePayout)
-                    .where(VolumePayout.id == payout_id)
-                )
-                payout_result = await session.execute(payout_stmt)
-                payout = payout_result.scalar_one_or_none()
+                payout = payouts_by_id.get(payout_id)
                 if payout:
                     rank = payout.rank
             except ValueError:

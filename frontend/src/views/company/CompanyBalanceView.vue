@@ -62,6 +62,12 @@ const withdrawalsPage = ref(1)
 const withdrawalsLoading = ref(false)
 const withdrawalsErrored = ref(false)
 
+// Round 4: epoch counter restored. Without it, an in-flight loadMore
+// (page N) racing a fresh fetchWithdrawalsFirstPage (page 1, triggered
+// by a new withdrawal) can append the stale page-N items on top of the
+// freshly-loaded list, producing duplicates / out-of-order rows.
+const withdrawalsEpoch = ref(0)
+
 const sentinelRef = ref<HTMLElement | null>(null)
 
 const hasMoreWithdrawals = computed(
@@ -69,33 +75,42 @@ const hasMoreWithdrawals = computed(
 )
 
 async function fetchWithdrawalsFirstPage(): Promise<void> {
+  // Bump epoch first so any in-flight loadMore knows its result is stale.
+  const epoch = ++withdrawalsEpoch.value
   withdrawalsLoading.value = true
   withdrawalsErrored.value = false
   try {
     const resp = await listMyWithdrawals({ page: 1, per_page: PER_PAGE })
+    if (epoch !== withdrawalsEpoch.value) return
     withdrawals.value = resp.items
     withdrawalsTotal.value = resp.total
     withdrawalsPage.value = 1
   } catch {
-    withdrawalsErrored.value = true
+    if (epoch === withdrawalsEpoch.value) withdrawalsErrored.value = true
   } finally {
-    withdrawalsLoading.value = false
+    if (epoch === withdrawalsEpoch.value) withdrawalsLoading.value = false
   }
 }
 
 async function loadMoreWithdrawals(): Promise<void> {
   if (withdrawalsLoading.value || !hasMoreWithdrawals.value) return
+  // Capture the current epoch -- we must NOT bump it (loadMore is a
+  // continuation of the active session, not a new one). If a fresh
+  // fetchWithdrawalsFirstPage runs while this request is in flight,
+  // epochs diverge and we drop the stale response on the floor.
+  const epoch = withdrawalsEpoch.value
   withdrawalsLoading.value = true
   try {
     const next = withdrawalsPage.value + 1
     const resp = await listMyWithdrawals({ page: next, per_page: PER_PAGE })
+    if (epoch !== withdrawalsEpoch.value) return
     withdrawals.value = [...withdrawals.value, ...resp.items]
     withdrawalsTotal.value = resp.total
     withdrawalsPage.value = next
   } catch {
     // Non-destructive: keep already-loaded pages visible.
   } finally {
-    withdrawalsLoading.value = false
+    if (epoch === withdrawalsEpoch.value) withdrawalsLoading.value = false
   }
 }
 
@@ -110,17 +125,25 @@ const payoutLoading = ref(false)
 const payoutLoaded = ref(false)
 const payoutErrored = ref(false)
 
+// Round 4: epoch counter restored. Two parallel calls (e.g. mount-time
+// fetch + a manual refresh after save) racing each other could let the
+// older response overwrite the newer one. Epoch ensures only the latest
+// invocation can mutate state.
+const payoutEpoch = ref(0)
+
 async function fetchPayoutDetails(): Promise<void> {
+  const epoch = ++payoutEpoch.value
   payoutLoading.value = true
   payoutErrored.value = false
   try {
     const resp = await getPayoutDetails()
+    if (epoch !== payoutEpoch.value) return
     payoutDetails.value = resp.payout_details ?? null
     payoutLoaded.value = true
   } catch {
-    payoutErrored.value = true
+    if (epoch === payoutEpoch.value) payoutErrored.value = true
   } finally {
-    payoutLoading.value = false
+    if (epoch === payoutEpoch.value) payoutLoading.value = false
   }
 }
 

@@ -394,7 +394,14 @@ async def verify_email_code(
             raise BadRequestError("Code expired, please request a new code")
 
     # Check code.
-    stored_code = onboarding.get("email_token", "")
+    # Round 4 (BUG-04): on a successful verification we write
+    # email_token=None (line below at "Success: ..."). dict.get(key, "")
+    # returns the actual stored value when the key exists -- so a None
+    # would slip past the default and reach secrets.compare_digest, which
+    # rejects None and throws TypeError. The `or ""` coerces the missing
+    # / None case into an empty string, and compare_digest then returns
+    # False against any non-empty user-supplied code.
+    stored_code = onboarding.get("email_token") or ""
     if not secrets.compare_digest(code, stored_code):
         # Increment attempts.
         updated_creds = dict(user.credentials)
