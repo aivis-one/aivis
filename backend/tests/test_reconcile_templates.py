@@ -32,10 +32,12 @@ from app.core.config import settings
 from app.core.redis import get_redis
 from app.core.storage import (
     delete_object,
+    get_object_bytes,
     list_objects,
     object_exists,
     upload_object,
 )
+from app.modules.auth.service import get_platform_user_id
 from app.modules.companies.constants import (
     DocumentTemplateKind,
     TemplateStatus,
@@ -45,6 +47,7 @@ from app.modules.companies.service import get_template_html_cached
 from app.modules.users.models import User
 from scripts.reconcile_templates import (
     CANONICAL_PREFIX_TEMPLATE,
+    DRAFT_PREFIX_TEMPLATE,
     INBOX_PREFIX_TEMPLATE,
     reconcile_company_templates,
 )
@@ -615,20 +618,29 @@ async def test_draft_status_creates_draft_without_touching_active(
     assert draft.title == "PA EN v2 draft"
 
     # storage_prefix must diverge: active stays canonical, draft drops
-    # into the versioned subfolder.
+    # into the versioned subfolder. Belt-and-braces -- the formatted
+    # path comes from the script's own constant (so a coordinated
+    # change touches both call sites at once), and a separate substring
+    # assert catches a silent format rename (.draft-v -> _draft_v etc.)
+    # that wouldn't surface through the constant alone.
     assert active.storage_prefix != draft.storage_prefix
-    assert active.storage_prefix == (
-        f"companies/{company_id}/templates/purchase_agreement/en/"
+    assert active.storage_prefix == CANONICAL_PREFIX_TEMPLATE.format(
+        company_id=company_id,
+        kind="purchase_agreement",
+        language="en",
     )
-    assert draft.storage_prefix == (
-        f"companies/{company_id}/templates/purchase_agreement/en/.draft-v2/"
+    assert draft.storage_prefix == DRAFT_PREFIX_TEMPLATE.format(
+        company_id=company_id,
+        kind="purchase_agreement",
+        language="en",
+        version=2,
     )
+    assert ".draft-v2/" in draft.storage_prefix
 
     # MinIO bytes -- active's template.html still carries v1, draft's
     # template.html carries v2. This is the assert that would have
     # caught BUG-DRAFT-01 (single shared canonical path overwriting on
     # draft upload).
-    from app.core.storage import get_object_bytes
     active_bytes = await get_object_bytes(
         active.storage_prefix + "template.html"
     )
@@ -693,8 +705,6 @@ async def test_created_by_is_platform_user_for_per_company_reconcile(
     user (system actor), not NULL. This matches the audit actor and
     keeps the FK referencing a real user.
     """
-    from app.modules.auth.service import get_platform_user_id
-
     _, company_id = await _admin_and_company(client, db_session)
     platform_user_id = await get_platform_user_id(db_session)
 

@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.storage import (
     delete_object,
+    get_object_bytes,
     list_objects,
     object_exists,
     upload_object,
@@ -44,6 +45,7 @@ from app.modules.companies.constants import (
 from app.modules.companies.models import CompanyDocumentTemplate
 from scripts.reconcile_platform_templates import (
     CANONICAL_PREFIX_TEMPLATE,
+    DRAFT_PREFIX_TEMPLATE,
     INBOX_PREFIX,
     reconcile_platform_templates,
 )
@@ -427,13 +429,20 @@ async def test_draft_status_creates_draft_without_touching_active(
     assert draft.status == TemplateStatus.DRAFT
 
     # storage_prefix divergence + MinIO bytes assertion (BUG-DRAFT-01).
+    # Belt-and-braces: formatted constant catches storage_prefix landing
+    # on the wrong tree; substring assert catches a silent format rename.
     assert active.storage_prefix != draft.storage_prefix
-    assert active.storage_prefix == "_platform/templates/purchase_agreement/en/"
-    assert draft.storage_prefix == (
-        "_platform/templates/purchase_agreement/en/.draft-v2/"
+    assert active.storage_prefix == CANONICAL_PREFIX_TEMPLATE.format(
+        kind="purchase_agreement",
+        language="en",
     )
+    assert draft.storage_prefix == DRAFT_PREFIX_TEMPLATE.format(
+        kind="purchase_agreement",
+        language="en",
+        version=2,
+    )
+    assert ".draft-v2/" in draft.storage_prefix
 
-    from app.core.storage import get_object_bytes
     active_bytes = await get_object_bytes(
         active.storage_prefix + "template.html"
     )
