@@ -1,9 +1,15 @@
 # CBSHOME -- Refactor: Company Attachments, Templates & Purchase Docs
 
-**Версия:** 0.5 / decision-locked
+**Версия:** 0.6 / decision-locked
 **Дата:** 10 мая 2026
 
 **Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
+
+**Changelog v0.6 (10 May 2026):**
+- §4 закрыт (✅ iter 2.3): templates module, platform default seed, 4-stage fallback, reconcile-templates per-company + platform, Redis HTML-кэш, draft изоляция в `.draft-v<N>/`. 421 → 450 тестов, 0 регрессий. New head migration `0031_company_document_templates`.
+- Bootstrap path для platform default templates: `backend/scripts/seed_data/templates/_default/` -> `backend/scripts/templates/_default/` (§1.4, §4.9, §8, §10). Causes: исполнитель в iter 2.3 положил bootstrap-данные сразу под `backend/scripts/templates/`, по аналогии с `notifications/templates/*.yaml` -- одноуровневая раскладка под модулем-потребителем уже сложившийся паттерн. Промежуточный `seed_data/` не нужен.
+- Новое в §4 (за scope ранней спеки -- расширение, не сужение): draft файлы изолируются в `companies/<id>/templates/<kind>/<lang>/.draft-v<N>/` (per-company) и `_platform/templates/<kind>/<lang>/.draft-v<N>/` (platform). Это защищает active bytes в canonical от перезатирания при заливке черновой версии. Зафиксировано в §4.8 + §4.9 + §10.
+- Render-time security TODO для iter 2.4: при переписывании `certificate_service.py` обязательно `Environment(autoescape=True, undefined=StrictUndefined)`. Reconcile-парсинг (`Environment.parse`) этого не требует -- он compile-only. См. §5.4.
 
 **Changelog v0.5 (10 May 2026):**
 - Bootstrap path для platform default templates: `backend/seed/templates/_default/` -> `backend/scripts/seed_data/templates/_default/` (§1.4, §4.9, §10). Causes: `backend/seed/` в корне backend выпадал из существующей структуры (всё под `app/` или `scripts/`). Seed-данные кладутся рядом с seed-скриптами под `scripts/seed_data/`.
@@ -118,7 +124,7 @@ Login для basic-auth перед Web UI -- фиксированный `admin`.
 
 ### 1.4. install_cbshome.sh -- что добавляется
 
-**◐ Реализовано частично (iter 1).** Открыто: seed platform default templates -- `mc cp -r backend/scripts/seed_data/templates/_default/ ...` и `python backend/scripts/seed_platform_templates.py`. Закрывается в iter 2.3.
+**◐ Реализовано частично (iter 1).** Открыто: seed platform default templates -- `mc cp -r backend/scripts/templates/_default/ ...` и `python backend/scripts/seed_platform_templates.py`. Закрывается в iter 2.3.
 
 Новая секция в скрипте после `Mail Server`, перед `Docker Stack`:
 
@@ -138,7 +144,7 @@ Login для basic-auth перед Web UI -- фиксированный `admin`.
 - В шаге запуска стека `docker compose up -d` явно ждём healthcheck сервиса `minio` перед запуском `app` (зависимость в compose).
 - В шаге миграций -- стандартный alembic upgrade head (новые миграции для таблиц `company_attachments`, `company_document_templates` плюс поле `purchase_agreement_template_id` в `purchases`).
 - **Новый шаг -- seed platform default templates (см. §4.9):**
-  1. `mc cp -r backend/scripts/seed_data/templates/_default/ local/cbshome-attachments/_platform/templates/` -- копирует HTML + ассеты (logo placeholder, signature placeholder, stamp placeholder) для всех 4 kind'ов и поддерживаемых языков (en/de/ru/ar) в MinIO под префикс `_platform/templates/`.
+  1. `mc cp -r backend/scripts/templates/_default/ local/cbshome-attachments/_platform/templates/` -- копирует HTML + ассеты (logo placeholder, signature placeholder, stamp placeholder) для всех 4 kind'ов и поддерживаемых языков (en/de/ru/ar) в MinIO под префикс `_platform/templates/`.
   2. `python backend/scripts/seed_platform_templates.py` -- создаёт rows в `company_document_templates` с `company_id=NULL`, `status=active`, `storage_prefix='_platform/templates/<kind>/<lang>/'` для каждой пары `(kind, language)`. Идемпотентен -- повторный запуск не создаёт дубли.
 
 После этого backend стартует с гарантированным fallback'ом для рендера договоров и сертификатов: даже свежесозданная компания без своих кастомных шаблонов получает рабочий рендер через platform default.
@@ -476,7 +482,14 @@ Drag-drop всю папку в Web UI в `inbox/`, потом один `cbshome 
 
 ## 4. Backend: модуль `company_doc_templates`
 
-**В работе (iter 2.3).** Templates backend + platform default seed реализуются одной итерацией -- без platform default rows fallback в §4.7 не покрывает свежесозданную компанию, и реалистичные тесты не пишутся.
+**✅ Реализовано (iter 2.3).** Templates backend + platform default seed закрыты одной итерацией. Финальные показатели: 421 → 450 тестов (+29), 0 регрессий, 8 раундов code review (Round 8: 7 фиксов; Round 9: BUG-DRAFT-01 -- draft перезатирал active bytes; Round 10: 2 QC). New head migration `0031_company_document_templates`.
+
+Реализованные deviation от спеки:
+- Bootstrap данные положены под `backend/scripts/templates/_default/` (см. §4.9). Изначально спека v0.4 указывала `backend/seed/templates/_default/`, v0.5 -- `backend/scripts/seed_data/templates/_default/`. Финальный путь зафиксирован в v0.6.
+- Draft файлы изолируются в подпапку `.draft-v<N>/` внутри canonical директории kind/lang (§4.9 и `reconcile_templates`). Спека v0.5 не требовала отдельную draft-зону, но без неё заливка draft-версии перезатирала bytes active в MinIO. Фикс пойман Round 9 ревью (BUG-DRAFT-01) и закрыт регрессионным тестом на bytes active после draft-flow.
+
+Open TODO для iter 2.4:
+- При переписывании рендера в `certificate_service.py` обязательно `Environment(autoescape=True, undefined=StrictUndefined)` (см. §5.4). Reconcile-парсинг (`Environment.parse`) этого не требует -- он compile-only.
 
 ### 4.1. Назначение
 
@@ -616,7 +629,7 @@ Validation шаблона при reconcile (см. §4.8): парсинг чер�
    - Читает `_meta.cbsmeta.json`. Валидирует через Pydantic-схему `TemplateInboxMetadata`. На ошибке -- skip + ERROR в лог.
    - Валидирует `template.html` через Jinja2 `Environment.parse`. На ошибке -- skip + ERROR.
    - Проверяет что все `asset_data_uri('<filename>')` в HTML ссылаются на файлы, которые присутствуют рядом. На несовпадении -- skip + ERROR.
-   - Через storage layer (`upload_object` для нового места + `delete_object` для inbox-источников и `_meta.cbsmeta.json`) переносит файлы из `templates-inbox/<kind>__<lang>/` в canonical path `templates/<kind>/<lang>/`.
+   - Через storage layer (`upload_object` для нового места + `delete_object` для inbox-источников и `_meta.cbsmeta.json`) переносит файлы из `templates-inbox/<kind>__<lang>/` в canonical path `templates/<kind>/<lang>/`. Если `_meta.cbsmeta.json` имеет `status="draft"` -- файлы уходят в `templates/<kind>/<lang>/.draft-v<N>/` (изолированно от active), active-зона не трогается. См. §4.2 state machine.
    - Если для пары `(company_id, kind, language)` уже есть active row -- старый row становится `archived`, новый становится `active` с `version + 1`.
    - Создаёт row в `company_document_templates` со списком `asset_files` (имена .png/.jpg, найденные в папке).
 
@@ -651,7 +664,7 @@ Platform default templates -- общие fallback-шаблоны для всех
 **Структура в репо** (источник truth для install-скрипта):
 
 ```
-backend/scripts/seed_data/templates/_default/
+backend/scripts/templates/_default/
 ├── purchase_agreement/
 │   ├── en/
 │   │   ├── template.html
@@ -669,11 +682,11 @@ backend/scripts/seed_data/templates/_default/
     └── ...
 ```
 
-Bootstrap-данные лежат под `backend/scripts/seed_data/`, рядом со seed-скриптами в `backend/scripts/`. В корне `backend/` отдельной папки `seed/` нет -- структура backend держится на двух top-level директориях `app/` (runtime) и `scripts/` (seed/management/dev tools).
+Bootstrap-данные лежат под `backend/scripts/templates/_default/`, рядом со скриптом-потребителем `backend/scripts/seed_platform_templates.py`. Раскладка соответствует существующему паттерну `backend/app/modules/notifications/templates/*.yaml` -- данные модуля держатся одноуровнево под модулем-потребителем.
 
 **Установка (часть install_cbshome.sh, см. §1.4):**
 
-1. `mc cp -r backend/scripts/seed_data/templates/_default/ local/cbshome-attachments/_platform/templates/` -- заливает все файлы.
+1. `mc cp -r backend/scripts/templates/_default/ local/cbshome-attachments/_platform/templates/` -- заливает все файлы.
 2. `python backend/scripts/seed_platform_templates.py` -- создаёт rows для каждой пары `(kind, language)` с `company_id=NULL`, `storage_prefix='_platform/templates/<kind>/<lang>/'`, `status=active`. Идемпотентен.
 
 **Обновление platform default'ов (если юристы платформы захотят поправить общий шаблон):**
@@ -683,7 +696,7 @@ Bootstrap-данные лежат под `backend/scripts/seed_data/`, рядо�
 1. Staff/админ платформы заходит в MinIO Web UI -> `_platform/templates-inbox/<kind>__<lang>/`.
 2. Заливает `template.html + ассеты + _meta.cbsmeta.json`.
 3. Запускает `cbshome storage reconcile-platform-templates`.
-4. Скрипт перемещает файлы в `_platform/templates/<kind>/<lang>/`, обновляет row с `company_id=NULL` (старый -> archived, новый -> active с version+1).
+4. Скрипт через storage layer переносит файлы в `_platform/templates/<kind>/<lang>/` (или в `_platform/templates/<kind>/<lang>/.draft-v<N>/` если sidecar имеет `status="draft"`), обновляет row с `company_id=NULL` (старый -> archived, новый -> active с version+1; для draft -- INSERT row со status=DRAFT без архивации active).
 
 **Что в placeholder-ассетах при первой установке:** в репо лежат честные dummy-картинки (1x1 transparent PNG для logo/signature/stamp). При первом запуске тестовая компания получает рендер с прозрачными местами на месте печати/подписи -- юридически невалидно, но рендер не падает. В production юристы платформы заменят placeholder'ы на реальные generic-ассеты через reconcile-platform-templates до старта продаж.
 
@@ -771,6 +784,7 @@ purchase.purchase_agreement_template_id = template.id if template else None
   - Шаблон ищется через `find_active_template()` в БД (4-ступенчатый fallback, см. §4.7), HTML body читается из MinIO по `<storage_prefix>/template.html` (с Redis-кэшем, см. §4.10).
   - Регистрируется Jinja-функция `asset_data_uri(filename)` через `make_asset_data_uri_func(storage_prefix, asset_files)` (см. §4.4).
   - Ассеты embed'аются inline base64 в HTML/PDF.
+  - **Render Environment обязательно с `autoescape=True` и `undefined=StrictUndefined`** -- при подстановке user-controlled данных (`investor_name`, `company_name`, `description`-поля) без autoescape получим stored XSS в HTML и потенциально RCE-вектор в PDF-движке xhtml2pdf. `StrictUndefined` ловит missing-placeholder в шаблонах рано (рендер падает с `UndefinedError` вместо тихого вывода пустоты в договор). Reconcile-парсинг (`Environment.parse` в §4.8) этого не требует -- он compile-only без подстановок.
 
 ### 5.5. Frontend контракт
 
@@ -892,7 +906,7 @@ URL вида `https://cbshome.org/public/companies/{id}/attachments/{att_id}` --
 | Reconcile-script `backend/scripts/reconcile_templates.py` (per-company) | §4.8 |
 | Reconcile-script `backend/scripts/reconcile_platform_templates.py` | §4.9 |
 | Seed-script `backend/scripts/seed_platform_templates.py` (idempotent) | §4.9 |
-| Bootstrap файлы в `backend/scripts/seed_data/templates/_default/<kind>/<lang>/` (HTML + 3 placeholder PNG для всех 4 kinds × 4 lang) | §4.9 |
+| Bootstrap файлы в `backend/scripts/templates/_default/<kind>/<lang>/` (HTML + 3 placeholder PNG для всех 4 kinds × 4 lang) | §4.9 |
 | Jinja-функция `asset_data_uri(filename)` + helper `make_asset_data_uri_func()` | §4.4 |
 | Redis-кэш `template_html:<storage_prefix>` (TTL 5 мин), invalidation в reconcile-скриптах | §4.10 |
 | `find_active_template()` 4-stage fallback с `company_id IS NULL` | §4.7 |
@@ -949,7 +963,7 @@ Post-MVP (вне scope refactor'а):
 - **Canonical path для template'ов в MinIO** (§2.2): `companies/<id>/templates/<kind>/<lang>/template.html`, `_platform/templates/<kind>/<lang>/template.html`. Один active per `(kind, language)`, версионирование делает БД, MinIO перезаписывает.
 - **Workflow Staff per-company templates -- через MinIO Web UI + `cbshome storage reconcile-templates`** (§4.8). Inbox pattern в `companies/<id>/templates-inbox/<kind>__<lang>/`, companion `_meta.cbsmeta.json`. UI editor templates -- post-MVP.
 - **Workflow Platform default updates -- через MinIO Web UI + `cbshome storage reconcile-platform-templates`** (§4.9). Inbox pattern в `_platform/templates-inbox/`. Обновляются юристами платформы.
-- **Bootstrap defaults в репозитории**: `backend/scripts/seed_data/templates/_default/<kind>/<lang>/{template.html, logo.png, signature.png, stamp.png}` для всех 4 kind × 4 lang. Заливаются в MinIO при `install_cbshome.sh` (§1.4) + `seed_platform_templates.py` создаёт rows с `company_id=NULL`.
+- **Bootstrap defaults в репозитории**: `backend/scripts/templates/_default/<kind>/<lang>/{template.html, logo.png, signature.png, stamp.png}` для всех 4 kind × 4 lang. Заливаются в MinIO при `install_cbshome.sh` (§1.4) + `seed_platform_templates.py` создаёт rows с `company_id=NULL`. Финальный путь зафиксирован в v0.6 (была эволюция: v0.4 `backend/seed/...` -> v0.5 `backend/scripts/seed_data/...` -> v0.6 `backend/scripts/templates/...`).
 - **Redis-кэш HTML template'ов** (§4.10), TTL 5 мин, key `template_html:<storage_prefix>`, инвалидация в reconcile-скриптах. Значение -- base64-encoded строка (Redis-клиент проекта инициализируется с `decode_responses=True`). Ассеты не кэшируем.
 - **`Purchase.purchase_agreement_template_id` остаётся nullable** (§5.1) для устойчивости к удалению, но в production гарантированно non-NULL благодаря platform default fallback. NULL = ошибка инфраструктуры -- structlog `error`-event + audit event `purchase.template_missing`.
 - **`GET /purchases/{id}/agreement` отдаёт 500 (не 404) при NULL template_id** (§5.3) -- сигнал поломки, не штатное "не сконфигурировано".
@@ -959,7 +973,7 @@ Post-MVP (вне scope refactor'а):
 - **F-A1**: при empty list (после language-фильтра) -- секция "Документы компании" на CompanyOverview **скрывается целиком**. Никакого empty-state. Контентом управляет Staff (§7.1).
 - **F-A2**: иконки -- **mime-based** (PDF/PNG/PPTX/...), не category-based (§7.1).
 - **F-A3**: **L1-группировка** (один уровень) по верхнему сегменту path-tree, внутри группы -- плоский список карточек. Subcategory как breadcrumb на карточке. Локализация имён сегментов через i18n с title-case fallback. **Без language-табов** -- юзер видит документы своей локали + null. Empty-фильтр результат -> секция скрыта (см. F-A1) (§7.1).
-- **F-T1 ОТМЕНЁН**: вопрос про bootstrap для editor'а отпадает -- editor templates в MVP не делаем (§6.3, §4.5). Bootstrap'ы в репо как `backend/scripts/seed_data/templates/_default/` используются install-скриптом для platform default'ов, не для editor'а.
+- **F-T1 ОТМЕНЁН**: вопрос про bootstrap для editor'а отпадает -- editor templates в MVP не делаем (§6.3, §4.5). Bootstrap'ы в репо как `backend/scripts/templates/_default/` используются install-скриптом для platform default'ов, не для editor'а.
 
 ### v0.3 closed (без изменений в v0.4)
 
