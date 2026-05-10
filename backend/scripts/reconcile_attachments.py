@@ -358,7 +358,12 @@ async def _create_from_inbox(
     attachment_id = uuid4()
     storage_key = build_storage_key(company_id, attachment_id, original_filename)
 
-    await upload_object(storage_key, file_bytes, content_type)
+    # Round 4 (PERF-01): explicit Content-Length even when body is bytes
+    # -- harmless for the buffered case, mandatory once upload_object
+    # also serves the streaming path from the staff router.
+    await upload_object(
+        storage_key, file_bytes, content_type, content_length=len(file_bytes)
+    )
 
     await shift_orders_to_make_room(
         session, company_id, metadata.category, metadata.order
@@ -437,7 +442,9 @@ async def _replace_from_inbox(
     )
     old_storage_key = attachment.storage_key
 
-    await upload_object(new_storage_key, file_bytes, content_type)
+    await upload_object(
+        new_storage_key, file_bytes, content_type, content_length=len(file_bytes)
+    )
     if old_storage_key != new_storage_key:
         await delete_object(old_storage_key)
 

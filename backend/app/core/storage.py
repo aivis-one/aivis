@@ -182,13 +182,22 @@ async def upload_object(
     key: str,
     data: bytes | BinaryIO,
     content_type: str,
+    *,
+    content_length: int | None = None,
 ) -> str:
     """Upload an object to the configured bucket.
 
     Args:
         key: Object key (full path, no leading slash).
         data: bytes or a binary file-like object readable in one pass.
+            For file-like objects, the file pointer must be at the start
+            of the payload (caller's responsibility).
         content_type: MIME type stored as object metadata.
+        content_length: Explicit body length in bytes. Required when
+            `data` is a non-seekable stream so MinIO gets a proper
+            Content-Length header instead of falling back to chunked
+            transfer encoding. Optional when `data` is `bytes` (boto3
+            derives the length automatically).
 
     Returns:
         The stored key (echoed for caller convenience).
@@ -196,6 +205,14 @@ async def upload_object(
     Raises:
         StorageError: On any upstream failure, including a missing bucket.
     """
+    # ContentLength is forwarded straight to MinIO. For bytes the param
+    # is redundant but harmless; for streams it's the only way to avoid
+    # `Transfer-Encoding: chunked`, which some S3-compatible setups
+    # (and signature-v4 in strict mode) reject.
+    extra: dict[str, int] = {}
+    if content_length is not None:
+        extra["ContentLength"] = content_length
+
     try:
         async with _client_context() as client:
             await client.put_object(
@@ -203,6 +220,7 @@ async def upload_object(
                 Key=key,
                 Body=data,
                 ContentType=content_type,
+                **extra,
             )
     except ClientError as exc:
         logger.error(

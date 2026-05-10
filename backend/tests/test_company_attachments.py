@@ -168,7 +168,10 @@ async def _create_attachment(
         session=db_session,
         company_id=company_id,
         staff=staff_user,
-        file_bytes=file_bytes,
+        # Round 4 (PERF-01): service signature now takes file_data
+        # (bytes or stream) plus an explicit file_size_bytes.
+        file_data=file_bytes,
+        file_size_bytes=len(file_bytes),
         original_filename=original_filename,
         content_type=content_type,
         metadata=metadata,

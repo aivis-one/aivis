@@ -83,6 +83,7 @@
 #   a more complex two-phase commit.
 # =============================================================================
 
+from typing import BinaryIO
 from uuid import UUID, uuid4
 
 import mimetypes
@@ -937,7 +938,8 @@ async def create_attachment(
     company_id: UUID,
     staff: User,
     *,
-    file_bytes: bytes,
+    file_data: bytes | BinaryIO,
+    file_size_bytes: int,
     original_filename: str,
     content_type: str,
     metadata: AttachmentInboxMetadata,
@@ -954,6 +956,13 @@ async def create_attachment(
     scope at order+ are shifted down by 1 to make room. The default
     order=0 from the schema means "land at the top of the category".
 
+    Round 4 (PERF-01): `file_data` accepts bytes (legacy / reconcile
+    path) or a binary stream (router multipart path). `file_size_bytes`
+    is now an explicit caller-provided value because we cannot len() a
+    stream -- the router gets it from `UploadFile.size` (set by
+    Starlette from the multipart Content-Length), reconcile gets it
+    from `len(downloaded_bytes)`.
+
     Raises:
         NotFoundError: If the company doesn't exist.
         StorageError: On any MinIO failure (bubbled up from upload_object).
@@ -965,7 +974,9 @@ async def create_attachment(
 
     # Upload to MinIO first. A subsequent transaction rollback leaves an
     # orphan that reconcile_attachments will reap.
-    await upload_object(storage_key, file_bytes, content_type)
+    await upload_object(
+        storage_key, file_data, content_type, content_length=file_size_bytes
+    )
 
     # Make room at the requested order inside (company_id, category).
     await shift_orders_to_make_room(
@@ -982,7 +993,7 @@ async def create_attachment(
         storage_key=storage_key,
         original_filename=original_filename,
         mime_type=content_type,
-        file_size_bytes=len(file_bytes),
+        file_size_bytes=file_size_bytes,
         order=metadata.order,
         is_published=metadata.is_published,
         is_public=metadata.is_public,
@@ -1004,7 +1015,7 @@ async def create_attachment(
             "category": metadata.category,
             "language": metadata.language,
             "mime_type": content_type,
-            "file_size_bytes": len(file_bytes),
+            "file_size_bytes": file_size_bytes,
             "is_published": metadata.is_published,
             "is_public": metadata.is_public,
         },
@@ -1016,7 +1027,7 @@ async def create_attachment(
         company_id=str(company_id),
         staff_id=str(staff.id),
         storage_key=storage_key,
-        size=len(file_bytes),
+        size=file_size_bytes,
     )
 
     return attachment
@@ -1088,7 +1099,8 @@ async def replace_attachment_file(
     attachment_id: UUID,
     staff: User,
     *,
-    file_bytes: bytes,
+    file_data: bytes | BinaryIO,
+    file_size_bytes: int,
     original_filename: str,
     content_type: str,
 ) -> CompanyAttachment:
@@ -1099,6 +1111,10 @@ async def replace_attachment_file(
     but the trailing filename changes when `original_filename` changes).
     Metadata fields other than storage_key / mime_type / file_size_bytes
     / original_filename are untouched.
+
+    Round 4 (PERF-01): see create_attachment for the file_data /
+    file_size_bytes contract -- bytes for reconcile, BinaryIO for the
+    multipart router path.
 
     Raises:
         NotFoundError: If the attachment doesn't exist.
@@ -1113,7 +1129,9 @@ async def replace_attachment_file(
 
     # Upload the new bytes first, then drop the old object. Done in this
     # order so a failed upload doesn't leave the row pointing nowhere.
-    await upload_object(new_storage_key, file_bytes, content_type)
+    await upload_object(
+        new_storage_key, file_data, content_type, content_length=file_size_bytes
+    )
     if old_storage_key != new_storage_key:
         # delete_object is idempotent on a missing key, so a previous
         # partial replace that already removed the old object will not
@@ -1123,7 +1141,7 @@ async def replace_attachment_file(
     attachment.storage_key = new_storage_key
     attachment.original_filename = original_filename
     attachment.mime_type = content_type
-    attachment.file_size_bytes = len(file_bytes)
+    attachment.file_size_bytes = file_size_bytes
 
     await session.flush()
     await session.refresh(attachment)
@@ -1140,7 +1158,7 @@ async def replace_attachment_file(
             "old_storage_key": old_storage_key,
             "new_storage_key": new_storage_key,
             "mime_type": content_type,
-            "file_size_bytes": len(file_bytes),
+            "file_size_bytes": file_size_bytes,
         },
     )
 
@@ -1151,7 +1169,7 @@ async def replace_attachment_file(
         staff_id=str(staff.id),
         old_storage_key=old_storage_key,
         new_storage_key=new_storage_key,
-        size=len(file_bytes),
+        size=file_size_bytes,
     )
 
     return attachment

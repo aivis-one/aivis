@@ -302,9 +302,14 @@ class CompanyAttachment(UUIDMixin, TimestampMixin, Base):
     )
 
     # -- Storage pointer --
+    # Round 4 (MINOR-03): unique=True so a parallel insert / direct DB
+    # poke / reconcile race can never produce two rows pointing at the
+    # same MinIO key. UUID4 collision is astronomically improbable, but
+    # the constraint is free and catches manual operations cleanly.
     storage_key: Mapped[str] = mapped_column(
         String(1000),
         nullable=False,
+        unique=True,
     )
     original_filename: Mapped[str] = mapped_column(
         String(500),

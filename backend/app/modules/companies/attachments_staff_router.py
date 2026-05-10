@@ -46,12 +46,13 @@
 #   renders, neutralising stored-XSS even if a bad payload sneaks past
 #   extension validation.
 #
-# 100MB SIZE LIMIT (technical debt, R2 Q-ATT-3):
+# 100MB SIZE LIMIT (R2 Q-ATT-3):
 #   Enforced by Nginx (client_max_body_size 100m) at the proxy layer.
-#   Backend does NOT re-validate file size in this iteration; an
-#   in-memory check after `await file.read()` would still allocate the
-#   full payload before rejecting and so adds nothing the proxy doesn't
-#   already do. A streaming size guard is on the post-MVP backlog.
+#   Round 4 (PERF-01): the router no longer materialises the whole
+#   payload into a Python `bytes` (the previous `await file.read()`
+#   peaked RAM at N * 100 MB for N parallel uploads). We now stream
+#   the SpooledTemporaryFile straight to MinIO via boto3 put_object,
+#   with an explicit Content-Length pulled from UploadFile.size.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -115,6 +116,33 @@ async def _require_admin(staff: User, session: AsyncSession) -> None:
     effective = get_effective_permissions(profile)
     if not is_admin(effective):
         raise ForbiddenError("Admin access required")
+
+
+def _resolve_upload_size(file: UploadFile) -> int:
+    """Return the upload's size without reading the body into memory.
+
+    Round 4 (PERF-01): three-step fallback so we get a Content-Length
+    for MinIO without buffering 100 MB into a Python `bytes`:
+      1. UploadFile.size -- Starlette parses the multipart Content-Length
+         header and exposes it directly. Almost always present.
+      2. If absent, seek to end of the SpooledTemporaryFile and tell the
+         offset. Cheap (no copy) for both in-memory and on-disk spool
+         backings. Reset the pointer to the start before returning.
+      3. If even that fails (rare -- non-seekable underlying handle), 0
+         is the only safe default; MinIO will reject the upload via the
+         configured Content-Length / max-body limit.
+    """
+    if file.size is not None:
+        return file.size
+
+    handle = file.file
+    try:
+        handle.seek(0, 2)  # end of file
+        size = handle.tell()
+        handle.seek(0)  # rewind for the streaming upload
+        return size
+    except (OSError, AttributeError):
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -183,13 +211,21 @@ async def create_attachment_staff_endpoint(
     # while keeping a real extension was the original attack vector.
     original_filename = file.filename or "untitled"
     content_type = validate_attachment_mime_by_filename(original_filename)
-    file_bytes = await file.read()
+    # Round 4 (PERF-01): stream the body straight to MinIO instead of
+    # reading the whole 100 MB upload into memory. Starlette exposes the
+    # underlying SpooledTemporaryFile via UploadFile.file, with the file
+    # pointer already at the start of the payload after multipart parsing.
+    # We rely on UploadFile.size (set from the multipart Content-Length)
+    # to fill in the explicit ContentLength header; if absent we measure
+    # via seek/tell (no read).
+    file_size_bytes = _resolve_upload_size(file)
 
     attachment = await create_attachment(
         session=session,
         company_id=company_id,
         staff=staff,
-        file_bytes=file_bytes,
+        file_data=file.file,
+        file_size_bytes=file_size_bytes,
         original_filename=original_filename,
         content_type=content_type,
         metadata=metadata_obj,
@@ -245,14 +281,16 @@ async def replace_attachment_staff_endpoint(
     # POST endpoint. See create_attachment_staff_endpoint for rationale.
     original_filename = file.filename or "untitled"
     content_type = validate_attachment_mime_by_filename(original_filename)
-    file_bytes = await file.read()
+    # Round 4 (PERF-01): stream-pass like in POST.
+    file_size_bytes = _resolve_upload_size(file)
 
     attachment = await replace_attachment_file(
         session=session,
         company_id=company_id,
         attachment_id=attachment_id,
         staff=staff,
-        file_bytes=file_bytes,
+        file_data=file.file,
+        file_size_bytes=file_size_bytes,
         original_filename=original_filename,
         content_type=content_type,
     )
