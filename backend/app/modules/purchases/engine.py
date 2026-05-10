@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Engine (Sprint 6.2, fix #35, updated Sprint 6.4)
+# CBSHOME Backend -- Purchase Engine (Sprint 6.2, fix #35, updated Sprint 6.4,
+#                                       Refactor 2 iter 2.4)
 # =============================================================================
 #
 # RESPONSIBILITY:
@@ -29,6 +30,30 @@
 #   purchase:gift for GIFT. INSTALLMENT_TRANCHE is handled by
 #   installments/service.py (has plan context for reference_id).
 #
+# Refactor 2 iter 2.4 (R2 §5.1) -- TEMPLATE SNAPSHOT:
+#   For every Purchase row created in write_transactions(), the engine
+#   resolves the active document template for (company_id, kind,
+#   language) via find_active_template(). The found template's id is
+#   snapshotted onto Purchase.purchase_agreement_template_id.
+#
+#   The kind is derived from legal_basis via BASIS_TO_KIND:
+#     sale                 -> purchase_agreement
+#     gift                 -> gift_certificate
+#     installment_tranche  -> installment_subcontract
+#
+#   ownership_certificate is intentionally NOT in this map -- it has
+#   no per-Purchase snapshot (see R2 §5.3); the renderer resolves it
+#   fresh on every call.
+#
+#   On NULL fallthrough (all 4 fallback stages miss, platform default
+#   genuinely absent) we:
+#     - persist the Purchase with template_id = NULL (financial
+#       transaction > document rendering),
+#     - emit a structured log: `template_missing`,
+#     - record an audit event: `purchase.template_missing` so Staff
+#       sees the broken Purchase in the audit dashboard and can fix it
+#       with `cbshome storage reconcile-platform-templates`.
+#
 # COMMIT RULE (P-01):
 #   Engine never commits. Caller (get_db_session) manages the transaction.
 #
@@ -47,6 +72,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import InsufficientBalanceError
+from app.modules.companies.constants import DocumentTemplateKind
+from app.modules.companies.service import find_active_template
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import (
     get_active_balance,
@@ -67,6 +94,15 @@ logger = structlog.get_logger()
 _LEGAL_BASIS_TO_TXN_TYPE: dict[str, str] = {
     PurchaseLegalBasis.SALE: TransactionType.PURCHASE_COMPLETED,
     PurchaseLegalBasis.GIFT: TransactionType.PURCHASE_GIFT,
+}
+
+# Refactor 2 iter 2.4: Purchase legal_basis -> document template kind
+# (R2 §5.1). ownership_certificate is intentionally absent -- it has
+# no per-Purchase snapshot.
+_BASIS_TO_TEMPLATE_KIND: dict[str, str] = {
+    PurchaseLegalBasis.SALE: DocumentTemplateKind.PURCHASE_AGREEMENT,
+    PurchaseLegalBasis.GIFT: DocumentTemplateKind.GIFT_CERTIFICATE,
+    PurchaseLegalBasis.INSTALLMENT_TRANCHE: DocumentTemplateKind.INSTALLMENT_SUBCONTRACT,
 }
 
 
@@ -173,6 +209,77 @@ async def execute(
 # ---------------------------------------------------------------------------
 
 
+async def _snapshot_template_id(
+    session: AsyncSession,
+    *,
+    company_id: UUID,
+    legal_basis: str,
+    language: str,
+    actor_id: UUID,
+) -> UUID | None:
+    """Resolve the active template for (company, kind, language) and return
+    its id. On any miss, log + audit + return None.
+
+    R2 §5.1: NULL fallthrough is allowed and is treated as a broken-infra
+    signal (structlog + audit event `purchase.template_missing`). The
+    Purchase row is still created so the financial transaction survives;
+    rendering will surface 500 at the agreement endpoint.
+
+    Args:
+        session: Active DB session (engine never commits).
+        company_id: Owning company.
+        legal_basis: One of PurchaseLegalBasis values.
+        language: ISO 639-1 from PurchaseContext.investor_language.
+        actor_id: investor_id from the context (audit attribution).
+
+    Returns:
+        Template UUID or None.
+    """
+    kind = _BASIS_TO_TEMPLATE_KIND.get(legal_basis)
+    if kind is None:
+        # No template kind associated with this legal_basis. Should not
+        # occur with current values, but keeping the helper defensive
+        # so a future PurchaseLegalBasis value doesn't silently snapshot
+        # against the wrong kind.
+        logger.warning(
+            "template_kind_unknown_for_legal_basis",
+            legal_basis=legal_basis,
+            company_id=str(company_id),
+        )
+        return None
+
+    template = await find_active_template(
+        company_id=company_id,
+        kind=kind,
+        language=language,
+        session=session,
+    )
+
+    if template is not None:
+        return template.id
+
+    # NULL fallthrough -- platform default genuinely missing.
+    logger.error(
+        "template_missing",
+        company_id=str(company_id),
+        kind=kind,
+        language=language,
+    )
+    await record_audit(
+        session=session,
+        event="purchase.template_missing",
+        actor_id=actor_id,
+        actor_type="system",
+        target_type="company",
+        target_id=company_id,
+        data={
+            "kind": kind,
+            "language": language,
+        },
+    )
+    return None
+
+
 async def write_transactions(
     session: AsyncSession,
     transactions: list[Transaction],
@@ -189,6 +296,11 @@ async def write_transactions(
     Sprint 6.4: writes transaction log entries for SALE and GIFT.
     INSTALLMENT_TRANCHE is handled by installments/service.py.
 
+    Refactor 2 iter 2.4: every Purchase row receives
+    purchase_agreement_template_id snapshotted from find_active_template
+    (R2 §5.1). NULL fallthrough writes structlog + audit `template_missing`
+    and persists the Purchase regardless.
+
     Public API: used by engine.execute() and directly by
     installments/service.py complete_plan() for completion bonuses.
     Caller must ensure SUM=0 invariant on each Transaction.
@@ -202,6 +314,18 @@ async def write_transactions(
         else:
             paid_cents = context.amount_cents
 
+        # Refactor 2 iter 2.4: resolve template snapshot per-Purchase.
+        # Each Transaction in a multi-Transaction batch (sale + bonus
+        # gifts from purchase_config) has its own legal_basis, so the
+        # kind / template can legitimately differ across the batch.
+        template_id = await _snapshot_template_id(
+            session,
+            company_id=context.company_id,
+            legal_basis=txn.legal_basis,
+            language=context.investor_language,
+            actor_id=context.investor_id,
+        )
+
         # Create Purchase record.
         purchase = Purchase(
             investor_id=context.investor_id,
@@ -212,6 +336,7 @@ async def write_transactions(
             paid_cents=paid_cents,
             price_per_unit_cents=context.price_per_unit_cents,
             status=PurchaseStatus.ACTIVE,
+            purchase_agreement_template_id=template_id,
         )
         session.add(purchase)
         await session.flush()

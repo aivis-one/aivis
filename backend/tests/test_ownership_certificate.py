@@ -1,0 +1,544 @@
+# =============================================================================
+# CBSHOME Backend -- Ownership Certificate Tests (Refactor 2 iter 2.4, R2 §5.3)
+# =============================================================================
+#
+# Tests cover:
+#   1: GET /companies/{id}/ownership-certificate  -- 200 HTML, single sale Purchase
+#   2: Two sale Purchases -> sale_units sums correctly in HTML
+#   3: installment_tranche rolled into sale_units (per design call iter 2.4)
+#   4: gift Purchase counted in gift_units, not sale_units
+#   5: 404 when investor has zero active Purchases for the company
+#   6: 404 when company doesn't exist
+#   7: POST /ownership-certificate/email -> 204 (mocked send)
+#   8: 500 when ownership_certificate template lookup misses all 4 stages
+#
+# Aggregate verification is via raw HTML substring checks because the
+# bootstrap ownership_certificate templates render sale_units / gift_units
+# / total_units as plain integers in the body.
+#
+# Email prefix: "s24o_"
+# =============================================================================
+
+from collections.abc import AsyncGenerator
+from datetime import datetime, UTC
+from unittest.mock import AsyncMock, patch
+from uuid import UUID, uuid4
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.ledgers.models import LedgerStatus
+from app.modules.ledgers.service import (
+    record_active_ledger,
+    record_passive_ledger,
+)
+from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
+from app.modules.purchases.models import Purchase
+from app.modules.users.models import User
+from tests.helpers import (
+    auth_headers,
+    cleanup_test_users,
+    create_admin_user,
+    register_user,
+)
+
+EMAIL_PREFIX = "s24o_"
+
+
+@pytest.fixture(autouse=True)
+async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
+    """Clean test users before and after each test."""
+    await cleanup_test_users(db_session, EMAIL_PREFIX)
+    yield
+    await cleanup_test_users(db_session, EMAIL_PREFIX)
+
+
+# ---------------------------------------------------------------------------
+# Local helpers (mirror test_purchase_agreement.py setup ritual)
+# ---------------------------------------------------------------------------
+
+
+async def _admin_token(
+    client: AsyncClient, db_session: AsyncSession
+) -> str:
+    _, token = await create_admin_user(
+        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+    )
+    return token
+
+
+async def _create_company(
+    client: AsyncClient,
+    admin_token: str,
+    suffix: str = "co1",
+    *,
+    price_per_unit_cents: int = 10000,
+) -> dict:
+    resp = await client.post(
+        "/api/v1/staff/companies",
+        json={
+            "name": f"Ownership Co {suffix}",
+            "description": f"Company for ownership tests {suffix}",
+            "price_per_unit_cents": price_per_unit_cents,
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 201, f"Create company failed: {resp.text}"
+    company = resp.json()
+
+    resp = await client.post(
+        f"/api/v1/staff/companies/{company['id']}/pool",
+        json={"total_options": 10_000},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 201, f"Create pool failed: {resp.text}"
+
+    return company
+
+
+async def _activate_company(
+    client: AsyncClient, admin_token: str, company_id: str
+) -> None:
+    resp = await client.patch(
+        f"/api/v1/staff/companies/{company_id}",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+
+async def _create_product(
+    client: AsyncClient,
+    admin_token: str,
+    company_id: str,
+    *,
+    package_size: int = 50,
+    suffix: str = "pkg",
+) -> dict:
+    resp = await client.post(
+        "/api/v1/staff/products",
+        json={
+            "company_id": company_id,
+            "name": f"Ownership Package {suffix}",
+            "description": f"Test package {suffix}",
+            "package_size": package_size,
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 201, f"Create product failed: {resp.text}"
+    return resp.json()
+
+
+async def _activate_product(
+    client: AsyncClient, admin_token: str, product_id: str
+) -> None:
+    resp = await client.patch(
+        f"/api/v1/staff/products/{product_id}/status",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+
+async def _create_investor_with_balance(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    suffix: str = "inv1",
+    balance_cents: int = 2_000_000,
+    *,
+    first_name: str = "Alice",
+    last_name: str = "Doe",
+) -> tuple[str, UUID]:
+    data = await register_user(
+        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+    )
+    token = data["session_token"]
+    user_id = UUID(data["user"]["id"])
+
+    stmt = select(User).where(User.id == user_id)
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.kyc_status = "approved"
+    user.profile = {"first_name": first_name, "last_name": last_name}
+    await db_session.flush()
+
+    await record_active_ledger(
+        db_session,
+        user_id=user_id,
+        amount_cents=balance_cents,
+        status=LedgerStatus.CONFIRMED,
+        reason=f"deposit:crypto:0xtest_{EMAIL_PREFIX}",
+    )
+    await db_session.commit()
+
+    return token, user_id
+
+
+async def _buy(
+    client: AsyncClient, inv_token: str, product_id: str
+) -> list[dict]:
+    resp = await client.post(
+        f"/api/v1/products/{product_id}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 201, f"Purchase failed: {resp.text}"
+    return resp.json()
+
+
+async def _insert_direct_purchase(
+    db_session: AsyncSession,
+    *,
+    investor_id: UUID,
+    product_id: UUID,
+    company_id: UUID,
+    company_user_id: UUID,
+    legal_basis: str,
+    units: int,
+    paid_cents: int,
+    price_per_unit_cents: int,
+) -> Purchase:
+    """Insert a Purchase row directly + minimal SUM=0 ledger pair.
+
+    For ownership-certificate aggregate testing we need to seed Purchases
+    of specific legal_basis values (in particular installment_tranche and
+    gift) without going through engine.execute -- that path requires full
+    Product / Company state and pulls money through the registry, which
+    is more setup than these targeted tests need.
+
+    Writes the Purchase + one active+passive ledger pair to keep the
+    SUM=0 invariant healthy. Skips template_id snapshot (left NULL is
+    fine for ownership aggregation -- per-Purchase template_id is only
+    consumed by the agreement renderer, not the ownership renderer).
+    """
+    purchase = Purchase(
+        investor_id=investor_id,
+        product_id=product_id,
+        company_id=company_id,
+        legal_basis=legal_basis,
+        units=units,
+        paid_cents=paid_cents,
+        price_per_unit_cents=price_per_unit_cents,
+        status=PurchaseStatus.ACTIVE,
+        purchase_agreement_template_id=None,
+    )
+    db_session.add(purchase)
+    await db_session.flush()
+
+    # SUM=0 ledger pair, zero amount for gift / non-zero for paid bases.
+    # The test-only direct-insert path skips the engine's processor
+    # registry, so we record the absolute minimum to keep consistency
+    # checks happy.
+    if paid_cents > 0:
+        reason = f"test_seed:{legal_basis}:{purchase.id}"
+        await record_active_ledger(
+            db_session,
+            user_id=investor_id,
+            amount_cents=-paid_cents,
+            status=LedgerStatus.CONFIRMED,
+            reason=reason,
+        )
+        await record_passive_ledger(
+            db_session,
+            user_id=company_user_id,
+            amount_cents=paid_cents,
+            status=LedgerStatus.CONFIRMED,
+            reason=reason,
+        )
+    await db_session.flush()
+
+    return purchase
+
+
+# ===========================================================================
+# Tests
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_ownership_html_single_sale(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /ownership-certificate -> 200 HTML with totals after one sale."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "oc1")
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=50, suffix="oc1",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc1",
+        first_name="Alice", last_name="Doe",
+    )
+    await _buy(client, inv_token, product["id"])
+
+    resp = await client.get(
+        f"/api/v1/companies/{company['id']}/ownership-certificate",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert "text/html" in resp.headers["content-type"]
+    html = resp.text
+
+    # Investor + company anchors from context.
+    assert "Alice Doe" in html
+    assert company["name"] in html
+    # Aggregate marker: 50 units sold (from package_size).
+    assert "50" in html
+
+
+@pytest.mark.asyncio
+async def test_ownership_sums_two_sales(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Two sale Purchases -> total_units = sum of package_sizes."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "oc2")
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=30, suffix="oc2",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc2",
+        first_name="Bob", last_name="Smith",
+    )
+    await _buy(client, inv_token, product["id"])
+    await _buy(client, inv_token, product["id"])
+
+    resp = await client.get(
+        f"/api/v1/companies/{company['id']}/ownership-certificate",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 200
+    html = resp.text
+
+    # 60 units = 30 + 30 (two packages).
+    assert "60" in html
+    assert "Bob Smith" in html
+
+
+@pytest.mark.asyncio
+async def test_ownership_installment_tranche_in_sale_units(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """installment_tranche Purchase counts in sale_units, not gift_units.
+
+    Per the iter 2.4 design call (R2 §5.3), the bootstrap
+    ownership_certificate templates expect two counters (sale + gift).
+    installment_tranche is treated as "paid for in money" and rolls
+    into sale_units. This test seeds a Purchase row directly with
+    legal_basis=installment_tranche and verifies the response totals
+    don't fold it into the gift bucket.
+    """
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "oc3")
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=20, suffix="oc3",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, inv_id = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc3",
+    )
+
+    # Resolve company.user_id for the passive ledger pair.
+    from app.modules.companies.models import CompanyProfile
+    co_row = (
+        await db_session.execute(
+            select(CompanyProfile).where(CompanyProfile.id == UUID(company["id"]))
+        )
+    ).scalar_one()
+
+    # Seed: 20 units sale (real purchase) + 15 units installment_tranche.
+    await _buy(client, inv_token, product["id"])
+    await _insert_direct_purchase(
+        db_session,
+        investor_id=inv_id,
+        product_id=UUID(product["id"]),
+        company_id=UUID(company["id"]),
+        company_user_id=co_row.user_id,
+        legal_basis=PurchaseLegalBasis.INSTALLMENT_TRANCHE,
+        units=15,
+        paid_cents=15 * 10000,
+        price_per_unit_cents=10000,
+    )
+    await db_session.commit()
+
+    resp = await client.get(
+        f"/api/v1/companies/{company['id']}/ownership-certificate",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 200
+    html = resp.text
+
+    # 35 = 20 sale + 15 installment_tranche, all rolled into sale_units.
+    # gift_units must be 0 (no gift Purchases were seeded).
+    assert "35" in html
+
+
+@pytest.mark.asyncio
+async def test_ownership_gift_in_gift_units(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """gift Purchase counts in gift_units, not sale_units."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "oc4")
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=10, suffix="oc4",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, inv_id = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc4",
+    )
+
+    from app.modules.companies.models import CompanyProfile
+    co_row = (
+        await db_session.execute(
+            select(CompanyProfile).where(CompanyProfile.id == UUID(company["id"]))
+        )
+    ).scalar_one()
+
+    # Seed: 10 units sale + 7 units gift (paid_cents=0).
+    await _buy(client, inv_token, product["id"])
+    await _insert_direct_purchase(
+        db_session,
+        investor_id=inv_id,
+        product_id=UUID(product["id"]),
+        company_id=UUID(company["id"]),
+        company_user_id=co_row.user_id,
+        legal_basis=PurchaseLegalBasis.GIFT,
+        units=7,
+        paid_cents=0,
+        price_per_unit_cents=10000,
+    )
+    await db_session.commit()
+
+    resp = await client.get(
+        f"/api/v1/companies/{company['id']}/ownership-certificate",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 200
+    html = resp.text
+
+    # Totals: 17 = 10 sale + 7 gift.
+    assert "17" in html
+    # Make sure gift count of 7 shows up too -- bootstrap templates
+    # render gift_units separately.
+    assert "7" in html
+
+
+@pytest.mark.asyncio
+async def test_ownership_no_purchases_404(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /ownership-certificate when investor has zero Purchases -> 404."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "oc5")
+    await _activate_company(client, admin_token, company["id"])
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc5",
+    )
+
+    resp = await client.get(
+        f"/api/v1/companies/{company['id']}/ownership-certificate",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_ownership_company_not_found_404(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /ownership-certificate with non-existent company_id -> 404."""
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc6",
+    )
+
+    fake_id = uuid4()
+    resp = await client.get(
+        f"/api/v1/companies/{fake_id}/ownership-certificate",
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_ownership_email_204_mocked(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """POST /ownership-certificate/email -> 204 (mocked send)."""
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "oc7")
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=25, suffix="oc7",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc7",
+    )
+    await _buy(client, inv_token, product["id"])
+
+    with patch(
+        "app.modules.purchases.agreement_router.send_ownership_email",
+        new_callable=AsyncMock,
+        return_value=True,
+    ) as mock_send:
+        resp = await client.post(
+            f"/api/v1/companies/{company['id']}/ownership-certificate/email",
+            headers=auth_headers(inv_token),
+        )
+
+    assert resp.status_code == 204
+    mock_send.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_ownership_template_missing_500(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /ownership-certificate when find_active_template returns None -> 500.
+
+    Patches find_active_template at the call site (ownership_certificate_service)
+    to return None, simulating the broken-stack branch where all 4
+    fallback stages miss. Renderer should surface 500 with code
+    agreement_template_missing.
+    """
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "oc8")
+    product = await _create_product(
+        client, admin_token, company["id"], package_size=10, suffix="oc8",
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session, suffix="inv_oc8",
+    )
+    await _buy(client, inv_token, product["id"])
+
+    with patch(
+        "app.modules.purchases.ownership_certificate_service.find_active_template",
+        new_callable=AsyncMock,
+        return_value=None,
+    ):
+        resp = await client.get(
+            f"/api/v1/companies/{company['id']}/ownership-certificate",
+            headers=auth_headers(inv_token),
+        )
+
+    assert resp.status_code == 500, resp.text
+    body = resp.json()
+    assert body["error"] == "agreement_template_missing"

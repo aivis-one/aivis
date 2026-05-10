@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Processor Base Types (Sprint 6.1, Sprint 4.3 comment)
+# CBSHOME Backend -- Processor Base Types (Sprint 6.1, Sprint 4.3 comment,
+#                                            Refactor 2 iter 2.4)
 # =============================================================================
 #
 # Core data structures for the Distribution Engine.
@@ -32,6 +33,13 @@
 #   package size on Product. The data source on Product is now
 #   `package_size` (was `units`); see purchases/service.py where we
 #   populate context.units = product.package_size.
+#
+# Refactor 2 iter 2.4 NOTE (R2 §5.1):
+#   investor_language is the ISO 639-1 code used by the engine to
+#   resolve the document template snapshot at Purchase creation time.
+#   Defaults to "en" so existing tests / call sites that don't supply
+#   a language fall back to the platform-default English template.
+#   Real call sites populate it from `investor.user.language`.
 # =============================================================================
 
 from __future__ import annotations
@@ -105,6 +113,11 @@ class PurchaseContext:
     # with the usual "{purchase_id}" placeholder (resolved by engine).
     # If provided, must be a fully-resolved string (no placeholders left).
     reason: str | None = None
+    # Refactor 2 iter 2.4: ISO 639-1 language for the renderer's
+    # 4-stage template fallback (R2 §5.1). Default "en" so older call
+    # sites (and the bonus-only context built by complete_plan) keep
+    # working through the platform-default English fallback.
+    investor_language: str = "en"
 
 
 class ProcessorProtocol(Protocol):

@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35, updated 6.4, UX-01)
+# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35, updated 6.4,
+#                                          UX-01, Refactor 2 iter 2.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -40,6 +41,15 @@
 #
 # Sprint 6.4: record_transaction() calls for tranche_paid, completed,
 #   defaulted events.
+#
+# Refactor 2 iter 2.4 (R2 §5.1):
+#   PurchaseContext now carries `investor_language` which the engine
+#   uses to snapshot the active document template per Purchase. The
+#   tranche path loads the investor User (one extra SELECT) to read
+#   `language`. The completion-bonus path does the same -- consistency
+#   matters because the bonus Purchase rows (legal_basis=gift) get a
+#   gift_certificate template snapshot, and snapshotting against the
+#   wrong language would surface the wrong locale in the document.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
@@ -310,6 +320,12 @@ async def pay_tranche(
     company_user = await _load_user(company.user_id, session)
     platform_user = await get_platform_user(session)
 
+    # Refactor 2 iter 2.4 (R2 §5.1): we need the investor's language to
+    # snapshot the correct installment_subcontract template. The daemon
+    # entry point doesn't carry a User object, so we fetch one. Cheap
+    # SELECT, runs once per tranche.
+    investor_user = await _load_user(plan.investor_id, session)
+
     # -- 2. Compute frozen context --
     frozen_until, origin_payment_id = await compute_frozen_context(
         session, plan.investor_id
@@ -346,6 +362,7 @@ async def pay_tranche(
         reason=LedgerReason.INSTALLMENT_TRANCHE.format(
             tranche_id=str(tranche.id),
         ),
+        investor_language=investor_user.language or "en",
     )
 
     # -- 5. Execute via engine (fix #35: catch by type, not string) --
@@ -841,6 +858,11 @@ async def _award_completion_bonuses(
     company = await _load_company_any(plan.company_id, session)
     platform_user = await get_platform_user(session)
 
+    # Refactor 2 iter 2.4 (R2 §5.1): need investor language so the
+    # gift_certificate template for the bonus Purchase gets snapshotted
+    # in the right locale.
+    investor_user = await _load_user(plan.investor_id, session)
+
     transactions: list[Transaction] = []
 
     # -- Investor bonus --
@@ -925,6 +947,7 @@ async def _award_completion_bonuses(
         frozen_until=None,
         agent_chain=[],
         triggered_at=datetime.now(UTC),
+        investor_language=investor_user.language or "en",
     )
 
     purchases = await engine.write_transactions(

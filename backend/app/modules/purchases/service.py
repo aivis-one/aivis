@@ -1,6 +1,7 @@
 # =============================================================================
 # CBSHOME Backend -- Purchase Service (Sprint 6.1 + Sprint 6.2 refactor
-#                                       + Sprint 4.3 + Sprint 4.4)
+#                                       + Sprint 4.3 + Sprint 4.4
+#                                       + Refactor 2 iter 2.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -62,6 +63,13 @@
 #     purchases/service has no fan-out problem.
 #   - Removed the local `_get_pool_remaining` helper -- replaced with
 #     pools/service.get_pool_remaining (same SQL, public name).
+#
+# Refactor 2 iter 2.4:
+#   - PurchaseContext now carries `investor_language` (R2 §5.1). We
+#     read it from investor.language (NOT NULL on User, with "en" as
+#     server default for legacy rows) and pass it through to the
+#     engine, which uses it for the 4-stage template fallback when
+#     snapshotting Purchase.purchase_agreement_template_id.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -439,6 +447,13 @@ async def execute_purchase(
     # receives", not a column reference.
     amount_cents = product.package_size * product.price_per_unit_cents
 
+    # Refactor 2 iter 2.4: investor_language drives the engine's
+    # template-snapshot fallback (R2 §5.1). User.language is NOT NULL
+    # in DB, so investor.language is always a string -- the `or "en"`
+    # below is paranoia (handles a hand-built test User without
+    # language set) and matches the dataclass default.
+    investor_language = investor.language or "en"
+
     context = PurchaseContext(
         investor_id=investor.id,
         product_id=product.id,
@@ -458,6 +473,7 @@ async def execute_purchase(
             max_depth=len(dist_config.get("agent_levels", [])),
         ),
         triggered_at=now,
+        investor_language=investor_language,
     )
 
     # -- 9. Delegate to engine --
