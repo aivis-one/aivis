@@ -700,6 +700,15 @@
         "title": "Settings",
         "desc": "Profile, preferences, and agent programme"
       }
+    },
+    "productsByCompany": {
+      "title": "Products",
+      "empty": {
+        "title": "No products yet",
+        "subtitle": "This company hasn't published any products yet."
+      },
+      "errorTitle": "Could not load products",
+      "errorRetry": "Retry"
     }
   },
   "comp": {

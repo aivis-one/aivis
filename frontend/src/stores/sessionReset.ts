@@ -36,7 +36,6 @@
 // =============================================================================
 
 import { useAttachmentsStore } from '@/stores/attachments'
-import { useCompaniesStore } from '@/stores/companies'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
@@ -57,15 +56,17 @@ import { useTransactionsStore } from '@/stores/transactions'
  *
  * iter 2.5 batch 4: +useCompanyListStore (Investor companies tab) and
  * +useAttachmentsStore (CompanyOverview documents section, R2 §7.1).
- * The legacy useCompaniesStore stays for as long as the filter sheet
- * does -- removed alongside CompanyFilterSheet in batch 8.
+ *
+ * iter 2.5 batch 8: -useCompaniesStore. The legacy store backed the
+ * deleted CompanyFilterSheet on MarketView; both are gone now that
+ * the catalogue moved to CompanyListView and per-company products
+ * live in ProductsByCompanyView (R1 §1.4). One fewer reset call.
  */
 export function resetAllDataStores(): void {
   useDashboardStore().reset()
   usePortfolioStore().reset()
   useTransactionsStore().reset()
   useProductsStore().reset()
-  useCompaniesStore().reset()
   useCompanyListStore().reset()
   useAttachmentsStore().reset()
   useCompanyProfileStore().reset()
