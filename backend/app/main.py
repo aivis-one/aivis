@@ -28,7 +28,7 @@
 #                                (Refactor 2 iter 2.3, staff-flow, read-only
 #                                 inspection of per-company + platform-default
 #                                 templates)
-#   products_router           -> /api/v1/products/* (Sprint 4.2)
+#   public_products_router    -> /api/v1/public/products/* (iter 2.4 R1 §1.6.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
 #   company_dashboard_router  -> /api/v1/company/* (Sprint 4.3 / B5)
@@ -180,7 +180,9 @@ from app.modules.pools.router import router as staff_pools_router
 from app.modules.portfolio.router import router as portfolio_router
 from app.modules.posts.router import events_router, posts_router
 from app.modules.posts.staff_router import staff_events_router, staff_posts_router
-from app.modules.products.router import router as products_router
+from app.modules.products.public_router import (
+    router as public_products_router,
+)
 from app.modules.products.staff_router import router as staff_products_router
 from app.modules.purchases.router import router as purchases_router
 # Refactor 2 iter 2.4: agreement_router + ownership_router replace certificate_router.
@@ -462,7 +464,7 @@ app.include_router(public_attachments_router)
 app.include_router(staff_attachments_router)
 # Refactor 2 iter 2.3: company doc templates (staff-flow, read-only).
 app.include_router(staff_templates_router)
-app.include_router(products_router)
+app.include_router(public_products_router)
 app.include_router(staff_products_router)
 # Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).
 app.include_router(staff_pools_router)

@@ -172,7 +172,7 @@ async def test_public_list_populates_price_per_pack_cents(
     )
 
     resp = await client.get(
-        "/api/v1/products",
+        "/api/v1/public/products",
         params={"company_id": company["id"]},
     )
     assert resp.status_code == 200, f"List failed: {resp.text}"
@@ -211,7 +211,7 @@ async def test_public_detail_populates_price_per_pack_cents(
         client, token, company["id"], suffix="det"
     )
 
-    resp = await client.get(f"/api/v1/products/{product['id']}")
+    resp = await client.get(f"/api/v1/public/products/{product['id']}")
     assert resp.status_code == 200, f"Detail failed: {resp.text}"
     body = resp.json()
 

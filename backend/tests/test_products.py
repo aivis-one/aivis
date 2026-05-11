@@ -541,7 +541,7 @@ async def test_public_list_active_only(
     )
 
     resp = await client.get(
-        "/api/v1/products",
+        "/api/v1/public/products",
         params={"company_id": company["id"]},
     )
     assert resp.status_code == 200
@@ -579,7 +579,7 @@ async def test_public_detail_with_installments(
         headers=auth_headers(token),
     )
 
-    resp = await client.get(f"/api/v1/products/{product['id']}")
+    resp = await client.get(f"/api/v1/public/products/{product['id']}")
     assert resp.status_code == 200
     body = resp.json()
     # Sprint 4.3: was sold_units (count of purchases). Now available_packages
@@ -668,7 +668,7 @@ async def test_public_list_denormalises_company(
     )
 
     resp = await client.get(
-        "/api/v1/products",
+        "/api/v1/public/products",
         params={"company_id": company["id"]},
     )
     assert resp.status_code == 200
@@ -715,7 +715,7 @@ async def test_public_detail_denormalises_company(
         headers=auth_headers(token),
     )
 
-    resp = await client.get(f"/api/v1/products/{product['id']}")
+    resp = await client.get(f"/api/v1/public/products/{product['id']}")
     assert resp.status_code == 200
     body = resp.json()
 
