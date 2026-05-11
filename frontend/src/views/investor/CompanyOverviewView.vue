@@ -313,7 +313,7 @@ function onRoadmapPostClick(_postId: string): void {
             {{ t('inv.companyOverview.sectionRoadmap') }}
           </h2>
           <RoadmapTimeline
-            :items="data.roadmap"
+            :items="data.roadmap ?? []"
             @product-click="onRoadmapProductClick"
             @external-click="onRoadmapExternalClick"
             @post-click="onRoadmapPostClick"
