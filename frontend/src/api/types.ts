@@ -603,3 +603,26 @@ export type { PostListResponse } from './generated'
 export type { EventResponse } from './generated'
 
 export type { EventListResponse } from './generated'
+
+// ===========================================================================
+// iter 2.5 -- R2 §7.1 + R2 §3.3 (company attachments, Investor read flow)
+//
+// The auth-flow attachment endpoints landed in iter 2.2 backend; the
+// frontend simply did not call them until iter 2.5. The Investor
+// CompanyOverviewView consumes the list to render the "Документы
+// компании" section (L1-grouping by category, mime icons, client-side
+// language filter, hide-when-empty).
+//
+// Source of truth: backend/app/modules/companies/attachments_router.py
+//   and backend/app/modules/companies/schemas.py::AttachmentResponse.
+//
+// AttachmentPatchBody is intentionally NOT re-exported here -- staff
+// UI (R2 §6.2) ships in iter 2.7 and will surface its own re-export
+// section.
+//
+// Public-flow variant (AttachmentResponse via /api/v1/public/...) uses
+// the same DTO shape; when iter 2.6 wires PublicShell, no new type
+// re-export is required.
+// ===========================================================================
+
+export type { AttachmentResponse } from './generated'

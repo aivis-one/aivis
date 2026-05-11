@@ -1,14 +1,17 @@
 // =============================================================================
-// CBSHOME Frontend -- useCertificateBlob Composable (Phase F4.4 B3 + B5-post)
+// CBSHOME Frontend -- useAgreementBlob Composable
+//                       (iter 2.5 R2 §5.5; replaces useCertificateBlob)
 // =============================================================================
 //
-// Wrap `fetchCertificateBlob` with automatic lifecycle hygiene. The
-// API call returns a URL from URL.createObjectURL, which pins the
-// underlying blob in memory until URL.revokeObjectURL is called.
-// Doing that by hand at every call-site is error-prone: a forgotten
-// onUnmounted leaks for the whole SPA session (a certificate is a
-// PDF-sized HTML, tens to hundreds of KB), and a second load on the
-// same composable instance leaks the previous URL.
+// Wrap an HTML-blob fetcher (fetchAgreementBlob or
+// fetchOwnershipCertificateBlob) with automatic lifecycle hygiene. The
+// fetcher returns a URL from URL.createObjectURL, which pins the
+// underlying blob in memory until URL.revokeObjectURL is called. Doing
+// that by hand at every call-site is error-prone:
+//   - a forgotten onUnmounted leaks for the whole SPA session (a
+//     rendered agreement HTML is tens to hundreds of KB);
+//   - a second load on the same composable instance leaks the previous
+//     URL.
 //
 // This composable solves both:
 //   - Each successful `load()` revokes the URL from the previous
@@ -18,30 +21,51 @@
 //     reason, e.g. `effectScope`-based isolation in a future dialog
 //     wrapper).
 //
+// PARAMETERISED FETCHER (delta vs former useCertificateBlob).
+//   The old composable hardcoded `fetchCertificateBlob` and accepted a
+//   purchaseId. R2 §5.3 now exposes two document surfaces -- per-
+//   Purchase agreement (id = purchaseId) and per-investor-company
+//   ownership certificate (id = companyId) -- that share identical
+//   blob-URL lifecycle semantics. To avoid two near-identical
+//   composables, the fetcher is passed in:
+//
+//     const sheet = useAgreementBlob(
+//       props.mode === 'ownership'
+//         ? fetchOwnershipCertificateBlob
+//         : fetchAgreementBlob,
+//     )
+//
+//   The `load(id)` signature stays the same -- the composable does not
+//   know or care whether `id` is a purchaseId or a companyId; that is
+//   the caller's contract with its fetcher.
+//
 // USAGE:
 //   const { blobUrl, loading, errored, load, clear } =
-//     useCertificateBlob()
+//     useAgreementBlob(fetchAgreementBlob)
 //
 //   await load(purchaseId)  // populates blobUrl, or flips errored
 //   <iframe v-if="blobUrl" :src="blobUrl" sandbox="" />
 //
 // ERROR MODEL.
-//   load() mirrors fetchCertificateBlob: it throws ApiResponseError
-//   / ApiNetworkError / ApiTimeoutError on failure. The composable
-//   also flips the local `errored` ref to true so templates can do
-//   `v-if="errored"` without binding to the throw chain. Callers
-//   that need the error object for a toast wrap load() in a try/catch.
+//   load() mirrors the fetcher's throw shape: ApiResponseError /
+//   ApiNetworkError / ApiTimeoutError on failure. The composable also
+//   flips the local `errored` ref so templates can do `v-if="errored"`
+//   without binding to the throw chain. Callers that need the error
+//   object for a toast wrap load() in a try/catch.
 //
-// EPOCH GUARD (B5-post).
-//   `load()` is re-entrant: a sheet that watches `[open, purchaseId]`
-//   can call it again while the previous fetch is still in flight
-//   (rapid row taps, prop churn during transition, etc.). Without a
-//   guard:
+//   429 / 500 mapping is the CALLER's job (R2 §5.3, §5.6 ERR-11-01) --
+//   this composable surfaces the raw ApiResponseError.status so the
+//   sheet can branch on it.
+//
+// EPOCH GUARD (carried from F4.4 B5-post).
+//   `load()` is re-entrant: a sheet that watches `[open, id]` can call
+//   it again while the previous fetch is still in flight (rapid row
+//   taps, prop churn during transition, etc.). Without a guard:
 //     - The losing URL would be written to blobUrl and then
 //       immediately overwritten by the winner without revoke, leaking
 //       the losing blob for the rest of the component's lifetime.
 //     - `loading` would flip to false while the winning fetch is
-//     still in flight (the loser's `finally` clears it early).
+//       still in flight (the loser's `finally` clears it early).
 //     - `errored` would reflect the loser's outcome after the winner
 //       already succeeded.
 //   The fix is a monotonically-increasing epoch per composable
@@ -53,16 +77,23 @@
 // SANDBOX REMINDER.
 //   The blob URL shares the page's origin once rendered in an iframe,
 //   so consumers MUST set `sandbox=""` (or an allow-list stricter
-//   than the default same-origin) when embedding it. See TD-F11b.
-//   This composable does not enforce the attribute -- Vue's template
-//   layer is the right place to lock it in.
+//   than the default same-origin) when embedding it. See TD-F11b in
+//   CBSHOME-Frontend.md. This composable does not enforce the
+//   attribute -- Vue's template layer is the right place to lock it in.
 // =============================================================================
 
 import { onScopeDispose, ref } from 'vue'
 
-import { fetchCertificateBlob } from '@/api/certificates'
+/**
+ * Fetcher signature accepted by useAgreementBlob. Both
+ * fetchAgreementBlob (purchaseId) and fetchOwnershipCertificateBlob
+ * (companyId) match it byte-for-byte; future document surfaces with
+ * the same blob-URL contract can be plugged in here without changes
+ * to this composable.
+ */
+export type BlobFetcher = (id: string) => Promise<string>
 
-export function useCertificateBlob() {
+export function useAgreementBlob(fetcher: BlobFetcher) {
   const blobUrl = ref<string | null>(null)
   const loading = ref(false)
   const errored = ref(false)
@@ -73,10 +104,10 @@ export function useCertificateBlob() {
   let epoch = 0
 
   /**
-   * Fetch the certificate HTML for `purchaseId` and publish a fresh
-   * blob URL on `blobUrl`. Revokes any previous URL held by this
-   * composable instance before doing so -- a common pattern when the
-   * sheet reopens on a different purchase without unmounting between.
+   * Fetch the document HTML for `id` and publish a fresh blob URL on
+   * `blobUrl`. Revokes any previous URL held by this composable
+   * instance before doing so -- a common pattern when the sheet
+   * reopens on a different id without unmounting between.
    *
    * Rethrows the underlying error. `errored` flips to true for
    * template-driven error states; callers that also show a toast
@@ -84,7 +115,7 @@ export function useCertificateBlob() {
    * rethrows so the caller's try/catch chain is not silently broken,
    * but it will not flip `errored` -- that belongs to the winner.
    */
-  async function load(purchaseId: string): Promise<void> {
+  async function load(id: string): Promise<void> {
     const mine = ++epoch
     loading.value = true
     errored.value = false
@@ -96,7 +127,7 @@ export function useCertificateBlob() {
     }
     let fresh: string | null = null
     try {
-      fresh = await fetchCertificateBlob(purchaseId)
+      fresh = await fetcher(id)
     } catch (err) {
       if (mine === epoch) {
         errored.value = true

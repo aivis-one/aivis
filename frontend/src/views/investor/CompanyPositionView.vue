@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyPositionView (Phase F4.4 B3)
+// CBSHOME Frontend -- CompanyPositionView
+//                       (Phase F4.4 B3 + iter 2.5 batch 2 minimal swap)
 // =============================================================================
 //
 // Per-company investor position detail. Sub-route under the portfolio
@@ -23,7 +24,7 @@
 //     1. Aggregate block -- two-column stat grid (total units / avg
 //        price / invested / current value / purchased / gifted).
 //     2. Purchase list -- one row per PurchaseItemResponse with a
-//        "Certificate" button that opens CertificateSheet.
+//        "Certificate" button that opens AgreementSheet.
 //     3. Infinite scroll sentinel at the bottom.
 //     4. loadMore error banner + Retry when currentLoadMoreErrored.
 //
@@ -32,10 +33,17 @@
 //   requested company. The store flips currentErrored; the template
 //   renders a NOT-FOUND state with a "back to portfolio" CTA.
 //
-// CERTIFICATE FLOW.
+// DOCUMENT FLOW (iter 2.5 batch 2 minimal swap).
 //   Tapping "Certificate" on a purchase row sets selectedPurchaseId
-//   and opens CertificateSheet. The sheet owns the fetch via
-//   useCertificateBlob; this view only tracks which row is active.
+//   and opens AgreementSheet with mode='agreement'. The sheet owns
+//   the fetch via useAgreementBlob (R2 §5.5 rename of
+//   useCertificateBlob); this view only tracks which row is active.
+//   Batch 7 of iter 2.5 will extend this view with:
+//     - a header-level "Ownership certificate" CTA (mode='ownership');
+//     - per-purchase email button alongside the view button;
+//     - legalBasis threaded into AgreementSheet so the title swaps
+//       between Purchase agreement / Gift certificate / Installment
+//       subcontract per row.
 // =============================================================================
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -45,7 +53,7 @@ import { storeToRefs } from 'pinia'
 import { CalendarClock, FileText, Gift, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
-import CertificateSheet from '@/components/shared/CertificateSheet.vue'
+import AgreementSheet from '@/components/shared/AgreementSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { isAgentShell } from '@/router/helpers'
@@ -350,10 +358,24 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <!-- Certificate sheet -->
-    <CertificateSheet
+    <!--
+      Agreement sheet (iter 2.5 batch 2 minimal wiring).
+
+      mode='agreement' + id=selectedPurchaseId reproduces the legacy
+      single-document UX. Batch 7 will:
+        - thread legalBasis through so the title swaps between
+          "Purchase agreement" / "Gift certificate" / "Installment
+          subcontract" per row;
+        - mount a second AgreementSheet with mode='ownership' for the
+          header-level "Сертификат владения" CTA;
+        - add a per-purchase email button alongside the view button.
+      Today the sheet's title falls through to the generic 'document'
+      label until the legalBasis wiring lands.
+    -->
+    <AgreementSheet
       :open="certificateSheetOpen"
-      :purchase-id="selectedPurchaseId"
+      mode="agreement"
+      :id="selectedPurchaseId"
       @close="closeCertificate"
     />
   </div>
