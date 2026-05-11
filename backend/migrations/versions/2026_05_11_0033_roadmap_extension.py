@@ -32,7 +32,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0033_roadmap_extension"
-down_revision: Union[str, None] = "0032_purchase_agreement_template_id"
+down_revision: Union[str, None] = "0032_purchase_template_id"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
