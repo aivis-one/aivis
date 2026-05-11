@@ -438,11 +438,11 @@ async def test_available_packages_decreases(
 
     # Initial availability: pool=100, p1 size=10 -> 10 packs;
     # p2 size=20 -> 5 packs.
-    resp1 = await client.get(f"/api/v1/products/{product1['id']}")
+    resp1 = await client.get(f"/api/v1/public/products/{product1['id']}")
     assert resp1.status_code == 200
     assert resp1.json()["available_packages"] == 10
 
-    resp2 = await client.get(f"/api/v1/products/{product2['id']}")
+    resp2 = await client.get(f"/api/v1/public/products/{product2['id']}")
     assert resp2.status_code == 200
     assert resp2.json()["available_packages"] == 5
 
@@ -460,11 +460,11 @@ async def test_available_packages_decreases(
     )
 
     # After: p1 = floor(90/10) = 9, p2 = floor(90/20) = 4. Both dropped.
-    resp1 = await client.get(f"/api/v1/products/{product1['id']}")
+    resp1 = await client.get(f"/api/v1/public/products/{product1['id']}")
     assert resp1.status_code == 200
     assert resp1.json()["available_packages"] == 9
 
-    resp2 = await client.get(f"/api/v1/products/{product2['id']}")
+    resp2 = await client.get(f"/api/v1/public/products/{product2['id']}")
     assert resp2.status_code == 200
     assert resp2.json()["available_packages"] == 4
 
