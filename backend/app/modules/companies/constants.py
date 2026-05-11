@@ -232,6 +232,16 @@ PUBLIC_LIST_RATE_LIMIT: tuple[int, int] = (60, 60)
 PUBLIC_DOWNLOAD_RATE_LIMIT: tuple[int, int] = (300, 60)
 
 
+# Public companies & products storefront rate limit (R1 §1.6.4, iter 2.4).
+# Same (max_requests, window_seconds) shape as the attachments limits
+# above. companies/public_router and products/public_router share a
+# single Redis bucket via the `public_companies:` key prefix so the
+# 60-per-minute budget covers both surfaces -- a client browsing the
+# storefront should hit list+detail+product+stats endpoints freely
+# without bumping against per-endpoint counters.
+PUBLIC_COMPANIES_RATE_LIMIT: tuple[int, int] = (60, 60)
+
+
 # =============================================================================
 # iter 2.4 -- Roadmap cover image (R1 §5)
 # =============================================================================

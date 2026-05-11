@@ -54,9 +54,7 @@
 #   staff_events_router       -> /api/v1/staff/events/* (Sprint 9.1)
 #   investor_dashboard_router -> /api/v1/dashboard/* (Sprint 9.2)
 #   portfolio_router          -> /api/v1/portfolio/* (Sprint 9.2)
-#   agreement_router          -> /api/v1/purchases/{id}/agreement (Refactor 2 iter 2.4)
-#   ownership_router          -> /api/v1/companies/{id}/ownership-certificate
-#                                (Refactor 2 iter 2.4)
+#   certificate_router        -> /api/v1/purchases/* (Sprint 9.2)
 #
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - +staff_pools_router for POST/PATCH /staff/companies/{id}/pool.
@@ -86,21 +84,6 @@
 #     together in the OpenAPI doc. MVP exposes only GET endpoints --
 #     templates are uploaded through MinIO Web UI + reconcile (R2 §4.8);
 #     the post-MVP UI editor will add POST/PATCH on the same prefix.
-#
-# Refactor 2 iter 2.4 CHANGES (R2 §5.3):
-#   - BREAKING: certificate_router REMOVED. The endpoints
-#       GET  /api/v1/purchases/{id}/certificate
-#       POST /api/v1/purchases/{id}/certificate/email
-#     are gone; no 301/302 redirect. Replaced by:
-#       GET  /api/v1/purchases/{id}/agreement
-#       POST /api/v1/purchases/{id}/agreement/email
-#     served by the new agreement_router.
-#   - +ownership_router: /api/v1/companies/{id}/ownership-certificate
-#     and /ownership-certificate/email. Live aggregate of investor's
-#     non-reversed Purchases per company (R2 §5.3).
-#   - Both routers live in app/modules/purchases/agreement_router.py
-#     because they share the same Jinja2 / MinIO / xhtml2pdf rendering
-#     machinery.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons
@@ -152,6 +135,9 @@ from app.modules.companies.attachments_router import router as attachments_route
 from app.modules.companies.attachments_staff_router import (
     router as staff_attachments_router,
 )
+from app.modules.companies.public_router import (
+    router as public_companies_router,
+)
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.companies.templates_staff_router import (
@@ -180,11 +166,7 @@ from app.modules.posts.staff_router import staff_events_router, staff_posts_rout
 from app.modules.products.router import router as products_router
 from app.modules.products.staff_router import router as staff_products_router
 from app.modules.purchases.router import router as purchases_router
-# Refactor 2 iter 2.4: agreement_router + ownership_router replace certificate_router.
-from app.modules.purchases.agreement_router import (
-    agreement_router,
-    ownership_router,
-)
+from app.modules.purchases.certificate_router import router as certificate_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.consistency.router import router as consistency_router
@@ -447,6 +429,11 @@ app.include_router(avatar_router)
 app.include_router(dashboard_router)
 app.include_router(kyc_admin_router)
 app.include_router(companies_router)
+# iter 2.4 R1 §1.6.2: public storefront for companies (list + detail
+# with stats + roadmap). Lives at /api/v1/public/companies/* to match
+# the attachments public-flow shape and centralise WAF / rate-limit
+# config under a single prefix.
+app.include_router(public_companies_router)
 app.include_router(staff_companies_router)
 # Refactor 2 iter 2.2: company attachments (auth-flow + public-flow + staff-flow).
 app.include_router(attachments_router)
@@ -482,10 +469,7 @@ app.include_router(staff_posts_router)
 app.include_router(staff_events_router)
 app.include_router(investor_dashboard_router)
 app.include_router(portfolio_router)
-# Refactor 2 iter 2.4: per-Purchase agreement + per-investor-company ownership
-# certificate. Replaces certificate_router (BREAKING -- no redirect).
-app.include_router(agreement_router)
-app.include_router(ownership_router)
+app.include_router(certificate_router)
 
 
 # ---------------------------------------------------------------------------

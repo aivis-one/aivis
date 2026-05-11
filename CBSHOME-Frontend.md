@@ -1,7 +1,7 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.7
-**Дата:** 3 мая 2026
+**Версия:** 2.8
+**Дата:** 11 мая 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
@@ -1354,7 +1354,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 | F8: Notifications | 8.1–8.3 | ✅ | Нет |
 | F9: Полировка + Posts | 9.1, 6.4 | ✅ | Нет |
 
-**Стратегия:** F5 можно начинать сейчас. F4 правится частично, F6 ждёт после Refactor 1 + Refactor 2 (см. `CBSHOME-Refactor-Investor-Market-And-Staff.md` + `CBSHOME-Refactor-Company-Docs.md`). Новый раздел **F-Staff: Platform tab** (Refactor 1 §2-4) -- расширение F3, в Frontend ТЗ v2.7 не описан, реализуется по тексту Refactor 1. Все backend gaps (G1–G5) закрыты.
+**Стратегия:** F1-F5 закрыты (F5 deployed по итогам Sprint 4.5 → 4.6 → F5.1 → F5.2, см. trailer v3.7). F4 части (CompanyOverviewView, CompanyPositionView, MarketView) переписываются внутри Refactor 1 §1 + Refactor 2 §5.5/§7.1. После закрытия R1+R2 (iter 2.5 Investor frontend, iter 2.6 Public frontend, iter 2.7 Staff frontend) возвращаемся к плановым phases — F6 (Agent), F7+ далее. Новый раздел **F-Staff: Platform tab** (Refactor 1 §2-4) — расширение F3, в Frontend ТЗ v2.8 не описан, реализуется по тексту Refactor 1. Все backend gaps (G1–G5) закрыты.
 
 ---
 

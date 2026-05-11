@@ -416,7 +416,7 @@ async def test_delete_roadmap_item(
         json={"status": "active"},
         headers=auth_headers(token),
     )
-    resp3 = await client.get(f"/api/v1/companies/{company['id']}")
+    resp3 = await client.get(f"/api/v1/public/companies/{company['id']}")
     assert resp3.status_code == 200
     assert len(resp3.json()["roadmap"]) == 0
 
@@ -446,7 +446,7 @@ async def test_public_list_active_only(
     assert resp.status_code == 200
 
     # Public list should show only c1.
-    resp2 = await client.get("/api/v1/companies")
+    resp2 = await client.get("/api/v1/public/companies")
     assert resp2.status_code == 200
     body = resp2.json()
     ids = [c["id"] for c in body["items"]]
@@ -480,7 +480,7 @@ async def test_public_list_search_filter(
         await _activate(client, token, c["id"])
 
     # Substring match in the middle.
-    resp = await client.get("/api/v1/companies", params={"search": "Pro"})
+    resp = await client.get("/api/v1/public/companies", params={"search": "Pro"})
     assert resp.status_code == 200
     ids = [c["id"] for c in resp.json()["items"]]
     assert immo["id"] in ids
@@ -488,7 +488,7 @@ async def test_public_list_search_filter(
     assert cbs["id"] not in ids
 
     # Case-insensitive: lowercase needle matches title case name.
-    resp2 = await client.get("/api/v1/companies", params={"search": "cbs"})
+    resp2 = await client.get("/api/v1/public/companies", params={"search": "cbs"})
     assert resp2.status_code == 200
     ids2 = [c["id"] for c in resp2.json()["items"]]
     assert cbs["id"] in ids2
@@ -497,9 +497,52 @@ async def test_public_list_search_filter(
 
     # No match -> empty list, total = 0.
     resp3 = await client.get(
-        "/api/v1/companies", params={"search": "nonexistent-xyz"}
+        "/api/v1/public/companies", params={"search": "nonexistent-xyz"}
     )
     assert resp3.status_code == 200
     body3 = resp3.json()
     assert body3["total"] == 0
     assert body3["items"] == []
+
+
+# ---------------------------------------------------------------------------
+# Test 12: Public companies rate-limit exceeded -> 400 (iter 2.4 R1 §1.6.4)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_public_companies_rate_limit_exceeded(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Per-IP rate limit on the public companies surface (R1 §1.6.4).
+
+    Patches PUBLIC_COMPANIES_RATE_LIMIT to (3, 60) so we only need 4
+    requests to prove the limiter fires. A unique X-Real-IP header
+    isolates this test's Redis bucket from the other tests in the
+    file (which share request.client.host="127.0.0.1") so a fresh
+    counter starts at zero regardless of test order.
+    """
+    monkeypatch.setattr(
+        "app.modules.companies.public_router.PUBLIC_COMPANIES_RATE_LIMIT",
+        (3, 60),
+    )
+
+    # Dedicated TEST-NET-1 IP (RFC 5737) so this test does not collide
+    # with the shared 127.0.0.1 bucket used by other tests in the run.
+    headers = {"X-Real-IP": "192.0.2.99"}
+    url = "/api/v1/public/companies"
+
+    # First three requests succeed.
+    for i in range(3):
+        resp = await client.get(url, headers=headers)
+        assert resp.status_code == 200, (
+            f"request #{i + 1} failed: {resp.text}"
+        )
+
+    # Fourth request -> 400 with the public-flow message.
+    over = await client.get(url, headers=headers)
+    assert over.status_code == 400, over.text
+    assert "Too many requests" in over.json().get("message", "")
+
