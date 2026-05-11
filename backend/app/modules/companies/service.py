@@ -134,6 +134,7 @@ from app.modules.auth.service import hash_password, get_platform_user_id
 from app.modules.companies.constants import (
     ALLOWED_ATTACHMENT_MIME_TYPES,
     DocumentTemplateKind,
+    ROADMAP_COVER_EXTENSION_TO_MIME,
     RoadmapItemKind,
     TEMPLATE_ASSET_EXTENSION_TO_MIME,
     TemplateStatus,
@@ -913,6 +914,182 @@ async def delete_roadmap_item(
         target_type="roadmap_item",
         target_id=item.id,
         data={"company_id": str(company_id)},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Roadmap cover image (iter 2.4 R1 §5)
+# ---------------------------------------------------------------------------
+
+
+def validate_roadmap_cover_mime_by_filename(filename: str) -> tuple[str, str]:
+    """Return (mime, extension) for a roadmap cover upload, or raise.
+
+    Mirrors validate_attachment_mime_by_filename: trust the filename
+    extension, NOT the client-supplied multipart Content-Type. A request
+    claiming "image/png" while uploading evil.svg gets rejected here.
+
+    Returns:
+        Tuple (mime, ext-with-dot). Both lowercase. ext is preserved
+        for use in the MinIO storage key.
+
+    Raises:
+        BadRequestError: extension absent or not in the whitelist.
+    """
+    lowered = filename.lower()
+    # Manual split because os.path.splitext doesn't help for filenames
+    # like "cover" (no extension) -- we want a clear 400 there too.
+    dot = lowered.rfind(".")
+    ext = lowered[dot:] if dot >= 0 else ""
+    mime = ROADMAP_COVER_EXTENSION_TO_MIME.get(ext)
+    if mime is None:
+        allowed = sorted(ROADMAP_COVER_EXTENSION_TO_MIME.keys())
+        raise BadRequestError(
+            f"Unsupported cover image extension: '{ext}'. "
+            f"Allowed: {allowed}"
+        )
+    return mime, ext
+
+
+async def set_roadmap_cover(
+    session: AsyncSession,
+    company_id: UUID,
+    item_id: UUID,
+    staff: User,
+    *,
+    file_data: BinaryIO,
+    file_size_bytes: int,
+    content_type: str,
+    file_extension: str,
+) -> CompanyRoadmapItem:
+    """Upload / replace the cover image of a roadmap item (R1 §5).
+
+    Storage flow (same orphan-tolerant pattern as create_attachment):
+      1. upload_object(new_key) BEFORE the DB write. If the outer
+         transaction is later rolled back, the orphan stays in MinIO
+         until a future reconcile-roadmap-covers sweep.
+      2. session.flush() with the new cover_storage_key.
+      3. AFTER flush, best-effort delete_object(old_key) when the new
+         and old keys differ. Same-extension uploads overwrite in
+         place and skip the delete. Failures here are logged, not
+         raised -- a stale object is preferable to a 5xx response.
+
+    Raises:
+        NotFoundError: company / item not found.
+        StorageError:  any MinIO failure on the upload step bubbles up
+                       (the DB write has not happened yet, so this is
+                       a clean rollback).
+    """
+    await get_company(company_id, session)
+    item = await _get_roadmap_item(company_id, item_id, session)
+
+    old_storage_key = item.cover_storage_key
+    new_storage_key = (
+        f"companies/{company_id}/roadmap/{item_id}/cover{file_extension}"
+    )
+
+    # Upload first. Orphan-on-rollback is acceptable here; a row
+    # pointing at a missing object would not be.
+    await upload_object(
+        new_storage_key,
+        file_data,
+        content_type,
+        content_length=file_size_bytes,
+    )
+
+    item.cover_storage_key = new_storage_key
+    await session.flush()
+    await session.refresh(item)
+
+    # Same-extension replace overwrote the same MinIO key -- nothing
+    # to clean up. Cross-extension replace leaves an old object that
+    # we delete here, best-effort.
+    if old_storage_key and old_storage_key != new_storage_key:
+        try:
+            await delete_object(old_storage_key)
+        except StorageError as exc:
+            logger.warning(
+                "roadmap_cover_old_delete_failed",
+                item_id=str(item_id),
+                storage_key=old_storage_key,
+                error=str(exc),
+            )
+
+    await record_audit(
+        session=session,
+        event="company.roadmap_cover_uploaded",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="roadmap_item",
+        target_id=item.id,
+        data={
+            "company_id": str(company_id),
+            "storage_key": new_storage_key,
+            "content_type": content_type,
+            "file_size_bytes": file_size_bytes,
+        },
+    )
+
+    logger.info(
+        "roadmap_cover_uploaded",
+        item_id=str(item.id),
+        company_id=str(company_id),
+        staff_id=str(staff.id),
+        storage_key=new_storage_key,
+        size=file_size_bytes,
+    )
+
+    return item
+
+
+async def delete_roadmap_cover(
+    company_id: UUID,
+    item_id: UUID,
+    staff: User,
+    session: AsyncSession,
+) -> None:
+    """Remove the cover image from a roadmap item (R1 §5).
+
+    Returns 404 when no cover is present -- the operation is explicit,
+    not a silent no-op, so the Staff UI can decide what to render.
+
+    Storage delete is best-effort: a missing object (manual deletion,
+    eventual consistency window, etc.) does not block the DB update.
+
+    Raises:
+        NotFoundError: company / item not found, or item has no cover.
+    """
+    await get_company(company_id, session)
+    item = await _get_roadmap_item(company_id, item_id, session)
+
+    if item.cover_storage_key is None:
+        raise NotFoundError("Roadmap item has no cover image")
+
+    storage_key = item.cover_storage_key
+    item.cover_storage_key = None
+    await session.flush()
+
+    try:
+        await delete_object(storage_key)
+    except StorageError as exc:
+        logger.warning(
+            "roadmap_cover_delete_failed",
+            item_id=str(item_id),
+            storage_key=storage_key,
+            error=str(exc),
+        )
+
+    await record_audit(
+        session=session,
+        event="company.roadmap_cover_deleted",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="roadmap_item",
+        target_id=item.id,
+        data={
+            "company_id": str(company_id),
+            "storage_key": storage_key,
+        },
     )
 
 

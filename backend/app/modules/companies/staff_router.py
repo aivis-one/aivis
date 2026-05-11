@@ -28,14 +28,16 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
+from app.core.exceptions import BadRequestError
 from app.modules.auth.dependencies import (
     get_current_user_write,
     require_staff_permission,
 )
+from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
 from app.modules.companies.schemas import (
     CompanyResponse,
     CreateCompanyRequest,
@@ -50,11 +52,14 @@ from app.modules.companies.service import (
     build_roadmap_item_response,
     create_company,
     create_roadmap_item,
+    delete_roadmap_cover,
     delete_roadmap_item,
     reorder_roadmap,
+    set_roadmap_cover,
     update_company,
     update_price,
     update_roadmap_item,
+    validate_roadmap_cover_mime_by_filename,
 )
 from app.modules.staff.constants import is_admin
 from app.modules.staff.permissions import require_financial_operations
@@ -247,3 +252,97 @@ async def delete_roadmap_item_endpoint(
 ) -> None:
     """Soft-delete a roadmap item."""
     await delete_roadmap_item(company_id, item_id, staff, session)
+
+
+# ---------------------------------------------------------------------------
+# Roadmap cover image (iter 2.4 R1 §5)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_upload_size(file: UploadFile) -> int:
+    """Return the upload's size without reading the body into memory.
+
+    Mirrors attachments_staff_router._resolve_upload_size: prefer the
+    Starlette-parsed UploadFile.size (from the multipart Content-Length
+    header); fall back to seek/tell on the SpooledTemporaryFile when
+    Starlette could not derive a size; surface 0 as the conservative
+    default if even that is unavailable -- the storage layer will then
+    reject the upload via the bucket-level body limit.
+    """
+    if file.size is not None:
+        return file.size
+
+    handle = file.file
+    try:
+        handle.seek(0, 2)
+        size = handle.tell()
+        handle.seek(0)
+        return size
+    except (OSError, AttributeError):
+        return 0
+
+
+@router.put(
+    "/{company_id}/roadmap/{item_id}/cover",
+    response_model=RoadmapItemResponse,
+)
+async def set_roadmap_cover_endpoint(
+    company_id: UUID,
+    item_id: UUID,
+    file: UploadFile = File(...),
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> RoadmapItemResponse:
+    """Upload / replace the cover image for a roadmap item (R1 §5).
+
+    PUT semantics -- repeated calls overwrite. Mime is derived from
+    the filename extension (PNG / JPEG / WEBP); the multipart
+    Content-Type header sent by the client is ignored to neutralise
+    spoofed-mime stored-XSS attacks (mirrors attachments staff router).
+
+    Size limit is enforced here (BadRequestError -> 400) before the
+    bytes reach the storage layer.
+    """
+    original_filename = file.filename or "untitled"
+    content_type, ext = validate_roadmap_cover_mime_by_filename(
+        original_filename
+    )
+    file_size_bytes = _resolve_upload_size(file)
+    if file_size_bytes > ROADMAP_COVER_MAX_BYTES:
+        raise BadRequestError(
+            f"Cover image exceeds {ROADMAP_COVER_MAX_BYTES} bytes "
+            f"({file_size_bytes} given)"
+        )
+
+    item = await set_roadmap_cover(
+        session=session,
+        company_id=company_id,
+        item_id=item_id,
+        staff=staff,
+        file_data=file.file,
+        file_size_bytes=file_size_bytes,
+        content_type=content_type,
+        file_extension=ext,
+    )
+    # Post snippet not embedded -- the endpoint is per-item and does
+    # not change the post link; frontend refetches detail when it
+    # needs the embedded post.
+    return await build_roadmap_item_response(item, None, session)
+
+
+@router.delete(
+    "/{company_id}/roadmap/{item_id}/cover",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_roadmap_cover_endpoint(
+    company_id: UUID,
+    item_id: UUID,
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Remove the cover image from a roadmap item.
+
+    404 when no cover is set -- the operation is explicit so the UI
+    knows it was a no-op instead of treating empty cover as success.
+    """
+    await delete_roadmap_cover(company_id, item_id, staff, session)

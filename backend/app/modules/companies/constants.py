@@ -233,6 +233,47 @@ PUBLIC_DOWNLOAD_RATE_LIMIT: tuple[int, int] = (300, 60)
 
 
 # =============================================================================
+# iter 2.4 -- Roadmap cover image (R1 §5)
+# =============================================================================
+#
+# Cover images live next to attachments in MinIO but are NOT
+# CompanyAttachment rows: each cover is one-of for its parent roadmap
+# item, addressed by a single column on the row rather than by a
+# separate metadata record. Reuses the storage layer (upload_object /
+# delete_object / generate_presigned_url) and the same defence-in-depth
+# pattern as attachments -- validate by filename extension, do not trust
+# client multipart Content-Type.
+
+# Mime whitelist for roadmap cover uploads. Subset of the attachment
+# whitelist focused on web-image formats. SVG is intentionally excluded
+# (same reasoning as TEMPLATE_ASSET_MIME_WHITELIST: stored-XSS via inline
+# scripts even with Content-Disposition: attachment).
+ROADMAP_COVER_MIME_WHITELIST: frozenset[str] = frozenset({
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+})
+
+
+# Filename-extension -> mime resolver for the cover upload endpoint.
+# Used by the staff router to derive a trustworthy mime and to build
+# the MinIO storage key (extension preserved). The set of values MUST
+# be a subset of ROADMAP_COVER_MIME_WHITELIST.
+ROADMAP_COVER_EXTENSION_TO_MIME: dict[str, str] = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+}
+
+
+# Maximum cover size in bytes. Enforced by the staff router before the
+# upload reaches the storage layer; Nginx caps the request body at
+# 100 MB platform-wide so this is the application-level guard.
+ROADMAP_COVER_MAX_BYTES: int = 10 * 1024 * 1024  # 10 MiB
+
+
+# =============================================================================
 # Refactor 2 iter 2.3 -- Company Document Templates
 # =============================================================================
 #
