@@ -117,6 +117,10 @@ export interface Body_replace_attachment_staff_endpoint_api_v1_staff_companies__
   file: string
 }
 
+export interface Body_set_roadmap_cover_endpoint_api_v1_staff_companies__company_id__roadmap__item_id__cover_put {
+  file: string
+}
+
 /** Single commission or volume bonus entry. */
 export interface CommissionEntry {
   type: string
