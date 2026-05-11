@@ -24,17 +24,17 @@
 //   kind chip           -- always (milestone / event / announcement)
 //   status chip         -- when status is present and non-empty
 //   description         -- ONLY when post_id is null. A linked post
---                          supersedes the inline description; rendering
---                          both would duplicate content.
+//                          supersedes the inline description; rendering
+//                          both would duplicate content.
 //   post snippet        -- when item.post is non-null: mini card with
---                          cover_url / title / excerpt + "Read more"
---                          link. Read-more emits `post-click`.
+//                          cover_url / title / excerpt + "Read more"
+//                          link. Read-more emits `post-click`.
 //   "View product" btn  -- when linked_product_id is set
 //   "Open" btn          -- when external_url is set
 //
 // END MARKER.
 //   The last visual element is a terminal dot + label
---   "Beginning of company history" (i18n key inv.roadmap.endMarker).
+//   "Beginning of company history" (i18n key inv.roadmap.endMarker).
 //   The spec originally proposed including the company's founded_at
 //   year in the marker label, but the final iter 2.4 backend does
 //   NOT emit `founded_at` on PublicCompanyStatsResponse. The marker
@@ -45,9 +45,9 @@
 //   By spec, the parent view (CompanyOverviewView) skips rendering
 //   the entire Roadmap section -- including this component -- when
 //   `roadmap.items` is empty. This component therefore assumes
---   `items.length > 0`. Defensive coding inside the template
---   (v-if="items.length") would mask a contract violation, so it is
---   deliberately absent.
+//   `items.length > 0`. Defensive coding inside the template
+//   (v-if="items.length") would mask a contract violation, so it is
+//   deliberately absent.
 //
 // EMITS, NOT NAVIGATION.
 //   The component is shell-agnostic. Navigation (which depends on
