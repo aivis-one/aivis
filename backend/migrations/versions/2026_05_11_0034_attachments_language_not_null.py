@@ -1,8 +1,12 @@
 """attachments language NOT NULL -- iter 2.4-post mini-fix
 
-Revision ID: 0034_attachments_language_not_null
+Revision ID: 0034_attachments_lang_notnull
 Revises: 0033_roadmap_extension
 Create Date: 2026-05-11 14:00:00.000000
+
+Naming note: the revision id is kept under 32 characters because
+alembic_version.version_num is VARCHAR(32) by default. Longer ids
+truncate-fail on the final UPDATE alembic_version statement.
 
 Changes:
   - Backfill: UPDATE company_attachments SET language='en'
@@ -35,7 +39,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0034_attachments_language_not_null"
+revision: str = "0034_attachments_lang_notnull"
 down_revision: Union[str, None] = "0033_roadmap_extension"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
