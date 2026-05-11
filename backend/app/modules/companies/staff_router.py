@@ -37,8 +37,6 @@ from app.modules.auth.dependencies import (
     require_staff_permission,
 )
 from app.modules.companies.schemas import (
-    CompanyDetailResponse,
-    CompanyListResponse,
     CompanyResponse,
     CreateCompanyRequest,
     CreateRoadmapItemRequest,
@@ -49,11 +47,10 @@ from app.modules.companies.schemas import (
     UpdateRoadmapItemRequest,
 )
 from app.modules.companies.service import (
+    build_roadmap_item_response,
     create_company,
     create_roadmap_item,
     delete_roadmap_item,
-    get_company_detail,
-    list_companies,
     reorder_roadmap,
     update_company,
     update_price,
@@ -152,17 +149,27 @@ async def create_roadmap_item_endpoint(
     staff: User = Depends(require_staff_permission("company_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> RoadmapItemResponse:
-    """Add a roadmap milestone to a company."""
+    """Add a roadmap item (R1 §5). Per-kind validation handled by the
+    request schema; service rejects cross-company linked products and
+    missing posts."""
     item = await create_roadmap_item(
         company_id,
         body.title,
         staff,
         session,
+        kind=body.kind.value,
         description=body.description,
         target_date=body.target_date,
+        valid_until=body.valid_until,
         status=body.status,
+        external_url=body.external_url,
+        post_id=body.post_id,
+        linked_product_id=body.linked_product_id,
     )
-    return RoadmapItemResponse.model_validate(item)
+    # Freshly-created items have no cover and no resolved post yet
+    # (post snippet is resolved at detail-render time). Pass None for
+    # the post argument; the helper handles it.
+    return await build_roadmap_item_response(item, None, session)
 
 
 # NOTE: reorder MUST be declared before {item_id} routes to prevent
@@ -179,7 +186,14 @@ async def reorder_roadmap_endpoint(
 ) -> list[RoadmapItemResponse]:
     """Reorder roadmap items."""
     items = await reorder_roadmap(company_id, body.item_ids, staff, session)
-    return [RoadmapItemResponse.model_validate(item) for item in items]
+    # Use the build helper so the response keeps cover_url consistent
+    # with the detail endpoint. Post snippets are not embedded on
+    # reorder (the operation does not change post links); frontend
+    # refetches the detail view if a post embed is needed.
+    return [
+        await build_roadmap_item_response(item, None, session)
+        for item in items
+    ]
 
 
 @router.patch(
@@ -193,7 +207,13 @@ async def update_roadmap_item_endpoint(
     staff: User = Depends(require_staff_permission("company_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> RoadmapItemResponse:
-    """Update a roadmap item (partial)."""
+    """Update a roadmap item (partial, R1 §5).
+
+    Sentinel `...` distinguishes "field absent from PATCH body" (keep
+    current value) from "explicitly null" (clear the field). The
+    service applies the milestone state-machine check before any
+    write.
+    """
     updates = body.model_dump(exclude_unset=True)
 
     item = await update_roadmap_item(
@@ -204,9 +224,15 @@ async def update_roadmap_item_endpoint(
         title=updates.get("title"),
         description=updates.get("description", ...),
         target_date=updates.get("target_date", ...),
+        valid_until=updates.get("valid_until", ...),
         status=updates.get("status"),
+        external_url=updates.get("external_url", ...),
+        post_id=updates.get("post_id", ...),
+        linked_product_id=updates.get("linked_product_id", ...),
     )
-    return RoadmapItemResponse.model_validate(item)
+    # Post snippet not embedded here (single-item response, frontend
+    # refetches the detail view if needed for the new post link).
+    return await build_roadmap_item_response(item, None, session)
 
 
 @router.delete(

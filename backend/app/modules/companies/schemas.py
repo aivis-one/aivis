@@ -69,11 +69,20 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from app.modules.companies.constants import (
     ATTACHMENT_CATEGORY_REGEX,
     DocumentTemplateKind,
+    RoadmapItemKind,
 )
 
 
@@ -140,25 +149,107 @@ class UpdatePriceRequest(BaseModel):
 
 
 class CreateRoadmapItemRequest(BaseModel):
-    """Add a roadmap milestone to a company."""
+    """Add a roadmap item to a company (R1 §5).
+
+    `kind` defaults to MILESTONE for backward compatibility with the
+    pre-2.4 surface. Per-kind validation is enforced by the
+    model_validator below:
+      milestone    -- valid_until forbidden. target_date optional.
+                      status defaults to 'planned' (service layer).
+      event        -- target_date REQUIRED, valid_until REQUIRED,
+                      valid_until > target_date.
+      announcement -- target_date / valid_until / status all forbidden.
+
+    `cover_storage_key` is intentionally NOT in this body. The cover is
+    set via the dedicated multipart endpoint
+    PUT /staff/companies/{id}/roadmap/{item_id}/cover.
+
+    Service-level checks (not visible here):
+      - linked_product_id must belong to the same company.
+      - post_id must reference an existing Post.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
+    # Default keeps existing Staff UI calls that don't send kind working;
+    # migration 0033 made the column NOT NULL with the same default.
+    kind: RoadmapItemKind = Field(default=RoadmapItemKind.MILESTONE)
     title: str = Field(min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
     target_date: date | None = None
-    status: str | None = None  # defaults to "planned" in service
+    valid_until: date | None = None
+    # Only meaningful for kind=milestone. Service defaults to "planned"
+    # when omitted on a milestone create.
+    status: str | None = None
+    external_url: str | None = Field(default=None, max_length=2000)
+    post_id: UUID | None = None
+    linked_product_id: UUID | None = None
+
+    @field_validator("external_url")
+    @classmethod
+    def _validate_external_url(cls, v: str | None) -> str | None:
+        """Reject non-http(s) schemes. Mirrors the posts.cover_url check."""
+        if v is not None and not v.startswith(("http://", "https://")):
+            raise ValueError("external_url must start with http:// or https://")
+        return v
+
+    @model_validator(mode="after")
+    def _check_kind_rules(self) -> "CreateRoadmapItemRequest":
+        """R1 §5 per-kind invariants."""
+        if self.kind == RoadmapItemKind.MILESTONE:
+            if self.valid_until is not None:
+                raise ValueError("valid_until is not allowed for kind=milestone")
+        elif self.kind == RoadmapItemKind.EVENT:
+            if self.target_date is None:
+                raise ValueError("target_date is required for kind=event")
+            if self.valid_until is None:
+                raise ValueError("valid_until is required for kind=event")
+            if self.valid_until <= self.target_date:
+                raise ValueError(
+                    "valid_until must be after target_date for kind=event"
+                )
+        elif self.kind == RoadmapItemKind.ANNOUNCEMENT:
+            if self.target_date is not None:
+                raise ValueError("target_date is not allowed for kind=announcement")
+            if self.valid_until is not None:
+                raise ValueError("valid_until is not allowed for kind=announcement")
+            if self.status is not None:
+                raise ValueError("status is not allowed for kind=announcement")
+        return self
 
 
 class UpdateRoadmapItemRequest(BaseModel):
-    """Partial update of a roadmap item."""
+    """Partial update of a roadmap item (R1 §5).
+
+    `kind` is intentionally OMITTED -- it is immutable after create. To
+    change kind, Staff soft-deletes the item and creates a new one.
+
+    Per-kind invariants from CreateRoadmapItemRequest are NOT re-checked
+    here (we don't know the current kind without a DB read at validation
+    time). The service layer re-applies the relevant rules using the
+    persisted kind before committing.
+
+    `cover_storage_key` is not in the body for the same reason as the
+    create schema -- a dedicated multipart endpoint manages it.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     target_date: date | None = None
+    valid_until: date | None = None
     status: str | None = None
+    external_url: str | None = Field(default=None, max_length=2000)
+    post_id: UUID | None = None
+    linked_product_id: UUID | None = None
+
+    @field_validator("external_url")
+    @classmethod
+    def _validate_external_url(cls, v: str | None) -> str | None:
+        if v is not None and not v.startswith(("http://", "https://")):
+            raise ValueError("external_url must start with http:// or https://")
+        return v
 
 
 class ReorderRoadmapRequest(BaseModel):
@@ -174,17 +265,54 @@ class ReorderRoadmapRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class PostSnippetResponse(BaseModel):
+    """Embedded Post preview inside a roadmap item (R1 §5).
+
+    Built by the companies service layer from a Post row -- never via
+    `from_attributes` because `excerpt` is derived (first 200 chars of
+    body, plain text). Kept here in companies/schemas (rather than
+    posts/schemas) because the consumer is the roadmap response and
+    importing across modules is allowed in one direction only by the
+    existing project convention.
+    """
+
+    id: UUID
+    title: str
+    cover_url: str | None = None
+    excerpt: str
+
+
 class RoadmapItemResponse(BaseModel):
-    """Single roadmap item."""
+    """Single roadmap item (R1 §5 extension).
+
+    `cover_url` is a presigned URL generated by the service layer from
+    `cover_storage_key` (None when no cover uploaded). `post` is
+    populated when the row has a `post_id` -- the companies service does
+    a LEFT JOIN on posts in get_company_detail so this avoids N+1.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    # R1 §5 new fields. kind is a String column at the DB level (see
+    # migration 0033 + CompanyRoadmapItem.kind) so the response type
+    # stays `str` for forward compatibility with future kinds added
+    # without a model change.
+    kind: str
     title: str
     description: str | None
     target_date: date | None
+    valid_until: date | None = None
     status: str
     order: int
+    external_url: str | None = None
+    post_id: UUID | None = None
+    linked_product_id: UUID | None = None
+    # Presigned cover URL; None when no cover or when presign fails.
+    cover_url: str | None = None
+    # Inline Post snippet, populated by the service layer when post_id
+    # is set and the post is still present and published.
+    post: PostSnippetResponse | None = None
     created_at: datetime
     updated_at: datetime | None
 

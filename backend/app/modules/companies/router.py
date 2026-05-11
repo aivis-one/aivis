@@ -63,9 +63,12 @@ from app.modules.companies.schemas import (
     PublicCompanyDetailResponse,
     PublicCompanyListResponse,
     PublicCompanyResponse,
-    RoadmapItemResponse,
 )
-from app.modules.companies.service import get_company_detail, list_companies
+from app.modules.companies.service import (
+    build_roadmap_item_response,
+    get_company_detail,
+    list_companies,
+)
 
 router = APIRouter(prefix="/api/v1/companies", tags=["companies"])
 
@@ -136,8 +139,16 @@ async def get_company_detail_endpoint(
     """Get company detail with roadmap items (public).
 
     Returns 404 for non-active companies (hidden/archived).
+
+    iter 2.4 R1 §5: roadmap items now carry kind, valid_until,
+    external_url, cover_url (presigned), post snippet, and linked
+    product. get_company_detail batch-loads referenced posts to avoid
+    N+1; build_roadmap_item_response renders each item with the
+    pre-loaded post (or None when the post is unpublished/deleted).
     """
-    profile, roadmap_items = await get_company_detail(company_id, session)
+    profile, roadmap_items, posts_map = await get_company_detail(
+        company_id, session
+    )
 
     # Public endpoint: only active companies are visible.
     if profile.status != CompanyStatus.ACTIVE:
@@ -145,6 +156,9 @@ async def get_company_detail_endpoint(
 
     response = PublicCompanyDetailResponse.model_validate(profile)
     response.roadmap = [
-        RoadmapItemResponse.model_validate(item) for item in roadmap_items
+        await build_roadmap_item_response(
+            item, posts_map.get(item.post_id) if item.post_id else None, session
+        )
+        for item in roadmap_items
     ]
     return response

@@ -110,6 +110,7 @@
 
 import base64
 import mimetypes
+import re
 from collections.abc import Callable
 from typing import BinaryIO
 from uuid import UUID, uuid4
@@ -123,7 +124,9 @@ from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.redis import get_redis
 from app.core.storage import (
+    StorageError,
     delete_object,
+    generate_presigned_url,
     get_object_bytes,
     upload_object,
 )
@@ -131,6 +134,7 @@ from app.modules.auth.service import hash_password, get_platform_user_id
 from app.modules.companies.constants import (
     ALLOWED_ATTACHMENT_MIME_TYPES,
     DocumentTemplateKind,
+    RoadmapItemKind,
     TEMPLATE_ASSET_EXTENSION_TO_MIME,
     TemplateStatus,
     VALID_COMPANY_STATUS_TRANSITIONS,
@@ -149,8 +153,12 @@ from app.modules.companies.schemas import (
     AttachmentInboxMetadata,
     AttachmentPatchBody,
     CreateCompanyRequest,
+    PostSnippetResponse,
+    RoadmapItemResponse,
     UpdateCompanyRequest,
 )
+from app.modules.posts.models import Post
+from app.modules.products.models import Product
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
 logger = structlog.get_logger()
@@ -486,8 +494,18 @@ async def list_companies(
 async def get_company_detail(
     company_id: UUID,
     session: AsyncSession,
-) -> tuple[CompanyProfile, list[CompanyRoadmapItem]]:
-    """Load company profile with roadmap items (sorted by order).
+) -> tuple[CompanyProfile, list[CompanyRoadmapItem], dict[UUID, Post]]:
+    """Load company profile with roadmap items and a map of referenced posts.
+
+    R1 §5: roadmap items may reference Posts via `post_id`. We batch-
+    load every Post referenced by any non-deleted item in a single
+    SELECT so the response builder does not produce N+1 queries when
+    embedding PostSnippetResponse.
+
+    Only PUBLISHED, non-deleted posts make it into the map. Draft or
+    soft-deleted posts behave as if the post_id were NULL at render
+    time (the response simply omits the embedded snippet). This avoids
+    leaking unpublished content via the roadmap surface.
 
     Excludes soft-deleted roadmap items.
 
@@ -507,7 +525,102 @@ async def get_company_detail(
     result = await session.execute(stmt)
     roadmap_items = list(result.scalars().all())
 
-    return profile, roadmap_items
+    # Batch-load referenced posts (R1 §5). One SELECT for the whole
+    # response, regardless of how many items reference a post.
+    post_ids = [
+        item.post_id for item in roadmap_items if item.post_id is not None
+    ]
+    posts_map: dict[UUID, Post] = {}
+    if post_ids:
+        posts_stmt = select(Post).where(
+            Post.id.in_(post_ids),
+            Post.is_deleted == False,  # noqa: E712
+            Post.is_published == True,  # noqa: E712
+        )
+        posts_result = await session.execute(posts_stmt)
+        posts_map = {p.id: p for p in posts_result.scalars().all()}
+
+    return profile, roadmap_items, posts_map
+
+
+def _post_excerpt(body: str, max_len: int = 200) -> str:
+    """Plain-text excerpt of a Post body for embedded snippets (R1 §5).
+
+    Post.body may contain Markdown or HTML; strip tags, collapse
+    whitespace, truncate to max_len with an ellipsis. Pure-text input
+    survives unchanged.
+    """
+    if not body:
+        return ""
+    stripped = re.sub(r"<[^>]+>", "", body)
+    collapsed = re.sub(r"\s+", " ", stripped).strip()
+    if len(collapsed) <= max_len:
+        return collapsed
+    return collapsed[:max_len].rstrip() + "..."
+
+
+async def build_roadmap_item_response(
+    item: CompanyRoadmapItem,
+    post: Post | None,
+    _session: AsyncSession,
+) -> RoadmapItemResponse:
+    """Render a CompanyRoadmapItem as RoadmapItemResponse (R1 §5).
+
+    Generates a presigned URL for the cover image (when present) and
+    embeds a PostSnippetResponse derived from the supplied Post.
+
+    The Post argument is passed in by the caller (get_company_detail
+    populates a posts_map, single-item callers do a one-row SELECT).
+    This keeps the helper free of N+1 surprises.
+
+    Storage failures on presign are logged and treated as "no cover"
+    rather than failing the whole response: a missing object should
+    not break the roadmap render for an unrelated reason.
+
+    `_session` is kept in the signature with the underscore-prefix
+    "intentionally unused" convention (same pattern as
+    pools.service.with_consumed_remaining) so a future helper that
+    needs DB access can be added without changing every call site.
+    """
+    cover_url: str | None = None
+    if item.cover_storage_key:
+        try:
+            cover_url = await generate_presigned_url(item.cover_storage_key)
+        except StorageError as exc:
+            logger.warning(
+                "roadmap_cover_presign_failed",
+                item_id=str(item.id),
+                storage_key=item.cover_storage_key,
+                error=str(exc),
+            )
+            cover_url = None
+
+    post_snippet: PostSnippetResponse | None = None
+    if post is not None:
+        post_snippet = PostSnippetResponse(
+            id=post.id,
+            title=post.title,
+            cover_url=post.cover_url,
+            excerpt=_post_excerpt(post.body),
+        )
+
+    return RoadmapItemResponse(
+        id=item.id,
+        kind=item.kind,
+        title=item.title,
+        description=item.description,
+        target_date=item.target_date,
+        valid_until=item.valid_until,
+        status=item.status,
+        order=item.order,
+        external_url=item.external_url,
+        post_id=item.post_id,
+        linked_product_id=item.linked_product_id,
+        cover_url=cover_url,
+        post=post_snippet,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -521,22 +634,37 @@ async def create_roadmap_item(
     staff: User,
     session: AsyncSession,
     *,
+    kind: str = RoadmapItemKind.MILESTONE.value,
     description: str | None = None,
     target_date=None,
+    valid_until=None,
     status: str | None = None,
+    external_url: str | None = None,
+    post_id: UUID | None = None,
+    linked_product_id: UUID | None = None,
 ) -> CompanyRoadmapItem:
-    """Add a roadmap milestone to a company.
+    """Add a roadmap item to a company (R1 §5 extension).
 
     New items are placed at the end (max order + 1).
 
+    Per-kind invariants (target_date / valid_until / status which-is-
+    allowed-when) are enforced earlier by CreateRoadmapItemRequest's
+    model_validator; this function trusts those constraints.
+
+    Foreign-key invariants (linked_product_id belongs to this company,
+    post_id refers to an existing non-deleted Post) are checked here
+    because Pydantic does not see the DB.
+
     Raises:
-        NotFoundError: If company not found.
-        BadRequestError: If status is invalid.
+        NotFoundError: company / post not found.
+        BadRequestError: status invalid, or linked product belongs to
+                         a different company.
     """
     # Verify company exists.
     await get_company(company_id, session)
 
-    # Validate status if provided.
+    # Validate status if provided (legal value set independent of kind;
+    # per-kind "is status allowed?" rule was applied by the schema).
     if status is not None:
         valid_statuses = {s.value for s in RoadmapItemStatus}
         if status not in valid_statuses:
@@ -544,6 +672,35 @@ async def create_roadmap_item(
                 f"Invalid roadmap item status: '{status}'. "
                 f"Valid: {valid_statuses}"
             )
+
+    # linked_product_id must point to a product belonging to THIS company.
+    # Cross-company linking is rejected with 400 (not 404, because the
+    # product exists -- it just shouldn't be referenced from here).
+    if linked_product_id is not None:
+        prod_stmt = select(Product).where(Product.id == linked_product_id)
+        product = (await session.execute(prod_stmt)).scalar_one_or_none()
+        if product is None:
+            raise NotFoundError(
+                f"Product {linked_product_id} not found"
+            )
+        if product.company_id != company_id:
+            raise BadRequestError(
+                f"linked_product_id {linked_product_id} belongs to a "
+                f"different company"
+            )
+
+    # post_id must reference a Post that is not soft-deleted. Publication
+    # status is intentionally NOT checked here -- a Staff member may
+    # link a draft now and publish it later; render-time (get_company_detail)
+    # filters out unpublished posts when assembling the response.
+    if post_id is not None:
+        post_stmt = select(Post.id).where(
+            Post.id == post_id,
+            Post.is_deleted == False,  # noqa: E712
+        )
+        post_exists = (await session.execute(post_stmt)).scalar_one_or_none()
+        if post_exists is None:
+            raise NotFoundError(f"Post {post_id} not found")
 
     # Determine next order value.
     max_order_stmt = (
@@ -557,11 +714,16 @@ async def create_roadmap_item(
 
     item = CompanyRoadmapItem(
         company_id=company_id,
+        kind=kind,
         title=title,
         description=description,
         target_date=target_date,
+        valid_until=valid_until,
         status=status or RoadmapItemStatus.PLANNED,
         order=max_order + 1,
+        external_url=external_url,
+        post_id=post_id,
+        linked_product_id=linked_product_id,
     )
     session.add(item)
     await session.flush()
@@ -575,7 +737,11 @@ async def create_roadmap_item(
         actor_type="staff",
         target_type="roadmap_item",
         target_id=item.id,
-        data={"company_id": str(company_id), "title": title},
+        data={
+            "company_id": str(company_id),
+            "kind": kind,
+            "title": title,
+        },
     )
 
     return item
@@ -590,20 +756,39 @@ async def update_roadmap_item(
     title: str | None = None,
     description: str | None = ...,  # type: ignore[assignment]
     target_date=...,
+    valid_until=...,
     status: str | None = None,
+    external_url: str | None = ...,  # type: ignore[assignment]
+    post_id: UUID | None = ...,  # type: ignore[assignment]
+    linked_product_id: UUID | None = ...,  # type: ignore[assignment]
 ) -> CompanyRoadmapItem:
-    """Partial update of a roadmap item.
+    """Partial update of a roadmap item (R1 §5 extension).
+
+    Sentinel-pattern (`= ...`) on optional fields differentiates
+    "not provided" (keep current value) from "explicit None"
+    (clear the field). The caller (router) passes `...` when the
+    field is absent from the PATCH body.
+
+    State machine: roadmap items of kind=milestone are subject to the
+    `completed -> *` forbidden rule -- once a milestone is completed,
+    its status cannot be moved back. Events and announcements have no
+    status-flow semantics, so this guard does not apply to them.
+
+    `kind` is intentionally NOT updatable -- see UpdateRoadmapItemRequest
+    docstring for rationale.
 
     Raises:
-        NotFoundError: If company or item not found.
-        BadRequestError: If status is invalid.
+        NotFoundError: company / item / post not found.
+        BadRequestError: status invalid, illegal status transition,
+                         or linked product belongs to a different
+                         company.
     """
     # Verify company exists.
     await get_company(company_id, session)
 
     item = await _get_roadmap_item(company_id, item_id, session)
 
-    changed_fields = []
+    changed_fields: list[str] = []
 
     if title is not None:
         item.title = title
@@ -617,12 +802,68 @@ async def update_roadmap_item(
         item.target_date = target_date
         changed_fields.append("target_date")
 
+    if valid_until is not ...:
+        item.valid_until = valid_until
+        changed_fields.append("valid_until")
+
+    if external_url is not ...:
+        item.external_url = external_url
+        changed_fields.append("external_url")
+
+    # post_id change: validate existence before assignment.
+    if post_id is not ...:
+        if post_id is not None:
+            post_stmt = select(Post.id).where(
+                Post.id == post_id,
+                Post.is_deleted == False,  # noqa: E712
+            )
+            post_exists = (
+                await session.execute(post_stmt)
+            ).scalar_one_or_none()
+            if post_exists is None:
+                raise NotFoundError(f"Post {post_id} not found")
+        item.post_id = post_id
+        changed_fields.append("post_id")
+
+    # linked_product_id change: validate ownership.
+    if linked_product_id is not ...:
+        if linked_product_id is not None:
+            prod_stmt = select(Product).where(
+                Product.id == linked_product_id
+            )
+            product = (
+                await session.execute(prod_stmt)
+            ).scalar_one_or_none()
+            if product is None:
+                raise NotFoundError(
+                    f"Product {linked_product_id} not found"
+                )
+            if product.company_id != company_id:
+                raise BadRequestError(
+                    f"linked_product_id {linked_product_id} belongs to "
+                    f"a different company"
+                )
+        item.linked_product_id = linked_product_id
+        changed_fields.append("linked_product_id")
+
     if status is not None:
         valid_statuses = {s.value for s in RoadmapItemStatus}
         if status not in valid_statuses:
             raise BadRequestError(
                 f"Invalid roadmap item status: '{status}'. "
                 f"Valid: {valid_statuses}"
+            )
+        # R1 §5 state machine: for kind=milestone, completed is terminal.
+        # No-op self-transitions (completed -> completed) pass through
+        # since the source status is unchanged.
+        if (
+            item.kind == RoadmapItemKind.MILESTONE.value
+            and item.status == RoadmapItemStatus.COMPLETED.value
+            and status != RoadmapItemStatus.COMPLETED.value
+        ):
+            raise BadRequestError(
+                "Cannot move a completed milestone to another status. "
+                "Soft-delete and recreate if the change is intentional."
             )
         item.status = status
         changed_fields.append("status")
