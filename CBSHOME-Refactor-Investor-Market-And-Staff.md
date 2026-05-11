@@ -1,7 +1,7 @@
 # CBSHOME -- Refactor: Investor Market & Staff Shell
 
-**Версия:** 0.4 final / decision-locked
-**Дата:** 7 мая 2026
+**Версия:** 0.5 final / decision-locked
+**Дата:** 11 мая 2026
 
 **Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
 
@@ -142,6 +142,20 @@ class PublicCompanyStatsResponse(BaseModel):
 
 Public-эндпоинты `companies` / `products` отдают **только** компании со статусом `active` (не draft, не archived).
 
+**Почему отдельный префикс `/api/v1/public/*`, а не расширение существующих `/api/v1/companies` и `/api/v1/products` (где list/detail уже no-auth с Sprint 4.1/4.2):**
+
+1. **Уже наполовину сделано в iter 2.2.** Attachments-public пошли под `/api/v1/public/companies/{id}/attachments` (см. Refactor 2 §3.4). Унификация остального под тот же префикс -- завершение начатого паттерна, не введение нового. Альтернатива (откат attachments назад под `/api/v1/companies/{id}/attachments`) -- ломка работающего production-кода с тестами.
+2. **Operations.** WAF / Cloudflare / nginx rate-limit / Sentry sampling конфигурируются одним правилом на `/api/v1/public/*`. С mixed-префиксом -- точечно по каждому роуту, легко забыть новый при добавлении.
+3. **Rate-limit 60 req/min/IP суммарно** (§1.6.4) -- натурально вешается одним middleware на префикс. Без префикса -- декоратор на каждый no-auth роут вручную.
+4. **Frontend `useAuthWall` имеет URL-сигнал.** `PublicShell` распознаёт public-контекст по маршруту, а не по списку имён эндпоинтов которые надо синхронизировать с бэком.
+5. **Threat model отличается.** Public-эндпоинты -- anonymous attackers, scraping, DDoS. Изолированный префикс упрощает применение защит, мониторинга, WAF-правил и аналитики "auth traffic vs public traffic".
+
+**Что происходит со старыми `/api/v1/companies` и `/api/v1/products` (list/detail):**
+
+Старые public-эндпоинты `GET /api/v1/companies`, `GET /api/v1/companies/{id}`, `GET /api/v1/products`, `GET /api/v1/products/{id}` **удаляются** в той же итерации, что и добавляются новые `/api/v1/public/*`. Не deprecated, удаляются. Frontend `companies.ts` и `products.ts` перепиываются на новый `public.ts` в той же итерации фронта (см. §1.7). До момента релиза мобильного приложения боевой нагрузки нет, поэтому окно ломки не критично.
+
+Остаются нетронутыми: `GET /api/v1/companies/me` (Sprint 4.5, auth-only, не public), staff-side роуты `/api/v1/staff/companies/*`, company-side `/api/v1/company/*`.
+
 #### 1.6.3. Pydantic-схемы
 
 `PublicCompanyDetailResponse` существует с Sprint 4.1, ревизуется -- проверяем что не утекает чувствительное (`distribution_config` точно вырезаем, если оно там есть).
@@ -190,6 +204,8 @@ function useAuthWall() {
 | Backend schema | `PublicProductDetailResponse` (новая) |
 | Backend router | `app/modules/companies/public_router.py` (новый, prefix `/api/v1/public`) |
 | Backend router | `app/modules/products/public_router.py` (новый, prefix `/api/v1/public`) |
+| Backend router | `app/modules/companies/router.py` -- **удаление** public `list` и `get_company_detail` endpoints (см. §1.6.2). Остаётся `/me` (Sprint 4.5). |
+| Backend router | `app/modules/products/router.py` -- **удаление** public `list` и `get_product_detail` endpoints (см. §1.6.2). |
 | Backend rate-limit | `check_rate_limit_per_ip()` helper |
 | Frontend route | `/public/companies`, `/public/companies/:id`, `/public/products/:id` |
 | Frontend layout | `PublicShell.vue` -- минимальный shell без таб-бара, с кнопкой "Войти" в шапке |
@@ -600,6 +616,11 @@ class RoadmapItemResponse(BaseModel):
 **Все вопросы закрыты.** Документ decision-locked.
 
 **Closed (решения зафиксированы):**
+
+### v0.5 -- обоснование префикса `/api/v1/public/*`
+
+- **§1.6.2 расширен**: добавлено явное обоснование выбора префикса `/api/v1/public/*` (5 пунктов: уже-наполовину-сделано в iter 2.2, operations, rate-limit middleware, frontend URL-сигнал, threat model). Сам префикс не меняется -- меняется только документация причины. До v0.5 обоснование было неявным, что породило вопрос на старте iter 2.4 ("а спека не ошибается ли?"). Зафиксировано чтобы будущим итерациям не пришлось повторно решать.
+- **§1.6.2 + §1.7 уточнены**: явно прописано что старые public-эндпоинты `GET /api/v1/companies`, `GET /api/v1/companies/{id}`, `GET /api/v1/products`, `GET /api/v1/products/{id}` **удаляются** в той же итерации, не помечаются deprecated. Окно ломки контролируется тем, что фронт перепиывается в той же итерации, а боевой мобильной нагрузки до релиза нет. `GET /api/v1/companies/me` (Sprint 4.5) не трогается.
 
 ### v0.4 -- UI follow-ups закрыты
 

@@ -272,10 +272,9 @@ async def render_agreement_html(
         # as "None" inside autoescape; force an empty string instead.
         "investor_email": data.investor_email or "",
         "company_name": data.company.name,
-        # R2 §4.4 lists `company_legal_name` as a required placeholder.
-        # CompanyProfile has no dedicated legal-name column yet -- fall
-        # back to `name` so the bootstrap templates render cleanly. A
-        # follow-up will add CompanyProfile.legal_name (TODO iter 2.5+).
+        # R2 §4.4 lists `company_legal_name` as a placeholder. CompanyProfile
+        # has no dedicated legal-name column; we render the same `name`
+        # value into both placeholders.
         "company_legal_name": data.company.name,
         "company_logo_url": data.company.logo_url,
         "product_name": data.product.name,

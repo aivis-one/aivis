@@ -91,7 +91,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 from app.core.mixins import JSONBMixin, TimestampMixin, UUIDMixin
-from app.modules.companies.constants import CompanyStatus, RoadmapItemStatus
+from app.modules.companies.constants import (
+    CompanyStatus,
+    RoadmapItemKind,
+    RoadmapItemStatus,
+)
 
 
 class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
@@ -223,12 +227,44 @@ class CompanyRoadmapItem(UUIDMixin, TimestampMixin, Base):
     """Ordered roadmap milestone for a company.
 
     Soft-deleted via is_deleted flag. order controls display sequence.
+
+    iter 2.4 R1 §5 extension. The row now carries three flavours via
+    `kind`:
+      milestone    -- the legacy use case: target_date + status state
+                      machine (planned -> in_progress -> completed).
+      event        -- target_date required, valid_until required.
+                      Service layer enforces valid_until > target_date.
+                      Status field exists in the column but is not
+                      meaningful for events.
+      announcement -- dateless: target_date, valid_until, and status
+                      are all forbidden on create / update.
+
+    Per-kind validation lives in the Pydantic schema layer; the model
+    keeps the columns wide so a future kind reusing one of them is a
+    schema change, not a migration.
+
+    cover_storage_key points at a MinIO object set via the dedicated
+    upload endpoint (Staff PUT /staff/companies/{id}/roadmap/{item_id}/
+    cover), never through the create / update body. post_id and
+    linked_product_id are FKs with ON DELETE SET NULL: deleting the
+    referenced post or product nullifies the link rather than removing
+    the roadmap row.
     """
 
     __tablename__ = "company_roadmap_items"
 
     company_id: Mapped[UUID] = mapped_column(
         ForeignKey("company_profiles.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    # iter 2.4: surface kind (R1 §5). Backfilled to MILESTONE for
+    # pre-existing rows by migration 0033; CHECK constraint at the DB
+    # level enforces enum membership.
+    kind: Mapped[str] = mapped_column(
+        String(20),
+        default=RoadmapItemKind.MILESTONE,
+        server_default=RoadmapItemKind.MILESTONE.value,
         nullable=False,
         index=True,
     )
@@ -240,7 +276,38 @@ class CompanyRoadmapItem(UUIDMixin, TimestampMixin, Base):
         String(5000),
         nullable=True,
     )
+    # MinIO object key for the optional cover image. None when no cover
+    # has been uploaded. The Staff cover-upload endpoint replaces the
+    # existing MinIO object before updating this column.
+    cover_storage_key: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+    # Optional click-through link (used by event / announcement kinds).
+    # Schema layer validates the http/https prefix.
+    external_url: Mapped[str | None] = mapped_column(
+        String(2000),
+        nullable=True,
+    )
+    # Link to a Post for richer content. ON DELETE SET NULL keeps the
+    # roadmap row when the underlying Post is soft- or hard-deleted.
+    post_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("posts.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Link to a specific Product (e.g. an announcement tied to a
+    # particular package). ON DELETE SET NULL semantics as above.
+    linked_product_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     target_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+    # Expiry date for event / announcement kinds. Schema rejects when
+    # valid_until <= target_date on an event.
+    valid_until: Mapped[date | None] = mapped_column(
         Date,
         nullable=True,
     )
@@ -265,8 +332,8 @@ class CompanyRoadmapItem(UUIDMixin, TimestampMixin, Base):
 
     def __repr__(self) -> str:
         return (
-            f"<CompanyRoadmapItem id={self.id} title={self.title!r} "
-            f"order={self.order}>"
+            f"<CompanyRoadmapItem id={self.id} kind={self.kind} "
+            f"title={self.title!r} order={self.order}>"
         )
 
 

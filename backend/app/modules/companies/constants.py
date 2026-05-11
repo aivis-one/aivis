@@ -67,6 +67,32 @@ class RoadmapItemStatus(enum.StrEnum):
     COMPLETED = "completed"
 
 
+class RoadmapItemKind(enum.StrEnum):
+    """Roadmap item surface kind (R1 §5, iter 2.4).
+
+    A roadmap row carries one of three shapes; the API surface differs
+    per kind:
+      milestone    -- traditional planned-progress-completed item with
+                      target_date. Subject to the planned -> in_progress
+                      -> completed state machine. Most existing rows fall
+                      here; migration 0033 backfills the column to this
+                      value.
+      event        -- date-bound event (target_date required, valid_until
+                      required, valid_until > target_date). Status is
+                      irrelevant; events are shown as long as
+                      today <= valid_until.
+      announcement -- dateless message (no target_date / valid_until /
+                      status). Visible until soft-deleted.
+
+    `kind` is immutable after create. To switch kind, Staff soft-deletes
+    the row and creates a fresh one with the new kind.
+    """
+
+    MILESTONE = "milestone"
+    EVENT = "event"
+    ANNOUNCEMENT = "announcement"
+
+
 # Valid status transitions for CompanyProfile.
 VALID_COMPANY_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     CompanyStatus.HIDDEN: frozenset({CompanyStatus.ACTIVE, CompanyStatus.ARCHIVED}),
