@@ -41,6 +41,7 @@ from uuid import UUID
 import httpx
 import pytest
 from httpx import AsyncClient
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -149,7 +150,10 @@ async def _create_attachment(
     *,
     title: str = "Doc",
     category: str = "legal/incorporation",
-    language: str | None = "en",
+    # iter 2.4-post mini-fix: attachments.language is NOT NULL with
+    # default 'en'. Helper signature reflects that -- pass an explicit
+    # ISO code, or omit to land on the universal English fallback.
+    language: str = "en",
     is_published: bool = True,
     is_public: bool = False,
     file_bytes: bytes = b"hello world",
@@ -484,3 +488,72 @@ async def test_download_other_company_returns_404(
         follow_redirects=False,
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Test 10: AttachmentInboxMetadata defaults language to 'en' when omitted
+# ---------------------------------------------------------------------------
+#
+# iter 2.4-post mini-fix: schema default lands explicit-or-omitted on the
+# universal English fallback rather than NULL. Sidecar JSON files in
+# attachments-inbox no longer need to carry "language": "en" -- omitting
+# the field gives the same result.
+
+
+def test_inbox_metadata_language_defaults_to_en() -> None:
+    """AttachmentInboxMetadata.language has a required-with-default of 'en'.
+
+    Validating a payload that omits the language field should produce
+    a model whose .language is 'en' -- the universal English fallback
+    that replaced the old NULL semantic.
+    """
+    metadata = AttachmentInboxMetadata.model_validate({"title": "Investor Brief"})
+    assert metadata.language == "en"
+
+
+# ---------------------------------------------------------------------------
+# Test 11: AttachmentInboxMetadata rejects explicit null language
+# ---------------------------------------------------------------------------
+
+
+def test_inbox_metadata_rejects_null_language() -> None:
+    """An inbox cbsmeta.json that carries `"language": null` must fail.
+
+    The column is NOT NULL post-migration 0034; null in the wire payload
+    has no valid landing on the row. Pydantic's Literal validation
+    blocks it before the orphan/replace logic in reconcile_attachments
+    is reached.
+    """
+    with pytest.raises(ValidationError):
+        AttachmentInboxMetadata.model_validate(
+            {"title": "Investor Brief", "language": None}
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 12: AttachmentPatchBody — language omit vs explicit null
+# ---------------------------------------------------------------------------
+#
+# iter 2.4-post mini-fix: the PATCH wire-shape distinguishes "field
+# absent" (no change) from "field present and null" (would clear a
+# NOT NULL column -> rejected). A field_validator on PatchBody
+# enforces the distinction; without it, an explicit null would survive
+# exclude_unset and crash on flush with an IntegrityError.
+
+
+def test_patch_body_omits_language_keeps_default_and_excluded() -> None:
+    """Omitting language leaves the dump empty -- PATCH treats it as no-op."""
+    from app.modules.companies.schemas import AttachmentPatchBody
+
+    body = AttachmentPatchBody.model_validate({})
+    # exclude_unset drops the absent field entirely -- the service's
+    # `setattr` loop never touches `language`.
+    assert body.model_dump(exclude_unset=True) == {}
+
+
+def test_patch_body_rejects_explicit_null_language() -> None:
+    """`{"language": null}` is rejected at validation time, not flush time."""
+    from app.modules.companies.schemas import AttachmentPatchBody
+
+    with pytest.raises(ValidationError):
+        AttachmentPatchBody.model_validate({"language": None})

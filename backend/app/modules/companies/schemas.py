@@ -450,7 +450,12 @@ class PublicCompanyListResponse(BaseModel):
 # keeps the JSON portable across companies / uploads.
 
 
-# Allowed values for the `language` field. NULL = language-agnostic.
+# Allowed values for the `language` field. iter 2.4-post mini-fix:
+# attachments.language is now NOT NULL with default 'en' (migration
+# 0034). Earlier the column was nullable and NULL meant "language-
+# agnostic"; the product team standardised on English-as-fallback, so
+# 'en' is the universal default and rows with no explicit language at
+# upload time land on 'en' via column defaults.
 AttachmentLanguage = Literal["en", "ru", "de", "ar"]
 
 
@@ -477,7 +482,13 @@ class AttachmentInboxMetadata(BaseModel):
         max_length=200,
         pattern=ATTACHMENT_CATEGORY_REGEX,
     )
-    language: AttachmentLanguage | None = None
+    # iter 2.4-post mini-fix: `language` is now required-with-default
+    # rather than nullable. An inbox metadata file that omits the
+    # field lands on 'en' (universal fallback); a file with explicit
+    # null is rejected by AttachmentLanguage Literal validation, which
+    # is the desired behaviour -- legacy inbox files carrying null
+    # must be normalised before they reach reconcile.
+    language: AttachmentLanguage = "en"
     order: int = Field(default=0, ge=0)
     is_published: bool = False
     is_public: bool = False
@@ -502,10 +513,46 @@ class AttachmentPatchBody(BaseModel):
         max_length=200,
         pattern=ATTACHMENT_CATEGORY_REGEX,
     )
+    # PATCH semantic: field absent = "do not change". The service
+    # applies model_dump(exclude_unset=True), so an omitted field
+    # never reaches setattr. But Pydantic does NOT distinguish "absent"
+    # from "present and null" via the field type alone -- so we need
+    # an explicit guard against the wire-shape `{"language": null}`,
+    # which would otherwise pass validation AND survive exclude_unset
+    # (since the field was set) AND then crash on the NOT NULL column
+    # at flush time with a confusing IntegrityError instead of a
+    # readable 422.
+    #
+    # The `| None = None` annotation is preserved for the field-absent
+    # case (Pydantic uses the default when the key is missing). The
+    # validator below rejects only the explicit-null case.
     language: AttachmentLanguage | None = None
     order: int | None = Field(default=None, ge=0)
     is_published: bool | None = None
     is_public: bool | None = None
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def _reject_explicit_null_language(cls, v: object) -> object:
+        """Reject `{"language": null}` while still letting the field
+        be omitted entirely.
+
+        Distinguishes the two cases by what Pydantic passes to the
+        validator: the default (also None) is supplied as a sentinel
+        when the key is absent. We can't distinguish those two None's
+        at the value layer, so we use a wrapper: ANY explicit None
+        coming through here is treated as user-supplied. False
+        positives (validator runs on the default) cannot happen --
+        mode='before' validators are not invoked on field defaults
+        in Pydantic v2; they only fire on input values.
+        """
+        if v is None:
+            raise ValueError(
+                "language cannot be null -- the column is NOT NULL; "
+                "omit the field to keep the current value, or send an "
+                "explicit ISO 639-1 code to change it"
+            )
+        return v
 
 
 class AttachmentResponse(BaseModel):
@@ -521,7 +568,12 @@ class AttachmentResponse(BaseModel):
     id: UUID
     company_id: UUID
     category: str
-    language: str | None
+    # iter 2.4-post mini-fix: language is NOT NULL on the column.
+    # The API surface therefore drops the | None and always emits a
+    # concrete ISO 639-1 code. Frontend codegen will pick this up on
+    # the next `cbshome update`; until then, frontend reads the
+    # field as string | null but only ever sees real strings.
+    language: str
     title: str
     description: str | None
     original_filename: str

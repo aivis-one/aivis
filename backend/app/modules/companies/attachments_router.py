@@ -19,8 +19,10 @@
 #   ?category=X         -- exact path-tree match
 #   ?category_prefix=Y  -- LIKE prefix% (Staff-typed metacharacters
 #                          are escaped server-side)
-#   ?language=Z         -- exact ISO 639-1 code; null-language docs
-#                          are returned only when the param is omitted
+#   ?language=Z         -- exact ISO 639-1 code; omitting the param
+#                          returns every language. iter 2.4-post
+#                          mini-fix removed NULL semantics from the
+#                          column -- 'en' is the universal fallback.
 #
 # VISIBILITY:
 #   List + download both require is_published = True AND is_deleted = False.

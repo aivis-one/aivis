@@ -150,7 +150,8 @@ async def _create_attachment_direct(
     *,
     title: str,
     category: str = "legal/incorporation",
-    language: str | None = "en",
+    # iter 2.4-post mini-fix: NOT NULL with default 'en' on the column.
+    language: str = "en",
     file_bytes: bytes = b"existing payload",
     original_filename: str = "old.pdf",
     content_type: str = "application/pdf",

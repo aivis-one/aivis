@@ -186,19 +186,19 @@ async def _find_match(
 ) -> list[CompanyAttachment]:
     """Find non-deleted attachments matching (title, category, language).
 
-    `language` is matched with IS NULL semantics when the metadata's
-    language is None, since `column == NULL` is always false in SQL.
+    iter 2.4-post mini-fix: attachments.language is now NOT NULL
+    (migration 0034), and AttachmentInboxMetadata.language has a
+    required-with-default of 'en'. Neither side can be NULL, so the
+    plain equality predicate is the only branch -- the historical
+    `IS NULL` fallback is gone.
     """
     conditions = [
         CompanyAttachment.company_id == company_id,
         CompanyAttachment.is_deleted == False,  # noqa: E712
         CompanyAttachment.title == metadata.title,
         CompanyAttachment.category == metadata.category,
+        CompanyAttachment.language == metadata.language,
     ]
-    if metadata.language is None:
-        conditions.append(CompanyAttachment.language.is_(None))
-    else:
-        conditions.append(CompanyAttachment.language == metadata.language)
 
     stmt = select(CompanyAttachment).where(*conditions)
     return list((await session.execute(stmt)).scalars().all())

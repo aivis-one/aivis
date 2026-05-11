@@ -147,7 +147,8 @@ async def _create_attachment(
     *,
     title: str = "Doc",
     category: str = "marketing/presentations",
-    language: str | None = "en",
+    # iter 2.4-post mini-fix: NOT NULL with default 'en' on the column.
+    language: str = "en",
     is_published: bool = True,
     is_public: bool = True,
     file_bytes: bytes = b"public payload",

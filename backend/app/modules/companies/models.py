@@ -350,10 +350,14 @@ class CompanyAttachment(UUIDMixin, TimestampMixin, Base):
     separators in MinIO -- the storage key uses UUID-based paths instead
     (companies/<company_id>/attachments/<attachment_id>/<filename>).
 
-    `language` is ISO 639-1 (en/ru/de/ar) or NULL for language-agnostic
-    documents (R2 §3.6). Multilingual docs are stored as separate rows
-    sharing (category, title) -- the backend exposes a flat list and the
-    UI groups client-side.
+    `language` is ISO 639-1 (en/ru/de/ar). NOT NULL with default 'en'
+    (migration 0034). Earlier R2 v0.6 §3.6 defined NULL as
+    "language-agnostic / visible to every locale", but the product team
+    standardised on English-as-fallback: a document tagged 'en' is the
+    universal default, and the UI surfaces it whenever the user's
+    locale has no explicit match. Multilingual docs are stored as
+    separate rows sharing (category, title) -- the backend exposes a
+    flat list and the UI groups client-side.
 
     `order` controls display sequence inside a (company_id, category)
     scope (Q-ATT-4). The service layer shifts existing rows to make room
@@ -382,9 +386,16 @@ class CompanyAttachment(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-    language: Mapped[str | None] = mapped_column(
+    language: Mapped[str] = mapped_column(
         String(10),
-        nullable=True,
+        # Python-side default for ORM-driven inserts that don't set the
+        # field explicitly (e.g. legacy fixtures, future helpers).
+        # Combined with server_default below so direct SQL inserts /
+        # backfills also land on 'en'. Mirrors the KYCApplication.status
+        # dual-default pattern (default + server_default for symmetry).
+        default="en",
+        server_default="en",
+        nullable=False,
     )
 
     # -- Display --
