@@ -16,7 +16,7 @@ export interface TabItem {
 export const INVESTOR_TABS: TabItem[] = [
   { id: 'home', path: '/investor/dashboard', labelKey: 'tab.home', icon: 'Home' },
   { id: 'portfolio', path: '/investor/portfolio', labelKey: 'tab.portfolio', icon: 'Briefcase' },
-  { id: 'market', path: '/investor/market', labelKey: 'tab.market', icon: 'Store' },
+  { id: 'market', path: '/investor/companies', labelKey: 'tab.market', icon: 'Store' },
   { id: 'balance', path: '/investor/balance', labelKey: 'tab.balance', icon: 'Wallet' },
   { id: 'more', path: '/investor/more', labelKey: 'tab.more', icon: 'Menu' },
 ]

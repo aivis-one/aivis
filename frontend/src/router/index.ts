@@ -1,8 +1,9 @@
 // =============================================================================
-// CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 polish + F4.3 B2 + F4.4 B3)
+// CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 + F4.3 B2 + F4.4 B3
+//                              + iter 2.5 batch 9)
 // =============================================================================
 //
-// Full route map (~42 routes). Shell components as layout wrappers.
+// Full route map. Shell components as layout wrappers.
 // All view imports are lazy-loaded via () => import().
 //
 // Structure:
@@ -18,28 +19,32 @@
 //
 // F4.1.4 polish:
 //   Each shell wrapper carries `meta.shell` so that shared views
-//   (MarketView / ProductDetailView / future PurchaseView etc.)
-//   can pick role-aware route names via router/helpers.ts without
-//   pattern-matching on `route.path`. Vue Router merges meta from
-//   parent + child route records, so the tag propagates to all
-//   nested views automatically.
+//   (ProductDetailView / PurchaseView / future shared views) can pick
+//   role-aware route names via router/helpers.ts without pattern-matching
+//   on `route.path`. Vue Router merges meta from parent + child route
+//   records, so the tag propagates to all nested views automatically.
 //
 // F4.3 B2:
-//   Added `/investor/balance/deposit` -> `investor-deposit` child
-//   route for the crypto deposit screen. Nested under `balance/`
-//   so the browser back chain naturally returns to BalanceView,
-//   and the URL reads as a subsection of balance. Agent shell does
-//   not duplicate this route -- deposit is investor-scope for F4.3
-//   (see plan: agent-side balance/transactions deferred).
+//   Added `/investor/balance/deposit` -> `investor-deposit` child route
+//   for the crypto deposit screen.
 //
 // F4.4 B3 (hotfix):
 //   Added `portfolio/:id` -> `investor-company-position` and the
-//   parallel `agent-company-position` child routes. Needed by
-//   PortfolioView, which pushes by role-aware route name when a
-//   position card is tapped. Placed right after each shell's
-//   `portfolio` route so the sub-route reads next to its parent in
-//   source order; the matcher does not require this (Vue Router
-//   uses path specificity), it's purely for readability.
+//   parallel `agent-company-position` child routes for PortfolioView.
+//
+// iter 2.5 batch 9:
+//   - REMOVED legacy `/investor/market` and `/agent/market` routes.
+//     The catalogue moved to /companies (R1 §1.3) and per-company
+//     products live in /companies/:id/products (R1 §1.4). The deleted
+//     MarketView.vue is no longer importable; dev-only state, no
+//     production deep-links to preserve.
+//   - ADDED three new investor routes (and the parallel three agent
+//     routes that share the same shared views):
+//       /companies                  -> investor-companies
+//       /companies/:id              -> investor-company-overview
+//       /companies/:id/products     -> investor-company-products
+//     The :id route entries reuse the `meta.shell` propagation via
+//     the parent shell record -- no per-route meta needed.
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -151,10 +156,25 @@ export const router = createRouter({
           name: 'investor-company-position',
           component: () => import('@/views/investor/CompanyPositionView.vue'),
         },
+        // iter 2.5 batch 9: companies tree (replaces deleted MarketView).
+        // /companies            -> catalogue (R1 §1.3 CompanyListView)
+        // /companies/:id        -> overview  (R1 §1.3 CompanyOverviewView)
+        // /companies/:id/products -> per-company products (R1 §1.4
+        //                          ProductsByCompanyView).
         {
-          path: 'market',
-          name: 'investor-market',
-          component: () => import('@/views/investor/MarketView.vue'),
+          path: 'companies',
+          name: 'investor-companies',
+          component: () => import('@/views/investor/CompanyListView.vue'),
+        },
+        {
+          path: 'companies/:id',
+          name: 'investor-company-overview',
+          component: () => import('@/views/investor/CompanyOverviewView.vue'),
+        },
+        {
+          path: 'companies/:id/products',
+          name: 'investor-company-products',
+          component: () => import('@/views/investor/ProductsByCompanyView.vue'),
         },
         {
           path: 'products/:id',
@@ -262,11 +282,6 @@ export const router = createRouter({
         },
         // --- Investor screens (shared components, agent layout) ---
         {
-          path: 'market',
-          name: 'agent-market',
-          component: () => import('@/views/investor/MarketView.vue'),
-        },
-        {
           path: 'portfolio',
           name: 'agent-portfolio',
           component: () => import('@/views/investor/PortfolioView.vue'),
@@ -275,6 +290,23 @@ export const router = createRouter({
           path: 'portfolio/:id',
           name: 'agent-company-position',
           component: () => import('@/views/investor/CompanyPositionView.vue'),
+        },
+        // iter 2.5 batch 9: companies tree under agent shell.
+        // Parallel to /investor/companies/* -- same views, agent layout.
+        {
+          path: 'companies',
+          name: 'agent-companies',
+          component: () => import('@/views/investor/CompanyListView.vue'),
+        },
+        {
+          path: 'companies/:id',
+          name: 'agent-company-overview',
+          component: () => import('@/views/investor/CompanyOverviewView.vue'),
+        },
+        {
+          path: 'companies/:id/products',
+          name: 'agent-company-products',
+          component: () => import('@/views/investor/ProductsByCompanyView.vue'),
         },
         {
           path: 'products/:id',
