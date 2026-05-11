@@ -56,7 +56,7 @@ export interface AttachmentResponse {
   id: string
   company_id: string
   category: string
-  language: string | null
+  language: string
   title: string
   description: string | null
   original_filename: string
@@ -948,7 +948,7 @@ export interface StaffAttachmentResponse {
   id: string
   company_id: string
   category: string
-  language: string | null
+  language: string
   title: string
   description: string | null
   original_filename: string
