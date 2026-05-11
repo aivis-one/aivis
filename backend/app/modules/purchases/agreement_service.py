@@ -67,6 +67,11 @@ from app.modules.companies.service import (
 )
 from app.modules.products.models import Product
 from app.modules.purchases.constants import PurchaseStatus
+from app.modules.purchases.document_utils import (
+    extract_investor_email,
+    extract_investor_name,
+    format_cents,
+)
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import User
 
@@ -104,34 +109,6 @@ class AgreementData:
     company: CompanyProfile
     product: Product
     template: CompanyDocumentTemplate
-
-
-def _extract_investor_name(user: User) -> str:
-    """Extract a human-readable display name from User.profile JSONB.
-
-    Falls back to the email local-part, then to a generic "Investor".
-    Identical heuristic to the Sprint 9.2 certificate_service so
-    existing data renders the same way.
-    """
-    if user.profile:
-        first = user.profile.get("first_name", "")
-        last = user.profile.get("last_name", "")
-        full = f"{first} {last}".strip()
-        if full:
-            return full
-
-    email_creds = (user.credentials or {}).get("email", {})
-    email_addr = email_creds.get("email", "")
-    if email_addr and "@" in email_addr:
-        return email_addr.split("@")[0]
-
-    return "Investor"
-
-
-def _extract_investor_email(user: User) -> str | None:
-    """Extract email address from User.credentials JSONB."""
-    email_creds = (user.credentials or {}).get("email", {})
-    return email_creds.get("email")
 
 
 async def load_agreement_data(
@@ -190,22 +167,12 @@ async def load_agreement_data(
 
     return AgreementData(
         purchase=purchase,
-        investor_name=_extract_investor_name(investor),
-        investor_email=_extract_investor_email(investor),
+        investor_name=extract_investor_name(investor),
+        investor_email=extract_investor_email(investor),
         company=company,
         product=product,
         template=template,
     )
-
-
-def _format_cents(cents: int) -> str:
-    """Format cents as a thousands-grouped dollar string.
-
-    150000 -> '1,500.00'. Same formatter the Sprint 9.2 certificate
-    used; templates that consumed `paid_display` keep working.
-    """
-    dollars = cents / 100
-    return f"{dollars:,.2f}"
 
 
 def _short_id(purchase_id: UUID) -> str:
@@ -284,9 +251,9 @@ async def render_agreement_html(
         # kept alongside for any company-overridden template that wants
         # them, but a bootstrap render uses the raw ints.
         "paid_cents": data.purchase.paid_cents,
-        "paid_display": _format_cents(data.purchase.paid_cents),
+        "paid_display": format_cents(data.purchase.paid_cents),
         "price_per_unit_cents": data.purchase.price_per_unit_cents,
-        "price_per_unit_display": _format_cents(
+        "price_per_unit_display": format_cents(
             data.purchase.price_per_unit_cents
         ),
         "legal_basis": data.purchase.legal_basis,
@@ -301,10 +268,12 @@ async def render_agreement_html(
 def generate_agreement_pdf(html: str) -> bytes:
     """Convert agreement HTML to PDF bytes via xhtml2pdf.
 
-    Same engine the Sprint 9.2 certificate used. Errors are logged
-    and surfaced as BadRequestError -- the renderer should never
-    produce HTML the PDF converter can't handle, so a failure here
-    is a template bug worth alerting on.
+    A converter failure on rendered HTML is a server-side problem
+    (either a broken template that Staff uploaded or an xhtml2pdf
+    regression), not a client mistake -- the investor did nothing
+    wrong by asking for their document. Round 11 ERR-11-01 reclassifies
+    this as 500 with a stable `code` so Sentry / Staff dashboards can
+    aggregate it separately from genuine 400s.
     """
     from xhtml2pdf import pisa
 
@@ -313,7 +282,11 @@ def generate_agreement_pdf(html: str) -> bytes:
 
     if result.err:
         logger.error("agreement_pdf_generation_failed", errors=result.err)
-        raise BadRequestError("Failed to generate agreement PDF")
+        raise CBSError(
+            message="Failed to generate agreement PDF",
+            code="pdf_generation_failed",
+            status_code=500,
+        )
 
     return buffer.getvalue()
 
@@ -344,7 +317,7 @@ async def send_agreement_email(
             f"Company: {data.company.name}\n"
             f"Product: {data.product.name}\n"
             f"Units: {data.purchase.units}\n"
-            f"Total paid: {_format_cents(data.purchase.paid_cents)}\n\n"
+            f"Total paid: {format_cents(data.purchase.paid_cents)}\n\n"
             f"Best regards,\n"
             f"CBSHOME Platform"
         ),

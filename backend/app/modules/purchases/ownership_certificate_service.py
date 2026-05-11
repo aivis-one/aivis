@@ -43,13 +43,24 @@
 #   Available to any authenticated user querying their own portfolio.
 #   Avatar mode works automatically (get_current_user returns target user).
 #
+# Round 11 fixes incorporated:
+#   QC-11-01  -- helpers (extract_investor_*, format_cents) imported
+#                from purchases.document_utils, not as underscore-
+#                prefixed cross-module imports.
+#   ERR-11-01 -- generate_ownership_pdf raises CBSError(500), not 400.
+#   SEC-11-01 -- OwnershipData no longer stores the full User ORM
+#                instance (which carries credentials / password_hash).
+#                Only the minimum required scalars (investor_id +
+#                investor_language) are retained alongside the already-
+#                extracted investor_name / investor_email.
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Read-only queries only.
 # =============================================================================
 
 import io
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 import structlog
@@ -58,7 +69,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.email import send_email
-from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.exceptions import BadRequestError, CBSError, NotFoundError
 from app.modules.companies.constants import DocumentTemplateKind
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.service import (
@@ -66,13 +77,13 @@ from app.modules.companies.service import (
     get_template_html_cached,
     make_asset_data_uri_func,
 )
-from app.modules.purchases.agreement_service import (
-    TemplateMissingError,
-    _extract_investor_email,
-    _extract_investor_name,
-    _format_cents,
-)
+from app.modules.purchases.agreement_service import TemplateMissingError
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
+from app.modules.purchases.document_utils import (
+    extract_investor_email,
+    extract_investor_name,
+    format_cents,
+)
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import User
 
@@ -98,9 +109,19 @@ class OwnershipPurchaseItem:
 
 @dataclass
 class OwnershipData:
-    """All data needed to render an ownership certificate."""
+    """All data needed to render an ownership certificate.
 
-    investor_user: User
+    Round 11 SEC-11-01: stores `investor_id` and `investor_language`
+    as plain scalars instead of holding the full User ORM instance.
+    The renderer only needs the language for template selection and
+    the email sender only needs the id for log correlation; carrying
+    a full User across the render path would have meant
+    credentials / password_hash / kyc_data sitting in memory for the
+    duration of an xhtml2pdf call.
+    """
+
+    investor_id: UUID
+    investor_language: str
     investor_name: str
     investor_email: str | None
     company: CompanyProfile
@@ -135,7 +156,10 @@ async def load_ownership_data(
     if company is None:
         raise NotFoundError("Company not found")
 
-    # Load investor user (need profile/credentials for name + email).
+    # Load investor user (need profile/credentials for name + email +
+    # language). The User instance is only used to extract scalars
+    # below -- nothing reads from it after this function returns
+    # (SEC-11-01).
     user_stmt = select(User).where(User.id == user_id)
     investor = (await session.execute(user_stmt)).scalar_one_or_none()
     if investor is None:
@@ -194,9 +218,10 @@ async def load_ownership_data(
     current_value_cents = total_units * company.price_per_unit_cents
 
     return OwnershipData(
-        investor_user=investor,
-        investor_name=_extract_investor_name(investor),
-        investor_email=_extract_investor_email(investor),
+        investor_id=investor.id,
+        investor_language=investor.language or "en",
+        investor_name=extract_investor_name(investor),
+        investor_email=extract_investor_email(investor),
         company=company,
         total_units=total_units,
         sale_units=sale_units,
@@ -234,12 +259,10 @@ async def render_ownership_html(
         jinja2.UndefinedError: StrictUndefined triggered by a missing
             placeholder in the template (treated as 500).
     """
-    language = data.investor_user.language or "en"
-
     template = await find_active_template(
         company_id=data.company.id,
         kind=DocumentTemplateKind.OWNERSHIP_CERTIFICATE,
-        language=language,
+        language=data.investor_language,
         session=session,
     )
 
@@ -249,7 +272,7 @@ async def render_ownership_html(
         logger.error(
             "ownership_template_missing",
             company_id=str(data.company.id),
-            language=language,
+            language=data.investor_language,
         )
         raise TemplateMissingError()
 
@@ -272,7 +295,7 @@ async def render_ownership_html(
 
     # Build the template context. Numeric fields are surfaced both raw
     # (for templates that want their own formatting) and pre-formatted
-    # via _format_cents so simple templates don't need a custom filter.
+    # via format_cents so simple templates don't need a custom filter.
     # The per-item `date` key (not `purchase_date`) matches the bootstrap
     # ownership_certificate templates which iterate {% for p in purchases %}
     # and render {{ p.date }} (R2 §4.4).
@@ -282,9 +305,9 @@ async def render_ownership_html(
             "legal_basis": item.legal_basis,
             "units": item.units,
             "paid_cents": item.paid_cents,
-            "paid_display": _format_cents(item.paid_cents),
+            "paid_display": format_cents(item.paid_cents),
             "price_per_unit_cents": item.price_per_unit_cents,
-            "price_per_unit_display": _format_cents(item.price_per_unit_cents),
+            "price_per_unit_display": format_cents(item.price_per_unit_cents),
             "date": item.purchase_date.strftime("%B %d, %Y"),
         }
         for item in data.purchases
@@ -298,9 +321,9 @@ async def render_ownership_html(
         "sale_units": data.sale_units,
         "gift_units": data.gift_units,
         "total_paid_cents": data.total_paid_cents,
-        "total_paid_display": _format_cents(data.total_paid_cents),
+        "total_paid_display": format_cents(data.total_paid_cents),
         "current_value_cents": data.current_value_cents,
-        "current_value_display": _format_cents(data.current_value_cents),
+        "current_value_display": format_cents(data.current_value_cents),
         "as_of_date": data.as_of_date.strftime("%B %d, %Y"),
         "purchases": purchases_for_template,
     }
@@ -311,9 +334,12 @@ async def render_ownership_html(
 def generate_ownership_pdf(html: str) -> bytes:
     """Convert ownership certificate HTML to PDF bytes via xhtml2pdf.
 
-    Same engine as the per-Purchase agreement; logged failures surface
-    as BadRequestError (400) because a render-output the converter
-    can't handle is a template authoring bug, not a system outage.
+    Round 11 ERR-11-01: a converter failure on already-rendered HTML
+    is a server-side problem (Staff-uploaded template bug or xhtml2pdf
+    regression), not a client mistake. Surfaced as 500 with a stable
+    `code` so Sentry / Staff dashboards can aggregate it separately
+    from genuine 400s. Identical classification to
+    generate_agreement_pdf.
     """
     from xhtml2pdf import pisa
 
@@ -322,7 +348,11 @@ def generate_ownership_pdf(html: str) -> bytes:
 
     if result.err:
         logger.error("ownership_pdf_generation_failed", errors=result.err)
-        raise BadRequestError("Failed to generate ownership certificate PDF")
+        raise CBSError(
+            message="Failed to generate ownership certificate PDF",
+            code="pdf_generation_failed",
+            status_code=500,
+        )
 
     return buffer.getvalue()
 
@@ -334,7 +364,9 @@ async def send_ownership_email(
     """Send the ownership certificate PDF to the investor's email.
 
     Uses core/email.send_email() with the full SMTP/Mailgun routing
-    logic. Raises BadRequestError if the investor has no email.
+    logic. Raises BadRequestError if the investor has no email --
+    that is genuinely a client-state problem (the user has not given
+    an email address yet), so 400 is correct here.
     """
     if not data.investor_email:
         raise BadRequestError("Investor has no email address on file")
@@ -350,7 +382,7 @@ async def send_ownership_email(
             f"Please find your ownership certificate for "
             f"{data.company.name} attached.\n\n"
             f"Total units owned: {data.total_units}\n"
-            f"Current value: {_format_cents(data.current_value_cents)}\n"
+            f"Current value: {format_cents(data.current_value_cents)}\n"
             f"As of: {data.as_of_date.strftime('%B %d, %Y')}\n\n"
             f"Best regards,\n"
             f"CBSHOME Platform"
@@ -362,13 +394,13 @@ async def send_ownership_email(
         logger.info(
             "ownership_email_sent",
             company_id=str(data.company.id),
-            investor_id=str(data.investor_user.id),
+            investor_id=str(data.investor_id),
         )
     else:
         logger.error(
             "ownership_email_failed",
             company_id=str(data.company.id),
-            investor_id=str(data.investor_user.id),
+            investor_id=str(data.investor_id),
         )
 
     return success
