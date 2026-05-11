@@ -722,7 +722,7 @@ export interface ProductResponse {
   updated_at: string | null
 }
 
-/** Public company detail with roadmap items (no distribution_config). */
+/** Public company detail with stats and roadmap items. iter 2.4 R1 §1.6.2: `stats` is REQUIRED -- the storefront detail surface always shows pool / growth numbers, populated by the router from get_public_company_stats. Roadmap items carry the R1 §5 extension (kind, cover_url, post snippet, ...). */
 export interface PublicCompanyDetailResponse {
   id: string
   name: string
@@ -736,6 +736,7 @@ export interface PublicCompanyDetailResponse {
   shares_per_option: number
   status: string
   created_at: string
+  stats: PublicCompanyStatsResponse
   roadmap?: RoadmapItemResponse[]
 }
 
@@ -761,6 +762,14 @@ export interface PublicCompanyResponse {
   shares_per_option: number
   status: string
   created_at: string
+}
+
+/** Aggregated storefront stats for a company (iter 2.4 R1 §1.6.2). Pool numbers come from the company's single active OptionPool; a company without an active pool reports zeros (it's a fresh "start-state" company that has not yet had a pool issued, which is a rare but legal rendering case rather than a 404). `price_growth_90d_percent` uses the "stretched window" semantics (R1 §1.6.2 decision): the baseline price is the latest CompanyPriceHistory row older than 90 days; for companies whose full history is shorter than 90 days, the baseline falls back to the earliest history row. No history rows at all -> growth = 0. Integer-rounded percent (no decimals). */
+export interface PublicCompanyStatsResponse {
+  pool_total_options: number
+  options_sold: number
+  options_sold_percent: number
+  price_growth_90d_percent: number
 }
 
 /** Public product detail with installment plans. Sprint 4.4: installments is required (no `= []` default). Backend always returns an array; the optional-by-default trip through OpenAPI was forcing `?? []` on the frontend. Router populates explicitly, even if empty. */
