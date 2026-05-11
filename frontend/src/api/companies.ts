@@ -1,14 +1,29 @@
 // =============================================================================
-// CBSHOME Frontend -- Public Companies API (Phase F4.1 + Sprint 4.5)
+// CBSHOME Frontend -- Public Companies API
+//                       (Phase F4.1 + Sprint 4.5 + iter 2.5 R1 §1.6)
 // =============================================================================
 //
-// Typed wrappers for /api/v1/companies/* (public storefront + Sprint 4.5
-// authenticated /me).
-// Source of truth: backend/app/modules/companies/router.py.
+// Typed wrappers for:
+//   - public storefront list / detail (/api/v1/public/companies/*)
+//   - Sprint 4.5 authenticated /me              (/api/v1/companies/me)
 //
-// listCompanies supports ?search= for the storefront filter bottom-sheet
-// on the Investor side -- case-insensitive substring match on name,
-// with LIKE metacharacters escaped server-side.
+// Source of truth:
+//   public list / detail -- backend/app/modules/companies/public_router.py
+//   authenticated /me    -- backend/app/modules/companies/router.py
+//
+// iter 2.5 R1 §1.6 URL MIGRATION:
+//   Old paths `/api/v1/companies` and `/api/v1/companies/{id}` were
+//   removed in iter 2.4 backend deploy (no 301 redirect -- breaking
+//   change, frontend ships its own update synchronously). New paths
+//   live under `/api/v1/public/companies/*`, served by the dedicated
+//   public router with per-IP rate limiting (60 req/min/IP, R2 §1.6.4).
+//
+//   `/api/v1/companies/me` (Sprint 4.5) is UNCHANGED -- it's an auth
+//   endpoint, not part of the public storefront prefix.
+//
+// listCompanies supports ?search= for the public storefront --
+// case-insensitive substring match on name, with LIKE metacharacters
+// escaped server-side.
 //
 // F4.3 B1.1: inline URLSearchParams replaced with buildQueryString
 // (TD-F08e closure). No behavioural change.
@@ -30,7 +45,11 @@ import type {
 } from '@/api/types'
 
 /**
- * GET /api/v1/companies -- paginated list of active companies.
+ * GET /api/v1/public/companies -- paginated list of active companies.
+ *
+ * Public storefront endpoint. No auth required server-side; the
+ * frontend still calls it from authenticated investor flows in
+ * iter 2.5 (the public landing page lands in iter 2.6).
  *
  * search: optional case-insensitive substring match on company name.
  *         Backend escapes % / _ / \ so the user can type literals.
@@ -45,7 +64,7 @@ export function listCompanies(params?: {
     page: params?.page,
     per_page: params?.per_page,
   })
-  return api.get<PublicCompanyListResponse>(`/api/v1/companies${qs}`)
+  return api.get<PublicCompanyListResponse>(`/api/v1/public/companies${qs}`)
 }
 
 /**
@@ -75,12 +94,20 @@ export function getMyCompany(): Promise<CompanyResponse> {
 }
 
 /**
- * GET /api/v1/companies/{id} -- company detail with roadmap items.
+ * GET /api/v1/public/companies/{id} -- company detail with stats and
+ * roadmap items (R1 §1.6.2 + §5).
  *
- * Returns 404 for non-active (hidden/archived) companies.
+ * Returns 404 for non-active (hidden / archived) companies.
+ *
+ * The response carries `stats` (required, never null) and `roadmap`
+ * with the R1 §5 extension (kind, cover_url, post snippet, ...).
+ * Investor-side `CompanyOverviewView` (iter 2.5) consumes both inline
+ * without a second round-trip.
  */
 export function getCompany(
   id: string,
 ): Promise<PublicCompanyDetailResponse> {
-  return api.get<PublicCompanyDetailResponse>(`/api/v1/companies/${id}`)
+  return api.get<PublicCompanyDetailResponse>(
+    `/api/v1/public/companies/${id}`,
+  )
 }
