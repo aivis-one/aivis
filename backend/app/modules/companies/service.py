@@ -1397,7 +1397,12 @@ def validate_attachment_mime_by_filename(filename: str) -> str:
     """
     if not filename:
         raise BadRequestError("Filename is required")
-    guess, _ = mimetypes.guess_type(filename)
+    # MINOR-03 (Round 11 review): normalise to lowercase so foo.PDF /
+    # foo.Jpg behave identically to foo.pdf / foo.jpg. mimetypes can be
+    # case-sensitive depending on the underlying mime.types DB, and the
+    # roadmap-cover validator already does this -- keep both validators
+    # consistent. Original filename is preserved for the error message.
+    guess, _ = mimetypes.guess_type(filename.lower())
     if guess is None:
         raise BadRequestError(
             f"Cannot determine MIME type from filename: {filename!r}"
