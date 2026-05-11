@@ -18,7 +18,8 @@
     "noResults": "No results found",
     "yes": "Yes",
     "no": "No",
-    "all": "All"
+    "all": "All",
+    "statusActive": "Active"
   },
   "error": {
     "pageNotFound": "Page not found"
@@ -507,6 +508,63 @@
       },
       "errorTitle": "Could not load portfolio"
     },
+    "companyList": {
+      "title": "Companies",
+      "subtitle": "Investment opportunities on the platform",
+      "empty": {
+        "title": "No companies yet",
+        "subtitle": "Check back soon as new companies join the platform."
+      },
+      "errorTitle": "Could not load companies",
+      "errorRetry": "Retry"
+    },
+    "companyOverview": {
+      "status": "Active",
+      "backToList": "All companies",
+      "errorTitle": "Could not load company",
+      "errorRetry": "Retry",
+      "notFound": "Company not found",
+      "sectionRoadmap": "Roadmap",
+      "sectionDocuments": "Company documents",
+      "cta": {
+        "viewProducts": "View products"
+      },
+      "stats": {
+        "poolTotalOptions": "Pool size",
+        "optionsSold": "Sold",
+        "optionsSoldPercent": "% sold",
+        "priceGrowth90d": "Price growth, 90d"
+      },
+      "documents": {
+        "errorTitle": "Could not load documents",
+        "errorRetry": "Retry",
+        "languageFilterAll": "All languages",
+        "downloadError": "Could not download"
+      }
+    },
+    "roadmap": {
+      "kind": {
+        "milestone": "Milestone",
+        "event": "Event",
+        "announcement": "Announcement"
+      },
+      "status": {
+        "planned": "Planned",
+        "in_progress": "In progress",
+        "done": "Done",
+        "cancelled": "Cancelled"
+      },
+      "openProduct": "View product",
+      "openExternal": "Open",
+      "readMore": "Read more",
+      "endMarker": "Beginning of company history"
+    },
+    "path": {
+      "legal": "Legal",
+      "marketing": "Marketing",
+      "patents": "Patents",
+      "reports": "Reports"
+    },
     "companyPosition": {
       "title": "Position",
       "aggregate": {
@@ -530,20 +588,34 @@
         "certificate": "Certificate"
       },
       "errorTitle": "Could not load position",
+      "ownership": {
+        "viewCertificate": "Ownership certificate",
+        "emailCertificate": "Email to me",
+        "viewing": "Loading...",
+        "sending": "Sending..."
+      },
       "notFound": {
         "title": "Position not found",
         "description": "You have no active purchases in this company."
       }
     },
-    "certificate": {
-      "title": "Certificate",
-      "loading": "Loading certificate...",
-      "errorTitle": "Could not load certificate",
+    "agreement": {
+      "title": {
+        "purchaseAgreement": "Purchase agreement",
+        "giftCertificate": "Gift certificate",
+        "installmentSubcontract": "Installment subcontract",
+        "ownership": "Ownership certificate",
+        "document": "Document"
+      },
+      "loading": "Loading document...",
+      "errorTitle": "Could not load document",
       "errorRetry": "Retry",
       "emailSend": "Email to me",
       "emailSending": "Sending...",
-      "emailSuccess": "Certificate sent to your email",
-      "emailError": "Could not send the certificate",
+      "emailSuccess": "Document sent to your email",
+      "emailError": "Could not send the document",
+      "rateLimited": "Too many requests, try again in a minute",
+      "unavailable": "Document temporarily unavailable",
       "close": "Close"
     },
     "docs": {
