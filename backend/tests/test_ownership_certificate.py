@@ -562,3 +562,164 @@ async def test_ownership_template_missing_500(
     assert resp.status_code == 500, resp.text
     body = resp.json()
     assert body["error"] == "agreement_template_missing"
+
+
+# ===========================================================================
+# T3 -- BUG-11-01 regression guard: ownership render context covers
+#       TEMPLATE_PLACEHOLDERS[OWNERSHIP_CERTIFICATE]
+# ===========================================================================
+
+import jinja2  # noqa: E402
+
+from app.modules.companies.constants import (  # noqa: E402
+    DocumentTemplateKind,
+    TEMPLATE_PLACEHOLDERS,
+)
+from app.modules.companies.models import (  # noqa: E402
+    CompanyDocumentTemplate,
+)
+from app.modules.purchases.ownership_certificate_service import (  # noqa: E402
+    OwnershipData,
+    load_ownership_data,
+    render_ownership_html,
+)
+
+
+def _build_synthetic_ownership_template(
+    placeholders: frozenset[str],
+) -> str:
+    """Build a Jinja2 template that references every top-level placeholder.
+
+    `purchases` is a list-of-dicts; we just iterate without touching
+    sub-keys (TEMPLATE_PLACEHOLDERS only validates top-level names by
+    design -- see companies/constants.py comment above the dict). The
+    iteration alone is enough to prove `purchases` is in the context.
+    """
+    top_level = sorted(placeholders - {"purchases"})
+    body = " | ".join(f"{{{{ {name} }}}}" for name in top_level)
+    if "purchases" in placeholders:
+        body += " | {% for p in purchases %}*{% endfor %}"
+    return body
+
+
+@pytest.mark.asyncio
+async def test_ownership_render_context_covers_template_placeholders(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """render_ownership_html must supply every key in
+    TEMPLATE_PLACEHOLDERS[OWNERSHIP_CERTIFICATE].
+
+    Mocking strategy mirrors the agreement-side test in
+    test_purchase_agreement.py: we replace get_template_html_cached
+    with a synthetic body, make_asset_data_uri_func with a no-op
+    factory, and find_active_template with a stub returning a
+    sentinel template object (the ownership renderer needs one --
+    storage_prefix is forwarded into the mocked helpers and never
+    actually read).
+    """
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, suffix="t3o")
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, inv_id = await _create_investor_with_balance(
+        client, db_session, suffix="inv_t3o",
+    )
+    await _buy(client, inv_token, product["id"])
+
+    data = await load_ownership_data(
+        company_id=UUID(company["id"]),
+        user_id=inv_id,
+        session=db_session,
+    )
+
+    synthetic_html = _build_synthetic_ownership_template(
+        TEMPLATE_PLACEHOLDERS[DocumentTemplateKind.OWNERSHIP_CERTIFICATE]
+    )
+
+    # Stub: find_active_template returns any active template-shaped
+    # object; render_ownership_html only reads .storage_prefix and
+    # .asset_files off it (both mocked away below).
+    fake_template = CompanyDocumentTemplate(
+        company_id=None,
+        kind=DocumentTemplateKind.OWNERSHIP_CERTIFICATE,
+        language="en",
+        version=1,
+        title="t3 stub",
+        storage_prefix="_test/t3_ownership/",
+        asset_files=[],
+        status="active",
+        created_by=None,
+    )
+
+    async def _mock_find_active_template(**_kwargs):
+        return fake_template
+
+    async def _mock_get_template_html_cached(_storage_prefix: str) -> str:
+        return synthetic_html
+
+    async def _mock_make_asset_data_uri_func(
+        _storage_prefix: str, _asset_files: list[str]
+    ):
+        def _unused(_name: str) -> str:
+            raise AssertionError(
+                "Synthetic test template should not reference asset_data_uri"
+            )
+        return _unused
+
+    monkeypatch.setattr(
+        "app.modules.purchases.ownership_certificate_service.find_active_template",
+        _mock_find_active_template,
+    )
+    monkeypatch.setattr(
+        "app.modules.purchases.ownership_certificate_service.get_template_html_cached",
+        _mock_get_template_html_cached,
+    )
+    monkeypatch.setattr(
+        "app.modules.purchases.ownership_certificate_service.make_asset_data_uri_func",
+        _mock_make_asset_data_uri_func,
+    )
+
+    try:
+        rendered = await render_ownership_html(data, db_session)
+    except jinja2.UndefinedError as exc:
+        pytest.fail(
+            f"render_ownership_html context missing a key from "
+            f"TEMPLATE_PLACEHOLDERS[OWNERSHIP_CERTIFICATE]: {exc}"
+        )
+
+    assert rendered, "Rendered output is empty"
+
+
+# ===========================================================================
+# T4 -- SEC-11-01 regression guard: OwnershipData does not hold full User
+# ===========================================================================
+
+
+def test_ownership_data_does_not_hold_user_object() -> None:
+    """SEC-11-01 regression guard.
+
+    OwnershipData MUST NOT carry a full User ORM instance (which has
+    credentials / password_hash / kyc_data attached). Only the minimal
+    scalar fields needed for render and audit-log correlation:
+    investor_id (UUID) and investor_language (str) alongside the
+    already-extracted investor_name / investor_email.
+
+    Static inspection -- no fixtures, no DB. Catches the regression at
+    import time without needing to exercise the full render pipeline.
+    """
+    fields = OwnershipData.__dataclass_fields__
+    assert "investor_user" not in fields, (
+        "OwnershipData.investor_user reintroduced -- SEC-11-01 regression. "
+        "Use investor_id + investor_language instead."
+    )
+    assert "investor_id" in fields, (
+        "OwnershipData must carry investor_id (UUID) for audit logging."
+    )
+    assert "investor_language" in fields, (
+        "OwnershipData must carry investor_language (str) for template "
+        "selection in render_ownership_html."
+    )

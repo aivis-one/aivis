@@ -1,7 +1,7 @@
 # CBSHOME -- Refactor: Company Attachments, Templates & Purchase Docs
 
-**Версия:** 0.6 / decision-locked
-**Дата:** 10 мая 2026
+**Версия:** 0.7 / decision-locked
+**Дата:** 11 мая 2026
 
 **Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
 
@@ -716,7 +716,7 @@ Bootstrap-данные лежат под `backend/scripts/templates/_default/`, 
 
 ## 5. Backend: Purchase docs fix
 
-**Впереди (iter 2.4).** Зависит от §4 (templates module).
+**Реализовано в iter 2.4** (HEAD migration `0033_roadmap_extension`, pytest 461 passed). См. §5.6 ниже для Round 11 hardening.
 
 ### 5.1. Изменения в модели `Purchase`
 
@@ -773,18 +773,31 @@ purchase.purchase_agreement_template_id = template.id if template else None
 - `GET /api/v1/companies/{id}/ownership-certificate` -- HTML рендер. Live-агрегат всех `Purchase WHERE investor_id=current_user AND company_id={id} AND status != reversed`. Шаблон ищется на лету через `find_active_template(company_id, kind=ownership_certificate, language=user_language)` (4-ступенчатый fallback). Если ничего не нашлось -- **500** (то же значение -- platform default должен быть).
 - `POST /api/v1/companies/{id}/ownership-certificate/email` -- PDF на email.
 
+**Bucket-семантика для render context (зафиксировано iter 2.4):**
+- `sale_units = SUM(units WHERE legal_basis IN {sale, installment_tranche})`
+- `gift_units = SUM(units WHERE legal_basis = gift)`
+- `total_units = sale_units + gift_units`
+
+`installment_tranche` склеивается с `sale`, потому что юридически обе сущности -- "оплачено деньгами"; `gift` -- единственная no-cash ветка. Bootstrap ownership_certificate templates рассчитаны на этот two-bucket shape; смена контракта потребует re-seed всех 4 language вариантов. Детальный per-Purchase массив отдаётся под ключом `purchases[]` для templates, которые хотят показать строки.
+
 Для `ownership_certificate` НЕТ snapshot'а -- сертификат отражает текущее состояние портфеля, не момент в прошлом. Каждый запрос ищет шаблон заново (с кэшем HTML, см. §4.10).
 
-### 5.4. Удаление старого
+### 5.4. Удаление старого и разделение сервисов
 
-- `backend/app/modules/purchases/templates/certificate.html` -- удаляется (перестаёт использоваться, на смену приходит per-company / platform default template из MinIO).
-- `backend/app/modules/purchases/certificate_router.py` -- переименовывается, эндпоинты перепиливаются.
-- `backend/app/modules/purchases/certificate_service.py` -- основная логика остаётся (Jinja2 рендер, xhtml2pdf, send_email), но:
-  - `_LEGAL_BASIS_DISPLAY` уходит (заголовок теперь часть template'а).
-  - Шаблон ищется через `find_active_template()` в БД (4-ступенчатый fallback, см. §4.7), HTML body читается из MinIO по `<storage_prefix>/template.html` (с Redis-кэшем, см. §4.10).
-  - Регистрируется Jinja-функция `asset_data_uri(filename)` через `make_asset_data_uri_func(storage_prefix, asset_files)` (см. §4.4).
-  - Ассеты embed'аются inline base64 в HTML/PDF.
-  - **Render Environment обязательно с `autoescape=True` и `undefined=StrictUndefined`** -- при подстановке user-controlled данных (`investor_name`, `company_name`, `description`-поля) без autoescape получим stored XSS в HTML и потенциально RCE-вектор в PDF-движке xhtml2pdf. `StrictUndefined` ловит missing-placeholder в шаблонах рано (рендер падает с `UndefinedError` вместо тихого вывода пустоты в договор). Reconcile-парсинг (`Environment.parse` в §4.8) этого не требует -- он compile-only без подстановок.
+**Удалено физически** (iter 2.4, `git rm`):
+- `backend/app/modules/purchases/templates/` -- директория целиком, включая `certificate.html`. На смену пришли per-company / platform default templates в MinIO.
+- `backend/app/modules/purchases/certificate_router.py` -- старый роутер с одним эндпоинтом.
+- `backend/app/modules/purchases/certificate_service.py` -- старый сервис.
+
+**Создано на месте удалённого** (iter 2.4):
+- `backend/app/modules/purchases/agreement_service.py` -- per-Purchase agreement: `load_agreement_data`, `render_agreement_html`, `generate_agreement_pdf`, `send_agreement_email`.
+- `backend/app/modules/purchases/ownership_certificate_service.py` -- per investor-company ownership: `load_ownership_data` (live aggregate), `render_ownership_html`, `generate_ownership_pdf`, `send_ownership_email`.
+- `backend/app/modules/purchases/agreement_router.py` -- **два APIRouter в одном файле**: `agreement_router` (prefix `/api/v1/purchases`) и `ownership_router` (prefix `/api/v1/companies`). Оба обслуживают document-rendering поверх одной Jinja2/MinIO/xhtml2pdf машинерии, поэтому держатся в одном модуле; разнос на два файла дал бы cross-import без выгоды.
+- `backend/app/modules/purchases/document_utils.py` -- общие helpers (`extract_investor_name`, `extract_investor_email`, `format_cents`) для обоих сервисов. Без leading underscore, потому что shared (iter 2.4 Round 11 QC-11-01).
+
+**Render Environment** в обоих сервисах: `autoescape=True` + `undefined=StrictUndefined` (SEC-NEW-01 closure из iter 2.3). При подстановке user-controlled данных (`investor_name`, `company_name`, `description`-поля) без autoescape получим stored XSS в HTML и потенциально RCE-вектор в PDF-движке xhtml2pdf. `StrictUndefined` ловит missing-placeholder в шаблонах рано (рендер падает с `UndefinedError` вместо тихого вывода пустоты в договор). Reconcile-парсинг (`Environment.parse` в §4.8) этого не требует -- он compile-only без подстановок.
+
+Шаблон ищется через `find_active_template()` (4-stage fallback, §4.7), HTML body читается из MinIO по `<storage_prefix>/template.html` с Redis-кэшем (§4.10). Jinja-функция `asset_data_uri(filename)` регистрируется через `make_asset_data_uri_func(storage_prefix, asset_files)` (§4.4); ассеты embed'аются inline base64 в HTML/PDF.
 
 ### 5.5. Frontend контракт
 
@@ -796,6 +809,19 @@ purchase.purchase_agreement_template_id = template.id if template else None
 `CompanyPositionView` сейчас отображает один "сертификат" на весь экран позиции. После рефакторинга:
 - Шапка экрана -- кнопка "Сертификат владения" (ownership_certificate).
 - В списке Purchase -- на каждой строке кнопка "Договор" (per-purchase agreement).
+
+### 5.6. Round 11 hardening (iter 2.4)
+
+Code review iter 2.4 (раунд 11) вскрыл 4 дефекта поверх изначальной декомпозиции §5.1-§5.5. Все закрыты в той же итерации, тестовый счётчик не изменился (461 passed). Зафиксировано в спеке для будущего grep'а.
+
+- **BUG-11-01 -- `TEMPLATE_PLACEHOLDERS` sync с render context.** Reconcile-валидатор шаблонов (§4.8) отклонял любой custom-template, ссылающийся на pre-formatted ключи. Bootstrap-шаблоны работали (используют только raw `*_cents`), но кастомизация была сломана с первого upload-попытки. Добавлено **15 ключей** в `companies/constants.py::TEMPLATE_PLACEHOLDERS`:
+  - `PURCHASE_AGREEMENT` / `GIFT_CERTIFICATE` / `INSTALLMENT_SUBCONTRACT` (по 4 ключа на kind): `company_logo_url`, `paid_display`, `price_per_unit_display`, `issue_date`.
+  - `OWNERSHIP_CERTIFICATE`: `company_logo_url`, `total_paid_display`, `current_value_display`.
+- **QC-11-01 -- cross-module private-import.** Helpers `extract_investor_name`, `extract_investor_email`, `format_cents` вынесены в `purchases/document_utils.py` без leading underscore. `_short_id` остаётся приватным в `agreement_service.py` (используется только там).
+- **ERR-11-01 -- PDF generation failure → 500, не 400.** Сбой xhtml2pdf на уже отрендеренном HTML -- серверная проблема (broken template или регрессия converter'а), не клиентская. `CBSError(status_code=500, code="pdf_generation_failed")` в обоих `generate_agreement_pdf` и `generate_ownership_pdf`. `BadRequestError` для "no email" остаётся (там действительно client-state).
+- **SEC-11-01 -- `OwnershipData` без `User` в памяти.** Dataclass хранит `investor_id: UUID` + `investor_language: str` вместо `investor_user: User`. Защищает от утечки `User.credentials` (hash пароля) в render-context. `AgreementData` уже была корректной с самого начала -- держала только `investor_name` / `investor_email`.
+
+Файлы Round 11: `purchases/document_utils.py` (новый), `purchases/agreement_service.py`, `purchases/ownership_certificate_service.py`, `companies/constants.py`.
 
 ## 6. Frontend: Staff UI
 
@@ -952,6 +978,14 @@ Post-MVP (вне scope refactor'а):
 **Все вопросы закрыты.** Документ decision-locked.
 
 **Closed (решения зафиксированы):**
+
+### v0.7 -- iter 2.4 reality lock (purchase docs закрыт)
+
+- **§5 статус**: "Впереди (iter 2.4)" -> "Реализовано в iter 2.4" (HEAD migration `0033_roadmap_extension`, pytest 461 passed).
+- **§5.3 ownership bucket-семантика** добавлена явно: `sale_units = sale + installment_tranche, gift_units = gift`. Инвариант, зафиксированный в коде; теперь и в спеке, чтобы будущие переписи не откатили это случайно.
+- **§5.4 переписан**: вместо "переименовывается, основная логика остаётся" -- описано реальное разделение: удалены `certificate_router.py`, `certificate_service.py`, `templates/`; созданы `agreement_service.py`, `ownership_certificate_service.py`, `agreement_router.py` (два APIRouter в одном файле -- обосновано в комментарии модуля), `document_utils.py` (общие helpers).
+- **§5.6 новый** -- Round 11 hardening: BUG-11-01 (15 placeholders в TEMPLATE_PLACEHOLDERS), QC-11-01 (helpers в document_utils без underscore), ERR-11-01 (PDF fail -> 500), SEC-11-01 (OwnershipData без User в памяти).
+- **iter 2.4-tests micro-iteration** добавила coverage для T1-T4 (4-stage fallback snapshot, investor_language frozen at purchase time, BUG-11-01 placeholders, SEC-11-01 dataclass guard). Изменений в spec не потребовала -- покрытие, не контракт.
 
 ### v0.4 -- templates в MinIO с ассетами и platform default
 

@@ -405,3 +405,130 @@ async def test_agreement_html_escapes_investor_name(
     # Escaped marker confirms the name field was actually rendered.
     assert "&lt;script&gt;" in html
     assert "Marker" in html
+
+
+# ===========================================================================
+# T3 -- BUG-11-01 regression guard: render context covers TEMPLATE_PLACEHOLDERS
+# ===========================================================================
+#
+# render_agreement_html builds ONE context dict that serves three doc
+# kinds (PURCHASE_AGREEMENT / GIFT_CERTIFICATE / INSTALLMENT_SUBCONTRACT),
+# so the same render path must satisfy the union of all three whitelists.
+# Round 11 sync brought those whitelists to identical shape, but if any
+# of them is later extended with a key the renderer doesn't supply,
+# StrictUndefined will fail loudly at render time. We use StrictUndefined
+# itself as the assertion mechanism: drop a synthetic template containing
+# every placeholder of the given kind through get_template_html_cached,
+# run the real renderer, and assert no UndefinedError fires.
+#
+# Direction covered: render_context >= TEMPLATE_PLACEHOLDERS[kind].
+# Opposite direction (template references unknown var) is already covered
+# by tests/test_reconcile_templates.py via the parse-time validator.
+
+import jinja2  # noqa: E402  -- placed here to keep the existing imports block stable
+
+from app.modules.companies.constants import (  # noqa: E402
+    DocumentTemplateKind,
+    TEMPLATE_PLACEHOLDERS,
+)
+from app.modules.purchases.agreement_service import (  # noqa: E402
+    load_agreement_data,
+    render_agreement_html,
+)
+
+
+def _build_synthetic_template_html(placeholders: frozenset[str]) -> str:
+    """Build a minimal Jinja2 template that references every placeholder.
+
+    Each placeholder is rendered as `{{ name }}` joined with a separator.
+    If the real render context lacks any of them, StrictUndefined raises
+    jinja2.UndefinedError on render and the test fails noisily.
+    """
+    return " | ".join(f"{{{{ {name} }}}}" for name in sorted(placeholders))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "kind",
+    [
+        DocumentTemplateKind.PURCHASE_AGREEMENT,
+        DocumentTemplateKind.GIFT_CERTIFICATE,
+        DocumentTemplateKind.INSTALLMENT_SUBCONTRACT,
+    ],
+)
+async def test_render_context_covers_template_placeholders(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    """render_agreement_html must supply every key in TEMPLATE_PLACEHOLDERS[kind].
+
+    The agreement renderer is shared across the three purchase-related
+    doc kinds; the whitelists are currently identical but the test runs
+    against each kind to guard against any future divergence.
+
+    Mocking strategy:
+      get_template_html_cached -- replaced so we control the template
+        body; the real MinIO cache is not consulted.
+      make_asset_data_uri_func -- replaced with a no-op factory; the
+        synthetic template never calls asset_data_uri(), so the returned
+        lambda is unused.
+    """
+    admin_token = await _admin_token(client, db_session)
+    inv_token, _, _, _, purchases = await _setup_purchase(
+        client, db_session, admin_token,
+        company_suffix=f"t3_{kind[:3]}",
+        investor_suffix=f"inv_t3_{kind[:3]}",
+    )
+    sale_purchase = next(p for p in purchases if p["legal_basis"] == "sale")
+    purchase_id = UUID(sale_purchase["id"])
+
+    # Re-query the SALE Purchase row to get the investor_id without
+    # threading inv_id through the helper's return tuple.
+    stmt = select(Purchase).where(Purchase.id == purchase_id)
+    sale_row = (await db_session.execute(stmt)).scalar_one()
+    data = await load_agreement_data(purchase_id, sale_row.investor_id, db_session)
+
+    synthetic_html = _build_synthetic_template_html(TEMPLATE_PLACEHOLDERS[kind])
+
+    async def _mock_get_template_html_cached(_storage_prefix: str) -> str:
+        return synthetic_html
+
+    async def _mock_make_asset_data_uri_func(
+        _storage_prefix: str, _asset_files: list[str]
+    ):
+        # The synthetic template never references asset_data_uri, so
+        # any callable suffices. Return a lambda that would raise if
+        # accidentally invoked -- catches silent test-template drift.
+        def _unused(_name: str) -> str:
+            raise AssertionError(
+                "Synthetic test template should not reference asset_data_uri"
+            )
+        return _unused
+
+    monkeypatch.setattr(
+        "app.modules.purchases.agreement_service.get_template_html_cached",
+        _mock_get_template_html_cached,
+    )
+    monkeypatch.setattr(
+        "app.modules.purchases.agreement_service.make_asset_data_uri_func",
+        _mock_make_asset_data_uri_func,
+    )
+
+    # The render call is what we're asserting: no UndefinedError, no
+    # KeyError, no NameError. A successful return string proves every
+    # placeholder in TEMPLATE_PLACEHOLDERS[kind] has a matching key in
+    # the render context built by render_agreement_html.
+    try:
+        rendered = await render_agreement_html(data, db_session)
+    except jinja2.UndefinedError as exc:
+        pytest.fail(
+            f"render_agreement_html context missing a key from "
+            f"TEMPLATE_PLACEHOLDERS[{kind}]: {exc}"
+        )
+
+    # Sanity check: rendered output is non-empty -- a defensive guard
+    # against the test silently degenerating if the synthetic template
+    # construction breaks in a future refactor.
+    assert rendered, "Rendered output is empty"
