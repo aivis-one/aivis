@@ -67,7 +67,7 @@ import { useI18n } from 'vue-i18n'
 import { tOrRaw } from '@/utils/i18n'
 import type { RoadmapItemResponse } from '@/api/types'
 
-const props = defineProps<{
+defineProps<{
   items: RoadmapItemResponse[]
 }>()
 
