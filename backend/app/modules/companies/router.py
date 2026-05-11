@@ -67,6 +67,7 @@ from app.modules.companies.schemas import (
 from app.modules.companies.service import (
     build_roadmap_item_response,
     get_company_detail,
+    get_public_company_stats,
     list_companies,
 )
 
@@ -136,15 +137,15 @@ async def get_company_detail_endpoint(
     company_id: UUID,
     session: AsyncSession = Depends(get_db_reader),
 ) -> PublicCompanyDetailResponse:
-    """Get company detail with roadmap items (public).
+    """Get company detail with roadmap items and storefront stats (public).
 
     Returns 404 for non-active companies (hidden/archived).
 
-    iter 2.4 R1 §5: roadmap items now carry kind, valid_until,
-    external_url, cover_url (presigned), post snippet, and linked
-    product. get_company_detail batch-loads referenced posts to avoid
-    N+1; build_roadmap_item_response renders each item with the
-    pre-loaded post (or None when the post is unpublished/deleted).
+    iter 2.4 R1 §1.6.2 / §5: response now carries `stats` (pool /
+    growth aggregates) alongside the roadmap. Roadmap items themselves
+    are R1 §5: kind, valid_until, external_url, cover_url (presigned),
+    post snippet, and linked product. get_company_detail batch-loads
+    referenced posts to avoid N+1.
     """
     profile, roadmap_items, posts_map = await get_company_detail(
         company_id, session
@@ -154,11 +155,16 @@ async def get_company_detail_endpoint(
     if profile.status != CompanyStatus.ACTIVE:
         raise NotFoundError("Company not found")
 
-    response = PublicCompanyDetailResponse.model_validate(profile)
-    response.roadmap = [
+    stats = await get_public_company_stats(company_id, session)
+
+    roadmap = [
         await build_roadmap_item_response(
             item, posts_map.get(item.post_id) if item.post_id else None, session
         )
         for item in roadmap_items
     ]
-    return response
+    return PublicCompanyDetailResponse(
+        **PublicCompanyResponse.model_validate(profile).model_dump(),
+        stats=stats,
+        roadmap=roadmap,
+    )

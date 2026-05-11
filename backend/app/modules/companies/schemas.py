@@ -388,9 +388,38 @@ class PublicCompanyResponse(BaseModel):
     created_at: datetime
 
 
-class PublicCompanyDetailResponse(PublicCompanyResponse):
-    """Public company detail with roadmap items (no distribution_config)."""
+class PublicCompanyStatsResponse(BaseModel):
+    """Aggregated storefront stats for a company (iter 2.4 R1 §1.6.2).
 
+    Pool numbers come from the company's single active OptionPool;
+    a company without an active pool reports zeros (it's a fresh
+    "start-state" company that has not yet had a pool issued, which
+    is a rare but legal rendering case rather than a 404).
+
+    `price_growth_90d_percent` uses the "stretched window" semantics
+    (R1 §1.6.2 decision): the baseline price is the latest
+    CompanyPriceHistory row older than 90 days; for companies whose
+    full history is shorter than 90 days, the baseline falls back to
+    the earliest history row. No history rows at all -> growth = 0.
+    Integer-rounded percent (no decimals).
+    """
+
+    pool_total_options: int
+    options_sold: int
+    options_sold_percent: int
+    price_growth_90d_percent: int
+
+
+class PublicCompanyDetailResponse(PublicCompanyResponse):
+    """Public company detail with stats and roadmap items.
+
+    iter 2.4 R1 §1.6.2: `stats` is REQUIRED -- the storefront detail
+    surface always shows pool / growth numbers, populated by the
+    router from get_public_company_stats. Roadmap items carry the
+    R1 §5 extension (kind, cover_url, post snippet, ...).
+    """
+
+    stats: PublicCompanyStatsResponse
     roadmap: list[RoadmapItemResponse] = []
 
 

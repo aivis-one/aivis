@@ -112,6 +112,7 @@ import base64
 import mimetypes
 import re
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import BinaryIO
 from uuid import UUID, uuid4
 
@@ -155,6 +156,7 @@ from app.modules.companies.schemas import (
     AttachmentPatchBody,
     CreateCompanyRequest,
     PostSnippetResponse,
+    PublicCompanyStatsResponse,
     RoadmapItemResponse,
     UpdateCompanyRequest,
 )
@@ -621,6 +623,121 @@ async def build_roadmap_item_response(
         post=post_snippet,
         created_at=item.created_at,
         updated_at=item.updated_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public storefront stats (iter 2.4 R1 §1.6.2)
+# ---------------------------------------------------------------------------
+
+
+async def get_public_company_stats(
+    company_id: UUID,
+    session: AsyncSession,
+) -> PublicCompanyStatsResponse:
+    """Aggregate stats for the public company detail surface (R1 §1.6.2).
+
+    Numbers:
+      pool_total_options       -- size of the company's single active
+                                  OptionPool. 0 if the company has no
+                                  active pool (a fresh start-state
+                                  company; rare but legal).
+      options_sold             -- SUM(Purchase.units) for active
+                                  purchases of the company. Reuses
+                                  pools.service.get_pool_consumed which
+                                  is the canonical "consumed" metric
+                                  (includes sale, gift, installment
+                                  tranche per spec §3.5-§3.7).
+      options_sold_percent     -- int round of options_sold / total * 100.
+                                  0 when total is 0.
+      price_growth_90d_percent -- stretched-window growth (R1 §1.6.2
+                                  decision):
+                                    1. baseline = last CompanyPriceHistory
+                                       row with changed_at < now-90d;
+                                    2. if none, baseline = earliest
+                                       CompanyPriceHistory row;
+                                    3. if still none (history empty),
+                                       growth = 0.
+                                  Integer-rounded percent.
+
+    Caller must have already 404'd hidden / archived companies; this
+    helper assumes the company is valid and active.
+
+    Lazy import of pools.service avoids the circular dependency
+    (pools.service imports companies.service.get_company).
+    """
+    # Lazy import: pools.service.get_active_pool / get_pool_consumed both
+    # need companies.service.get_company at module load, so a top-level
+    # import here would loop.
+    from app.modules.pools.service import (
+        get_active_pool,
+        get_pool_consumed,
+    )
+
+    # Pool sizing. A company without a pool returns zeros instead of a
+    # 4xx: the storefront detail page must render even before Staff
+    # has issued the pool, and a zero is a true statement.
+    try:
+        pool = await get_active_pool(company_id, session)
+        pool_total_options = pool.total_options
+    except BadRequestError:
+        pool_total_options = 0
+
+    options_sold = await get_pool_consumed(company_id, session)
+
+    if pool_total_options > 0:
+        options_sold_percent = int(
+            round(options_sold / pool_total_options * 100)
+        )
+    else:
+        options_sold_percent = 0
+
+    # 90-day price growth, stretched-window semantics.
+    growth_percent = 0
+    profile = await get_company(company_id, session)
+    current_price = profile.price_per_unit_cents
+
+    cutoff = datetime.now(UTC) - timedelta(days=90)
+
+    # Step 1: latest history row strictly older than 90 days. This is
+    # the "true" baseline when the company has a long enough history.
+    old_stmt = (
+        select(CompanyPriceHistory.price_per_unit_cents)
+        .where(
+            CompanyPriceHistory.company_id == company_id,
+            CompanyPriceHistory.changed_at < cutoff,
+        )
+        .order_by(CompanyPriceHistory.changed_at.desc())
+        .limit(1)
+    )
+    old_price = (await session.execute(old_stmt)).scalar_one_or_none()
+
+    if old_price is None:
+        # Step 2 (stretched window): no row older than 90 days, fall
+        # back to the earliest history row. Captures "the company has
+        # been here for <90 days but has had a price change".
+        earliest_stmt = (
+            select(CompanyPriceHistory.price_per_unit_cents)
+            .where(CompanyPriceHistory.company_id == company_id)
+            .order_by(CompanyPriceHistory.changed_at.asc())
+            .limit(1)
+        )
+        old_price = (
+            await session.execute(earliest_stmt)
+        ).scalar_one_or_none()
+
+    # Step 3: no history rows at all (price never changed) -> 0%.
+    # Also covers old_price == 0 which would zero-divide.
+    if old_price and old_price > 0:
+        growth_percent = int(
+            round((current_price - old_price) / old_price * 100)
+        )
+
+    return PublicCompanyStatsResponse(
+        pool_total_options=pool_total_options,
+        options_sold=options_sold,
+        options_sold_percent=options_sold_percent,
+        price_growth_90d_percent=growth_percent,
     )
 
 
