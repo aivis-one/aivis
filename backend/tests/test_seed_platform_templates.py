@@ -22,7 +22,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -36,6 +36,7 @@ from app.modules.companies.constants import (
     TemplateStatus,
 )
 from app.modules.companies.models import CompanyDocumentTemplate
+from app.modules.purchases.models import Purchase
 from scripts.seed_platform_templates import (
     seed_platform_templates,
 )
@@ -84,7 +85,33 @@ async def isolate_platform_templates(
     TEARDOWN: re-upload bootstrap files and re-run seed so the shared
     DB doesn't end the test run with rows pointing at a half-empty
     bucket. After teardown the canonical 16-row state is back.
+
+    BUG FIX (iter 2.5): The hard DELETE triggers ON DELETE SET NULL on
+    purchases.purchase_agreement_template_id for any Purchase rows that
+    snapshot an archived platform-default template. Save those refs
+    before the DELETE and restore them after re-seeding so cross-module
+    tests (e.g. test_template_snapshot.py) don't end up with NULL
+    snapshot columns after this fixture's teardown.
     """
+    # SETUP -- save (purchase_id, kind, language) for every Purchase
+    # whose snapshot points at a platform-default template. Archived
+    # rows are included: the FK fires SET NULL on all statuses.
+    saved_refs = (
+        await db_session.execute(
+            select(
+                Purchase.id,
+                CompanyDocumentTemplate.kind,
+                CompanyDocumentTemplate.language,
+            )
+            .join(
+                CompanyDocumentTemplate,
+                Purchase.purchase_agreement_template_id
+                == CompanyDocumentTemplate.id,
+            )
+            .where(CompanyDocumentTemplate.company_id.is_(None))
+        )
+    ).all()
+
     # SETUP -- wipe DB rows.
     await db_session.execute(
         delete(CompanyDocumentTemplate).where(
@@ -126,6 +153,30 @@ async def isolate_platform_templates(
                 )
     await seed_platform_templates(db_session, dry_run=False)
     await db_session.commit()
+
+    # TEARDOWN -- restore purchase snapshot refs that were SET NULL by
+    # the DELETE above. For each saved (purchase_id, kind, language),
+    # find the freshly-seeded active platform row and point the purchase
+    # back at it.
+    for p_id, kind, lang in saved_refs:
+        new_tpl = (
+            await db_session.execute(
+                select(CompanyDocumentTemplate).where(
+                    CompanyDocumentTemplate.company_id.is_(None),
+                    CompanyDocumentTemplate.kind == kind,
+                    CompanyDocumentTemplate.language == lang,
+                    CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+                )
+            )
+        ).scalar_one_or_none()
+        if new_tpl is not None:
+            await db_session.execute(
+                update(Purchase)
+                .where(Purchase.id == p_id)
+                .values(purchase_agreement_template_id=new_tpl.id)
+            )
+    if saved_refs:
+        await db_session.commit()
 
 
 # ---------------------------------------------------------------------------

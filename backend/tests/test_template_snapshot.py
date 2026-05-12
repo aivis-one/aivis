@@ -49,7 +49,7 @@ from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
@@ -63,6 +63,7 @@ from app.modules.ledgers.service import record_active_ledger
 from app.modules.purchases.constants import PurchaseLegalBasis
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import User
+from scripts.seed_platform_templates import seed_platform_templates
 from tests.helpers import (
     auth_headers,
     cleanup_test_users,
@@ -631,4 +632,116 @@ async def test_snapshot_uses_investor_language_at_purchase_time(
     assert refetched.purchase_agreement_template_id == en_template.id, (
         "Snapshot must be frozen at purchase time; later language "
         "changes on the User row must not move the template id."
+    )
+
+
+# ===========================================================================
+# T3 -- regression: platform-template wipe + reseed restores purchase refs
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_purchase_snapshot_survives_platform_template_wipe_and_reseed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Regression for iter 2.5 bug: the autouse isolate_platform_templates
+    fixture in test_seed_platform_templates.py and
+    test_reconcile_platform_templates.py deletes ALL company_document_templates
+    rows where company_id IS NULL (including archived ones). The FK
+    ON DELETE SET NULL on purchases.purchase_agreement_template_id fires,
+    NULLing every Purchase that had a platform-default snapshot. The
+    fixture teardown re-seeded with new rows but did not restore the NULLed
+    purchases, so `GET /api/v1/purchases/{id}/agreement` returned 500 after
+    any pytest run that included those test files.
+
+    This test verifies the restore step: after wipe + reseed + restore,
+    the purchase still has a non-NULL purchase_agreement_template_id.
+    """
+    # L4 purchase: no per-company template, investor language='en'.
+    # The platform-default en template wins.
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "t3")
+    product = await _create_product(client, admin_token, company["id"], "t3")
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, _ = await _register_investor(client, db_session, "inv_t3", language="en")
+    purchase = await _buy_one_sale_purchase(client, inv_token, product["id"], db_session)
+
+    assert purchase.purchase_agreement_template_id is not None, (
+        "L4 fallback must resolve the seeded platform-en template."
+    )
+
+    # -----------------------------------------------------------------------
+    # Simulate what isolate_platform_templates fixtures do:
+    #   1. Save (purchase_id, kind, language) for affected purchases.
+    #   2. DELETE all platform-default templates (company_id IS NULL).
+    #   3. FK fires SET NULL on purchase.purchase_agreement_template_id.
+    #   4. Re-seed with seed_platform_templates (new UUIDs).
+    #   5. Restore: point the purchases back at the new active rows.
+    # -----------------------------------------------------------------------
+
+    # Step 1: save refs.
+    saved_refs = (
+        await db_session.execute(
+            select(
+                Purchase.id,
+                CompanyDocumentTemplate.kind,
+                CompanyDocumentTemplate.language,
+            )
+            .join(
+                CompanyDocumentTemplate,
+                Purchase.purchase_agreement_template_id
+                == CompanyDocumentTemplate.id,
+            )
+            .where(
+                CompanyDocumentTemplate.company_id.is_(None),
+                Purchase.id == purchase.id,
+            )
+        )
+    ).all()
+    assert saved_refs, "The purchase should reference a platform-default template."
+
+    # Step 2+3: wipe triggers SET NULL via FK.
+    await db_session.execute(
+        delete(CompanyDocumentTemplate).where(
+            CompanyDocumentTemplate.company_id.is_(None)
+        )
+    )
+    await db_session.commit()
+
+    await db_session.refresh(purchase)
+    assert purchase.purchase_agreement_template_id is None, (
+        "FK ON DELETE SET NULL must have fired."
+    )
+
+    # Step 4: re-seed.
+    await seed_platform_templates(db_session, dry_run=False)
+    await db_session.commit()
+
+    # Step 5: restore (the logic now present in the fixtures).
+    for p_id, kind, lang in saved_refs:
+        new_tpl = (
+            await db_session.execute(
+                select(CompanyDocumentTemplate).where(
+                    CompanyDocumentTemplate.company_id.is_(None),
+                    CompanyDocumentTemplate.kind == kind,
+                    CompanyDocumentTemplate.language == lang,
+                    CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+                )
+            )
+        ).scalar_one_or_none()
+        assert new_tpl is not None, (
+            f"Re-seed must have created an active platform-default row for {kind}/{lang}."
+        )
+        await db_session.execute(
+            update(Purchase)
+            .where(Purchase.id == p_id)
+            .values(purchase_agreement_template_id=new_tpl.id)
+        )
+    await db_session.commit()
+
+    await db_session.refresh(purchase)
+    assert purchase.purchase_agreement_template_id is not None, (
+        "Restore step must repair the NULL snapshot after wipe + reseed."
     )

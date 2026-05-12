@@ -27,7 +27,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -43,6 +43,7 @@ from app.modules.companies.constants import (
     TemplateStatus,
 )
 from app.modules.companies.models import CompanyDocumentTemplate
+from app.modules.purchases.models import Purchase
 from scripts.reconcile_platform_templates import (
     CANONICAL_PREFIX_TEMPLATE,
     DRAFT_PREFIX_TEMPLATE,
@@ -98,7 +99,31 @@ async def isolate_platform_templates(
 ) -> AsyncGenerator[None, None]:
     """SETUP: wipe platform-default rows + MinIO _platform/ in test bucket.
     TEARDOWN: re-upload bootstrap files + re-run seed so subsequent tests
-    in the session see the canonical 16-row state."""
+    in the session see the canonical 16-row state.
+
+    BUG FIX (iter 2.5): Save purchase snapshot refs before the DELETE
+    (ON DELETE SET NULL fires on all purchases pointing at platform-default
+    templates) and restore them after re-seeding. Mirrors the same fix in
+    test_seed_platform_templates.py::isolate_platform_templates.
+    """
+    # SETUP -- save (purchase_id, kind, language) for every Purchase
+    # whose snapshot points at a platform-default template.
+    saved_refs = (
+        await db_session.execute(
+            select(
+                Purchase.id,
+                CompanyDocumentTemplate.kind,
+                CompanyDocumentTemplate.language,
+            )
+            .join(
+                CompanyDocumentTemplate,
+                Purchase.purchase_agreement_template_id
+                == CompanyDocumentTemplate.id,
+            )
+            .where(CompanyDocumentTemplate.company_id.is_(None))
+        )
+    ).all()
+
     await db_session.execute(
         delete(CompanyDocumentTemplate).where(
             CompanyDocumentTemplate.company_id.is_(None)
@@ -132,6 +157,27 @@ async def isolate_platform_templates(
                 )
     await seed_platform_templates(db_session, dry_run=False)
     await db_session.commit()
+
+    # Restore purchase snapshot refs SET NULL by the DELETE above.
+    for p_id, kind, lang in saved_refs:
+        new_tpl = (
+            await db_session.execute(
+                select(CompanyDocumentTemplate).where(
+                    CompanyDocumentTemplate.company_id.is_(None),
+                    CompanyDocumentTemplate.kind == kind,
+                    CompanyDocumentTemplate.language == lang,
+                    CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+                )
+            )
+        ).scalar_one_or_none()
+        if new_tpl is not None:
+            await db_session.execute(
+                update(Purchase)
+                .where(Purchase.id == p_id)
+                .values(purchase_agreement_template_id=new_tpl.id)
+            )
+    if saved_refs:
+        await db_session.commit()
 
 
 # ---------------------------------------------------------------------------
