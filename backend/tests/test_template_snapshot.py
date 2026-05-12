@@ -727,6 +727,14 @@ async def test_platform_template_wipe_relinks_purchase_snapshot(
     )
     await db_session.commit()
 
+    # FK SET NULL fires at the DB level, but SQLAlchemy's identity map
+    # still holds the pre-cascade Purchase row in memory. A naive
+    # `select(Purchase).where(...)` would return the stale ORM object
+    # with the original template_id intact, hiding the cascade we're
+    # trying to verify. expire_all() drops every cached attribute so
+    # the next read goes to the DB.
+    db_session.expire_all()
+
     # Verify the snapshot was nulled by the cascade.
     refetched = (
         await db_session.execute(
@@ -760,6 +768,10 @@ async def test_platform_template_wipe_relinks_purchase_snapshot(
                 .values(purchase_agreement_template_id=new_tpl_id)
             )
     await db_session.commit()
+
+    # Same identity-map concern as above -- expire so the final assert
+    # reads the post-relink state from the DB.
+    db_session.expire_all()
 
     # Assert relink succeeded.
     relinked = (
