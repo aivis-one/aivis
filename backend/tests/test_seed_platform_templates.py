@@ -22,7 +22,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -36,6 +36,7 @@ from app.modules.companies.constants import (
     TemplateStatus,
 )
 from app.modules.companies.models import CompanyDocumentTemplate
+from app.modules.purchases.models import Purchase
 from scripts.seed_platform_templates import (
     seed_platform_templates,
 )
@@ -81,10 +82,37 @@ async def isolate_platform_templates(
     db_session: AsyncSession,
 ) -> AsyncGenerator[None, None]:
     """SETUP: wipe platform-default rows + MinIO `_platform/` (in test bucket).
-    TEARDOWN: re-upload bootstrap files and re-run seed so the shared
-    DB doesn't end the test run with rows pointing at a half-empty
-    bucket. After teardown the canonical 16-row state is back.
+    TEARDOWN: re-upload bootstrap files, re-run seed, and relink any
+    Purchase rows whose snapshotted template was just wiped.
+
+    Without the relink pass, the platform-template DELETE here cascades
+    via FK ON DELETE SET NULL onto purchases.purchase_agreement_template_id
+    and leaves Purchase rows orphaned even after the seed re-creates the
+    canonical 16 rows (with FRESH UUIDs that won't match the old
+    snapshots). Save (purchase_id, kind, language) before the DELETE,
+    then in teardown match each saved triple to the freshly-seeded
+    active template and UPDATE the Purchase row back to a valid id.
     """
+    # SETUP -- snapshot which purchases will be orphaned by the DELETE
+    # below. Only rows whose current snapshot lives on a platform-default
+    # template (company_id IS NULL on the joined template row) are at
+    # risk; company-scoped snapshots are unaffected.
+    saved_refs = (
+        await db_session.execute(
+            select(
+                Purchase.id,
+                CompanyDocumentTemplate.kind,
+                CompanyDocumentTemplate.language,
+            )
+            .join(
+                CompanyDocumentTemplate,
+                Purchase.purchase_agreement_template_id
+                == CompanyDocumentTemplate.id,
+            )
+            .where(CompanyDocumentTemplate.company_id.is_(None))
+        )
+    ).all()
+
     # SETUP -- wipe DB rows.
     await db_session.execute(
         delete(CompanyDocumentTemplate).where(
@@ -126,6 +154,31 @@ async def isolate_platform_templates(
                 )
     await seed_platform_templates(db_session, dry_run=False)
     await db_session.commit()
+
+    # TEARDOWN -- relink purchases that lost their snapshot to the FK
+    # SET NULL. Match each saved (kind, language) triple to the newly-
+    # seeded active platform-default row and UPDATE the Purchase. If
+    # a match is somehow missing, leave that Purchase NULL rather than
+    # corrupting it -- regression test catches that via assert.
+    for purchase_id, kind, lang in saved_refs:
+        new_tpl_id = (
+            await db_session.execute(
+                select(CompanyDocumentTemplate.id).where(
+                    CompanyDocumentTemplate.company_id.is_(None),
+                    CompanyDocumentTemplate.kind == kind,
+                    CompanyDocumentTemplate.language == lang,
+                    CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+                )
+            )
+        ).scalar_one_or_none()
+        if new_tpl_id is not None:
+            await db_session.execute(
+                update(Purchase)
+                .where(Purchase.id == purchase_id)
+                .values(purchase_agreement_template_id=new_tpl_id)
+            )
+    if saved_refs:
+        await db_session.commit()
 
 
 # ---------------------------------------------------------------------------

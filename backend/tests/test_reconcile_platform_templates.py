@@ -27,7 +27,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -43,6 +43,7 @@ from app.modules.companies.constants import (
     TemplateStatus,
 )
 from app.modules.companies.models import CompanyDocumentTemplate
+from app.modules.purchases.models import Purchase
 from scripts.reconcile_platform_templates import (
     CANONICAL_PREFIX_TEMPLATE,
     DRAFT_PREFIX_TEMPLATE,
@@ -97,8 +98,27 @@ async def isolate_platform_templates(
     db_session: AsyncSession,
 ) -> AsyncGenerator[None, None]:
     """SETUP: wipe platform-default rows + MinIO _platform/ in test bucket.
-    TEARDOWN: re-upload bootstrap files + re-run seed so subsequent tests
-    in the session see the canonical 16-row state."""
+    TEARDOWN: re-upload bootstrap files, re-run seed, relink purchases
+    whose snapshot was nulled by the FK SET NULL cascade.
+
+    See test_seed_platform_templates.isolate_platform_templates for the
+    full rationale on the relink pass."""
+    saved_refs = (
+        await db_session.execute(
+            select(
+                Purchase.id,
+                CompanyDocumentTemplate.kind,
+                CompanyDocumentTemplate.language,
+            )
+            .join(
+                CompanyDocumentTemplate,
+                Purchase.purchase_agreement_template_id
+                == CompanyDocumentTemplate.id,
+            )
+            .where(CompanyDocumentTemplate.company_id.is_(None))
+        )
+    ).all()
+
     await db_session.execute(
         delete(CompanyDocumentTemplate).where(
             CompanyDocumentTemplate.company_id.is_(None)
@@ -132,6 +152,27 @@ async def isolate_platform_templates(
                 )
     await seed_platform_templates(db_session, dry_run=False)
     await db_session.commit()
+
+    # Relink purchases that lost their snapshot to the FK SET NULL.
+    for purchase_id, kind, lang in saved_refs:
+        new_tpl_id = (
+            await db_session.execute(
+                select(CompanyDocumentTemplate.id).where(
+                    CompanyDocumentTemplate.company_id.is_(None),
+                    CompanyDocumentTemplate.kind == kind,
+                    CompanyDocumentTemplate.language == lang,
+                    CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+                )
+            )
+        ).scalar_one_or_none()
+        if new_tpl_id is not None:
+            await db_session.execute(
+                update(Purchase)
+                .where(Purchase.id == purchase_id)
+                .values(purchase_agreement_template_id=new_tpl_id)
+            )
+    if saved_refs:
+        await db_session.commit()
 
 
 # ---------------------------------------------------------------------------

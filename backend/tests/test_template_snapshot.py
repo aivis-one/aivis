@@ -49,7 +49,7 @@ from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
@@ -63,6 +63,7 @@ from app.modules.ledgers.service import record_active_ledger
 from app.modules.purchases.constants import PurchaseLegalBasis
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import User
+from scripts.seed_platform_templates import seed_platform_templates
 from tests.helpers import (
     auth_headers,
     cleanup_test_users,
@@ -632,3 +633,158 @@ async def test_snapshot_uses_investor_language_at_purchase_time(
         "Snapshot must be frozen at purchase time; later language "
         "changes on the User row must not move the template id."
     )
+
+
+# ===========================================================================
+# T3 -- Fixture relink (regression guard for iter 2.5 mini-fix #2)
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_platform_template_wipe_relinks_purchase_snapshot(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A platform-default DELETE+reseed cycle must leave existing Purchase
+    rows with a valid (non-NULL) snapshot id pointing at the freshly-seeded
+    active template for the same (kind, language) pair.
+
+    Regression coverage for the iter 2.5 mini-fix #2 cause: the
+    isolate_platform_templates fixtures in test_seed_platform_templates.py
+    and test_reconcile_platform_templates.py used to wipe all
+    platform-default templates in setup and re-seed in teardown without
+    a relink pass. FK ON DELETE SET NULL on
+    purchases.purchase_agreement_template_id cascaded the wipe onto
+    every Purchase row whose snapshot landed on a platform-default
+    template -- and the next seed minted fresh UUIDs that didn't match
+    the orphaned column. Subsequent agreement_render calls then 500'd
+    with 'agreement_render_template_missing' for every affected purchase.
+
+    This test reproduces the wipe + reseed dance inline (without the
+    fixture noise) and asserts the relink pass restores the snapshot
+    correctly.
+    """
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token, "relink")
+    product = await _create_product(
+        client, admin_token, company["id"], "relink"
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    # Investor with language='en' -- L4 (platform-en) wins because we
+    # do NOT insert any company-scoped or platform-synthetic templates.
+    inv_token, _ = await _register_investor(
+        client, db_session, "inv_relink", language="en"
+    )
+    purchase = await _buy_one_sale_purchase(
+        client, inv_token, product["id"], db_session
+    )
+
+    # Sanity: snapshot landed on the platform-default en row.
+    original_tpl_id = purchase.purchase_agreement_template_id
+    assert original_tpl_id is not None, (
+        "Purchase must have been snapshotted on a platform default; "
+        "test scaffolding is broken if this fires."
+    )
+
+    original_tpl = (
+        await db_session.execute(
+            select(CompanyDocumentTemplate).where(
+                CompanyDocumentTemplate.id == original_tpl_id
+            )
+        )
+    ).scalar_one()
+    assert original_tpl.company_id is None
+    assert original_tpl.kind == DocumentTemplateKind.PURCHASE_AGREEMENT
+    assert original_tpl.language == "en"
+
+    # Save the relink hint before the wipe, exactly like the fixture does.
+    saved_refs = (
+        await db_session.execute(
+            select(
+                Purchase.id,
+                CompanyDocumentTemplate.kind,
+                CompanyDocumentTemplate.language,
+            )
+            .join(
+                CompanyDocumentTemplate,
+                Purchase.purchase_agreement_template_id
+                == CompanyDocumentTemplate.id,
+            )
+            .where(CompanyDocumentTemplate.company_id.is_(None))
+        )
+    ).all()
+    assert any(p_id == purchase.id for p_id, *_ in saved_refs), (
+        "Our purchase must be in the saved_refs set."
+    )
+
+    # Wipe platform defaults -- the destructive step the old fixture did
+    # without a follow-up relink. FK SET NULL fires here.
+    await db_session.execute(
+        delete(CompanyDocumentTemplate).where(
+            CompanyDocumentTemplate.company_id.is_(None)
+        )
+    )
+    await db_session.commit()
+
+    # Verify the snapshot was nulled by the cascade.
+    refetched = (
+        await db_session.execute(
+            select(Purchase).where(Purchase.id == purchase.id)
+        )
+    ).scalar_one()
+    assert refetched.purchase_agreement_template_id is None, (
+        "FK ON DELETE SET NULL should have nulled the snapshot."
+    )
+
+    # Re-seed platform defaults (new UUIDs).
+    await seed_platform_templates(db_session, dry_run=False)
+    await db_session.commit()
+
+    # Apply the relink pass.
+    for purchase_id, kind, lang in saved_refs:
+        new_tpl_id = (
+            await db_session.execute(
+                select(CompanyDocumentTemplate.id).where(
+                    CompanyDocumentTemplate.company_id.is_(None),
+                    CompanyDocumentTemplate.kind == kind,
+                    CompanyDocumentTemplate.language == lang,
+                    CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+                )
+            )
+        ).scalar_one_or_none()
+        if new_tpl_id is not None:
+            await db_session.execute(
+                update(Purchase)
+                .where(Purchase.id == purchase_id)
+                .values(purchase_agreement_template_id=new_tpl_id)
+            )
+    await db_session.commit()
+
+    # Assert relink succeeded.
+    relinked = (
+        await db_session.execute(
+            select(Purchase).where(Purchase.id == purchase.id)
+        )
+    ).scalar_one()
+    assert relinked.purchase_agreement_template_id is not None, (
+        "Relink pass must restore a non-NULL snapshot."
+    )
+    assert relinked.purchase_agreement_template_id != original_tpl_id, (
+        "After re-seed the UUID must be new; if it matches the old one, "
+        "either seed_platform_templates is no longer minting fresh ids "
+        "or the test setup is wrong."
+    )
+
+    new_tpl = (
+        await db_session.execute(
+            select(CompanyDocumentTemplate).where(
+                CompanyDocumentTemplate.id
+                == relinked.purchase_agreement_template_id
+            )
+        )
+    ).scalar_one()
+    assert new_tpl.company_id is None
+    assert new_tpl.kind == DocumentTemplateKind.PURCHASE_AGREEMENT
+    assert new_tpl.language == "en"
+    assert new_tpl.status == TemplateStatus.ACTIVE
