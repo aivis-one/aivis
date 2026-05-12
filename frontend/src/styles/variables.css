@@ -78,6 +78,16 @@
   --space-3xl: 64px;
   --space-4xl: 96px;
 
+  /* === Layout ===
+     --tab-bar-height: bottom-bar interactive strip height. Source-of-
+     truth for CTabBar's `height` and for sub-route floating CTAs that
+     need to pin above the bar (e.g. CompanyOverviewView's "View
+     products"). Bump here, every consumer follows automatically.
+     Safe-area inset is NOT folded in -- consumers add
+     env(safe-area-inset-bottom, 0px) themselves so the token stays
+     hardware-agnostic. */
+  --tab-bar-height: 56px;
+
   /* === Font === */
   --font: 'Montserrat', system-ui, sans-serif;
 

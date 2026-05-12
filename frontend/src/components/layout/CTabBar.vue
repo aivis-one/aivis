@@ -58,6 +58,12 @@ function navigate(tab: TabItem): void {
   position: sticky; bottom: 0; left: 0; right: 0;
   display: flex; justify-content: space-around;
   background: var(--bg); border-top: 1px solid var(--border);
+  /* iter 2.5 cta-fix: height is the source-of-truth via
+     --tab-bar-height; sub-route floating CTAs reference the same
+     token to stay pinned above the bar. The token measures the
+     interactive strip; bottom safe-area inset is added on top so
+     touch targets keep their full size on notched devices. */
+  height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
   padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
   z-index: 100;
 }

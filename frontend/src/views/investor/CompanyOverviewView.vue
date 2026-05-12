@@ -43,13 +43,17 @@
 //   The watch on route.params.id covers that case -- without it the
 //   user would see A's content frozen while B's id is in the URL.
 //
-// STICKY CTA.
-//   The "View products" button sits at the viewport bottom on mobile
-//   so it stays reachable without scrolling the (potentially long)
-//   roadmap timeline. Implemented with position: sticky bottom rather
-//   than fixed so it follows the main scroll container's bottom edge
-//   rather than the visual viewport's -- prevents the CTA from sitting
-//   on top of the InvestorShell's tab bar.
+// FLOATING CTA (iter 2.5 cta-fix2).
+//   The "View products" button is pinned to the viewport above the
+//   CTabBar via position:fixed -- always visible, regardless of scroll
+//   position or content length. The earlier sticky-bottom approach
+//   only engaged when content was tall enough to scroll, leaving the
+//   CTA hidden below the tab bar on short pages (the bug iter 2.5
+//   shipped with). The token --tab-bar-height (variables.css) is the
+//   anchor: when the bar's height changes, the CTA follows.
+//   .co__main carries enough bottom padding to clear the floating
+//   CTA + tab bar + safe-area inset so the last section never sits
+//   behind the button on scroll-end.
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
@@ -339,18 +343,10 @@ function onRoadmapPostClick(_postId: string): void {
 .co {
   display: flex;
   flex-direction: column;
-  /*
-   * NO min-height here. The view sits inside .shell__content
-   * (flex:1, overflow-y:auto) which already takes the available
-   * viewport space. Adding min-height: 100vh would push .co bottom
-   * past the visible viewport, and our sticky .co__cta (which
-   * attaches to its nearest scrolling ancestor) would then "stick"
-   * to a bottom edge the user cannot see -- the CTA would scroll
-   * out of view instead of staying pinned. Letting .co's height
-   * be content-driven makes the sticky behaviour land on the
-   * scrolling shell__content's visible bottom, which is what we
-   * want.
-   */
+  /* No min-height: the view sits inside .shell__content (flex:1,
+     overflow-y:auto) which already takes the available viewport
+     space; an extra 100vh would push .co bottom past the viewport
+     and cause unnecessary scroll-room below content. */
 }
 
 .co__center {
@@ -369,9 +365,18 @@ function onRoadmapPostClick(_postId: string): void {
   flex-direction: column;
   gap: var(--space-xl);
   padding: var(--space-md);
-  /* Bottom padding leaves room for the sticky CTA so the last section
-     isn't covered. */
-  padding-bottom: calc(var(--space-2xl) + 56px);
+  /* Bottom padding must clear two stacked layers above the content:
+     the floating .co__cta (~56px including its own padding) and the
+     CTabBar (--tab-bar-height + safe-area-inset-bottom). Without this,
+     the last section sits behind the CTA when the user scrolls to
+     the end. The extra --space-xl is breathing room so the last item
+     doesn't visually kiss the CTA shadow. */
+  padding-bottom: calc(
+    var(--space-xl)
+    + 56px
+    + var(--tab-bar-height)
+    + env(safe-area-inset-bottom, 0px)
+  );
 }
 
 /* ---------- Hero ---------- */
@@ -466,18 +471,36 @@ function onRoadmapPostClick(_postId: string): void {
   color: var(--text);
 }
 
-/* ---------- Sticky CTA ---------- */
+/* ---------- Floating CTA ----------
+   Always visible, pinned above the CTabBar. position:fixed (not
+   sticky) keeps the button on screen regardless of scroll position
+   or content length -- sticky would only engage once the user
+   scrolled past the bottom of .co, which on short pages never
+   happens and left the CTA hidden below the tab bar (the bug that
+   spawned this rewrite).
 
+   Horizontal: --space-md from each edge matches .co__main's inline
+   padding, so the button aligns with the content column.
+
+   z-index: 100 puts the CTA on the same plane as CTabBar. They don't
+   overlap geometrically (CTA bottom == tab-bar top), but matching the
+   z-index protects against future transitions or modals that might
+   otherwise sneak between them. */
 .co__cta {
-  position: sticky;
-  bottom: 0;
-  z-index: 50;
-  padding: var(--space-md);
+  position: fixed;
+  left: var(--space-md);
+  right: var(--space-md);
+  bottom: calc(
+    var(--tab-bar-height)
+    + env(safe-area-inset-bottom, 0px)
+    + var(--space-sm)
+  );
+  z-index: 100;
+  padding: var(--space-sm);
   background: var(--bg);
-  border-top: 1px solid var(--border);
-  /* Drop shadow on top edge so the CTA reads as separated from the
-     scrolling content above. */
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 .co__cta :deep(.c-button) {
