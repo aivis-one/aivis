@@ -238,7 +238,8 @@ function onRoadmapPostClick(_postId: string): void {
   <div class="co">
     <CHeader
       :title="data?.name ?? t('inv.companyOverview.notFound')"
-      show-back
+      :show-back="true"
+      :show-logo="false"
     />
 
     <!-- Initial loading -->
@@ -338,9 +339,18 @@ function onRoadmapPostClick(_postId: string): void {
 .co {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  /* Account for the CHeader sticky bar at the top so content starts
-     under it. CHeader has its own background; no extra padding here. */
+  /*
+   * NO min-height here. The view sits inside .shell__content
+   * (flex:1, overflow-y:auto) which already takes the available
+   * viewport space. Adding min-height: 100vh would push .co bottom
+   * past the visible viewport, and our sticky .co__cta (which
+   * attaches to its nearest scrolling ancestor) would then "stick"
+   * to a bottom edge the user cannot see -- the CTA would scroll
+   * out of view instead of staying pinned. Letting .co's height
+   * be content-driven makes the sticky behaviour land on the
+   * scrolling shell__content's visible bottom, which is what we
+   * want.
+   */
 }
 
 .co__center {
