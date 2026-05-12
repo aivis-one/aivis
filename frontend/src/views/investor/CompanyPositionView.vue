@@ -23,12 +23,12 @@
 //   Body, scrollable:
 //     1. Aggregate block -- two-column stat grid (total units / avg
 //        price / invested / current value / purchased / gifted).
-//     1a. Ownership certificate row -- two buttons (view / email)
-//         for the company-level ownership document (iter 2.5 R2 §5.5
-//         batch 7).
-//     2. Purchase list -- one row per PurchaseItemResponse with two
-//        per-row buttons: view (legal-basis-labelled) + email. Both
-//        share the page-level email cooldown.
+//     1a. Ownership certificate action -- one button that opens the
+//         AgreementSheet (mode='ownership') for the company-level
+//         ownership document (iter 2.5 R2 §5.5 batch 7).
+//     2. Purchase list -- one row per PurchaseItemResponse with a
+//        single view button labelled by legal_basis (Purchase agreement
+//        / Gift certificate / Installment subcontract).
 //     3. Infinite scroll sentinel at the bottom.
 //     4. loadMore error banner + Retry when currentLoadMoreErrored.
 //
@@ -41,32 +41,15 @@
 //   Two surfaces live in this view:
 //     - Per-purchase agreement (mode='agreement'): tap a row's view
 //       button -> AgreementSheet renders the agreement HTML in a
-//       sandboxed iframe; tap email -> POST /agreement/email with a
-//       shared cooldown lock.
+//       sandboxed iframe. The sheet owns its own email-me action,
+//       so this view does NOT duplicate it as a row-level button.
 //     - Per-company ownership certificate (mode='ownership'): tap the
 //       header's view button -> a SECOND AgreementSheet instance
-//       renders the ownership HTML; tap email -> POST
-//       /ownership-certificate/email under the same cooldown lock.
+//       renders the ownership HTML; same rule -- email lives inside
+//       the sheet, not as a header-level button.
 //   Two sheet instances because their fetcher closures are pinned at
 //   setup time -- one composable per surface, epoch counters do not
 //   interfere with each other.
-//
-// EMAIL COOLDOWN (page-level).
-//   Backend rate-limits the two email endpoints (5/60s per user, R2
-//   §5.3). The UI adds a local 3s cooldown after any successful send
-//   so a rapid tap on the next row doesn't burn another quota second.
-//   The cooldown is page-level (shared across all email buttons) --
-//   per-purchase per-button locks would over-engineer for a flow where
-//   the user typically sends one document at a time, and a global lock
-//   reads as more honest UX ("you just sent something, wait a beat")
-//   than per-row "this one button is locked, but that one isn't".
-//
-// ERROR MAPPING (R2 §5.3 + §5.6 ERR-11-01).
-//   429 -> "Too many requests" toast (rateLimited).
-//   500 -> "Document temporarily unavailable" toast (unavailable).
-//   Everything else -> generic emailError toast.
-//   404 on email is impossible from this UI (the user is the buyer
-//   per route guard; the rows came from the user's own portfolio).
 // =============================================================================
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -78,19 +61,12 @@ import {
   FileSignature,
   FileText,
   Gift,
-  Mail,
   ShoppingCart,
 } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import AgreementSheet from '@/components/shared/AgreementSheet.vue'
-import { ApiResponseError } from '@/api/client'
-import {
-  emailAgreement,
-  emailOwnershipCertificate,
-} from '@/api/agreements'
 import { useInfiniteScroll } from '@/composables/usePagination'
-import { useToast } from '@/composables/useToast'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber, formatPrice } from '@/utils/format'
@@ -101,7 +77,6 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = usePortfolioStore()
-const { showToast } = useToast()
 
 // storeToRefs preserves reactivity on the refs used by
 // useInfiniteScroll's paused param. The method references
@@ -143,8 +118,9 @@ function closeCertificate(): void {
 
 // Per-company ownership sheet: independent state from the per-purchase
 // sheet so both can co-exist without prop churn. The two AgreementSheet
-// instances each own their own useAgreementBlob -- epoch counters are
-// per-instance, so loading one doesn't superseded the other.
+// instances each own their own useAgreementBlob composable instance
+// with an independent epoch counter. Loading one doesn't supersede
+// the other.
 const ownershipSheetOpen = ref<boolean>(false)
 
 function openOwnership(): void {
@@ -152,96 +128,6 @@ function openOwnership(): void {
 }
 function closeOwnership(): void {
   ownershipSheetOpen.value = false
-}
-
-// ---------------------------------------------------------------------------
-// Email cooldown (page-level, shared across all email buttons)
-// ---------------------------------------------------------------------------
-//
-// One in-flight flag and one cooldown timestamp serve both ownership
-// and per-purchase email sends. Rationale: backend rate-limits both
-// endpoints per-user (R2 §5.3, 5/60s), a successful send fills one
-// quota slot, and the next send should wait a beat regardless of
-// which document type it is. Per-button locks would let a fast-fingered
-// user burn through both endpoints' quotas in parallel and hit 429s.
-//
-// EMAIL_COOLDOWN_MS sits below the backend 60s window -- the UI just
-// keeps the user from oscillating "send -> send -> 429" within a
-// second; the backend window remains the real ceiling.
-
-const EMAIL_COOLDOWN_MS = 3_000
-
-const emailSending = ref<boolean>(false)
-const emailLockedUntil = ref<number>(0)
-// We track which target the current pending email belongs to so the
-// affected button can show "sending" while peers stay enabled-but-not-
-// firing (until the in-flight one resolves). Null = nothing sending.
-const emailPendingTarget = ref<'ownership' | string | null>(null)
-
-function emailDisabled(target: 'ownership' | string): boolean {
-  if (emailSending.value) return true
-  if (Date.now() < emailLockedUntil.value) return true
-  // Defensive guard: per-purchase email needs a real purchase id; the
-  // ownership target is always valid once currentDetail is loaded.
-  if (target !== 'ownership' && !target) return true
-  return false
-}
-
-function emailIsThisTargetSending(target: 'ownership' | string): boolean {
-  return emailSending.value && emailPendingTarget.value === target
-}
-
-/**
- * Map a thrown error from emailAgreement / emailOwnershipCertificate
- * onto the right toast. R2 §5.3 makes 429 and 500 first-class semantic
- * outcomes -- 429 is "user pushed too fast", 500 is "template_id NULL
- * or PDF render failed, broken infra, not user's fault" -- so they
- * each get their own user-facing copy.
- */
-function emailErrorToast(err: unknown): void {
-  if (err instanceof ApiResponseError) {
-    if (err.status === 429) {
-      showToast(t('inv.agreement.rateLimited'), 'error')
-      return
-    }
-    if (err.status >= 500) {
-      showToast(t('inv.agreement.unavailable'), 'error')
-      return
-    }
-  }
-  showToast(t('inv.agreement.emailError'), 'error')
-}
-
-async function onEmailOwnership(): Promise<void> {
-  if (emailDisabled('ownership')) return
-  emailSending.value = true
-  emailPendingTarget.value = 'ownership'
-  try {
-    await emailOwnershipCertificate(companyId.value)
-    showToast(t('inv.agreement.emailSuccess'), 'success')
-    emailLockedUntil.value = Date.now() + EMAIL_COOLDOWN_MS
-  } catch (err) {
-    emailErrorToast(err)
-  } finally {
-    emailSending.value = false
-    emailPendingTarget.value = null
-  }
-}
-
-async function onEmailPurchase(p: PurchaseItemResponse): Promise<void> {
-  if (emailDisabled(p.id)) return
-  emailSending.value = true
-  emailPendingTarget.value = p.id
-  try {
-    await emailAgreement(p.id)
-    showToast(t('inv.agreement.emailSuccess'), 'success')
-    emailLockedUntil.value = Date.now() + EMAIL_COOLDOWN_MS
-  } catch (err) {
-    emailErrorToast(err)
-  } finally {
-    emailSending.value = false
-    emailPendingTarget.value = null
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -448,13 +334,14 @@ onUnmounted(() => {
           </div>
 
           <!--
-            Ownership certificate row (iter 2.5 R2 §5.5 batch 7).
+            Ownership certificate action (iter 2.5 R2 §5.5 batch 7).
             Lives inside the aggregate section because the document is
             scoped to the (caller, company) pair -- it's a position-
             level summary, not a per-purchase artifact.
 
-            Both buttons are page-level-cooldown-aware via
-            emailDisabled('ownership') and emailIsThisTargetSending.
+            Email-me is intentionally absent here -- AgreementSheet
+            carries its own email action inside the preview UI, so
+            duplicating it as a row-level button would be redundant.
           -->
           <div class="cp__ownership-actions">
             <CButton
@@ -464,19 +351,6 @@ onUnmounted(() => {
             >
               <FileSignature :size="14" />
               {{ t('inv.companyPosition.ownership.viewCertificate') }}
-            </CButton>
-            <CButton
-              variant="outline"
-              size="sm"
-              :disabled="emailDisabled('ownership')"
-              @click="onEmailOwnership"
-            >
-              <Mail :size="14" />
-              {{
-                emailIsThisTargetSending('ownership')
-                  ? t('inv.companyPosition.ownership.sending')
-                  : t('inv.companyPosition.ownership.emailCertificate')
-              }}
             </CButton>
           </div>
         </section>
@@ -539,19 +413,6 @@ onUnmounted(() => {
                 >
                   <FileText :size="14" />
                   {{ viewLabelForLegalBasis(p.legal_basis) }}
-                </CButton>
-                <CButton
-                  variant="outline"
-                  size="sm"
-                  :disabled="emailDisabled(p.id)"
-                  @click="onEmailPurchase(p)"
-                >
-                  <Mail :size="14" />
-                  {{
-                    emailIsThisTargetSending(p.id)
-                      ? t('inv.agreement.emailSending')
-                      : t('inv.agreement.emailSend')
-                  }}
                 </CButton>
               </div>
             </li>
@@ -759,25 +620,17 @@ onUnmounted(() => {
 }
 
 .cp__item-actions {
-  /* Two buttons stacked vertically on narrow screens so a long
-     "Installment subcontract" label doesn't push them off the row. */
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   flex-shrink: 0;
 }
 
 /*
- * Ownership-certificate action row (iter 2.5 batch 7).
+ * Ownership-certificate action (iter 2.5 batch 7).
  *
- * Sits inside .cp__aggregate beneath the agg-grid. Horizontal flex
- * keeps the two buttons (view + email) side-by-side on mobile; both
- * are size="sm" so they fit comfortably under the stat grid without
- * dominating the visual hierarchy of the aggregate header.
+ * Sits inside .cp__aggregate beneath the agg-grid. Single button --
+ * email-me lives inside the AgreementSheet preview, not here.
  */
 .cp__ownership-actions {
   display: flex;
-  gap: 8px;
   margin-top: 16px;
 }
 
