@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.modules.auth.service import hash_password
 from app.modules.users.models import User, UserRole
 from tests.helpers import auth_headers, login_user, register_user
 
@@ -146,31 +147,35 @@ async def test_login_platform_user(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    """Login as platform user -> 401 (platform cannot log in)."""
-    email = f"{EMAIL_PREFIX}platform@example.com"
-    await register_user(client, email=email)
+    """Login as platform user -> 401 (platform cannot log in).
 
-    # Change role to platform directly in DB.
-    stmt = select(User).where(
-        User.credentials["email"]["email"].as_string() == email
-    )
+    Equips the seeded Platform user with email credentials and attempts a
+    login. The role check in login_email fires AFTER password verification, so
+    the 401 confirms the block. We do NOT create a second user with
+    role=PLATFORM: get_platform_user_id() uses scalar_one() and the template
+    DB invariant is exactly one Platform user.
+    """
+    email = f"{EMAIL_PREFIX}platform@example.com"
+    password = "Password123!"
+
+    stmt = select(User).where(User.role == UserRole.PLATFORM)
     result = await db_session.execute(stmt)
-    user = result.scalar_one()
-    original_role = user.role
-    user.role = UserRole.PLATFORM
+    platform_user = result.scalar_one()
+    platform_user.credentials = {
+        "email": {
+            "email": email,
+            "password_hash": hash_password(password),
+            "verified": True,
+            "verified_at": None,
+        },
+    }
     await db_session.commit()
 
-    try:
-        resp = await client.post(
-            "/api/v1/auth/email/login",
-            json={"email": email, "password": "testpass123"},
-        )
-        assert resp.status_code == 401
-    finally:
-        # Restore the original role so subsequent tests don't see two Platform
-        # users. get_platform_user_id uses scalar_one() and fails if > 1 exist.
-        user.role = original_role
-        await db_session.commit()
+    resp = await client.post(
+        "/api/v1/auth/email/login",
+        json={"email": email, "password": password},
+    )
+    assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
