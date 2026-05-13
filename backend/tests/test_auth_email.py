@@ -156,14 +156,21 @@ async def test_login_platform_user(
     )
     result = await db_session.execute(stmt)
     user = result.scalar_one()
+    original_role = user.role
     user.role = UserRole.PLATFORM
     await db_session.commit()
 
-    resp = await client.post(
-        "/api/v1/auth/email/login",
-        json={"email": email, "password": "testpass123"},
-    )
-    assert resp.status_code == 401
+    try:
+        resp = await client.post(
+            "/api/v1/auth/email/login",
+            json={"email": email, "password": "testpass123"},
+        )
+        assert resp.status_code == 401
+    finally:
+        # Restore the original role so subsequent tests don't see two Platform
+        # users. get_platform_user_id uses scalar_one() and fails if > 1 exist.
+        user.role = original_role
+        await db_session.commit()
 
 
 # ---------------------------------------------------------------------------
