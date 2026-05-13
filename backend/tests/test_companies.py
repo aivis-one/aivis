@@ -18,19 +18,15 @@
 # Email prefix: "s41_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
-
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.companies.models import CompanyPriceHistory, CompanyProfile
+from app.modules.companies.models import CompanyPriceHistory
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
-    create_staff_user,
     register_user,
 )
 
@@ -38,14 +34,6 @@ EMAIL_PREFIX = "s41_"
 
 # Reusable valid distribution config.
 VALID_DIST_CONFIG = {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 async def _admin_token(

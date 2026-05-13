@@ -12,8 +12,6 @@
 # Email prefix: "s13_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
-
 import pytest
 import structlog
 from httpx import AsyncClient
@@ -23,18 +21,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ForbiddenError
 from app.modules.auth.avatar_guard import require_not_avatar
 from app.modules.users.models import User
-from tests.helpers import auth_headers, cleanup_test_users, register_user
+from tests.helpers import auth_headers, register_user
 
 
 EMAIL_PREFIX = "s13_"
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 # ---------------------------------------------------------------------------

@@ -14,7 +14,6 @@
 # Email prefix: "s21_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 import pytest
@@ -24,8 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.modules.kyc.models import KYCApplication
-from app.modules.users.models import User
-from tests.helpers import auth_headers, cleanup_test_users, register_user
+from tests.helpers import auth_headers, register_user
 
 EMAIL_PREFIX = "s21_"
 
@@ -33,14 +31,6 @@ EMAIL_PREFIX = "s21_"
 def webhook_headers() -> dict[str, str]:
     """Build headers with webhook secret for KYC webhook calls."""
     return {"X-Webhook-Secret": settings.kyc_webhook_secret}
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 # ---------------------------------------------------------------------------

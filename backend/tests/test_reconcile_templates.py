@@ -53,7 +53,6 @@ from scripts.reconcile_templates import (
 )
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
 )
 
@@ -88,15 +87,6 @@ async def use_test_bucket(
     for key in keys:
         await delete_object(key)
     yield
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users (and their templates / companies / pools / ...) via
-    cleanup_test_users (which now knows about CompanyDocumentTemplate)."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 @pytest.fixture(autouse=True)

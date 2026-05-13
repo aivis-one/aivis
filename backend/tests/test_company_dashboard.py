@@ -15,7 +15,6 @@
 # Email prefix: "s43d_" -- unique to this file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -32,7 +31,6 @@ from app.modules.transactions.models import Transaction
 from app.modules.users.models import User
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
     login_user,
     register_user,
@@ -41,16 +39,6 @@ from tests.helpers import (
 EMAIL_PREFIX = "s43d_"
 
 VALID_DIST_CONFIG = {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users (and their company/pool/product/transaction chain)
-    before and after each test. Transactions are wiped via the user_id FK
-    chain inside cleanup_test_users (extended by Sprint 6.4)."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 # ---------------------------------------------------------------------------
