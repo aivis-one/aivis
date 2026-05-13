@@ -35,7 +35,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.companies.constants import TemplateKind, TemplateStatus
+from app.modules.companies.constants import DocumentTemplateKind, TemplateStatus
 from app.modules.companies.models import CompanyDocumentTemplate
 from app.modules.companies.template_service import find_active_template
 from tests.helpers import (
@@ -47,7 +47,7 @@ from tests.helpers import (
 
 # All purchases in these tests target the (purchase_agreement, en) pair
 # because purchase_agreement is what /agreement/* endpoints actually use.
-TARGET_KIND = TemplateKind.PURCHASE_AGREEMENT
+TARGET_KIND = DocumentTemplateKind.PURCHASE_AGREEMENT
 TARGET_LANGUAGE = "en"
 
 EMAIL_PREFIX = "tsnap_"

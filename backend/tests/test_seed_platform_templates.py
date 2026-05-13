@@ -33,25 +33,25 @@ from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
-from app.modules.companies.constants import TemplateKind, TemplateStatus
+from app.modules.companies.constants import DocumentTemplateKind, TemplateStatus
 from app.modules.companies.models import CompanyDocumentTemplate
 from scripts.seed_platform_templates import seed_platform_templates
 
 
 # Constants that match the script's domain (4 kinds x 4 languages = 16 pairs).
 EXPECTED_KINDS = {
-    TemplateKind.PURCHASE_AGREEMENT,
-    TemplateKind.OWNERSHIP_CERTIFICATE,
-    TemplateKind.GIFT_CERTIFICATE,
-    TemplateKind.INSTALLMENT_SUBCONTRACT,
+    DocumentTemplateKind.PURCHASE_AGREEMENT,
+    DocumentTemplateKind.OWNERSHIP_CERTIFICATE,
+    DocumentTemplateKind.GIFT_CERTIFICATE,
+    DocumentTemplateKind.INSTALLMENT_SUBCONTRACT,
 }
-EXPECTED_LANGUAGES = {"en", "de", "ru", "uk"}
+EXPECTED_LANGUAGES = {"en", "ru", "de", "ar"}
 EXPECTED_PAIR_COUNT = len(EXPECTED_KINDS) * len(EXPECTED_LANGUAGES)  # 16
 
 # A specific pair used by the recovery scenarios. Choice is arbitrary --
 # (purchase_agreement, en) is the pair that historically broke in prod,
 # which is poetic but not load-bearing.
-RECOVERY_KIND = TemplateKind.PURCHASE_AGREEMENT
+RECOVERY_KIND = DocumentTemplateKind.PURCHASE_AGREEMENT
 RECOVERY_LANG = "en"
 
 
@@ -109,7 +109,7 @@ async def _count_seed_audit_rows(session: AsyncSession) -> int:
 async def _insert_archived_row(
     session: AsyncSession,
     *,
-    kind: TemplateKind,
+    kind: DocumentTemplateKind,
     language: str,
     version: int,
 ) -> None:
@@ -138,7 +138,7 @@ async def _insert_archived_row(
 async def _fetch_active_row(
     session: AsyncSession,
     *,
-    kind: TemplateKind,
+    kind: DocumentTemplateKind,
     language: str,
 ) -> CompanyDocumentTemplate | None:
     result = await session.execute(
@@ -157,7 +157,7 @@ async def _fetch_active_row(
 async def _fetch_seed_audit_for_pair(
     session: AsyncSession,
     *,
-    kind: TemplateKind,
+    kind: DocumentTemplateKind,
     language: str,
 ) -> AuditLog | None:
     """Find the platform.template_seeded audit row whose `data` matches
