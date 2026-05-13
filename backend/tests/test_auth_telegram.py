@@ -18,36 +18,18 @@
 # =============================================================================
 
 import time
-from collections.abc import AsyncGenerator
-
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.redis import get_redis
 from tests.helpers import (
     auth_headers,
     build_init_data,
-    cleanup_telegram_test_users,
     login_telegram,
 )
 
 # Telegram IDs for this test file.
 TG_IDS = list(range(100001, 100020))
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users and Redis keys before/after each test."""
-    await cleanup_telegram_test_users(db_session, TG_IDS)
-    redis = get_redis()
-    for tg_id in TG_IDS:
-        await redis.delete(f"auth_rate:{tg_id}")
-    yield
-    await cleanup_telegram_test_users(db_session, TG_IDS)
-    for tg_id in TG_IDS:
-        await redis.delete(f"auth_rate:{tg_id}")
 
 
 # ---------------------------------------------------------------------------

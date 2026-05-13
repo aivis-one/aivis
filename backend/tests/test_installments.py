@@ -39,8 +39,7 @@
 # Email prefix: "s62_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
-from datetime import date, datetime, UTC
+from datetime import date
 from uuid import UUID
 
 import pytest
@@ -56,7 +55,6 @@ from app.modules.installments.constants import (
 from app.modules.installments.models import InstallmentPlan, InstallmentTranche
 from app.modules.installments.scheduler import calculate_due_date
 from app.modules.installments.service import (
-    complete_plan,
     create_plan,
     default_plan,
     pay_tranche,
@@ -68,20 +66,11 @@ from app.modules.purchases.constants import PurchaseLegalBasis
 from app.modules.purchases.models import Purchase
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
     register_user,
 )
 
 EMAIL_PREFIX = "s62_"
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 # ---------------------------------------------------------------------------

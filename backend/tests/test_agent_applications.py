@@ -21,33 +21,22 @@
 # Email prefix: "s71_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, UTC
 from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.agent_applications.models import AgentApplication
-from app.modules.users.models import User, UserRole
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
     register_user,
 )
 
 EMAIL_PREFIX = "s71_"
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 async def _admin_token(

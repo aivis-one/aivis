@@ -17,7 +17,6 @@
 # Email prefix: "s52_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from uuid import UUID
 
 import pytest
@@ -30,7 +29,7 @@ from app.modules.ledgers.models import ActiveLedger, LedgerStatus
 from app.modules.payments.constants import PaymentStatus
 from app.modules.payments.models import Payment
 from app.modules.payments.service import get_payment
-from tests.helpers import auth_headers, cleanup_test_users, register_user
+from tests.helpers import auth_headers, register_user
 
 EMAIL_PREFIX = "s52_"
 
@@ -38,14 +37,6 @@ EMAIL_PREFIX = "s52_"
 def webhook_headers() -> dict[str, str]:
     """Build headers with webhook secret for crypto webhook calls."""
     return {"X-Webhook-Secret": settings.crypto_webhook_secret}
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 async def _create_user(

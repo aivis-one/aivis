@@ -40,19 +40,15 @@
 #   wipes have no business running on a shared DB.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
-
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.modules.documents.models import Document, DocumentSigning
 from app.modules.users.models import User
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_staff_user,
     register_user,
 )
@@ -63,62 +59,6 @@ EMAIL_PREFIX = "onb_"
 def webhook_headers() -> dict[str, str]:
     """Build headers with KYC webhook secret."""
     return {"X-Webhook-Secret": settings.kyc_webhook_secret}
-
-
-async def _cleanup_test_documents(session: AsyncSession) -> None:
-    """Remove signings + documents owned by users with EMAIL_PREFIX.
-
-    Order matters:
-      1. Resolve test user ids (rolled-back stale state would block the
-         credentials JSONB lookup, so rollback first).
-      2. Delete signings authored by those users (FK on user_id).
-      3. Delete documents whose `created_by` is one of those users (test
-         staff users created via create_staff_user). Real seeded
-         documents have `created_by` set to the Platform user, so they
-         survive untouched.
-      4. Commit -- the autouse fixture runs in its own session, separate
-         from the per-test transaction.
-
-    No-op when no test users exist (clean fresh DB).
-    """
-    await session.rollback()
-
-    user_ids_stmt = select(User.id).where(
-        User.credentials["email"]["email"]
-        .as_string()
-        .like(f"{EMAIL_PREFIX}%")
-    )
-    result = await session.execute(user_ids_stmt)
-    test_user_ids = [row[0] for row in result.all()]
-
-    if not test_user_ids:
-        return
-
-    await session.execute(
-        delete(DocumentSigning).where(
-            DocumentSigning.user_id.in_(test_user_ids)
-        )
-    )
-    await session.execute(
-        delete(Document).where(Document.created_by.in_(test_user_ids))
-    )
-    await session.commit()
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Scoped cleanup -- removes only this file's test data.
-
-    Runs both pre-test (in case a previous run died mid-test and left
-    stragglers under EMAIL_PREFIX) and post-test (normal teardown).
-    Documents must be deleted before users: cleanup_test_users blows
-    the User rows away and we lose the join key for Document.created_by.
-    """
-    await _cleanup_test_documents(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await _cleanup_test_documents(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 # ---------------------------------------------------------------------------

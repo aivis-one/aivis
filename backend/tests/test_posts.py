@@ -19,7 +19,6 @@
 # Email prefix: "s91_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, UTC
 from uuid import UUID, uuid4
 
@@ -28,51 +27,15 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.posts.models import Event, Post, PostDismiss
+from app.modules.posts.models import Post
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
     create_staff_user,
     register_user,
 )
 
 EMAIL_PREFIX = "s91_"
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test data before and after each test."""
-    await _cleanup_posts(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await _cleanup_posts(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-
-
-async def _cleanup_posts(session: AsyncSession) -> None:
-    """Delete all test posts/events (by title prefix)."""
-    from sqlalchemy import delete
-
-    # Posts.
-    stmt = select(Post.id).where(Post.title.startswith("Test:"))
-    result = await session.execute(stmt)
-    post_ids = [row[0] for row in result.all()]
-
-    if post_ids:
-        await session.execute(
-            delete(PostDismiss).where(PostDismiss.post_id.in_(post_ids))
-        )
-        await session.execute(
-            delete(Post).where(Post.id.in_(post_ids))
-        )
-
-    # Events.
-    await session.execute(
-        delete(Event).where(Event.title.startswith("Test:"))
-    )
-
-    await session.commit()
 
 
 async def _admin_token(

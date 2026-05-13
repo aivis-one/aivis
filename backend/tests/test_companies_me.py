@@ -15,15 +15,12 @@
 # surface in isolation.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
-
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
     login_user,
     register_user,
@@ -32,14 +29,6 @@ from tests.helpers import (
 EMAIL_PREFIX = "s45_"
 
 VALID_DIST_CONFIG = {"company_pct": 0.65, "agent_levels": [0.10, 0.03, 0.01]}
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 # ---------------------------------------------------------------------------

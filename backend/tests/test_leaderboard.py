@@ -20,7 +20,6 @@
 # Email prefix: "s73_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from datetime import date, datetime, UTC
 from uuid import UUID, uuid4
 
@@ -40,20 +39,11 @@ from app.modules.referrals.models import ReferralAttribution, ReferralLink
 from app.modules.users.models import User, UserRole
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     login_user,
     register_user,
 )
 
 EMAIL_PREFIX = "s73_"
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 async def _create_user(
@@ -672,7 +662,6 @@ async def test_quarterly_payout_basic(
     from app.modules.commissions.worker import (
         _distribute_pool,
         _current_quarter_start,
-        _previous_quarter_start,
     )
     from app.core.database import get_session_factory
 

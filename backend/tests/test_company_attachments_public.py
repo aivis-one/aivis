@@ -43,9 +43,7 @@ from app.modules.companies.service import create_attachment
 from app.modules.users.models import User
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
-    register_user,
 )
 
 EMAIL_PREFIX = "attp_"
@@ -80,15 +78,6 @@ async def use_test_bucket(
     for key in keys:
         await delete_object(key)
     yield
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users (and their dependent attachments / companies / etc.)
-    before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 @pytest.fixture(autouse=True)

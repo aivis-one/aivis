@@ -36,7 +36,6 @@ from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -59,7 +58,6 @@ from app.modules.companies.service import (
 from app.modules.users.models import User
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_admin_user,
 )
 
@@ -83,14 +81,6 @@ async def use_test_bucket(
     for key in keys:
         await delete_object(key)
     yield
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 @pytest.fixture(autouse=True)

@@ -22,40 +22,17 @@
 # try to create.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
-
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.documents.models import Document, DocumentSigning
 from tests.helpers import (
     auth_headers,
-    cleanup_test_users,
     create_staff_user,
     register_user,
 )
 
 EMAIL_PREFIX = "s22_"
-
-
-async def _cleanup_documents(session: AsyncSession) -> None:
-    """Wipe documents + signings. Seed rows from install_cbshome.sh would
-    otherwise collide with the active-per-(type, language) rule."""
-    await session.execute(delete(DocumentSigning))
-    await session.execute(delete(Document))
-    await session.commit()
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean docs + test users before and after each test."""
-    await _cleanup_documents(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await _cleanup_documents(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 async def _staff_token(

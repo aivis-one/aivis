@@ -25,7 +25,6 @@
 # Email prefix: "s81n_" -- unique to this test file.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
@@ -54,44 +53,10 @@ from app.modules.notifications.service import (
     rollup_notification,
 )
 from tests.helpers import (
-    auth_headers,
-    cleanup_test_users,
     register_user,
 )
 
 EMAIL_PREFIX = "s81n_"
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users and notifications before and after each test."""
-    await _cleanup_notifications(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await _cleanup_notifications(db_session)
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-
-
-async def _cleanup_notifications(session: AsyncSession) -> None:
-    """Delete all test notifications (by title prefix)."""
-    from sqlalchemy import delete
-
-    stmt = select(Notification.id).where(
-        Notification.title.startswith("Test:")
-    )
-    result = await session.execute(stmt)
-    notif_ids = [row[0] for row in result.all()]
-
-    if notif_ids:
-        await session.execute(
-            delete(NotificationDelivery).where(
-                NotificationDelivery.notification_id.in_(notif_ids)
-            )
-        )
-        await session.execute(
-            delete(Notification).where(Notification.id.in_(notif_ids))
-        )
-        await session.commit()
 
 
 async def _create_investor(

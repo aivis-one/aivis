@@ -20,7 +20,6 @@
 #       setup data before calling it, then re-query to verify results.
 # =============================================================================
 
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -32,17 +31,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.payments.constants import PaymentStatus, PaymentType
 from app.modules.payments.models import Payment
-from tests.helpers import cleanup_test_users, register_user
+from tests.helpers import register_user
 
 EMAIL_PREFIX = "s53c_"
-
-
-@pytest.fixture(autouse=True)
-async def cleanup(db_session: AsyncSession) -> AsyncGenerator[None, None]:
-    """Clean test users before and after each test."""
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
-    yield
-    await cleanup_test_users(db_session, EMAIL_PREFIX)
 
 
 async def _create_user(client: AsyncClient, suffix: str = "u1") -> UUID:
