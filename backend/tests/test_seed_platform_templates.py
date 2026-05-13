@@ -57,7 +57,10 @@ RECOVERY_LANG = "en"
 
 # ---------------------------------------------------------------------------
 # Per-scenario reset: wipe platform-default rows + the audit rows the
-# seed script emits. Worker DB is ephemeral, so this is safe.
+# seed script emits. Worker DB is ephemeral, but other test files in this
+# worker run AFTER this module; they expect the same 16 seeded rows that
+# the template DB ships with. So the teardown re-seeds before yielding
+# control back to the next module.
 # ---------------------------------------------------------------------------
 
 
@@ -66,8 +69,10 @@ async def wipe_platform_state(
     db_session: AsyncSession,
 ) -> AsyncGenerator[None, None]:
     """Delete all platform-default templates and seed-audit rows so every
-    scenario starts from a known empty baseline.
+    scenario starts from a known empty baseline. On teardown, restore the
+    16 seeded rows so the worker DB looks like a fresh clone again.
     """
+    # Pre-test wipe.
     await db_session.execute(
         delete(CompanyDocumentTemplate).where(
             CompanyDocumentTemplate.company_id.is_(None)
@@ -78,6 +83,26 @@ async def wipe_platform_state(
     )
     await db_session.commit()
     yield
+
+    # Post-test restore. Wipe whatever the test left behind (it might have
+    # produced 0 rows, 16 rows, or something in between), then call the
+    # real seed function to put the canonical 16 rows back. The audit
+    # rows the restore emits are removed too -- only the canonical seed
+    # state should leak out of this module.
+    await db_session.execute(
+        delete(CompanyDocumentTemplate).where(
+            CompanyDocumentTemplate.company_id.is_(None)
+        )
+    )
+    await db_session.execute(
+        delete(AuditLog).where(AuditLog.event == "platform.template_seeded")
+    )
+    await db_session.commit()
+    await seed_platform_templates(db_session)
+    await db_session.execute(
+        delete(AuditLog).where(AuditLog.event == "platform.template_seeded")
+    )
+    await db_session.commit()
 
 
 # ---------------------------------------------------------------------------

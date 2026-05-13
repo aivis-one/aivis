@@ -72,9 +72,6 @@ async def _make_investor(
     if referral_code:
         body["referral_code"] = referral_code
 
-    from tests.helpers import _clear_email_rate_limit
-    await _clear_email_rate_limit()
-
     resp = await client.post("/api/v1/auth/email/register", json=body)
     assert resp.status_code == 201
     data = resp.json()
