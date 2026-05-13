@@ -1,120 +1,369 @@
 # =============================================================================
-# CBSHOME Backend -- Seed Platform Default Templates Tests
-#                     (iter 2.5 mini-fix #2 rewrite)
+# CBSHOME Backend -- seed_platform_templates Tests (iter 2.5 mini-fix #3)
 # =============================================================================
 #
-# Tests cover the idempotency contract of `seed_platform_templates`:
-# - Running seed on a DB that already has the 16 active platform-default
-#   rows must produce zero creates (inspected=16, skipped=16, created=0).
-# - Whatever state the DB is in on entry, after the test the DB has at
-#   least one active platform-default row per (kind, language) pair --
-#   later tests in the same session can rely on platform defaults
-#   existing.
+# WHAT IS UNDER TEST:
+#   scripts/seed_platform_templates.py -- the script that puts the 16
+#   platform-default CompanyDocumentTemplate rows (4 kinds x 4 languages,
+#   company_id IS NULL, status=active) into the DB.
 #
-# NO DESTRUCTIVE FIXTURE:
-#   The previous version of this file wiped `company_document_templates
-#   WHERE company_id IS NULL` in setup. That cascaded via FK SET NULL
-#   onto purchases.purchase_agreement_template_id and orphaned Purchase
-#   rows seeded by other tests (iter 2.5 mini-fix #2 root cause).
+# KEY PROPERTY THAT BROKE LAST TIME:
+#   Earlier the script hardcoded version=1, so on a re-run against a DB
+#   where the same (kind, lang) pair already had an archived row with
+#   version=1, the INSERT collided on UNIQUE NULLS NOT DISTINCT
+#   (company_id, kind, language, version) and the seed transaction died.
+#   The current script computes version = max(version across all
+#   statuses) + 1, recovering automatically. T3 and T4 verify that.
 #
-#   The replacement does NOT delete anything. seed_platform_templates is
-#   idempotent by contract; we just invoke it twice and assert on the
-#   stats.
-#
-# Email prefix: "seedp_"
+# WORKER-DB CONTRACT:
+#   The template DB ships with all 16 active rows already seeded. To
+#   test seed behaviour we wipe the platform-default rows (company_id
+#   IS NULL) before every scenario in this file. The wipe is safe --
+#   the worker DB disappears at session end and no other test file
+#   sees this state.
 # =============================================================================
+
+from __future__ import annotations
+
+from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.companies.constants import (
-    DocumentTemplateKind,
-    TemplateStatus,
-)
+from app.core.audit import AuditLog
+from app.modules.companies.constants import TemplateKind, TemplateStatus
 from app.modules.companies.models import CompanyDocumentTemplate
-from scripts.seed_platform_templates import (
-    LANGUAGES,
-    seed_platform_templates,
-)
+from scripts.seed_platform_templates import seed_platform_templates
 
 
-EXPECTED_PAIR_COUNT = len(DocumentTemplateKind) * len(LANGUAGES)
+# Constants that match the script's domain (4 kinds x 4 languages = 16 pairs).
+EXPECTED_KINDS = {
+    TemplateKind.PURCHASE_AGREEMENT,
+    TemplateKind.OWNERSHIP_CERTIFICATE,
+    TemplateKind.GIFT_CERTIFICATE,
+    TemplateKind.INSTALLMENT_SUBCONTRACT,
+}
+EXPECTED_LANGUAGES = {"en", "de", "ru", "uk"}
+EXPECTED_PAIR_COUNT = len(EXPECTED_KINDS) * len(EXPECTED_LANGUAGES)  # 16
+
+# A specific pair used by the recovery scenarios. Choice is arbitrary --
+# (purchase_agreement, en) is the pair that historically broke in prod,
+# which is poetic but not load-bearing.
+RECOVERY_KIND = TemplateKind.PURCHASE_AGREEMENT
+RECOVERY_LANG = "en"
+
+
+# ---------------------------------------------------------------------------
+# Per-scenario reset: wipe platform-default rows + the audit rows the
+# seed script emits. Worker DB is ephemeral, so this is safe.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+async def wipe_platform_state(
+    db_session: AsyncSession,
+) -> AsyncGenerator[None, None]:
+    """Delete all platform-default templates and seed-audit rows so every
+    scenario starts from a known empty baseline.
+    """
+    await db_session.execute(
+        delete(CompanyDocumentTemplate).where(
+            CompanyDocumentTemplate.company_id.is_(None)
+        )
+    )
+    await db_session.execute(
+        delete(AuditLog).where(AuditLog.event == "platform.template_seeded")
+    )
+    await db_session.commit()
+    yield
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+async def _count_active_platform_rows(session: AsyncSession) -> int:
+    result = await session.execute(
+        select(func.count(CompanyDocumentTemplate.id)).where(
+            and_(
+                CompanyDocumentTemplate.company_id.is_(None),
+                CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+            )
+        )
+    )
+    return result.scalar_one()
+
+
+async def _count_seed_audit_rows(session: AsyncSession) -> int:
+    result = await session.execute(
+        select(func.count(AuditLog.id)).where(
+            AuditLog.event == "platform.template_seeded"
+        )
+    )
+    return result.scalar_one()
+
+
+async def _insert_archived_row(
+    session: AsyncSession,
+    *,
+    kind: TemplateKind,
+    language: str,
+    version: int,
+) -> None:
+    """Manually insert one archived platform-default row. Used by the
+    recovery scenarios to simulate the broken-DB state the seed must
+    heal from.
+    """
+    row = CompanyDocumentTemplate(
+        company_id=None,
+        kind=kind,
+        language=language,
+        version=version,
+        status=TemplateStatus.ARCHIVED,
+        title=f"Archived test row v{version}",
+        storage_prefix=(
+            f"_platform/templates-archive/{kind.value}/{language}/v{version}"
+        ),
+        created_by=None,
+        created_at=datetime.now(timezone.utc),
+        archived_at=datetime.now(timezone.utc),
+    )
+    session.add(row)
+    await session.commit()
+
+
+async def _fetch_active_row(
+    session: AsyncSession,
+    *,
+    kind: TemplateKind,
+    language: str,
+) -> CompanyDocumentTemplate | None:
+    result = await session.execute(
+        select(CompanyDocumentTemplate).where(
+            and_(
+                CompanyDocumentTemplate.company_id.is_(None),
+                CompanyDocumentTemplate.kind == kind,
+                CompanyDocumentTemplate.language == language,
+                CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+            )
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def _fetch_seed_audit_for_pair(
+    session: AsyncSession,
+    *,
+    kind: TemplateKind,
+    language: str,
+) -> AuditLog | None:
+    """Find the platform.template_seeded audit row whose `data` matches
+    the given (kind, language). The script writes one audit row per
+    pair it seeds.
+    """
+    result = await session.execute(
+        select(AuditLog).where(AuditLog.event == "platform.template_seeded")
+    )
+    for row in result.scalars().all():
+        data = row.data or {}
+        if data.get("kind") == kind.value and data.get("language") == language:
+            return row
+    return None
+
+
+# ---------------------------------------------------------------------------
+# T1 -- fresh seed creates all 16 active rows
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_seed_is_idempotent_and_covers_every_pair(
+async def test_fresh_seed_creates_16_active(db_session: AsyncSession) -> None:
+    """Empty platform-defaults -> seed creates one active row per
+    (kind, language) pair at version=1.
+    """
+    stats = await seed_platform_templates(db_session)
+    await db_session.commit()
+
+    assert stats.created == EXPECTED_PAIR_COUNT
+    assert stats.skipped == 0
+
+    assert await _count_active_platform_rows(db_session) == EXPECTED_PAIR_COUNT
+
+    # Exhaustive check: every (kind, lang) pair has exactly one v=1 active row.
+    for kind in EXPECTED_KINDS:
+        for lang in EXPECTED_LANGUAGES:
+            row = await _fetch_active_row(db_session, kind=kind, language=lang)
+            assert row is not None, f"missing active row for ({kind}, {lang})"
+            assert row.version == 1, (
+                f"({kind}, {lang}) seeded at v{row.version}, expected v1"
+            )
+
+
+# ---------------------------------------------------------------------------
+# T2 -- idempotent skip when fully seeded
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_idempotent_skip_on_full_seeded(
     db_session: AsyncSession,
 ) -> None:
-    """After at most one run, every (kind, language) pair has an active
-    platform-default row; a second run is a no-op."""
-    # First run -- creates whatever is still missing. If the dev DB
-    # already has all 16 (e.g. another test seeded them earlier in the
-    # session), this is a pure skip. Either way, after the commit every
-    # pair is covered.
-    first = await seed_platform_templates(db_session, dry_run=False)
+    """After a fresh seed, running seed_platform_templates again must
+    skip all 16 pairs and write zero new audit rows.
+
+    The "no new audit rows" check enforces the no-spam contract: idempotent
+    re-runs (which `cbshome update` will trigger) must not pollute
+    audit_log with `platform.template_seeded` heartbeats.
+    """
+    # Setup: first seed populates all 16 pairs + emits 16 audit rows.
+    first = await seed_platform_templates(db_session)
+    await db_session.commit()
+    assert first.created == EXPECTED_PAIR_COUNT
+
+    audit_before = await _count_seed_audit_rows(db_session)
+    assert audit_before == EXPECTED_PAIR_COUNT
+
+    # Act: second seed should be a no-op.
+    second = await seed_platform_templates(db_session)
     await db_session.commit()
 
-    assert first.inspected == EXPECTED_PAIR_COUNT
-    assert first.created + first.skipped == EXPECTED_PAIR_COUNT
-
-    # Second run on the same session -- every pair already covered, so
-    # the call must report skipped == 16 and create nothing.
-    second = await seed_platform_templates(db_session, dry_run=False)
-    await db_session.commit()
-
-    assert second.inspected == EXPECTED_PAIR_COUNT
     assert second.created == 0
     assert second.skipped == EXPECTED_PAIR_COUNT
 
-    # Verify coverage at the row level. Exactly one active row per
-    # (kind, language) pair must exist with company_id IS NULL.
-    stmt = select(
-        CompanyDocumentTemplate.kind,
-        CompanyDocumentTemplate.language,
-    ).where(
-        CompanyDocumentTemplate.company_id.is_(None),
-        CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+    # Critical: audit_log unchanged.
+    audit_after = await _count_seed_audit_rows(db_session)
+    assert audit_after == audit_before, (
+        "idempotent seed must NOT write platform.template_seeded "
+        f"audit rows (before: {audit_before}, after: {audit_after})"
     )
-    rows = (await db_session.execute(stmt)).all()
-    pairs = {(row.kind, row.language) for row in rows}
 
-    expected_pairs = {
-        (kind, lang)
-        for kind in DocumentTemplateKind
-        for lang in LANGUAGES
-    }
-    assert pairs == expected_pairs
+
+# ---------------------------------------------------------------------------
+# T3 -- recovery from a single archived row (the historical breakage)
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_seed_dry_run_does_not_write(
-    db_session: AsyncSession,
-) -> None:
-    """`dry_run=True` reports what *would* happen but never inserts.
+async def test_recovery_from_archived_only(db_session: AsyncSession) -> None:
+    """Simulate the broken state from prod:
+        - 15 pairs empty,
+        - 1 pair (RECOVERY_KIND, RECOVERY_LANG) has ONLY an archived v=1 row.
 
-    Pre-state matters here: we run a real seed first so the dry-run
-    has nothing to do, then assert that the dry-run reports zero
-    actions. This avoids relying on a "clean DB" assumption (the
-    previous file deleted rows in setup to get one).
+    The seed script must:
+        1. Create a fresh active row for the broken pair at v=2 (NOT v=1,
+           which would collide on UNIQUE NULLS NOT DISTINCT).
+        2. Mark the audit row for that pair with recovered_from_archived=True
+           and max_archived_version=1.
+        3. Treat the other 15 pairs as a normal fresh seed.
     """
-    # Make sure the DB is in the fully-seeded state.
-    await seed_platform_templates(db_session, dry_run=False)
+    # Setup: one archived row for the recovery pair.
+    await _insert_archived_row(
+        db_session,
+        kind=RECOVERY_KIND,
+        language=RECOVERY_LANG,
+        version=1,
+    )
+
+    # Act.
+    stats = await seed_platform_templates(db_session)
     await db_session.commit()
 
-    # Row count BEFORE the dry-run.
-    count_stmt = select(CompanyDocumentTemplate).where(
-        CompanyDocumentTemplate.company_id.is_(None)
+    assert stats.created == EXPECTED_PAIR_COUNT
+    assert stats.skipped == 0
+
+    # Active row for the recovery pair must be at version=2.
+    recovery_row = await _fetch_active_row(
+        db_session, kind=RECOVERY_KIND, language=RECOVERY_LANG
     )
-    rows_before = (await db_session.execute(count_stmt)).scalars().all()
+    assert recovery_row is not None
+    assert recovery_row.version == 2, (
+        f"recovery pair created at v{recovery_row.version}, "
+        "expected v2 (one past max archived)"
+    )
 
-    dry = await seed_platform_templates(db_session, dry_run=True)
-    # Dry-run reports `created` for would-be inserts. Since DB is fully
-    # seeded, it must be zero across the board.
-    assert dry.inspected == EXPECTED_PAIR_COUNT
-    assert dry.created == 0
-    assert dry.skipped == EXPECTED_PAIR_COUNT
+    # Audit row for the recovery pair must flag the recovery.
+    audit = await _fetch_seed_audit_for_pair(
+        db_session, kind=RECOVERY_KIND, language=RECOVERY_LANG
+    )
+    assert audit is not None
+    data = audit.data or {}
+    assert data.get("recovered_from_archived") is True, (
+        f"recovery audit missing recovered_from_archived flag: {data}"
+    )
+    assert data.get("max_archived_version") == 1, (
+        f"recovery audit max_archived_version={data.get('max_archived_version')}, "
+        "expected 1"
+    )
 
-    # Row count AFTER -- unchanged.
-    rows_after = (await db_session.execute(count_stmt)).scalars().all()
-    assert len(rows_after) == len(rows_before)
+    # Sanity: the other 15 pairs are normal v=1 active rows without the flag.
+    for kind in EXPECTED_KINDS:
+        for lang in EXPECTED_LANGUAGES:
+            if kind == RECOVERY_KIND and lang == RECOVERY_LANG:
+                continue
+            row = await _fetch_active_row(db_session, kind=kind, language=lang)
+            assert row is not None
+            assert row.version == 1
+
+
+# ---------------------------------------------------------------------------
+# T4 -- recovery with multiple archived rows
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_recovery_with_multiple_archived(
+    db_session: AsyncSession,
+) -> None:
+    """Two archived rows for the same pair (v1 and v2). Seed must pick
+    max+1 = v3 and record max_archived_version=2 in the audit row.
+    """
+    await _insert_archived_row(
+        db_session, kind=RECOVERY_KIND, language=RECOVERY_LANG, version=1
+    )
+    await _insert_archived_row(
+        db_session, kind=RECOVERY_KIND, language=RECOVERY_LANG, version=2
+    )
+
+    stats = await seed_platform_templates(db_session)
+    await db_session.commit()
+
+    assert stats.created == EXPECTED_PAIR_COUNT
+
+    row = await _fetch_active_row(
+        db_session, kind=RECOVERY_KIND, language=RECOVERY_LANG
+    )
+    assert row is not None
+    assert row.version == 3
+
+    audit = await _fetch_seed_audit_for_pair(
+        db_session, kind=RECOVERY_KIND, language=RECOVERY_LANG
+    )
+    assert audit is not None
+    data = audit.data or {}
+    assert data.get("recovered_from_archived") is True
+    assert data.get("max_archived_version") == 2
+
+
+# ---------------------------------------------------------------------------
+# T5 -- dry run writes nothing
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_dry_run_no_writes(db_session: AsyncSession) -> None:
+    """In dry-run mode the script reports what it WOULD do but performs
+    no INSERTs and emits no audit rows.
+    """
+    stats = await seed_platform_templates(db_session, dry_run=True)
+    await db_session.commit()
+
+    # would-be created = full 16 (since we wiped in fixture).
+    assert stats.created == EXPECTED_PAIR_COUNT
+    assert stats.skipped == 0
+
+    # No actual rows in the DB.
+    assert await _count_active_platform_rows(db_session) == 0
+    assert await _count_seed_audit_rows(db_session) == 0

@@ -1178,52 +1178,83 @@ case_update() {
     }
     echo -e "${GREEN}✓ Migrations applied${NC}"
 
-    # Seed Platform user BEFORE tests (singleton row some tests rely on).
+    # ----------------------------------------------------------------------
+    # Seed prod DB in deterministic order.
+    #
+    # Iter 2.5 mini-fix #3 removed the historical reason for splitting
+    # seeds around pytest: tests used to wipe shared rows in the prod DB
+    # via cleanup_test_users, forcing a re-seed afterwards. Tests now run
+    # against per-worker ephemeral databases cloned from a separate
+    # cbshome_test_template, so prod seeds can run in one block with no
+    # interference.
+    #
+    # Each seed is idempotent:
+    #   seed_platform            -- Platform user (singleton).
+    #   seed_platform_templates  -- 16 active platform-default rows.
+    #                               Self-healing: if a previous run left
+    #                               only archived rows for a pair, the
+    #                               new active version is max(v)+1 and
+    #                               an audit row records the recovery.
+    #   seed_documents           -- privacy_policy / terms / etc.
+    #   seed_storefront          -- demo companies + products.
+    #   seed_test_accounts       -- four ready-to-login test accounts.
+    # ----------------------------------------------------------------------
     echo ""
-    echo "Seeding Platform user..."
+    echo "Seeding prod DB..."
     docker compose exec -T app python scripts/seed_platform.py
-
-    # ----------------------------------------------------------------------
-    # Run tests, THEN re-seed data fixtures.
-    #
-    # Why this order:
-    #   pytest runs against the same Postgres instance the dev site reads
-    #   from. Some test files (e.g. tests/test_onboarding.py) wipe rows in
-    #   tables they share with seed scripts -- documents, signings, etc.
-    #   If we seed BEFORE pytest, those wipes destroy seed data and the
-    #   dev site comes back up with empty tables (login passes, onboarding
-    #   /docs returns []).
-    #
-    # Why the dance with pytest_status:
-    #   Even when tests fail, we still re-seed so the dev environment stays
-    #   usable while the dev fixes the code. The test failure is propagated
-    #   AFTER the seeds run, so `cbshome update` still exits non-zero on a
-    #   broken commit -- it just leaves a working dev DB behind.
-    # ----------------------------------------------------------------------
-    echo ""
-    echo "Running backend tests..."
-    pytest_status=0
-    docker compose exec -T app python -m pytest tests/ -v --tb=short || pytest_status=$?
-
-    # Always re-seed -- tests may have wiped shared tables.
-    echo ""
-    echo "Seeding legal documents..."
+    docker compose exec -T app python -m scripts.seed_platform_templates
     docker compose exec -T app python scripts/seed_documents.py
-
-    echo ""
-    echo "Seeding storefront..."
     docker compose exec -T app python -m scripts.seed_storefront
-
-    echo ""
-    echo "Seeding test accounts..."
     docker compose exec -T app python -m scripts.seed_test_accounts
+    echo -e "${GREEN}✓ Prod DB seeded${NC}"
+
+    # ----------------------------------------------------------------------
+    # Prepare the test template DB.
+    #
+    # bootstrap_test_template:
+    #   1. Drops every stale cbshome_test_* database and every stale
+    #      cbshome-attachments-pytest-* MinIO bucket from previous crashed
+    #      pytest runs.
+    #   2. Recreates cbshome_test_template as a frozen template via
+    #      alembic + seed_platform + seed_platform_templates.
+    #
+    # Per-worker DBs are cloned from this template in conftest.py's
+    # pytest_configure (CREATE DATABASE ... TEMPLATE -- ~100ms per clone).
+    # ----------------------------------------------------------------------
+    echo ""
+    echo "Bootstrapping test template DB..."
+    docker compose exec -T app python -m scripts.bootstrap_test_template || {
+        echo -e "${RED}✗ Test template bootstrap failed!${NC}"
+        echo "Check logs: cbshome logs app"
+        return 1
+    }
+
+    # ----------------------------------------------------------------------
+    # Run tests in parallel against per-worker ephemeral DBs.
+    #
+    # `-n auto` -- xdist picks worker count = CPU count.
+    # Workers do NOT touch the prod DB / prod bucket / Redis db 0. Each
+    # worker provisions its own cbshome_test_<worker_id> database,
+    # cbshome-attachments-pytest-<worker_id> bucket and Redis logical db
+    # in [1..15]; everything is torn down in pytest_unconfigure (and any
+    # leak from a crash is reaped by the next bootstrap above).
+    #
+    # On a test failure we DO NOT `return 1` immediately: frontend type
+    # regeneration still has to run so a frontend contributor is not
+    # blocked on a backend test failure they did not cause. The exit
+    # code is preserved and propagated at the very end of case_update.
+    # ----------------------------------------------------------------------
+    echo ""
+    echo "Running backend tests (parallel)..."
+    pytest_status=0
+    docker compose exec -T app python -m pytest tests/ -v -n auto --tb=short \
+        || pytest_status=$?
 
     if [ $pytest_status -eq 0 ]; then
         echo -e "${GREEN}✓ All tests passed${NC}"
     else
-        echo -e "${RED}✗ Tests failed -- app is running but code may be broken${NC}"
+        echo -e "${RED}✗ Tests failed -- app is running, prod DB seeded${NC}"
         echo "Fix the code and run: cbshome update"
-        return 1
     fi
 
     # ----------------------------------------------------------------------
@@ -1314,6 +1345,14 @@ Triggered by cbshome update on commit $NEW_COMMIT" || {
         echo -e "${GREEN}✓ Update complete: $CURRENT_COMMIT -> $NEW_COMMIT${NC}"
     else
         echo -e "${RED}✗ Health check failed after update${NC}"
+        return 1
+    fi
+
+    # Propagate pytest exit code. The whole post-seed pipeline (frontend
+    # types regeneration, frontend rebuild, health check) still runs on
+    # a test failure so the dev site stays usable, but `cbshome update`
+    # itself exits non-zero so CI / shell loops detect the breakage.
+    if [ $pytest_status -ne 0 ]; then
         return 1
     fi
 }

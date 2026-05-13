@@ -44,6 +44,11 @@ dependencies = [
 dev = [
     "pytest>=8.0.0,<9.0",
     "pytest-asyncio>=0.24.0,<1.0",
+    # Iter 2.5 mini-fix #3: parallel test execution against per-worker
+    # ephemeral databases. conftest.py uses PYTEST_XDIST_WORKER to pick
+    # a unique cbshome_test_<worker_id> DB cloned from
+    # cbshome_test_template. `pytest -n auto` is the canonical invocation.
+    "pytest-xdist>=3.6.0,<4.0",
     "httpx>=0.27.0,<1.0",
     "ruff>=0.7.0,<1.0",
     "mypy>=1.11.0,<2.0",
