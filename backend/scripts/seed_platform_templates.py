@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # =============================================================================
 # CBSHOME Backend -- Seed Platform Default Templates
-#                     (Refactor 2 iter 2.3, R2 §4.9 + §1.4)
+#                     (iter 2.5 mini-fix #3 rewrite)
 # =============================================================================
 #
 # Idempotent installer: for every (kind, language) pair, ensure exactly
@@ -10,44 +10,52 @@
 # `_platform/templates/<kind>/<lang>/` and lists the standard asset
 # triple (logo.png, signature.png, stamp.png).
 #
-# This script ONLY creates DB rows. The actual HTML + asset bytes are
-# uploaded to MinIO separately by `mc cp` in install_cbshome.sh. Order
-# matters at install time:
+# WHAT CHANGED IN iter 2.5 mini-fix #3:
+#   The previous version hardcoded version=1 on every fresh insert.
+#   When a test (or any other path) had left the pair with only archived
+#   rows in the DB, the next seed run hit UniqueConstraint on
+#   (company_id, kind, language, version)=NULL/.../.../1 and the entire
+#   seed transaction died. The pair stayed broken on every subsequent
+#   `cbshome update`.
 #
-#     1. mc cp -r backend/scripts/templates/_default/ \
-#                local/cbshome-attachments/_platform/templates/
-#     2. python -m scripts.seed_platform_templates
+#   This version computes new_version = max(version)+1 across all
+#   statuses (R2 §4.8 BUG-NEW-01 pattern). When the table is empty for
+#   the pair, max=0 and we still write version=1. When the pair has
+#   only archived rows, we write at max+1 -- the seed self-heals.
 #
-# If you run this BEFORE the mc cp step, the rows still get created
-# correctly -- but the renderer will 500 on lookup because get_object_bytes
-# can't find the HTML (R2 §4.7). Re-run the mc cp step and any cached
-# HTML will be invalidated automatically by the next reconcile pass.
+#   Audit row distinguishes the two paths via the `data` payload:
+#     recovered_from_archived = False  -- fresh seed, no prior rows.
+#     recovered_from_archived = True   -- recovery: write version > 1,
+#                                          max_archived_version included
+#                                          for ops visibility.
+#   Same event name (`platform.template_seeded`) so existing event-name
+#   filters in audit dashboards keep working.
 #
 # IDEMPOTENCY:
 #   For each (kind, language) we look up an existing row with
-#   company_id IS NULL AND status='active'. If one exists, we skip.
-#   If not, we INSERT (version=1, status='active', created_by=NULL).
-#   Repeated runs are no-ops once every pair has its row.
+#   company_id IS NULL AND status='active'. If one exists, we skip
+#   without writing an audit row (subsequent runs would otherwise spam
+#   the log with no information content). If not, we INSERT a new
+#   active at version = max(version across all statuses)+1.
 #
 # UPDATING PLATFORM DEFAULTS LATER:
 #   Use `cbshome storage reconcile-platform-templates` (R2 §4.9). That
-#   flow archives the old `active` row, creates a new one with version+1,
-#   and invalidates the Redis HTML cache. This script is install-only.
+#   flow archives the old `active` row, creates a new one with
+#   version+1, and invalidates the Redis HTML cache. This script is
+#   install-time only.
 #
 # CLI:
 #   docker compose exec -T app python -m scripts.seed_platform_templates [--dry-run]
 #
 # AUDIT:
 #   System-actor entries (actor_type="system") with actor_id = the
-#   platform user. One audit row per CREATE event:
-#       platform.template_seeded
-#   Skips do not write audit rows -- subsequent runs would otherwise
-#   spam the audit log with no information content.
+#   platform user. Event: `platform.template_seeded`.
+#   Skips do not write audit rows.
 #
 # COMMIT MODEL:
-#   One COMMIT at the end of a successful run. Failures abort the whole
-#   pass; on retry the idempotent lookup finds whatever was committed by
-#   an earlier successful run and skips those pairs.
+#   One COMMIT at the end of a successful run (in the CLI wrapper).
+#   The library function never commits -- tests pass their own session
+#   and rely on conftest rollback to discard everything.
 # =============================================================================
 
 from __future__ import annotations
@@ -57,6 +65,7 @@ import asyncio
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # Make `app.*` importable when this file is run as a standalone script.
 _backend_dir = Path(__file__).resolve().parent.parent
@@ -64,7 +73,7 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -85,13 +94,14 @@ logger = structlog.get_logger()
 LANGUAGES: tuple[str, ...] = ("en", "ru", "de", "ar")
 
 # Standard asset triple every platform default template references.
-# Must match the files actually present under `backend/scripts/templates/
-# _default/<kind>/<lang>/`.
+# Must match the files actually present under
+# `backend/scripts/templates/_default/<kind>/<lang>/` so the renderer's
+# make_asset_data_uri_func can resolve them.
 ASSET_FILES: list[str] = ["logo.png", "signature.png", "stamp.png"]
 
 
 # ---------------------------------------------------------------------------
-# Presentation helpers (mirrors style of scripts/reconcile_attachments.py)
+# Presentation helpers (match scripts/reconcile_attachments.py style)
 # ---------------------------------------------------------------------------
 
 G = "\033[0;32m"
@@ -135,8 +145,8 @@ class SeedStats:
 def _build_storage_prefix(kind: str, language: str) -> str:
     """Canonical platform-default MinIO prefix for one (kind, language).
 
-    Mirrors the convention used by reconcile_platform_templates.py so
-    direct seed inserts and inbox-driven inserts produce identical
+    Mirrors the convention used by _template_reconcile_core.platform_scope
+    so seed inserts and reconcile inserts produce identical
     storage_prefix strings.
     """
     return f"_platform/templates/{kind}/{language}/"
@@ -145,25 +155,25 @@ def _build_storage_prefix(kind: str, language: str) -> str:
 def _build_title(kind: str, language: str) -> str:
     """Human-readable title for staff inspection (R2 §4.2).
 
-    Templates uploaded by lawyers later will set their own title via the
-    cbsmeta.json sidecar. The seed-time title is just a sane default.
+    Lawyers' uploads override this via the cbsmeta.json sidecar; the
+    seed-time title is just a sane default.
     """
     return f"Platform default: {kind} ({language})"
 
 
-async def _row_exists(
+async def _find_active_row(
     session: AsyncSession,
     kind: str,
     language: str,
 ) -> CompanyDocumentTemplate | None:
-    """Look up the existing active platform-default row for one
-    (kind, language), if any.
+    """Find the existing active platform-default row for one
+    (kind, language) pair. Returns None if there isn't one.
 
-    Idempotency hinges on this query: the seed has already done its
-    job iff an active row with company_id IS NULL exists for the pair.
-    Drafts / archived rows do NOT count -- if some operator manually
-    archived an active row, the next seed run treats the pair as
-    uncovered and creates a new active.
+    Idempotency hinges on this query: the seed considers the pair
+    "already done" iff an active row with company_id IS NULL exists for
+    it. Drafts and archived rows do not count -- if some operator (or
+    test) flipped the active row to archived, the next seed run treats
+    the pair as uncovered and creates a fresh active.
     """
     stmt = select(CompanyDocumentTemplate).where(
         CompanyDocumentTemplate.company_id.is_(None),
@@ -175,46 +185,91 @@ async def _row_exists(
     return result.scalar_one_or_none()
 
 
+async def _get_max_version(
+    session: AsyncSession,
+    kind: str,
+    language: str,
+) -> int:
+    """Return max(version) across ALL statuses for (NULL, kind, language).
+
+    Returns 0 when no rows exist so the caller writes version=1 on a
+    truly fresh install.
+
+    Why all statuses, not just active:
+      - The UNIQUE constraint on (company_id, kind, language, version)
+        uses NULLS NOT DISTINCT and matches across status, so version
+        collisions happen against draft and archived rows too.
+      - If a pair has archived v1 with no active row (broken state left
+        by a test or an aborted reconcile), inserting another v1 would
+        fail with IntegrityError. Picking max+1 self-heals -- writes
+        v2 active and the seed transaction survives.
+    """
+    stmt = select(func.max(CompanyDocumentTemplate.version)).where(
+        CompanyDocumentTemplate.company_id.is_(None),
+        CompanyDocumentTemplate.kind == kind,
+        CompanyDocumentTemplate.language == language,
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
+
+
 async def seed_platform_templates(
     session: AsyncSession,
     *,
     dry_run: bool = False,
 ) -> SeedStats:
-    """Ensure one active platform-default row per (kind, language) pair.
+    """Ensure exactly one active platform-default row per (kind, language).
 
     Args:
         session: Async DB session. The caller is responsible for the
-            commit (the CLI commits once at the end; tests usually run
-            inside their own transaction and discard).
+            commit (CLI commits once at the end; tests usually run
+            inside their own transaction and rely on rollback at
+            teardown).
         dry_run: When True, log intended actions without inserting.
             The audit row is also skipped in dry-run.
 
     Returns:
-        SeedStats with inspected / created / skipped counts.
+        SeedStats with inspected / created / skipped counters.
     """
     stats = SeedStats()
 
-    # platform_user_id is required for the system audit attribution.
-    # Calling it before the loop fails fast if the platform user doesn't
-    # exist yet -- which would mean install order is wrong (cbshome seed
-    # must run before this script; see install_cbshome.sh).
+    # platform_user_id is required for the system-actor audit row.
+    # Resolving it before the loop fails fast if the platform user does
+    # not yet exist -- which would mean install order is wrong (the
+    # `cbshome seed` step that creates the platform user must run
+    # BEFORE this script; see install_cbshome.sh).
     platform_user_id = await get_platform_user_id(session)
 
     for kind in DocumentTemplateKind:
         for language in LANGUAGES:
             stats.inspected += 1
 
-            existing = await _row_exists(session, kind, language)
+            existing = await _find_active_row(session, kind, language)
             if existing is not None:
                 log(
                     f"skip: {kind}/{language} "
-                    f"(already active, version={existing.version}, id={existing.id})"
+                    f"(already active, version={existing.version}, "
+                    f"id={existing.id})"
                 )
                 stats.skipped += 1
                 continue
 
+            # No active row. We are about to insert one.
+            # Pick version = max(version)+1 across all statuses so a
+            # leftover archived row (from a test or aborted reconcile)
+            # does not trip the UNIQUE constraint.
+            max_version = await _get_max_version(session, kind, language)
+            new_version = max_version + 1
+            recovered = max_version > 0
+
             if dry_run:
-                log(f"would create: {kind}/{language}")
+                if recovered:
+                    log(
+                        f"would recover: {kind}/{language} v{new_version} "
+                        f"(max archived={max_version})"
+                    )
+                else:
+                    log(f"would create: {kind}/{language} v1")
                 stats.created += 1
                 continue
 
@@ -222,19 +277,34 @@ async def seed_platform_templates(
                 company_id=None,
                 kind=kind,
                 language=language,
-                version=1,
+                version=new_version,
                 title=_build_title(kind, language),
                 storage_prefix=_build_storage_prefix(kind, language),
-                # Copy the list so each row gets its own asset_files
-                # rather than sharing a reference to the module-level
-                # constant. JSONB column rebinds on commit anyway, but
-                # the explicit copy keeps things readable.
+                # Copy so each row gets its own asset_files list rather
+                # than sharing a reference to the module-level constant.
                 asset_files=list(ASSET_FILES),
                 status=TemplateStatus.ACTIVE,
+                # NULL: platform-default rows have no human author.
+                # The system actor on the audit row carries the
+                # attribution.
                 created_by=None,
             )
             session.add(row)
             await session.flush()
+
+            audit_data: dict[str, Any] = {
+                "kind": str(kind),
+                "language": language,
+                "version": row.version,
+                "storage_prefix": row.storage_prefix,
+                "asset_files": list(ASSET_FILES),
+                "recovered_from_archived": recovered,
+            }
+            if recovered:
+                # Operational hint: how deep the archive went before we
+                # patched over it. Helps Staff investigate when a pair
+                # is repeatedly recovering.
+                audit_data["max_archived_version"] = max_version
 
             await record_audit(
                 session=session,
@@ -243,16 +313,16 @@ async def seed_platform_templates(
                 actor_type="system",
                 target_type="platform_template",
                 target_id=row.id,
-                data={
-                    "kind": str(kind),
-                    "language": language,
-                    "version": row.version,
-                    "storage_prefix": row.storage_prefix,
-                    "asset_files": list(ASSET_FILES),
-                },
+                data=audit_data,
             )
 
-            log(f"created: {kind}/{language} (id={row.id})")
+            if recovered:
+                log(
+                    f"recovered: {kind}/{language} v{new_version} "
+                    f"(max archived={max_version}, id={row.id})"
+                )
+            else:
+                log(f"created: {kind}/{language} v1 (id={row.id})")
             stats.created += 1
 
     return stats
@@ -268,7 +338,9 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="seed_platform_templates",
         description=(
             "Idempotently seed platform-default rows in "
-            "company_document_templates (R2 §4.9)."
+            "company_document_templates (R2 §4.9). Self-heals when the "
+            "pair was left with only archived rows by recovering at "
+            "max(version)+1 active."
         ),
     )
     parser.add_argument(
