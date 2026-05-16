@@ -348,13 +348,18 @@ async def test_avatar_guard_blocks_in_avatar_mode(
     avatar_token = resp.json()["session_token"]
 
     # Create a document to sign (using admin token).
+    # version is randomized: seed_documents.py owns versions 1..N for the
+    # real legal docs, and prior test runs leave their own (privacy_policy,
+    # 99, en) row behind. uq_documents_type_version_language collides on
+    # any reuse, so we pick a random version far above the seed range.
+    # 7 hex digits -> max 268M, safely inside Integer (int32) range.
     doc_resp = await client.post(
         "/api/v1/staff/documents",
         json={
             "type": "privacy_policy",
             "title": "Test PP",
             "language": "en",
-            "version": 99,
+            "version": int(uuid.uuid4().hex[:7], 16),
         },
         headers=auth_headers(admin_token),
     )
