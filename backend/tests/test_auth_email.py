@@ -229,11 +229,22 @@ async def test_session_limit_evicts_oldest(client: AsyncClient) -> None:
     Register creates session #1. Then login MAX times to fill up + overflow.
     The first token (from register) should be evicted.
     """
+    # Session eviction (max_concurrent_sessions) and auth rate limit
+    # (auth_rate_limit_max_requests) are independent invariants that
+    # happen to share a numeric default of 5. Sending 1 register + 5
+    # logins back-to-back from a single IP would hit the rate limit
+    # before exercising the eviction logic. Reset the auth-rate-limit
+    # Redis key before each request so we test eviction in isolation.
+    from app.core.redis import get_redis
+    redis = get_redis()
+    rate_limit_key = "email_auth:127.0.0.1"
+
     email = f"limit_{uuid.uuid4().hex[:12]}@example.com"
     password = "testpass123"
     max_sessions = settings.max_concurrent_sessions  # default 5
 
     # Session #1 from register.
+    await redis.delete(rate_limit_key)
     data = await register_user(client, email=email, password=password)
     first_token = data["session_token"]
 
@@ -241,6 +252,7 @@ async def test_session_limit_evicts_oldest(client: AsyncClient) -> None:
     # After this loop, we have max+1 sessions created total,
     # so the oldest (first_token) should have been evicted.
     for _ in range(max_sessions):
+        await redis.delete(rate_limit_key)
         await login_user(client, email=email, password=password)
 
     # First token should be evicted -- request with it fails.
