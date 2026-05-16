@@ -1230,6 +1230,33 @@ case_update() {
     }
 
     # ----------------------------------------------------------------------
+    # Smoke check: platform templates seeded correctly.
+    #
+    # Replaces the deleted test_seed_platform_templates.py / test_template_
+    # snapshot.py. Cheaper, simpler, lives at the install layer where the
+    # original bug (purchase_agreement/en disappearing on update) actually
+    # manifests. If this passes, the rest of the application has the seed
+    # state it expects; if it fails, we abort BEFORE pytest so the failure
+    # message is obvious and not buried in test cascades.
+    # ----------------------------------------------------------------------
+    echo ""
+    echo "Smoke check: platform templates seeded..."
+    template_count=$(
+        docker compose exec -T postgres psql -U cbshome -d cbshome_test_template \
+            -tAc "SELECT COUNT(*) FROM company_document_templates WHERE company_id IS NULL AND status='active';" \
+            2>/dev/null | tr -d '[:space:]'
+    )
+    if [ "$template_count" != "16" ]; then
+        echo -e "${RED}✗ Platform templates smoke check failed${NC}"
+        echo "Expected 16 active platform-default templates, found: '$template_count'"
+        echo "The seed_platform_templates script did not produce the expected state."
+        echo "Check: docker compose exec -T app python -m scripts.seed_platform_templates --dry-run"
+        return 1
+    fi
+    echo -e "${GREEN}✓ 16 platform templates active${NC}"
+
+
+    # ----------------------------------------------------------------------
     # Run tests in parallel against per-worker ephemeral DBs.
     #
     # `-n auto` -- xdist picks worker count = CPU count.
