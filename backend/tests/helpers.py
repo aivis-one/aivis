@@ -217,7 +217,11 @@ async def create_staff_user(
     data = await register_user(client, email=email, password=password)
     token = data["session_token"]
 
-    result = await session.execute(select(User).where(User.email == email))
+    result = await session.execute(
+        select(User).where(
+            User.credentials["email"]["email"].as_string() == email
+        )
+    )
     user = result.scalar_one()
     user.role = UserRole.STAFF
     user.onboarding_step = OnboardingStep.COMPLETED

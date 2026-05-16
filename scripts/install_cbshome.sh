@@ -1209,28 +1209,7 @@ case_update() {
     echo -e "${GREEN}✓ Prod DB seeded${NC}"
 
     # ----------------------------------------------------------------------
-    # Prepare the test template DB.
-    #
-    # bootstrap_test_template:
-    #   1. Drops every stale cbshome_test_* database and every stale
-    #      cbshome-attachments-pytest-* MinIO bucket from previous crashed
-    #      pytest runs.
-    #   2. Recreates cbshome_test_template as a frozen template via
-    #      alembic + seed_platform + seed_platform_templates.
-    #
-    # Per-worker DBs are cloned from this template in conftest.py's
-    # pytest_configure (CREATE DATABASE ... TEMPLATE -- ~100ms per clone).
-    # ----------------------------------------------------------------------
-    echo ""
-    echo "Bootstrapping test template DB..."
-    docker compose exec -T app python -m scripts.bootstrap_test_template || {
-        echo -e "${RED}✗ Test template bootstrap failed!${NC}"
-        echo "Check logs: cbshome logs app"
-        return 1
-    }
-
-    # ----------------------------------------------------------------------
-    # Smoke check: platform templates seeded correctly.
+    # Smoke check: platform templates seeded correctly in the prod DB.
     #
     # Replaces the deleted test_seed_platform_templates.py / test_template_
     # snapshot.py. Cheaper, simpler, lives at the install layer where the
@@ -1242,7 +1221,7 @@ case_update() {
     echo ""
     echo "Smoke check: platform templates seeded..."
     template_count=$(
-        docker compose exec -T postgres psql -U cbshome -d cbshome_test_template \
+        docker compose exec -T postgres psql -U cbshome -d cbshome \
             -tAc "SELECT COUNT(*) FROM company_document_templates WHERE company_id IS NULL AND status='active';" \
             2>/dev/null | tr -d '[:space:]'
     )
@@ -1256,25 +1235,19 @@ case_update() {
     echo -e "${GREEN}✓ 16 platform templates active${NC}"
 
 
+
     # ----------------------------------------------------------------------
-    # Run tests in parallel against per-worker ephemeral DBs.
-    #
-    # `-n auto` -- xdist picks worker count = CPU count.
-    # Workers do NOT touch the prod DB / prod bucket / Redis db 0. Each
-    # worker provisions its own cbshome_test_<worker_id> database,
-    # cbshome-attachments-pytest-<worker_id> bucket and Redis logical db
-    # in [1..15]; everything is torn down in pytest_unconfigure (and any
-    # leak from a crash is reaped by the next bootstrap above).
-    #
-    # On a test failure we DO NOT `return 1` immediately: frontend type
-    # regeneration still has to run so a frontend contributor is not
-    # blocked on a backend test failure they did not cause. The exit
-    # code is preserved and propagated at the very end of case_update.
+    # Run tests against the shared dev DB. Sequential -- xdist parallelism
+    # was an artefact of the abandoned per-worker DB design; with a single
+    # shared DB it would just cause workers to step on each other's rows.
+    # Tests achieve cross-run isolation via UUID-suffixed emails (see
+    # helpers.register_user); inside a single run they share state, which
+    # is fine because the dev DB is disposable.
     # ----------------------------------------------------------------------
     echo ""
-    echo "Running backend tests (parallel)..."
+    echo "Running backend tests..."
     pytest_status=0
-    docker compose exec -T app python -m pytest tests/ -v -n auto --tb=short \
+    docker compose exec -T app python -m pytest tests/ -v --tb=short \
         || pytest_status=$?
 
     if [ $pytest_status -eq 0 ]; then
