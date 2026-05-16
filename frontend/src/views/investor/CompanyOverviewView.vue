@@ -366,14 +366,15 @@ function onRoadmapPostClick(_postId: string): void {
   gap: var(--space-xl);
   padding: var(--space-md);
   /* Bottom padding must clear two stacked layers above the content:
-     the floating .co__cta (~56px including its own padding) and the
-     CTabBar (--tab-bar-height + safe-area-inset-bottom). Without this,
-     the last section sits behind the CTA when the user scrolls to
-     the end. The extra --space-xl is breathing room so the last item
-     doesn't visually kiss the CTA shadow. */
+     the floating .co__cta (--cta-bar-height, pinned via min-height
+     down in the .co__cta block) and the CTabBar (--tab-bar-height
+     + safe-area-inset-bottom). Without this, the last section sits
+     behind the CTA when the user scrolls to the end. The extra
+     --space-xl is breathing room so the last item doesn't visually
+     kiss the CTA shadow. */
   padding-bottom: calc(
     var(--space-xl)
-    + 56px
+    + var(--cta-bar-height)
     + var(--tab-bar-height)
     + env(safe-area-inset-bottom, 0px)
   );
@@ -495,6 +496,16 @@ function onRoadmapPostClick(_postId: string): void {
     + env(safe-area-inset-bottom, 0px)
     + var(--space-sm)
   );
+  /* min-height (not height) pins the visible strip to --cta-bar-height
+     so the token is the real source of truth that .co__main's
+     padding-bottom relies on. min-height (rather than height) keeps
+     room for the button to grow if the inner label wraps under an
+     extreme translation -- the layout above adapts via calc, the CTA
+     itself never crops content. */
+  min-height: var(--cta-bar-height);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
   z-index: 100;
   padding: var(--space-sm);
   background: var(--bg);

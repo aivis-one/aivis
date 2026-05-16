@@ -85,8 +85,16 @@
      products"). Bump here, every consumer follows automatically.
      Safe-area inset is NOT folded in -- consumers add
      env(safe-area-inset-bottom, 0px) themselves so the token stays
-     hardware-agnostic. */
+     hardware-agnostic.
+
+     --cta-bar-height: floating sub-route CTA strip height. Used by
+     consumers that have a fixed-bottom CTA above the tab bar (e.g.
+     CompanyOverviewView's .co__cta). The CTA is pinned to this height
+     via `min-height` so the token is the real source of truth, not
+     an after-the-fact guess at content + padding. Content above the
+     CTA compensates with padding-bottom that adds this token. */
   --tab-bar-height: 56px;
+  --cta-bar-height: 56px;
 
   /* === Font === */
   --font: 'Montserrat', system-ui, sans-serif;
