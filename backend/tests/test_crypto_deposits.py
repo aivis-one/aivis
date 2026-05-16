@@ -17,7 +17,7 @@
 # Email prefix: "s52_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
@@ -136,11 +136,12 @@ async def test_webhook_valid_payload(
     to_address = addr_resp.json()["address"]
 
     # Send webhook.
+    tx_hash = f"0x{uuid4().hex}"
     webhook_body = {
         "network": "TRC20",
         "to_address": to_address,
         "from_address": "TSenderWallet123",
-        "tx_hash": "0xabc_valid_test",
+        "tx_hash": tx_hash,
         "amount_crypto": "100.50",
         "amount_usd_cents": 10050,
         "confirmed_block": 12345678,
@@ -167,7 +168,7 @@ async def test_webhook_valid_payload(
     assert payment.status == PaymentStatus.FROZEN
     assert payment.frozen_until is not None
     assert payment.provider_data is not None
-    assert payment.provider_data["tx_hash"] == "0xabc_valid_test"
+    assert payment.provider_data["tx_hash"] == tx_hash
 
     # Verify active_ledger entry.
     ledger_stmt = select(ActiveLedger).where(
@@ -180,7 +181,7 @@ async def test_webhook_valid_payload(
     assert ledger_entry.amount_cents == 10050
     assert ledger_entry.status == LedgerStatus.FROZEN
     assert ledger_entry.frozen_until is not None
-    assert "deposit:crypto:0xabc_valid_test" == ledger_entry.reason
+    assert f"deposit:crypto:{tx_hash}" == ledger_entry.reason
 
 
 @pytest.mark.asyncio
@@ -194,7 +195,7 @@ async def test_webhook_invalid_secret(
             "network": "TRC20",
             "to_address": "CBS_TRC20_fake",
             "from_address": "TSender",
-            "tx_hash": "0xbadsecret",
+            "tx_hash": f"0x{uuid4().hex}",
             "amount_crypto": "50.00",
             "amount_usd_cents": 5000,
         },
@@ -222,7 +223,7 @@ async def test_webhook_duplicate_tx_hash(
         "network": "TRC20",
         "to_address": to_address,
         "from_address": "TSender",
-        "tx_hash": "0xdup_hash_test",
+        "tx_hash": f"0x{uuid4().hex}",
         "amount_crypto": "50.00",
         "amount_usd_cents": 5000,
     }
@@ -255,7 +256,7 @@ async def test_webhook_unknown_address(
             "network": "TRC20",
             "to_address": "CBS_TRC20_nonexistent",
             "from_address": "TSender",
-            "tx_hash": "0xunknown_addr_test",
+            "tx_hash": f"0x{uuid4().hex}",
             "amount_crypto": "10.00",
             "amount_usd_cents": 1000,
         },
@@ -290,7 +291,7 @@ async def test_payment_history(
             "network": "BEP20",
             "to_address": to_address,
             "from_address": "BSender",
-            "tx_hash": "0xhist_test",
+            "tx_hash": f"0x{uuid4().hex}",
             "amount_crypto": "200.00",
             "amount_usd_cents": 20000,
         },
@@ -355,7 +356,7 @@ async def test_get_payment_by_id(
             "network": "PoS",
             "to_address": to_address,
             "from_address": "PSender",
-            "tx_hash": "0xgetpay_test",
+            "tx_hash": f"0x{uuid4().hex}",
             "amount_crypto": "75.00",
             "amount_usd_cents": 7500,
         },
