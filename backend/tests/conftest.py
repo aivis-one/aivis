@@ -137,17 +137,32 @@ def mock_email(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 async def clear_rate_limit() -> None:
-    """Drop the email-auth rate-limit Redis key before each test.
+    """Drop rate-limit Redis keys before each test.
 
-    A single test that calls register_user more times than
-    settings.auth_rate_limit_max_requests would otherwise hit a 429
-    and fail for no real reason.
+    Covers both rate-limit families the auth flows use:
+
+      email_auth:127.0.0.1
+          -- email register / login keyed by client IP. Tests always
+          come from 127.0.0.1 (ASGITransport), so a single fixed key.
+
+      auth_rate:{telegram_id}
+          -- Telegram auth keyed by telegram_id (int). Tests use a
+          handful of fixed tg_ids in 100001..100099 and short TTLs
+          would normally let them expire between runs, but a fast
+          repeat of `cbshome update` can fire before TTL clears.
+          Pattern-delete handles every tg_id the test suite has ever
+          used without coupling conftest to the test-side constants.
+
+    A single test that exceeds settings.auth_rate_limit_max_requests
+    would otherwise hit a 429 and fail for no real reason.
     """
     try:
         from app.core.redis import get_redis
 
         redis = get_redis()
         await redis.delete("email_auth:127.0.0.1")
+        async for key in redis.scan_iter(match="auth_rate:*"):
+            await redis.delete(key)
     except RuntimeError:
         # Redis singleton not yet initialised (test collection error path).
         pass
