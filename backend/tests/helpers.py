@@ -211,28 +211,64 @@ async def create_staff_user(
     StaffProfile with no special permissions. Returns (User, token).
 
     If email is omitted, a UUID-suffixed unique email is generated.
+
+    IDEMPOTENT: if a user with this email already exists (e.g. a previous
+    test in the same run already created the same staff account), we
+    skip registration, log them in, and ensure the staff promotion is
+    in place. This is the right behaviour for test helpers; the dev DB
+    is shared across tests so the first test through this helper does
+    the heavy lifting and the rest piggyback.
     """
     if email is None:
         email = f"staff_{uuid.uuid4().hex[:12]}@example.com"
-    data = await register_user(client, email=email, password=password)
-    token = data["session_token"]
 
-    result = await session.execute(
-        select(User).where(
-            User.credentials["email"]["email"].as_string() == email
+    # Check whether the user is already in the DB from a previous call
+    # in this run. If yes -- login + ensure staff promotion; do NOT
+    # re-register (the API would reject with 409).
+    existing = (
+        await session.execute(
+            select(User).where(
+                User.credentials["email"]["email"].as_string() == email
+            )
         )
-    )
-    user = result.scalar_one()
+    ).scalar_one_or_none()
+
+    if existing is None:
+        data = await register_user(client, email=email, password=password)
+        token = data["session_token"]
+
+        user = (
+            await session.execute(
+                select(User).where(
+                    User.credentials["email"]["email"].as_string() == email
+                )
+            )
+        ).scalar_one()
+    else:
+        # Already registered: login to obtain a fresh token.
+        data = await login_user(client, email=email, password=password)
+        token = data["session_token"]
+        user = existing
+
     user.role = UserRole.STAFF
-    user.onboarding_step = OnboardingStep.COMPLETED
+    user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
     user.kyc_status = KYCStatus.APPROVED
 
-    profile = StaffProfile(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        # Defaults are all False; specific tests bump them up.
-    )
-    session.add(profile)
+    # Promote: insert StaffProfile if one isn't already there.
+    profile = (
+        await session.execute(
+            select(StaffProfile).where(StaffProfile.user_id == user.id)
+        )
+    ).scalar_one_or_none()
+
+    if profile is None:
+        profile = StaffProfile(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            # Defaults are all False; specific tests bump them up.
+        )
+        session.add(profile)
+
     await session.commit()
     return user, token
 
