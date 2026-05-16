@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import (
     KYCStatus,
@@ -208,23 +209,26 @@ async def create_staff_user(
     password: str = "Password123!",
 ) -> tuple[User, str]:
     """Register a regular user, then promote to staff by inserting a
-    StaffProfile with no special permissions. Returns (User, token).
+    StaffProfile. Returns (User, token).
+
+    The created StaffProfile has the platform's DEFAULT_STAFF_PERMISSIONS
+    (same as a real staff member created via POST /staff/users) and
+    is_active=True. Tests that need full admin access should call
+    create_admin_user instead -- it flips translation_edit (the only
+    default-False permission) to True.
 
     If email is omitted, a UUID-suffixed unique email is generated.
 
     IDEMPOTENT: if a user with this email already exists (e.g. a previous
     test in the same run already created the same staff account), we
     skip registration, log them in, and ensure the staff promotion is
-    in place. This is the right behaviour for test helpers; the dev DB
-    is shared across tests so the first test through this helper does
+    in place. The dev DB is shared across tests, so the first call does
     the heavy lifting and the rest piggyback.
     """
     if email is None:
         email = f"staff_{uuid.uuid4().hex[:12]}@example.com"
 
-    # Check whether the user is already in the DB from a previous call
-    # in this run. If yes -- login + ensure staff promotion; do NOT
-    # re-register (the API would reject with 409).
+    # Already present from a previous call? -- skip register, just login.
     existing = (
         await session.execute(
             select(User).where(
@@ -236,7 +240,6 @@ async def create_staff_user(
     if existing is None:
         data = await register_user(client, email=email, password=password)
         token = data["session_token"]
-
         user = (
             await session.execute(
                 select(User).where(
@@ -245,7 +248,6 @@ async def create_staff_user(
             )
         ).scalar_one()
     else:
-        # Already registered: login to obtain a fresh token.
         data = await login_user(client, email=email, password=password)
         token = data["session_token"]
         user = existing
@@ -254,7 +256,6 @@ async def create_staff_user(
     user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
     user.kyc_status = KYCStatus.APPROVED
 
-    # Promote: insert StaffProfile if one isn't already there.
     profile = (
         await session.execute(
             select(StaffProfile).where(StaffProfile.user_id == user.id)
@@ -262,12 +263,23 @@ async def create_staff_user(
     ).scalar_one_or_none()
 
     if profile is None:
+        # Mirror the real create_staff() service: default permissions +
+        # is_active=True. Without is_active the _get_verified_staff
+        # dependency refuses the request with 403 "Staff profile
+        # deactivated", which used to look like a permission failure
+        # but is really a flag failure.
         profile = StaffProfile(
             id=uuid.uuid4(),
             user_id=user.id,
-            # Defaults are all False; specific tests bump them up.
+            permissions=dict(DEFAULT_STAFF_PERMISSIONS),
+            is_active=True,
         )
         session.add(profile)
+    else:
+        # Ensure idempotent path also restores invariants in case an
+        # earlier test mutated them.
+        profile.is_active = True
+        profile.set_jsonb("permissions", dict(DEFAULT_STAFF_PERMISSIONS))
 
     await session.commit()
     return user, token
@@ -280,8 +292,14 @@ async def create_admin_user(
     email: str | None = None,
     password: str = "Password123!",
 ) -> tuple[User, str]:
-    """Like create_staff_user, but flips every StaffProfile permission
-    to True so the resulting account is a full admin.
+    """Like create_staff_user, but every permission key in
+    DEFAULT_STAFF_PERMISSIONS is True so is_admin() returns True.
+
+    Note: StaffProfile.permissions is a single JSONB column holding a
+    dict, NOT one bool column per permission. Earlier versions of this
+    helper looped over __table__.columns looking for bool columns; that
+    only touched is_active and left permissions untouched, so the
+    "admin" had only the default-False keys missing -- not an admin.
 
     If email is omitted, a UUID-suffixed unique email is generated.
     """
@@ -291,16 +309,19 @@ async def create_admin_user(
         client, session, email=email, password=password
     )
 
-    result = await session.execute(
-        select(StaffProfile).where(StaffProfile.user_id == user.id)
-    )
-    profile = result.scalar_one()
+    profile = (
+        await session.execute(
+            select(StaffProfile).where(StaffProfile.user_id == user.id)
+        )
+    ).scalar_one()
 
-    # Flip every Boolean column on the profile (defensive against future
-    # permission additions; tests that opt into admin really want them all).
-    for col in profile.__table__.columns:
-        if col.type.python_type is bool:
-            setattr(profile, col.name, True)
+    # Build a dict where every known permission key is True. is_admin()
+    # checks all keys in VALID_PERMISSION_KEYS are present and True;
+    # using DEFAULT_STAFF_PERMISSIONS.keys() guarantees we cover them all
+    # (and stay in sync if a new permission is added later).
+    full_perms = {key: True for key in DEFAULT_STAFF_PERMISSIONS}
+    profile.set_jsonb("permissions", full_perms)
+    profile.is_active = True
 
     await session.commit()
     await session.refresh(profile)
