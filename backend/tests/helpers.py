@@ -119,20 +119,31 @@ def auth_headers(token: str) -> dict[str, str]:
 async def register_user(
     client: AsyncClient,
     *,
-    email: str,
+    email: str | None = None,
     password: str = "Password123!",
     referral_code: str | None = None,
 ) -> dict:
     """POST /api/v1/auth/email/register and assert 201. Returns the
     response body (contains session_token and user details).
+
+    If email is omitted, a UUID-suffixed unique email is generated. This
+    is the default path -- tests that need a specific email (e.g. to
+    check duplicate-rejection or to re-use the same address across two
+    register calls) pass email= explicitly.
     """
+    if email is None:
+        email = f"test_{uuid.uuid4().hex[:12]}@example.com"
     payload: dict[str, str] = {"email": email, "password": password}
     if referral_code:
         payload["referral_code"] = referral_code
 
     resp = await client.post("/api/v1/auth/email/register", json=payload)
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    body = resp.json()
+    # Echo the email back into the response so callers that did not
+    # pre-generate it can still find out what was used.
+    body.setdefault("email", email)
+    return body
 
 
 async def login_user(
@@ -193,12 +204,16 @@ async def create_staff_user(
     client: AsyncClient,
     session: AsyncSession,
     *,
-    email: str,
+    email: str | None = None,
     password: str = "Password123!",
 ) -> tuple[User, str]:
     """Register a regular user, then promote to staff by inserting a
     StaffProfile with no special permissions. Returns (User, token).
+
+    If email is omitted, a UUID-suffixed unique email is generated.
     """
+    if email is None:
+        email = f"staff_{uuid.uuid4().hex[:12]}@example.com"
     data = await register_user(client, email=email, password=password)
     token = data["session_token"]
 
@@ -222,12 +237,16 @@ async def create_admin_user(
     client: AsyncClient,
     session: AsyncSession,
     *,
-    email: str,
+    email: str | None = None,
     password: str = "Password123!",
 ) -> tuple[User, str]:
     """Like create_staff_user, but flips every StaffProfile permission
     to True so the resulting account is a full admin.
+
+    If email is omitted, a UUID-suffixed unique email is generated.
     """
+    if email is None:
+        email = f"admin_{uuid.uuid4().hex[:12]}@example.com"
     user, token = await create_staff_user(
         client, session, email=email, password=password
     )
