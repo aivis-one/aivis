@@ -335,9 +335,32 @@ async def test_consistency_no_decimal_crash(
 async def test_s05_recovers_after_cleanup(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
+    """Adding a violation increments the S-05 counter by exactly one;
+    removing it returns the counter to its prior value.
+
+    Per this file's documented contract (see module docstring at the
+    top): tests do NOT assume a globally clean DB. Asserting that
+    S-05 is `pass` after cleanup would require the entire ledger to
+    be free of negative confirmed balances, which is not true across
+    test runs -- test_purchases / test_installments / test_withdrawals
+    leave residual ledger entries that survive cbshome update. So we
+    measure the relative change in the S-05 counter, which is a
+    stricter check anyway: it proves our orphan -- and only our
+    orphan -- moved the count by exactly one in each direction.
+    """
     token = await _admin_token(client, db_session)
     user_id, _ = await _create_investor(client)
 
+    # Baseline before any modification.
+    resp0 = await client.get(
+        "/api/v1/staff/consistency", headers=auth_headers(token),
+    )
+    assert resp0.status_code == 200
+    baseline = _find(
+        resp0.json(), "S-05"
+    )["details"]["users_with_negative_active"]
+
+    # Inject the S-05 violation.
     orphan = ActiveLedger(
         user_id=user_id, amount_cents=-77777,
         status=LedgerStatus.CONFIRMED, reason="test:cleanup_s05",
@@ -345,17 +368,26 @@ async def test_s05_recovers_after_cleanup(
     db_session.add(orphan)
     await db_session.commit()
 
+    # Counter went up by exactly one.
     resp1 = await client.get(
         "/api/v1/staff/consistency", headers=auth_headers(token),
     )
     assert resp1.status_code == 200
-    assert _find(resp1.json(), "S-05")["status"] == "fail"
+    count_with_orphan = _find(
+        resp1.json(), "S-05"
+    )["details"]["users_with_negative_active"]
+    assert count_with_orphan == baseline + 1
 
+    # Cleanup.
     await db_session.delete(orphan)
     await db_session.commit()
 
+    # Counter returned to baseline.
     resp2 = await client.get(
         "/api/v1/staff/consistency", headers=auth_headers(token),
     )
     assert resp2.status_code == 200
-    assert _find(resp2.json(), "S-05")["status"] == "pass"
+    count_after_cleanup = _find(
+        resp2.json(), "S-05"
+    )["details"]["users_with_negative_active"]
+    assert count_after_cleanup == baseline
