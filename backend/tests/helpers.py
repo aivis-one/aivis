@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import time
 import uuid
+from urllib.parse import urlencode
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -65,7 +67,11 @@ def build_init_data(
     global _init_data_counter
     _init_data_counter += 1
 
-    auth_date = auth_date or (int(time.time()) - _init_data_counter)
+    # auth_date uniqueness across rapid back-to-back calls is not needed:
+    # query_id below already includes _init_data_counter, so the
+    # data-check-string and its sha256 anti-replay key differ on every
+    # call even if auth_date collides on the same wall-clock second.
+    auth_date = auth_date or int(time.time())
     user_obj = {
         "id": telegram_id,
         "first_name": first_name,
@@ -76,8 +82,6 @@ def build_init_data(
         user_obj["username"] = username
 
     # Compact JSON, no spaces -- this is what real Telegram sends.
-    import json
-
     user_json = json.dumps(user_obj, separators=(",", ":"))
 
     parts = {
@@ -96,8 +100,6 @@ def build_init_data(
     signature = hmac.new(
         secret_key, data_check_string.encode(), hashlib.sha256
     ).hexdigest()
-
-    from urllib.parse import urlencode
 
     return urlencode({**parts, "hash": signature})
 
