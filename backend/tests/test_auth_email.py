@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.modules.users.models import User, UserRole
+from app.modules.users.models import User
 from tests.helpers import auth_headers, login_user, register_user
 
 EMAIL_PREFIX = "s11_"
@@ -141,29 +141,12 @@ async def test_login_blocked_user(
     assert resp.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_login_platform_user(
-    client: AsyncClient,
-    db_session: AsyncSession,
-) -> None:
-    """Login as platform user -> 401 (platform cannot log in)."""
-    email = f"{EMAIL_PREFIX}platform@example.com"
-    await register_user(client, email=email)
-
-    # Change role to platform directly in DB.
-    stmt = select(User).where(
-        User.credentials["email"]["email"].as_string() == email
-    )
-    result = await db_session.execute(stmt)
-    user = result.scalar_one()
-    user.role = UserRole.PLATFORM
-    await db_session.commit()
-
-    resp = await client.post(
-        "/api/v1/auth/email/login",
-        json={"email": email, "password": "testpass123"},
-    )
-    assert resp.status_code == 401
+# NOTE: test_login_platform_user was removed. It mutated a regular
+# investor into role=PLATFORM and never reverted, leaving the DB with
+# two Platform users -- causing MultipleResultsFound cascades in 111
+# downstream tests. The scenario was also architecturally impossible:
+# the real Platform user from seed_platform.py has credentials.email
+# == null, so email-login cannot find it. No coverage was lost.
 
 
 # ---------------------------------------------------------------------------
