@@ -47,6 +47,44 @@ from app.main import app
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Session-scoped boot: ASGITransport does not fire FastAPI's lifespan
+# event, so init_redis / init_minio never run via the HTTP path. We do
+# it once per pytest session here.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def init_app_resources() -> AsyncGenerator[None, None]:
+    """Initialise the singletons that the HTTP layer expects to find.
+
+    Without this, the first endpoint that calls get_redis() raises
+    "Redis client not initialized". init_redis is idempotent enough
+    that re-running across test sessions is safe.
+    """
+    from app.core.redis import close_redis, init_redis
+
+    await init_redis()
+    try:
+        from app.core.minio import init_minio  # type: ignore[attr-defined]
+
+        try:
+            await init_minio()
+        except Exception:
+            # MinIO init may be sync, may not exist, may already be
+            # initialised. We don't block tests on storage health.
+            pass
+    except ImportError:
+        pass
+
+    yield
+
+    try:
+        await close_redis()
+    except Exception:
+        pass
+
+
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
     """AsyncClient that drives the FastAPI app via ASGITransport.
