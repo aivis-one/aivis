@@ -86,8 +86,7 @@ async def test_telegram_session_works(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_telegram_invalid_signature(client: AsyncClient) -> None:
     """Tampered initData hash -> 400."""
-    user_data = {"id": 100004, "first_name": "Eve"}
-    init_data = build_init_data(user_data)
+    init_data = build_init_data(telegram_id=100004, first_name="Eve")
     tampered = init_data.rsplit("hash=", 1)[0] + "hash=deadbeef0000"
 
     resp = await client.post(
@@ -100,9 +99,10 @@ async def test_telegram_invalid_signature(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_telegram_expired_init_data(client: AsyncClient) -> None:
     """auth_date older than TTL -> 400."""
-    user_data = {"id": 100005, "first_name": "Expired"}
     old_date = int(time.time()) - 600  # 10 minutes ago
-    init_data = build_init_data(user_data, auth_date=old_date)
+    init_data = build_init_data(
+        telegram_id=100005, first_name="Expired", auth_date=old_date,
+    )
 
     resp = await client.post(
         "/api/v1/auth/telegram",
@@ -121,8 +121,9 @@ async def test_telegram_future_auth_date_rejected(client: AsyncClient) -> None:
     clock_skew = settings.auth_clock_skew_seconds  # default 60
     future_date = int(time.time()) + clock_skew + 60  # 60s beyond tolerance
 
-    user_data = {"id": 100008, "first_name": "Future"}
-    init_data = build_init_data(user_data, auth_date=future_date)
+    init_data = build_init_data(
+        telegram_id=100008, first_name="Future", auth_date=future_date,
+    )
 
     resp = await client.post(
         "/api/v1/auth/telegram",
@@ -145,8 +146,9 @@ async def test_telegram_slight_future_within_clock_skew(
     # Half the tolerance -- safely within the window.
     slight_future = int(time.time()) + clock_skew // 2
 
-    user_data = {"id": 100009, "first_name": "SlightFuture"}
-    init_data = build_init_data(user_data, auth_date=slight_future)
+    init_data = build_init_data(
+        telegram_id=100009, first_name="SlightFuture", auth_date=slight_future,
+    )
 
     resp = await client.post(
         "/api/v1/auth/telegram",
@@ -163,8 +165,7 @@ async def test_telegram_slight_future_within_clock_skew(
 @pytest.mark.asyncio
 async def test_telegram_replayed_init_data(client: AsyncClient) -> None:
     """Same initData sent twice -> second request 400."""
-    user_data = {"id": 100006, "first_name": "Replay"}
-    init_data = build_init_data(user_data)
+    init_data = build_init_data(telegram_id=100006, first_name="Replay")
 
     resp1 = await client.post(
         "/api/v1/auth/telegram",
@@ -195,8 +196,7 @@ async def test_telegram_rate_limit(client: AsyncClient) -> None:
     max_requests = settings.auth_rate_limit_max_requests
 
     for _ in range(max_requests):
-        data = {"id": tg_id, "first_name": "Ratelimit"}
-        init_data = build_init_data(data)
+        init_data = build_init_data(telegram_id=tg_id, first_name="Ratelimit")
         resp = await client.post(
             "/api/v1/auth/telegram",
             json={"init_data": init_data},
@@ -204,8 +204,7 @@ async def test_telegram_rate_limit(client: AsyncClient) -> None:
         assert resp.status_code == 200
 
     # Next call should be rate-limited.
-    data = {"id": tg_id, "first_name": "Ratelimit"}
-    init_data = build_init_data(data)
+    init_data = build_init_data(telegram_id=tg_id, first_name="Ratelimit")
     resp = await client.post(
         "/api/v1/auth/telegram",
         json={"init_data": init_data},

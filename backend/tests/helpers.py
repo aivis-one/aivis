@@ -177,7 +177,7 @@ async def login_telegram(
     language: str = "en",
     referral_code: str | None = None,
 ) -> dict:
-    """POST /api/v1/auth/telegram/login with forged initData. Asserts
+    """POST /api/v1/auth/telegram with forged initData. Asserts
     2xx and returns the response body.
     """
     init_data = build_init_data(
@@ -191,7 +191,7 @@ async def login_telegram(
     if referral_code:
         payload["referral_code"] = referral_code
 
-    resp = await client.post("/api/v1/auth/telegram/login", json=payload)
+    resp = await client.post("/api/v1/auth/telegram", json=payload)
     assert resp.status_code in (200, 201), resp.text
     return resp.json()
 
