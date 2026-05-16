@@ -73,7 +73,7 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -135,6 +135,7 @@ class SeedStats:
     inspected: int = 0
     created: int = 0
     skipped: int = 0
+    deleted_stray: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +326,57 @@ async def seed_platform_templates(
                 log(f"created: {kind}/{language} v1 (id={row.id})")
             stats.created += 1
 
+    # ------------------------------------------------------------------
+    # Delete stray active platform rows.
+    #
+    # An active platform-default row (company_id IS NULL, status='active')
+    # is "stray" if its (kind, language) pair is NOT in the canonical
+    # matrix this script owns (DocumentTemplateKind x LANGUAGES = 16
+    # rows). The L3-fallback tests in test_regression_guards.py create
+    # such rows; without cleanup they accumulate and break the
+    # post-update smoke check ("expected 16, found N>16").
+    #
+    # This runs on test infrastructure -- the DB is a test stand, not
+    # a prod payload. Hard DELETE.
+    # ------------------------------------------------------------------
+    canonical_pairs = [
+        (kind.value, language)
+        for kind in DocumentTemplateKind
+        for language in LANGUAGES
+    ]
+
+    stray_stmt = select(CompanyDocumentTemplate).where(
+        CompanyDocumentTemplate.company_id.is_(None),
+        CompanyDocumentTemplate.status == TemplateStatus.ACTIVE,
+        tuple_(
+            CompanyDocumentTemplate.kind,
+            CompanyDocumentTemplate.language,
+        ).not_in(canonical_pairs),
+    )
+    stray_rows = (await session.execute(stray_stmt)).scalars().all()
+
+    if stray_rows:
+        if dry_run:
+            for r in stray_rows:
+                log(
+                    f"would delete stray: {r.kind}/{r.language} "
+                    f"v{r.version} (id={r.id})"
+                )
+            stats.deleted_stray = len(stray_rows)
+        else:
+            stray_ids = [r.id for r in stray_rows]
+            await session.execute(
+                delete(CompanyDocumentTemplate).where(
+                    CompanyDocumentTemplate.id.in_(stray_ids),
+                )
+            )
+            for r in stray_rows:
+                log(
+                    f"deleted stray: {r.kind}/{r.language} "
+                    f"v{r.version} (id={r.id})"
+                )
+            stats.deleted_stray = len(stray_rows)
+
     return stats
 
 
@@ -364,7 +416,8 @@ async def _run_cli(*, dry_run: bool) -> int:
 
         log(
             f"done: inspected={stats.inspected} "
-            f"created={stats.created} skipped={stats.skipped}"
+            f"created={stats.created} skipped={stats.skipped} "
+            f"deleted_stray={stats.deleted_stray}"
             + (" (dry-run)" if dry_run else "")
         )
         return 0
