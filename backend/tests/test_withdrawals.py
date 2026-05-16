@@ -36,13 +36,11 @@ from tests.helpers import (
     register_user,
 )
 
-EMAIL_PREFIX = "s63_"
 
 
 async def _create_user_with_balance(
     client: AsyncClient,
     db_session: AsyncSession,
-    suffix: str,
     balance_cents: int = 100000,
     with_payout_details: bool = True,
 ) -> tuple[UUID, str]:
@@ -51,7 +49,7 @@ async def _create_user_with_balance(
     Returns (user_id, session_token).
     """
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+        client
     )
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
@@ -89,7 +87,7 @@ async def test_create_withdrawal(
 ) -> None:
     """User creates withdrawal -> 201, passive balance debited."""
     user_id, token = await _create_user_with_balance(
-        client, db_session, "w1", balance_cents=50000
+        client, db_session, balance_cents=50000
     )
 
     resp = await client.post(
@@ -120,7 +118,7 @@ async def test_create_withdrawal_no_payout_details(
 ) -> None:
     """User without payout_details -> 400."""
     _, token = await _create_user_with_balance(
-        client, db_session, "w2", with_payout_details=False
+        client, db_session, with_payout_details=False
     )
 
     resp = await client.post(
@@ -143,7 +141,7 @@ async def test_create_withdrawal_insufficient_balance(
 ) -> None:
     """Withdrawal exceeding confirmed passive balance -> 400."""
     _, token = await _create_user_with_balance(
-        client, db_session, "w3", balance_cents=5000
+        client, db_session, balance_cents=5000
     )
 
     resp = await client.post(
@@ -166,7 +164,7 @@ async def test_create_withdrawal_below_minimum(
 ) -> None:
     """Amount below MIN_WITHDRAWAL_CENTS -> 400."""
     _, token = await _create_user_with_balance(
-        client, db_session, "w4", balance_cents=100000
+        client, db_session, balance_cents=100000
     )
 
     resp = await client.post(
@@ -189,7 +187,7 @@ async def test_create_withdrawal_above_maximum(
 ) -> None:
     """Amount above MAX_WITHDRAWAL_CENTS -> 400."""
     _, token = await _create_user_with_balance(
-        client, db_session, "w5", balance_cents=99999999
+        client, db_session, balance_cents=99999999
     )
 
     resp = await client.post(
@@ -212,7 +210,7 @@ async def test_create_withdrawal_duplicate(
 ) -> None:
     """Second withdrawal while first is pending -> 409."""
     _, token = await _create_user_with_balance(
-        client, db_session, "w6", balance_cents=100000
+        client, db_session, balance_cents=100000
     )
 
     resp1 = await client.post(
@@ -241,10 +239,10 @@ async def test_staff_confirm_withdrawal(
 ) -> None:
     """Staff confirms withdrawal -> status=processing."""
     _, token = await _create_user_with_balance(
-        client, db_session, "w7", balance_cents=50000
+        client, db_session, balance_cents=50000
     )
     _, admin_token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin7@example.com"
+        client, db_session
     )
 
     # Create withdrawal.
@@ -279,10 +277,10 @@ async def test_staff_reject_withdrawal(
 ) -> None:
     """Staff rejects withdrawal -> balance restored via compensating entry."""
     user_id, token = await _create_user_with_balance(
-        client, db_session, "w8", balance_cents=50000
+        client, db_session, balance_cents=50000
     )
     _, admin_token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin8@example.com"
+        client, db_session
     )
 
     # Create withdrawal.
@@ -326,7 +324,7 @@ async def test_list_my_withdrawals(
 ) -> None:
     """GET /withdrawals/me returns user's withdrawal history."""
     _, token = await _create_user_with_balance(
-        client, db_session, "w9", balance_cents=100000
+        client, db_session, balance_cents=100000
     )
 
     # Create a withdrawal.
@@ -358,10 +356,10 @@ async def test_fail_withdrawal_restores_balance(
 ) -> None:
     """Failed withdrawal (provider reject) -> compensating entry restores balance."""
     user_id, token = await _create_user_with_balance(
-        client, db_session, "w10", balance_cents=50000
+        client, db_session, balance_cents=50000
     )
     _, admin_token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin10@example.com"
+        client, db_session
     )
 
     # Create and confirm withdrawal.

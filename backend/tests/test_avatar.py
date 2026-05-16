@@ -18,6 +18,7 @@
 # =============================================================================
 
 import pytest
+import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +28,6 @@ from tests.helpers import (
     register_user,
 )
 
-EMAIL_PREFIX = "s32_"
 
 
 async def _admin_token(
@@ -35,16 +35,16 @@ async def _admin_token(
 ) -> str:
     """Helper: create admin and return token."""
     _, token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+        client, db_session
     )
     return token
 
 
 async def _investor_id_and_token(
-    client: AsyncClient, suffix: str = "inv"
+    client: AsyncClient
 ) -> tuple[str, str]:
     """Helper: register investor, return (user_id, token)."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}{suffix}@example.com")
+    data = await register_user(client)
     return data["user"]["id"], data["session_token"]
 
 
@@ -193,11 +193,13 @@ async def test_start_avatar_without_permission(
 ) -> None:
     """Staff without avatar_mode permission -> 403."""
     admin_token = await _admin_token(client, db_session)
-    investor_id, _ = await _investor_id_and_token(client, suffix="inv2")
+    investor_id, _ = await _investor_id_and_token(client)
 
-    # Create regular staff, remove avatar_mode.
+    # Create regular staff, remove avatar_mode. The email is held in a
+    # local so the later login_user call hits the same account.
+    noavatar_email = f"noavatar_{uuid.uuid4().hex[:12]}@example.com"
     regular_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}noavatar@example.com"
+        client, email=noavatar_email
     )
     resp = await client.post(
         "/api/v1/staff/users",
@@ -217,7 +219,7 @@ async def test_start_avatar_without_permission(
     # Re-login as regular staff.
     from tests.helpers import login_user
     login_data = await login_user(
-        client, email=f"{EMAIL_PREFIX}noavatar@example.com"
+        client, email=noavatar_email
     )
     regular_token = login_data["session_token"]
 
@@ -239,7 +241,7 @@ async def test_avatar_into_staff_fails(
 
     # Create another staff.
     other_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}otherstaff@example.com"
+        client
     )
     await client.post(
         "/api/v1/staff/users",
@@ -284,8 +286,8 @@ async def test_restart_avatar_closes_previous(
 ) -> None:
     """Starting new avatar auto-closes the previous one."""
     admin_token = await _admin_token(client, db_session)
-    inv1_id, _ = await _investor_id_and_token(client, suffix="inv3")
-    inv2_id, _ = await _investor_id_and_token(client, suffix="inv4")
+    inv1_id, _ = await _investor_id_and_token(client)
+    inv2_id, _ = await _investor_id_and_token(client)
 
     # Start avatar for inv1.
     resp1 = await client.post(
@@ -335,7 +337,7 @@ async def test_avatar_guard_blocks_in_avatar_mode(
     Avatar token should get 403 when trying to sign.
     """
     admin_token = await _admin_token(client, db_session)
-    investor_id, _ = await _investor_id_and_token(client, suffix="inv5")
+    investor_id, _ = await _investor_id_and_token(client)
 
     # Start avatar.
     resp = await client.post(

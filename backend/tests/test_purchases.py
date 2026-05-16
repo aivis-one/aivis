@@ -45,8 +45,8 @@ from tests.helpers import (
     create_admin_user,
     register_user,
 )
+import uuid
 
-EMAIL_PREFIX = "s61_"
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ async def _admin_token(
 ) -> str:
     """Helper: create admin and return token."""
     _, token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+        client, db_session
     )
     return token
 
@@ -75,7 +75,7 @@ async def _create_company(
     resp = await client.post(
         "/api/v1/staff/companies",
         json={
-            "email": f"{EMAIL_PREFIX}{suffix}@example.com",
+            "email": f"company_{uuid.uuid4().hex[:12]}@example.com",
             "password": "companypass123",
             "name": f"Test Company {suffix}",
             "description": "A test company",
@@ -162,12 +162,11 @@ async def _activate_company(
 async def _create_investor_with_balance(
     client: AsyncClient,
     db_session: AsyncSession,
-    suffix: str = "inv1",
     balance_cents: int = 2_000_000,
 ) -> tuple[str, UUID]:
     """Helper: create investor, deposit funds, return (token, user_id)."""
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+        client
     )
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
@@ -454,7 +453,7 @@ async def test_purchase_insufficient_balance(
 
     # Investor with only 100 cents (product costs 100 * 10000 = 1_000_000).
     inv_token, _ = await _create_investor_with_balance(
-        client, db_session, suffix="inv_broke", balance_cents=100
+        client, db_session, balance_cents=100
     )
 
     resp = await client.post(
@@ -478,7 +477,7 @@ async def test_purchase_product_not_active(
     await _activate_company(client, admin_token, company["id"])
 
     inv_token, _ = await _create_investor_with_balance(
-        client, db_session, suffix="inv_noact"
+        client, db_session
     )
 
     resp = await client.post(
@@ -523,7 +522,7 @@ async def test_purchase_no_kyc(
 
     # Investor WITHOUT kyc_status=approved (skip helper, do manually).
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}nokyc@example.com"
+        client
     )
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
@@ -571,7 +570,7 @@ async def test_purchase_with_gift_bonus(
     await _activate_product(client, admin_token, product["id"])
 
     inv_token, _ = await _create_investor_with_balance(
-        client, db_session, suffix="inv_gift"
+        client, db_session
     )
 
     resp = await client.post(

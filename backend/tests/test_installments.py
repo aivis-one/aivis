@@ -69,8 +69,8 @@ from tests.helpers import (
     create_admin_user,
     register_user,
 )
+import uuid
 
-EMAIL_PREFIX = "s62_"
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ async def _admin_token(
     client: AsyncClient, db_session: AsyncSession
 ) -> str:
     _, token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+        client, db_session
     )
     return token
 
@@ -94,7 +94,7 @@ async def _create_company(
     resp = await client.post(
         "/api/v1/staff/companies",
         json={
-            "email": f"{EMAIL_PREFIX}{suffix}@example.com",
+            "email": f"company_{uuid.uuid4().hex[:12]}@example.com",
             "password": "companypass123",
             "name": f"Test Company {suffix}",
             "description": "A test company",
@@ -203,11 +203,10 @@ async def _create_installment_template(
 async def _create_investor_with_balance(
     client: AsyncClient,
     db_session: AsyncSession,
-    suffix: str = "inv1",
     balance_cents: int = 2_000_000,
 ) -> tuple[str, UUID]:
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+        client
     )
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
@@ -459,7 +458,7 @@ async def test_create_plan_no_kyc(
 
     # Investor WITHOUT kyc — just register + fund, no kyc_status change.
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}nokyc@example.com"
+        client
     )
     inv_id = UUID(data["user"]["id"])
     await record_active_ledger(
@@ -608,8 +607,8 @@ async def test_endpoint_plan_detail_other_investor(
     await _activate_product(client, admin_token, product["id"])
     template = await _create_installment_template(client, admin_token, product["id"])
 
-    inv1_token, _ = await _create_investor_with_balance(client, db_session, suffix="inv1")
-    inv2_token, _ = await _create_investor_with_balance(client, db_session, suffix="inv2")
+    inv1_token, _ = await _create_investor_with_balance(client, db_session)
+    inv2_token, _ = await _create_investor_with_balance(client, db_session)
 
     create_resp = await client.post(
         f"/api/v1/products/{product['id']}/installment",
@@ -703,7 +702,7 @@ async def test_create_plan_insufficient_balance(
 
     # Investor with only 100 cents -- not enough for 500_000 tranche.
     _, inv_id = await _create_investor_with_balance(
-        client, db_session, suffix="inv_broke", balance_cents=100
+        client, db_session, balance_cents=100
     )
 
     from app.modules.users.models import User
@@ -744,7 +743,7 @@ async def test_pay_tranche_insufficient_overdue(
 
     # Balance == 1 * tranche amount: enough for #1, nothing left for #2.
     _, inv_id = await _create_investor_with_balance(
-        client, db_session, suffix="inv_just_one", balance_cents=500_000
+        client, db_session, balance_cents=500_000
     )
 
     from app.modules.users.models import User
@@ -865,7 +864,7 @@ async def test_default_plan(
     # Balance == one tranche: create_plan's inline tranche #1 goes
     # through; tranche #2 will never be affordable.
     _, inv_id = await _create_investor_with_balance(
-        client, db_session, suffix="inv_default", balance_cents=500_000
+        client, db_session, balance_cents=500_000
     )
 
     from app.modules.users.models import User

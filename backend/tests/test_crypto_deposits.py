@@ -31,7 +31,6 @@ from app.modules.payments.models import Payment
 from app.modules.payments.service import get_payment
 from tests.helpers import auth_headers, register_user
 
-EMAIL_PREFIX = "s52_"
 
 
 def webhook_headers() -> dict[str, str]:
@@ -40,11 +39,11 @@ def webhook_headers() -> dict[str, str]:
 
 
 async def _create_user(
-    client: AsyncClient, suffix: str = "inv1"
+    client: AsyncClient
 ) -> tuple[str, str]:
     """Helper: register user, return (user_id, token)."""
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+        client
     )
     return data["user"]["id"], data["session_token"]
 
@@ -59,7 +58,7 @@ async def test_get_crypto_address_new(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Get crypto address -> 200, new address created."""
-    user_id, token = await _create_user(client, "addr_new")
+    user_id, token = await _create_user(client)
 
     resp = await client.post(
         "/api/v1/payments/crypto-address",
@@ -79,7 +78,7 @@ async def test_get_crypto_address_idempotent(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Get crypto address twice for same network -> same address returned."""
-    _, token = await _create_user(client, "addr_idem")
+    _, token = await _create_user(client)
 
     resp1 = await client.post(
         "/api/v1/payments/crypto-address",
@@ -105,7 +104,7 @@ async def test_get_crypto_address_unsupported_network(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Get crypto address for unsupported network -> 400."""
-    _, token = await _create_user(client, "addr_bad")
+    _, token = await _create_user(client)
 
     resp = await client.post(
         "/api/v1/payments/crypto-address",
@@ -125,7 +124,7 @@ async def test_webhook_valid_payload(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Webhook with valid payload -> Payment created, frozen, active_ledger entry."""
-    user_id_str, token = await _create_user(client, "wh_ok")
+    user_id_str, token = await _create_user(client)
     user_id = UUID(user_id_str)
 
     # First, create a deposit address.
@@ -209,7 +208,7 @@ async def test_webhook_duplicate_tx_hash(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Webhook with duplicate tx_hash -> 409."""
-    _, token = await _create_user(client, "wh_dup")
+    _, token = await _create_user(client)
 
     # Create deposit address.
     addr_resp = await client.post(
@@ -275,7 +274,7 @@ async def test_payment_history(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Payment history -> 200, contains the payment we created."""
-    _, token = await _create_user(client, "hist_ok")
+    _, token = await _create_user(client)
 
     # Create address + webhook to have a payment.
     addr_resp = await client.post(
@@ -318,7 +317,7 @@ async def test_payment_history_empty(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Payment history for user with no payments -> 200, empty."""
-    _, token = await _create_user(client, "hist_empty")
+    _, token = await _create_user(client)
 
     resp = await client.get(
         "/api/v1/payments/history",
@@ -340,7 +339,7 @@ async def test_get_payment_by_id(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """get_payment() returns the correct payment by ID."""
-    _, token = await _create_user(client, "get_pay")
+    _, token = await _create_user(client)
 
     # Create address + webhook.
     addr_resp = await client.post(

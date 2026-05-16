@@ -12,6 +12,7 @@
 # =============================================================================
 
 import pytest
+import uuid
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,6 @@ from app.core.config import settings
 from app.modules.users.models import User
 from tests.helpers import auth_headers, login_user, register_user
 
-EMAIL_PREFIX = "s11_"
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ async def test_register_success(client: AsyncClient) -> None:
     """Register with valid email + password -> 201, AuthResponse."""
     resp = await client.post(
         "/api/v1/auth/email/register",
-        json={"email": f"{EMAIL_PREFIX}ok@example.com", "password": "strongpass1"},
+        json={"email": f"ok_{uuid.uuid4().hex[:12]}@example.com", "password": "strongpass1"},
     )
     assert resp.status_code == 201
     body = resp.json()
@@ -47,7 +47,7 @@ async def test_register_success(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client: AsyncClient) -> None:
     """Register with an already-used email -> 409."""
-    email = f"{EMAIL_PREFIX}dup@example.com"
+    email = f"dup_{uuid.uuid4().hex[:12]}@example.com"
     await register_user(client, email=email)
 
     resp = await client.post(
@@ -62,7 +62,7 @@ async def test_register_weak_password(client: AsyncClient) -> None:
     """Register with password < 8 chars -> 422."""
     resp = await client.post(
         "/api/v1/auth/email/register",
-        json={"email": f"{EMAIL_PREFIX}weak@example.com", "password": "short"},
+        json={"email": f"weak_{uuid.uuid4().hex[:12]}@example.com", "password": "short"},
     )
     assert resp.status_code == 422
 
@@ -85,7 +85,7 @@ async def test_register_invalid_email(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_login_success(client: AsyncClient) -> None:
     """Login with correct credentials -> 200, AuthResponse."""
-    email = f"{EMAIL_PREFIX}login@example.com"
+    email = f"login_{uuid.uuid4().hex[:12]}@example.com"
     await register_user(client, email=email)
 
     data = await login_user(client, email=email)
@@ -96,7 +96,7 @@ async def test_login_success(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient) -> None:
     """Login with wrong password -> 401."""
-    email = f"{EMAIL_PREFIX}wrongpw@example.com"
+    email = f"wrongpw_{uuid.uuid4().hex[:12]}@example.com"
     await register_user(client, email=email)
 
     resp = await client.post(
@@ -111,7 +111,7 @@ async def test_login_nonexistent_email(client: AsyncClient) -> None:
     """Login with email that doesn't exist -> 401."""
     resp = await client.post(
         "/api/v1/auth/email/login",
-        json={"email": f"{EMAIL_PREFIX}ghost@example.com", "password": "whatever1"},
+        json={"email": f"ghost_{uuid.uuid4().hex[:12]}@example.com", "password": "whatever1"},
     )
     assert resp.status_code == 401
 
@@ -122,7 +122,7 @@ async def test_login_blocked_user(
     db_session: AsyncSession,
 ) -> None:
     """Login with is_active=False -> 403."""
-    email = f"{EMAIL_PREFIX}blocked@example.com"
+    email = f"blocked_{uuid.uuid4().hex[:12]}@example.com"
     await register_user(client, email=email)
 
     # Deactivate the user directly in DB.
@@ -157,7 +157,7 @@ async def test_login_blocked_user(
 @pytest.mark.asyncio
 async def test_logout_success(client: AsyncClient) -> None:
     """Logout with valid token -> 204, subsequent request -> 401."""
-    email = f"{EMAIL_PREFIX}logout@example.com"
+    email = f"logout_{uuid.uuid4().hex[:12]}@example.com"
     data = await register_user(client, email=email)
     token = data["session_token"]
 
@@ -189,7 +189,7 @@ async def test_logout_invalid_token(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_logout_all(client: AsyncClient) -> None:
     """Logout-all invalidates all sessions for the user."""
-    email = f"{EMAIL_PREFIX}logoutall@example.com"
+    email = f"logoutall_{uuid.uuid4().hex[:12]}@example.com"
     data = await register_user(client, email=email)
 
     # Create a second session by logging in again.
@@ -229,7 +229,7 @@ async def test_session_limit_evicts_oldest(client: AsyncClient) -> None:
     Register creates session #1. Then login MAX times to fill up + overflow.
     The first token (from register) should be evicted.
     """
-    email = f"{EMAIL_PREFIX}limit@example.com"
+    email = f"limit_{uuid.uuid4().hex[:12]}@example.com"
     password = "testpass123"
     max_sessions = settings.max_concurrent_sessions  # default 5
 

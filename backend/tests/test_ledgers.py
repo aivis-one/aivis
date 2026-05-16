@@ -45,12 +45,11 @@ from app.modules.ledgers.service import (
 from app.modules.ledgers.validators import validate_route
 from tests.helpers import register_user
 
-EMAIL_PREFIX = "s51_"
 
 
-async def _create_user(client: AsyncClient, suffix: str = "u1") -> UUID:
+async def _create_user(client: AsyncClient) -> UUID:
     """Helper: register a user and return their UUID."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}{suffix}@example.com")
+    data = await register_user(client)
     return UUID(data["user"]["id"])
 
 
@@ -64,7 +63,7 @@ async def test_record_active_ledger_frozen(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Record frozen active ledger entry -> correct fields stored."""
-    user_id = await _create_user(client, "al_frozen")
+    user_id = await _create_user(client)
     frozen_until = datetime.now(UTC) + timedelta(hours=1)
 
     entry = await record_active_ledger(
@@ -93,7 +92,7 @@ async def test_record_active_ledger_confirmed(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Record confirmed active ledger entry -> no frozen_until needed."""
-    user_id = await _create_user(client, "al_conf")
+    user_id = await _create_user(client)
 
     entry = await record_active_ledger(
         db_session,
@@ -119,7 +118,7 @@ async def test_record_passive_ledger_frozen(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Record frozen passive ledger entry -> correct fields stored."""
-    user_id = await _create_user(client, "pl_frozen")
+    user_id = await _create_user(client)
     frozen_until = datetime.now(UTC) + timedelta(hours=24)
 
     entry = await record_passive_ledger(
@@ -144,7 +143,7 @@ async def test_record_passive_ledger_confirmed(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Record confirmed passive ledger entry -> no frozen_until."""
-    user_id = await _create_user(client, "pl_conf")
+    user_id = await _create_user(client)
 
     entry = await record_passive_ledger(
         db_session,
@@ -169,7 +168,7 @@ async def test_record_active_ledger_debit(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Record negative amount_cents (debit) -> works correctly."""
-    user_id = await _create_user(client, "al_debit")
+    user_id = await _create_user(client)
 
     entry = await record_active_ledger(
         db_session,
@@ -193,7 +192,7 @@ async def test_record_active_ledger_invalid_status(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Record active ledger with invalid status -> BadRequestError."""
-    user_id = await _create_user(client, "al_badst")
+    user_id = await _create_user(client)
 
     with pytest.raises(BadRequestError, match="Invalid ledger status"):
         await record_active_ledger(
@@ -214,7 +213,7 @@ async def test_record_passive_ledger_reversed_status_rejected(
     Reversed entries are created only by the reversal process (Sprint 5.3),
     never directly.
     """
-    user_id = await _create_user(client, "pl_revst")
+    user_id = await _create_user(client)
 
     with pytest.raises(BadRequestError, match="Invalid ledger status"):
         await record_passive_ledger(
@@ -236,7 +235,7 @@ async def test_get_active_balance_split(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Get active balance -> frozen and confirmed calculated separately."""
-    user_id = await _create_user(client, "bal_split")
+    user_id = await _create_user(client)
 
     # Two frozen entries.
     await record_active_ledger(
@@ -285,7 +284,7 @@ async def test_get_active_balance_empty(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Get active balance for user with no entries -> zeros."""
-    user_id = await _create_user(client, "bal_empty")
+    user_id = await _create_user(client)
 
     balance = await get_active_balance(db_session, user_id)
 
@@ -298,7 +297,7 @@ async def test_get_active_balance_excludes_reversed(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Reversed entries are excluded from balance calculation."""
-    user_id = await _create_user(client, "bal_rev_a")
+    user_id = await _create_user(client)
 
     # Confirmed entry.
     await record_active_ledger(
@@ -339,7 +338,7 @@ async def test_get_passive_balance_split(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Get passive balance -> frozen and confirmed calculated separately."""
-    user_id = await _create_user(client, "pbal_split")
+    user_id = await _create_user(client)
 
     await record_passive_ledger(
         db_session,
@@ -370,7 +369,7 @@ async def test_get_passive_balance_excludes_reversed(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Reversed passive entries are excluded from balance."""
-    user_id = await _create_user(client, "pbal_rev")
+    user_id = await _create_user(client)
 
     await record_passive_ledger(
         db_session,

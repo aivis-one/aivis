@@ -36,23 +36,22 @@ from tests.helpers import (
     register_user,
 )
 
-EMAIL_PREFIX = "s64c_"
 
 
 async def _admin_token(
     client: AsyncClient, db_session: AsyncSession
 ) -> str:
     _, token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+        client, db_session
     )
     return token
 
 
 async def _create_investor(
-    client: AsyncClient, suffix: str
+    client: AsyncClient
 ) -> tuple[UUID, str]:
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+        client
     )
     return UUID(data["user"]["id"]), data["session_token"]
 
@@ -94,7 +93,7 @@ async def test_consistency_response_structure(
 async def test_consistency_non_staff(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    _, token = await _create_investor(client, "inv")
+    _, token = await _create_investor(client)
     resp = await client.get(
         "/api/v1/staff/consistency", headers=auth_headers(token),
     )
@@ -111,7 +110,7 @@ async def test_consistency_staff_with_permission(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     _, token = await create_staff_user(
-        client, db_session, email=f"{EMAIL_PREFIX}staff@example.com"
+        client, db_session
     )
     resp = await client.get(
         "/api/v1/staff/consistency", headers=auth_headers(token),
@@ -130,7 +129,7 @@ async def test_s01_unbalanced_ledger(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     token = await _admin_token(client, db_session)
-    user_id, _ = await _create_investor(client, "s01")
+    user_id, _ = await _create_investor(client)
 
     orphan = ActiveLedger(
         user_id=user_id, amount_cents=99999,
@@ -159,7 +158,7 @@ async def test_s05_negative_active_balance(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     token = await _admin_token(client, db_session)
-    user_id, _ = await _create_investor(client, "s05")
+    user_id, _ = await _create_investor(client)
 
     debit = ActiveLedger(
         user_id=user_id, amount_cents=-50000,
@@ -190,7 +189,7 @@ async def test_s06_negative_passive_balance(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     token = await _admin_token(client, db_session)
-    user_id, _ = await _create_investor(client, "s06")
+    user_id, _ = await _create_investor(client)
 
     debit = PassiveLedger(
         user_id=user_id, amount_cents=-30000,
@@ -219,7 +218,7 @@ async def test_s12_gift_with_paid_cents(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     token = await _admin_token(client, db_session)
-    user_id, _ = await _create_investor(client, "s12")
+    user_id, _ = await _create_investor(client)
 
     # Disable FK checks for raw INSERT (no real product/company needed).
     await db_session.execute(text("SET session_replication_role = 'replica'"))
@@ -262,7 +261,7 @@ async def test_is04_paid_tranche_no_purchase(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     token = await _admin_token(client, db_session)
-    user_id, _ = await _create_investor(client, "is04")
+    user_id, _ = await _create_investor(client)
 
     # Disable FK checks for raw INSERT (no real product/template needed).
     await db_session.execute(text("SET session_replication_role = 'replica'"))
@@ -337,7 +336,7 @@ async def test_s05_recovers_after_cleanup(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     token = await _admin_token(client, db_session)
-    user_id, _ = await _create_investor(client, "clean")
+    user_id, _ = await _create_investor(client)
 
     orphan = ActiveLedger(
         user_id=user_id, amount_cents=-77777,

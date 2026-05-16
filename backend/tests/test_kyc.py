@@ -25,7 +25,6 @@ from app.core.config import settings
 from app.modules.kyc.models import KYCApplication
 from tests.helpers import auth_headers, register_user
 
-EMAIL_PREFIX = "s21_"
 
 
 def webhook_headers() -> dict[str, str]:
@@ -43,7 +42,7 @@ async def test_submit_kyc_success(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Submit KYC -> 201, status=submitted, User.kyc_status synced."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}ok@example.com")
+    data = await register_user(client)
     token = data["session_token"]
 
     resp = await client.post(
@@ -65,7 +64,7 @@ async def test_submit_kyc_success(
 @pytest.mark.asyncio
 async def test_submit_kyc_duplicate(client: AsyncClient) -> None:
     """Submit KYC when pending application exists -> 409."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}dup@example.com")
+    data = await register_user(client)
     token = data["session_token"]
 
     # First submit.
@@ -91,7 +90,7 @@ async def test_submit_kyc_duplicate(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_get_kyc_status(client: AsyncClient) -> None:
     """GET /kyc/status returns current status and application info."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}st@example.com")
+    data = await register_user(client)
     token = data["session_token"]
 
     # Before submit.
@@ -130,7 +129,7 @@ async def test_webhook_approved(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Webhook approved -> application and User.kyc_status updated."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}wh@example.com")
+    data = await register_user(client)
     token = data["session_token"]
     user_id = data["user"]["id"]
 
@@ -161,7 +160,7 @@ async def test_webhook_rejected_then_resubmit(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Rejected -> resubmit -> approved. Two KYCApplication rows."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}re@example.com")
+    data = await register_user(client)
     token = data["session_token"]
     user_id = data["user"]["id"]
 
@@ -231,7 +230,7 @@ async def test_webhook_nonexistent_user(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_webhook_invalid_status(client: AsyncClient) -> None:
     """Webhook with invalid status (not approved/rejected) -> 422."""
-    data = await register_user(client, email=f"{EMAIL_PREFIX}inv@example.com")
+    data = await register_user(client)
     user_id = data["user"]["id"]
 
     resp = await client.post(

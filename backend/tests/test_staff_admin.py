@@ -33,7 +33,6 @@ from tests.helpers import (
     register_user,
 )
 
-EMAIL_PREFIX = "s33_"
 
 
 async def _admin_token(
@@ -41,7 +40,7 @@ async def _admin_token(
 ) -> str:
     """Helper: create admin and return token."""
     _, token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+        client, db_session
     )
     return token
 
@@ -59,8 +58,8 @@ async def test_list_users_paginated(
     admin_token = await _admin_token(client, db_session)
 
     # Create a few investors.
-    await register_user(client, email=f"{EMAIL_PREFIX}inv1@example.com")
-    await register_user(client, email=f"{EMAIL_PREFIX}inv2@example.com")
+    await register_user(client)
+    await register_user(client)
 
     resp = await client.get(
         "/api/v1/staff/users?page=1&per_page=50",
@@ -86,7 +85,7 @@ async def test_list_users_filter_staff(
     admin_token = await _admin_token(client, db_session)
 
     # Create an investor (should not appear).
-    await register_user(client, email=f"{EMAIL_PREFIX}inv3@example.com")
+    await register_user(client)
 
     resp = await client.get(
         "/api/v1/staff/users?role=staff",
@@ -108,7 +107,7 @@ async def test_list_users_filter_investor(
 ) -> None:
     """List users ?role=investor -> investors, no staff_profile."""
     admin_token = await _admin_token(client, db_session)
-    await register_user(client, email=f"{EMAIL_PREFIX}inv4@example.com")
+    await register_user(client)
 
     resp = await client.get(
         "/api/v1/staff/users?role=investor",
@@ -134,7 +133,7 @@ async def test_get_user_detail(
     """Get user detail -> 200, full info."""
     admin_token = await _admin_token(client, db_session)
     inv_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}detail@example.com"
+        client
     )
     user_id = inv_data["user"]["id"]
 
@@ -184,7 +183,7 @@ async def test_block_investor(
     """Block investor -> 204, is_active=false, can't auth anymore."""
     admin_token = await _admin_token(client, db_session)
     inv_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}block@example.com"
+        client
     )
     user_id = inv_data["user"]["id"]
     inv_token = inv_data["session_token"]
@@ -214,7 +213,7 @@ async def test_block_staff_fails(
 
     # Create another staff.
     other_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}otherstaff@example.com"
+        client
     )
     await client.post(
         "/api/v1/staff/users",
@@ -270,7 +269,7 @@ async def test_kyc_queue(
 
     # Create investor and submit KYC.
     inv_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}kyc1@example.com"
+        client
     )
     inv_token = inv_data["session_token"]
     await client.post("/api/v1/kyc/submit", headers=auth_headers(inv_token))
@@ -299,7 +298,7 @@ async def test_kyc_approve(
 
     # Create investor and submit KYC.
     inv_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}kyc2@example.com"
+        client
     )
     inv_token = inv_data["session_token"]
     submit_resp = await client.post(
@@ -330,7 +329,7 @@ async def test_kyc_reject(
     admin_token = await _admin_token(client, db_session)
 
     inv_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}kyc3@example.com"
+        client
     )
     inv_token = inv_data["session_token"]
     submit_resp = await client.post(

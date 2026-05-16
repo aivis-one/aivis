@@ -33,13 +33,12 @@ from app.modules.payments.constants import PaymentStatus, PaymentType
 from app.modules.payments.models import Payment
 from tests.helpers import register_user
 
-EMAIL_PREFIX = "s53c_"
 
 
-async def _create_user(client: AsyncClient, suffix: str = "u1") -> UUID:
+async def _create_user(client: AsyncClient) -> UUID:
     """Helper: register a user and return their UUID."""
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+        client
     )
     return UUID(data["user"]["id"])
 
@@ -113,7 +112,7 @@ async def test_confirm_expired_payment_and_active_ledger(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Frozen payment + active_ledger with expired frozen_until -> both confirmed."""
-    user_id = await _create_user(client, "conf1")
+    user_id = await _create_user(client)
     past = datetime.now(UTC) - timedelta(hours=1)
 
     payment = _make_payment(user_id, frozen_until=past)
@@ -154,7 +153,7 @@ async def test_frozen_future_not_confirmed(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Frozen payment with future frozen_until -> stays frozen."""
-    user_id = await _create_user(client, "conf2")
+    user_id = await _create_user(client)
     future = datetime.now(UTC) + timedelta(hours=24)
 
     payment = _make_payment(user_id, frozen_until=future)
@@ -193,7 +192,7 @@ async def test_mixed_expiry_only_expired_confirmed(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Multiple frozen payments, mixed expiry -> only expired ones confirmed."""
-    user_id = await _create_user(client, "conf3")
+    user_id = await _create_user(client)
     past = datetime.now(UTC) - timedelta(hours=1)
     future = datetime.now(UTC) + timedelta(hours=24)
 
@@ -226,7 +225,7 @@ async def test_confirm_expired_passive_ledger(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Frozen passive_ledger with expired frozen_until -> confirmed."""
-    user_id = await _create_user(client, "conf4")
+    user_id = await _create_user(client)
     past = datetime.now(UTC) - timedelta(hours=1)
 
     pl = _make_passive_ledger(user_id, frozen_until=past)
@@ -251,7 +250,7 @@ async def test_already_confirmed_not_touched(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Already confirmed payment -> not touched by daemon."""
-    user_id = await _create_user(client, "conf5")
+    user_id = await _create_user(client)
 
     payment = _make_payment(
         user_id,
@@ -279,7 +278,7 @@ async def test_reversed_not_touched(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Reversed payment -> not touched by daemon."""
-    user_id = await _create_user(client, "conf6")
+    user_id = await _create_user(client)
 
     payment = _make_payment(
         user_id,
@@ -320,7 +319,7 @@ async def test_independent_frozen_until_payment_vs_ledger(
 
     Daemon confirms each record based on its own frozen_until, not linked.
     """
-    user_id = await _create_user(client, "conf8")
+    user_id = await _create_user(client)
     past = datetime.now(UTC) - timedelta(hours=1)
     future = datetime.now(UTC) + timedelta(hours=24)
 

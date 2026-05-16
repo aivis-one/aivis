@@ -31,7 +31,6 @@ from tests.helpers import (
     register_user,
 )
 
-EMAIL_PREFIX = "s53r_"
 
 
 async def _admin_token(
@@ -39,15 +38,15 @@ async def _admin_token(
 ) -> str:
     """Helper: create admin and return token."""
     _, token = await create_admin_user(
-        client, db_session, email=f"{EMAIL_PREFIX}admin@example.com"
+        client, db_session
     )
     return token
 
 
-async def _create_investor(client: AsyncClient, suffix: str = "inv1") -> UUID:
+async def _create_investor(client: AsyncClient) -> UUID:
     """Helper: register investor and return their UUID."""
     data = await register_user(
-        client, email=f"{EMAIL_PREFIX}{suffix}@example.com"
+        client
     )
     return UUID(data["user"]["id"])
 
@@ -104,7 +103,7 @@ async def test_reverse_frozen_payment(
 ) -> None:
     """Reverse frozen payment -> 200, mirror entries, originals reversed."""
     admin_token = await _admin_token(client, db_session)
-    user_id = await _create_investor(client, "rev1")
+    user_id = await _create_investor(client)
     payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
 
     resp = await client.post(
@@ -150,7 +149,7 @@ async def test_reverse_confirmed_payment(
 ) -> None:
     """Reverse confirmed payment -> 200 (fraud dispute)."""
     admin_token = await _admin_token(client, db_session)
-    user_id = await _create_investor(client, "rev2")
+    user_id = await _create_investor(client)
     payment_id = await _create_frozen_payment_with_ledger(
         user_id, db_session, status=PaymentStatus.CONFIRMED
     )
@@ -172,7 +171,7 @@ async def test_reverse_already_reversed_fails(
 ) -> None:
     """Reverse already reversed payment -> 400."""
     admin_token = await _admin_token(client, db_session)
-    user_id = await _create_investor(client, "rev3")
+    user_id = await _create_investor(client)
     payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
 
     # First reversal.
@@ -198,7 +197,7 @@ async def test_reverse_failed_payment_fails(
 ) -> None:
     """Reverse failed payment -> 400."""
     admin_token = await _admin_token(client, db_session)
-    user_id = await _create_investor(client, "rev4")
+    user_id = await _create_investor(client)
 
     # Create a failed payment (no ledger entries needed).
     payment = Payment(
@@ -243,8 +242,11 @@ async def test_reverse_without_permission(
     """Reverse without payment_review permission -> 403."""
     admin_token = await _admin_token(client, db_session)
 
+    # Email held in a local so the later login_user call hits the same
+    # account that register_user just created.
+    noperm_email = f"noperm_{uuid4().hex[:12]}@example.com"
     staff_data = await register_user(
-        client, email=f"{EMAIL_PREFIX}noperm@example.com"
+        client, email=noperm_email
     )
     resp = await client.post(
         "/api/v1/staff/users",
@@ -264,7 +266,7 @@ async def test_reverse_without_permission(
     # Re-login as restricted staff.
     from tests.helpers import login_user
     login_data = await login_user(
-        client, email=f"{EMAIL_PREFIX}noperm@example.com"
+        client, email=noperm_email
     )
     restricted_token = login_data["session_token"]
 
