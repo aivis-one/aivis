@@ -661,13 +661,21 @@ async def test_snapshot_resolves_level_4_platform_en(
 ) -> None:
     """L4: nothing per-company, no platform+lang, falls back to platform+'en'.
 
-    No L1/L2/L3 inserts. Investor language is SYNTHETIC_LANG so the
-    seeded platform-en row is the only match. Look up the seeded row
-    via ORM rather than hardcoding its id -- the install seed mints
-    a fresh UUID per deployment.
+    No L1/L2/L3 inserts. Investor language is a per-test unique code so
+    no platform row at L3 priority exists for it -- not even residue
+    left by L3-tests from the same or prior runs (those use SYNTHETIC_LANG,
+    which is shared). The seeded platform-en row is the only match.
+    Look up the seeded row via ORM rather than hardcoding its id --
+    the install seed mints a fresh UUID per deployment.
     """
     admin_token = await _admin_token(client, db_session)
     _, product = await _create_company_with_product(client, admin_token)
+
+    # Per-test unique language code. String(10) column; this fits at 9 chars.
+    # No other test creates platform rows for this code, so the L3 stage
+    # cannot match and the test is robust to residual SYNTHETIC_LANG rows
+    # left over from earlier L3 runs.
+    unique_lang = f"l4_{uuid.uuid4().hex[:6]}"
 
     seeded_stmt = select(CompanyDocumentTemplate).where(
         CompanyDocumentTemplate.company_id.is_(None),
@@ -682,7 +690,7 @@ async def test_snapshot_resolves_level_4_platform_en(
     )
 
     _, purchase = await _make_purchase_with_language(
-        client, db_session, product["id"], language=SYNTHETIC_LANG
+        client, db_session, product["id"], language=unique_lang
     )
 
     assert purchase.purchase_agreement_template_id == seeded.id, (
