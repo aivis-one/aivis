@@ -1,10 +1,11 @@
 // =============================================================================
-// CBSHOME Frontend -- Router Guards (Phase F2.2 + F4.1.5 polish)
+// CBSHOME Frontend -- Router Guards (Phase F2.2 + F4.1.5 polish
+//                                     + iter 2.6 batch 2)
 // =============================================================================
 //
 // Global navigation guard registered as router.beforeEach().
 // Handles three concerns in order:
-//   1. Auth — unauthenticated users → /login
+//   1. Auth — unauthenticated users → /login (with ?next= propagation)
 //   2. Onboarding — incomplete onboarding → appropriate step
 //   3. Role — wrong role → role-specific dashboard
 //
@@ -14,6 +15,17 @@
 //   roles          — allowed roles (string[]), empty = any authenticated
 //   shell          — which shell wraps this route; read by shared views
 //                    via router/helpers.ts (F4.1.5)
+//
+// iter 2.6 batch 2:
+//   The unauthenticated branch (step 1) now preserves the requested
+//   `fullPath` as `?next=` on the redirect. LoginView reads `next` and
+//   replace()s back to it after a successful sign-in, so a deep-linked
+//   anonymous visit -> login -> intended page is one round-trip instead
+//   of dumping the user on their dashboard. The root path (`/`) is
+//   excluded -- redirecting to /login?next=/ would replace back to /
+//   after auth, which then bounces via root.beforeEnter anyway. Public
+//   routes are handled by the earlier branch; this propagation only
+//   fires for protected routes.
 // =============================================================================
 
 import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
@@ -98,8 +110,8 @@ export async function globalGuard(
   if (to.meta.public) {
     // Redirect authenticated users away from login/register.
     if (
-      authStore.isAuthenticated &&
-      (to.name === 'login' || to.name === 'register')
+      authStore.isAuthenticated
+      && (to.name === 'login' || to.name === 'register')
     ) {
       return getRoleDashboard(authStore.role)
     }
@@ -108,7 +120,15 @@ export async function globalGuard(
 
   // --- Auth check ---
   if (!authStore.isAuthenticated) {
-    return { name: 'login' }
+    // Preserve the requested URL as `?next=` so LoginView can replace()
+    // back to it after a successful sign-in. Skip the root edge case
+    // (`/` -> /login?next=/ is a pointless round-trip; root.beforeEnter
+    // resolves the destination on its own once authed).
+    const next = to.fullPath !== '/' ? to.fullPath : undefined
+    return {
+      name: 'login',
+      query: next ? { next } : undefined,
+    }
   }
 
   // --- Onboarding check (skip for onboarding routes themselves) ---

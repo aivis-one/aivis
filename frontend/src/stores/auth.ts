@@ -40,6 +40,17 @@
 //   awaiting would have left `loading` pinned to true forever,
 //   freezing every spinner-gated UI element. See sessionReset.ts
 //   header for the why-a-helper rationale.
+//
+// iter 2.6 batch 2 -- referral cleanup on email login:
+//   loginViaEmail() now clears `cbs_referral_code` from sessionStorage
+//   on success, matching registerViaEmail() and loginViaTelegram().
+//   Previously this was the only path that did not, so a visitor who
+//   followed a referral link and then logged into an EXISTING account
+//   left a stale code lingering in their tab. A subsequent registration
+//   in the same tab would silently consume it -- minor but
+//   inconsistent. NOT cleared from _clearSession(): a 401 / logout
+//   should preserve the referral so the visitor can register a fresh
+//   account under the same agent without losing attribution.
 // =============================================================================
 
 import { ref, computed } from 'vue'
@@ -60,6 +71,7 @@ import { setLocale } from '@/i18n'
 import { resetAllDataStores } from '@/stores/sessionReset'
 
 const TOKEN_KEY = 'cbs_token'
+const REFERRAL_KEY = 'cbs_referral_code'
 
 export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------
@@ -132,6 +144,13 @@ export const useAuthStore = defineStore('auth', () => {
     // us drop silently instead of repopulating the cleared state.
     // No circular import risk: see sessionReset.ts header.
     resetAllDataStores()
+    // NOTE: we deliberately do NOT remove `cbs_referral_code` here.
+    // A 401 / explicit logout in a tab that arrived via a referral
+    // link should preserve the credit so the visitor can register a
+    // fresh account under the same agent without losing attribution.
+    // FP-13 first-wins guarantees the code stays one-shot per tab
+    // (cleared by registerViaEmail / loginViaEmail / loginViaTelegram
+    // on success, and naturally by tab close).
   }
 
   // ---------------------------------------------------------------------------
@@ -150,6 +169,12 @@ export const useAuthStore = defineStore('auth', () => {
         { email, password },
       )
       _setSession(response)
+      // iter 2.6 batch 2: clear the one-shot referral code on
+      // successful sign-in. Closes the hygiene gap where a visitor
+      // who followed a referral link but then signed into an existing
+      // account left a stale code lingering in their tab. Matches the
+      // cleanup already done by registerViaEmail / loginViaTelegram.
+      sessionStorage.removeItem(REFERRAL_KEY)
     } finally {
       loading.value = false
     }
@@ -177,7 +202,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Without this, the next register/login in the same browser
       // session would re-attribute under the same referrer (commission
       // duplication on the agent payout side).
-      sessionStorage.removeItem('cbs_referral_code')
+      sessionStorage.removeItem(REFERRAL_KEY)
     } finally {
       loading.value = false
     }
@@ -200,7 +225,7 @@ export const useAuthStore = defineStore('auth', () => {
       // endpoint also creates a User on first call (when there is no
       // matching telegram credential), so the referral attribution
       // applies and must be one-shot.
-      sessionStorage.removeItem('cbs_referral_code')
+      sessionStorage.removeItem(REFERRAL_KEY)
     } finally {
       loading.value = false
     }

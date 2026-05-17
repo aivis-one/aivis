@@ -1,19 +1,21 @@
 // =============================================================================
 // CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 + F4.3 B2 + F4.4 B3
-//                              + iter 2.5 batch 9)
+//                              + iter 2.5 batch 9 + iter 2.6 batch 2)
 // =============================================================================
 //
 // Full route map. Shell components as layout wrappers.
 // All view imports are lazy-loaded via () => import().
 //
 // Structure:
-//   /                — redirect to role dashboard (beforeEnter)
+//   /                — redirect to role dashboard or /login (beforeEnter)
 //   /login, /register, /loading — public auth routes
 //   /verify, /onboarding/*     — onboarding (auth required, no role check)
 //   /investor/*                — InvestorShell (investor | agent)
 //   /agent/*                   — AgentShell (agent only, includes investor screens)
 //   /company/*                 — CompanyShell (company only)
 //   /staff/*                   — StaffShell (staff only)
+//   /public/*                  — PublicShell (anonymous storefront)
+//   /r/:code                   — referral capture + redirect to /public/companies
 //   /404                       — not found
 //   /:pathMatch(.*)*           — catch-all → /404
 //
@@ -45,11 +47,36 @@
 //       /companies/:id/products     -> investor-company-products
 //     The :id route entries reuse the `meta.shell` propagation via
 //     the parent shell record -- no per-route meta needed.
+//
+// iter 2.6 batch 2:
+//   - ADDED /public/* subtree under PublicShell (R1 §1.6, Block A2):
+//       /public/companies                                 -> public-companies
+//       /public/companies/:id                             -> public-company-overview
+//       /public/companies/:id/attachments/:attId          -> public-attachment-landing
+//       /public/products/:id                              -> public-product-detail
+//     All children carry `meta.public: true` (via parent shell merge),
+//     so globalGuard lets unauthenticated visitors through. Views
+//     land in Batch 3-5; lazy imports refer to files that do not exist
+//     yet -- a visitor opening /public/companies before Batch 3 lands
+//     will see a dynamic-import error, intentional intermediate state.
+//   - ADDED /r/:code referral capture route (Referral Patch §A7):
+//     `beforeEnter` calls captureReferralFromPath() (useAuth.ts) and
+//     redirects to /public/companies. No UI component.
+//   - root.beforeEnter now redirects unauthenticated visitors to
+//     `/login` instead of relying on the empty string from
+//     getRoleDashboard(null). Previously this worked because
+//     getRoleDashboard returns '/login' for null role; we keep that
+//     contract but also defensively log if we ever see a different
+//     fallback.
+//   - globalGuard propagates the requested URL as `?next=` when
+//     redirecting an unauthenticated visitor to /login. LoginView
+//     reads `next` and `router.replace`s back to it post-auth (§A4).
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
+import { captureReferralFromPath } from '@/composables/useAuth'
 import { globalGuard, getRoleDashboard } from './guards'
 
 // ---------------------------------------------------------------------------
@@ -61,7 +88,7 @@ export const router = createRouter({
 
   routes: [
     // -----------------------------------------------------------------
-    // Root — redirect to role-based dashboard
+    // Root — redirect to role-based dashboard (or /login if anonymous)
     // -----------------------------------------------------------------
     {
       path: '/',
@@ -69,6 +96,11 @@ export const router = createRouter({
       component: () => import('@/views/auth/LoadingView.vue'),
       beforeEnter: () => {
         const authStore = useAuthStore()
+        // getRoleDashboard(null) -> '/login'. Anonymous visitors who
+        // hit `/` (e.g. App.vue mount after init with no token) land
+        // on the login screen; the LoginView template carries a link
+        // to RegisterView and, separately, /public/* is reachable by
+        // explicit URL.
         return getRoleDashboard(authStore.role)
       },
     },
@@ -419,6 +451,86 @@ export const router = createRouter({
           component: () => import('@/views/staff/StaffAvatarView.vue'),
         },
       ],
+    },
+
+    // -----------------------------------------------------------------
+    // Public shell — anonymous storefront (iter 2.6, R1 §1.6)
+    //
+    // All children inherit `meta.public: true` from the parent shell
+    // record (vue-router merges meta) so globalGuard pre-empts the
+    // unauthenticated-redirect branch and the visitor reaches the
+    // view directly. The view files land in Batch 3-5; until then the
+    // lazy imports refer to absent files and a visitor opening
+    // /public/companies will see a dynamic-import error. That is the
+    // accepted intermediate state.
+    // -----------------------------------------------------------------
+    {
+      path: '/public',
+      component: () => import('@/layouts/PublicShell.vue'),
+      meta: { public: true },
+      children: [
+        {
+          path: '',
+          redirect: '/public/companies',
+        },
+        {
+          path: 'companies',
+          name: 'public-companies',
+          component: () => import('@/views/public/PublicCompanyListView.vue'),
+        },
+        {
+          path: 'companies/:id',
+          name: 'public-company-overview',
+          component: () => import('@/views/public/PublicCompanyOverviewView.vue'),
+        },
+        {
+          // Per R2 §7.2: deep-link landing for a single attachment.
+          // The view fetches the company's public attachment list and
+          // finds the entry by attId (no single-attachment endpoint
+          // exists on the backend); see iter 2.6 plan §A5.
+          path: 'companies/:id/attachments/:attId',
+          name: 'public-attachment-landing',
+          component: () => import('@/views/public/PublicAttachmentLandingView.vue'),
+        },
+        {
+          path: 'products/:id',
+          name: 'public-product-detail',
+          component: () => import('@/views/public/PublicProductDetailView.vue'),
+        },
+      ],
+    },
+
+    // -----------------------------------------------------------------
+    // Referral capture link — /r/:code (iter 2.6, Referral Patch §A7)
+    //
+    // Marketing-friendly short URL. Captures the referral code into
+    // sessionStorage (first-wins, FP-13) and redirects to the public
+    // storefront. No UI component: beforeEnter fires before any view
+    // is mounted.
+    //
+    // `meta.public: true` keeps globalGuard from kicking an
+    // unauthenticated visitor to /login first. An already-authenticated
+    // visitor who follows a referral link is harmlessly bounced to
+    // /public/companies as well -- the capture call is a no-op due to
+    // first-wins, and they can browse the storefront just like an
+    // anonymous visitor (the auth wall logic kicks in only at the
+    // purchase CTA).
+    // -----------------------------------------------------------------
+    {
+      path: '/r/:code',
+      name: 'referral-link',
+      meta: { public: true },
+      // A component is technically optional for a route that always
+      // redirects in beforeEnter, but vue-router warns without one in
+      // some configurations. LoadingView is reused as a no-cost stub.
+      component: () => import('@/views/auth/LoadingView.vue'),
+      beforeEnter: (to, _from, next) => {
+        const code = to.params.code
+        if (typeof code === 'string' && code.length > 0) {
+          captureReferralFromPath(code)
+        }
+        next({ name: 'public-companies' })
+      },
     },
 
     // -----------------------------------------------------------------

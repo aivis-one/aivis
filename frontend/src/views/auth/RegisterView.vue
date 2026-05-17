@@ -1,20 +1,44 @@
 <script setup lang="ts">
-// Register screen — email + password + confirmation.
-// Reads referral code from sessionStorage on submit.
-// Emits 'go-login' to switch back to LoginView in App.vue auth gate.
+// =============================================================================
+// CBSHOME Frontend -- RegisterView (iter 2.6 batch 2)
+// =============================================================================
+//
+// Email + password + confirmation registration form. Reads the
+// referral code from sessionStorage on submit (FP-13, first-wins per
+// tab session), passes it to authStore.registerViaEmail, which clears
+// the key after a successful response.
+//
+// iter 2.6 batch 2 changes:
+//
+//   1. LOGIN LINKS are router-driven instead of emit-driven.
+//      The header back-button and the footer "Sign in" link both used
+//      to emit('go-login') to App.vue's authView ref. App.vue's
+//      standalone-flow branch is gone (router-driven content now);
+//      both buttons call router.push({ name: 'login', query:
+//      route.query }) instead. Forwarding `?next=` keeps the visitor's
+//      intended destination alive across the register <-> login pivot.
+//
+//   2. `next` IS DELIBERATELY NOT HONOURED here on success.
+//      A successful registration kicks off multi-step onboarding
+//      (verify -> profile -> role -> KYC -> docs). Carrying `next`
+//      through five hops, persisting it across page reloads during
+//      onboarding, and racing the user's attention is overkill for
+//      this scale of usage. After onboarding completes the user
+//      lands on their role dashboard via the existing globalGuard
+//      flow; they can navigate back to the public page via the
+//      browser back stack or the URL bar. If a real UX pain point
+//      surfaces, we can wire it later. See iter 2.6 plan §A4.
+// =============================================================================
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
-const emit = defineEmits<{
-  'go-login': []
-}>()
-
 const { t } = useI18n()
+const route = useRoute()
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -24,6 +48,12 @@ const confirmPassword = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const error = ref('')
+
+function goToLogin(): void {
+  // Forward `?next=...` so the eventual sign-in returns the visitor
+  // to the same public page they were aiming for.
+  void router.push({ name: 'login', query: route.query })
+}
 
 async function handleRegister(): Promise<void> {
   error.value = ''
@@ -50,6 +80,9 @@ async function handleRegister(): Promise<void> {
     // BUG-07 fix: after registration the user is at onboarding_step=registered.
     // Push straight to /verify (meta.skipOnboarding=true) -- going through /
     // would bounce us via root.beforeEnter + globalGuard for no reason.
+    //
+    // iter 2.6 batch 2: deliberately NOT forwarding `?next=` here --
+    // see file header for the rationale.
     await router.push({ name: 'verify' })
   } catch (err) {
     if (err instanceof ApiResponseError) {
@@ -73,7 +106,7 @@ async function handleRegister(): Promise<void> {
   <div class="auth-screen">
     <header class="auth-header">
       <CbsLogo :height="28" />
-      <button type="button" class="btn-link btn-back" @click="emit('go-login')">
+      <button type="button" class="btn-link btn-back" @click="goToLogin">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -203,7 +236,7 @@ async function handleRegister(): Promise<void> {
 
         <div class="auth-footer">
           <span class="auth-footer-text">{{ t('auth.register.hasAccount') }}</span>
-          <button type="button" class="btn-link" @click="emit('go-login')">
+          <button type="button" class="btn-link" @click="goToLogin">
             {{ t('auth.register.loginLink') }}
           </button>
         </div>

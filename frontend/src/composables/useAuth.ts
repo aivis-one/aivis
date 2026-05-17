@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useAuth Composable
+// CBSHOME Frontend -- useAuth Composable (iter 2.6 batch 2)
 // =============================================================================
 //
 // Combines platform + auth store into a single init flow.
@@ -7,12 +7,39 @@
 //
 // Module-level refs (isReady, isStandalone) are singletons shared
 // across all components that call useAuth().
+//
+// iter 2.6 batch 2 changes:
+//
+//   1. _saveReferralCode() now recognises three sources, not two:
+//        (a) URL query: `?ref=<code>` -- unchanged.
+//        (b) Telegram start_param via platform.getStartParam() -- unchanged.
+//        (c) URL path: `/r/<code>` (R1 referral patch §A6) -- NEW.
+//      The path match is a sibling source: the visitor types
+//          cbshome.org/r/AGENT_CODE in their browser, captureReferral-
+//          FromPath() is called from the /r/:code beforeEnter and also
+//      from this initAuth-time scan to cover the case where the app
+//      hot-reloads on the /r/... URL before the router boots.
+//      FIRST-WINS guard (FP-13) is preserved: an existing
+//      sessionStorage code blocks all three sources.
+//
+//   2. captureReferralFromPath(code) is exported so router.index.ts
+//      can call it from the /r/:code beforeEnter hook. The export is
+//      a thin wrapper around the same sessionStorage write with the
+//          first-wins guard -- single source of truth, no risk of the
+//      hook and the initAuth scan disagreeing on the storage shape.
 // =============================================================================
 
 import { ref, watch } from 'vue'
 
 import { platform } from '@/platform'
 import { useAuthStore } from '@/stores/auth'
+
+const REFERRAL_KEY = 'cbs_referral_code'
+
+// Marketing referral path: `/r/AGENT_CODE`. Matches the route
+// registered as `referral-link` in router/index.ts; the regex is the
+// authoritative source for what counts as a valid code character set.
+const REFERRAL_PATH_RE = /^\/r\/([A-Za-z0-9_-]+)\/?$/
 
 // ---------------------------------------------------------------------------
 // Singleton refs (shared across all consumers)
@@ -32,10 +59,11 @@ export function useAuth() {
    *
    * Flow:
    *   1. platform.init()
-   *   2. Save referral code from URL ?ref= or platform.getStartParam()
+   *   2. Save referral code from URL path (/r/<code>), URL query
+   *      (?ref=<code>), or Telegram start_param.
    *   3. restoreSession() -- if saved token is valid, done
    *   4. Telegram: auto-login via initData
-   *   5. Standalone with no token: user sees LoginView
+   *   5. Standalone with no token: user sees /login (router-driven)
    */
   async function initAuth(): Promise<void> {
     const authStore = useAuthStore()
@@ -45,7 +73,9 @@ export function useAuth() {
       await platform.init()
       isStandalone.value = platform.name === 'standalone'
 
-      // Persist referral code on first visit.
+      // Persist referral code on first visit. Source order is
+      // immaterial because of first-wins: whichever scan checks
+      // first against an empty key wins, and the others no-op.
       _saveReferralCode()
 
       // Try restoring existing session.
@@ -56,13 +86,14 @@ export function useAuth() {
       if (!isStandalone.value) {
         const initData = platform.getInitData()
         if (initData) {
-          const referralCode = sessionStorage.getItem('cbs_referral_code')
+          const referralCode = sessionStorage.getItem(REFERRAL_KEY)
           await authStore.loginViaTelegram(initData, referralCode)
         } else {
           authError.value = 'Telegram initData not available'
         }
       }
-      // Standalone with no token: isReady becomes true, App.vue shows LoginView.
+      // Standalone with no token: isReady becomes true, /login is
+      // reached via root.beforeEnter -> getRoleDashboard(null).
     } catch (err) {
       authError.value = err instanceof Error ? err.message : 'Authentication failed'
       console.error('[useAuth] initAuth failed:', err)
@@ -112,19 +143,56 @@ export function useAuth() {
 }
 
 // ---------------------------------------------------------------------------
+// Referral capture helpers (iter 2.6 batch 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Save a referral code to sessionStorage if no code is already
+ * stored. First-wins per FP-13: once a tab has been credited to an
+ * agent, subsequent referral links in the same session do not
+ * overwrite.
+ *
+ * Exported so router.index.ts can invoke it from the /r/:code
+ * beforeEnter hook -- the route handler doesn't need to know the
+ * sessionStorage key or the first-wins policy; it just hands us the
+ * code parsed from the URL params.
+ */
+export function captureReferralFromPath(code: string): void {
+  if (!code) return
+  // First-wins: defer to the existing stored code if any.
+  if (sessionStorage.getItem(REFERRAL_KEY)) return
+  sessionStorage.setItem(REFERRAL_KEY, code)
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Save referral code from URL query (?ref=) or Telegram start_param. */
+/**
+ * Save referral code from URL path (/r/<code>), URL query (?ref=), or
+ * Telegram start_param. Called once on initAuth -- first-wins means
+ * subsequent reruns are no-ops.
+ */
 function _saveReferralCode(): void {
-  // Don't overwrite if already saved.
-  if (sessionStorage.getItem('cbs_referral_code')) return
+  // Don't overwrite if already saved (FP-13 first-wins).
+  if (sessionStorage.getItem(REFERRAL_KEY)) return
+
+  // Path-based: /r/<code>. Match here as well as in router.beforeEnter
+  // so an app boot that lands directly on /r/<code> (cold reload)
+  // captures even if the router's beforeEnter has not run yet at the
+  // moment of initAuth. The regex is permissive on a trailing slash.
+  const pathMatch = REFERRAL_PATH_RE.exec(window.location.pathname)
+  const fromPath = pathMatch ? pathMatch[1] : null
 
   const fromUrl = new URLSearchParams(window.location.search).get('ref')
   const fromPlatform = platform.getStartParam()
-  const code = fromUrl || fromPlatform
+
+  // Order is irrelevant because of first-wins above; this picks the
+  // first non-empty in path -> query -> platform priority. Anyone of
+  // them suffices to credit the visit.
+  const code = fromPath || fromUrl || fromPlatform
 
   if (code) {
-    sessionStorage.setItem('cbs_referral_code', code)
+    sessionStorage.setItem(REFERRAL_KEY, code)
   }
 }

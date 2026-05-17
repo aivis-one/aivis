@@ -1,29 +1,56 @@
 <script setup lang="ts">
-// Login screen — email + password form.
-// Emits 'go-register' to switch to RegisterView in App.vue auth gate.
+// =============================================================================
+// CBSHOME Frontend -- LoginView (iter 2.6 batch 2)
+// =============================================================================
 //
-// Post-login navigation:
-//   loginViaEmail succeeds → router.push('/') → root.beforeEnter
-//   resolves the role-specific dashboard → globalGuard runs and either
-//   passes through (onboarding_complete) or redirects to the next
-//   onboarding step. Without this push, App.vue's reactive switch from
-//   <LoginView> to <RouterView /> mounts RouterView at URL=/login and
-//   renders LoginView again -- no navigation event fires, so the guard
-//   is never invoked. Mirrors the pattern in VerifyEmailView and every
-//   onboarding view; LoginView was the only handler missing the call.
+// Email + password sign-in form.
+//
+// iter 2.6 batch 2 changes:
+//
+//   1. POST-AUTH REDIRECT honours `?next=` from the URL.
+//      The query is set by:
+//        - PublicShell's "Sign in" header CTA (the visitor was on a
+//          /public/* page and explicitly wanted to sign in).
+//        - useAuthWall().requireAuth() bouncing an anonymous visitor
+//          off a CTA -- though that bouncer pushes to register, not
+//          login; the register screen forwards `next` when the
+//          visitor switches over.
+//        - globalGuard redirecting an unauthenticated visitor away
+//          from a protected URL.
+//      We validate `next` to be a same-origin path (`startsWith('/')`
+//      and NOT `startsWith('//')` -- the latter would let a malicious
+//      link target an arbitrary protocol-relative URL through this
+//      replace). On valid next we replace(); otherwise we fall back
+//      to the original behaviour of `router.push('/')`, which
+//      delegates to root.beforeEnter to pick the role dashboard.
+//
+//   2. CLEAR `cbs_referral_code` after successful sign-in.
+//      Closes the hygiene gap from iter 2.5 where the referral code
+//      lingered in sessionStorage after an existing user logged in
+//      via a referral link. The referral is one-shot per browser
+//      tab session (see FP-13); leaving stale codes around could
+//      mis-attribute a subsequent registration in the same tab.
+//
+//   3. REGISTER LINK is router-driven instead of emit-driven.
+//      Old code emitted 'go-register' to App.vue, which flipped a
+//      local `authView` ref. iter 2.6 batch 2 removed that branch
+//      entirely; LoginView now lives under the /login route and the
+//      "Create account" footer button calls router.push({ name:
+//      'register', query: route.query }) -- forwarding `?next=` so
+//      the user's eventual sign-up returns to the same path they
+//      were aiming for (via the LoginView fallback after they decide
+//      they actually had an account).
+// =============================================================================
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
-const emit = defineEmits<{
-  'go-register': []
-}>()
-
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -31,6 +58,32 @@ const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const error = ref('')
+
+/**
+ * Pull a same-origin path out of `route.query.next` for the post-auth
+ * redirect. Returns null if missing, malformed, or shaped like an
+ * open-redirect target.
+ *
+ * - Must be a string (vue-router can return arrays for repeated keys).
+ * - Must begin with `/` -- absolute URLs and bare hostnames are
+ *   rejected.
+ * - Must NOT begin with `//` -- protocol-relative URLs like
+ *   `//evil.com/foo` are normalised to https://evil.com/foo by the
+ *   browser and would let a crafted link redirect off our origin.
+ */
+function getValidatedNext(): string | null {
+  const raw = route.query.next
+  if (typeof raw !== 'string') return null
+  if (!raw.startsWith('/')) return null
+  if (raw.startsWith('//')) return null
+  return raw
+}
+
+function goToRegister(): void {
+  // Forward the entire `?next=...` query so the visitor's intended
+  // destination survives the login <-> register pivot.
+  void router.push({ name: 'register', query: route.query })
+}
 
 async function handleLogin(): Promise<void> {
   error.value = ''
@@ -42,9 +95,21 @@ async function handleLogin(): Promise<void> {
 
   try {
     await authStore.loginViaEmail(email.value, password.value)
-    // Trigger a navigation event so globalGuard fires; it routes to
-    // the role's dashboard or to the correct onboarding step.
-    await router.push('/')
+
+    // Hygiene: clear any stale referral code lingering in this tab
+    // (the visitor signed in to an existing account, not registered;
+    // FP-13's one-shot guarantee applies to either terminal flow).
+    sessionStorage.removeItem('cbs_referral_code')
+
+    // Post-auth redirect. If the visitor was bounced here from a
+    // protected URL or from a public CTA, return them. Otherwise let
+    // root.beforeEnter resolve the role dashboard.
+    const next = getValidatedNext()
+    if (next !== null) {
+      await router.replace(next)
+    } else {
+      await router.push('/')
+    }
   } catch (err) {
     if (err instanceof ApiResponseError) {
       if (err.status === 401) {
@@ -155,7 +220,7 @@ async function handleLogin(): Promise<void> {
 
         <div class="auth-footer">
           <span class="auth-footer-text">{{ t('auth.login.noAccount') }}</span>
-          <button type="button" class="btn-link" @click="emit('go-register')">
+          <button type="button" class="btn-link" @click="goToRegister">
             {{ t('auth.login.createAccount') }}
           </button>
         </div>
