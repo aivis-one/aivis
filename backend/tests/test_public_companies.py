@@ -202,6 +202,26 @@ def _unique_ip() -> str:
     return f"192.0.2.{uuid.uuid4().int % 200 + 50}"
 
 
+async def _platform_user_id_or_skip(db_session: AsyncSession) -> UUID:
+    """Fetch the seeded platform user's id or skip the calling test.
+
+    Two CompanyPriceHistory-inserting tests below need a valid
+    `changed_by` FK. seed_platform.py guarantees the platform User row
+    in steady state, but a partially-seeded dev DB (or a future schema
+    change) shouldn't trip those tests with an opaque NoResultFound.
+    Mirrors the skip pattern used in test_staff_admin.py for the same
+    lookup.
+    """
+    user_id = (
+        await db_session.execute(
+            select(User.id).where(User.role == "platform").limit(1)
+        )
+    ).scalar_one_or_none()
+    if user_id is None:
+        pytest.skip("No platform user in DB -- skipping price-history insert")
+    return user_id
+
+
 # ---------------------------------------------------------------------------
 # 1: list returns only ACTIVE companies
 # ---------------------------------------------------------------------------
@@ -457,15 +477,12 @@ async def test_public_detail_price_growth_uses_90d_baseline(
 
     # Insert old baseline directly via ORM. Service step 1 selects the
     # latest history row with changed_at < now-90d.
+    platform_user_id = await _platform_user_id_or_skip(db_session)
     old_row = CompanyPriceHistory(
         company_id=UUID(company["id"]),
         price_per_unit_cents=10_000,
         changed_at=datetime.now(UTC) - timedelta(days=91),
-        changed_by=(
-            await db_session.execute(
-                select(User.id).where(User.role == "platform").limit(1)
-            )
-        ).scalar_one(),
+        changed_by=platform_user_id,
     )
     db_session.add(old_row)
     await db_session.commit()
@@ -499,15 +516,12 @@ async def test_public_detail_price_growth_stretched_window(
     )
     await _activate_company(client, admin_token, company["id"])
 
+    platform_user_id = await _platform_user_id_or_skip(db_session)
     recent_row = CompanyPriceHistory(
         company_id=UUID(company["id"]),
         price_per_unit_cents=10_000,
         changed_at=datetime.now(UTC) - timedelta(days=10),
-        changed_by=(
-            await db_session.execute(
-                select(User.id).where(User.role == "platform").limit(1)
-            )
-        ).scalar_one(),
+        changed_by=platform_user_id,
     )
     db_session.add(recent_row)
     await db_session.commit()
