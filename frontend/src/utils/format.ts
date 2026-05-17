@@ -1,5 +1,6 @@
 // =============================================================================
-// CBSHOME Frontend -- Format Utilities (Phase F4.1.4 + F4.4 B0)
+// CBSHOME Frontend -- Format Utilities (Phase F4.1.4 + F4.4 B0
+//                                        + iter 2.6 R25 STYLE-25-01)
 // =============================================================================
 //
 // Shared formatters extracted from ProductCard + ProductDetailView
@@ -11,6 +12,13 @@
 //                         summary amount. Extracted in F4.4 B0 to collapse
 //                         two diverging implementations (TD-F09a).
 //   - formatNumber:       ProductCard, ProductDetailView, PurchaseView.
+//   - formatBytes:        AttachmentsSection (auth-flow),
+//                         PublicAttachmentsSection, PublicAttachmentLandingView.
+//                         Extracted in iter 2.6 R25 to collapse identical
+//                         copies in two of the three call-sites (STYLE-25-01).
+//                         The auth-flow section still carries its own copy
+//                         at the time of writing -- a separate iteration
+//                         will fold it onto this implementation.
 //   - resolveCoverImage:  ProductCard, ProductDetailView.
 // =============================================================================
 
@@ -60,6 +68,38 @@ export function formatSignedPrice(cents: number, currency?: string): string {
  */
 export function formatNumber(n: number, locale: string): string {
   return n.toLocaleString(locale)
+}
+
+/**
+ * Byte count -> human-readable size string (binary prefixes, 1 KB = 1024 B).
+ *
+ *   formatBytes(0)            -> "0 B"
+ *   formatBytes(900)          -> "900 B"
+ *   formatBytes(1024)         -> "1.0 KB"
+ *   formatBytes(1536)         -> "1.5 KB"
+ *   formatBytes(5_242_880)    -> "5.0 MB"
+ *   formatBytes(2_147_483_648)-> "2.0 GB"
+ *
+ * Binary prefixes (1024-base) are the convention everyone in the
+ * codebase has used so far -- matches AttachmentsSection's original
+ * inline implementation byte-for-byte. The visible suffix is the
+ * decimal name (KB, MB, GB) rather than the strict binary form (KiB,
+ * MiB, GiB) because that is what file managers / OS Explorer show
+ * the user in everyday contexts -- consistency with their mental
+ * model wins over strict correctness here.
+ *
+ * Sub-kilobyte values render with no decimal place (integer byte
+ * count); kilobyte-and-up values render with one decimal. Negative
+ * inputs are not expected (file sizes are non-negative) and are
+ * passed through unchanged -- the caller is responsible for guarding.
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
 /**

@@ -63,11 +63,6 @@ import {
   ArrowLeft,
   Download,
   File as FileIcon,
-  FileArchive,
-  FileSpreadsheet,
-  FileText,
-  Image as ImageIcon,
-  Video,
 } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
@@ -78,6 +73,8 @@ import {
 } from '@/api/attachments'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { useToast } from '@/composables/useToast'
+import { formatBytes } from '@/utils/format'
+import { mimeIcon } from '@/utils/mime'
 import type { AttachmentResponse } from '@/api/types'
 
 const { t } = useI18n()
@@ -155,34 +152,6 @@ watch(
     void loadAttachment(nextC, nextA)
   },
 )
-
-// ---------------------------------------------------------------------------
-// Mime icon (same mapping as PublicAttachmentsSection)
-// ---------------------------------------------------------------------------
-
-function mimeIcon(mime: string) {
-  if (mime.startsWith('image/')) return ImageIcon
-  if (mime.startsWith('video/')) return Video
-  if (mime === 'application/pdf') return FileText
-  if (
-    mime.includes('spreadsheet')
-    || mime === 'text/csv'
-    || mime === 'application/vnd.ms-excel'
-  ) {
-    return FileSpreadsheet
-  }
-  if (mime.includes('zip') || mime.includes('archive')) return FileArchive
-  return FileIcon
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-}
 
 // ---------------------------------------------------------------------------
 // Icon component for the loaded-state hero (resolved once data is in).

@@ -51,15 +51,7 @@
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  Download,
-  File as FileIcon,
-  FileArchive,
-  FileSpreadsheet,
-  FileText,
-  Image as ImageIcon,
-  Video,
-} from 'lucide-vue-next'
+import { Download } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
 import {
@@ -68,7 +60,9 @@ import {
 } from '@/api/attachments'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { useToast } from '@/composables/useToast'
+import { formatBytes } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
+import { mimeIcon } from '@/utils/mime'
 import type { AttachmentResponse } from '@/api/types'
 
 const props = defineProps<{
@@ -280,25 +274,6 @@ function titleCase(s: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Mime icon mapping
-// ---------------------------------------------------------------------------
-
-function mimeIcon(mime: string) {
-  if (mime.startsWith('image/')) return ImageIcon
-  if (mime.startsWith('video/')) return Video
-  if (mime === 'application/pdf') return FileText
-  if (
-    mime.includes('spreadsheet')
-    || mime === 'text/csv'
-    || mime === 'application/vnd.ms-excel'
-  ) {
-    return FileSpreadsheet
-  }
-  if (mime.includes('zip') || mime.includes('archive')) return FileArchive
-  return FileIcon
-}
-
-// ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
 
@@ -325,15 +300,6 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
       )
     }
   }
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 </script>
 
