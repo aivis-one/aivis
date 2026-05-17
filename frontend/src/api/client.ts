@@ -8,10 +8,19 @@
 //   - Authorization: Bearer {token} auto-injection
 //   - 401 → _onUnauthorized callback (session expired)
 //   - 422 → parsed ValidationError joined into string
+//   - 429 → ApiResponseError carrying parsed Retry-After header
 //   - 204 → returns undefined
 //   - Network errors → ApiNetworkError
 //   - AbortController + 15s timeout → ApiTimeoutError
 //   - Accept-Language from current vue-i18n locale
+//
+// iter 2.6 Batch 1: ApiResponseError gained an optional `retryAfter`
+// field. On HTTP 429 the core `request()` reads the canonical
+// `Retry-After` response header (introduced backend-side in
+// iter 2.5-finishing) and threads it into the thrown error. The field
+// is undefined for non-429 responses or when the header is missing /
+// not a positive integer. Existing `instanceof ApiResponseError`
+// checks compile and run unchanged -- the new field is purely additive.
 // =============================================================================
 
 import { i18n } from '@/i18n'
@@ -38,12 +47,27 @@ export const API_BASE_URL: string = BASE_URL
 export class ApiResponseError extends Error {
   status: number
   detail: string
+  /**
+   * Parsed `Retry-After` response header value in seconds. Populated
+   * only for HTTP 429 responses where the header is present and parses
+   * as a positive integer; undefined for every other case.
+   *
+   * Callers showing a "try again in N seconds" toast on 429 should
+   * read this field and fall back to a generic "try again in a minute"
+   * message when undefined (header missing, malformed, or non-positive).
+   *
+   * Note: HTTP defines Retry-After as either delta-seconds (int) or an
+   * HTTP-date. Our backend (app/main.py CBSError handler) only emits
+   * delta-seconds; the date variant is intentionally not parsed here.
+   */
+  retryAfter?: number
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, retryAfter?: number) {
     super(detail)
     this.name = 'ApiResponseError'
     this.status = status
     this.detail = detail
+    this.retryAfter = retryAfter
   }
 }
 
@@ -125,6 +149,28 @@ function extractErrorMessage(status: number, data: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
+// Parse Retry-After response header for HTTP 429
+// ---------------------------------------------------------------------------
+
+/**
+ * Read `Retry-After` from a Response and return seconds as a positive
+ * integer. Returns undefined when the header is absent, not parseable
+ * as a base-10 integer, or non-positive.
+ *
+ * Backend emits delta-seconds only (see app/main.py CBSError handler);
+ * the HTTP-date variant of Retry-After is out of scope.
+ */
+function parseRetryAfterHeader(response: Response): number | undefined {
+  const raw = response.headers.get('Retry-After')
+  if (raw === null) return undefined
+  // Number(raw) is too permissive ("12abc" -> NaN, but " 12 " -> 12);
+  // parseInt with radix 10 matches the backend's int(value) shape.
+  const parsed = parseInt(raw, 10)
+  if (Number.isNaN(parsed) || parsed <= 0) return undefined
+  return parsed
+}
+
+// ---------------------------------------------------------------------------
 // Core request function
 // ---------------------------------------------------------------------------
 
@@ -181,12 +227,27 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   try {
     data = await response.json()
   } catch {
-    throw new ApiResponseError(response.status, `HTTP ${response.status}: non-JSON response`)
+    // Non-JSON 4xx/5xx still needs Retry-After plumbed for the 429
+    // case -- a misconfigured upstream could in theory emit 429 with
+    // an empty/non-JSON body. Read it before throwing.
+    const retryAfter =
+      response.status === 429 ? parseRetryAfterHeader(response) : undefined
+    throw new ApiResponseError(
+      response.status,
+      `HTTP ${response.status}: non-JSON response`,
+      retryAfter,
+    )
   }
 
   // Error responses (4xx, 5xx).
   if (!response.ok) {
-    throw new ApiResponseError(response.status, extractErrorMessage(response.status, data))
+    const retryAfter =
+      response.status === 429 ? parseRetryAfterHeader(response) : undefined
+    throw new ApiResponseError(
+      response.status,
+      extractErrorMessage(response.status, data),
+      retryAfter,
+    )
   }
 
   return data as T

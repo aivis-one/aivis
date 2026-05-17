@@ -865,5 +865,40 @@
         }
       }
     }
+  },
+  "public": {
+    "shell": {
+      "loginButton": "Sign in"
+    },
+    "companyList": {
+      "empty": {
+        "title": "No active companies yet",
+        "subtitle": "Check back soon as new companies join the platform."
+      }
+    },
+    "companyOverview": {
+      "sectionProducts": "Products",
+      "products": {
+        "empty": "No products available yet",
+        "seeAll": "Register to see all products"
+      },
+      "purchaseCTA": "Register to buy"
+    },
+    "productDetail": {
+      "purchaseCTA": "Register to buy"
+    },
+    "attachmentLanding": {
+      "title": "Document",
+      "backLink": "Back to company",
+      "download": "Download",
+      "notFound": {
+        "title": "Document unavailable",
+        "subtitle": "This document may have been removed or made private."
+      }
+    },
+    "errors": {
+      "rateLimit": "Too many requests. Try again in {seconds} seconds.",
+      "rateLimitGeneric": "Too many requests. Try again in a minute."
+    }
   }
 }
