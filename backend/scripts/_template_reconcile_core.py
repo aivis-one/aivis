@@ -42,14 +42,15 @@
 #      - skipped / dry-run -> savepoint rolled back via internal sentinel.
 #      - unhandled exception -> savepoint rolled back, recorded as skipped.
 #    The OUTER commit lives on the caller (CLI does it once at the end
-#    of the run; tests rely on conftest rollback to discard everything).
+#    of the run; the CLI wrappers in reconcile_platform_templates /
+#    reconcile_templates own that commit).
 #
-# TEST IMPLICATION:
-#   Because this module never commits, tests calling reconcile_with_scope
-#   (or its script-level wrappers) leave NO persistent state in the DB
-#   after conftest teardown. This kills the Усилитель from iter 2.5
-#   mini-fix #2 (archived rows accumulating in the live DB across pytest
-#   runs of `cbshome update`).
+# TEST INVOCATION:
+#   Tests run against the live dev DB without transactional isolation
+#   (see backend/tests/conftest.py module docstring). If a test calls
+#   reconcile_with_scope directly and lets a successful folder release
+#   its savepoint, that release IS persistent across pytest runs --
+#   the dev DB is treated as disposable.
 # =============================================================================
 
 from __future__ import annotations
@@ -61,11 +62,6 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from jinja2 import Environment, TemplateSyntaxError, meta as jinja_meta
-from pydantic import ValidationError
-from sqlalchemy import ColumnElement, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.audit import record_audit
 from app.core.storage import (
     delete_object,
@@ -82,6 +78,11 @@ from app.modules.companies.constants import (
 from app.modules.companies.models import CompanyDocumentTemplate
 from app.modules.companies.schemas import TemplateInboxMetadata
 from app.modules.companies.service import invalidate_template_html_cache
+from jinja2 import Environment, TemplateSyntaxError
+from jinja2 import meta as jinja_meta
+from pydantic import ValidationError
+from sqlalchemy import ColumnElement, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -716,8 +717,10 @@ async def reconcile_with_scope(
         skip with the exception text for visibility.
 
     DOES NOT commit or roll back the OUTER transaction. The caller owns
-    it -- CLI commits once at the end of the run; tests rely on conftest
-    rollback at teardown.
+    it -- CLI commits once at the end of the run. Tests run against the
+    live dev DB without transactional isolation (see
+    backend/tests/conftest.py); any savepoint a test successfully
+    releases through this function persists.
 
     Args:
         session: Active DB session. Caller manages the outer transaction.

@@ -36,10 +36,35 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.core.database import get_session_factory
 from app.main import app
+from httpx import ASGITransport, AsyncClient
+
+# ---------------------------------------------------------------------------
+# Parallel-execution guard
+# ---------------------------------------------------------------------------
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Refuse to run under pytest-xdist.
+
+    The test suite shares a single dev DB and a single Redis instance
+    without transactional isolation. Parallel workers would race on
+    rate-limit keys, _platform/templates rows, UUID-suffixed-but-still-
+    shared identifiers, and every other globally-mutable singleton the
+    HTTP layer touches. Fail loud with a clear message instead of
+    producing flaky results.
+
+    Safe both when xdist is installed (option recognised, value
+    truthy -> raise) and when it is not (option absent -> getoption
+    returns None, no-op).
+    """
+    if config.getoption("numprocesses", None):
+        raise pytest.UsageError(
+            "pytest-xdist (-n / --numprocesses) is not supported: tests "
+            "share a single dev DB without transactional isolation. "
+            "Run tests sequentially."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -62,27 +87,25 @@ async def init_app_resources() -> AsyncGenerator[None, None]:
     "Redis client not initialized". init_redis is idempotent enough
     that re-running across test sessions is safe.
     """
+    from contextlib import suppress
+
     from app.core.redis import close_redis, init_redis
 
     await init_redis()
     try:
         from app.core.minio import init_minio  # type: ignore[attr-defined]
 
-        try:
+        # MinIO init may be sync, may not exist, may already be
+        # initialised. We don't block tests on storage health.
+        with suppress(Exception):
             await init_minio()
-        except Exception:
-            # MinIO init may be sync, may not exist, may already be
-            # initialised. We don't block tests on storage health.
-            pass
     except ImportError:
         pass
 
     yield
 
-    try:
+    with suppress(Exception):
         await close_redis()
-    except Exception:
-        pass
 
 
 @pytest.fixture

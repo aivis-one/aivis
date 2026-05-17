@@ -55,7 +55,9 @@
 # COMMIT MODEL:
 #   One COMMIT at the end of a successful run (in the CLI wrapper).
 #   The library function never commits -- tests pass their own session
-#   and rely on conftest rollback to discard everything.
+#   and run against the live dev DB without transactional isolation
+#   (see backend/tests/conftest.py); whatever a test commits through
+#   this function persists.
 # =============================================================================
 
 from __future__ import annotations
@@ -68,23 +70,24 @@ from pathlib import Path
 from typing import Any
 
 # Make `app.*` importable when this file is run as a standalone script.
+# The post-import block below must run AFTER sys.path.insert, hence the
+# blanket E402 suppression -- standard CLI-entrypoint pattern.
 _backend_dir = Path(__file__).resolve().parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-import structlog
-from sqlalchemy import delete, func, select, tuple_
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.audit import record_audit
-from app.core.database import dispose_engine, get_session_factory
-from app.core.logging import setup_logging
-from app.modules.auth.service import get_platform_user_id
-from app.modules.companies.constants import (
+import structlog  # noqa: E402
+from app.core.audit import record_audit  # noqa: E402
+from app.core.database import dispose_engine, get_session_factory  # noqa: E402
+from app.core.logging import setup_logging  # noqa: E402
+from app.modules.auth.service import get_platform_user_id  # noqa: E402
+from app.modules.companies.constants import (  # noqa: E402
     DocumentTemplateKind,
     TemplateStatus,
 )
-from app.modules.companies.models import CompanyDocumentTemplate
+from app.modules.companies.models import CompanyDocumentTemplate  # noqa: E402
+from sqlalchemy import delete, func, select, tuple_  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 logger = structlog.get_logger()
 
@@ -223,9 +226,10 @@ async def seed_platform_templates(
 
     Args:
         session: Async DB session. The caller is responsible for the
-            commit (CLI commits once at the end; tests usually run
-            inside their own transaction and rely on rollback at
-            teardown).
+            commit (CLI commits once at the end; tests share the live
+            dev DB without transactional isolation -- see
+            backend/tests/conftest.py -- so anything they commit
+            through this function persists).
         dry_run: When True, log intended actions without inserting.
             The audit row is also skipped in dry-run.
 

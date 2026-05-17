@@ -1183,10 +1183,11 @@ case_update() {
     #
     # Iter 2.5 mini-fix #3 removed the historical reason for splitting
     # seeds around pytest: tests used to wipe shared rows in the prod DB
-    # via cleanup_test_users, forcing a re-seed afterwards. Tests now run
-    # against per-worker ephemeral databases cloned from a separate
-    # cbshome_test_template, so prod seeds can run in one block with no
-    # interference.
+    # via cleanup_test_users, forcing a re-seed afterwards. Tests now
+    # run against the shared dev DB without transactional isolation
+    # (see backend/tests/conftest.py) and use UUID-suffixed identifiers
+    # for cross-run isolation, so prod seeds can run in one block with
+    # no interference.
     #
     # Each seed is idempotent:
     #   seed_platform            -- Platform user (singleton).

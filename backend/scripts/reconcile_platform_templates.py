@@ -19,9 +19,14 @@
 #     session.rollback() on the outer transaction. Each folder runs in
 #     its own SAVEPOINT inside the core; this CLI wraps the whole pass
 #     in a single outer transaction and commits it ONCE at the end.
-#   - Tests that call this function from the conftest db_session no
-#     longer leak archived rows into the live DB across pytest runs --
-#     conftest rollback at teardown discards every savepoint release.
+#
+# TEST INVOCATION:
+#   Tests run against the live dev DB with no transactional isolation
+#   (see backend/tests/conftest.py module docstring for the rationale).
+#   Cross-run identifier collisions are avoided by UUID-suffixed values
+#   in tests/helpers.py register_user; if a test exercises this
+#   reconcile path, archived rows it leaves behind ARE persistent and
+#   that is intentional -- the dev DB is disposable.
 #
 # INBOX LAYOUT (R2 §4.9):
 #   _platform/templates-inbox/<kind>__<lang>/
@@ -42,7 +47,8 @@
 #   platform.template_reconciled_archived_and_replaced
 #
 # CLI:
-#   docker compose exec -T app python -m scripts.reconcile_platform_templates [--dry-run]
+#   docker compose exec -T app \
+#       python -m scripts.reconcile_platform_templates [--dry-run]
 #
 # COMMIT MODEL (CLI):
 #   One outer transaction wraps the whole pass. Per-folder SAVEPOINTs
@@ -72,20 +78,21 @@ import sys
 from pathlib import Path
 
 # Make `app.*` importable when this file is run as a standalone script.
+# The post-import block below must run AFTER sys.path.insert, hence the
+# blanket E402 suppression -- standard CLI-entrypoint pattern.
 _backend_dir = Path(__file__).resolve().parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-import structlog
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.database import dispose_engine, get_session_factory
-from app.core.logging import setup_logging
-from scripts._template_reconcile_core import (
+import structlog  # noqa: E402
+from app.core.database import dispose_engine, get_session_factory  # noqa: E402
+from app.core.logging import setup_logging  # noqa: E402
+from scripts._template_reconcile_core import (  # noqa: E402
     ReconcileStats,
     platform_scope,
     reconcile_with_scope,
 )
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 logger = structlog.get_logger()
 
@@ -139,8 +146,9 @@ async def reconcile_platform_templates(
     DOES NOT commit or roll back the outer transaction. Caller owns it:
       - The CLI (_run_cli below) opens a session, calls this, commits
         once at the end of the pass.
-      - Tests call this from the conftest db_session; conftest rollback
-        at teardown discards every per-folder SAVEPOINT release.
+      - Tests run against the live dev DB without transactional
+        isolation (see backend/tests/conftest.py); any savepoint a
+        test successfully releases through this function persists.
 
     Args:
         session: Active DB session. Caller manages the outer transaction.

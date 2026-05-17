@@ -71,22 +71,23 @@ from pathlib import Path
 from uuid import UUID
 
 # Make `app.*` importable when this file is run as a standalone script.
+# The post-import block below must run AFTER sys.path.insert, hence the
+# blanket E402 suppression -- standard CLI-entrypoint pattern.
 _backend_dir = Path(__file__).resolve().parent.parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-import structlog
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.database import dispose_engine, get_session_factory
-from app.core.logging import setup_logging
-from app.modules.companies.models import CompanyProfile
-from scripts._template_reconcile_core import (
+import structlog  # noqa: E402
+from app.core.database import dispose_engine, get_session_factory  # noqa: E402
+from app.core.logging import setup_logging  # noqa: E402
+from app.modules.companies.models import CompanyProfile  # noqa: E402
+from scripts._template_reconcile_core import (  # noqa: E402
     ReconcileStats,
     company_scope,
     reconcile_with_scope,
 )
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 logger = structlog.get_logger()
 
@@ -155,8 +156,9 @@ async def reconcile_company_templates(
 
     DOES NOT commit or roll back the outer transaction. Caller owns it:
       - CLI opens a session, calls this, commits once at the end.
-      - Tests call this from the conftest db_session; conftest rollback
-        at teardown discards every per-folder SAVEPOINT release.
+      - Tests run against the live dev DB without transactional
+        isolation (see backend/tests/conftest.py); any savepoint a
+        test successfully releases through this function persists.
 
     Args:
         session: Active DB session. Caller manages the outer transaction.
