@@ -406,12 +406,26 @@ async def _create_from_inbox(
         },
     )
 
-    # Inbox cleanup happens in the same DB transaction window, so an
-    # error mid-flight rolls back the row + leaves the inbox file for
-    # the next reconcile. delete_object is idempotent on missing keys.
+    # Commit DB first, then delete inbox files (ERR-02).
+    #
+    # Commit is the durable transition: once it succeeds the new
+    # attachment row + audit entry are persisted and the operation
+    # has "happened" from the DB's point of view. Inbox cleanup is a
+    # side effect that runs after.
+    #
+    # If a delete_object call below fails after commit, the inbox files
+    # survive and the next reconcile pass picks them up. _find_match
+    # will match the row we just created (same company_id, title,
+    # category, language), the inbox pair is routed to _replace_from_
+    # inbox, which rewrites the bytes and deletes the inbox files
+    # again. Idempotent retry.
+    #
+    # The previous order (delete inbox -> commit) had the opposite
+    # failure mode: a commit failure after the inbox was already
+    # deleted destroyed the file with no DB row recording it.
+    await session.commit()
     await delete_object(inbox_main_key)
     await delete_object(inbox_sidecar_key)
-    await session.commit()
 
     log(
         f"created attachment {attachment.id} "
@@ -445,8 +459,6 @@ async def _replace_from_inbox(
     await upload_object(
         new_storage_key, file_bytes, content_type, content_length=len(file_bytes)
     )
-    if old_storage_key != new_storage_key:
-        await delete_object(old_storage_key)
 
     attachment.storage_key = new_storage_key
     attachment.original_filename = original_filename
@@ -473,9 +485,27 @@ async def _replace_from_inbox(
         },
     )
 
+    # Commit DB first, then perform side effects (ERR-02).
+    #
+    # The DB row already points at new_storage_key, and new_storage_key
+    # already exists in MinIO (upload_object ran above). Committing
+    # makes that pairing durable. Only after commit do we delete the
+    # old MinIO object and the inbox pair.
+    #
+    # Pre-fix order deleted old_storage_key BEFORE commit. A commit
+    # failure after that left attachment.storage_key pointing at the
+    # old key in the DB while the object was already gone -- a broken
+    # row, immediate 404s for users.
+    #
+    # If any delete below fails after commit, the worst case is a
+    # surviving old MinIO object (storage leak, swept by an out-of-
+    # band lifecycle policy) or a surviving inbox pair (next reconcile
+    # routes it back through _replace_from_inbox idempotently).
+    await session.commit()
+    if old_storage_key != new_storage_key:
+        await delete_object(old_storage_key)
     await delete_object(inbox_main_key)
     await delete_object(inbox_sidecar_key)
-    await session.commit()
 
     log(
         f"replaced attachment {attachment.id} "

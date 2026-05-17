@@ -99,8 +99,8 @@ const DOWNLOAD_TIMEOUT_MS = 30_000
  *
  *   category        -- exact path-tree match (e.g. 'legal/licenses/business')
  *   category_prefix -- LIKE prefix% (e.g. 'legal/')
- *   language        -- ISO 639-1; null-language rows are returned only
- *                      when this param is omitted
+ *   language        -- ISO 639-1 exact match. Column is NOT NULL since
+ *                      migration 0034; every row has a language.
  *
  * The Investor CompanyOverview section consumes the unfiltered list and
  * does L1-grouping client-side via attachment.category.split('/')[0].
