@@ -13,8 +13,8 @@
 #   8:  Staff reject -> 200, passive balance restored
 #   9:  List my withdrawals -> 200
 #   10: Fail withdrawal -> passive balance restored
-#
-# Email prefix: "s63_" -- unique to this test file, cleaned up in fixture.
+#   11: Reject -> compensating transaction has positive amount (TEST-01)
+#   12: Fail   -> compensating transaction has positive amount (TEST-01)
 # =============================================================================
 
 from uuid import UUID
@@ -26,6 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
+from app.modules.transactions.constants import TransactionType
+from app.modules.transactions.models import Transaction
 from app.modules.users.models import User
 from app.modules.withdrawals.constants import WithdrawalStatus
 from app.modules.withdrawals.models import Withdrawal
@@ -389,3 +391,130 @@ async def test_fail_withdrawal_restores_balance(
     # Balance restored.
     balance = await get_passive_balance(db_session, user_id)
     assert balance["confirmed"] == 50000
+
+
+# ---------------------------------------------------------------------------
+# 11. Reject -> compensating transaction has positive amount (TEST-01)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reject_withdrawal_records_positive_compensating_transaction(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Staff reject writes a transaction with type=withdrawal:rejected and
+    a POSITIVE amount_cents matching the original withdrawal amount.
+
+    Convention (transactions/models.py docstring): positive = money in,
+    negative = money out. WITHDRAWAL_CREATED is negative (money leaving
+    the user); the compensating WITHDRAWAL_REJECTED on the rejection
+    path must be positive (money returning). A sign regression on this
+    line would still pass the existing balance-restoration test (which
+    asserts the *final* balance via record_passive_ledger), because the
+    passive_ledger entry is a separate write. This test pins the sign
+    on the transaction log itself.
+    """
+    user_id, token = await _create_user_with_balance(
+        client, db_session, balance_cents=50000
+    )
+    _, admin_token = await create_admin_user(client, db_session)
+
+    amount = 20000
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": amount},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201
+    withdrawal_id = UUID(resp.json()["id"])
+
+    resp2 = await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/reject",
+        json={"reason": "Test rejection"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+
+    # Locate the compensating transaction. user_id + type + reference_id
+    # is sufficient: there is exactly one withdrawal:rejected event per
+    # withdrawal lifecycle, and reference_id pins it to this withdrawal.
+    stmt = select(Transaction).where(
+        Transaction.user_id == user_id,
+        Transaction.type == TransactionType.WITHDRAWAL_REJECTED,
+        Transaction.reference_id == withdrawal_id,
+    )
+    txn = (await db_session.execute(stmt)).scalar_one_or_none()
+
+    assert txn is not None, (
+        "Staff reject must write a WITHDRAWAL_REJECTED transaction row "
+        "referencing this withdrawal."
+    )
+    assert txn.amount_cents > 0, (
+        "Compensating WITHDRAWAL_REJECTED amount must be positive "
+        f"(money returning to user). Got {txn.amount_cents}."
+    )
+    assert txn.amount_cents == amount, (
+        "Compensating amount must exactly match the original withdrawal "
+        f"amount {amount}; got {txn.amount_cents}."
+    )
+
+
+# ---------------------------------------------------------------------------
+# 12. Fail -> compensating transaction has positive amount (TEST-01)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_fail_withdrawal_records_positive_compensating_transaction(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Provider-fail writes a transaction with type=withdrawal:failed and
+    a POSITIVE amount_cents matching the original withdrawal amount.
+
+    Symmetric guard to the reject test above, covering the second exit
+    path that compensates the user.
+    """
+    user_id, token = await _create_user_with_balance(
+        client, db_session, balance_cents=50000
+    )
+    _, admin_token = await create_admin_user(client, db_session)
+
+    amount = 20000
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": amount},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201
+    withdrawal_id = UUID(resp.json()["id"])
+
+    # Confirm first (FAILED can only be reached from PROCESSING).
+    await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+
+    await fail_withdrawal(withdrawal_id, db_session)
+    await db_session.commit()
+
+    stmt = select(Transaction).where(
+        Transaction.user_id == user_id,
+        Transaction.type == TransactionType.WITHDRAWAL_FAILED,
+        Transaction.reference_id == withdrawal_id,
+    )
+    txn = (await db_session.execute(stmt)).scalar_one_or_none()
+
+    assert txn is not None, (
+        "fail_withdrawal must write a WITHDRAWAL_FAILED transaction row "
+        "referencing this withdrawal."
+    )
+    assert txn.amount_cents > 0, (
+        "Compensating WITHDRAWAL_FAILED amount must be positive "
+        f"(money returning to user). Got {txn.amount_cents}."
+    )
+    assert txn.amount_cents == amount, (
+        "Compensating amount must exactly match the original withdrawal "
+        f"amount {amount}; got {txn.amount_cents}."
+    )
