@@ -909,6 +909,13 @@
       "purchaseCTA": "Register to buy"
     },
     "productDetail": {
+      "backLink": "Back to company",
+      "notFound": {
+        "title": "Product unavailable",
+        "subtitle": "This product may have been removed or is no longer active."
+      },
+      "errorTitle": "Couldn't load product",
+      "errorRetry": "Try again",
       "purchaseCTA": "Register to buy"
     },
     "attachmentLanding": {
