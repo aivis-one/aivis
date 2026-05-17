@@ -55,7 +55,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building } from 'lucide-vue-next'
 
@@ -173,10 +178,27 @@ function onRoadmapProductClick(productId: string): void {
   // Anonymous storefront stays on /public/* routes throughout. The
   // target view is a stub until Batch 6 -- navigation succeeds, the
   // stub renders, real content lands then.
-  void router.push({
-    name: 'public-product-detail',
-    params: { id: productId },
-  })
+  router
+    .push({
+      name: 'public-product-detail',
+      params: { id: productId },
+    })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent (see
+      // useAuthWall R20 STYLE-20-01 for the rationale). Real
+      // navigation issues log with a contextual prefix.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[PublicCompanyOverviewView] navigation to product failed:',
+        err,
+      )
+    })
 }
 
 function onRoadmapExternalClick(url: string): void {

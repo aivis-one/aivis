@@ -51,7 +51,11 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
@@ -91,10 +95,24 @@ onMounted(() => {
 })
 
 function openCompany(company: CompanyListItem): void {
-  void router.push({
-    name: 'public-company-overview',
-    params: { id: company.id },
-  })
+  router
+    .push({
+      name: 'public-company-overview',
+      params: { id: company.id },
+    })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent (see
+      // useAuthWall R20 STYLE-20-01 for the rationale). Real
+      // navigation issues log with a contextual prefix.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[PublicCompanyListView] navigation to company failed:', err)
+    })
 }
 
 async function retryFirstPage(): Promise<void> {
