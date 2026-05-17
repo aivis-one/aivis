@@ -28,9 +28,6 @@
 # =============================================================================
 
 import structlog
-from fastapi import APIRouter, Depends, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.exceptions import BadRequestError
@@ -61,6 +58,8 @@ from app.modules.auth.telegram import (
 )
 from app.modules.users.models import User
 from app.modules.users.schemas import UserResponse
+from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -214,14 +213,13 @@ async def auth_telegram(
         raise BadRequestError(str(exc)) from exc
 
     # Step 3: Rate limit.
-    try:
-        await check_auth_rate_limit(telegram_user["id"])
-    except TelegramValidationError as exc:
-        logger.warning(
-            "telegram_auth_rate_limited",
-            telegram_id=telegram_user["id"],
-        )
-        raise BadRequestError(str(exc)) from exc
+    # iter 2.5-finishing: rate-limit hits raise RateLimitError (HTTP 429)
+    # and propagate to the global CBSError handler unchanged. Earlier
+    # revisions caught and remapped them to 400 alongside invalid-signature
+    # and replay errors -- that masked the rate-limit signal. Invalid
+    # signature and replay still raise TelegramValidationError above and
+    # get the 400 mapping; only rate-limit gets the dedicated 429.
+    await check_auth_rate_limit(telegram_user["id"])
 
     # Step 4: Upsert user (flush inside service, not here).
     user, _is_new = await upsert_telegram_user(

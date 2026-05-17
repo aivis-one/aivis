@@ -19,11 +19,11 @@
 #       against one `public_companies:<ip>` budget. X-Real-IP isolates
 #       the bucket per test.
 #
-# RATE-LIMIT QUIRK:
-#   check_rate_limit raises BadRequestError, which CBSError handler
-#   surfaces as HTTP 400 -- NOT 429. The R1 spec text says "429", but
-#   that's a spec/code mismatch (recorded in the coordinator report,
-#   not patched here).
+# RATE-LIMIT BEHAVIOUR:
+#   check_rate_limit raises RateLimitError (HTTP 429 with Retry-After
+#   header). Updated in iter 2.5-finishing -- the helper previously
+#   raised BadRequestError -> 400, which masked the rate-limit signal
+#   and forced clients to parse the message body.
 # =============================================================================
 
 import uuid
@@ -537,10 +537,14 @@ async def test_public_rate_limit_shared_bucket_with_products(
     fresh IP:
       req 1 (companies list)  -> 200
       req 2 (products list)   -> 200
-      req 3 (companies list)  -> 400 (limit exceeded)
+      req 3 (companies list)  -> 429 (limit exceeded)
 
-    NOTE: spec says 429, code raises BadRequestError -> 400. Recorded
-    in coordinator report; not patched here.
+    iter 2.5-finishing: rate-limit hits return HTTP 429 with the
+    canonical `Retry-After` response header. Previously the helper
+    raised BadRequestError -> 400; that masked the rate-limit signal
+    and forced clients to parse the message body. The header value is
+    a positive int (remaining seconds in the current window); we only
+    assert it parses, not a specific value.
     """
     # Both routers reference PUBLIC_COMPANIES_RATE_LIMIT by name when
     # the request hits the helper, so monkeypatch the module-level
@@ -574,8 +578,12 @@ async def test_public_rate_limit_shared_bucket_with_products(
     # doesn't matter whether it lands on companies or products -- the
     # Redis key prefix is identical.
     r3 = await client.get("/api/v1/public/companies", headers=headers)
-    assert r3.status_code == 400, r3.text
+    assert r3.status_code == 429, r3.text
+    assert r3.json()["error"] == "rate_limit_exceeded"
     assert "Too many" in r3.json()["message"]
+    retry_after = r3.headers.get("retry-after")
+    assert retry_after is not None, "429 must include a Retry-After header"
+    assert int(retry_after) > 0
 
 
 # ---------------------------------------------------------------------------

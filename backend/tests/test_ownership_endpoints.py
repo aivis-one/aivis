@@ -466,8 +466,10 @@ async def test_ownership_email_rate_limit_per_user(
 
     Pin to 2 via settings monkeypatch for speed.
 
-    NOTE: BadRequestError -> 400 (not 429). Same spec/code mismatch as
-    agreement-side; recorded in coordinator report, not patched.
+    iter 2.5-finishing: rate-limit hits return HTTP 429 with the
+    canonical `Retry-After` response header. Mirrors the
+    agreement-side test exactly so the same contract is asserted on
+    both rate-limit endpoints.
     """
     admin_token = await _admin_token(client, db_session)
     company, product = await _create_company_with_product(client, admin_token)
@@ -496,5 +498,9 @@ async def test_ownership_email_rate_limit_per_user(
     assert r2.status_code == 204, r2.text
 
     r3 = await client.post(url, headers=auth_headers(inv_token))
-    assert r3.status_code == 400, r3.text
+    assert r3.status_code == 429, r3.text
+    assert r3.json()["error"] == "rate_limit_exceeded"
     assert "Too many" in r3.json()["message"]
+    retry_after = r3.headers.get("retry-after")
+    assert retry_after is not None, "429 must include a Retry-After header"
+    assert int(retry_after) > 0

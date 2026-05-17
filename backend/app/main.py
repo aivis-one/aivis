@@ -118,33 +118,27 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, UTC
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime, timedelta
 
 import structlog
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from sqlalchemy import text
-from starlette.requests import Request
-
 from app.core.config import APP_VERSION, settings
 from app.core.database import dispose_engine, get_engine
-from app.core.exceptions import CBSError
+from app.core.exceptions import CBSError, RateLimitError
 from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
 from app.modules.agent_applications.router import router as agent_applications_router
-from app.modules.agent_applications.staff_router import router as staff_agent_applications_router
+from app.modules.agent_applications.staff_router import (
+    router as staff_agent_applications_router,
+)
+from app.modules.auth.router import router as auth_router
 from app.modules.commissions.router import router as commissions_router
 from app.modules.commissions.worker import (
     run_leaderboard_update,
     run_monthly_payout,
     run_quarterly_payout,
 )
-from app.modules.dashboard.router import router as investor_dashboard_router
-from app.modules.referrals.router import router as referrals_router
-from app.modules.auth.router import router as auth_router
 from app.modules.companies.attachments_public_router import (
     router as public_attachments_router,
 )
@@ -161,10 +155,13 @@ from app.modules.companies.templates_staff_router import (
     router as staff_templates_router,
 )
 from app.modules.company_dashboard.router import router as company_dashboard_router
+from app.modules.dashboard.router import router as investor_dashboard_router
 from app.modules.documents.router import router as documents_router
 from app.modules.documents.staff_router import router as staff_documents_router
 from app.modules.installments.router import (
     create_router as installment_create_router,
+)
+from app.modules.installments.router import (
     query_router as installment_query_router,
 )
 from app.modules.installments.worker import run_installment_batch
@@ -184,12 +181,14 @@ from app.modules.products.public_router import (
     router as public_products_router,
 )
 from app.modules.products.staff_router import router as staff_products_router
-from app.modules.purchases.router import router as purchases_router
+
 # Refactor 2 iter 2.4: agreement_router + ownership_router replace certificate_router.
 from app.modules.purchases.agreement_router import (
     agreement_router,
     ownership_router,
 )
+from app.modules.purchases.router import router as purchases_router
+from app.modules.referrals.router import router as referrals_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.consistency.router import router as consistency_router
@@ -198,6 +197,11 @@ from app.modules.transactions.router import router as transactions_router
 from app.modules.users.router import router as users_router
 from app.modules.withdrawals.router import router as withdrawals_router
 from app.modules.withdrawals.staff_router import router as staff_withdrawals_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from starlette.requests import Request
 
 logger = structlog.get_logger()
 
@@ -386,22 +390,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     installment_task.cancel()
     leaderboard_task.cancel()
     notification_task.cancel()
-    try:
+    with suppress(asyncio.CancelledError):
         await confirmation_task
-    except asyncio.CancelledError:
-        pass
-    try:
+    with suppress(asyncio.CancelledError):
         await installment_task
-    except asyncio.CancelledError:
-        pass
-    try:
+    with suppress(asyncio.CancelledError):
         await leaderboard_task
-    except asyncio.CancelledError:
-        pass
-    try:
+    with suppress(asyncio.CancelledError):
         await notification_task
-    except asyncio.CancelledError:
-        pass
 
     await close_redis()
     await dispose_engine()
@@ -504,10 +500,24 @@ app.include_router(ownership_router)
 
 @app.exception_handler(CBSError)
 async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
-    """Convert CBSError exceptions into proper HTTP JSON responses."""
+    """Convert CBSError exceptions into proper HTTP JSON responses.
+
+    iter 2.5-finishing: RateLimitError carries retry_after_seconds and
+    is surfaced with the standard HTTP `Retry-After` response header,
+    so clients (frontend, monitoring, agents) can back off intelligently
+    instead of busy-retrying the endpoint.
+    """
+    headers: dict[str, str] | None = None
+    if (
+        isinstance(exc, RateLimitError)
+        and exc.retry_after_seconds is not None
+    ):
+        headers = {"Retry-After": str(exc.retry_after_seconds)}
+
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.code, "message": exc.message},
+        headers=headers,
     )
 
 

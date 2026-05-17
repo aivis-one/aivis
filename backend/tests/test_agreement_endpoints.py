@@ -365,9 +365,12 @@ async def test_agreement_email_rate_limit_per_user(
     next one trips.
 
     We pin the cap to 2 via settings monkeypatch and make POSTs return
-    no-op so the test is fast. Reality vs. spec: the helper raises
-    BadRequestError -> HTTP 400 (not 429). The spec text says 429;
-    recorded as a Surprise finding, not patched here.
+    no-op so the test is fast.
+
+    iter 2.5-finishing: rate-limit hits return HTTP 429 with the
+    canonical `Retry-After` response header. Earlier revisions raised
+    BadRequestError -> 400; the new contract is the canonical 429 +
+    Retry-After plus `error: rate_limit_exceeded` body.
     """
     admin_token = await _admin_token(client, db_session)
     _, product = await _create_company_with_product(client, admin_token)
@@ -397,7 +400,9 @@ async def test_agreement_email_rate_limit_per_user(
     assert r2.status_code == 204, r2.text
 
     r3 = await client.post(url, headers=auth_headers(inv_token))
-    # BadRequestError -> HTTP 400. Spec said 429; the router does NOT
-    # remap, so 400 is the production behaviour we're guarding.
-    assert r3.status_code == 400, r3.text
+    assert r3.status_code == 429, r3.text
+    assert r3.json()["error"] == "rate_limit_exceeded"
     assert "Too many" in r3.json()["message"]
+    retry_after = r3.headers.get("retry-after")
+    assert retry_after is not None, "429 must include a Retry-After header"
+    assert int(retry_after) > 0

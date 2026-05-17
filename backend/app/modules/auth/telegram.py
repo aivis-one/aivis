@@ -32,9 +32,7 @@ from datetime import UTC, datetime
 from urllib.parse import parse_qs, unquote
 
 import structlog
-
 from app.core.config import settings
-from app.core.exceptions import BadRequestError
 from app.core.rate_limit import check_rate_limit
 from app.core.redis import get_redis
 
@@ -165,18 +163,17 @@ async def check_auth_rate_limit(telegram_id: int) -> None:
     """Rate limit auth attempts per telegram_id.
 
     Delegates to the atomic Lua-based check_rate_limit() from core.
-    Wraps BadRequestError into TelegramValidationError for consistency
-    with Telegram auth error handling.
+    Rate-limit hits raise RateLimitError (HTTP 429) which the global
+    handler in main.py surfaces directly with Retry-After. Earlier
+    revisions wrapped that into TelegramValidationError -> 400, which
+    erased the distinction between "bad request" (invalid hash, replay)
+    and "too many requests" -- restored in iter 2.5-finishing.
 
     Args:
         telegram_id: Telegram user ID (from validated initData).
 
     Raises:
-        TelegramValidationError: If rate limit is exceeded.
+        RateLimitError: If rate limit is exceeded. Propagates to the
+            global CBSError handler; not wrapped here.
     """
-    try:
-        await check_rate_limit(f"auth_rate:{telegram_id}")
-    except BadRequestError:
-        raise TelegramValidationError(
-            "Too many auth attempts. Please try again later."
-        )
+    await check_rate_limit(f"auth_rate:{telegram_id}")

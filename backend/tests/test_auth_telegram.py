@@ -18,10 +18,10 @@
 # =============================================================================
 
 import time
-import pytest
-from httpx import AsyncClient
 
+import pytest
 from app.core.config import settings
+from httpx import AsyncClient
 from tests.helpers import (
     auth_headers,
     build_init_data,
@@ -188,7 +188,13 @@ async def test_telegram_replayed_init_data(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_telegram_rate_limit(client: AsyncClient) -> None:
-    """More requests than auth_rate_limit_max_requests -> 400.
+    """More requests than auth_rate_limit_max_requests -> 429.
+
+    iter 2.5-finishing: rate-limit hits now return HTTP 429 with
+    `Retry-After` header instead of 400. The header carries the
+    remaining seconds in the current window; we assert it parses as
+    a positive int rather than pinning a specific value (the window
+    age depends on test timing).
 
     Uses real settings. Sends max+1 requests.
     """
@@ -209,8 +215,14 @@ async def test_telegram_rate_limit(client: AsyncClient) -> None:
         "/api/v1/auth/telegram",
         json={"init_data": init_data},
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 429
+    assert resp.json()["error"] == "rate_limit_exceeded"
     assert "Too many" in resp.json()["message"]
+    # Retry-After is the canonical 429 partner. Header values are strings;
+    # we only require it to parse as a positive integer.
+    retry_after = resp.headers.get("retry-after")
+    assert retry_after is not None, "429 must include a Retry-After header"
+    assert int(retry_after) > 0
 
 
 # ---------------------------------------------------------------------------
