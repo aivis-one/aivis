@@ -1,7 +1,7 @@
 # CBSHOME -- Refactor: Company Attachments, Templates & Purchase Docs
 
-**Версия:** 0.7 / decision-locked
-**Дата:** 11 мая 2026
+**Версия:** 0.8 / decision-locked
+**Дата:** 13 мая 2026
 
 **Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
 
@@ -270,6 +270,7 @@ Storage layer используется в нескольких местах:
 ## 3. Backend: модуль `company_attachments`
 
 **✓ Реализовано (iter 2.2).** Все подразделы закрыты. Deviations от спеки:
+- **Размещение кода (deviation от изначального §3.1):** код живёт **внутри** `backend/app/modules/companies/`, не в отдельной директории `backend/app/modules/company_attachments/`. Конкретные файлы: `companies/attachments_router.py` (auth flow), `companies/attachments_staff_router.py` (staff flow), `companies/attachments_public_router.py` (public flow), `companies/models.py` (модель `CompanyAttachment`), `companies/service.py` (бизнес-логика). Решение: не плодить сущности, потому что `CompanyAttachment` не существует без `Company` и имеет смысл только в её namespace. Когда дальше в этом разделе спека ссылается на "модуль `company_attachments`" -- читай это как "набор файлов `attachments_*.py` в `companies/`".
 - §3.7 reconcile-скрипт реализован чисто на Python через storage layer (`upload_object` / `delete_object`), не через `mc cp` / `mc rm`. Спека уточнена в этом документе.
 - §3.7 missing sidecar при reconcile = skip + WARNING (как в спеке). Mismatched mime по filename = skip + ERROR (через единый валидатор `validate_attachment_mime_by_filename` в `companies/service.py`, разделяемый router'ом и reconcile'ом).
 - 100MB upload limit -- валидируется на уровне nginx (`client_max_body_size 100M`). Backend не дублирует -- предложение в спеке про "Pydantic-валидатор `Field(max_length=...)` на multipart" не было реализовано (multipart body нельзя валидировать через Pydantic length-limit без буферизации в память; nginx ловит раньше, дешевле).
@@ -485,6 +486,7 @@ Drag-drop всю папку в Web UI в `inbox/`, потом один `cbshome 
 **✅ Реализовано (iter 2.3).** Templates backend + platform default seed закрыты одной итерацией. Финальные показатели: 421 → 450 тестов (+29), 0 регрессий, 8 раундов code review (Round 8: 7 фиксов; Round 9: BUG-DRAFT-01 -- draft перезатирал active bytes; Round 10: 2 QC). New head migration `0031_company_document_templates`.
 
 Реализованные deviation от спеки:
+- **Размещение кода (deviation от изначального §4.1):** код живёт **внутри** `backend/app/modules/companies/`, не в отдельной директории `backend/app/modules/company_doc_templates/`. Конкретные файлы: `companies/templates_staff_router.py` (Staff endpoints), модель `CompanyDocumentTemplate` в `companies/models.py`, логика в `companies/service.py`, reconcile в `scripts/reconcile_templates.py`. Та же логика что и для attachments (§3): не плодить сущности, потому что template имеет смысл только в namespace `Company` (или platform-level через `company_id=NULL`). Где в спеке упоминается "модуль `company_doc_templates`" -- читай как "набор файлов `templates_*.py` в `companies/`".
 - Bootstrap данные положены под `backend/scripts/templates/_default/` (см. §4.9). Изначально спека v0.4 указывала `backend/seed/templates/_default/`, v0.5 -- `backend/scripts/seed_data/templates/_default/`. Финальный путь зафиксирован в v0.6.
 - Draft файлы изолируются в подпапку `.draft-v<N>/` внутри canonical директории kind/lang (§4.9 и `reconcile_templates`). Спека v0.5 не требовала отдельную draft-зону, но без неё заливка draft-версии перезатирала bytes active в MinIO. Фикс пойман Round 9 ревью (BUG-DRAFT-01) и закрыт регрессионным тестом на bytes active после draft-flow.
 
@@ -975,9 +977,27 @@ Post-MVP (вне scope refactor'а):
 
 ## 10. Открытые вопросы / отложенные решения
 
-**Все вопросы закрыты.** Документ decision-locked.
+**Открытые вопросы:**
+
+### Q-R2-01: `investor_language` в Jinja context для agreement templates
+
+Найдено iter 2.5 audit'ом (May 13): `render_agreement_html` не кладёт `investor_language` в Jinja2 context dict. Сейчас это **безопасно**, потому что template уже подобран по языку через snapshotted `template_id` -- сам шаблон знает свой язык по факту существования. Но если Staff-автор кастомного шаблона напишет `{{ investor_language }}` в HTML, сработает `StrictUndefined` и рендер вернёт 500.
+
+Варианты:
+- (а) Положить `investor_language` в context. Шаблоны получают возможность ссылаться на него (например, для вставки "Язык договора: Русский" в HTML). Минимальная цена.
+- (б) Не класть, но **явно задокументировать** в Staff guide список разрешённых placeholders. Из `TEMPLATE_PLACEHOLDERS` в `companies/constants.py` он итак не включён, так что строгий Staff-автор не будет его использовать.
+
+**Решение откладывается** до момента, когда реально появится Staff guide для авторов шаблонов (post-MVP, после iter 2.7 Staff frontend). До этого момента шансы что кто-то напишет `{{ investor_language }}` -- нулевые.
+
+---
 
 **Closed (решения зафиксированы):**
+
+### v0.8 -- code reality lock (iter 2.5 audit)
+
+- **§3 уточнён**: code лежит в `backend/app/modules/companies/`, не в отдельной директории `backend/app/modules/company_attachments/`. Конкретные файлы перечислены (`attachments_router.py`, `attachments_staff_router.py`, `attachments_public_router.py`, модель в `companies/models.py`). Решение -- "не плодить сущности": `CompanyAttachment` не существует без `Company`. Изначальный §3.1 v0.4-v0.7 говорил "новый модуль", но фактически в iter 2.2 был выбран компактный путь -- интеграция в `companies/`. Спека приведена в соответствие с кодом.
+- **§4 уточнён** аналогично: `company_doc_templates/` как отдельная директория не создавался, всё в `companies/templates_*.py` + модель + service. Та же логика "не плодить сущности".
+- **§10 новый Q-R2-01**: `investor_language` в Jinja context для agreement templates. Открыт на post-MVP, не блокер.
 
 ### v0.7 -- iter 2.4 reality lock (purchase docs закрыт)
 

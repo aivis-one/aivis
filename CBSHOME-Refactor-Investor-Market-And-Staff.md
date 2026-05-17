@@ -1,7 +1,7 @@
 # CBSHOME -- Refactor: Investor Market & Staff Shell
 
-**Версия:** 0.5 final / decision-locked
-**Дата:** 11 мая 2026
+**Версия:** 0.6 final / decision-locked
+**Дата:** 13 мая 2026
 
 **Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
 
@@ -592,7 +592,7 @@ class RoadmapItemResponse(BaseModel):
 | `PublicShell.vue` (минимальный shell для public flow) | §1.6 |
 | `useAuthWall()` composable + `RegisterView` redirect-after-auth | §1.6.5 |
 | `frontend/src/api/public.ts` (клиент public-эндпоинтов) | §1.6 |
-| Редирект `/investor/market` -> `/investor/companies` | §1 |
+| Удаление `/investor/market` и `/agent/market` (без redirect, см. §1.7 ниже) | §1 |
 | `STAFF_TABS` -- замена `kyc` на `platform` | §2.2 |
 | Удаление `StaffKYCView.vue` | §2.3 |
 | Расширение `StaffUsersView.vue` (KYC-фильтры + KYC-секция в detail) | §3.2 |
@@ -616,6 +616,11 @@ class RoadmapItemResponse(BaseModel):
 **Все вопросы закрыты.** Документ decision-locked.
 
 **Closed (решения зафиксированы):**
+
+### v0.6 -- legacy URL без redirect
+
+- **§8 уточнён**: было "Редирект `/investor/market` -> `/investor/companies`". Теперь -- "Удаление `/investor/market` и `/agent/market` без redirect". Проект не имеет легаси и не несёт обратной совместимости. Любой bookmark / push-уведомление / external link на старый URL получает catch-all 404. Это сознательное решение, а не недоработка. Clean removal проще и честнее, чем мёртвый redirect, который потребовалось бы тащить через будущие итерации.
+- Соответствующая поправка в frontend `router/index.ts` уже сделана iter 2.5 (комментарий в коде: "REMOVED legacy `/investor/market` and `/agent/market` routes"). Аудит iter 2.5 подтвердил факт, спека приведена в соответствие.
 
 ### v0.5 -- обоснование префикса `/api/v1/public/*`
 
