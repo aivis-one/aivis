@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- LoginView (iter 2.6 batch 2)
+// CBSHOME Frontend -- LoginView (iter 2.6 batch 2 + R22 STYLE-22-01 + STYLE-22-02)
 // =============================================================================
 //
 // Email + password sign-in form.
@@ -24,7 +24,7 @@
 //      to the original behaviour of `router.push('/')`, which
 //      delegates to root.beforeEnter to pick the role dashboard.
 //
-//   2. CLEAR `cbs_referral_code` after successful sign-in.
+//   2. CLEAR the referral key after successful sign-in.
 //      Closes the hygiene gap from iter 2.5 where the referral code
 //      lingered in sessionStorage after an existing user logged in
 //      via a referral link. The referral is one-shot per browser
@@ -40,12 +40,29 @@
 //      the user's eventual sign-up returns to the same path they
 //      were aiming for (via the LoginView fallback after they decide
 //      they actually had an account).
+//
+// R22 STYLE-22-01:
+//   The sessionStorage cleanup uses the shared `REFERRAL_KEY`
+//   constant imported from stores/auth instead of an inline literal.
+//   Eliminates the rename-miss-one trap that having three independent
+//   `'cbs_referral_code'` literals enabled.
+//
+// R22 STYLE-22-02:
+//   goToRegister() catches navigation rejections with the standard
+//   NavigationFailure filter -- benign types (duplicated / cancelled
+//   / aborted) stay silent, real issues log. Symmetry with
+//   PublicShell / RegisterView / useAuthWall.
 // =============================================================================
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
+import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
@@ -82,7 +99,21 @@ function getValidatedNext(): string | null {
 function goToRegister(): void {
   // Forward the entire `?next=...` query so the visitor's intended
   // destination survives the login <-> register pivot.
-  void router.push({ name: 'register', query: route.query })
+  router
+    .push({ name: 'register', query: route.query })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent (see
+      // useAuthWall R20 STYLE-20-01 for the rationale). Real
+      // navigation issues log with a contextual prefix.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[LoginView] navigation to register failed:', err)
+    })
 }
 
 async function handleLogin(): Promise<void> {
@@ -97,9 +128,12 @@ async function handleLogin(): Promise<void> {
     await authStore.loginViaEmail(email.value, password.value)
 
     // Hygiene: clear any stale referral code lingering in this tab
-    // (the visitor signed in to an existing account, not registered;
-    // FP-13's one-shot guarantee applies to either terminal flow).
-    sessionStorage.removeItem('cbs_referral_code')
+    // (the visitor signed in to an existing account; FP-13's one-shot
+    // guarantee applies to either terminal flow). The store also
+    // clears it inside loginViaEmail; this is belt-and-braces for the
+    // case where a future refactor moves the store-side cleanup, and
+    // it's a free op when the slot is already empty.
+    sessionStorage.removeItem(REFERRAL_KEY)
 
     // Post-auth redirect. If the visitor was bounced here from a
     // protected URL or from a public CTA, return them. Otherwise let

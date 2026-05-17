@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- RegisterView (iter 2.6 batch 2)
+// CBSHOME Frontend -- RegisterView (iter 2.6 batch 2 + R22 STYLE-22-02)
 // =============================================================================
 //
 // Email + password + confirmation registration form. Reads the
@@ -28,12 +28,24 @@
 //      flow; they can navigate back to the public page via the
 //      browser back stack or the URL bar. If a real UX pain point
 //      surfaces, we can wire it later. See iter 2.6 plan §A4.
+//
+// R22 STYLE-22-02:
+//   goToLogin() catches navigation rejections with the standard
+//   NavigationFailure filter -- benign types (duplicated / cancelled
+//   / aborted) stay silent, real issues log. Matches the pattern
+//   established by useAuthWall (R20 STYLE-20-01) and now applied
+//   across all router.push() call-sites that branch on user action.
 // =============================================================================
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
+import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
@@ -52,7 +64,21 @@ const error = ref('')
 function goToLogin(): void {
   // Forward `?next=...` so the eventual sign-in returns the visitor
   // to the same public page they were aiming for.
-  void router.push({ name: 'login', query: route.query })
+  router
+    .push({ name: 'login', query: route.query })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent (see
+      // useAuthWall R20 STYLE-20-01 for the rationale). Real
+      // navigation issues log with a contextual prefix.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[RegisterView] navigation to login failed:', err)
+    })
 }
 
 async function handleRegister(): Promise<void> {
@@ -73,7 +99,7 @@ async function handleRegister(): Promise<void> {
     return
   }
 
-  const referralCode = sessionStorage.getItem('cbs_referral_code')
+  const referralCode = sessionStorage.getItem(REFERRAL_KEY)
 
   try {
     await authStore.registerViaEmail(email.value, password.value, referralCode)

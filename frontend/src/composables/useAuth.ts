@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useAuth Composable (iter 2.6 batch 2)
+// CBSHOME Frontend -- useAuth Composable (iter 2.6 batch 2 + R22 STYLE-22-01)
 // =============================================================================
 //
 // Combines platform + auth store into a single init flow.
@@ -15,30 +15,38 @@
 //        (b) Telegram start_param via platform.getStartParam() -- unchanged.
 //        (c) URL path: `/r/<code>` (R1 referral patch §A6) -- NEW.
 //      The path match is a sibling source: the visitor types
-//          cbshome.org/r/AGENT_CODE in their browser, captureReferral-
-//          FromPath() is called from the /r/:code beforeEnter and also
-//      from this initAuth-time scan to cover the case where the app
-//      hot-reloads on the /r/... URL before the router boots.
+//      cbshome.org/r/AGENT_CODE in their browser, captureReferralFromPath()
+//      is called from the /r/:code beforeEnter and also from this
+//      initAuth-time scan to cover the case where the app hot-reloads
+//      on the /r/... URL before the router boots.
 //      FIRST-WINS guard (FP-13) is preserved: an existing
 //      sessionStorage code blocks all three sources.
 //
 //   2. captureReferralFromPath(code) is exported so router.index.ts
 //      can call it from the /r/:code beforeEnter hook. The export is
 //      a thin wrapper around the same sessionStorage write with the
-//          first-wins guard -- single source of truth, no risk of the
+//      first-wins guard -- single source of truth, no risk of the
 //      hook and the initAuth scan disagreeing on the storage shape.
+//
+// iter 2.6 R22 STYLE-22-01:
+//   REFERRAL_KEY now lives in stores/auth.ts and is imported here.
+//   The store is the natural owner -- three of the four sessionStorage
+//   call-sites (one per login flow) live there. Importing here also
+//   avoids a circular dependency: this module already imports
+//   useAuthStore from stores/auth, so an additional named import from
+//   the same module is a straight DAG edge, not a cycle.
 // =============================================================================
 
 import { ref, watch } from 'vue'
 
 import { platform } from '@/platform'
-import { useAuthStore } from '@/stores/auth'
-
-const REFERRAL_KEY = 'cbs_referral_code'
+import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 
 // Marketing referral path: `/r/AGENT_CODE`. Matches the route
 // registered as `referral-link` in router/index.ts; the regex is the
 // authoritative source for what counts as a valid code character set.
+// The router uses the same character class as a path constraint
+// (`/r/:code([A-Za-z0-9_-]+)`) so the two stay in sync.
 const REFERRAL_PATH_RE = /^\/r\/([A-Za-z0-9_-]+)\/?$/
 
 // ---------------------------------------------------------------------------

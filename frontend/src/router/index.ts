@@ -1,6 +1,7 @@
 // =============================================================================
 // CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 + F4.3 B2 + F4.4 B3
-//                              + iter 2.5 batch 9 + iter 2.6 batch 2)
+//                              + iter 2.5 batch 9 + iter 2.6 batch 2
+//                              + iter 2.6 R22 FE-22-01)
 // =============================================================================
 //
 // Full route map. Shell components as layout wrappers.
@@ -55,22 +56,25 @@
 //       /public/companies/:id/attachments/:attId          -> public-attachment-landing
 //       /public/products/:id                              -> public-product-detail
 //     All children carry `meta.public: true` (via parent shell merge),
-//     so globalGuard lets unauthenticated visitors through. Views
-//     land in Batch 3-5; lazy imports refer to files that do not exist
-//     yet -- a visitor opening /public/companies before Batch 3 lands
-//     will see a dynamic-import error, intentional intermediate state.
+//     so globalGuard lets unauthenticated visitors through.
 //   - ADDED /r/:code referral capture route (Referral Patch §A7):
 //     `beforeEnter` calls captureReferralFromPath() (useAuth.ts) and
 //     redirects to /public/companies. No UI component.
-//   - root.beforeEnter now redirects unauthenticated visitors to
-//     `/login` instead of relying on the empty string from
-//     getRoleDashboard(null). Previously this worked because
-//     getRoleDashboard returns '/login' for null role; we keep that
-//     contract but also defensively log if we ever see a different
-//     fallback.
 //   - globalGuard propagates the requested URL as `?next=` when
 //     redirecting an unauthenticated visitor to /login. LoginView
 //     reads `next` and `router.replace`s back to it post-auth (§A4).
+//
+// iter 2.6 R22 FE-22-01:
+//   /r/:code path now carries a regex constraint matching the same
+//   character class as REFERRAL_PATH_RE in useAuth.ts -- letters,
+//   digits, underscore, hyphen. Without the constraint, paths like
+//   /r/../../foo were matched by the route, calling
+//   captureReferralFromPath("../../foo") and writing junk into
+//   sessionStorage. The constraint pushes malformed URLs to the
+//   catch-all (/404). The two definitions stay in sync conceptually,
+//   not via runtime sharing -- vue-router accepts only string regex
+//   syntax in path segments and useAuth.ts needs a real RegExp for
+//   `exec()` over `window.location.pathname` in cold-reload scans.
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -459,10 +463,7 @@ export const router = createRouter({
     // All children inherit `meta.public: true` from the parent shell
     // record (vue-router merges meta) so globalGuard pre-empts the
     // unauthenticated-redirect branch and the visitor reaches the
-    // view directly. The view files land in Batch 3-5; until then the
-    // lazy imports refer to absent files and a visitor opening
-    // /public/companies will see a dynamic-import error. That is the
-    // accepted intermediate state.
+    // view directly.
     // -----------------------------------------------------------------
     {
       path: '/public',
@@ -515,9 +516,19 @@ export const router = createRouter({
     // first-wins, and they can browse the storefront just like an
     // anonymous visitor (the auth wall logic kicks in only at the
     // purchase CTA).
+    //
+    // R22 FE-22-01: the path segment carries a regex constraint
+    // matching [A-Za-z0-9_-]+. The same character class is used by
+    // REFERRAL_PATH_RE in useAuth.ts for cold-reload path scans, so
+    // both code paths reject the same shape of malformed input.
+    // Without the constraint, `/r/../../foo` matched this route, fed
+    // junk to captureReferralFromPath, and stored it in sessionStorage
+    // -- harmless at the backend (it max_length-rejects on registration)
+    // but visually leaks attribution noise into devtools and into the
+    // referral lookup logs.
     // -----------------------------------------------------------------
     {
-      path: '/r/:code',
+      path: '/r/:code([A-Za-z0-9_-]+)',
       name: 'referral-link',
       meta: { public: true },
       // A component is technically optional for a route that always

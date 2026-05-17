@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicShell (iter 2.6 R1 §1.6, Block A1)
+// CBSHOME Frontend -- PublicShell (iter 2.6 R1 §1.6, Block A1
+//                                   + R22 STYLE-22-02)
 // =============================================================================
 //
 // Layout wrapper for /public/* routes. The anonymous-storefront
@@ -28,10 +29,24 @@
 //   The header pads `env(safe-area-inset-top)` so the storefront looks
 //   right on notched devices. No bottom inset to worry about -- there
 //   is no fixed bottom bar.
+//
+// R22 STYLE-22-02:
+//   goToLogin() catches navigation rejections with the same filter
+//   used by useAuthWall (R20 STYLE-20-01): NavigationFailureType
+//   `duplicated` / `cancelled` / `aborted` are benign (rapid taps,
+//   guard pre-emption) and stay silent; anything else logs to the
+//   console with a contextual prefix. Previously `void router.push()`
+//   swallowed every rejection -- a missing route, a thrown guard,
+//   anything -- with no diagnostic surface.
 // =============================================================================
 
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import CbsLogo from '@/components/ui/CbsLogo.vue'
@@ -52,10 +67,25 @@ const nextQuery = computed<string | undefined>(() => {
 })
 
 function goToLogin(): void {
-  void router.push({
-    name: 'login',
-    query: nextQuery.value ? { next: nextQuery.value } : undefined,
-  })
+  router
+    .push({
+      name: 'login',
+      query: nextQuery.value ? { next: nextQuery.value } : undefined,
+    })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types: double-tap / guard
+      // pre-emption / abort by a newer navigation. Keep these
+      // silent so real issues (unknown route name, thrown guard,
+      // ...) remain visible in the console.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[PublicShell] navigation to login failed:', err)
+    })
 }
 </script>
 

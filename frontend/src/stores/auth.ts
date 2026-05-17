@@ -42,7 +42,7 @@
 //   header for the why-a-helper rationale.
 //
 // iter 2.6 batch 2 -- referral cleanup on email login:
-//   loginViaEmail() now clears `cbs_referral_code` from sessionStorage
+//   loginViaEmail() now clears the referral key from sessionStorage
 //   on success, matching registerViaEmail() and loginViaTelegram().
 //   Previously this was the only path that did not, so a visitor who
 //   followed a referral link and then logged into an EXISTING account
@@ -51,6 +51,17 @@
 //   inconsistent. NOT cleared from _clearSession(): a 401 / logout
 //   should preserve the referral so the visitor can register a fresh
 //   account under the same agent without losing attribution.
+//
+// iter 2.6 R22 STYLE-22-01:
+//   REFERRAL_KEY is exported from this module as the single source of
+//   truth. composables/useAuth.ts imports it (and uses it for the
+//   first-wins guard + capture writes); views/auth/LoginView.vue
+//   imports it for the post-sign-in cleanup. Living here avoids the
+//   circular-import shape that would arise if the constant lived in
+//   useAuth.ts (useAuth -> stores/auth for useAuthStore, and back
+//   would close the cycle). The auth store is the natural owner since
+//   it does three of the four call-sites (clearing on each successful
+//   login flow).
 // =============================================================================
 
 import { ref, computed } from 'vue'
@@ -71,7 +82,18 @@ import { setLocale } from '@/i18n'
 import { resetAllDataStores } from '@/stores/sessionReset'
 
 const TOKEN_KEY = 'cbs_token'
-const REFERRAL_KEY = 'cbs_referral_code'
+
+/**
+ * sessionStorage key for the one-shot referral code captured per
+ * browser-tab session (FP-13 first-wins). Single source of truth --
+ * imported by composables/useAuth.ts for the capture write and by
+ * views/auth/LoginView.vue for post-sign-in cleanup.
+ *
+ * NOT removed from _clearSession(): a 401 / logout in a tab that
+ * arrived via a referral link should preserve the credit so the
+ * visitor can register a fresh account under the same agent.
+ */
+export const REFERRAL_KEY = 'cbs_referral_code'
 
 export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------
@@ -144,13 +166,8 @@ export const useAuthStore = defineStore('auth', () => {
     // us drop silently instead of repopulating the cleared state.
     // No circular import risk: see sessionReset.ts header.
     resetAllDataStores()
-    // NOTE: we deliberately do NOT remove `cbs_referral_code` here.
-    // A 401 / explicit logout in a tab that arrived via a referral
-    // link should preserve the credit so the visitor can register a
-    // fresh account under the same agent without losing attribution.
-    // FP-13 first-wins guarantees the code stays one-shot per tab
-    // (cleared by registerViaEmail / loginViaEmail / loginViaTelegram
-    // on success, and naturally by tab close).
+    // NOTE: see REFERRAL_KEY JSDoc for why we deliberately do NOT
+    // remove the referral key here.
   }
 
   // ---------------------------------------------------------------------------
