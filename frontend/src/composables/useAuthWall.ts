@@ -47,9 +47,23 @@
 //   Calling requireAuth() on an authenticated visitor is a pure check
 //   -- no navigation, no toast, no flag flip. The caller's `return`
 //   path is fully responsible for what happens next.
+//
+// R20 FIX (STYLE-20-01).
+//   router.push() returns a Promise that rejects on navigation failures.
+//   Previously this Promise was discarded via `void`, silencing real
+//   bugs (missing route, guard rejection, ...) as well as benign ones.
+//   We now `.catch` it and log only the real bugs. NavigationFailure
+//   of type `duplicated` / `cancelled` / `aborted` is expected on
+//   rapid double-tap or guard pre-emption and would otherwise drown
+//   out useful diagnostics.
 // =============================================================================
 
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 
@@ -70,13 +84,28 @@ export function useAuthWall() {
    */
   function requireAuth(action: string): boolean {
     if (auth.isAuthenticated) return true
-    void router.push({
-      name: 'register',
-      query: {
-        next: route.fullPath,
-        intent: action,
-      },
-    })
+    router
+      .push({
+        name: 'register',
+        query: {
+          next: route.fullPath,
+          intent: action,
+        },
+      })
+      .catch((err: unknown) => {
+        // Benign vue-router rejection types: double-tap / guard
+        // pre-emption / abort by a newer navigation. Keep these
+        // silent so real issues (unknown route name, thrown guard,
+        // ...) remain visible in the console.
+        if (
+          isNavigationFailure(err, NavigationFailureType.duplicated)
+          || isNavigationFailure(err, NavigationFailureType.cancelled)
+          || isNavigationFailure(err, NavigationFailureType.aborted)
+        ) {
+          return
+        }
+        console.error('[useAuthWall] navigation to register failed:', err)
+      })
     return false
   }
 

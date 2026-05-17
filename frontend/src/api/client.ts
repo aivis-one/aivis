@@ -21,6 +21,12 @@
 // is undefined for non-429 responses or when the header is missing /
 // not a positive integer. Existing `instanceof ApiResponseError`
 // checks compile and run unchanged -- the new field is purely additive.
+//
+// iter 2.6 Batch 1 R20 fix (FE-20-01): parseRetryAfterHeader() is now
+// exported so api/attachments.ts (which speaks fetch() directly to
+// reach the 302-redirected download endpoint) can reuse the same
+// parser instead of inlining a copy. Single source of truth if the
+// parsing rules ever change (e.g. add HTTP-date support).
 // =============================================================================
 
 import { i18n } from '@/i18n'
@@ -159,8 +165,11 @@ function extractErrorMessage(status: number, data: unknown): string {
  *
  * Backend emits delta-seconds only (see app/main.py CBSError handler);
  * the HTTP-date variant of Retry-After is out of scope.
+ *
+ * Exported (R20 FE-20-01) so api/attachments.ts can reuse the same
+ * parser inside its raw-fetch download path. Single source of truth.
  */
-function parseRetryAfterHeader(response: Response): number | undefined {
+export function parseRetryAfterHeader(response: Response): number | undefined {
   const raw = response.headers.get('Retry-After')
   if (raw === null) return undefined
   // Number(raw) is too permissive ("12abc" -> NaN, but " 12 " -> 12);

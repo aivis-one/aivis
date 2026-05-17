@@ -69,6 +69,12 @@
 //   and stays alive across response.blob(). Both headers-phase and
 //   body-phase stalls map to ApiTimeoutError. 30s window for downloads
 //   (vs 15s for JSON) -- a large PDF over slow 3G needs the slack.
+//
+// R20 FIX (FE-20-01):
+//   The 429 branch inside _downloadBlob now imports `parseRetryAfterHeader`
+//   from api/client.ts rather than reimplementing the parser inline.
+//   Single source of truth for Retry-After parsing rules; if we ever
+//   add HTTP-date support, one edit covers both call sites.
 // =============================================================================
 
 import {
@@ -78,6 +84,7 @@ import {
   ApiTimeoutError,
   api,
   getAuthToken,
+  parseRetryAfterHeader,
 } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
 import type { AttachmentResponse } from '@/api/types'
@@ -231,16 +238,9 @@ async function _downloadBlob(
       } catch {
         // Non-JSON body -- keep the `HTTP <status>` default.
       }
-      let retryAfter: number | undefined
-      if (response.status === 429) {
-        const raw = response.headers.get('Retry-After')
-        if (raw !== null) {
-          const parsed = parseInt(raw, 10)
-          if (!Number.isNaN(parsed) && parsed > 0) {
-            retryAfter = parsed
-          }
-        }
-      }
+      // R20 FE-20-01: shared parser instead of an inline copy.
+      const retryAfter =
+        response.status === 429 ? parseRetryAfterHeader(response) : undefined
       throw new ApiResponseError(response.status, detail, retryAfter)
     }
 
