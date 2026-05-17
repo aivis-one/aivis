@@ -891,6 +891,13 @@
         "optionsSoldPercent": "Sold %",
         "priceGrowth90d": "Price 90d"
       },
+      "sectionDocuments": "Documents",
+      "documents": {
+        "languageFilterAll": "All languages",
+        "errorTitle": "Couldn't load documents",
+        "errorRetry": "Try again",
+        "downloadError": "Couldn't download. Try again."
+      },
       "sectionProducts": "Products",
       "products": {
         "empty": "No products available yet",
@@ -905,6 +912,9 @@
       "title": "Document",
       "backLink": "Back to company",
       "download": "Download",
+      "errorTitle": "Couldn't load document",
+      "errorRetry": "Try again",
+      "downloadError": "Couldn't download. Try again.",
       "notFound": {
         "title": "Document unavailable",
         "subtitle": "This document may have been removed or made private."

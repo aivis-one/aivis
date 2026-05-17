@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicCompanyOverviewView (iter 2.6 batch 3, R1 §1.6.1)
+// CBSHOME Frontend -- PublicCompanyOverviewView (iter 2.6 batch 3, R1 §1.6.1
+//                                                 + iter 2.6 batch 4 §7.2)
 // =============================================================================
 //
 // Anonymous storefront company profile. Public counterpart to the
@@ -16,12 +17,10 @@
 //      visitor scrolls through the overview, reads the pitch, taps
 //      a product card to commit. CompanyOverview's job is to inform,
 //      not to sell.
-//   3. NO products section yet -- it lands in Batch 5. The view
-//      ships with hero + stats + roadmap only. When products arrive,
-//      they slot in after roadmap (R1 §1.6.1).
-//   4. NO attachments section -- it lands in Batch 4 as a separate
-//      PublicAttachmentsSection. Until then the documents block from
-//      the investor side is omitted.
+//   3. NO products section yet -- it lands in Batch 5. When it
+//      arrives, it slots in after the documents section (R1 §1.6.1).
+//   4. Documents section is wired via <PublicAttachmentsSection>
+//      (Batch 4) -- self-hiding contract, no v-if needed.
 //   5. NO back button. Browser back covers the list <-> overview
 //      navigation; a deep-linked visitor simply closes the tab.
 //
@@ -65,6 +64,7 @@ import { useI18n } from 'vue-i18n'
 import { Building } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import PublicAttachmentsSection from '@/components/shared/PublicAttachmentsSection.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
@@ -293,8 +293,15 @@ function onRoadmapPostClick(_postId: string): void {
         </section>
 
         <!--
+          Public attachments section (iter 2.6 Batch 4, R2 §7.2).
+          Component self-hides when the list is empty after a successful
+          fetch -- no v-if guard here. The auth-flow CompanyOverviewView
+          uses the same self-hide contract for its AttachmentsSection.
+        -->
+        <PublicAttachmentsSection :company-id="companyId" />
+
+        <!--
           Products inline section: lands in Batch 5.
-          AttachmentsSection (public variant): lands in Batch 4.
           No sticky CTA -- purchase lives on product detail (Batch 6).
         -->
       </main>
