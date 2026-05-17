@@ -34,19 +34,21 @@
 //   `intent` is a forward-compatible passthrough (iter 2.6 does not
 //   consume it).
 //
-//   Authenticated visitor (sharing-link sceneario -- agent sends a
-//   public URL to a registered investor): tapping "See all products"
-//   routes directly to the authenticated company-products view under
-//   the visitor's role-appropriate shell. agent -> agent-company-products,
-//   everyone else -> investor-company-products (investor/staff/company
-//   roles all land on the investor-side view; staff and company are
-//   rare edge cases that work because the view itself doesn't enforce
-//   role beyond the shell's `roles` meta).
+//   Authenticated investor / agent (share-link scenario -- agent
+//   sends a public URL to a registered user): tapping "See all
+//   products" routes directly to the authenticated company-products
+//   view under the visitor's role-appropriate shell. agent ->
+//   agent-company-products, investor -> investor-company-products.
 //
-//   Inline role check (no helper) because this is the only public-flow
-//   site that needs role-aware authenticated routing, and a 3-line
-//   inline conditional is clearer than a one-off helper hidden in
-//   utils.
+//   Authenticated staff / company / other: the CTA is HIDDEN, not
+//   broken. The router's meta.roles guards on /investor/* (roles:
+//   [investor, agent]) and /agent/* (roles: [agent]) would reject
+//   any cross-role push with a NavigationFailure 'aborted', which
+//   our standard catch-filter would swallow silently -- the visitor
+//   would see a button that does nothing on tap. Hiding the CTA for
+//   these roles via the canNavigateToProducts computed (R26 FE-26-01
+//   fix) is the right resolution: a CTA that cannot fulfil its
+//   promise should not appear in the first place.
 //
 // CTA VISIBILITY.
 //   Only when `total > items.length` -- i.e. when there are more
@@ -147,6 +149,25 @@ const hasMoreThanShown = computed<boolean>(
   () => total.value > productsStore.items.length,
 )
 
+/**
+ * Whether the visitor's auth state has somewhere to navigate to when
+ * tapping "See all products". Anonymous visitors always do (they go
+ * to /register via the auth wall). Authenticated visitors only do
+ * when their role can enter the target route -- /investor/* admits
+ * investor + agent, /agent/* admits agent only. staff / company /
+ * other authenticated roles have no matching route, so the CTA
+ * stays hidden for them (R26 FE-26-01 fix). Without this guard,
+ * tapping the button would push to investor-company-products and
+ * get bounced by globalGuard's meta.roles check, producing a
+ * NavigationFailure 'aborted' that our standard filter swallows --
+ * a silent dead button. Better to not show it at all.
+ */
+const canNavigateToProducts = computed<boolean>(() => {
+  if (!authStore.isAuthenticated) return true
+  const role = authStore.role
+  return role === 'investor' || role === 'agent'
+})
+
 const ctaLabel = computed<string>(() =>
   authStore.isAuthenticated
     ? t('public.companyOverview.products.seeAllAuth')
@@ -182,39 +203,56 @@ function openProduct(product: PublicProductResponse): void {
 }
 
 function onSeeAllClick(): void {
-  if (authStore.isAuthenticated) {
-    // Share-link scenario: a registered investor follows a public URL
-    // sent by an agent. Skip the register screen entirely and route
-    // straight to the authenticated products list under the visitor's
-    // shell.
-    const targetRoute =
-      authStore.role === 'agent'
-        ? 'agent-company-products'
-        : 'investor-company-products'
-    router
-      .push({
-        name: targetRoute,
-        params: { id: props.companyId },
-      })
-      .catch((err: unknown) => {
-        if (
-          isNavigationFailure(err, NavigationFailureType.duplicated)
-          || isNavigationFailure(err, NavigationFailureType.cancelled)
-          || isNavigationFailure(err, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error(
-          '[PublicProductsSection] navigation to auth products failed:',
-          err,
-        )
-      })
+  if (!authStore.isAuthenticated) {
+    // Anonymous: requireAuth pushes to /register?next=...&intent=...
+    // and returns false (we don't act on the return -- the navigation
+    // is the action).
+    requireAuth('explore_products')
     return
   }
-  // Anonymous: requireAuth pushes to /register?next=...&intent=...
-  // and returns false (we don't act on the return -- the navigation
-  // is the action).
-  requireAuth('explore_products')
+  // Share-link scenario: a registered visitor follows a public URL.
+  // Route straight to the authenticated products list under the
+  // visitor's shell, role-appropriate. The CTA is hidden in the
+  // template for roles without a matching route (canNavigateTo-
+  // Products guard, R26 FE-26-01) so this branch should be
+  // unreachable for staff / company / other -- the explicit
+  // role check below is defence-in-depth that no-ops cleanly if a
+  // future refactor forgets the template guard.
+  const role = authStore.role
+  let targetRoute: 'agent-company-products' | 'investor-company-products'
+  if (role === 'agent') {
+    targetRoute = 'agent-company-products'
+  } else if (role === 'investor') {
+    targetRoute = 'investor-company-products'
+  } else {
+    // No matching authenticated route for this role; mirror the
+    // hidden-CTA contract by doing nothing. If we reach here the
+    // CTA was somehow shown despite canNavigateToProducts -- a bug
+    // worth a console.warn so it surfaces in dev.
+    console.warn(
+      '[PublicProductsSection] See-all CTA tapped for unsupported role:',
+      role,
+    )
+    return
+  }
+  router
+    .push({
+      name: targetRoute,
+      params: { id: props.companyId },
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[PublicProductsSection] navigation to auth products failed:',
+        err,
+      )
+    })
 }
 
 function onRetry(): void {
@@ -257,7 +295,10 @@ function onRetry(): void {
         />
       </div>
 
-      <div v-if="hasMoreThanShown" class="pps__cta">
+      <div
+        v-if="hasMoreThanShown && canNavigateToProducts"
+        class="pps__cta"
+      >
         <CButton variant="primary" @click="onSeeAllClick">
           {{ ctaLabel }}
         </CButton>
