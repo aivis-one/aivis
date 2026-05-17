@@ -871,12 +871,26 @@
       "loginButton": "Sign in"
     },
     "companyList": {
+      "title": "Discover companies",
+      "subtitle": "Explore companies raising on CBS HOME.",
+      "errorTitle": "Couldn't load companies",
+      "errorRetry": "Try again",
       "empty": {
         "title": "No active companies yet",
         "subtitle": "Check back soon as new companies join the platform."
       }
     },
     "companyOverview": {
+      "notFound": "Company not found",
+      "errorTitle": "Couldn't load company",
+      "errorRetry": "Try again",
+      "sectionRoadmap": "Roadmap",
+      "stats": {
+        "poolTotalOptions": "Total options",
+        "optionsSold": "Options sold",
+        "optionsSoldPercent": "Sold %",
+        "priceGrowth90d": "Price 90d"
+      },
       "sectionProducts": "Products",
       "products": {
         "empty": "No products available yet",

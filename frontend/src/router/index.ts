@@ -1,7 +1,7 @@
 // =============================================================================
 // CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 + F4.3 B2 + F4.4 B3
 //                              + iter 2.5 batch 9 + iter 2.6 batch 2
-//                              + iter 2.6 R22 FE-22-01)
+//                              + iter 2.6 R22 FE-22-01 + iter 2.6 batch 3)
 // =============================================================================
 //
 // Full route map. Shell components as layout wrappers.
@@ -65,16 +65,21 @@
 //     reads `next` and `router.replace`s back to it post-auth (§A4).
 //
 // iter 2.6 R22 FE-22-01:
-//   /r/:code path now carries a regex constraint matching the same
+//   /r/:code path carries a regex constraint matching the same
 //   character class as REFERRAL_PATH_RE in useAuth.ts -- letters,
 //   digits, underscore, hyphen. Without the constraint, paths like
 //   /r/../../foo were matched by the route, calling
 //   captureReferralFromPath("../../foo") and writing junk into
 //   sessionStorage. The constraint pushes malformed URLs to the
-//   catch-all (/404). The two definitions stay in sync conceptually,
-//   not via runtime sharing -- vue-router accepts only string regex
-//   syntax in path segments and useAuth.ts needs a real RegExp for
-//   `exec()` over `window.location.pathname` in cold-reload scans.
+//   catch-all (/404).
+//
+// iter 2.6 batch 3:
+//   - PublicShell moved from `@/layouts/PublicShell.vue` to
+//     `@/components/layout/PublicShell.vue`. The other four shells
+//     (InvestorShell, AgentShell, CompanyShell, StaffShell) live in
+//     components/layout/; PublicShell joining them gives the codebase
+//     one consistent answer for where shell components live.
+//     `frontend/src/layouts/` is removed.
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -464,10 +469,13 @@ export const router = createRouter({
     // record (vue-router merges meta) so globalGuard pre-empts the
     // unauthenticated-redirect branch and the visitor reaches the
     // view directly.
+    //
+    // iter 2.6 batch 3: PublicShell relocated to components/layout/
+    // (alongside the four authenticated shells).
     // -----------------------------------------------------------------
     {
       path: '/public',
-      component: () => import('@/layouts/PublicShell.vue'),
+      component: () => import('@/components/layout/PublicShell.vue'),
       meta: { public: true },
       children: [
         {
@@ -521,11 +529,6 @@ export const router = createRouter({
     // matching [A-Za-z0-9_-]+. The same character class is used by
     // REFERRAL_PATH_RE in useAuth.ts for cold-reload path scans, so
     // both code paths reject the same shape of malformed input.
-    // Without the constraint, `/r/../../foo` matched this route, fed
-    // junk to captureReferralFromPath, and stored it in sessionStorage
-    // -- harmless at the backend (it max_length-rejects on registration)
-    // but visually leaks attribution noise into devtools and into the
-    // referral lookup logs.
     // -----------------------------------------------------------------
     {
       path: '/r/:code([A-Za-z0-9_-]+)',

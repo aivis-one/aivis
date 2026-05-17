@@ -1,0 +1,145 @@
+<script setup lang="ts">
+// =============================================================================
+// CBSHOME Frontend -- PublicShell (iter 2.6 R1 §1.6, Block A1
+//                                   + iter 2.6 batch 3 relocation)
+// =============================================================================
+//
+// Layout wrapper for /public/* routes. Anonymous-storefront counterpart
+// to InvestorShell / AgentShell / CompanyShell / StaffShell.
+//
+// LOCATION (iter 2.6 batch 3).
+//   Originally written to `frontend/src/layouts/PublicShell.vue` in
+//   batch 2 -- an honest oversight since the four authenticated
+//   shells already live under `frontend/src/components/layout/`. Batch
+//   3 moves this file alongside them so the "where do shells live"
+//   question has one answer for the whole codebase.
+//
+// COMPOSITION.
+//   Same building blocks as InvestorShell: <CHeader> on top, scrollable
+//   <main> with <RouterView />, <CToast> sibling. The differences with
+//   InvestorShell:
+//     - No <CTabBar>. Anonymous visitors have no tabs to navigate
+//       between; the storefront is a linear browse flow (list ->
+//       company -> product -> auth wall on Buy).
+//     - The CHeader carries a "Sign in" CTA in its `right` slot,
+//       routed to /login with `?next=<current path>` so the visitor
+//       returns to the same public page post-auth (LoginView reads
+//       `next` and replace()s, iter 2.6 Batch 2 §A4).
+//   CHeader prop defaults (showBack=false, showLogo=true) match what
+//   InvestorShell uses -- no overrides needed.
+//
+// NO BACK BUTTON IN THE HEADER.
+//   Public views do not pass `:show-back="true"` either. Browser back
+//   handles the list <-> overview navigation. A deep-linked visitor
+//   simply closes the tab. Adding a back arrow would clutter the
+//   marketing surface without paying for itself.
+//
+// R22 STYLE-22-02 (preserved).
+//   goToLogin() filters NavigationFailure types (duplicated /
+//   cancelled / aborted) and logs anything else. Same pattern as
+//   LoginView / RegisterView / useAuthWall.
+// =============================================================================
+
+import { computed } from 'vue'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
+import { useI18n } from 'vue-i18n'
+
+import CHeader from '@/components/layout/CHeader.vue'
+import CToast from '@/components/ui/CToast.vue'
+
+const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
+
+// Always include the current public path as ?next= so LoginView can
+// replace() back to it post-auth. Exclude the root edge case (a user
+// at `/` won't hit PublicShell since /public/* is the entry point,
+// but defence-in-depth: empty `next` is the safer baseline).
+const nextQuery = computed<string | undefined>(() => {
+  const path = route.fullPath
+  if (!path || path === '/') return undefined
+  return path
+})
+
+function goToLogin(): void {
+  router
+    .push({
+      name: 'login',
+      query: nextQuery.value ? { next: nextQuery.value } : undefined,
+    })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent (see
+      // useAuthWall R20 STYLE-20-01 for the rationale). Real
+      // navigation issues log with a contextual prefix.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[PublicShell] navigation to login failed:', err)
+    })
+}
+</script>
+
+<template>
+  <div class="shell">
+    <CHeader>
+      <template #right>
+        <button
+          type="button"
+          class="shell__login"
+          @click="goToLogin"
+        >
+          {{ t('public.shell.loginButton') }}
+        </button>
+      </template>
+    </CHeader>
+    <main class="shell__content">
+      <RouterView />
+    </main>
+    <CToast />
+  </div>
+</template>
+
+<style scoped>
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.shell__content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.shell__login {
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  background: var(--accent);
+  color: white;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.shell__login:hover {
+  opacity: 0.9;
+}
+
+.shell__login:active {
+  opacity: 0.8;
+}
+</style>
