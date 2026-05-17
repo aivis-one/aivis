@@ -901,7 +901,10 @@
       "sectionProducts": "Products",
       "products": {
         "empty": "No products available yet",
-        "seeAll": "Register to see all products"
+        "seeAll": "Register to see all products",
+        "seeAllAuth": "See all products",
+        "errorTitle": "Couldn't load products",
+        "errorRetry": "Try again"
       },
       "purchaseCTA": "Register to buy"
     },

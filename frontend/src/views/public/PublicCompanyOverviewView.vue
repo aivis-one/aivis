@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // =============================================================================
 // CBSHOME Frontend -- PublicCompanyOverviewView (iter 2.6 batch 3, R1 §1.6.1
-//                                                 + iter 2.6 batch 4 §7.2)
+//                                                 + iter 2.6 batch 4 §7.2
+//                                                 + iter 2.6 batch 5 products)
 // =============================================================================
 //
 // Anonymous storefront company profile. Public counterpart to the
@@ -17,12 +18,20 @@
 //      visitor scrolls through the overview, reads the pitch, taps
 //      a product card to commit. CompanyOverview's job is to inform,
 //      not to sell.
-//   3. NO products section yet -- it lands in Batch 5. When it
-//      arrives, it slots in after the documents section (R1 §1.6.1).
+//   3. Products section is wired via <PublicProductsSection> (Batch 5)
+//      -- teaser only (first page), with a "Register to see all" CTA
+//      that branches on auth state. Self-hiding contract, no v-if
+//      needed.
 //   4. Documents section is wired via <PublicAttachmentsSection>
 //      (Batch 4) -- self-hiding contract, no v-if needed.
 //   5. NO back button. Browser back covers the list <-> overview
 //      navigation; a deep-linked visitor simply closes the tab.
+//
+// LAYOUT ORDER (R1 §1.6.1).
+//   Hero -> Stats -> Roadmap -> Products -> Documents.
+//   Each non-hero/stats section self-hides when empty, so a company
+//   with no roadmap / no products / no documents collapses gracefully
+//   to just hero + stats.
 //
 // DATA SOURCE.
 //   Local state via getCompany(id) -- single round-trip to
@@ -65,6 +74,7 @@ import { Building } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
 import PublicAttachmentsSection from '@/components/shared/PublicAttachmentsSection.vue'
+import PublicProductsSection from '@/components/shared/PublicProductsSection.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
@@ -293,6 +303,13 @@ function onRoadmapPostClick(_postId: string): void {
         </section>
 
         <!--
+          Public products teaser (iter 2.6 Batch 5, R1 §1.6.1).
+          Component self-hides when the company has no products after
+          a successful fetch -- no v-if guard here.
+        -->
+        <PublicProductsSection :company-id="companyId" />
+
+        <!--
           Public attachments section (iter 2.6 Batch 4, R2 §7.2).
           Component self-hides when the list is empty after a successful
           fetch -- no v-if guard here. The auth-flow CompanyOverviewView
@@ -301,7 +318,6 @@ function onRoadmapPostClick(_postId: string): void {
         <PublicAttachmentsSection :company-id="companyId" />
 
         <!--
-          Products inline section: lands in Batch 5.
           No sticky CTA -- purchase lives on product detail (Batch 6).
         -->
       </main>
