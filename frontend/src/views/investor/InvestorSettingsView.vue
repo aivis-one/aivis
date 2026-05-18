@@ -348,7 +348,22 @@ async function handleLogout(): Promise<void> {
   try {
     await authStore.logout()
   } finally {
-    void router.push('/login')
+    // Auth state already cleared. If push gets rejected by a benign
+    // NavigationFailure type, the next route guard will bounce the
+    // tokenless user to /login anyway -- no toast needed. We only
+    // log real failures (unknown route, thrown guard, ...).
+    router
+      .push('/login')
+      .catch((err: unknown) => {
+        if (
+          isNavigationFailure(err, NavigationFailureType.duplicated)
+          || isNavigationFailure(err, NavigationFailureType.cancelled)
+          || isNavigationFailure(err, NavigationFailureType.aborted)
+        ) {
+          return
+        }
+        console.error('[InvestorSettingsView] navigation to login failed:', err)
+      })
   }
 }
 

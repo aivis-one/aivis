@@ -46,6 +46,40 @@ async function handleLogout(): Promise<void> {
       console.error('[StaffMoreView] navigation to login failed:', err)
     })
 }
+
+// Nav-item handlers. Each target gets a dedicated function so future
+// per-target guards (role checks, feature flags) attach in one place
+// instead of widening a generic `navigate(target)` helper. Matches
+// the InvestorDashboardView `goPortfolio/goBalance/...` paradigm.
+function goAgentApps(): void {
+  router
+    .push('/staff/agent-apps')
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffMoreView] navigation to agent apps failed:', err)
+    })
+}
+
+function goAvatar(): void {
+  router
+    .push('/staff/avatar')
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffMoreView] navigation to avatar failed:', err)
+    })
+}
 </script>
 
 <template>
@@ -64,14 +98,14 @@ async function handleLogout(): Promise<void> {
     <div class="staff-more__section">
       <div class="staff-more__section-label">{{ t('staff.settings.tools') }}</div>
 
-      <div class="staff-more__nav-item" @click="router.push('/staff/agent-apps')">
+      <div class="staff-more__nav-item" @click="goAgentApps">
         <span class="staff-more__nav-left">
           <FileText :size="14" /> {{ t('staff.agentApps2.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </div>
 
-      <div class="staff-more__nav-item staff-more__nav-item--accent" @click="router.push('/staff/avatar')">
+      <div class="staff-more__nav-item staff-more__nav-item--accent" @click="goAvatar">
         <span class="staff-more__nav-left">
           <Ghost :size="14" /> Avatar Mode
         </span>

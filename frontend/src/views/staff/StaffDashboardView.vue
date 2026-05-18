@@ -4,7 +4,11 @@
 // Matches staff-shell/mockup.html screen-dashboard layout.
 
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Users, ShieldAlert, CreditCard, UserCheck, ShieldCheck, Ghost } from 'lucide-vue-next'
 import { CStatCard, CIconBox, CLoader, CButton, CBadge } from '@/components/ui'
@@ -51,6 +55,87 @@ async function loadStats(): Promise<void> {
   }
 }
 
+// Navigation handlers. Eight inline @click="router.push(...)" in the
+// template collapsed to five named functions (one per destination):
+// `/staff/kyc` is reached from three places, `/staff/payments` from
+// two. Each handler owns its own .catch + filter so future per-target
+// guards attach in one place, matching the InvestorDashboardView
+// `goPortfolio/goBalance/...` paradigm.
+function goUsers(): void {
+  router
+    .push('/staff/users')
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffDashboardView] navigation to users failed:', err)
+    })
+}
+
+function goKyc(): void {
+  router
+    .push('/staff/kyc')
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffDashboardView] navigation to KYC queue failed:', err)
+    })
+}
+
+function goPayments(): void {
+  router
+    .push('/staff/payments')
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffDashboardView] navigation to payments failed:', err)
+    })
+}
+
+function goAgentApps(): void {
+  router
+    .push('/staff/agent-apps')
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffDashboardView] navigation to agent apps failed:', err)
+    })
+}
+
+function goAvatar(): void {
+  router
+    .push('/staff/avatar')
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffDashboardView] navigation to avatar failed:', err)
+    })
+}
+
 onMounted(loadStats)
 </script>
 
@@ -81,7 +166,7 @@ onMounted(loadStats)
         <CStatCard
           :value="String(stats.total_users)"
           :label="t('staff.users.stat')"
-          @click="router.push('/staff/users')"
+          @click="goUsers"
         >
           <template #icon>
             <CIconBox variant="teal"><Users :size="22" /></CIconBox>
@@ -92,7 +177,7 @@ onMounted(loadStats)
           :value="String(stats.pending_kyc_count)"
           :label="t('staff.kycQueue')"
           :sub="t('staff.pending')"
-          @click="router.push('/staff/kyc')"
+          @click="goKyc"
         >
           <template #icon>
             <CIconBox variant="yellow"><ShieldAlert :size="22" /></CIconBox>
@@ -103,7 +188,7 @@ onMounted(loadStats)
           :value="'—'"
           :label="t('staff.payments.stat')"
           :sub="t('staff.awaitingConfirm')"
-          @click="router.push('/staff/payments')"
+          @click="goPayments"
         >
           <template #icon>
             <CIconBox variant="green"><CreditCard :size="22" /></CIconBox>
@@ -114,7 +199,7 @@ onMounted(loadStats)
           :value="String(pendingApps)"
           :label="t('staff.agentApps')"
           :sub="t('staff.new')"
-          @click="router.push('/staff/agent-apps')"
+          @click="goAgentApps"
         >
           <template #icon>
             <CIconBox variant="orange"><UserCheck :size="22" /></CIconBox>
@@ -123,7 +208,7 @@ onMounted(loadStats)
       </div>
 
       <!-- KYC alert banner -->
-      <div v-if="stats.pending_kyc_count > 0" class="staff-dash__alert" @click="router.push('/staff/kyc')">
+      <div v-if="stats.pending_kyc_count > 0" class="staff-dash__alert" @click="goKyc">
         <ShieldAlert :size="16" />
         <span>{{ stats.pending_kyc_count }} {{ t('staff.pending').toLowerCase() }} KYC</span>
       </div>
@@ -142,13 +227,13 @@ onMounted(loadStats)
 
       <!-- Quick actions -->
       <div class="staff-dash__section-title">{{ t('staff.quickActions') }}</div>
-      <CButton variant="primary" size="sm" class="staff-dash__action" @click="router.push('/staff/kyc')">
+      <CButton variant="primary" size="sm" class="staff-dash__action" @click="goKyc">
         <ShieldCheck :size="14" /> {{ t('staff.processKyc') }}
       </CButton>
-      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="router.push('/staff/payments')">
+      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goPayments">
         <CreditCard :size="14" /> {{ t('staff.checkPayments') }}
       </CButton>
-      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="router.push('/staff/avatar')">
+      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goAvatar">
         <Ghost :size="14" /> Avatar Mode
       </CButton>
     </template>

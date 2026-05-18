@@ -263,9 +263,30 @@ async function confirm(): Promise<void> {
       product_installment_id: selectedPlan.value.id,
     })
     showToast(t('inv.installment.success'), 'success')
-    router.push({
-      name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio',
-    })
+    // Awaited push so `submitting` stays true until navigation
+    // resolves, avoiding a brief UI flash of the Confirm button
+    // between API success and unmount. The .catch filter must
+    // NOT rethrow -- a benign NavigationFailure rethrown here
+    // would be caught by the outer `catch` below and routed
+    // through handlePlanError(), which would then surface a
+    // generic-error toast on top of the success toast.
+    await router
+      .push({
+        name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio',
+      })
+      .catch((navErr: unknown) => {
+        if (
+          isNavigationFailure(navErr, NavigationFailureType.duplicated)
+          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+          || isNavigationFailure(navErr, NavigationFailureType.aborted)
+        ) {
+          return
+        }
+        console.error(
+          '[InstallmentView] post-submit navigation to portfolio failed:',
+          navErr,
+        )
+      })
   } catch (err: unknown) {
     await handlePlanError(err)
   } finally {
