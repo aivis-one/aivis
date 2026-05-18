@@ -29,7 +29,9 @@
 // F4.1.4 polish (retained):
 //   - Formatters moved to utils/format.ts (TD-F04 closed).
 //   - Role-aware routing via router/helpers.ts.
-//   - CHeader shows product name, truncated by the header itself.
+//   - iter 2.7 batch B1: inline back-link replaced the previous
+//     view-CHeader. Product name sits in the hero <h1>; the shell
+//     carries the only page-level header.
 //   - Buy CTA label switches to "Sold out" when available <= 0.
 //   - Hero fallback stacks icon + text vertically.
 //   - Description breaks long unbroken tokens.
@@ -49,9 +51,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, ShoppingCart } from 'lucide-vue-next'
+import { ArrowLeft, Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import { getProduct } from '@/api/products'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
@@ -113,6 +114,24 @@ function backToMarket(): void {
   void safeNavigate(router.push({ name }), '[ProductDetailView] to companies list')
 }
 
+// iter 2.7 batch B1: inline back-link replaces the previous view-CHeader
+// back button (paradigm migration to single-shell-header). Prefers
+// router.back() so the originating screen (CompanyList / Dashboard CTA
+// / etc.) restores its scroll state for free; falls back to an explicit
+// push to the companies catalogue when no prior history exists (i.e.
+// the view was opened via a deep-linked URL).
+function goBack(): void {
+  if (router.options.history.state.back) {
+    router.back()
+    return
+  }
+  const name = agentShell.value ? 'agent-companies' : 'investor-companies'
+  void safeNavigate(
+    router.push({ name }),
+    '[ProductDetailView] back fallback to companies list',
+  )
+}
+
 function buyNow(): void {
   if (!product.value) return
   const name = agentShell.value ? 'agent-purchase' : 'investor-purchase'
@@ -146,12 +165,6 @@ onMounted(loadProduct)
 
 <template>
   <div class="pd">
-    <CHeader
-      :show-back="true"
-      :show-logo="false"
-      :title="product?.name"
-    />
-
     <!-- Loading -->
     <div v-if="loading" class="pd__center">
       <CLoader :size="28" />
@@ -170,6 +183,20 @@ onMounted(loadProduct)
 
     <!-- Loaded -->
     <template v-else>
+      <!-- iter 2.7 batch B1: inline back-link replaces the previous
+           view-CHeader (paradigm migration to single-shell-header).
+           Sits above the hero so the visitor has an explicit path
+           back to the companies catalogue. Hero `<h1>` already carries
+           the product title, so no separate inline title row needed. -->
+      <button
+        type="button"
+        class="pd__back"
+        @click="goBack"
+      >
+        <ArrowLeft :size="16" />
+        {{ t('inv.product.backLink') }}
+      </button>
+
       <!-- Hero with cover image -->
       <div
         class="pd__hero"
@@ -287,6 +314,30 @@ onMounted(loadProduct)
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
   padding: 24px;
+}
+
+/* iter 2.7 batch B1 -- inline back-link above the hero. Visual
+   mirror of .ppd__back in PublicProductDetailView so the
+   public / auth flows share the same paradigm. */
+.pd__back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-md, 16px) var(--space-md, 16px) 0;
+  padding: 6px 10px 6px 6px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pd__back:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 /* Hero with cover image */
