@@ -1,8 +1,10 @@
 # =============================================================================
-# CBSHOME Backend -- Company Staff Router (Sprint 4.1, fix Phase 4)
+# CBSHOME Backend -- Company Staff Router (Sprint 4.1, fix Phase 4,
+#                                            iter 2.6c B2)
 # =============================================================================
 #
 # ENDPOINTS:
+#   GET   /api/v1/staff/companies                          -- list (paginated)
 #   POST  /api/v1/staff/companies                          -- create company
 #   PATCH /api/v1/staff/companies/{id}                     -- update profile
 #   PATCH /api/v1/staff/companies/{id}/price               -- change price
@@ -20,6 +22,13 @@
 #   _require_permission / _require_financial_operations extracted to
 #   staff/permissions.py (was duplicated in products/staff_router.py).
 #
+# iter 2.6c B2:
+#   GET /staff/companies surfaces every company (active / hidden /
+#   archived) with optional ?status= (typed CompanyStatus, 422 on
+#   garbage values) and ?search= (case-insensitive ilike on name,
+#   metacharacters escaped server-side). Pagination is consistent with
+#   the rest of the staff list endpoints (page / per_page).
+#
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
 #   automatically after yield.
@@ -31,14 +40,18 @@ import structlog
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db_session
+from app.core.database import get_db_session, get_db_reader
 from app.core.exceptions import BadRequestError
 from app.modules.auth.dependencies import (
     get_current_user_write,
     require_staff_permission,
 )
-from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
+from app.modules.companies.constants import (
+    ROADMAP_COVER_MAX_BYTES,
+    CompanyStatus,
+)
 from app.modules.companies.schemas import (
+    CompanyListResponse,
     CompanyResponse,
     CreateCompanyRequest,
     CreateRoadmapItemRequest,
@@ -54,6 +67,7 @@ from app.modules.companies.service import (
     create_roadmap_item,
     delete_roadmap_cover,
     delete_roadmap_item,
+    list_companies,
     reorder_roadmap,
     set_roadmap_cover,
     update_company,
@@ -73,6 +87,58 @@ router = APIRouter(prefix="/api/v1/staff/companies", tags=["staff-companies"])
 # ---------------------------------------------------------------------------
 # Company CRUD
 # ---------------------------------------------------------------------------
+
+
+@router.get(
+    "",
+    response_model=CompanyListResponse,
+)
+async def list_companies_endpoint(
+    company_status: CompanyStatus | None = Query(
+        default=None,
+        alias="status",
+        description=(
+            "Filter by lifecycle status: active, hidden, or archived. "
+            "Unknown values rejected with 422."
+        ),
+    ),
+    search: str | None = Query(default=None, max_length=200),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_reader),
+) -> CompanyListResponse:
+    """List all companies (active / hidden / archived) with pagination.
+
+    Filter precedence: when ?status= is supplied the service uses that
+    exact value; otherwise the staff list returns every status (the
+    service-layer active_only flag is forced to False here so the
+    public-flow default never leaks into the staff view).
+
+    ?search= does a case-insensitive substring match on
+    CompanyProfile.name; the service escapes LIKE metacharacters so
+    `%`, `_`, `\\` in the needle match literally.
+
+    iter 2.6c B2: the `status` parameter is bound as CompanyStatus at
+    the FastAPI boundary -- unknown values are rejected with 422
+    before reaching the service. The Python identifier is renamed
+    to `company_status` so we do not shadow the `fastapi.status`
+    module imported at the top of this file.
+    """
+    companies, total = await list_companies(
+        session,
+        active_only=False,
+        status=company_status.value if company_status is not None else None,
+        search=search,
+        page=page,
+        per_page=per_page,
+    )
+    return CompanyListResponse(
+        items=[CompanyResponse.model_validate(c) for c in companies],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
 
 
 @router.post(

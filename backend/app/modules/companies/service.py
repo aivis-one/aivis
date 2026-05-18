@@ -71,6 +71,12 @@
 #     a hand-rolled left-fold -- single line, no accidents when a
 #     third filter is added.
 #
+# iter 2.6c B1:
+#   - list_companies(): +status kwarg (exact-match on CompanyStatus).
+#     Drives the staff list endpoint -- public router never passes
+#     status, so the active_only=True path is unchanged. When status
+#     IS supplied, it takes precedence over active_only.
+#
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - create_company() persists total_supply and shares_per_option from
 #     the request. Both required (NOT NULL on the column).
@@ -447,6 +453,7 @@ async def list_companies(
     session: AsyncSession,
     *,
     active_only: bool = True,
+    status: str | None = None,
     search: str | None = None,
     page: int = 1,
     per_page: int = 20,
@@ -455,6 +462,13 @@ async def list_companies(
 
     active_only=True for public endpoint (only active companies).
     active_only=False for staff endpoint (all companies).
+    status: optional exact-match filter on CompanyProfile.status. When
+            supplied it takes precedence over active_only -- the staff
+            list endpoint passes active_only=False alongside an explicit
+            status so the two never logically conflict, but documenting
+            the precedence keeps a future caller from being surprised.
+            Value range is validated to CompanyStatus at the router
+            boundary; this layer trusts the incoming string.
     search: optional case-insensitive substring match on name. LIKE
             metacharacters in the needle are escaped so a user query
             like "50%" matches the literal "50%" rather than acting
@@ -463,7 +477,11 @@ async def list_companies(
     Returns (companies, total_count).
     """
     conditions = []
-    if active_only:
+    if status is not None:
+        # Explicit status wins over active_only. Public router never
+        # passes status, so this branch is the staff-list-only path.
+        conditions.append(CompanyProfile.status == status)
+    elif active_only:
         conditions.append(CompanyProfile.status == CompanyStatus.ACTIVE)
     if search is not None:
         needle = search.strip()
