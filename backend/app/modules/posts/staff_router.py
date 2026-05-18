@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.dependencies import require_staff_permission
+from app.modules.posts.constants import OwnerType
 from app.modules.posts.schemas import (
     CreateEventRequest,
     CreatePostRequest,
@@ -81,7 +82,7 @@ staff_events_router = APIRouter(
     response_model=PostListResponse,
 )
 async def staff_list_posts_endpoint(
-    owner_type: str | None = Query(default=None),
+    owner_type: OwnerType | None = Query(default=None),
     owner_id: UUID | None = Query(default=None),
     is_published: bool | None = Query(default=None),
     search: str | None = Query(default=None, max_length=200),
@@ -97,9 +98,10 @@ async def staff_list_posts_endpoint(
     deleted posts stay hidden -- recovery is a separate flow.
 
     Filters:
-      owner_type      -- platform / company (plain str; no enum bind
-                         because the public endpoint also uses str
-                         and we keep the staff surface symmetric).
+      owner_type      -- platform / company. Bound to OwnerType StrEnum
+                         (iter 2.6c followup OBS-33-01); unknown values
+                         are rejected with 422 at the framework edge
+                         rather than silently returning an empty list.
       owner_id        -- company_profiles.id; only meaningful for
                          owner_type=company rows.
       is_published    -- None = both; True / False = exact match.
@@ -108,7 +110,7 @@ async def staff_list_posts_endpoint(
     """
     rows, total = await staff_list_posts(
         session,
-        owner_type=owner_type,
+        owner_type=owner_type.value if owner_type is not None else None,
         owner_id=owner_id,
         is_published=is_published,
         search=search,

@@ -23,6 +23,12 @@
 #   outside {not_started, submitted, approved, rejected} fails at
 #   the framework boundary with 422.
 #
+# iter 2.6c followup (OBS-33-01):
+#   ?role= is also bound to a StrEnum (UserRole) so unknown values
+#   are rejected with 422 instead of silently returning an empty
+#   list. Service layer signature unchanged -- the router unwraps
+#   .value before passing through.
+#
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
 #   automatically after yield.
@@ -62,7 +68,7 @@ from app.modules.staff.service import (
     get_staff_profile,
     update_permissions,
 )
-from app.modules.users.models import KYCStatus, User
+from app.modules.users.models import KYCStatus, User, UserRole
 
 logger = structlog.get_logger()
 
@@ -139,7 +145,13 @@ async def staff_update_permissions(
     response_model=UserListResponse,
 )
 async def user_list(
-    role: str | None = Query(default=None, description="Filter by role"),
+    role: UserRole | None = Query(
+        default=None,
+        description=(
+            "Filter by role: investor, agent, company, staff, or "
+            "platform. Unknown values are rejected with 422."
+        ),
+    ),
     kyc_status: KYCStatus | None = Query(
         default=None,
         description=(
@@ -160,10 +172,23 @@ async def user_list(
     iter 2.6c B1: ?kyc_status= is a typed KYCStatus enum at the
     framework boundary, so unknown values are rejected by FastAPI
     with 422 before reaching the service layer.
+
+    iter 2.6c followup (OBS-33-01): ?role= is now bound to UserRole
+    StrEnum too. Previously the param accepted plain str, so any
+    garbage value silently produced an empty result set; now FastAPI
+    rejects unknown values with 422 at the framework boundary. The
+    service still receives a plain str (.value extraction below) so
+    no service-layer change is needed.
+
+    Note that filtering by role="platform" returns an empty list:
+    the service excludes the platform user from every result via
+    `User.role != UserRole.PLATFORM`, and that exclusion is the
+    authoritative invariant -- not removed because a caller asked
+    for it explicitly.
     """
     return await list_users(
         session,
-        role=role,
+        role=role.value if role is not None else None,
         kyc_status=kyc_status.value if kyc_status is not None else None,
         page=page,
         per_page=per_page,

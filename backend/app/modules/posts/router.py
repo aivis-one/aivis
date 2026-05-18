@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.dependencies import get_current_user_write, get_optional_user
+from app.modules.posts.constants import OwnerType
 from app.modules.posts.schemas import (
     EventListResponse,
     EventResponse,
@@ -59,7 +60,7 @@ events_router = APIRouter(prefix="/api/v1/events", tags=["events"])
 async def list_posts_endpoint(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
-    owner_type: str | None = Query(default=None),
+    owner_type: OwnerType | None = Query(default=None),
     company_id: UUID | None = Query(default=None),
     tag: str | None = Query(default=None),
     user: User | None = Depends(get_optional_user),
@@ -68,13 +69,19 @@ async def list_posts_endpoint(
     """List published posts with optional filters.
 
     Anonymous access allowed. Authenticated users get is_dismissed info.
+
+    iter 2.6c followup (OBS-33-01): owner_type is bound to OwnerType
+    StrEnum so {platform, company} are the only accepted values --
+    anything else (typo, legacy client) fails at the framework edge
+    with 422. Previously a garbage value silently returned an empty
+    list, which made client-side bugs hard to spot.
     """
     items, total = await list_posts(
         session,
         user_id=user.id if user else None,
         page=page,
         per_page=per_page,
-        owner_type=owner_type,
+        owner_type=owner_type.value if owner_type is not None else None,
         company_id=company_id,
         tag=tag,
     )

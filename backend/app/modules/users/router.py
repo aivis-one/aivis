@@ -57,6 +57,14 @@ async def get_me(
     with the effective permission matrix. The session is reused for the
     StaffProfile SELECT inside build_user_response -- one extra query
     for staff, none for everyone else.
+
+    The session parameter is declared unconditionally even though
+    non-staff calls never query through it. FastAPI's Depends caching
+    reuses the SAME session instance already opened by
+    get_current_user, so there is no second connection or pool hit;
+    the line exists for the staff branch inside build_user_response,
+    and for surface consistency with PATCH /me + POST /me/select-role
+    which already needed the write session for their own writes.
     """
     return await build_user_response(user, session)
 
