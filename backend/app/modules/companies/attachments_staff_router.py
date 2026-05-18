@@ -1,5 +1,6 @@
 # =============================================================================
-# CBSHOME Backend -- Company Attachments Staff Router (Refactor 2 iter 2.2)
+# CBSHOME Backend -- Company Attachments Staff Router (Refactor 2 iter 2.2,
+#                                                       iter 2.6c B5)
 # =============================================================================
 #
 # ENDPOINTS (all require company_manage; hard-delete also requires admin):
@@ -8,6 +9,9 @@
 #   POST   /api/v1/staff/companies/{id}/attachments
 #          (multipart: metadata=<json>, file=<binary>)
 #       -> StaffAttachmentResponse                                          (201)
+#   PATCH  /api/v1/staff/companies/{id}/attachments/reorder       (B5)
+#          (json: ReorderAttachmentsRequest)
+#       -> 204
 #   PATCH  /api/v1/staff/companies/{id}/attachments/{att_id}
 #          (json: AttachmentPatchBody)
 #       -> StaffAttachmentResponse                                          (200)
@@ -71,6 +75,7 @@ from app.modules.auth.dependencies import require_staff_permission
 from app.modules.companies.schemas import (
     AttachmentInboxMetadata,
     AttachmentPatchBody,
+    ReorderAttachmentsRequest,
     StaffAttachmentResponse,
 )
 from app.modules.companies.service import (
@@ -79,6 +84,7 @@ from app.modules.companies.service import (
     hard_delete_attachment,
     list_attachments,
     patch_attachment_metadata,
+    reorder_attachments,
     replace_attachment_file,
     soft_delete_attachment,
     validate_attachment_mime_by_filename,
@@ -231,6 +237,44 @@ async def create_attachment_staff_endpoint(
         metadata=metadata_obj,
     )
     return StaffAttachmentResponse.model_validate(attachment)
+
+
+# ---------------------------------------------------------------------------
+# Reorder (bulk -- iter 2.6c B5)
+# ---------------------------------------------------------------------------
+#
+# NOTE: this route MUST be declared before /{attachment_id} routes
+# below. Otherwise FastAPI tries to parse "reorder" as a UUID for the
+# attachment_id path parameter and 422s the request. Mirrors the same
+# precedence pattern in companies/staff_router.py for the roadmap
+# reorder endpoint.
+
+
+@router.patch(
+    "/{company_id}/attachments/reorder",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def reorder_attachments_staff_endpoint(
+    company_id: UUID,
+    body: ReorderAttachmentsRequest,
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Bulk reorder attachments inside one (company_id, category).
+
+    Body is an exact list of every non-deleted attachment id in the
+    scope; the service rejects partial / extended lists with 400.
+    Returns 204 on success.
+
+    Permission: company_manage (same as the per-row PATCH endpoint).
+    """
+    await reorder_attachments(
+        session,
+        company_id,
+        body.category,
+        body.item_ids,
+        staff,
+    )
 
 
 # ---------------------------------------------------------------------------

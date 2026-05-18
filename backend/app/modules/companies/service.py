@@ -34,6 +34,8 @@
 #   hard_delete_attachment()      -- DELETE row + drop MinIO object
 #   shift_orders_to_make_room()  -- bulk +1 on order inside (company_id,
 #                                    category) to insert at target_order
+#   reorder_attachments()         -- iter 2.6c B5: bulk reorder inside
+#                                    one (company_id, category) scope
 #
 # Refactor 2 iter 2.3 ADDITIONS (Company Document Templates):
 #   find_active_template()           -- 4-stage fallback lookup (R2 §4.7) in
@@ -1912,6 +1914,119 @@ async def hard_delete_attachment(
         company_id=str(company_id),
         staff_id=str(staff.id),
         storage_key=storage_key,
+    )
+
+
+async def reorder_attachments(
+    session: AsyncSession,
+    company_id: UUID,
+    category: str,
+    item_ids: list[UUID],
+    staff: User,
+) -> None:
+    """Bulk reorder attachments inside one (company_id, category) scope.
+
+    iter 2.6c B5. Mirrors the contract of reorder_roadmap but scopes
+    the operation to a single category -- attachment `order` is unique
+    only per (company_id, category) (Q-ATT-4), so a per-company reorder
+    would collapse the category-scoped invariant.
+
+    Validation:
+      * company exists (404 from get_company).
+      * `item_ids` must be the exact set of non-deleted attachments
+        currently in (company_id, category). Missing or extra ids
+        produce a 400 with both diff sets in the message, mirroring
+        reorder_roadmap so the Staff UI gets the same error shape.
+      * No duplicates in `item_ids`.
+
+    The category is regex-validated at the schema layer; this function
+    trusts the incoming value.
+
+    Soft-deleted attachments are excluded -- they have no meaningful
+    position in the visible list, and including them in `item_ids`
+    would surface as an "unknown id" 400 (correct behaviour: staff
+    cannot reorder rows they cannot see).
+
+    Args:
+        session: Active write session (caller commits).
+        company_id: Target company.
+        category: Target category. Matched exactly against
+            CompanyAttachment.category.
+        item_ids: Complete ordered list of every non-deleted attachment
+            id in the scope.
+        staff: Acting staff user (audit log actor).
+
+    Raises:
+        NotFoundError: company not found.
+        BadRequestError: set mismatch or duplicate ids.
+    """
+    # Verify company exists.
+    await get_company(company_id, session)
+
+    # Load all non-deleted attachments in (company_id, category).
+    stmt = (
+        select(CompanyAttachment)
+        .where(
+            CompanyAttachment.company_id == company_id,
+            CompanyAttachment.category == category,
+            CompanyAttachment.is_deleted == False,  # noqa: E712
+        )
+    )
+    result = await session.execute(stmt)
+    rows = {item.id: item for item in result.scalars().all()}
+
+    # Validate: same set of ids.
+    provided_ids = set(item_ids)
+    existing_ids = set(rows.keys())
+
+    if provided_ids != existing_ids:
+        missing = existing_ids - provided_ids
+        extra = provided_ids - existing_ids
+        parts = []
+        if missing:
+            parts.append(f"missing: {[str(i) for i in missing]}")
+        if extra:
+            parts.append(f"unknown: {[str(i) for i in extra]}")
+        raise BadRequestError(
+            f"attachments_reorder_set_mismatch: {', '.join(parts)}"
+        )
+
+    # Check for duplicates.
+    if len(item_ids) != len(set(item_ids)):
+        raise BadRequestError(
+            "attachments_reorder_set_mismatch: duplicate ids in payload"
+        )
+
+    # Apply new order in one transaction. Single flush at the end so
+    # PostgreSQL never sees an intermediate state where two rows in
+    # the scope share the same `order` value (UNIQUE on the scope is
+    # not enforced at the DB level today, but the test contract still
+    # expects atomicity).
+    for new_order, item_id in enumerate(item_ids):
+        rows[item_id].order = new_order
+
+    await session.flush()
+
+    # Audit.
+    await record_audit(
+        session=session,
+        event="company.attachments_reordered",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="company",
+        target_id=company_id,
+        data={
+            "category": category,
+            "item_ids": [str(i) for i in item_ids],
+        },
+    )
+
+    logger.info(
+        "attachments_reordered",
+        company_id=str(company_id),
+        category=category,
+        count=len(item_ids),
+        staff_id=str(staff.id),
     )
 
 

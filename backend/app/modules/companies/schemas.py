@@ -571,6 +571,31 @@ class AttachmentPatchBody(BaseModel):
         return v
 
 
+class ReorderAttachmentsRequest(BaseModel):
+    """Bulk reorder of attachments inside one (company_id, category)
+    scope (iter 2.6c B5).
+
+    `item_ids` must be the COMPLETE list of every non-deleted
+    attachment for the given (company_id, category) -- the service
+    enforces an exact set match. Sending a partial list is a 400, as
+    is sending an unknown id; either case suggests the staff UI is
+    out of sync with the database and a silent reorder would scramble
+    the visible order for everyone else.
+
+    Mirrors the shape of ReorderRoadmapRequest for consistency, with
+    the addition of `category` -- attachment order is scoped to
+    (company_id, category) rather than per-company.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    category: str = Field(
+        max_length=200,
+        pattern=ATTACHMENT_CATEGORY_REGEX,
+    )
+    item_ids: list[UUID]
+
+
 class AttachmentResponse(BaseModel):
     """Attachment as seen by investors / public consumers.
 
