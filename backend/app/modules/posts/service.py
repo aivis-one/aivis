@@ -7,12 +7,13 @@
 #
 # FUNCTIONS:
 #   Posts:
-#     create_post()     -- create platform or company post (staff only)
-#     update_post()     -- partial update (PATCH)
-#     delete_post()     -- soft delete (is_deleted=True)
-#     list_posts()      -- public feed with optional dismiss info
-#     get_post()        -- single post by ID
-#     dismiss_post()    -- per-user banner dismissal (idempotent)
+#     create_post()        -- create platform or company post (staff only)
+#     update_post()        -- partial update (PATCH)
+#     delete_post()        -- soft delete (is_deleted=True)
+#     list_posts()         -- public feed with optional dismiss info
+#     staff_list_posts()   -- staff feed: includes drafts (iter 2.6c B4)
+#     get_post()           -- single post by ID
+#     dismiss_post()       -- per-user banner dismissal (idempotent)
 #
 #   Events:
 #     create_event()           -- create calendar event (staff only)
@@ -20,6 +21,8 @@
 #     delete_event()           -- soft delete (is_deleted=True)
 #     list_events()            -- published events (paginated)
 #     list_upcoming_events()   -- next 30 days (LIMIT 100)
+#     staff_list_events()      -- staff feed: includes drafts +
+#                                upcoming/past split (iter 2.6c B4)
 #
 # REVIEW FIXES:
 #   - dismiss_post: begin_nested() SAVEPOINT instead of session.rollback()
@@ -315,6 +318,95 @@ async def list_posts(
     return items, total
 
 
+async def staff_list_posts(
+    session: AsyncSession,
+    *,
+    owner_type: str | None = None,
+    owner_id: UUID | None = None,
+    is_published: bool | None = None,
+    search: str | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[Post], int]:
+    """Staff-side post list (iter 2.6c B4).
+
+    Differs from list_posts() in two important ways:
+      1. Does NOT filter on is_published -- staff need to see drafts.
+         When the caller passes is_published explicitly (True / False)
+         the filter is applied; otherwise drafts AND published rows
+         flow through.
+      2. Returns Post ORM rows, not PostResponse. The staff router
+         validates into PostResponse with the default is_dismissed=False;
+         staff have no per-user dismiss view on this surface.
+
+    Always filters is_deleted=False -- soft-deleted posts stay hidden
+    even from staff (recovery flows go through a future dedicated
+    endpoint, not this list).
+
+    Search is a case-insensitive substring match on title. LIKE
+    metacharacters in the needle are escaped so a query like "50%"
+    matches the literal "50%" rather than acting as a wildcard --
+    mirrors the pattern in companies.service.list_companies (iter
+    2.6c B2).
+
+    Args:
+        session: Read-only session is sufficient.
+        owner_type: Filter by owner_type (platform / company).
+        owner_id: Filter by owner_id (company_profiles.id). For
+            platform posts owner_id is NULL on every row -- pass
+            owner_type=platform on its own to see them.
+        is_published: None = no filter; True / False = exact match.
+        search: Case-insensitive substring match on Post.title.
+        page, per_page: Pagination (1-based page).
+
+    Returns:
+        (rows, total) tuple. Newest first by created_at.
+    """
+    conditions = [Post.is_deleted.is_(False)]
+
+    if owner_type is not None:
+        conditions.append(Post.owner_type == owner_type)
+    if owner_id is not None:
+        conditions.append(Post.owner_id == owner_id)
+    if is_published is not None:
+        conditions.append(Post.is_published.is_(is_published))
+    if search is not None:
+        needle = search.strip()
+        if needle:
+            # Escape backslash first, then % and _ -- otherwise we
+            # would double-escape the backslashes we are about to add.
+            escaped = (
+                needle.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+            conditions.append(
+                Post.title.ilike(f"%{escaped}%", escape="\\")
+            )
+
+    # Count total.
+    count_stmt = (
+        select(func.count())
+        .select_from(Post)
+        .where(*conditions)
+    )
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    # Fetch page.
+    offset = (page - 1) * per_page
+    stmt = (
+        select(Post)
+        .where(*conditions)
+        .order_by(Post.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    result = await session.execute(stmt)
+    rows = list(result.scalars().all())
+
+    return rows, total
+
+
 async def get_post(
     session: AsyncSession,
     post_id: UUID,
@@ -600,6 +692,102 @@ async def list_upcoming_events(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def staff_list_events(
+    session: AsyncSession,
+    *,
+    is_published: bool | None = None,
+    upcoming: bool | None = None,
+    search: str | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[Event], int]:
+    """Staff-side event list (iter 2.6c B4).
+
+    Differs from list_events() in three important ways:
+      1. Does NOT filter on is_published -- staff see drafts. When
+         the caller passes is_published explicitly the filter is
+         applied; otherwise drafts AND published rows flow through.
+      2. Optional upcoming filter:
+           upcoming=True  -> Event.starts_at >= now(), ORDER BY ASC.
+           upcoming=False -> Event.starts_at <  now(), ORDER BY DESC.
+           upcoming=None  -> no time filter, ORDER BY DESC.
+         The ASC ordering for upcoming=True matches what a real
+         calendar UI wants (the next event is at the top).
+      3. Returns Event ORM rows, not validated responses.
+
+    Always filters is_deleted=False.
+
+    Search is a case-insensitive substring match on Event.title with
+    LIKE metacharacters escaped (same pattern as staff_list_posts).
+
+    Args:
+        session: Read-only session is sufficient.
+        is_published: None = no filter; True / False = exact match.
+        upcoming: None = no time filter; True/False = split on now().
+        search: Case-insensitive substring match on Event.title.
+        page, per_page: Pagination (1-based page).
+
+    Returns:
+        (rows, total). Order depends on `upcoming` -- see above.
+    """
+    conditions = [Event.is_deleted.is_(False)]
+
+    if is_published is not None:
+        conditions.append(Event.is_published.is_(is_published))
+
+    # Time-window split. Captured once so both the count and the page
+    # select agree on the wall clock; otherwise a slow query could
+    # straddle the boundary and the page returns rows the count missed.
+    if upcoming is not None:
+        now = datetime.now(UTC)
+        if upcoming:
+            conditions.append(Event.starts_at >= now)
+        else:
+            conditions.append(Event.starts_at < now)
+
+    if search is not None:
+        needle = search.strip()
+        if needle:
+            escaped = (
+                needle.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+            conditions.append(
+                Event.title.ilike(f"%{escaped}%", escape="\\")
+            )
+
+    # Count total.
+    count_stmt = (
+        select(func.count())
+        .select_from(Event)
+        .where(*conditions)
+    )
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    # Fetch page. ASC ordering for upcoming=True so the next event
+    # surfaces first; DESC for everything else so the most recently
+    # scheduled / past event is at the top.
+    order_clause = (
+        Event.starts_at.asc()
+        if upcoming is True
+        else Event.starts_at.desc()
+    )
+
+    offset = (page - 1) * per_page
+    stmt = (
+        select(Event)
+        .where(*conditions)
+        .order_by(order_clause)
+        .offset(offset)
+        .limit(per_page)
+    )
+    result = await session.execute(stmt)
+    rows = list(result.scalars().all())
+
+    return rows, total
 
 
 # ---------------------------------------------------------------------------
