@@ -3,6 +3,7 @@
 // =============================================================================
 
 export { default as CButton } from './CButton.vue'
+export { default as CBackLink } from './CBackLink.vue'
 export { default as CInput } from './CInput.vue'
 export { default as CTextarea } from './CTextarea.vue'
 export { default as CSelect } from './CSelect.vue'

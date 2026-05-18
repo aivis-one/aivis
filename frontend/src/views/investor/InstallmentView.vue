@@ -56,8 +56,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Building, Calendar } from 'lucide-vue-next'
-import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import { Building, Calendar } from 'lucide-vue-next'
+import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createInstallmentPlan } from '@/api/installments'
@@ -303,7 +303,7 @@ function cancel(): void {
   // on that screen into a back-to-Installment trap). Only push when
   // vue-router has no prior entry -- i.e. InstallmentView was opened
   // via a deep-linked URL.
-  if (router.options.history.state.back) {
+  if (window.history.state?.back) {
     router.back()
     return
   }
@@ -384,15 +384,14 @@ onMounted(load)
     <template v-else>
       <!-- iter 2.7 batch B2: inline back-link replaces view-CHeader.
            Reuses cancel() which is already history-aware (prefers
-           router.back(), falls back to product detail on deep-link). -->
-      <button
-        type="button"
-        class="iv__back"
-        @click="cancel"
-      >
-        <ArrowLeft :size="16" />
-        {{ t('inv.installment.backLink') }}
-      </button>
+           router.back(), falls back to product detail on deep-link).
+           B3: button shape extracted to CBackLink. -->
+      <div class="iv__back-row">
+        <CBackLink
+          :label="t('inv.installment.backLink')"
+          @click="cancel"
+        />
+      </div>
 
       <!-- Product hero -->
       <div
@@ -570,28 +569,11 @@ onMounted(load)
   padding: 24px;
 }
 
-/* iter 2.7 batch B2 -- inline back-link above the hero. Mirrors
-   .pd__back / .ppd__back so the visual paradigm stays consistent
-   across the auth and public product/installment flows. */
-.iv__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
+   above the hero. Button shape lives in CBackLink. */
+.iv__back-row {
+  display: flex;
   margin: var(--space-md, 16px) var(--space-md, 16px) 0;
-  padding: 6px 10px 6px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.iv__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 
 /* Hero with cover */

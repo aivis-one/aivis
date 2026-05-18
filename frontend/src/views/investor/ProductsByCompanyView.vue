@@ -61,9 +61,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
-import { ArrowLeft } from 'lucide-vue-next'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import ProductCard from '@/components/shared/ProductCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useProductsStore } from '@/stores/products'
@@ -176,7 +175,7 @@ function onRetry(): void {
 // restores scroll/state for free; falls back to the company overview
 // for the current companyId when there's no prior history (deep-link).
 function goBack(): void {
-  if (router.options.history.state.back) {
+  if (window.history.state?.back) {
     router.back()
     return
   }
@@ -203,16 +202,13 @@ function goBack(): void {
     <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
          The company name (resolved by headerTitle) lives in the h1;
          the back-link goes to company overview, mirroring the previous
-         CHeader back's history-back default with a deep-link fallback. -->
+         CHeader back's history-back default with a deep-link fallback.
+         B3: button shape extracted to CBackLink. -->
     <div class="pbc__page-header">
-      <button
-        type="button"
-        class="pbc__back"
+      <CBackLink
+        :label="t('inv.productsByCompany.backLink')"
         @click="goBack"
-      >
-        <ArrowLeft :size="16" />
-        {{ t('inv.productsByCompany.backLink') }}
-      </button>
+      />
       <h1 class="pbc__page-title">{{ headerTitle }}</h1>
     </div>
 
@@ -281,25 +277,6 @@ function goBack(): void {
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px 8px;
-}
-.pbc__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px 6px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.pbc__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 .pbc__page-title {
   font-size: 20px;

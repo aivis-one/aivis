@@ -59,9 +59,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Building } from 'lucide-vue-next'
+import { Building } from 'lucide-vue-next'
 
-import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import { CBackLink, CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
 import AttachmentsSection from '@/components/shared/AttachmentsSection.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
@@ -217,7 +217,7 @@ function goToCompaniesList(): void {
 // so the originating screen (most commonly CompanyListView) restores
 // scroll/state for free; falls back to push when no history (deep-link).
 function goBack(): void {
-  if (router.options.history.state.back) {
+  if (window.history.state?.back) {
     router.back()
     return
   }
@@ -288,15 +288,13 @@ function onRoadmapPostClick(_postId: string): void {
     <template v-else-if="data">
       <!-- iter 2.7 batch B2: inline back-link replaces view-CHeader
            (single-shell-header paradigm). Company name lives in the
-           hero <h1> below. -->
-      <button
-        type="button"
-        class="co__back"
-        @click="goBack"
-      >
-        <ArrowLeft :size="16" />
-        {{ t('inv.companyOverview.backLink') }}
-      </button>
+           hero <h1> below. B3: button shape extracted to CBackLink. -->
+      <div class="co__back-row">
+        <CBackLink
+          :label="t('inv.companyOverview.backLink')"
+          @click="goBack"
+        />
+      </div>
 
       <main class="co__main">
         <!-- Hero -->
@@ -388,28 +386,13 @@ function onRoadmapPostClick(_postId: string): void {
   padding: var(--space-md);
 }
 
-/* iter 2.7 batch B2 -- inline back-link above the hero. Mirrors
-   .ppd__back / .pd__back so the public, ProductDetail, and
-   CompanyOverview flows share one visual paradigm. */
-.co__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
+   above the hero. Button shape lives in CBackLink; this row only
+   provides the margin so the link sits where the hero would have
+   started. */
+.co__back-row {
+  display: flex;
   margin: var(--space-md, 16px) var(--space-md, 16px) 0;
-  padding: 6px 10px 6px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.co__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 
 .co__main {

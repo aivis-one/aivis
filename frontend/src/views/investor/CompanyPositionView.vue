@@ -57,14 +57,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import {
-  ArrowLeft,
   CalendarClock,
   FileSignature,
   FileText,
   Gift,
   ShoppingCart,
 } from 'lucide-vue-next'
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import AgreementSheet from '@/components/shared/AgreementSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -165,7 +164,7 @@ function goBack(): void {
   // Prefer router.back() so the PortfolioView scroll/state restore
   // for free. Fall back to explicit push when there's no prior
   // history (deep-link into this view).
-  if (router.options.history.state.back) {
+  if (window.history.state?.back) {
     router.back()
     return
   }
@@ -283,16 +282,14 @@ onUnmounted(() => {
     <template v-else-if="currentDetail">
       <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
            Company name (resolved by headerTitle) goes here as the <h1>;
-           back-link reuses the existing history-aware goBack(). -->
+           back-link reuses the existing history-aware goBack(). B3:
+           button shape extracted to CBackLink; .cp__page-header padding
+           already handles spacing so no extra wrapper is needed. -->
       <div class="cp__page-header">
-        <button
-          type="button"
-          class="cp__back"
+        <CBackLink
+          :label="t('inv.companyPosition.backLink')"
           @click="goBack"
-        >
-          <ArrowLeft :size="16" />
-          {{ t('inv.companyPosition.backLink') }}
-        </button>
+        />
         <h1 class="cp__page-title">{{ headerTitle }}</h1>
       </div>
 
@@ -521,25 +518,6 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px 8px;
-}
-.cp__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px 6px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.cp__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 .cp__page-title {
   font-size: 20px;

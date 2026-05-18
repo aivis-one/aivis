@@ -51,8 +51,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Building, ShoppingCart } from 'lucide-vue-next'
-import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import { Building, ShoppingCart } from 'lucide-vue-next'
+import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { getProduct } from '@/api/products'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
@@ -121,7 +121,7 @@ function backToMarket(): void {
 // push to the companies catalogue when no prior history exists (i.e.
 // the view was opened via a deep-linked URL).
 function goBack(): void {
-  if (router.options.history.state.back) {
+  if (window.history.state?.back) {
     router.back()
     return
   }
@@ -187,15 +187,15 @@ onMounted(loadProduct)
            view-CHeader (paradigm migration to single-shell-header).
            Sits above the hero so the visitor has an explicit path
            back to the companies catalogue. Hero `<h1>` already carries
-           the product title, so no separate inline title row needed. -->
-      <button
-        type="button"
-        class="pd__back"
-        @click="goBack"
-      >
-        <ArrowLeft :size="16" />
-        {{ t('inv.product.backLink') }}
-      </button>
+           the product title, so no separate inline title row needed.
+           B3: button shape extracted to CBackLink; wrapper owns the
+           margin so the button itself stays positioning-agnostic. -->
+      <div class="pd__back-row">
+        <CBackLink
+          :label="t('inv.product.backLink')"
+          @click="goBack"
+        />
+      </div>
 
       <!-- Hero with cover image -->
       <div
@@ -316,28 +316,13 @@ onMounted(loadProduct)
   padding: 24px;
 }
 
-/* iter 2.7 batch B1 -- inline back-link above the hero. Visual
-   mirror of .ppd__back in PublicProductDetailView so the
-   public / auth flows share the same paradigm. */
-.pd__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
+   above the hero. The visual shape of the button itself lives in
+   CBackLink (R32 STYLE-32-02); this row only owns the margin so the
+   button sits where the hero would have started. */
+.pd__back-row {
+  display: flex;
   margin: var(--space-md, 16px) var(--space-md, 16px) 0;
-  padding: 6px 10px 6px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.pd__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 
 /* Hero with cover image */

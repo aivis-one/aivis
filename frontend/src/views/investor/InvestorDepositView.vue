@@ -46,7 +46,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { ArrowLeft, Copy, ShieldAlert } from 'lucide-vue-next'
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { createCryptoAddress } from '@/api/payments'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -126,7 +126,7 @@ function goBack(): void {
   // matches the cancel-path fix we made in PurchaseView/InstallmentView.
   // Fallback to explicit push only when vue-router has no prior
   // entry (user deep-linked straight to /investor/balance/deposit).
-  if (router.options.history.state.back) {
+  if (window.history.state?.back) {
     router.back()
     return
   }
@@ -169,16 +169,14 @@ onMounted(load)
     <template v-else>
       <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
            No hero on this view, so the title lives in a header block
-           with the back-link. Reuses existing history-aware goBack(). -->
+           with the back-link. Reuses existing history-aware goBack().
+           B3: button shape extracted to CBackLink; .dv__page-header
+           padding handles spacing. -->
       <div class="dv__page-header">
-        <button
-          type="button"
-          class="dv__back"
+        <CBackLink
+          :label="t('inv.deposit.backLink')"
           @click="goBack"
-        >
-          <ArrowLeft :size="16" />
-          {{ t('inv.deposit.backLink') }}
-        </button>
+        />
         <h1 class="dv__page-title">{{ t('inv.deposit.title') }}</h1>
       </div>
 
@@ -263,25 +261,6 @@ onMounted(load)
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px 8px;
-}
-.dv__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px 6px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.dv__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 .dv__page-title {
   font-size: 20px;

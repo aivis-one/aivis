@@ -56,9 +56,9 @@ import {
   useRouter,
 } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Building, ShoppingCart } from 'lucide-vue-next'
+import { Building, ShoppingCart } from 'lucide-vue-next'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { useAuthStore } from '@/stores/auth'
@@ -302,15 +302,15 @@ function onBuyClick(): void {
       <!-- Inline back-link to company overview. Unlike the public
            CompanyOverview (where browser back covers the list -> overview
            navigation), this view is typically reached via deep-link;
-           an explicit path to the company context is worth the row. -->
-      <button
-        type="button"
-        class="ppd__back"
-        @click="goToCompany"
-      >
-        <ArrowLeft :size="16" />
-        {{ t('public.productDetail.backLink') }}
-      </button>
+           an explicit path to the company context is worth the row.
+           iter 2.7 batch B3: button shape extracted to CBackLink so the
+           public and auth flows share the same component. -->
+      <div class="ppd__back-row">
+        <CBackLink
+          :label="t('public.productDetail.backLink')"
+          @click="goToCompany"
+        />
+      </div>
 
       <!-- Hero with cover image (matches auth-flow ProductDetailView
            proportions and gradient overlay). -->
@@ -432,26 +432,12 @@ function onBuyClick(): void {
   padding: var(--space-md);
 }
 
-.ppd__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
+   above the hero. Button shape lives in CBackLink (R32 STYLE-32-02);
+   this row only owns the margin. */
+.ppd__back-row {
+  display: flex;
   margin: var(--space-md) var(--space-md) 0;
-  padding: 6px 10px 6px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.ppd__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
 }
 
 /* Hero with cover image -- proportions mirror auth-flow
