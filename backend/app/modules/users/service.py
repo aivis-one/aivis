@@ -6,6 +6,8 @@
 #   update_user()           -- partial profile update via PATCH /users/me
 #   select_role()           -- onboarding role selection (F2.3)
 #   update_payout_details() -- set withdrawal payment methods (Sprint 6.3)
+#   build_user_response()   -- iter 2.6c B6: assemble UserResponse with
+#                              staff_profile hydrated for staff users
 #
 # PARTIAL UPDATE STRATEGY:
 #   Uses Pydantic model_dump(exclude_unset=True) to distinguish between
@@ -50,8 +52,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError
+from app.modules.staff.schemas import StaffProfileResponse
+from app.modules.staff.service import (
+    get_effective_permissions,
+    get_staff_profile,
+)
 from app.modules.users.models import OnboardingStep, User, UserRole
-from app.modules.users.schemas import UserUpdate
+from app.modules.users.schemas import UserResponse, UserUpdate
 
 logger = structlog.get_logger()
 
@@ -68,6 +75,57 @@ _ALLOWED_PROFILE_KEYS = frozenset({
 
 # Profile fields required to advance to profile_complete step.
 _REQUIRED_PROFILE_FIELDS = frozenset({"first_name", "last_name", "country"})
+
+
+# ---------------------------------------------------------------------------
+# Response assembly (iter 2.6c B6)
+# ---------------------------------------------------------------------------
+
+
+async def build_user_response(
+    user: User,
+    session: AsyncSession,
+) -> UserResponse:
+    """Build a UserResponse, hydrating staff_profile for staff users.
+
+    For users with `role == "staff"` this loads the StaffProfile row
+    and surfaces the EFFECTIVE permission matrix -- DEFAULT permissions
+    merged with per-staff overrides via get_effective_permissions(). The
+    frontend Staff Platform tab keys off `staff_profile` to gate the
+    whole surface, so the GET /me response is the single source of
+    truth at session-bootstrap time.
+
+    Non-staff users (investor, agent, company, etc.) get
+    `staff_profile = None`.
+
+    The 3 lines that mint the StaffProfileResponse mirror
+    `staff.admin_service._build_staff_profile_response`. We deliberately
+    re-implement them here rather than importing the underscored helper
+    -- `users.service` only consumes public API surfaces of staff
+    (`get_staff_profile`, `get_effective_permissions`, `StaffProfileResponse`),
+    so a future refactor inside admin_service doesn't ripple here.
+
+    The lookup is a no-op when role isn't staff -- one cheap branch,
+    one SELECT in the staff case. Acceptable on GET /me which already
+    sits behind an authenticated session lookup.
+
+    Args:
+        user: The authenticated user (any role).
+        session: Read or write session -- this function only SELECTs.
+
+    Returns:
+        UserResponse with staff_profile populated for staff users.
+    """
+    response = UserResponse.model_validate(user)
+
+    if user.role == UserRole.STAFF:
+        profile = await get_staff_profile(user.id, session)
+        if profile is not None:
+            sp_response = StaffProfileResponse.model_validate(profile)
+            sp_response.permissions = get_effective_permissions(profile)
+            response.staff_profile = sp_response
+
+    return response
 
 
 async def update_user(

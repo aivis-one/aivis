@@ -28,6 +28,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.modules.staff.schemas import StaffProfileResponse
+
 
 class UserResponse(BaseModel):
     """User representation in API responses.
@@ -35,6 +37,14 @@ class UserResponse(BaseModel):
     Excludes credentials (sensitive: password hashes, tokens).
     Profile is returned as-is from JSONB.
     Email is extracted from credentials via User.email property.
+
+    iter 2.6c B6:
+      `staff_profile` is populated by the service layer when
+      `role == "staff"` -- it carries the staff profile id, is_active
+      flag, and the EFFECTIVE permission matrix (defaults merged with
+      per-staff overrides). For non-staff users the field is null.
+      The frontend Staff Platform tab keys off this field to gate the
+      whole surface.
     """
 
     id: UUID
@@ -48,6 +58,7 @@ class UserResponse(BaseModel):
     language: str
     created_at: datetime
     updated_at: datetime | None = None
+    staff_profile: StaffProfileResponse | None = None
 
     model_config = {"from_attributes": True}
 
