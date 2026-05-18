@@ -1,13 +1,16 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.8
-**Дата:** 11 мая 2026
+**Версия:** 2.9
+**Дата:** 13 мая 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
 **Зависимости (читать перед работой):**
-- `CBSHOME-Design-Document.md` — Конституция v1.5
+- `CBSHOME-Design-Document.md` — Конституция v1.6 (§4.7 "Принципы проверяются на каждом решении")
 - `CBSHOME-Backend.md` — Backend ТЗ v3.6
+- `CBSHOME-Refactor-Investor-Market-And-Staff.md` v0.6 (R1)
+- `CBSHOME-Refactor-Company-Docs.md` v0.8 (R2)
+- `CBSHOME-Observability-Frontend.md` v0.3 (draft, реализация после F6)
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
 - `CBSHOME-Installment.md` — механика рассрочки
@@ -901,7 +904,9 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ## PHASE F4: Investor
 
-### ✅ F4.1: Витрина продуктов
+**Статус:** F4.1 переписана в R1 iter 2.5 (MarketView удалён → CompanyListView + CompanyOverviewView + ProductsByCompanyView). См. trailer для деталей. F4.2-F4.4 — closed как было.
+
+### ✅ F4.1: Витрина продуктов (R1 iter 2.5 — реструктуризация)
 
 **Цель:** Инвестор видит доступные продукты.
 
@@ -1062,7 +1067,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 **Уроки F4.4 (для следующих фаз):**
 1. **CButton size="md" build-блокер (B6-hotfix)** — типы компонентов проверять в начале батча, не в конце. `size?: 'default' | 'sm'`, ни md ни lg. Удалить из мышечной памяти.
-2. **Shell рисует CHeader глобально** (`InvestorShell.vue` / `AgentShell.vue`). Top-level tab views (Dashboard, Portfolio, Market, Balance, Settings, More) **НИКОГДА** не добавляют свой CHeader — только inline `<h1>`+`<p>` page-header в стиле MarketView. Sub-route views (`/investor/balance/deposit`, `/investor/portfolio/:id`, `/investor/docs`) добавляют `<CHeader :show-back="true" :show-logo="false" :title="..." />`. Был инцидент двойного header в Settings (B5 → B6-fix) — проверять паттерн перед каждым top-level view.
+2. **Shell рисует CHeader глобально** (`InvestorShell.vue` / `AgentShell.vue`). Views **никогда** не рендерят свой `<CHeader>` — см. **FP-19** (Single CHeader policy, закреплена в iter 2.7 B1+B2). Это правило **универсально** для top-level tabs и sub-route views. Был инцидент двойного header в 8 views (iter 2.4-2.5 эпоха), исправлено batch'ем iter 2.7. Title через hero `<h1>` или inline `.<prefix>__page-header` с back-link (FP-19 + FP-20).
 3. **Orphaned routes** — каждый новый роут должен иметь **входную точку** (ссылку из другого view или tab bar item). В F4.4 `/investor/settings` был orphaned до B6. Добавлять запись «Как попасть в этот экран:» при создании роута.
 4. **Backend whitelist для JSONB fields** — `_ALLOWED_PROFILE_KEYS` в `users/service.py` нужно расширять при добавлении нового ключа в profile. Фронт падает с 400 на PATCH. Проверять до писания frontend-фичи.
 5. **Epoch guard теперь стандарт** — применён в `stores/portfolio` (two-epoch), `stores/dashboard`, `stores/transactions`, `composables/useCertificateBlob`, inline `openDoc` в InvestorDocsView. Любой async + re-entrance сценарий должен иметь epoch. Правило кодифицировано в **FP-17** (ниже).
@@ -1683,6 +1688,366 @@ function reset(): void {
 
 ---
 
+### FP-18: Все навигации через `safeNavigate`
+
+Закреплено в iter 2.7 (R28-R33). Закрывает BUG-28-01, BUG-29-01 и весь класс "NavigationFailure leaked into outer ApiResponseError catch → false error toast".
+
+**Правило:** каждый `router.push()` / `router.replace()` в codebase — **только** через helper `safeNavigate(...)` из `frontend/src/composables/safeNavigate.ts`. Без исключений, кроме одного документированного (см. ниже).
+
+```typescript
+// ЗАПРЕЩЕНО — void router.push:
+void router.push({ name: 'investor-companies' })
+
+// ЗАПРЕЩЕНО — inline .catch с собственным фильтром:
+router.push({ name: 'investor-companies' }).catch(err => {
+  if (isNavigationFailure(err, NavigationFailureType.duplicated)) return
+  console.error(err)
+})
+
+// ПРАВИЛЬНО — fire-and-forget:
+void safeNavigate(
+  router.push({ name: 'investor-companies' }),
+  '[InvestorDashboardView] to companies list',
+)
+
+// ПРАВИЛЬНО — await, когда UI-state должен дождаться навигации
+// (submitting flag, finally блок):
+async function confirm() {
+  submitting.value = true
+  try {
+    await api.submit(...)
+    await safeNavigate(
+      router.push({ name: 'portfolio' }),
+      '[PurchaseView] post-submit to portfolio',
+    )
+  } catch (err) {
+    submitting.value = false
+    handleError(err)
+  }
+}
+```
+
+**Контракт `safeNavigate`:**
+- **No-throw, no-rethrow.** Даже на hard error (network, internal Vue Router error) helper не пробрасывает — логирует `console.error` с `context` prefix. Это критично: иначе NavigationFailure пробивается в outer `try { ... } catch (err) { handlePlanError(err) }` и юзеру показывается "purchase failed" вместо реальной природы (BUG-28-01).
+- `context` — строка `'[ComponentName] short description'`. Grep-friendly.
+- Не расширять helper. Если возникнет use-case с fallback URL / retry logic — создавать **параллельный** helper (`safeNavigateWithFallback`), не перегружать canonical. Anti-creep policy.
+- Импорты `isNavigationFailure` / `NavigationFailureType` из `vue-router` — **только** в `safeNavigate.ts` и в единственном документированном исключении.
+
+**Единственное исключение — `useAvatar.ts:145`.** Zombie-staff-token guard намеренно трактует `NavigationFailureType.aborted` как **ожидаемый** результат (route-guard отверг redirect), а всё остальное — `console.warn`. Filter shape отличается от `safeNavigate`'s (там `aborted` — benign noise). Документировано inline-комментарием с ссылкой на этот FP.
+
+**Не добавлять новые исключения.** Если кажется что нужно — 90% случаев это `safeNavigate`-совместимая ситуация, и нужно перечитать docstring. 9% — нужен параллельный helper. 1% — действительно one-off, inline `.catch` с явным комментарием `// SPECIAL CASE -- NOT using safeNavigate, see <reason>`.
+
+---
+
+### FP-19: Single CHeader policy
+
+Внутри `InvestorShell`, `AgentShell`, `CompanyShell`, `StaffShell`, `PublicShell` — **только shell** рендерит `<CHeader>`. Views **не имеют собственного `<CHeader>`**.
+
+Закреплено в iter 2.7 (B1+B2, R32). До этого 8 views рендерили свой CHeader поверх shell'ового — две parallel sticky-полосы ~104px (~15.5% iPhone viewport).
+
+**Как view предоставляет title:**
+
+- **С hero-блоком** — page title это `<h1>` hero (`pd__hero-title`, `co__hero-name`, `iv__hero-title`). Дополнительного title-элемента не нужно.
+- **Без hero, с back-link** — inline `<.<prefix>__page-header>` блок содержит back-link + `<h1>`:
+
+```vue
+<div class="cp__page-header">
+  <CBackLink :label="t('inv.companyPosition.backLink')" @click="goBack" />
+  <h1 class="cp__page-title">{{ headerTitle }}</h1>
+</div>
+```
+
+- **Без hero, без back-link (top-level tab)** — просто inline `<h1>` сверху. Pattern из `InvestorMoreView`, `InvestorSettingsView`.
+
+**Когда добавлять back-link:**
+
+- Sub-route reached via tap / deep-link → back-link обязателен.
+- Top-level tab via CTabBar → **без** back-link (нет originating screen).
+- Intentional design exception → без back-link, документировать template-комментарием (пример: `PurchaseView`).
+
+**Trade-off:** sticky-title regression. Старый paradigm имел sticky `<CHeader>` с title. Новый — title inline в hero/page-header, **не sticky**. Принято. Если в будущем конкретный view потребует sticky title — pre-designed Variant B fallback через Teleport в shell-CHeader. **Не добавлять Teleport infrastructure превентивно** — ждать real UX-signal.
+
+---
+
+### FP-20: Все inline back-links через `<CBackLink>`
+
+Закреплено в iter 2.7 (B3, R33). До этого 7 views имели локальные `.pd__back`, `.co__back`, `.cp__back` etc. — каждый с ~25 строками дублированной CSS.
+
+**Файл:** `frontend/src/components/ui/CBackLink.vue`, экспорт через `@/components/ui` barrel.
+
+**API:**
+
+```vue
+<CBackLink :label="t('inv.product.backLink')" @click="goBack" />
+```
+
+- `label` — **уже переведённая** строка. Caller владеет i18n (зеркало `CButton` со slot-content, `CEmptyState` с `:title`/`:description`).
+- `@click` — propagation от root `<button>` через Vue 3 native event inheritance, без `emits` declaration.
+- Focus ring (WCAG 2.1 §2.4.7) — `:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }` **внутри** компонента, применяется ко всем consumer'ам.
+
+**Margin-less.** Positioning — забота view, не компонента. Два positioning idiom'а:
+
+**Sub-pattern A — back-link над hero** (используется когда view имеет hero с `<h1>`):
+
+```vue
+<div class="pd__back-row">
+  <CBackLink :label="t('inv.product.backLink')" @click="goBack" />
+</div>
+
+<style>
+.pd__back-row {
+  display: flex;
+  margin: var(--space-md, 16px) var(--space-md, 16px) 0;
+}
+</style>
+```
+
+**Sub-pattern B — back-link внутри inline page-header** (когда нет hero):
+см. FP-19 пример выше.
+
+**ЗАПРЕЩЕНО:** новые `.<prefix>__back` CSS-классы, inline `<button>` markup с копией стилей.
+
+**Lesson `extract first, fix a11y once`:** focus-ring был добавлен через одну правку в `CBackLink`. До extraction это была бы 7-местная правка с риском забыть. Pattern: при extracting shared UI с a11y requirements — extract first, потом делаешь a11y fix в одном месте.
+
+---
+
+### FP-21: History-aware `goBack()` handler
+
+Стандартный pattern для back-link, который должен идти "куда юзер пришёл, fallback на sensible target при deep-link":
+
+```typescript
+function goBack(): void {
+  if (window.history.state?.back) {
+    router.back()
+    return
+  }
+  void safeNavigate(
+    router.push({ name: fallbackRouteName.value }),
+    '[ComponentName] back fallback to <target>',
+  )
+}
+```
+
+**Правила:**
+
+- `window.history.state?.back` — платформенный API, **не** `router.options.history.state.back` (Vue Router wrapper, функционально идентичный, но less idiomatic — R32 STYLE-32-03 deprecated его).
+- Optional chain `?.` — защита от custom history implementations где `state` может быть `null`.
+- Fallback push **всегда** через `safeNavigate` (FP-18).
+- Fallback target name обязателен. Никогда не использовать `router.back()` без fallback — на deep-link entry он silent fail.
+
+**Defensive guards для route params.** Если fallback target требует params которые могут быть malformed:
+
+```typescript
+const id = companyId.value
+if (!id) {
+  // onMounted guard уже redirect'нул для empty id, но если как-то
+  // оказались тут — отправляем юзера на known-safe route.
+  void safeNavigate(
+    router.push({ name: companiesListRouteName.value }),
+    '[ProductsByCompanyView] back fallback to companies list (no id)',
+  )
+  return
+}
+void safeNavigate(
+  router.push({ name: companyOverviewRouteName.value, params: { id } }),
+  '[ProductsByCompanyView] back fallback to company overview',
+)
+```
+
+**Переиспользование existing handlers.** Если у view уже есть handler с подходящей semantics (`InstallmentView.cancel()` — history-aware, правильный target) — **переиспользовать его** для back-link. Не плодить дубль `goBack()` с той же логикой.
+
+---
+
+### FP-22: Role-aware route names через computed + `isAgentShell`
+
+Когда shared view рендерится под `/investor/*` и `/agent/*`, и должен push'ить на role-aware target:
+
+```typescript
+const fooRouteName = computed<string>(() =>
+  isAgentShell(route) ? 'agent-foo' : 'investor-foo',
+)
+```
+
+**Правила:**
+
+- Резолвить через `isAgentShell(route)` из `@/router/helpers` (читает `route.meta.shell`), **не** string-matching по `route.path`.
+- `computed`, не constant — `route.meta.shell` приходит от shell-wrapper, зависит от того какой shell mounted view.
+- Naming `<feature>RouteName` для grep-friendliness.
+
+Несколько таких computed'ов в shared view (`companiesListRouteName`, `productDetailRouteName`, `companyOverviewRouteName`) — норма. Каждый именует конкретный role-bridged route.
+
+---
+
+### FP-23: Role-conditional CTA — template guard + defensive role check
+
+Закреплено в iter 2.6 (R26, FE-26-01) после реального UX-бага "кнопка ничего не делает".
+
+**Контекст бага.** Standard `safeNavigate`/NavigationFailure filter (`duplicated | cancelled | aborted`) поглощает rejection от `globalGuard::meta.roles` — это тип `aborted`. То есть если CTA пушит на route куда роль visitor'а попасть **не может**, silent swallow создаёт UX-баг "кнопка ничего не делает".
+
+**Двойная защита (обязательна для role-conditional CTA):**
+
+1. **Template guard** через `canNavigateTo*` computed — скрывает CTA для несовместимых ролей.
+2. **Defensive role check** в handler с `console.warn` — на случай если template guard пропустил.
+
+```typescript
+const canNavigateToPurchase = computed<boolean>(() => {
+  if (!authStore.isAuthenticated) return true  // visitor: push на register
+  return authStore.role === 'investor' || authStore.role === 'agent'
+})
+
+function onBuyNow() {
+  if (!authWall.requireAuth('purchase')) return  // visitor → register
+  if (!canNavigateToPurchase.value) {
+    console.warn('[PublicProductDetailView] buyNow blocked: role=', authStore.role)
+    return
+  }
+  void safeNavigate(
+    router.push({ name: 'investor-purchase', params: { id: product.value.id } }),
+    '[PublicProductDetailView] to purchase',
+  )
+}
+```
+
+```vue
+<CButton
+  v-if="canNavigateToPurchase"
+  :label="buyButtonLabel"
+  @click="onBuyNow"
+/>
+```
+
+**Применять для любой role-conditional навигации.** Перед каждым role-aware `router.push` сверять с `router/guards.ts::globalGuard` + `meta.roles` целевого route'а. Если visitor попасть не может — CTA скрыта через template, plus defensive check в handler.
+
+---
+
+### FP-24: Lazy import — stub-файл обязателен в том же батче
+
+Закреплено в iter 2.6 (Batch 2 build-fix).
+
+Vite/Rollup при production build резолвит **все** dynamic imports (`() => import('@/views/...')`). Несуществующий target → пустой chunk → `vite-plugin-pwa` падает с `"Couldn't find configuration for either precaching or runtime caching"`. **Не** runtime error при открытии route — **build-time crash**.
+
+**Правило:** если router вводит route name в Batch N с расчётом на view, реализуемый в Batch N+1 — **в Batch N обязан лежать stub-файл** по реальному пути. Stub — тривиальный "Coming soon" компонент. Реальная имплементация заменит в следующем батче.
+
+**ЗАПРЕЩЕНО:** "разрешится в следующем батче, build пройдёт runtime-resolve". Не пройдёт.
+
+---
+
+### FP-25: Self-hiding sections pattern
+
+Закреплено в iter 2.6 (R2 §7.1/§7.2). Применяется ко всем "опциональным" секциям view (Roadmap, Products teaser, Attachments, etc.):
+
+- `loading` → секция рендерится (spinner внутри).
+- `errored` → секция рендерится (error + retry внутри).
+- `success && empty` → секция **не рендерится** (`<!---->`).
+- `success && items` → секция рендерится.
+
+**Parent view не оборачивает в `v-if`.** Секция сама знает рендериться ей или нет. Иначе parent тащит знание о data state каждой секции.
+
+---
+
+### FP-26: Auth-state branching CTA pattern
+
+Закреплено в iter 2.6 (Batch 5, Batch 6).
+
+Для CTA, поведение которой зависит от auth-state visitor'а (например, "Buy" на public product detail):
+
+- **Аноним:** CTA видна, label = `t('public.<view>.purchaseCTA')` ("Register to buy") → `useAuthWall().requireAuth(action)` → push на register с `?next=<current path>&intent=<action>`.
+- **investor / agent:** CTA видна, label = `t('inv.<view>.<action>')` ("Buy now") → выполняется action как обычно (push на authenticated route).
+- **staff / company / other:** CTA **скрыта** через FP-23 template guard.
+
+```typescript
+const buyButtonLabel = computed(() => 
+  authStore.isAuthenticated
+    ? t('inv.product.buyNow')
+    : t('public.productDetail.purchaseCTA')
+)
+```
+
+Этот pattern применяется **превентивно**, не после ревью-замечания. Любая CTA на public surface, ведущая к auth-required action — через FP-26 + FP-23 связку.
+
+---
+
+### FP-27: i18n reuse — domain-neutral vs domain-specific
+
+Закреплено в iter 2.6.
+
+При выборе "новый ключ под `public.*` / переиспользовать existing `inv.*`":
+
+- **Domain-specific** под `public.*` — marketing-tone ("Discover companies", "Register to ..."), error messages, текста с public-контекстом.
+- **Domain-neutral** — переиспользовать существующее (`inv.path.*` для documents L1 labels, `inv.product.*` для product detail fields like "Price per pack", "Description", "Buy now", "+N bonus units", "Sold out").
+
+Принцип: **семантика** определяет ключ. Если phrase идентична в public и auth flow по смыслу — переиспользуем. Если phrase domain-specific — отдельный ключ под `public.*`.
+
+**i18n keys для back-link.** Naming pattern: `<scope>.<viewname>.backLink`. Value — human-context-specific "Back to X" string ("Back to companies", "Back to portfolio"), не generic "Back".
+
+**Семантически разные ключи могут иметь одинаковое translation value — это нормально.** Например:
+
+| Key | Context | Phrasing intent |
+|---|---|---|
+| `inv.product.backToMarket` | Empty-state CTA когда product не загрузился | "this product is gone, get back to catalogue" |
+| `inv.product.backLink` | Inline back-link над hero, loaded product | "step out of this product, back to catalogue" |
+
+Оба переводятся как "Back to companies", но контексты разные. UX может перефразировать один без другого. **Не дедуплицировать i18n values** — keys семантические, values отображательные.
+
+---
+
+### Policy — i18n catch-up
+
+**Решение (May 2026, boss):** новые ключи добавляются **только в `en.json`** во время feature-работы. `ru.json`, `de.json`, `ar.json` будут batch'ем в конце, перед public launch.
+
+Это **не tech debt** — это policy. Не флажить в review как "deferred", не записывать в TD-list. `vue-i18n` `fallbackLocale: 'en'` работает корректно, single-user (boss) до launch'а — отсутствие переводов не блокер.
+
+Catch-up batch перед launch:
+- Все ключи добавленные с iter 2.6 и далее.
+- RTL audit для `ar.json` (back-link arrow-icon направление).
+- Native-speaker review для tone consistency.
+
+---
+
+### Self-check checklist для review
+
+Перед презентацией каждого батча — пройти этот checklist. Каждый пункт с §-ссылкой на FP / lesson.
+
+```
+[ ] Нет <CHeader> внутри view (shell рендерит)                          FP-19
+[ ] Каждый router.push / router.replace обёрнут в safeNavigate          FP-18
+[ ] isNavigationFailure / NavigationFailureType импортированы только
+    в safeNavigate.ts и useAvatar.ts                                    FP-18
+[ ] Все back-links через <CBackLink>, не inline <button>                FP-20
+[ ] Нет новых .<prefix>__back CSS-классов                               FP-20
+[ ] History-aware handlers используют window.history.state?.back        FP-21
+[ ] safeNavigate context = '[ComponentName] description'                FP-18
+[ ] Role-aware route names — computed через isAgentShell                FP-22
+[ ] Role-conditional CTA имеет template guard + defensive role check    FP-23
+[ ] try/catch вокруг submit+navigate — await safeNavigate (не void)     FP-18
+[ ] Новые i18n keys — только в en.json (policy, не debt)
+[ ] Lazy import target существует физически в том же батче              FP-24
+[ ] Back-link target route name существует в router/index.ts
+[ ] Удалённый prop binding — проверить computed/ref на dead-code
+```
+
+**Grep-команды для self-check:**
+
+```bash
+# 1. Любой router.push/replace без safeNavigate wrap:
+grep -rnE "(void |await )?router\.(push|replace)\(" frontend/src \
+  | grep -v "safeNavigate"
+
+# 2. isNavigationFailure импорт вне разрешённых файлов:
+grep -rn "isNavigationFailure\|NavigationFailureType" frontend/src \
+  | grep -v "safeNavigate.ts\|useAvatar.ts"
+
+# 3. Inline <CHeader> в views (не layouts/):
+grep -rn "<CHeader" frontend/src/views/
+
+# 4. Старые back-link классы:
+grep -rnE "__back[^-]" frontend/src/
+```
+
+Если хоть один grep что-то нашёл — fix перед презентацией.
+
+---
+
 ## 8. Tech Debt (Frontend)
 
 Выявлен в ходе code review Phase F3 (score 6.5 → 9/10). Не блокирует MVP, закрывается после F4–F6.
@@ -1857,6 +2222,10 @@ function reset(): void {
 
 
 ---
+
+*Version 2.9 | 2026-05-13 | iter 2.6 (Public Flow Frontend) + iter 2.5 (Investor frontend для R1) + iter 2.7 (Cleanup) закрыты. Добавлены 10 новых FP (FP-18 — FP-27): safeNavigate canonical helper, single CHeader policy, CBackLink shared component, history-aware goBack, role-aware route names через computed, role-conditional CTA с двойной защитой (template guard + defensive role check), lazy import stub policy, self-hiding sections, auth-state branching CTA, i18n reuse domain-neutral/specific. Closed BUG-28-01 (NavigationFailure → false purchase toast) и BUG-29-01 (NavigationFailure → ApiResponseError rethrow в auth). Двойной CHeader в 8 views — закрыт. ~60 navigation call-sites переведены на safeNavigate. CBackLink — единый компонент back-link (раньше 7 копий локального CSS). i18n catch-up зафиксирован как **policy** (не tech debt) — новые ключи только в en.json, ru/de/ar batch'ем перед public launch. Self-check checklist + grep команды добавлены в §7.*
+
+*Version 2.8 | 2026-05-11 | Frontend ТЗ обновлён после iter 2.5 (Investor frontend, R1 §1) — F4.1 структурно переписана: MarketView удалён, заменён цепочкой CompanyListView → CompanyOverviewView → ProductsByCompanyView. AgentShell зеркала под /agent/*. CompanyPositionView с ownership + agreement buttons (R2 §5.5 carryover). Backend gaps (G1-G5) все закрыты. R1+R2 backend полностью закрыты в iter 2.4. Strategy: iter 2.6 (Public flow) → iter 2.7 (Staff Platform tab) → F6 (Agent shell) → F8 (Notifications) → F7 (i18n) → F9 (polish).*
 
 *Version 3.7 | 2026-05-05 | Phase F5 (Company UI) closed. F5.1 deployed: dashboard with hero / balance / pool widget / metrics row / recent transactions. F5.2 deployed: B0 Products list (read-only), B1+B2 Analytics (top metrics + sales-by-month chart + sales-by-product table), B3+B4 Balance (passive balance card + withdrawals history with status badges + payout details preview + write forms for POST /withdrawals and PUT /users/me/payout-details), B5 Settings (read-only profile). Code review TD batch: +TD-F14 (withdrawal bounds frontend↔backend duplication) + TD-F15 (vue-i18n placeholder pitfall, обнаружен в B4 — JSON-пример в локали ломал bottom sheet рендер). en.json: +comp.{dashboard,products,settings,analytics,balance}.* (~75 keys). ru / de / ar — i18n catchup отложен до отдельного спринта (объём + native-speaker review).*
 
