@@ -5,8 +5,8 @@
 //
 // Investor home screen. Rendered by InvestorShell at /investor/dashboard
 // (the "home" tab). Shell already paints CHeader + CTabBar, so this
-// view is a plain content column -- no embedded CHeader (see MarketView
-// for the canonical top-level-tab-view pattern).
+// view is a plain content column -- no embedded CHeader (see
+// CompanyListView for the canonical top-level-tab-view pattern).
 //
 // Widgets, in render order:
 //
@@ -171,7 +171,10 @@ function goDeposit(): void {
   router.push({ name: 'investor-deposit' })
 }
 function goMarket(): void {
-  router.push({ name: 'investor-market' })
+  // iter 2.6.x hotfix: route renamed in iter 2.5 batch 9 -- the
+  // marketplace catalogue moved to /investor/companies (CompanyListView).
+  // Function name kept as `goMarket` to minimise refactor scope.
+  router.push({ name: 'investor-companies' })
 }
 
 // ---------------------------------------------------------------------------

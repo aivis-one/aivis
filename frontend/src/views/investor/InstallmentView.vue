@@ -304,8 +304,13 @@ function cancel(): void {
 }
 
 function backToMarket(): void {
+  // iter 2.6.x hotfix: market routes removed in iter 2.5 batch 9,
+  // catalogue moved to *-companies (CompanyListView). Function
+  // name kept as `backToMarket` -- internal label, see also
+  // `inv.product.backToMarket` i18n key which carries the updated
+  // user-facing label "Back to companies".
   router.push({
-    name: agentShell.value ? 'agent-market' : 'investor-market',
+    name: agentShell.value ? 'agent-companies' : 'investor-companies',
   })
 }
 

@@ -299,7 +299,7 @@
         "title": "Product not found",
         "desc": "This product may have been removed or is no longer available"
       },
-      "backToMarket": "Back to marketplace",
+      "backToMarket": "Back to companies",
       "pricePerPack": "Price per pack",
       "availability": "Availability",
       "description": "About",
@@ -909,13 +909,6 @@
       "purchaseCTA": "Register to buy"
     },
     "productDetail": {
-      "backLink": "Back to company",
-      "notFound": {
-        "title": "Product unavailable",
-        "subtitle": "This product may have been removed or is no longer active."
-      },
-      "errorTitle": "Couldn't load product",
-      "errorRetry": "Try again",
       "purchaseCTA": "Register to buy"
     },
     "attachmentLanding": {

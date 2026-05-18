@@ -6,7 +6,7 @@
 //
 // Instant-purchase confirmation screen. Shared across
 // /investor/purchase/:id and /agent/purchase/:id via role-aware
-// route names (same approach as MarketView / ProductDetailView).
+// route names (same approach as ProductDetailView / InstallmentView).
 //
 // Flow:
 //   1. On mount, fetch product detail + dashboard summary in parallel.
@@ -239,8 +239,12 @@ function cancel(): void {
 }
 
 function backToMarket(): void {
+  // iter 2.6.x hotfix: market routes removed in iter 2.5 batch 9,
+  // catalogue moved to *-companies (CompanyListView). Function
+  // name kept -- see also `inv.product.backToMarket` i18n key which
+  // carries the updated "Back to companies" user-facing label.
   router.push({
-    name: agentShell.value ? 'agent-market' : 'investor-market',
+    name: agentShell.value ? 'agent-companies' : 'investor-companies',
   })
 }
 

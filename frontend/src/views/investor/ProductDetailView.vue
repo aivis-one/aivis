@@ -104,7 +104,11 @@ const available = computed<number>(() => {
 })
 
 function backToMarket(): void {
-  const name = agentShell.value ? 'agent-market' : 'investor-market'
+  // iter 2.6.x hotfix: market routes removed in iter 2.5 batch 9,
+  // catalogue moved to *-companies (CompanyListView). Function
+  // name kept -- internal label, see `inv.product.backToMarket`
+  // i18n key for updated user-facing copy.
+  const name = agentShell.value ? 'agent-companies' : 'investor-companies'
   void router.push({ name })
 }
 

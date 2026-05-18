@@ -6,7 +6,7 @@
 // Investor portfolio screen. Rendered by InvestorShell (and AgentShell
 // for the agent-side duplicate) at /investor/portfolio. Shell already
 // paints CHeader + CTabBar -- this view is a plain content column,
-// matching the MarketView top-level-tab pattern.
+// matching the CompanyListView top-level-tab pattern.
 //
 // Data source:
 //   usePortfolioStore (B1). `fetchPortfolio()` populates positions[].
@@ -32,12 +32,12 @@
 //   profit%, followed by three stats (Units / Avg. price / Value).
 //
 // Empty state:
-//   CTA to market. If the investor has zero companies in positions[],
-//   the list renders the empty state block with a button to navigate
-//   to /investor/market (or /agent/market).
+//   CTA to companies catalogue. If the investor has zero companies
+//   in positions[], the list renders the empty state block with a
+//   button to navigate to /investor/companies (or /agent/companies).
 //
 // Loading / error states:
-//   Same taxonomy as MarketView -- centered spinner during first
+//   Same taxonomy as CompanyListView -- centered spinner during first
 //   load, CEmptyState + retry on error. Silent refresh on return.
 // =============================================================================
 
@@ -124,7 +124,11 @@ const positionRouteName = computed<string>(() =>
 )
 
 const marketRouteName = computed<string>(() =>
-  isAgentShell(route) ? 'agent-market' : 'investor-market',
+  // iter 2.6.x hotfix: market routes removed in iter 2.5 batch 9,
+  // catalogue moved to *-companies (CompanyListView). Computed name
+  // kept as `marketRouteName` -- internal label, no rename to keep
+  // hotfix scope minimal.
+  isAgentShell(route) ? 'agent-companies' : 'investor-companies',
 )
 
 function openPosition(p: PortfolioPositionResponse): void {

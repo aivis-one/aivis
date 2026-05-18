@@ -1,13 +1,15 @@
 // =============================================================================
-// CBSHOME Frontend -- Router Helpers (Phase F4.1.4 + F4.1.5 polish)
+// CBSHOME Frontend -- Router Helpers (Phase F4.1.4 + F4.1.5 polish
+//                                       + iter 2.6.x hotfix cleanup)
 // =============================================================================
 //
-// Shared views (MarketView, ProductDetailView, and soon PurchaseView
-// + InstallmentView) must pick role-aware route names based on the
+// Shared views (CompanyListView, CompanyOverviewView, ProductsByCompany-
+// View, ProductDetailView, PurchaseView, InstallmentView, PortfolioView,
+// CompanyPositionView) must pick role-aware route names based on the
 // currently-active shell. These helpers read the `shell` tag that
 // router/index.ts attaches to each shell wrapper's meta.
 //
-// Why meta, not path-matching? A future `/partner/market` shell that
+// Why meta, not path-matching? A future `/partner/companies` shell that
 // reuses the same views just needs its own meta.shell = 'partner',
 // with zero edits in the shared views.
 //
@@ -15,6 +17,13 @@
 //   `RouteMeta.shell` is now declared in guards.ts's augmentation
 //   block, so `route.meta.shell` is natively typed as
 //   `Shell | undefined` -- no runtime cast needed here.
+//
+// iter 2.6.x hotfix cleanup:
+//   The original header listed `MarketView` as a consumer, but
+//   MarketView was deleted in iter 2.5 batch 9 -- the catalogue
+//   moved to CompanyListView (/companies tab) and per-company
+//   products to ProductsByCompanyView (/companies/:id/products).
+//   Consumer list refreshed accordingly.
 // =============================================================================
 
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
