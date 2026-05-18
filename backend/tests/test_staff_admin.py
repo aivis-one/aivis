@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Admin Tests (Sprint 3.3)
+# CBSHOME Backend -- Staff Admin Tests (Sprint 3.3, iter 2.6c B1)
 # =============================================================================
 #
 # Tests cover:
@@ -15,8 +15,24 @@
 #   10: KYC approve -> 204, status updated
 #   11: KYC reject -> 204, status updated
 #   12: KYC approve non-existent -> 404
+#   13: (B1) ?kyc_status= positive-and-negative pair across 4 enum values
+#   14: (B1) ?role=investor combined with ?kyc_status=approved
+#   15: (B1) ?kyc_status=garbage -> 422 from the FastAPI enum bind
 #
 # Email prefix: "s33_" -- unique to this test file, cleaned up in fixture.
+#
+# iter 2.6c B1 NOTES:
+#   The dev DB is shared (see conftest.py) and accumulates rows across
+#   runs. We never iterate over the returned items to assert every one
+#   has the requested kyc_status -- that would either succeed
+#   tautologically when the SQL clause works or fail noisily on
+#   pre-existing pollution. Instead, each B1 test materialises a
+#   freshly registered investor in a known kyc_status, then runs two
+#   probes:
+#     * positive: ?kyc_status=<expected> must return that investor
+#     * negative: ?kyc_status=<other>    must NOT return that investor
+#   The pair is robust against arbitrary pre-existing rows and is the
+#   only configuration that actually exercises the new WHERE clause.
 # =============================================================================
 
 from uuid import uuid4
@@ -364,3 +380,228 @@ async def test_kyc_approve_nonexistent(
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# iter 2.6c B1: GET /staff/users?kyc_status= filter
+# ---------------------------------------------------------------------------
+#
+# Robustness contract for this section:
+#   * The dev DB is shared and can hold any number of pre-existing
+#     users in any kyc_status. We never assert "all returned items
+#     have kyc_status=X" -- pre-existing rows would fail that
+#     tautology test on the day someone tests a different code path.
+#   * Instead, each test creates a fresh investor in a known
+#     kyc_status and runs two probes:
+#       positive  -- ?kyc_status=<expected> includes our user
+#       negative  -- ?kyc_status=<other>    excludes our user
+#     The pair only passes when the WHERE clause is actually wired,
+#     and tolerates arbitrary pollution from prior test runs.
+#   * To survive heavily polluted dev DBs (>100 rows per status), we
+#     find the user by id within the page; the service orders by
+#     created_at DESC, so a just-registered investor lands on page 1
+#     of a per_page=100 list with overwhelming probability. If a
+#     future test fixture starts seeding >100 users per status, the
+#     positive probe will need cursor pagination -- documented but
+#     not implemented here.
+
+
+async def _bring_investor_to_status(
+    client: AsyncClient,
+    admin_token: str,
+    target_status: str,
+) -> str:
+    """Register an investor and walk them to the requested kyc_status.
+
+    Returns the investor's user_id. `target_status` must be one of
+    the four KYCStatus enum values: not_started, submitted, approved,
+    rejected. Fails the test on any other value.
+
+    We use the live KYC flow (POST /kyc/submit + POST /staff/kyc/.../
+    approve|reject) instead of mutating User.kyc_status directly so
+    the denormalised cache on User stays in sync with the
+    KYCApplication row -- exactly as a real staff session would
+    leave it.
+    """
+    inv_data = await register_user(client)
+    user_id = inv_data["user"]["id"]
+    inv_token = inv_data["session_token"]
+
+    if target_status == "not_started":
+        return user_id
+
+    # All non-not_started states begin with a submit.
+    submit_resp = await client.post(
+        "/api/v1/kyc/submit", headers=auth_headers(inv_token)
+    )
+    assert submit_resp.status_code == 201, submit_resp.text
+    application_id = submit_resp.json()["id"]
+
+    if target_status == "submitted":
+        return user_id
+
+    if target_status == "approved":
+        resp = await client.post(
+            f"/api/v1/staff/kyc/{application_id}/approve",
+            headers=auth_headers(admin_token),
+        )
+        assert resp.status_code == 204, resp.text
+        return user_id
+
+    if target_status == "rejected":
+        resp = await client.post(
+            f"/api/v1/staff/kyc/{application_id}/reject",
+            json={},
+            headers=auth_headers(admin_token),
+        )
+        assert resp.status_code == 204, resp.text
+        return user_id
+
+    pytest.fail(f"Unsupported target_status: {target_status!r}")
+    return ""  # unreachable, keep type-checker happy
+
+
+async def _fetch_user_ids_page(
+    client: AsyncClient,
+    admin_token: str,
+    *,
+    kyc_status: str,
+    role: str | None = None,
+    per_page: int = 100,
+) -> set[str]:
+    """Hit GET /staff/users with the requested filters; return id set.
+
+    Returns the ids on page 1. The service orders by created_at DESC,
+    so a fresh investor created within the same test will be near
+    the top.
+    """
+    qs = f"?kyc_status={kyc_status}&per_page={per_page}"
+    if role is not None:
+        qs += f"&role={role}"
+    resp = await client.get(
+        f"/api/v1/staff/users{qs}",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    return {item["id"] for item in body["items"]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "target_status,other_status",
+    [
+        ("not_started", "approved"),
+        ("submitted", "approved"),
+        ("approved", "rejected"),
+        ("rejected", "approved"),
+    ],
+)
+async def test_list_users_filter_kyc_status(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    target_status: str,
+    other_status: str,
+) -> None:
+    """?kyc_status=<value> includes the freshly-staged investor
+    and ?kyc_status=<other> excludes them.
+
+    Positive probe + negative probe is the only configuration that
+    proves the WHERE clause is actually applied. Iterating over the
+    response would either pass tautologically when the SQL works or
+    fail noisily on pre-existing rows that share a status; neither
+    helps diagnose a regression.
+
+    The (target, other) pairs are chosen so that `other` is a status
+    the just-created investor CANNOT also satisfy after the live KYC
+    walk:
+      not_started -> approved   (just registered, never submitted)
+      submitted   -> approved   (submitted, not yet approved)
+      approved    -> rejected   (terminal in webhook -> approved)
+      rejected    -> approved   (terminal in webhook -> rejected)
+    """
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _bring_investor_to_status(
+        client, admin_token, target_status
+    )
+
+    # Positive probe: user must appear when filtering by their own status.
+    matching_ids = await _fetch_user_ids_page(
+        client, admin_token, kyc_status=target_status
+    )
+    assert user_id in matching_ids, (
+        f"Investor {user_id} (kyc_status={target_status}) was not "
+        f"surfaced by ?kyc_status={target_status}; got "
+        f"{len(matching_ids)} ids on the first page"
+    )
+
+    # Negative probe: user must NOT appear when filtering by a status
+    # they cannot currently hold.
+    other_ids = await _fetch_user_ids_page(
+        client, admin_token, kyc_status=other_status
+    )
+    assert user_id not in other_ids, (
+        f"Investor {user_id} (actual kyc_status={target_status}) "
+        f"leaked into ?kyc_status={other_status} page -- the WHERE "
+        f"clause is not filtering"
+    )
+
+
+@pytest.mark.asyncio
+async def test_list_users_filter_role_and_kyc_status(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """?role=investor&kyc_status=approved -- both filters compose.
+
+    Stage two investors:
+      A: walks to approved.
+      B: stays at not_started.
+    Then probe with ?role=investor&kyc_status=approved:
+      A must appear (positive)
+      B must NOT appear (negative on kyc_status, role matches)
+    This is the regression guard that proves the kyc_status clause is
+    ANDed onto the existing role clause rather than replacing it. If
+    the kyc_status filter were silently dropped when combined with
+    role, B (a fresh not_started investor with role=investor) would
+    leak into the response -- the negative assertion catches that.
+    """
+    admin_token = await _admin_token(client, db_session)
+    approved_id = await _bring_investor_to_status(
+        client, admin_token, "approved"
+    )
+    fresh_inv = await register_user(client)
+    fresh_id = fresh_inv["user"]["id"]
+
+    page_ids = await _fetch_user_ids_page(
+        client,
+        admin_token,
+        kyc_status="approved",
+        role="investor",
+    )
+    assert approved_id in page_ids, (
+        f"Approved investor {approved_id} not in "
+        f"?role=investor&kyc_status=approved page"
+    )
+    assert fresh_id not in page_ids, (
+        f"Not-started investor {fresh_id} leaked into "
+        f"?role=investor&kyc_status=approved page -- filters not "
+        f"composing"
+    )
+
+
+@pytest.mark.asyncio
+async def test_list_users_filter_kyc_status_invalid(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """?kyc_status=<garbage> -> 422 from the FastAPI enum bind.
+
+    Confirms the typed param rejects unknown values at the framework
+    boundary before reaching the service layer.
+    """
+    admin_token = await _admin_token(client, db_session)
+
+    resp = await client.get(
+        "/api/v1/staff/users?kyc_status=garbage",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 422, resp.text

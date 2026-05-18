@@ -1,9 +1,9 @@
 # =============================================================================
-# CBSHOME Backend -- Admin Service (Sprint 3.3, G5 fix)
+# CBSHOME Backend -- Admin Service (Sprint 3.3, G5 fix, iter 2.6c B1)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   list_users()          -- unified user list with pagination + role filter
+#   list_users()          -- unified user list with pagination + role/kyc_status filter
 #   get_user_detail()     -- full user detail for staff view
 #   block_user()          -- deactivate user + kill all sessions
 #   dashboard_stats()     -- platform-wide statistics
@@ -18,6 +18,13 @@
 # BLOCK RULES:
 #   Only non-staff users can be blocked. Staff are trusted.
 #   Block sets is_active=false + kills all Redis sessions.
+#
+# iter 2.6c B1:
+#   list_users() gains a kyc_status keyword argument. The router
+#   validates the enum membership at the FastAPI boundary; the
+#   service trusts the incoming string and appends one more clause
+#   to base_filter when it is not None. Pagination, role filter,
+#   and platform exclusion are unaffected.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -86,19 +93,27 @@ async def list_users(
     session: AsyncSession,
     *,
     role: str | None = None,
+    kyc_status: str | None = None,
     page: int = 1,
     per_page: int = 20,
 ) -> UserListResponse:
-    """List users with pagination and optional role filter.
+    """List users with pagination and optional role / kyc_status filters.
 
     Platform user is always excluded.
     For staff users, includes StaffProfile with effective permissions.
+
+    iter 2.6c B1: kyc_status is validated to be a KYCStatus enum value
+    at the router boundary, so the service accepts a plain string and
+    appends it to the base filter when present.
     """
     # Base filter: exclude platform.
     base_filter = User.role != UserRole.PLATFORM
 
     if role:
         base_filter = base_filter & (User.role == role)
+
+    if kyc_status is not None:
+        base_filter = base_filter & (User.kyc_status == kyc_status)
 
     # Count total.
     count_stmt = select(func.count()).select_from(User).where(base_filter)

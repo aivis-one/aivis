@@ -1,11 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Router (Sprint 3.1 + 3.3)
+# CBSHOME Backend -- Staff Router (Sprint 3.1 + 3.3, iter 2.6c B1)
 # =============================================================================
 #
 # ENDPOINTS:
 #   POST  /api/v1/staff/users                     -- promote user to staff (admin)
 #   PATCH /api/v1/staff/users/{id}/permissions     -- update permissions (admin)
-#   GET   /api/v1/staff/users                      -- unified user list (?role=, pagination)
+#   GET   /api/v1/staff/users                      -- unified user list
+#                                                    (?role=, ?kyc_status=, pagination)
 #   GET   /api/v1/staff/users/{id}                 -- user detail
 #   PATCH /api/v1/staff/users/{id}/block           -- block user (user_block perm)
 #
@@ -13,6 +14,14 @@
 #   POST/PATCH permissions: admin only (all permissions True).
 #   GET list/detail: any staff.
 #   PATCH block: requires user_block permission.
+#
+# iter 2.6c B1:
+#   GET /staff/users gains an optional ?kyc_status= filter so the
+#   Staff Platform tab can drive a KYC queue view off the same
+#   endpoint instead of issuing a parallel call to /staff/kyc/queue.
+#   FastAPI binds the param to the KYCStatus StrEnum -- any value
+#   outside {not_started, submitted, approved, rejected} fails at
+#   the framework boundary with 422.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -53,7 +62,7 @@ from app.modules.staff.service import (
     get_staff_profile,
     update_permissions,
 )
-from app.modules.users.models import User
+from app.modules.users.models import KYCStatus, User
 
 logger = structlog.get_logger()
 
@@ -121,7 +130,7 @@ async def staff_update_permissions(
 
 
 # ---------------------------------------------------------------------------
-# User management (Sprint 3.3)
+# User management (Sprint 3.3, +kyc_status filter iter 2.6c B1)
 # ---------------------------------------------------------------------------
 
 
@@ -131,17 +140,34 @@ async def staff_update_permissions(
 )
 async def user_list(
     role: str | None = Query(default=None, description="Filter by role"),
+    kyc_status: KYCStatus | None = Query(
+        default=None,
+        description=(
+            "Filter by KYC status: not_started, submitted, approved, "
+            "or rejected."
+        ),
+    ),
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(default=20, ge=1, le=100, description="Items per page"),
     staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_reader),
 ) -> UserListResponse:
-    """List all users with pagination. Optional ?role= filter.
+    """List all users with pagination. Optional ?role= and ?kyc_status= filters.
 
     Platform user is always excluded. For staff users, includes
     StaffProfile with effective permissions.
+
+    iter 2.6c B1: ?kyc_status= is a typed KYCStatus enum at the
+    framework boundary, so unknown values are rejected by FastAPI
+    with 422 before reaching the service layer.
     """
-    return await list_users(session, role=role, page=page, per_page=per_page)
+    return await list_users(
+        session,
+        role=role,
+        kyc_status=kyc_status.value if kyc_status is not None else None,
+        page=page,
+        per_page=per_page,
+    )
 
 
 @router.get(
