@@ -20,11 +20,17 @@ export type DocumentTemplateKind = 'purchase_agreement' | 'gift_certificate' | '
 /** KYC verification status. Denormalized cache from KYCApplication. */
 export type KYCStatus = 'not_started' | 'submitted' | 'approved' | 'rejected'
 
+/** Post owner type. */
+export type OwnerType = 'platform' | 'company'
+
 /** Roadmap item surface kind (R1 §5, iter 2.4). A roadmap row carries one of three shapes; the API surface differs per kind: milestone -- traditional planned-progress-completed item with target_date. Subject to the planned -> in_progress -> completed state machine. Most existing rows fall here; migration 0033 backfills the column to this value. event -- date-bound event (target_date required, valid_until required, valid_until > target_date). Status is irrelevant; events are shown as long as today <= valid_until. announcement -- dateless message (no target_date / valid_until / status). Visible until soft-deleted. `kind` is immutable after create. To switch kind, Staff soft-deletes the row and creates a fresh one with the new kind. */
 export type RoadmapItemKind = 'milestone' | 'event' | 'announcement'
 
 /** Template lifecycle status (R2 §4.2). State machine: draft <-> active draft -> archived active -> archived When reconcile activates a new template for a (company_id, kind, lang) triple, the previous active row is automatically archived. */
 export type TemplateStatus = 'draft' | 'active' | 'archived'
+
+/** User roles in the platform. */
+export type UserRole = 'investor' | 'agent' | 'company' | 'staff' | 'platform'
 
 // -- Interfaces ---------------------------------------------------------------
 
