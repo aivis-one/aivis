@@ -720,6 +720,22 @@ export interface PostSnippetResponse {
   excerpt: string
 }
 
+/** Paginated price-history list (iter 2.6c B3). Wraps PriceHistoryResponse with the same pagination envelope used by CompanyListResponse and every other staff list endpoint, so the frontend table component can drive both list flows with one pagination contract. */
+export interface PriceHistoryListResponse {
+  items: PriceHistoryResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
+/** Single price change record. */
+export interface PriceHistoryResponse {
+  id: string
+  price_per_unit_cents: number
+  changed_at: string
+  changed_by: string
+}
+
 /** Product info for staff view. */
 export interface ProductResponse {
   id: string
