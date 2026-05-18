@@ -39,14 +39,10 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
+import { safeNavigate } from '@/composables/safeNavigate'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
 const { t } = useI18n()
@@ -64,21 +60,10 @@ const error = ref('')
 function goToLogin(): void {
   // Forward `?next=...` so the eventual sign-in returns the visitor
   // to the same public page they were aiming for.
-  router
-    .push({ name: 'login', query: route.query })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent (see
-      // useAuthWall R20 STYLE-20-01 for the rationale). Real
-      // navigation issues log with a contextual prefix.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[RegisterView] navigation to login failed:', err)
-    })
+  void safeNavigate(
+    router.push({ name: 'login', query: route.query }),
+    '[RegisterView] to login',
+  )
 }
 
 async function handleRegister(): Promise<void> {
@@ -110,20 +95,13 @@ async function handleRegister(): Promise<void> {
     // iter 2.6 batch 2: deliberately NOT forwarding `?next=` here --
     // see file header for the rationale.
     //
-    // The .catch filter must NOT rethrow -- a benign NavigationFailure
-    // rethrown here would be caught by the outer registration-error
-    // `catch` below and surface as a generic-error toast despite a
-    // successful registration.
-    await router.push({ name: 'verify' }).catch((navErr: unknown) => {
-      if (
-        isNavigationFailure(navErr, NavigationFailureType.duplicated)
-        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-        || isNavigationFailure(navErr, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[RegisterView] post-register navigation to verify failed:', navErr)
-    })
+    // safeNavigate is no-throw by contract -- critical here so a benign
+    // NavigationFailure does NOT bubble into the outer registration-error
+    // catch and surface as a generic-error toast after successful registration.
+    await safeNavigate(
+      router.push({ name: 'verify' }),
+      '[RegisterView] post-register to verify',
+    )
   } catch (err) {
     if (err instanceof ApiResponseError) {
       if (err.status === 409) {

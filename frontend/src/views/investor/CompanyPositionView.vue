@@ -53,12 +53,7 @@
 // =============================================================================
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import {
@@ -72,6 +67,7 @@ import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import AgreementSheet from '@/components/shared/AgreementSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber, formatPrice } from '@/utils/format'
@@ -173,23 +169,10 @@ function goBack(): void {
     router.back()
     return
   }
-  router
-    .push({ name: portfolioRouteName.value })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[CompanyPositionView] navigation to portfolio failed:',
-        err,
-      )
-    })
+  void safeNavigate(
+    router.push({ name: portfolioRouteName.value }),
+    '[CompanyPositionView] to portfolio',
+  )
 }
 
 // ---------------------------------------------------------------------------

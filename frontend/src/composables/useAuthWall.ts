@@ -58,14 +58,10 @@
 //   out useful diagnostics.
 // =============================================================================
 
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
+import { safeNavigate } from '@/composables/safeNavigate'
 
 export function useAuthWall() {
   const route = useRoute()
@@ -84,28 +80,16 @@ export function useAuthWall() {
    */
   function requireAuth(action: string): boolean {
     if (auth.isAuthenticated) return true
-    router
-      .push({
+    void safeNavigate(
+      router.push({
         name: 'register',
         query: {
           next: route.fullPath,
           intent: action,
         },
-      })
-      .catch((err: unknown) => {
-        // Benign vue-router rejection types: double-tap / guard
-        // pre-emption / abort by a newer navigation. Keep these
-        // silent so real issues (unknown route name, thrown guard,
-        // ...) remain visible in the console.
-        if (
-          isNavigationFailure(err, NavigationFailureType.duplicated)
-          || isNavigationFailure(err, NavigationFailureType.cancelled)
-          || isNavigationFailure(err, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error('[useAuthWall] navigation to register failed:', err)
-      })
+      }),
+      '[useAuthWall] to register',
+    )
     return false
   }
 

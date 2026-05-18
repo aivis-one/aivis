@@ -18,14 +18,11 @@
 //      role dashboard.
 
 import { ref, computed, onMounted } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError } from '@/api/client'
+import { safeNavigate } from '@/composables/safeNavigate'
 import type { DocumentResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 import { CModal } from '@/components/ui'
@@ -170,21 +167,10 @@ async function handleSignAll(): Promise<void> {
     await authStore.fetchMe()
 
     // Root resolves to the role-based dashboard via guard.
-    //
-    // The .catch filter must NOT rethrow -- a benign NavigationFailure
-    // rethrown here would be caught by the outer docs-signing-error
-    // `catch` below and surface as a generic-error toast despite all
-    // documents having been signed successfully.
-    await router.push('/').catch((navErr: unknown) => {
-      if (
-        isNavigationFailure(navErr, NavigationFailureType.duplicated)
-        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-        || isNavigationFailure(navErr, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[OnboardingDocsView] post-sign navigation to home failed:', navErr)
-    })
+    // safeNavigate is no-throw by contract -- critical here so a benign
+    // NavigationFailure does NOT bubble into the outer docs-signing-error
+    // catch and surface as a generic-error toast after successful signing.
+    await safeNavigate(router.push('/'), '[OnboardingDocsView] post-sign to home')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail

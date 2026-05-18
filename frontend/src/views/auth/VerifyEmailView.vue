@@ -5,14 +5,11 @@
 // After success: fetchMe() → router.push('/') → guard redirects.
 
 import { ref, computed, onMounted, nextTick } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
+import { safeNavigate } from '@/composables/safeNavigate'
 import type { UserResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
@@ -91,21 +88,10 @@ async function handleVerify(): Promise<void> {
     })
     await authStore.fetchMe()
     // Navigate to root — guard will redirect to the next onboarding step.
-    //
-    // The .catch filter must NOT rethrow -- a benign NavigationFailure
-    // rethrown here would be caught by the outer verify-error `catch`
-    // below and surface as a generic-error toast despite a successful
-    // verification.
-    await router.push('/').catch((navErr: unknown) => {
-      if (
-        isNavigationFailure(navErr, NavigationFailureType.duplicated)
-        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-        || isNavigationFailure(navErr, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[VerifyEmailView] post-verify navigation to home failed:', navErr)
-    })
+    // safeNavigate is no-throw by contract -- critical here so a benign
+    // NavigationFailure does NOT bubble into the outer verify-error
+    // catch and surface as a generic-error toast after successful verify.
+    await safeNavigate(router.push('/'), '[VerifyEmailView] post-verify to home')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail

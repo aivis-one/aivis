@@ -61,12 +61,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
@@ -76,6 +71,7 @@ import { getProduct } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import {
   formatNumber,
@@ -181,28 +177,17 @@ async function confirm(): Promise<void> {
     showToast(t('inv.purchase.success'), 'success')
     // Awaited push so `submitting` stays true until navigation
     // resolves, avoiding a brief UI flash of the Confirm button
-    // between API success and unmount. The .catch filter must
-    // NOT rethrow -- a benign NavigationFailure rethrown here
-    // would be caught by the outer `catch` below and routed
-    // through handlePurchaseError(), which would then surface a
-    // generic-error toast on top of the success toast.
-    await router
-      .push({
+    // between API success and unmount. safeNavigate is no-throw
+    // by contract -- critical here so a benign NavigationFailure
+    // does NOT bubble into the outer catch and trip handlePurchaseError(),
+    // which would otherwise surface a generic-error toast on top of
+    // the success toast.
+    await safeNavigate(
+      router.push({
         name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio',
-      })
-      .catch((navErr: unknown) => {
-        if (
-          isNavigationFailure(navErr, NavigationFailureType.duplicated)
-          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-          || isNavigationFailure(navErr, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error(
-          '[PurchaseView] post-submit navigation to portfolio failed:',
-          navErr,
-        )
-      })
+      }),
+      '[PurchaseView] post-submit to portfolio',
+    )
   } catch (err: unknown) {
     await handlePurchaseError(err)
   } finally {
@@ -219,23 +204,10 @@ async function handlePurchaseError(err: unknown): Promise<void> {
     // regex with a backend-emitted error code.
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.purchase.error.kycRequired'), 'warning')
-      router
-        .push('/onboarding/kyc')
-        .catch((navErr: unknown) => {
-          // Benign vue-router rejection types stay silent so real
-          // issues (unknown route, thrown guard) remain visible.
-          if (
-            isNavigationFailure(navErr, NavigationFailureType.duplicated)
-            || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-            || isNavigationFailure(navErr, NavigationFailureType.aborted)
-          ) {
-            return
-          }
-          console.error(
-            '[PurchaseView] navigation to KYC onboarding failed:',
-            navErr,
-          )
-        })
+      void safeNavigate(
+        router.push('/onboarding/kyc'),
+        '[PurchaseView] to KYC onboarding',
+      )
       return
     }
 
@@ -272,26 +244,15 @@ function cancel(): void {
     router.back()
     return
   }
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: agentShell.value
         ? 'agent-product-detail'
         : 'investor-product-detail',
       params: { id: productId.value },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PurchaseView] cancel fallback to product detail failed:',
-        err,
-      )
-    })
+    }),
+    '[PurchaseView] cancel fallback to product detail',
+  )
 }
 
 function backToMarket(): void {
@@ -299,23 +260,12 @@ function backToMarket(): void {
   // catalogue moved to *-companies (CompanyListView). Function
   // name kept -- see also `inv.product.backToMarket` i18n key which
   // carries the updated "Back to companies" user-facing label.
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: agentShell.value ? 'agent-companies' : 'investor-companies',
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PurchaseView] navigation to companies list failed:',
-        err,
-      )
-    })
+    }),
+    '[PurchaseView] to companies list',
+  )
 }
 
 onMounted(load)

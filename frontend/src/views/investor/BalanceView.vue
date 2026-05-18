@@ -41,17 +41,14 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowDownToLine, CreditCard } from 'lucide-vue-next'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useDashboardStore } from '@/stores/dashboard'
 import { listPaymentHistory } from '@/api/payments'
 import { useInfiniteScroll } from '@/composables/usePagination'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { PaymentResponse } from '@/api/types'
@@ -162,20 +159,10 @@ async function loadMore(): Promise<void> {
 }
 
 function goDeposit(): void {
-  router
-    .push({ name: 'investor-deposit' })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[BalanceView] navigation to deposit failed:', err)
-    })
+  void safeNavigate(
+    router.push({ name: 'investor-deposit' }),
+    '[BalanceView] to deposit',
+  )
 }
 
 async function reload(): Promise<void> {

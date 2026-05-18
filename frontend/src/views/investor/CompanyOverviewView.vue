@@ -57,12 +57,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building } from 'lucide-vue-next'
 
@@ -72,6 +67,7 @@ import AttachmentsSection from '@/components/shared/AttachmentsSection.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber, resolveCoverImage } from '@/utils/format'
 import type { PublicCompanyDetailResponse } from '@/api/types'
@@ -212,65 +208,30 @@ function onRetry(): void {
 }
 
 function goToCompaniesList(): void {
-  router
-    .push({ name: companiesListRouteName.value })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[CompanyOverviewView] navigation to companies list failed:',
-        err,
-      )
-    })
+  void safeNavigate(
+    router.push({ name: companiesListRouteName.value }),
+    '[CompanyOverviewView] to companies list',
+  )
 }
 
 function goToProducts(): void {
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: companyProductsRouteName.value,
       params: { id: companyId.value },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[CompanyOverviewView] navigation to company products failed:',
-        err,
-      )
-    })
+    }),
+    '[CompanyOverviewView] to company products',
+  )
 }
 
 function onRoadmapProductClick(productId: string): void {
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: productDetailRouteName.value,
       params: { id: productId },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[CompanyOverviewView] navigation to product detail failed:',
-        err,
-      )
-    })
+    }),
+    '[CompanyOverviewView] to product detail',
+  )
 }
 
 function onRoadmapExternalClick(url: string): void {

@@ -58,12 +58,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
@@ -73,6 +68,7 @@ import ProductCard from '@/components/shared/ProductCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useProductsStore } from '@/stores/products'
 import { useInfiniteScroll } from '@/composables/usePagination'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import type { PublicProductResponse } from '@/api/types'
 
@@ -133,23 +129,10 @@ onMounted(() => {
   // normalise an empty string to null and silently load the global
   // catalogue, which is wrong for this view.
   if (!companyId.value) {
-    router
-      .replace({ name: companiesListRouteName.value })
-      .catch((err: unknown) => {
-        // Benign vue-router rejection types stay silent so real
-        // issues (unknown route, thrown guard) remain visible.
-        if (
-          isNavigationFailure(err, NavigationFailureType.duplicated)
-          || isNavigationFailure(err, NavigationFailureType.cancelled)
-          || isNavigationFailure(err, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error(
-          '[ProductsByCompanyView] protective replace to companies list failed:',
-          err,
-        )
-      })
+    void safeNavigate(
+      router.replace({ name: companiesListRouteName.value }),
+      '[ProductsByCompanyView] protective replace to companies list',
+    )
     return
   }
   void productsStore.setCompanyFilter(companyId.value)
@@ -171,24 +154,13 @@ watch(
 // ---------------------------------------------------------------------------
 
 function openProduct(product: PublicProductResponse): void {
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: productDetailRouteName.value,
       params: { id: product.id },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[ProductsByCompanyView] navigation to product detail failed:',
-        err,
-      )
-    })
+    }),
+    '[ProductsByCompanyView] to product detail',
+  )
 }
 
 function onRetry(): void {

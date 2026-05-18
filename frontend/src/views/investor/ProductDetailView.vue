@@ -47,17 +47,13 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import { getProduct } from '@/api/products'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import {
   formatNumber,
@@ -114,43 +110,16 @@ function backToMarket(): void {
   // name kept -- internal label, see `inv.product.backToMarket`
   // i18n key for updated user-facing copy.
   const name = agentShell.value ? 'agent-companies' : 'investor-companies'
-  router
-    .push({ name })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[ProductDetailView] navigation to companies list failed:',
-        err,
-      )
-    })
+  void safeNavigate(router.push({ name }), '[ProductDetailView] to companies list')
 }
 
 function buyNow(): void {
   if (!product.value) return
   const name = agentShell.value ? 'agent-purchase' : 'investor-purchase'
-  router
-    .push({ name, params: { id: product.value.id } })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[ProductDetailView] navigation to purchase failed:',
-        err,
-      )
-    })
+  void safeNavigate(
+    router.push({ name, params: { id: product.value.id } }),
+    '[ProductDetailView] to purchase',
+  )
 }
 
 // F4.2 -- plan card tap. Deep-link into InstallmentView with the
@@ -162,25 +131,14 @@ function openInstallmentPlan(planId: string): void {
   const name = agentShell.value
     ? 'agent-installment'
     : 'investor-installment'
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name,
       params: { id: product.value.id },
       query: { plan: planId },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[ProductDetailView] navigation to installment plan failed:',
-        err,
-      )
-    })
+    }),
+    '[ProductDetailView] to installment plan',
+  )
 }
 
 onMounted(loadProduct)

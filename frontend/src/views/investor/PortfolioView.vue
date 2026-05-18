@@ -42,16 +42,12 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ChevronRight, Store } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { usePortfolioStore } from '@/stores/portfolio'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { PortfolioPositionResponse } from '@/api/types'
@@ -137,44 +133,20 @@ const marketRouteName = computed<string>(() =>
 )
 
 function openPosition(p: PortfolioPositionResponse): void {
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: positionRouteName.value,
       params: { id: p.company_id },
-    })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PortfolioView] navigation to company position failed:',
-        err,
-      )
-    })
+    }),
+    '[PortfolioView] to company position',
+  )
 }
 
 function goMarket(): void {
-  router
-    .push({ name: marketRouteName.value })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PortfolioView] navigation to companies list failed:',
-        err,
-      )
-    })
+  void safeNavigate(
+    router.push({ name: marketRouteName.value }),
+    '[PortfolioView] to companies list',
+  )
 }
 
 // ---------------------------------------------------------------------------

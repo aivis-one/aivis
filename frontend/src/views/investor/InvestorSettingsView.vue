@@ -81,11 +81,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ChevronRight,
@@ -112,6 +108,7 @@ import {
 } from '@/api/agent-apps'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useToast } from '@/composables/useToast'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { tOrRaw } from '@/utils/i18n'
 import type { AgentApplicationResponse } from '@/api/types'
 
@@ -303,41 +300,17 @@ async function applyForAgent(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function goKyc(): void {
-  router
-    .push('/onboarding/kyc')
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[InvestorSettingsView] navigation to KYC onboarding failed:',
-        err,
-      )
-    })
+  void safeNavigate(
+    router.push('/onboarding/kyc'),
+    '[InvestorSettingsView] to KYC onboarding',
+  )
 }
 
 function goDocs(): void {
-  router
-    .push({ name: 'investor-docs' })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[InvestorSettingsView] navigation to investor docs failed:',
-        err,
-      )
-    })
+  void safeNavigate(
+    router.push({ name: 'investor-docs' }),
+    '[InvestorSettingsView] to investor docs',
+  )
 }
 
 const loggingOut = ref<boolean>(false)
@@ -350,20 +323,8 @@ async function handleLogout(): Promise<void> {
   } finally {
     // Auth state already cleared. If push gets rejected by a benign
     // NavigationFailure type, the next route guard will bounce the
-    // tokenless user to /login anyway -- no toast needed. We only
-    // log real failures (unknown route, thrown guard, ...).
-    router
-      .push('/login')
-      .catch((err: unknown) => {
-        if (
-          isNavigationFailure(err, NavigationFailureType.duplicated)
-          || isNavigationFailure(err, NavigationFailureType.cancelled)
-          || isNavigationFailure(err, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error('[InvestorSettingsView] navigation to login failed:', err)
-      })
+    // tokenless user to /login anyway -- no toast needed.
+    void safeNavigate(router.push('/login'), '[InvestorSettingsView] to login')
   }
 }
 

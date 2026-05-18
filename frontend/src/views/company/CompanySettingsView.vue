@@ -55,11 +55,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ChevronRight,
@@ -74,6 +70,7 @@ import {
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 
@@ -213,20 +210,8 @@ async function handleLogout(): Promise<void> {
   } finally {
     // Auth state already cleared. If push gets rejected by a benign
     // NavigationFailure type, the next route guard will bounce the
-    // tokenless user to /login anyway -- no toast needed. We only
-    // log real failures (unknown route, thrown guard, ...).
-    router
-      .push('/login')
-      .catch((err: unknown) => {
-        if (
-          isNavigationFailure(err, NavigationFailureType.duplicated)
-          || isNavigationFailure(err, NavigationFailureType.cancelled)
-          || isNavigationFailure(err, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error('[CompanySettingsView] navigation to login failed:', err)
-      })
+    // tokenless user to /login anyway -- no toast needed.
+    void safeNavigate(router.push('/login'), '[CompanySettingsView] to login')
   }
 }
 

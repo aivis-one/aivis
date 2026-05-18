@@ -56,14 +56,10 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
+import { safeNavigate } from '@/composables/safeNavigate'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
 const { t } = useI18n()
@@ -99,21 +95,10 @@ function getValidatedNext(): string | null {
 function goToRegister(): void {
   // Forward the entire `?next=...` query so the visitor's intended
   // destination survives the login <-> register pivot.
-  router
-    .push({ name: 'register', query: route.query })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent (see
-      // useAuthWall R20 STYLE-20-01 for the rationale). Real
-      // navigation issues log with a contextual prefix.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[LoginView] navigation to register failed:', err)
-    })
+  void safeNavigate(
+    router.push({ name: 'register', query: route.query }),
+    '[LoginView] to register',
+  )
 }
 
 async function handleLogin(): Promise<void> {
@@ -138,34 +123,15 @@ async function handleLogin(): Promise<void> {
     // Post-auth redirect. If the visitor was bounced here from a
     // protected URL or from a public CTA, return them. Otherwise let
     // root.beforeEnter resolve the role dashboard.
-    //
-    // The .catch filter must NOT rethrow -- a benign NavigationFailure
-    // rethrown here would be caught by the outer auth-error `catch`
-    // below and surface as a credentials/network error toast despite
-    // a successful login.
+    // safeNavigate is no-throw by contract -- critical here so a benign
+    // NavigationFailure does NOT bubble into the outer auth-error catch
+    // and surface as a credentials/network error toast after a
+    // successful login.
     const next = getValidatedNext()
     if (next !== null) {
-      await router.replace(next).catch((navErr: unknown) => {
-        if (
-          isNavigationFailure(navErr, NavigationFailureType.duplicated)
-          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-          || isNavigationFailure(navErr, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error('[LoginView] post-auth replace to next failed:', navErr)
-      })
+      await safeNavigate(router.replace(next), '[LoginView] post-auth replace to next')
     } else {
-      await router.push('/').catch((navErr: unknown) => {
-        if (
-          isNavigationFailure(navErr, NavigationFailureType.duplicated)
-          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-          || isNavigationFailure(navErr, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error('[LoginView] post-auth navigation to home failed:', navErr)
-      })
+      await safeNavigate(router.push('/'), '[LoginView] post-auth to home')
     }
   } catch (err) {
     if (err instanceof ApiResponseError) {

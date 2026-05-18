@@ -42,11 +42,7 @@
 // =============================================================================
 
 import { onMounted, ref } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { ArrowLeft, Copy, ShieldAlert } from 'lucide-vue-next'
@@ -54,6 +50,7 @@ import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import CHeader from '@/components/layout/CHeader.vue'
 import { ApiResponseError } from '@/api/client'
 import { createCryptoAddress } from '@/api/payments'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { useToast } from '@/composables/useToast'
 
 // Locked to TRC20 for F4.3; the backend `CryptoNetwork` union is
@@ -134,23 +131,10 @@ function goBack(): void {
     router.back()
     return
   }
-  router
-    .push({ name: 'investor-balance' })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[InvestorDepositView] navigation to balance failed:',
-        err,
-      )
-    })
+  void safeNavigate(
+    router.push({ name: 'investor-balance' }),
+    '[InvestorDepositView] to balance',
+  )
 }
 
 onMounted(load)

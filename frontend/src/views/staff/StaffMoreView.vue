@@ -3,15 +3,12 @@
 // Matches staff-shell/mockup.html screen-more layout.
 
 import { computed } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { FileText, Ghost, LogOut } from 'lucide-vue-next'
 import { CAvatar, CBadge } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
+import { safeNavigate } from '@/composables/safeNavigate'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -31,20 +28,7 @@ const userEmail = computed(() => authStore.user?.email ?? '')
 
 async function handleLogout(): Promise<void> {
   await authStore.logout()
-  router
-    .push('/login')
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[StaffMoreView] navigation to login failed:', err)
-    })
+  void safeNavigate(router.push('/login'), '[StaffMoreView] to login')
 }
 
 // Nav-item handlers. Each target gets a dedicated function so future
@@ -52,33 +36,14 @@ async function handleLogout(): Promise<void> {
 // instead of widening a generic `navigate(target)` helper. Matches
 // the InvestorDashboardView `goPortfolio/goBalance/...` paradigm.
 function goAgentApps(): void {
-  router
-    .push('/staff/agent-apps')
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[StaffMoreView] navigation to agent apps failed:', err)
-    })
+  void safeNavigate(
+    router.push('/staff/agent-apps'),
+    '[StaffMoreView] to agent apps',
+  )
 }
 
 function goAvatar(): void {
-  router
-    .push('/staff/avatar')
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[StaffMoreView] navigation to avatar failed:', err)
-    })
+  void safeNavigate(router.push('/staff/avatar'), '[StaffMoreView] to avatar')
 }
 </script>
 

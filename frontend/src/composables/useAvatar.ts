@@ -48,6 +48,7 @@ import { setAuthToken, getAuthToken } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { startAvatar, endAvatar } from '@/api/admin'
 import { useToast } from '@/composables/useToast'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { getRoleDashboard } from '@/router/guards'
 import { platform } from '@/platform'
 import { avatarActive, setAvatarActive, STAFF_TOKEN_KEY } from '@/composables/avatarState'
@@ -100,25 +101,15 @@ export function useAvatar() {
       showToast(t('staff.avatar.started'), 'success')
 
       // 7. Redirect to target user's dashboard.
-      // The .catch filter must NOT rethrow -- a benign NavigationFailure
-      // rethrown here would be caught by the outer rollback `catch`
-      // below, which would restore the staff token despite a fully
-      // successful API call and token swap. Real navigation failures
-      // (unknown route, thrown guard) still surface via console.error.
+      // safeNavigate is no-throw by contract -- critical here so a
+      // benign NavigationFailure does NOT bubble into the outer
+      // rollback `catch` below, which would restore the staff token
+      // despite a fully successful API call and token swap.
       const targetDashboard = getRoleDashboard(authStore.role)
-      await router.push(targetDashboard).catch((navErr: unknown) => {
-        if (
-          isNavigationFailure(navErr, NavigationFailureType.duplicated)
-          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-          || isNavigationFailure(navErr, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error(
-          '[useAvatar] navigation to target dashboard failed:',
-          navErr,
-        )
-      })
+      await safeNavigate(
+        router.push(targetDashboard),
+        '[useAvatar] to target dashboard',
+      )
     } catch {
       // Rollback: restore staff token on failure (memory + storage).
       const savedToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
@@ -151,17 +142,17 @@ export function useAvatar() {
     if (!staffToken) {
       setAvatarActive(false)
       showToast(t('staff.avatar.ended'), 'warning')
+      // SPECIAL CASE -- intentionally NOT using safeNavigate here.
+      // The general helper treats `aborted` as a benign type to silently
+      // ignore; here `aborted` is the EXPECTED outcome (staff role guard
+      // rejecting the redirect because the role is now gone), and any
+      // other failure should log at warn level (not error) since the
+      // user-facing impact is bounded -- they stay on the current view
+      // with a toast already shown. Different filter shape -> inline.
       await router.push('/staff/dashboard').catch((err: unknown) => {
         if (isNavigationFailure(err, NavigationFailureType.aborted)) {
-          // Expected: role guard rejected. Staff may not have target role.
-          // Stay on current view -- toast already informed the user the
-          // avatar session ended.
           return
         }
-        // Not a guard rejection -- console.warn (not error) because the
-        // user-facing impact is bounded: they stay on the current view
-        // and already received the "avatar ended" toast. No app state
-        // is broken.
         console.warn('[useAvatar] zombie-flag navigation failed:', err)
       })
       loading.value = false
@@ -192,23 +183,14 @@ export function useAvatar() {
       showToast(t('staff.avatar.ended'), 'success')
 
       // 7. Redirect to staff dashboard.
-      // The .catch filter must NOT rethrow -- a benign NavigationFailure
-      // rethrown here would be caught by the outer rollback `catch`
-      // below, which would re-restore the staff token and reset stores
-      // despite a fully successful endAvatar API call.
-      await router.push('/staff/dashboard').catch((navErr: unknown) => {
-        if (
-          isNavigationFailure(navErr, NavigationFailureType.duplicated)
-          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-          || isNavigationFailure(navErr, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error(
-          '[useAvatar] navigation to staff dashboard failed:',
-          navErr,
-        )
-      })
+      // safeNavigate is no-throw by contract -- critical here so a
+      // benign NavigationFailure does NOT bubble into the outer
+      // rollback `catch` below, which would re-restore the staff
+      // token and reset stores despite a fully successful endAvatar.
+      await safeNavigate(
+        router.push('/staff/dashboard'),
+        '[useAvatar] to staff dashboard',
+      )
     } catch {
       // Even if endAvatar API call fails, restore staff token to prevent desync.
       // The backend avatar session will expire by TTL.
@@ -222,21 +204,12 @@ export function useAvatar() {
       resetAllDataStores()
       await authStore.fetchMe().catch(() => { /* best effort */ })
       // We are already inside the outer rollback `catch` -- any rejection
-      // from this push would become an unhandled rejection. Filter benign
-      // types silently; log real failures so we can diagnose them.
-      await router.push('/staff/dashboard').catch((navErr: unknown) => {
-        if (
-          isNavigationFailure(navErr, NavigationFailureType.duplicated)
-          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-          || isNavigationFailure(navErr, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error(
-          '[useAvatar] rollback navigation to staff dashboard failed:',
-          navErr,
-        )
-      })
+      // from this push would otherwise become an unhandled rejection.
+      // safeNavigate's no-throw contract guarantees containment here.
+      await safeNavigate(
+        router.push('/staff/dashboard'),
+        '[useAvatar] rollback to staff dashboard',
+      )
       showToast(t('common.error'), 'error')
     } finally {
       loading.value = false

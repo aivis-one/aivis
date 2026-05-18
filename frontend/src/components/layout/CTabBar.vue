@@ -3,12 +3,7 @@
 // Renders TabItem[] with Lucide icons, highlights active route.
 
 import type { Component } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Home, Briefcase, Store, Wallet, Menu,
@@ -16,6 +11,7 @@ import {
   Users, ShieldCheck, CreditCard,
 } from 'lucide-vue-next'
 import type { TabItem } from '@/router/tabs'
+import { safeNavigate } from '@/composables/safeNavigate'
 
 defineProps<{ items: TabItem[] }>()
 
@@ -36,23 +32,7 @@ function isActive(tab: TabItem): boolean {
 
 function navigate(tab: TabItem): void {
   if (route.path !== tab.path) {
-    router
-      .push(tab.path)
-      .catch((err: unknown) => {
-        // Benign vue-router rejection types stay silent so real
-        // issues (unknown route, thrown guard) remain visible.
-        if (
-          isNavigationFailure(err, NavigationFailureType.duplicated)
-          || isNavigationFailure(err, NavigationFailureType.cancelled)
-          || isNavigationFailure(err, NavigationFailureType.aborted)
-        ) {
-          return
-        }
-        console.error(
-          `[CTabBar] navigation to ${tab.path} failed:`,
-          err,
-        )
-      })
+    void safeNavigate(router.push(tab.path), `[CTabBar] to ${tab.path}`)
   }
 }
 </script>

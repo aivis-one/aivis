@@ -45,13 +45,10 @@
 //   here is what wires the route back into the UI.
 // =============================================================================
 
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight, FileText, Settings as SettingsIcon } from 'lucide-vue-next'
+import { safeNavigate } from '@/composables/safeNavigate'
 
 interface Tile {
   id: string
@@ -85,23 +82,7 @@ const TILES: readonly Tile[] = [
 ] as const
 
 function openTile(tile: Tile): void {
-  router
-    .push(tile.route)
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent so real
-      // issues (unknown route, thrown guard) remain visible.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        `[InvestorMoreView] navigation to ${tile.route} failed:`,
-        err,
-      )
-    })
+  void safeNavigate(router.push(tile.route), `[InvestorMoreView] to ${tile.route}`)
 }
 </script>
 

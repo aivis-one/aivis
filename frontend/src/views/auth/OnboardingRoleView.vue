@@ -4,14 +4,11 @@
 // After success: fetchMe() → router.push('/') → guard redirects.
 
 import { ref, computed } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
+import { safeNavigate } from '@/composables/safeNavigate'
 import type { UserResponse } from '@/api/types'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
@@ -92,21 +89,10 @@ async function handleSubmit(): Promise<void> {
     })
     await authStore.fetchMe()
     // Navigate to root — guard will redirect to the next onboarding step.
-    //
-    // The .catch filter must NOT rethrow -- a benign NavigationFailure
-    // rethrown here would be caught by the outer role-error `catch`
-    // below and surface as a generic-error toast despite a successful
-    // role selection.
-    await router.push('/').catch((navErr: unknown) => {
-      if (
-        isNavigationFailure(navErr, NavigationFailureType.duplicated)
-        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-        || isNavigationFailure(navErr, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[OnboardingRoleView] post-submit navigation to home failed:', navErr)
-    })
+    // safeNavigate is no-throw by contract -- critical here so a benign
+    // NavigationFailure does NOT bubble into the outer role-error catch
+    // and surface as a generic-error toast after successful role selection.
+    await safeNavigate(router.push('/'), '[OnboardingRoleView] post-submit to home')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail

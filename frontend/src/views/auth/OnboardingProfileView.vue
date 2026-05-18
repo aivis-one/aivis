@@ -4,14 +4,11 @@
 // After success: fetchMe() → router.push('/') → guard redirects.
 
 import { ref, onMounted } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
+import { safeNavigate } from '@/composables/safeNavigate'
 import type { UserResponse } from '@/api/types'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
@@ -78,21 +75,10 @@ async function handleSubmit(): Promise<void> {
     })
     await authStore.fetchMe()
     // Navigate to root — guard will redirect to the next onboarding step.
-    //
-    // The .catch filter must NOT rethrow -- a benign NavigationFailure
-    // rethrown here would be caught by the outer profile-error `catch`
-    // below and surface as a generic-error toast despite a successful
-    // profile submission.
-    await router.push('/').catch((navErr: unknown) => {
-      if (
-        isNavigationFailure(navErr, NavigationFailureType.duplicated)
-        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
-        || isNavigationFailure(navErr, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[OnboardingProfileView] post-submit navigation to home failed:', navErr)
-    })
+    // safeNavigate is no-throw by contract -- critical here so a benign
+    // NavigationFailure does NOT bubble into the outer profile-error
+    // catch and surface as a generic-error toast after successful submission.
+    await safeNavigate(router.push('/'), '[OnboardingProfileView] post-submit to home')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail
