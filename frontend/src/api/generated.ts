@@ -907,6 +907,12 @@ export interface RejectWithdrawalRequest {
   reason: string
 }
 
+/** Bulk reorder of attachments inside one (company_id, category) scope (iter 2.6c B5). `item_ids` must be the COMPLETE list of every non-deleted attachment for the given (company_id, category) -- the service enforces an exact set match. Sending a partial list is a 400, as is sending an unknown id; either case suggests the staff UI is out of sync with the database and a silent reorder would scramble the visible order for everyone else. Mirrors the shape of ReorderRoadmapRequest for consistency, with the addition of `category` -- attachment order is scoped to (company_id, category) rather than per-company. */
+export interface ReorderAttachmentsRequest {
+  category: string
+  item_ids: string[]
+}
+
 /** Reorder roadmap items by providing ordered list of IDs. */
 export interface ReorderRoadmapRequest {
   item_ids: string[]
