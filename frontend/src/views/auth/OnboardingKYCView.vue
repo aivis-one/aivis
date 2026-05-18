@@ -7,7 +7,11 @@
 // proceeds to the next step. Verification runs in background.
 
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
@@ -64,7 +68,18 @@ async function handleContinue(): Promise<void> {
   await authStore.fetchMe()
   loading.value = false
   // Navigate to root — guard will redirect to the next onboarding step.
-  await router.push('/')
+  // No outer try/catch here -- canonical filter prevents an unhandled
+  // promise rejection from reaching the Vue global error handler.
+  await router.push('/').catch((navErr: unknown) => {
+    if (
+      isNavigationFailure(navErr, NavigationFailureType.duplicated)
+      || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+      || isNavigationFailure(navErr, NavigationFailureType.aborted)
+    ) {
+      return
+    }
+    console.error('[OnboardingKYCView] continue navigation to home failed:', navErr)
+  })
 }
 
 async function handleRetry(): Promise<void> {

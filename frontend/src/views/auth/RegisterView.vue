@@ -109,7 +109,21 @@ async function handleRegister(): Promise<void> {
     //
     // iter 2.6 batch 2: deliberately NOT forwarding `?next=` here --
     // see file header for the rationale.
-    await router.push({ name: 'verify' })
+    //
+    // The .catch filter must NOT rethrow -- a benign NavigationFailure
+    // rethrown here would be caught by the outer registration-error
+    // `catch` below and surface as a generic-error toast despite a
+    // successful registration.
+    await router.push({ name: 'verify' }).catch((navErr: unknown) => {
+      if (
+        isNavigationFailure(navErr, NavigationFailureType.duplicated)
+        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+        || isNavigationFailure(navErr, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[RegisterView] post-register navigation to verify failed:', navErr)
+    })
   } catch (err) {
     if (err instanceof ApiResponseError) {
       if (err.status === 409) {

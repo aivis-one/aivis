@@ -5,7 +5,11 @@
 // After success: fetchMe() → router.push('/') → guard redirects.
 
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
@@ -87,7 +91,21 @@ async function handleVerify(): Promise<void> {
     })
     await authStore.fetchMe()
     // Navigate to root — guard will redirect to the next onboarding step.
-    await router.push('/')
+    //
+    // The .catch filter must NOT rethrow -- a benign NavigationFailure
+    // rethrown here would be caught by the outer verify-error `catch`
+    // below and surface as a generic-error toast despite a successful
+    // verification.
+    await router.push('/').catch((navErr: unknown) => {
+      if (
+        isNavigationFailure(navErr, NavigationFailureType.duplicated)
+        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+        || isNavigationFailure(navErr, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[VerifyEmailView] post-verify navigation to home failed:', navErr)
+    })
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail

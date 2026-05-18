@@ -138,11 +138,34 @@ async function handleLogin(): Promise<void> {
     // Post-auth redirect. If the visitor was bounced here from a
     // protected URL or from a public CTA, return them. Otherwise let
     // root.beforeEnter resolve the role dashboard.
+    //
+    // The .catch filter must NOT rethrow -- a benign NavigationFailure
+    // rethrown here would be caught by the outer auth-error `catch`
+    // below and surface as a credentials/network error toast despite
+    // a successful login.
     const next = getValidatedNext()
     if (next !== null) {
-      await router.replace(next)
+      await router.replace(next).catch((navErr: unknown) => {
+        if (
+          isNavigationFailure(navErr, NavigationFailureType.duplicated)
+          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+          || isNavigationFailure(navErr, NavigationFailureType.aborted)
+        ) {
+          return
+        }
+        console.error('[LoginView] post-auth replace to next failed:', navErr)
+      })
     } else {
-      await router.push('/')
+      await router.push('/').catch((navErr: unknown) => {
+        if (
+          isNavigationFailure(navErr, NavigationFailureType.duplicated)
+          || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+          || isNavigationFailure(navErr, NavigationFailureType.aborted)
+        ) {
+          return
+        }
+        console.error('[LoginView] post-auth navigation to home failed:', navErr)
+      })
     }
   } catch (err) {
     if (err instanceof ApiResponseError) {

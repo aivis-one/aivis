@@ -18,7 +18,11 @@
 //      role dashboard.
 
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError } from '@/api/client'
@@ -166,7 +170,21 @@ async function handleSignAll(): Promise<void> {
     await authStore.fetchMe()
 
     // Root resolves to the role-based dashboard via guard.
-    await router.push('/')
+    //
+    // The .catch filter must NOT rethrow -- a benign NavigationFailure
+    // rethrown here would be caught by the outer docs-signing-error
+    // `catch` below and surface as a generic-error toast despite all
+    // documents having been signed successfully.
+    await router.push('/').catch((navErr: unknown) => {
+      if (
+        isNavigationFailure(navErr, NavigationFailureType.duplicated)
+        || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+        || isNavigationFailure(navErr, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[OnboardingDocsView] post-sign navigation to home failed:', navErr)
+    })
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail
