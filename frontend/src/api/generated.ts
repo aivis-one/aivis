@@ -11,6 +11,9 @@
 
 // -- Enums --------------------------------------------------------------------
 
+/** Company profile lifecycle status. */
+export type CompanyStatus = 'active' | 'hidden' | 'archived'
+
 /** Document template kinds. Maps onto Purchase.legal_basis for the per-purchase variants; OWNERSHIP_CERTIFICATE is the live aggregate. R2 §4.3: purchase_agreement -> Purchase.legal_basis = sale gift_certificate -> Purchase.legal_basis = gift installment_subcontract -> Purchase.legal_basis = installment_tranche ownership_certificate -> live aggregate of investor's purchases for one company (no per-purchase snapshot) */
 export type DocumentTemplateKind = 'purchase_agreement' | 'gift_certificate' | 'installment_subcontract' | 'ownership_certificate'
 
@@ -160,6 +163,14 @@ export interface CompanyDashboardResponse {
   products_count: number
   pool?: PoolEmbedResponse | null
   recent_transactions: CompanyTransactionResponse[]
+}
+
+/** Paginated list of companies (staff). */
+export interface CompanyListResponse {
+  items: CompanyResponse[]
+  total: number
+  page: number
+  per_page: number
 }
 
 /** Position detail for a single company with paginated purchases. */
