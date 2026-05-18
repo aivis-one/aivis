@@ -54,7 +54,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, Calendar } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
@@ -227,11 +232,27 @@ function pickPlan(plan: InstallmentResponse): void {
   selectedPlan.value = plan
   // Keep the URL in sync for deep-linking / back button. Replace so
   // we don't pile up history entries for each tap inside the selector.
-  void router.replace({
-    name: installmentRouteName(),
-    params: { id: productId.value },
-    query: { plan: plan.id },
-  })
+  router
+    .replace({
+      name: installmentRouteName(),
+      params: { id: productId.value },
+      query: { plan: plan.id },
+    })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InstallmentView] URL-sync replace for plan selection failed:',
+        err,
+      )
+    })
 }
 
 async function confirm(): Promise<void> {
@@ -258,7 +279,21 @@ async function handlePlanError(err: unknown): Promise<void> {
 
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.installment.error.kycRequired'), 'warning')
-      router.push('/onboarding/kyc')
+      router
+        .push('/onboarding/kyc')
+        .catch((navErr: unknown) => {
+          if (
+            isNavigationFailure(navErr, NavigationFailureType.duplicated)
+            || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+            || isNavigationFailure(navErr, NavigationFailureType.aborted)
+          ) {
+            return
+          }
+          console.error(
+            '[InstallmentView] navigation to KYC onboarding failed:',
+            navErr,
+          )
+        })
       return
     }
 
@@ -295,12 +330,26 @@ function cancel(): void {
     router.back()
     return
   }
-  router.push({
-    name: agentShell.value
-      ? 'agent-product-detail'
-      : 'investor-product-detail',
-    params: { id: productId.value },
-  })
+  router
+    .push({
+      name: agentShell.value
+        ? 'agent-product-detail'
+        : 'investor-product-detail',
+      params: { id: productId.value },
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InstallmentView] cancel fallback to product detail failed:',
+        err,
+      )
+    })
 }
 
 function backToMarket(): void {
@@ -309,9 +358,23 @@ function backToMarket(): void {
   // name kept as `backToMarket` -- internal label, see also
   // `inv.product.backToMarket` i18n key which carries the updated
   // user-facing label "Back to companies".
-  router.push({
-    name: agentShell.value ? 'agent-companies' : 'investor-companies',
-  })
+  router
+    .push({
+      name: agentShell.value ? 'agent-companies' : 'investor-companies',
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InstallmentView] navigation to companies list failed:',
+        err,
+      )
+    })
 }
 
 // If the user navigates inside the shell (e.g. tapping a different

@@ -57,7 +57,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building } from 'lucide-vue-next'
 
@@ -207,21 +212,65 @@ function onRetry(): void {
 }
 
 function goToCompaniesList(): void {
-  void router.push({ name: companiesListRouteName.value })
+  router
+    .push({ name: companiesListRouteName.value })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[CompanyOverviewView] navigation to companies list failed:',
+        err,
+      )
+    })
 }
 
 function goToProducts(): void {
-  void router.push({
-    name: companyProductsRouteName.value,
-    params: { id: companyId.value },
-  })
+  router
+    .push({
+      name: companyProductsRouteName.value,
+      params: { id: companyId.value },
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[CompanyOverviewView] navigation to company products failed:',
+        err,
+      )
+    })
 }
 
 function onRoadmapProductClick(productId: string): void {
-  void router.push({
-    name: productDetailRouteName.value,
-    params: { id: productId },
-  })
+  router
+    .push({
+      name: productDetailRouteName.value,
+      params: { id: productId },
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[CompanyOverviewView] navigation to product detail failed:',
+        err,
+      )
+    })
 }
 
 function onRoadmapExternalClick(url: string): void {

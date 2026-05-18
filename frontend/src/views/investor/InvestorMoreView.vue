@@ -45,7 +45,11 @@
 //   here is what wires the route back into the UI.
 // =============================================================================
 
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight, FileText, Settings as SettingsIcon } from 'lucide-vue-next'
 
@@ -81,7 +85,23 @@ const TILES: readonly Tile[] = [
 ] as const
 
 function openTile(tile: Tile): void {
-  void router.push(tile.route)
+  router
+    .push(tile.route)
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        `[InvestorMoreView] navigation to ${tile.route} failed:`,
+        err,
+      )
+    })
 }
 </script>
 

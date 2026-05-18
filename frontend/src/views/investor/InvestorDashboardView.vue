@@ -64,7 +64,11 @@
 // =============================================================================
 
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowDownToLine,
@@ -162,19 +166,77 @@ const hasFrozen = computed<boolean>(() => activeFrozen.value > 0)
 // ---------------------------------------------------------------------------
 
 function goPortfolio(): void {
-  router.push({ name: 'investor-portfolio' })
+  router
+    .push({ name: 'investor-portfolio' })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InvestorDashboardView] navigation to portfolio failed:',
+        err,
+      )
+    })
 }
 function goBalance(): void {
-  router.push({ name: 'investor-balance' })
+  router
+    .push({ name: 'investor-balance' })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InvestorDashboardView] navigation to balance failed:',
+        err,
+      )
+    })
 }
 function goDeposit(): void {
-  router.push({ name: 'investor-deposit' })
+  router
+    .push({ name: 'investor-deposit' })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InvestorDashboardView] navigation to deposit failed:',
+        err,
+      )
+    })
 }
 function goMarket(): void {
   // iter 2.6.x hotfix: route renamed in iter 2.5 batch 9 -- the
   // marketplace catalogue moved to /investor/companies (CompanyListView).
   // Function name kept as `goMarket` to minimise refactor scope.
-  router.push({ name: 'investor-companies' })
+  router
+    .push({ name: 'investor-companies' })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InvestorDashboardView] navigation to companies list failed:',
+        err,
+      )
+    })
 }
 
 // ---------------------------------------------------------------------------

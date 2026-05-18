@@ -3,7 +3,11 @@
 // Matches staff-shell/mockup.html screen-more layout.
 
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { FileText, Ghost, LogOut } from 'lucide-vue-next'
 import { CAvatar, CBadge } from '@/components/ui'
@@ -27,7 +31,20 @@ const userEmail = computed(() => authStore.user?.email ?? '')
 
 async function handleLogout(): Promise<void> {
   await authStore.logout()
-  router.push('/login')
+  router
+    .push('/login')
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[StaffMoreView] navigation to login failed:', err)
+    })
 }
 </script>
 

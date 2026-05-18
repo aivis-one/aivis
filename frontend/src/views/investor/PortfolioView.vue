@@ -42,7 +42,12 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ChevronRight, Store } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
@@ -132,14 +137,44 @@ const marketRouteName = computed<string>(() =>
 )
 
 function openPosition(p: PortfolioPositionResponse): void {
-  router.push({
-    name: positionRouteName.value,
-    params: { id: p.company_id },
-  })
+  router
+    .push({
+      name: positionRouteName.value,
+      params: { id: p.company_id },
+    })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[PortfolioView] navigation to company position failed:',
+        err,
+      )
+    })
 }
 
 function goMarket(): void {
-  router.push({ name: marketRouteName.value })
+  router
+    .push({ name: marketRouteName.value })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[PortfolioView] navigation to companies list failed:',
+        err,
+      )
+    })
 }
 
 // ---------------------------------------------------------------------------

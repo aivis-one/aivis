@@ -46,7 +46,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
@@ -104,10 +109,26 @@ onMounted(() => {
 })
 
 function openCompany(company: CompanyListItem): void {
-  void router.push({
-    name: overviewRouteName.value,
-    params: { id: company.id },
-  })
+  router
+    .push({
+      name: overviewRouteName.value,
+      params: { id: company.id },
+    })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[CompanyListView] navigation to company overview failed:',
+        err,
+      )
+    })
 }
 
 async function retryFirstPage(): Promise<void> {

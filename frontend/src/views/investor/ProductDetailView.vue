@@ -47,7 +47,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
@@ -109,13 +114,43 @@ function backToMarket(): void {
   // name kept -- internal label, see `inv.product.backToMarket`
   // i18n key for updated user-facing copy.
   const name = agentShell.value ? 'agent-companies' : 'investor-companies'
-  void router.push({ name })
+  router
+    .push({ name })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[ProductDetailView] navigation to companies list failed:',
+        err,
+      )
+    })
 }
 
 function buyNow(): void {
   if (!product.value) return
   const name = agentShell.value ? 'agent-purchase' : 'investor-purchase'
-  void router.push({ name, params: { id: product.value.id } })
+  router
+    .push({ name, params: { id: product.value.id } })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[ProductDetailView] navigation to purchase failed:',
+        err,
+      )
+    })
 }
 
 // F4.2 -- plan card tap. Deep-link into InstallmentView with the
@@ -127,11 +162,25 @@ function openInstallmentPlan(planId: string): void {
   const name = agentShell.value
     ? 'agent-installment'
     : 'investor-installment'
-  void router.push({
-    name,
-    params: { id: product.value.id },
-    query: { plan: planId },
-  })
+  router
+    .push({
+      name,
+      params: { id: product.value.id },
+      query: { plan: planId },
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[ProductDetailView] navigation to installment plan failed:',
+        err,
+      )
+    })
 }
 
 onMounted(loadProduct)

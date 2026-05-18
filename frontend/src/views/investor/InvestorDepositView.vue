@@ -42,7 +42,11 @@
 // =============================================================================
 
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { ArrowLeft, Copy, ShieldAlert } from 'lucide-vue-next'
@@ -130,7 +134,23 @@ function goBack(): void {
     router.back()
     return
   }
-  router.push({ name: 'investor-balance' })
+  router
+    .push({ name: 'investor-balance' })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InvestorDepositView] navigation to balance failed:',
+        err,
+      )
+    })
 }
 
 onMounted(load)

@@ -6,7 +6,11 @@
 // ellipsis instead of bleeding into the right slot. Defensive CSS --
 // any title passed from any view stays inside the header strip.
 
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { ChevronLeft } from 'lucide-vue-next'
 import CbsLogo from '@/components/ui/CbsLogo.vue'
 
@@ -25,7 +29,20 @@ function goBack(): void {
   if (window.history.length > 1) {
     router.back()
   } else {
-    router.push('/')
+    router
+      .push('/')
+      .catch((err: unknown) => {
+        // Benign vue-router rejection types stay silent so real
+        // issues (unknown route, thrown guard) remain visible.
+        if (
+          isNavigationFailure(err, NavigationFailureType.duplicated)
+          || isNavigationFailure(err, NavigationFailureType.cancelled)
+          || isNavigationFailure(err, NavigationFailureType.aborted)
+        ) {
+          return
+        }
+        console.error('[CHeader] navigation to home failed:', err)
+      })
   }
 }
 </script>

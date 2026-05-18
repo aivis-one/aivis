@@ -58,7 +58,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
@@ -128,7 +133,23 @@ onMounted(() => {
   // normalise an empty string to null and silently load the global
   // catalogue, which is wrong for this view.
   if (!companyId.value) {
-    void router.replace({ name: companiesListRouteName.value })
+    router
+      .replace({ name: companiesListRouteName.value })
+      .catch((err: unknown) => {
+        // Benign vue-router rejection types stay silent so real
+        // issues (unknown route, thrown guard) remain visible.
+        if (
+          isNavigationFailure(err, NavigationFailureType.duplicated)
+          || isNavigationFailure(err, NavigationFailureType.cancelled)
+          || isNavigationFailure(err, NavigationFailureType.aborted)
+        ) {
+          return
+        }
+        console.error(
+          '[ProductsByCompanyView] protective replace to companies list failed:',
+          err,
+        )
+      })
     return
   }
   void productsStore.setCompanyFilter(companyId.value)
@@ -150,10 +171,24 @@ watch(
 // ---------------------------------------------------------------------------
 
 function openProduct(product: PublicProductResponse): void {
-  void router.push({
-    name: productDetailRouteName.value,
-    params: { id: product.id },
-  })
+  router
+    .push({
+      name: productDetailRouteName.value,
+      params: { id: product.id },
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[ProductsByCompanyView] navigation to product detail failed:',
+        err,
+      )
+    })
 }
 
 function onRetry(): void {

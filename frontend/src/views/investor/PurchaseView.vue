@@ -61,7 +61,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
@@ -193,7 +198,23 @@ async function handlePurchaseError(err: unknown): Promise<void> {
     // regex with a backend-emitted error code.
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.purchase.error.kycRequired'), 'warning')
-      router.push('/onboarding/kyc')
+      router
+        .push('/onboarding/kyc')
+        .catch((navErr: unknown) => {
+          // Benign vue-router rejection types stay silent so real
+          // issues (unknown route, thrown guard) remain visible.
+          if (
+            isNavigationFailure(navErr, NavigationFailureType.duplicated)
+            || isNavigationFailure(navErr, NavigationFailureType.cancelled)
+            || isNavigationFailure(navErr, NavigationFailureType.aborted)
+          ) {
+            return
+          }
+          console.error(
+            '[PurchaseView] navigation to KYC onboarding failed:',
+            navErr,
+          )
+        })
       return
     }
 
@@ -230,12 +251,26 @@ function cancel(): void {
     router.back()
     return
   }
-  router.push({
-    name: agentShell.value
-      ? 'agent-product-detail'
-      : 'investor-product-detail',
-    params: { id: productId.value },
-  })
+  router
+    .push({
+      name: agentShell.value
+        ? 'agent-product-detail'
+        : 'investor-product-detail',
+      params: { id: productId.value },
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[PurchaseView] cancel fallback to product detail failed:',
+        err,
+      )
+    })
 }
 
 function backToMarket(): void {
@@ -243,9 +278,23 @@ function backToMarket(): void {
   // catalogue moved to *-companies (CompanyListView). Function
   // name kept -- see also `inv.product.backToMarket` i18n key which
   // carries the updated "Back to companies" user-facing label.
-  router.push({
-    name: agentShell.value ? 'agent-companies' : 'investor-companies',
-  })
+  router
+    .push({
+      name: agentShell.value ? 'agent-companies' : 'investor-companies',
+    })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[PurchaseView] navigation to companies list failed:',
+        err,
+      )
+    })
 }
 
 onMounted(load)

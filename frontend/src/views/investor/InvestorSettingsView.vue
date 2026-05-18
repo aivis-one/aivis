@@ -81,7 +81,11 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ChevronRight,
@@ -299,11 +303,41 @@ async function applyForAgent(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function goKyc(): void {
-  void router.push('/onboarding/kyc')
+  router
+    .push('/onboarding/kyc')
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InvestorSettingsView] navigation to KYC onboarding failed:',
+        err,
+      )
+    })
 }
 
 function goDocs(): void {
-  void router.push({ name: 'investor-docs' })
+  router
+    .push({ name: 'investor-docs' })
+    .catch((err: unknown) => {
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[InvestorSettingsView] navigation to investor docs failed:',
+        err,
+      )
+    })
 }
 
 const loggingOut = ref<boolean>(false)

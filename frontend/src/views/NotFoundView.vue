@@ -4,13 +4,30 @@
 // error.pageNotFound will show key string until i18n is added.
 
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRouter,
+} from 'vue-router'
 
 const { t } = useI18n()
 const router = useRouter()
 
 function goHome(): void {
-  router.push('/')
+  router
+    .push('/')
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error('[NotFoundView] navigation to home failed:', err)
+    })
 }
 </script>
 

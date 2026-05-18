@@ -53,7 +53,12 @@
 // =============================================================================
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {
+  isNavigationFailure,
+  NavigationFailureType,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import {
@@ -168,7 +173,23 @@ function goBack(): void {
     router.back()
     return
   }
-  router.push({ name: portfolioRouteName.value })
+  router
+    .push({ name: portfolioRouteName.value })
+    .catch((err: unknown) => {
+      // Benign vue-router rejection types stay silent so real
+      // issues (unknown route, thrown guard) remain visible.
+      if (
+        isNavigationFailure(err, NavigationFailureType.duplicated)
+        || isNavigationFailure(err, NavigationFailureType.cancelled)
+        || isNavigationFailure(err, NavigationFailureType.aborted)
+      ) {
+        return
+      }
+      console.error(
+        '[CompanyPositionView] navigation to portfolio failed:',
+        err,
+      )
+    })
 }
 
 // ---------------------------------------------------------------------------
