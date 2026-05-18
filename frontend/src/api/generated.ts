@@ -1225,7 +1225,7 @@ export interface UserListResponse {
   per_page: number
 }
 
-/** User representation in API responses. Excludes credentials (sensitive: password hashes, tokens). Profile is returned as-is from JSONB. Email is extracted from credentials via User.email property. */
+/** User representation in API responses. Excludes credentials (sensitive: password hashes, tokens). Profile is returned as-is from JSONB. Email is extracted from credentials via User.email property. iter 2.6c B6: `staff_profile` is populated by the service layer when `role == "staff"` -- it carries the staff profile id, is_active flag, and the EFFECTIVE permission matrix (defaults merged with per-staff overrides). For non-staff users the field is null. The frontend Staff Platform tab keys off this field to gate the whole surface. */
 export interface UserResponse {
   id: string
   role: string
@@ -1238,6 +1238,7 @@ export interface UserResponse {
   language: string
   created_at: string
   updated_at?: string | null
+  staff_profile?: StaffProfileResponse | null
 }
 
 /** PATCH /api/v1/users/me -- updatable profile fields. All fields are optional. Only provided fields are updated (exclude_unset in service layer). profile: merged with existing JSONB via set_jsonb(). language: direct assignment. NOT NULL in DB -- explicit null is rejected in service layer, not here (avoids conflict with Pydantic default=None for "not sent" semantics). */
