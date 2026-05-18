@@ -47,7 +47,6 @@ import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { ArrowLeft, Copy, ShieldAlert } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import { ApiResponseError } from '@/api/client'
 import { createCryptoAddress } from '@/api/payments'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -142,8 +141,6 @@ onMounted(load)
 
 <template>
   <div class="dv">
-    <CHeader :show-back="true" :show-logo="false" :title="t('inv.deposit.title')" />
-
     <!-- Loading -->
     <div v-if="loading" class="dv__center">
       <CLoader :size="28" />
@@ -170,6 +167,21 @@ onMounted(load)
 
     <!-- Loaded -->
     <template v-else>
+      <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
+           No hero on this view, so the title lives in a header block
+           with the back-link. Reuses existing history-aware goBack(). -->
+      <div class="dv__page-header">
+        <button
+          type="button"
+          class="dv__back"
+          @click="goBack"
+        >
+          <ArrowLeft :size="16" />
+          {{ t('inv.deposit.backLink') }}
+        </button>
+        <h1 class="dv__page-title">{{ t('inv.deposit.title') }}</h1>
+      </div>
+
       <div class="dv__body">
         <!-- Network + hint -->
         <section class="dv__card">
@@ -241,6 +253,41 @@ onMounted(load)
 .dv__error-actions {
   display: flex;
   gap: 8px;
+}
+
+/* iter 2.7 batch B2 -- inline page-header (back-link + title) replaces
+   the previous view-CHeader. No hero on this view, so the title lives
+   inside a header block at the top of the loaded branch. */
+.dv__page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px 8px;
+}
+.dv__back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 6px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.dv__back:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.dv__page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
 }
 
 .dv__body {

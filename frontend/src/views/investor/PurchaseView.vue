@@ -65,7 +65,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
@@ -141,10 +140,6 @@ const canConfirm = computed<boolean>(() => {
 
 const coverImage = computed<string | null>(() => {
   return product.value ? resolveCoverImage(product.value) : null
-})
-
-const headerTitle = computed<string>(() => {
-  return product.value?.name ?? t('inv.purchase.title')
 })
 
 async function load(): Promise<void> {
@@ -273,7 +268,12 @@ onMounted(load)
 
 <template>
   <div class="pv">
-    <CHeader :title="headerTitle" />
+    <!-- iter 2.7 batch B2: <CHeader> removed (single-shell-header
+         paradigm). The product name lives in the hero <h1> below;
+         no inline title block is needed. By design no back-link --
+         this view's existing pattern (pre-B2) intentionally omitted
+         one, and purchases are typically reached from product detail
+         where the user can hit browser back. -->
 
     <div v-if="loading" class="pv__center">
       <CLoader />

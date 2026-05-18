@@ -56,9 +56,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, Calendar } from 'lucide-vue-next'
+import { ArrowLeft, Building, Calendar } from 'lucide-vue-next'
 import { CButton, CLoader, CEmptyState } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createInstallmentPlan } from '@/api/installments'
@@ -160,10 +159,6 @@ const canConfirm = computed<boolean>(() => {
 
 const coverImage = computed<string | null>(() => {
   return product.value ? resolveCoverImage(product.value) : null
-})
-
-const headerTitle = computed<string>(() => {
-  return product.value?.name ?? t('inv.installment.title')
 })
 
 // ---------------------------------------------------------------------------
@@ -355,12 +350,6 @@ onMounted(load)
 
 <template>
   <div class="iv">
-    <CHeader
-      :show-back="true"
-      :show-logo="false"
-      :title="headerTitle"
-    />
-
     <!-- Loading -->
     <div v-if="loading" class="iv__center">
       <CLoader :size="28" />
@@ -393,6 +382,18 @@ onMounted(load)
     </template>
 
     <template v-else>
+      <!-- iter 2.7 batch B2: inline back-link replaces view-CHeader.
+           Reuses cancel() which is already history-aware (prefers
+           router.back(), falls back to product detail on deep-link). -->
+      <button
+        type="button"
+        class="iv__back"
+        @click="cancel"
+      >
+        <ArrowLeft :size="16" />
+        {{ t('inv.installment.backLink') }}
+      </button>
+
       <!-- Product hero -->
       <div
         class="iv__hero"
@@ -567,6 +568,30 @@ onMounted(load)
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
   padding: 24px;
+}
+
+/* iter 2.7 batch B2 -- inline back-link above the hero. Mirrors
+   .pd__back / .ppd__back so the visual paradigm stays consistent
+   across the auth and public product/installment flows. */
+.iv__back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--space-md, 16px) var(--space-md, 16px) 0;
+  padding: 6px 10px 6px 6px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.iv__back:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 /* Hero with cover */

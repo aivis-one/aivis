@@ -4,11 +4,10 @@
 // =============================================================================
 //
 // User's legal documents list with read + sign flow. Rendered by
-// InvestorShell at /investor/docs. Not a top-level tab -- entered via
-// InvestorMoreView (B6, stub today). Sub-route with back pattern:
-// CHeader with back button, client-owned state, no Pinia store (the
-// list is never read by another view, so a store would only duplicate
-// the ref).
+// InvestorShell at /investor/docs. Top-level tab reached via CTabBar
+// (the "Documents" tab promoted from InvestorMoreView in a previous
+// iter). Client-owned state, no Pinia store -- the list is never read
+// by another view, so a store would only duplicate the ref.
 //
 // DATA.
 //   listDocuments() returns rows already resolved by the backend to
@@ -18,9 +17,11 @@
 //   no client-side sorting).
 //
 // LAYOUT.
-//   Top: CHeader with title + built-in back (router.back() or `/` on
-//   deep-link, which redirects to the role dashboard -- an acceptable
-//   fallback for deep entry).
+//   Top: inline page-header (h1 title, no back-link) -- iter 2.7
+//   batch B2 dropped the view-CHeader in favour of the single-shell-
+//   header paradigm. As a top-level tab the view has no originating
+//   screen to navigate back to; the shell's CHeader covers brand
+//   identity, the inline <h1> labels the tab.
 //   Body: list of .doc-item rows. Icon + title + meta + status badge
 //   (signed / pending). Tap opens the detail modal.
 //
@@ -73,7 +74,6 @@ import { useI18n } from 'vue-i18n'
 import { FileText } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import { ApiResponseError } from '@/api/client'
 import { listDocuments, signDocument } from '@/api/documents'
 import { useToast } from '@/composables/useToast'
@@ -269,11 +269,13 @@ function metaLabel(doc: DocumentResponse): string {
 
 <template>
   <div class="docs">
-    <CHeader
-      :show-back="true"
-      :show-logo="false"
-      :title="t('inv.docs.title')"
-    />
+    <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
+         No back-link: this is a top-level tab reached via CTabBar,
+         not a drill-down with originating context. Same paradigm as
+         InvestorMoreView / InvestorSettingsView. -->
+    <div class="docs__page-header">
+      <h1 class="docs__page-title">{{ t('inv.docs.title') }}</h1>
+    </div>
 
     <!-- First-load spinner -->
     <div v-if="loading && documents.length === 0" class="docs__center">
@@ -382,6 +384,25 @@ function metaLabel(doc: DocumentResponse): string {
   display: flex;
   flex-direction: column;
   padding-bottom: 24px;
+}
+
+/* iter 2.7 batch B2 -- inline page-header replaces the previous
+   view-CHeader. Title-only (no back-link): this is a top-level tab.
+   Same paradigm as InvestorMoreView's .more__header / InvestorSettings'
+   .sett__page-title. Class name `docs__page-title` chosen so it does
+   not clash with `docs__title` already used for individual document
+   item titles in the list. */
+.docs__page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 16px 8px;
+}
+.docs__page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
 }
 
 .docs__center {

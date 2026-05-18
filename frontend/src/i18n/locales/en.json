@@ -344,6 +344,7 @@
         "desc": "This product does not offer installment plans"
       },
       "backToProduct": "Back to product",
+      "backLink": "Back to product",
       "selectTitle": "Choose a plan",
       "selectHint": "Pick the plan that fits your schedule",
       "planTitle": "Selected plan",
@@ -399,6 +400,7 @@
       "warning": "Send only USDT via TRC20 to this address. Funds sent on other networks cannot be recovered.",
       "qrUnavailable": "QR code unavailable — please use the address below.",
       "backToBalance": "Back to balance",
+      "backLink": "Back to balance",
       "loadError": {
         "title": "Could not get your deposit address",
         "desc": "Please try again"
@@ -522,6 +524,7 @@
     "companyOverview": {
       "status": "Active",
       "backToList": "All companies",
+      "backLink": "Back to companies",
       "errorTitle": "Could not load company",
       "errorRetry": "Retry",
       "notFound": "Company not found",
@@ -568,6 +571,7 @@
     },
     "companyPosition": {
       "title": "Position",
+      "backLink": "Back to portfolio",
       "aggregate": {
         "totalUnits": "Total units",
         "avgPrice": "Avg. price",
@@ -704,6 +708,7 @@
     },
     "productsByCompany": {
       "title": "Products",
+      "backLink": "Back to company",
       "empty": {
         "title": "No products yet",
         "subtitle": "This company hasn't published any products yet."

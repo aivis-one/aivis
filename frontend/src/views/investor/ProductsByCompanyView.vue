@@ -61,9 +61,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
+import { ArrowLeft } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
-import CHeader from '@/components/layout/CHeader.vue'
 import ProductCard from '@/components/shared/ProductCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useProductsStore } from '@/stores/products'
@@ -96,6 +96,10 @@ const companiesListRouteName = computed<string>(() =>
 
 const productDetailRouteName = computed<string>(() =>
   isAgentShell(route) ? 'agent-product-detail' : 'investor-product-detail',
+)
+
+const companyOverviewRouteName = computed<string>(() =>
+  isAgentShell(route) ? 'agent-company-overview' : 'investor-company-overview',
 )
 
 // ---------------------------------------------------------------------------
@@ -166,11 +170,51 @@ function openProduct(product: PublicProductResponse): void {
 function onRetry(): void {
   void productsStore.fetchFirstPage()
 }
+
+// iter 2.7 batch B2: inline back-link handler. Prefers router.back()
+// so the originating screen (CompanyOverviewView most commonly)
+// restores scroll/state for free; falls back to the company overview
+// for the current companyId when there's no prior history (deep-link).
+function goBack(): void {
+  if (router.options.history.state.back) {
+    router.back()
+    return
+  }
+  const id = companyId.value
+  if (!id) {
+    // Defensive: an empty companyId means the deep-link is malformed.
+    // onMounted's guard already redirected, but if we somehow hit this
+    // path, send the user to the catalogue rather than a broken overview.
+    void safeNavigate(
+      router.push({ name: companiesListRouteName.value }),
+      '[ProductsByCompanyView] back fallback to companies list (no id)',
+    )
+    return
+  }
+  void safeNavigate(
+    router.push({ name: companyOverviewRouteName.value, params: { id } }),
+    '[ProductsByCompanyView] back fallback to company overview',
+  )
+}
 </script>
 
 <template>
   <div class="pbc">
-    <CHeader :title="headerTitle" show-back />
+    <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
+         The company name (resolved by headerTitle) lives in the h1;
+         the back-link goes to company overview, mirroring the previous
+         CHeader back's history-back default with a deep-link fallback. -->
+    <div class="pbc__page-header">
+      <button
+        type="button"
+        class="pbc__back"
+        @click="goBack"
+      >
+        <ArrowLeft :size="16" />
+        {{ t('inv.productsByCompany.backLink') }}
+      </button>
+      <h1 class="pbc__page-title">{{ headerTitle }}</h1>
+    </div>
 
     <!-- Grid (visible whenever we have items) -->
     <div v-if="productsStore.items.length > 0" class="pbc__grid">
@@ -227,6 +271,41 @@ function onRetry(): void {
 .pbc {
   display: flex;
   flex-direction: column;
+}
+
+/* iter 2.7 batch B2 -- inline page-header (back-link + title) replaces
+   the previous view-CHeader. No hero on this view, so the title lives
+   inside a header block at the top. */
+.pbc__page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px 8px;
+}
+.pbc__back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 6px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pbc__back:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.pbc__page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
 }
 
 .pbc__grid {
