@@ -12,6 +12,8 @@
 #   get_company()          -- load CompanyProfile by id
 #   list_companies()       -- paginated list (public: active only; staff: all;
 #                             optional case-insensitive name search)
+#   list_price_history()   -- paginated price-change records for a company
+#                             (iter 2.6c B3, staff inspect/audit surface)
 #   get_company_detail()   -- profile + roadmap items
 #   create_roadmap_item()  -- add roadmap milestone
 #   update_roadmap_item()  -- partial update roadmap item
@@ -510,6 +512,63 @@ async def list_companies(
     companies = list(result.scalars().all())
 
     return companies, total
+
+
+async def list_price_history(
+    session: AsyncSession,
+    company_id: UUID,
+    *,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[CompanyPriceHistory], int]:
+    """Paginated price-change records for one company (iter 2.6c B3).
+
+    Sorted by changed_at DESC -- the most recent change is the one
+    staff usually want to inspect or roll back. Mirrors the pagination
+    contract used by list_companies so the wrapping
+    PriceHistoryListResponse fits the same envelope shape as
+    CompanyListResponse / every other staff list response.
+
+    Args:
+        session: read-only session is sufficient; we never write here.
+        company_id: target company. Existence is verified up front so
+            staff get a clean 404 from get_company rather than a
+            confusing empty page when the UUID is wrong.
+
+    Returns:
+        (rows, total_count). `rows` may be empty for a freshly created
+        company that has never had a price change.
+
+    Raises:
+        NotFoundError: company not found (propagated from get_company).
+    """
+    # Verify the company exists -- empty pagination on a non-existent
+    # company would hide a bad request.
+    await get_company(company_id, session)
+
+    base_filter = CompanyPriceHistory.company_id == company_id
+
+    # Count total.
+    count_stmt = (
+        select(func.count())
+        .select_from(CompanyPriceHistory)
+        .where(base_filter)
+    )
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    # Fetch page.
+    offset = (page - 1) * per_page
+    stmt = (
+        select(CompanyPriceHistory)
+        .where(base_filter)
+        .order_by(CompanyPriceHistory.changed_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    result = await session.execute(stmt)
+    rows = list(result.scalars().all())
+
+    return rows, total
 
 
 async def get_company_detail(

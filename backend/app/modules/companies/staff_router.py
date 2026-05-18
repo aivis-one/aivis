@@ -1,6 +1,6 @@
 # =============================================================================
 # CBSHOME Backend -- Company Staff Router (Sprint 4.1, fix Phase 4,
-#                                            iter 2.6c B2)
+#                                            iter 2.6c B2 + B3)
 # =============================================================================
 #
 # ENDPOINTS:
@@ -8,6 +8,7 @@
 #   POST  /api/v1/staff/companies                          -- create company
 #   PATCH /api/v1/staff/companies/{id}                     -- update profile
 #   PATCH /api/v1/staff/companies/{id}/price               -- change price
+#   GET   /api/v1/staff/companies/{id}/price-history       -- price history (B3)
 #   POST  /api/v1/staff/companies/{id}/roadmap             -- add roadmap item
 #   PATCH /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update roadmap item
 #   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}  -- soft-delete item
@@ -17,6 +18,11 @@
 #   All endpoints require company_manage permission.
 #   Create, price change, and distribution_config update also require
 #   financial_operations permission.
+#   price-history is gated on company_manage only -- it is a read-only
+#   audit surface, not a financial operation. (R2 §6 note: spec said
+#   "company_manage OR financial_operations" but the codebase has no
+#   OR-permission primitive; reading the history adjacent to staff
+#   profile / company management belongs under company_manage.)
 #
 # Phase 4 FIX:
 #   _require_permission / _require_financial_operations extracted to
@@ -28,6 +34,13 @@
 #   garbage values) and ?search= (case-insensitive ilike on name,
 #   metacharacters escaped server-side). Pagination is consistent with
 #   the rest of the staff list endpoints (page / per_page).
+#
+# iter 2.6c B3:
+#   GET /staff/companies/{id}/price-history returns the immutable
+#   CompanyPriceHistory rows for one company, newest-first. Pagination
+#   uses the same envelope as the list endpoint above. 404 on unknown
+#   company_id is delivered by the service (get_company), so a probe
+#   for an invalid id cannot leak existence via an empty 200 response.
 #
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
@@ -55,6 +68,8 @@ from app.modules.companies.schemas import (
     CompanyResponse,
     CreateCompanyRequest,
     CreateRoadmapItemRequest,
+    PriceHistoryListResponse,
+    PriceHistoryResponse,
     ReorderRoadmapRequest,
     RoadmapItemResponse,
     UpdateCompanyRequest,
@@ -68,6 +83,7 @@ from app.modules.companies.service import (
     delete_roadmap_cover,
     delete_roadmap_item,
     list_companies,
+    list_price_history,
     reorder_roadmap,
     set_roadmap_cover,
     update_company,
@@ -202,6 +218,41 @@ async def update_price_endpoint(
 
     profile = await update_price(company_id, body.price_per_unit_cents, staff, session)
     return CompanyResponse.model_validate(profile)
+
+
+@router.get(
+    "/{company_id}/price-history",
+    response_model=PriceHistoryListResponse,
+)
+async def list_price_history_endpoint(
+    company_id: UUID,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_reader),
+) -> PriceHistoryListResponse:
+    """List CompanyPriceHistory rows for one company, newest first.
+
+    Permission: company_manage only -- this is a read-only inspection
+    surface, not a financial operation. See header docstring for the
+    deliberate choice not to also accept financial_operations.
+
+    404 when the company does not exist (raised by get_company inside
+    the service). Pagination envelope mirrors CompanyListResponse so
+    the same frontend table component can drive both lists.
+    """
+    rows, total = await list_price_history(
+        session,
+        company_id,
+        page=page,
+        per_page=per_page,
+    )
+    return PriceHistoryListResponse(
+        items=[PriceHistoryResponse.model_validate(r) for r in rows],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
 
 
 # ---------------------------------------------------------------------------

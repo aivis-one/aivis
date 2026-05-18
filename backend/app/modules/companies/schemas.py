@@ -17,6 +17,7 @@
 #   CompanyListResponse       -- paginated list
 #   RoadmapItemResponse       -- single roadmap item
 #   PriceHistoryResponse      -- single price change record
+#   PriceHistoryListResponse  -- paginated price-history list (iter 2.6c B3)
 #
 # Phase 4 FIX:
 #   CreateCompanyRequest.email uses EmailStr (was: str)
@@ -326,6 +327,21 @@ class PriceHistoryResponse(BaseModel):
     price_per_unit_cents: int
     changed_at: datetime
     changed_by: UUID
+
+
+class PriceHistoryListResponse(BaseModel):
+    """Paginated price-history list (iter 2.6c B3).
+
+    Wraps PriceHistoryResponse with the same pagination envelope used
+    by CompanyListResponse and every other staff list endpoint, so the
+    frontend table component can drive both list flows with one
+    pagination contract.
+    """
+
+    items: list[PriceHistoryResponse]
+    total: int
+    page: int
+    per_page: int
 
 
 class CompanyResponse(BaseModel):
