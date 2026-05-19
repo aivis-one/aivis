@@ -9,6 +9,15 @@
 // URLSearchParams to buildQueryString util (TD-F08e closure). No
 // behavioural change -- the helper applies the same skip rules as
 // the old `if (params?.x) q.set(...)` ternary.
+//
+// iter 2.7 Block A3 (R1 §3 + iter 2.6c B1):
+//   fetchUsers gains an optional `kyc_status` query parameter.
+//   StaffUsersView consumes it via the KYC filter chips
+//   (all / not_started / submitted / approved / rejected) in
+//   commit A5 -- backend accepts these exact strings and 422s on
+//   anything else (KYCStatus StrEnum). Combines freely with the
+//   existing `role` param. No behavioural change for the existing
+//   role/page/per_page callers.
 // =============================================================================
 
 import { api } from '@/api/client'
@@ -44,17 +53,29 @@ export function fetchDashboardStats(): Promise<DashboardStatsResponse> {
 }
 
 // ---------------------------------------------------------------------------
-// Users (Sprint 3.1 + 3.3)
+// Users (Sprint 3.1 + 3.3 + iter 2.6c B1 + iter 2.7 A3)
 // ---------------------------------------------------------------------------
 
-/** GET /api/v1/staff/users — paginated user list with optional role filter. */
+/**
+ * GET /api/v1/staff/users — paginated user list with optional filters.
+ *
+ * Filters (all optional, combinable):
+ *   - role:       'investor' | 'agent' | 'company' | 'staff'
+ *   - kyc_status: 'not_started' | 'submitted' | 'approved' | 'rejected'
+ *                 (iter 2.6c B1; backend validates via KYCStatus StrEnum,
+ *                  422 on any other value)
+ *
+ * Pagination: page (1-indexed), per_page. Sort is fixed server-side.
+ */
 export function fetchUsers(params?: {
   role?: string
+  kyc_status?: string
   page?: number
   per_page?: number
 }): Promise<UserListResponse> {
   const qs = buildQueryString({
     role: params?.role,
+    kyc_status: params?.kyc_status,
     page: params?.page,
     per_page: params?.per_page,
   })
