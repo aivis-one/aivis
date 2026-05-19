@@ -137,9 +137,9 @@ class UserDetailResponse(BaseModel):
 
     # iter 2.7 A5: KYC application info for the merged Approve/Reject
     # flow in StaffUsersView's detail modal.
-    latest_application_id: UUID | None = None
-    latest_application_status: str | None = None
-    kyc_applications_history: list[KYCApplicationSummary] = Field(default_factory=list)
+    latest_application_id: UUID | None
+    latest_application_status: str | None
+    kyc_applications_history: list[KYCApplicationSummary]
 
 
 class BlockRequest(BaseModel):
