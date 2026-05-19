@@ -1,15 +1,28 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Schemas (Sprint 3.1, updated Sprint 4.1)
+# CBSHOME Backend -- Staff Schemas (Sprint 3.1, updated Sprint 4.1,
+#                                    iter 2.7 A6 content_manage sync)
 # =============================================================================
 #
 # REQUEST/RESPONSE SCHEMAS:
-#   CreateStaffRequest     -- POST /staff/users {user_id}
-#   UpdatePermissionsRequest -- PATCH /staff/users/{id}/permissions
-#   StaffProfileResponse   -- response for all staff endpoints
-#   StaffListResponse      -- list item (profile + user info)
+#   CreateStaffRequest        -- POST /staff/users {user_id}
+#   UpdatePermissionsRequest  -- PATCH /staff/users/{id}/permissions
+#   StaffProfileResponse      -- response for all staff endpoints
+#   StaffListResponse         -- list item (profile + user info)
 #
 # Sprint 4.1:
 #   Added company_manage to UpdatePermissionsRequest.
+#
+# iter 2.7 A6 content_manage sync:
+#   Sprint 9.1 added `content_manage` to DEFAULT_STAFF_PERMISSIONS
+#   (staff/constants.py) but never to this schema. Because
+#   UpdatePermissionsRequest has `extra="forbid"`, the omission
+#   silently meant that PATCH /staff/users/{id}/permissions could
+#   not toggle `content_manage` -- every request carrying it would
+#   fail with 422. Reads via the effective dict on /users/me kept
+#   working (staff/service.get_effective_permissions reads from
+#   DEFAULT_STAFF_PERMISSIONS, which already had the key), so the
+#   feature flag was functional but not adjustable per-staff
+#   through the admin UI. This commit closes the drift.
 # =============================================================================
 
 from datetime import datetime
@@ -45,6 +58,7 @@ class UpdatePermissionsRequest(BaseModel):
     agent_application_review: bool | None = None
     translation_edit: bool | None = None
     company_manage: bool | None = None
+    content_manage: bool | None = None
 
 
 # ---------------------------------------------------------------------------

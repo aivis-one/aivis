@@ -1,12 +1,18 @@
 <script setup lang="ts">
-// Staff user management — list, search, filter, detail modal.
-// GET /api/v1/staff/users (?role=, ?page=, ?per_page=)
-// GET /api/v1/staff/users/{id}
-// PATCH /api/v1/staff/users/{id}/block
-// POST /api/v1/staff/users (promote to staff, admin only)
-// PATCH /api/v1/staff/users/{id}/permissions (admin only)
+// =============================================================================
+// CBSHOME Frontend -- StaffUsersView (iter 2.7 A3 + A5)
+// =============================================================================
 //
-// Sprint 4.4 (Block C):
+// Staff user management -- list, role / kyc_status filter, detail modal.
+//   GET    /api/v1/staff/users (?role=, ?kyc_status=, ?page=, ?per_page=)
+//   GET    /api/v1/staff/users/{id}
+//   PATCH  /api/v1/staff/users/{id}/block
+//   POST   /api/v1/staff/users (promote to staff, admin only)
+//   PATCH  /api/v1/staff/users/{id}/permissions (admin only)
+//   POST   /api/v1/staff/kyc/{application_id}/approve  (iter 2.7 A5)
+//   POST   /api/v1/staff/kyc/{application_id}/reject   (iter 2.7 A5)
+//
+// Sprint 4.4 PermissionKey contract:
 //   PermissionKey is derived from the backend's UpdatePermissionsRequest
 //   and the runtime list ALL_PERMISSION_KEYS is checked both ways at
 //   compile time:
@@ -20,13 +26,52 @@
 //        permission added to the backend that this UI forgot). The
 //        use-site assignment is what actually fails the build -- a
 //        bare type alias is just a tooltip warning.
+//
+// iter 2.7 A3 + A5 (R1 §3 KYC merge).
+//   The old StaffKYCView page was removed in iter 2.7 A2. Its
+//   Approve / Reject flow is folded into THIS view's detail modal,
+//   plus a new chip row filters the list by kyc_status. The kyc_status
+//   query param landed on fetchUsers in A3.
+//
+//   The detail modal's "KYC Application" section reads three new
+//   fields surfaced by the backend mini-iter shipped alongside A5:
+//     - latest_application_id      : UUID of the newest KYCApplication
+//                                    row, or null if the user has
+//                                    never submitted.
+//     - latest_application_status  : status of that row.
+//     - kyc_applications_history   : up to KYC_HISTORY_LIMIT newest
+//                                    rows, newest first. Empty list
+//                                    when the user has never submitted.
+//
+//   The section self-hides (FP-25) when latest_application_id is null:
+//     - role=company / role=staff are exempt from KYC by the platform's
+//       onboarding flow, so they never have an application row to act
+//       on. Showing an empty "no application" block in that case is
+//       just noise.
+//   When the section IS shown, Approve / Reject are gated FP-23-style:
+//     - canDoKycApprove computed from useStaffPermissions wraps both
+//       buttons (template guard);
+//     - the handlers run a defensive check + console.warn before
+//       firing the network call.
+//   Buttons are further restricted to status=submitted -- terminal
+//   statuses (approved / rejected) leave only the history visible.
+// =============================================================================
 
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Clock } from 'lucide-vue-next'
 import { CAvatar, CBadge, CLoader, CButton, CModal, CEmptyState, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
-import { fetchUsers, fetchUserDetail, blockUser, createStaff, updatePermissions } from '@/api/admin'
+import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import {
+  fetchUsers,
+  fetchUserDetail,
+  blockUser,
+  createStaff,
+  updatePermissions,
+  approveKYC,
+  rejectKYC,
+} from '@/api/admin'
 import type {
   UpdatePermissionsRequest,
   UserListItem,
@@ -41,6 +86,11 @@ type PermissionKey = keyof Required<UpdatePermissionsRequest>
 // Full list of permission keys -- ensures UI shows all toggles even if
 // backend omits false values. `as const satisfies readonly PermissionKey[]`
 // catches typos and removed-on-backend keys at compile time.
+//
+// content_manage was added to DEFAULT_STAFF_PERMISSIONS in backend
+// Sprint 9.1 and finally to UpdatePermissionsRequest in iter 2.7 A6
+// (schema-side mini-iter that closed the 9-vs-8 drift). The
+// exhaustiveness assertion below now expects nine keys.
 const ALL_PERMISSION_KEYS = [
   'avatar_mode',
   'kyc_approve',
@@ -50,6 +100,7 @@ const ALL_PERMISSION_KEYS = [
   'agent_application_review',
   'translation_edit',
   'company_manage',
+  'content_manage',
 ] as const satisfies readonly PermissionKey[]
 
 // Compile-time exhaustiveness: if the backend adds a new permission to
@@ -64,8 +115,24 @@ type _PermissionKeysExhaustive =
 const _permissionKeysExhaustive: _PermissionKeysExhaustive = true
 void _permissionKeysExhaustive
 
+// KYC status filter chip values. Backend ?kyc_status= accepts these
+// exact strings (KYCStatus StrEnum, 422 on anything else).
+const ALL_KYC_STATUSES = [
+  'not_started',
+  'submitted',
+  'approved',
+  'rejected',
+] as const
+type KYCStatus = (typeof ALL_KYC_STATUSES)[number]
+
 const { t } = useI18n()
 const { showToast } = useToast()
+const { canDo } = useStaffPermissions()
+
+// iter 2.7 A5: FP-23 template guard for the Approve / Reject buttons
+// in the detail modal's KYC section. Reads the effective permission
+// merged with defaults on the current staff member.
+const canDoKycApprove = canDo('kyc_approve')
 
 // -- List state --
 const items = ref<UserListItem[]>([])
@@ -73,6 +140,7 @@ const total = ref(0)
 const page = ref(1)
 const perPage = 20
 const roleFilter = ref('')
+const kycStatusFilter = ref<'' | KYCStatus>('')
 const loading = ref(true)
 const error = ref(false)
 
@@ -88,6 +156,11 @@ const blockReason = ref('')
 
 // -- Promote modal --
 const showPromoteModal = ref(false)
+
+// -- KYC reject modal (iter 2.7 A5) --
+const showKycRejectModal = ref(false)
+const kycRejectReason = ref('')
+const kycActionLoading = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / perPage))
 
@@ -110,12 +183,20 @@ function fullName(item: { first_name?: string | null; last_name?: string | null 
   return parts.length ? parts.join(' ') : '—'
 }
 
+// Pretty-print an ISO datetime. Used for both the registered-at row
+// and KYC history timeline. toLocaleDateString matches the existing
+// "Registered" row format for visual consistency.
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString()
+}
+
 async function loadUsers(): Promise<void> {
   loading.value = true
   error.value = false
   try {
     const resp = await fetchUsers({
       role: roleFilter.value || undefined,
+      kyc_status: kycStatusFilter.value || undefined,
       page: page.value,
       per_page: perPage,
     })
@@ -141,6 +222,18 @@ async function openDetail(userId: string): Promise<void> {
   } finally {
     detailLoading.value = false
   }
+}
+
+// -- Filters --
+
+function setRoleFilter(role: string): void {
+  roleFilter.value = role
+  page.value = 1
+}
+
+function setKycStatusFilter(status: '' | KYCStatus): void {
+  kycStatusFilter.value = status
+  page.value = 1
 }
 
 // -- Actions --
@@ -191,30 +284,117 @@ async function togglePermission(key: PermissionKey, current: boolean): Promise<v
   }
 }
 
-function setRoleFilter(role: string): void {
-  roleFilter.value = role
-  page.value = 1
+// iter 2.7 A5 -- KYC Approve / Reject from the detail modal.
+//
+// Both handlers carry a defensive permission check (FP-23 belt-and-
+// braces) -- the template hides the buttons via canDoKycApprove, but
+// a malicious refire or a regression in the template guard should
+// not silently slip past. The console.warn lands in logs without
+// surfacing as a toast; the function returns without firing the
+// network call.
+//
+// After a successful action we refetch BOTH the user detail (so the
+// modal reflects the new status and any added history row) and the
+// list (so the chip filter counts agree with reality).
+
+async function handleKycApprove(): Promise<void> {
+  if (!detailUser.value) return
+  const applicationId = detailUser.value.latest_application_id
+  if (!applicationId) return
+  if (!canDoKycApprove.value) {
+    console.warn('[StaffUsersView] kyc approve blocked: no kyc_approve permission')
+    return
+  }
+
+  kycActionLoading.value = true
+  try {
+    await approveKYC(applicationId)
+    showToast(t('staff.userDetail.kyc.approvedToast'), 'success')
+    // Refetch detail so the badge and history reflect the new state.
+    detailUser.value = await fetchUserDetail(detailUser.value.id)
+    // Refetch list so the chip-filtered counts stay accurate.
+    await loadUsers()
+  } catch {
+    showToast(t('common.error'), 'error')
+  } finally {
+    kycActionLoading.value = false
+  }
 }
 
-watch([roleFilter], () => loadUsers())
+function openKycReject(): void {
+  if (!canDoKycApprove.value) {
+    console.warn('[StaffUsersView] kyc reject blocked: no kyc_approve permission')
+    return
+  }
+  kycRejectReason.value = ''
+  showKycRejectModal.value = true
+}
+
+async function handleKycReject(): Promise<void> {
+  if (!detailUser.value) return
+  const applicationId = detailUser.value.latest_application_id
+  if (!applicationId) return
+  if (!canDoKycApprove.value) {
+    console.warn('[StaffUsersView] kyc reject blocked: no kyc_approve permission')
+    return
+  }
+  // Reason is required for reject per R1 §3 ("Reject требует обязательное
+  // поле причины"). The button stays disabled until the input is non-empty,
+  // but trim-check here covers whitespace-only entries.
+  const reason = kycRejectReason.value.trim()
+  if (!reason) return
+
+  kycActionLoading.value = true
+  try {
+    await rejectKYC(applicationId, { reason })
+    showToast(t('staff.userDetail.kyc.rejectedToast'), 'success')
+    showKycRejectModal.value = false
+    kycRejectReason.value = ''
+    detailUser.value = await fetchUserDetail(detailUser.value.id)
+    await loadUsers()
+  } catch {
+    showToast(t('common.error'), 'error')
+  } finally {
+    kycActionLoading.value = false
+  }
+}
+
+watch([roleFilter, kycStatusFilter], () => loadUsers())
 
 onMounted(loadUsers)
 </script>
 
 <template>
   <div class="staff-users">
-    <!-- Role filter chips -->
+    <!-- Filters: role chips top row, kyc_status chips bottom row.
+         iter 2.7 A5: KYC chip row added below the existing role row;
+         the two filters compose at the backend boundary. -->
     <div class="staff-users__filters">
-      <button
-        class="filter-chip" :class="{ active: !roleFilter }"
-        @click="setRoleFilter('')"
-      >{{ t('common.all') }}</button>
-      <button
-        v-for="r in ['investor', 'agent', 'company', 'staff']"
-        :key="r"
-        class="filter-chip" :class="{ active: roleFilter === r }"
-        @click="setRoleFilter(r)"
-      >{{ r }}</button>
+      <div class="staff-users__filter-row">
+        <button
+          class="filter-chip" :class="{ active: !roleFilter }"
+          @click="setRoleFilter('')"
+        >{{ t('common.all') }}</button>
+        <button
+          v-for="r in ['investor', 'agent', 'company', 'staff']"
+          :key="r"
+          class="filter-chip" :class="{ active: roleFilter === r }"
+          @click="setRoleFilter(r)"
+        >{{ r }}</button>
+      </div>
+      <div class="staff-users__filter-row">
+        <button
+          class="filter-chip filter-chip--kyc" :class="{ active: !kycStatusFilter }"
+          @click="setKycStatusFilter('')"
+        >{{ t('staff.userDetail.kyc.filterAll') }}</button>
+        <button
+          v-for="s in ALL_KYC_STATUSES"
+          :key="s"
+          class="filter-chip filter-chip--kyc"
+          :class="{ active: kycStatusFilter === s }"
+          @click="setKycStatusFilter(s)"
+        >{{ t(`staff.userDetail.kyc.filter.${s}`) }}</button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -301,8 +481,84 @@ onMounted(loadUsers)
           <span class="detail__label">{{ t('staff.userDetail.registered') }}</span>
           <span class="detail__value">
             <Clock :size="12" style="vertical-align:-1px" />
-            {{ new Date(detailUser.created_at).toLocaleDateString() }}
+            {{ formatDate(detailUser.created_at) }}
           </span>
+        </div>
+
+        <!-- KYC Application section (iter 2.7 A5).
+             FP-25 self-hide: only shown when the user has at least one
+             application row (latest_application_id != null). Company /
+             staff role users skip KYC entirely, so they'll never have
+             a row and the section disappears silently.
+
+             FP-23 double guard on Approve / Reject:
+               1. canDoKycApprove computed wraps both buttons (template
+                  guard);
+               2. handlers re-check + console.warn before firing.
+             Buttons further restricted to status=submitted -- terminal
+             statuses show only history. -->
+        <div
+          v-if="detailUser.latest_application_id"
+          class="detail__section"
+        >
+          <h4 class="detail__subtitle">{{ t('staff.userDetail.kyc.sectionTitle') }}</h4>
+
+          <div class="detail__row">
+            <span class="detail__label">{{ t('staff.userDetail.kyc.latestStatus') }}</span>
+            <CBadge
+              :variant="kycVariant(detailUser.latest_application_status ?? 'not_started')"
+              :text="detailUser.latest_application_status ?? '—'"
+            />
+          </div>
+
+          <!-- History timeline. Hidden when there's only the single
+               latest row (already shown above). 2+ rows means the user
+               has re-submitted at least once -- R1 §3 "история re-submits
+               если есть". -->
+          <div
+            v-if="detailUser.kyc_applications_history.length > 1"
+            class="kyc-history"
+          >
+            <div class="kyc-history__title">
+              {{ t('staff.userDetail.kyc.historyTitle') }}
+            </div>
+            <ul class="kyc-history__list">
+              <li
+                v-for="app in detailUser.kyc_applications_history"
+                :key="app.id"
+                class="kyc-history__row"
+              >
+                <CBadge :variant="kycVariant(app.status)" :text="app.status" />
+                <span class="kyc-history__date">{{ formatDate(app.created_at) }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Approve / Reject CTAs.
+               Visible only when the latest application is still pending
+               (status=submitted) AND the current staff has kyc_approve.
+               Terminal statuses (approved / rejected) leave the section
+               in read-only form. -->
+          <div
+            v-if="
+              detailUser.latest_application_status === 'submitted'
+              && canDoKycApprove
+            "
+            class="detail__actions"
+          >
+            <CButton
+              variant="primary"
+              size="sm"
+              :loading="kycActionLoading"
+              @click="handleKycApprove"
+            >{{ t('staff.userDetail.kyc.approve') }}</CButton>
+            <CButton
+              variant="danger"
+              size="sm"
+              :disabled="kycActionLoading"
+              @click="openKycReject"
+            >{{ t('staff.userDetail.kyc.reject') }}</CButton>
+          </div>
         </div>
 
         <!-- Staff permissions (if staff) -->
@@ -364,21 +620,62 @@ onMounted(loadUsers)
         <CButton variant="primary" size="sm" :loading="actionLoading" @click="handlePromote">{{ t('common.confirm') }}</CButton>
       </div>
     </CModal>
+
+    <!-- KYC reject reason (iter 2.7 A5).
+         Reason is REQUIRED per R1 §3 -- the confirm button stays
+         disabled while the trimmed input is empty. -->
+    <CModal :open="showKycRejectModal" @close="showKycRejectModal = false">
+      <h3 class="detail__title">{{ t('staff.userDetail.kyc.reject') }}</h3>
+      <p class="detail__confirm-text">{{ t('staff.userDetail.kyc.rejectHint') }}</p>
+      <CInput
+        v-model="kycRejectReason"
+        :label="t('staff.userDetail.kyc.rejectReason')"
+        :placeholder="t('staff.userDetail.kyc.rejectReason')"
+      />
+      <div class="detail__actions" style="margin-top:16px">
+        <CButton
+          variant="outline"
+          size="sm"
+          @click="showKycRejectModal = false"
+        >{{ t('common.cancel') }}</CButton>
+        <CButton
+          variant="danger"
+          size="sm"
+          :disabled="!kycRejectReason.trim() || kycActionLoading"
+          :loading="kycActionLoading"
+          @click="handleKycReject"
+        >{{ t('staff.userDetail.kyc.reject') }}</CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 
 <style scoped>
 .staff-users { padding: 16px; }
 
+/* iter 2.7 A5: filters are now two stacked rows (role + kyc_status).
+   Each row scrolls horizontally on narrow viewports. */
 .staff-users__filters {
-  display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px;
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 16px;
+}
+.staff-users__filter-row {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
 }
 .filter-chip {
   padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
   background: var(--bg); color: var(--text-secondary); font-size: 12px; font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
+  font-family: inherit;
 }
 .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* Subtle visual distinction for KYC chips so the user can tell which
+   row is which at a glance without reading. The kyc chips share the
+   same active state with role chips for behaviour parity. */
+.filter-chip--kyc {
+  text-transform: none;
+}
 
 .user-list { display: flex; flex-direction: column; }
 .user-item {
@@ -410,6 +707,41 @@ onMounted(loadUsers)
 .detail__section { margin-top: 12px; }
 .detail__perm { padding: 4px 0; }
 .detail__perm-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); cursor: pointer; }
-.detail__actions { display: flex; gap: 8px; margin-top: 16px; }
+.detail__actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
 .detail__confirm-text { font-size: 14px; color: var(--text-secondary); margin: 0 0 12px; }
+
+/* KYC history timeline (iter 2.7 A5). */
+.kyc-history {
+  margin: 12px 0 16px;
+  padding: 12px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+}
+.kyc-history__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.kyc-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kyc-history__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+.kyc-history__date {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
 </style>

@@ -155,8 +155,8 @@
     "staff": {
       "home": "Home",
       "users": "Users",
-      "kyc": "KYC",
       "payments": "Payments",
+      "platform": "Platform",
       "more": "More"
     }
   },
@@ -261,7 +261,25 @@
       "promoteConfirm": "Promote this user to staff role?",
       "promoted": "User promoted to staff",
       "permissions": "Permissions",
-      "permissionsUpdated": "Permissions updated"
+      "permissionsUpdated": "Permissions updated",
+      "kyc": {
+        "filterAll": "All KYC",
+        "filter": {
+          "not_started": "Not started",
+          "submitted": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        },
+        "sectionTitle": "KYC Application",
+        "latestStatus": "Latest status",
+        "historyTitle": "Re-submit history",
+        "approve": "Approve KYC",
+        "reject": "Reject KYC",
+        "rejectHint": "Provide a reason. The applicant will see it on their next sign-in.",
+        "rejectReason": "Rejection reason (required)",
+        "approvedToast": "KYC application approved",
+        "rejectedToast": "KYC application rejected"
+      }
     },
     "withdrawals": {
       "confirm": "Confirm",
@@ -269,6 +287,37 @@
       "rejectReason": "Rejection reason (required)",
       "confirmed": "Withdrawal confirmed",
       "rejected": "Withdrawal rejected"
+    },
+    "platform": {
+      "tabs": {
+        "news": "News",
+        "events": "Events",
+        "companies": "Companies"
+      },
+      "news": {
+        "title": "Platform news"
+      },
+      "events": {
+        "title": "Platform events"
+      },
+      "companies": {
+        "title": "Companies"
+      },
+      "company": {
+        "backLink": "Back to companies",
+        "headerPrefix": "Company",
+        "tabs": {
+          "profile": "Profile",
+          "price": "Price",
+          "roadmap": "Roadmap",
+          "posts": "Posts",
+          "documents": "Documents",
+          "templates": "Templates"
+        }
+      },
+      "scaffolding": {
+        "placeholder": "Coming up in the next commits of iter 2.7."
+      }
     }
   },
   "inv": {
