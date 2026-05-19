@@ -1,7 +1,8 @@
 // =============================================================================
 // CBSHOME Frontend -- Router (Phase F2.2 + F4.1.4 + F4.3 B2 + F4.4 B3
 //                              + iter 2.5 batch 9 + iter 2.6 batch 2
-//                              + iter 2.6 R22 FE-22-01 + iter 2.6 batch 3)
+//                              + iter 2.6 R22 FE-22-01 + iter 2.6 batch 3
+//                              + iter 2.7 Block A2 + B1)
 // =============================================================================
 //
 // Full route map. Shell components as layout wrappers.
@@ -80,6 +81,28 @@
 //     components/layout/; PublicShell joining them gives the codebase
 //     one consistent answer for where shell components live.
 //     `frontend/src/layouts/` is removed.
+//
+// iter 2.7 Block A2 + B1 (R1 §2-§5 Staff Platform tab):
+//   - REMOVED /staff/kyc route. KYC workflow merged into
+//     StaffUsersView (chips + detail-modal section). The
+//     StaffKYCView.vue file is deleted in the same commit. Direct
+//     URL /staff/kyc -> catch-all -> /404; no redirect because no
+//     production deep-links to preserve (dev-only state).
+//   - ADDED /staff/platform subtree under StaffShell, the Block B
+//     scaffolding for the Staff Platform tab (R1 §4):
+//       /staff/platform                           -> redirect to /staff/platform/news
+//       /staff/platform/news                      -> staff-platform-news
+//       /staff/platform/events                    -> staff-platform-events
+//       /staff/platform/companies                 -> staff-platform-companies
+//       /staff/platform/companies/:id             -> staff-platform-company-detail
+//         Nested children rendered via the detail view's own
+//         <router-view>, one per company section (R1 §4.3 + R2 §6):
+//         profile / price / roadmap / posts / documents / templates.
+//     The StaffShell parent record already carries meta.roles =
+//     ['staff'], so every nested child inherits the role check
+//     through vue-router's meta merge -- no per-route meta needed.
+//     All 11 view components are lazy-loaded stubs in this commit
+//     (FP-24); real content lands in Blocks B / C / D.
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -414,6 +437,9 @@ export const router = createRouter({
 
     // -----------------------------------------------------------------
     // Staff shell — staff only
+    //
+    // iter 2.7 Block A2: /staff/kyc route removed (merged into Users);
+    // /staff/platform subtree added (R1 §4 Staff Platform tab).
     // -----------------------------------------------------------------
     {
       path: '/staff',
@@ -435,14 +461,87 @@ export const router = createRouter({
           component: () => import('@/views/staff/StaffUsersView.vue'),
         },
         {
-          path: 'kyc',
-          name: 'staff-kyc',
-          component: () => import('@/views/staff/StaffKYCView.vue'),
-        },
-        {
           path: 'payments',
           name: 'staff-payments',
           component: () => import('@/views/staff/StaffPaymentsView.vue'),
+        },
+        // -----------------------------------------------------------
+        // Platform tab (iter 2.7 Block B onwards)
+        //
+        // Nested tree: PlatformView is a thin wrapper carrying a
+        // chip-row for News / Events / Companies and a <router-view>.
+        // The detail view under companies/:id is itself a nested
+        // surface with its own <router-view> -- one route per
+        // section (profile / price / roadmap / posts / documents /
+        // templates). Deep-linkable, browser back works.
+        //
+        // All children inherit meta.roles=['staff'] from the
+        // StaffShell record above (Vue Router meta merge).
+        // -----------------------------------------------------------
+        {
+          path: 'platform',
+          component: () => import('@/views/staff/platform/PlatformView.vue'),
+          children: [
+            {
+              path: '',
+              redirect: '/staff/platform/news',
+            },
+            {
+              path: 'news',
+              name: 'staff-platform-news',
+              component: () => import('@/views/staff/platform/StaffNewsView.vue'),
+            },
+            {
+              path: 'events',
+              name: 'staff-platform-events',
+              component: () => import('@/views/staff/platform/StaffEventsView.vue'),
+            },
+            {
+              path: 'companies',
+              name: 'staff-platform-companies',
+              component: () => import('@/views/staff/platform/StaffCompaniesListView.vue'),
+            },
+            {
+              path: 'companies/:id',
+              component: () => import('@/views/staff/platform/StaffCompanyDetailView.vue'),
+              children: [
+                {
+                  path: '',
+                  redirect: (to) => `/staff/platform/companies/${to.params.id}/profile`,
+                },
+                {
+                  path: 'profile',
+                  name: 'staff-platform-company-profile',
+                  component: () => import('@/views/staff/platform/StaffCompanyProfileSection.vue'),
+                },
+                {
+                  path: 'price',
+                  name: 'staff-platform-company-price',
+                  component: () => import('@/views/staff/platform/StaffCompanyPriceSection.vue'),
+                },
+                {
+                  path: 'roadmap',
+                  name: 'staff-platform-company-roadmap',
+                  component: () => import('@/views/staff/platform/StaffCompanyRoadmapSection.vue'),
+                },
+                {
+                  path: 'posts',
+                  name: 'staff-platform-company-posts',
+                  component: () => import('@/views/staff/platform/StaffCompanyPostsSection.vue'),
+                },
+                {
+                  path: 'documents',
+                  name: 'staff-platform-company-documents',
+                  component: () => import('@/views/staff/platform/StaffCompanyDocumentsSection.vue'),
+                },
+                {
+                  path: 'templates',
+                  name: 'staff-platform-company-templates',
+                  component: () => import('@/views/staff/platform/StaffCompanyTemplatesSection.vue'),
+                },
+              ],
+            },
+          ],
         },
         {
           path: 'more',
