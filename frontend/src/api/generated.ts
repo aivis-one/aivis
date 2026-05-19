@@ -1217,9 +1217,9 @@ export interface UserDetailResponse {
   updated_at?: string | null
   email?: string | null
   staff_profile?: StaffProfileResponse | null
-  latest_application_id?: string | null
-  latest_application_status?: string | null
-  kyc_applications_history?: KYCApplicationSummary[]
+  latest_application_id: string | null
+  latest_application_status: string | null
+  kyc_applications_history: KYCApplicationSummary[]
 }
 
 /** Unified user list item -- any role, optional staff_profile. */
