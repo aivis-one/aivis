@@ -1,6 +1,12 @@
 <script setup lang="ts">
 // Bottom tab bar from mockups/css/components.css .tab-bar.
 // Renders TabItem[] with Lucide icons, highlights active route.
+//
+// iter 2.7 Block A1 (R1 §2):
+//   STAFF_TABS no longer carries the `kyc` tab (KYC merged into Users).
+//   ShieldCheck removed from the icon imports / iconMap because no tab
+//   in any role uses it any more. The new `platform` tab uses
+//   LayoutGrid -- added to the imports and the map.
 
 import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -8,7 +14,7 @@ import { useI18n } from 'vue-i18n'
 import {
   Home, Briefcase, Store, Wallet, Menu,
   Link, Coins, Package, BarChart3, Settings,
-  Users, ShieldCheck, CreditCard,
+  Users, CreditCard, LayoutGrid,
 } from 'lucide-vue-next'
 import type { TabItem } from '@/router/tabs'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -23,7 +29,7 @@ const { t } = useI18n()
 const iconMap: Record<string, Component> = {
   Home, Briefcase, Store, Wallet, Menu,
   Link, Coins, Package, BarChart3, Settings,
-  Users, ShieldCheck, CreditCard,
+  Users, CreditCard, LayoutGrid,
 }
 
 function isActive(tab: TabItem): boolean {

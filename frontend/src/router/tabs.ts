@@ -4,6 +4,13 @@
 //
 // Each role has its own tab set. Used by CTabBar in shell components.
 // Icons are Lucide component names imported in the shell.
+//
+// iter 2.7 Block A1 (R1 §2):
+//   STAFF_TABS restructured -- `kyc` tab removed, `platform` tab added.
+//   KYC functionality merged into Users (chips + detail-modal section).
+//   New order: dashboard / users / payments / platform / more.
+//   Direct URL /staff/kyc -> 404 (catch-all), no redirect (no legacy
+//   deep-links to preserve, dev-only state).
 // =============================================================================
 
 export interface TabItem {
@@ -37,10 +44,14 @@ export const COMPANY_TABS: TabItem[] = [
   { id: 'settings', path: '/company/settings', labelKey: 'tab.comp.settings', icon: 'Settings' },
 ]
 
+// iter 2.7 Block A1: KYC tab removed (merged into Users), Platform tab added.
+// Platform tab leads to /staff/platform which redirects to /staff/platform/news.
+// Icon `LayoutGrid` chosen for Platform -- represents multi-section content
+// surface (News / Events / Companies). Same Lucide set used elsewhere.
 export const STAFF_TABS: TabItem[] = [
   { id: 'home', path: '/staff/dashboard', labelKey: 'tab.staff.home', icon: 'Home' },
   { id: 'users', path: '/staff/users', labelKey: 'tab.staff.users', icon: 'Users' },
-  { id: 'kyc', path: '/staff/kyc', labelKey: 'tab.staff.kyc', icon: 'ShieldCheck' },
   { id: 'payments', path: '/staff/payments', labelKey: 'tab.staff.payments', icon: 'CreditCard' },
+  { id: 'platform', path: '/staff/platform', labelKey: 'tab.staff.platform', icon: 'LayoutGrid' },
   { id: 'more', path: '/staff/more', labelKey: 'tab.staff.more', icon: 'Menu' },
 ]
