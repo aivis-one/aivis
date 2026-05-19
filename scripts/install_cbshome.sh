@@ -1089,7 +1089,41 @@ case_lint() {
 case_update() {
     cd_compose
 
+    # Parse optional flags (order-independent).
+    #   --skip-tests      Skip the backend test suite (keep everything else,
+    #                     incl. seeds and smoke check).
+    #   --frontend-only   Skip the entire backend cycle: backend build,
+    #                     full compose restart, migrations, seeds, smoke
+    #                     check and backend tests. Only the OpenAPI types
+    #                     regeneration + frontend rebuild run. Refuses to
+    #                     proceed if backend/ or migrations/ changed in
+    #                     the pulled commits (fool-proof guard).
+    SKIP_TESTS=0
+    FRONTEND_ONLY=0
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --skip-tests)    SKIP_TESTS=1 ;;
+            --frontend-only) FRONTEND_ONLY=1 ;;
+            *)
+                echo -e "${RED}Unknown option: $1${NC}"
+                echo "Usage: cbshome update [--skip-tests] [--frontend-only]"
+                return 1
+                ;;
+        esac
+        shift
+    done
+
+    # --frontend-only implies --skip-tests (no backend cycle = no tests).
+    if [ $FRONTEND_ONLY -eq 1 ]; then
+        SKIP_TESTS=1
+    fi
+
     echo "=== Updating CBSHOME ==="
+    if [ $FRONTEND_ONLY -eq 1 ]; then
+        echo -e "${CYAN}Mode: frontend-only (backend cycle skipped)${NC}"
+    elif [ $SKIP_TESTS -eq 1 ]; then
+        echo -e "${CYAN}Mode: skip-tests (backend tests skipped)${NC}"
+    fi
     echo ""
 
     # Fix git safe directory (git 2.35+ security requirement).
@@ -1137,9 +1171,33 @@ case_update() {
     echo "Updated: $CURRENT_COMMIT -> $NEW_COMMIT"
     echo ""
 
+    # Fool-proof guard for --frontend-only: if anything backend-side
+    # changed between CURRENT_COMMIT and NEW_COMMIT, refuse hard.
+    # Watched paths:
+    #   backend/           -- app code + migrations + seed scripts
+    #   docker-compose.yml -- service config, env wiring, mounts
+    # docker-compose.yml lives at the repo root in cbshome (unlike app
+    # code which is under backend/), so we list it explicitly.
+    if [ $FRONTEND_ONLY -eq 1 ]; then
+        if ! git diff --quiet "$CURRENT_COMMIT" "$NEW_COMMIT" -- backend/ docker-compose.yml; then
+            echo -e "${RED}✗ Detected backend-side changes between $CURRENT_COMMIT and $NEW_COMMIT${NC}"
+            echo -e "${RED}  Refusing to run with --frontend-only.${NC}"
+            echo ""
+            echo "Changed files:"
+            git diff --name-only "$CURRENT_COMMIT" "$NEW_COMMIT" -- backend/ docker-compose.yml | sed 's/^/  /'
+            echo ""
+            echo "Run: cbshome update              (full cycle)"
+            echo "  or cbshome update --skip-tests (full cycle without tests)"
+            return 1
+        fi
+        echo -e "${GREEN}✓ No backend/docker-compose changes -- proceeding frontend-only${NC}"
+        echo ""
+    fi
+
     # Rebuild backend image only -- frontend is rebuilt later, after the
     # OpenAPI schema is regenerated, so the resulting bundle includes the
     # current generated.ts.
+    if [ $FRONTEND_ONLY -eq 0 ]; then
     echo "Rebuilding backend image..."
     docker compose build app
 
@@ -1245,17 +1303,30 @@ case_update() {
     # helpers.register_user); inside a single run they share state, which
     # is fine because the dev DB is disposable.
     # ----------------------------------------------------------------------
-    echo ""
-    echo "Running backend tests..."
     pytest_status=0
-    docker compose exec -T app python -m pytest tests/ -v --tb=short \
-        || pytest_status=$?
+    if [ $SKIP_TESTS -eq 0 ]; then
+        echo ""
+        echo "Running backend tests..."
+        docker compose exec -T app python -m pytest tests/ -v --tb=short \
+            || pytest_status=$?
 
-    if [ $pytest_status -eq 0 ]; then
-        echo -e "${GREEN}✓ All tests passed${NC}"
+        if [ $pytest_status -eq 0 ]; then
+            echo -e "${GREEN}✓ All tests passed${NC}"
+        else
+            echo -e "${RED}✗ Tests failed -- app is running, prod DB seeded${NC}"
+            echo "Fix the code and run: cbshome update"
+        fi
     else
-        echo -e "${RED}✗ Tests failed -- app is running, prod DB seeded${NC}"
-        echo "Fix the code and run: cbshome update"
+        echo ""
+        echo -e "${YELLOW}⊘ Backend tests skipped (--skip-tests)${NC}"
+    fi
+
+    else
+        # --frontend-only: backend build / restart / migrate / seeds /
+        # smoke check / tests all skipped. The frontend still gets
+        # rebuilt below with the (unchanged) generated.ts.
+        echo -e "${YELLOW}⊘ Backend build / restart / migrate / seeds / tests skipped (--frontend-only)${NC}"
+        pytest_status=0
     fi
 
     # ----------------------------------------------------------------------
@@ -1787,7 +1858,7 @@ case "$CMD" in
     logs)           case_logs "$@" ;;
     test)           case_test "$@" ;;
     lint)           case_lint ;;
-    update|deploy)  case_update ;;
+    update|deploy)  case_update "$@" ;;
     gen-types)      case_gen_types ;;
     restart)        case_restart "$@" ;;
     backup)         case_backup ;;
@@ -1815,6 +1886,8 @@ case "$CMD" in
         echo ""
         echo "Deployment:"
         echo "  update                                    — Pull, rebuild, migrate, test, regen-types, restart"
+        echo "    --skip-tests                              Skip backend tests (everything else runs)"
+        echo "    --frontend-only                           Skip whole backend cycle; refuses if backend/ changed"
         echo "  gen-types                                 — Regenerate frontend generated.ts from live OpenAPI"
         echo "  restart [service]                         — Restart all or specific service"
         echo ""
