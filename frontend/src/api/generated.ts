@@ -564,6 +564,14 @@ export interface InstallmentTrancheResponse {
   purchase_id: string | null
 }
 
+/** Compact KYCApplication row for the user detail history. Mirrors the columns the staff detail modal actually renders: id (for action endpoints), status (badge color), created_at (timeline ordering / submission date), updated_at (when the status changed for terminal statuses). Distinct from KYCQueueItem -- that one carries denormalized user info for the global queue, this one is already nested inside a per-user response so user_id / email / name would duplicate the parent. */
+export interface KYCApplicationSummary {
+  id: string
+  status: string
+  created_at: string
+  updated_at?: string | null
+}
+
 /** Pending KYC application with basic user info. */
 export interface KYCQueueItem {
   id: string
@@ -1195,7 +1203,7 @@ export interface UpdateRoadmapItemRequest {
   linked_product_id?: string | null
 }
 
-/** Full user detail for staff view. */
+/** Full user detail for staff view. iter 2.7 A5 additions (kyc-in-detail extension): - latest_application_id : newest KYCApplication.id or None. - latest_application_status : its status, mirroring user.kyc_status for non-trivial cases (and None for users who have never submitted). - kyc_applications_history : up to KYC_HISTORY_LIMIT newest rows, NEWEST FIRST. Empty list if the user has never submitted. */
 export interface UserDetailResponse {
   id: string
   role: string
@@ -1208,6 +1216,9 @@ export interface UserDetailResponse {
   updated_at?: string | null
   email?: string | null
   staff_profile?: StaffProfileResponse | null
+  latest_application_id?: string | null
+  latest_application_status?: string | null
+  kyc_applications_history?: KYCApplicationSummary[]
 }
 
 /** Unified user list item -- any role, optional staff_profile. */
