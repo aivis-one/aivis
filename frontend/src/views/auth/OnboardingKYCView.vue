@@ -1,10 +1,36 @@
 <script setup lang="ts">
 // KYC verification — submit application, show status, continue immediately.
-// POST /api/v1/kyc/submit → KYCSubmitResponse
-// GET  /api/v1/kyc/status → KYCStatusResponse
+// POST /api/v1/kyc/submit  → KYCSubmitResponse
+// GET  /api/v1/kyc/status  → KYCStatusResponse
+// POST /api/v1/kyc/advance → 204 (iter 2.7 onboarding-advance hotfix)
 //
 // KYC does NOT block onboarding. After submit, user clicks "Got it" and
 // proceeds to the next step. Verification runs in background.
+//
+// iter 2.7 onboarding-advance hotfix.
+//   The original handleContinue() just called fetchMe() and navigated
+//   to /, trusting the onboarding guard to forward the user to the
+//   next step. That works only when onboarding_step has been advanced
+//   past KYC server-side -- which submit_kyc() does on the happy
+//   path. For re-entry scenarios (kyc_status already
+//   submitted/approved/rejected, but onboarding_step still
+//   role_selected -- e.g. from a DB seed, a manual edit, or a prior
+//   submit that crashed before the advancement landed) the guard
+//   sees role_selected and redirects back to /onboarding/kyc.
+//   Silent infinite loop because safeNavigate's no-throw contract
+//   swallows the redirect with no console trace.
+//
+//   The fix: before navigating, call POST /api/v1/kyc/advance which
+//   delegates to the idempotent backend helper
+//   advance_onboarding_after_kyc(). Happy-path users see a no-op
+//   204; stuck users get their step advanced before the guard
+//   evaluates. fetchMe() is then guaranteed to read the post-advance
+//   value, and the subsequent navigation reaches the right place.
+//
+//   We call advance from BOTH the submitted-branch handleContinue
+//   and the approved-branch handleContinue (same handler today,
+//   but the rejected-branch handleRetry path is unchanged because
+//   it goes through submit again).
 
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -62,6 +88,17 @@ async function handleSubmit(): Promise<void> {
 
 async function handleContinue(): Promise<void> {
   loading.value = true
+  // iter 2.7 hotfix: kick the idempotent advance endpoint before
+  // navigating. Backend no-ops if the user is already past the KYC
+  // step; advances them if they are stuck on role_selected with a
+  // non-not_started kyc_status. Errors swallowed -- the worst case
+  // is the user lands back here and tries again, which is no worse
+  // than the pre-fix behaviour.
+  try {
+    await api.post<unknown>('/api/v1/kyc/advance')
+  } catch {
+    // Intentionally silent: this is a best-effort unstick.
+  }
   await authStore.fetchMe()
   loading.value = false
   // Navigate to root — guard will redirect to the next onboarding step.

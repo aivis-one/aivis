@@ -1,15 +1,18 @@
 # =============================================================================
-# CBSHOME Backend -- KYC Service (Sprint 2.1, F5.1 BP-15 follow-up)
+# CBSHOME Backend -- KYC Service (Sprint 2.1, F5.1 BP-15 follow-up,
+#                                  iter 2.7 onboarding-advance hotfix)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   submit_kyc()       -- create KYCApplication, sync User.kyc_status,
-#                         advance onboarding_step immediately (non-blocking),
-#                         and trigger maybe_complete_onboarding() so a role
-#                         with zero required documents skips the docs page
-#                         (BP-15).
-#   get_kyc_status()   -- return current status + latest application
-#   process_webhook()  -- update application + User.kyc_status (stub)
+#   submit_kyc()                    -- create KYCApplication, sync
+#                                      User.kyc_status, advance
+#                                      onboarding_step via the helper.
+#   get_kyc_status()                -- return current status + latest
+#                                      application.
+#   process_webhook()               -- update pending application +
+#                                      User.kyc_status (stub).
+#   advance_onboarding_after_kyc()  -- idempotent step-advancement
+#                                      helper (iter 2.7 hotfix).
 #
 # NON-BLOCKING KYC:
 #   submit_kyc() advances onboarding_step to KYC_DONE immediately.
@@ -27,6 +30,38 @@
 #   invoked, so the step stayed on KYC_DONE forever). Symmetric with
 #   the sign_document() callsite -- the helper is safe to call from
 #   either path because of its own `step != KYC_DONE -> return` guard.
+#
+# iter 2.7 ONBOARDING-ADVANCE HOTFIX:
+#   The original submit_kyc() inlined `if step == ROLE_SELECTED:
+#   step = KYC_DONE` after creating the application row. That works
+#   on the happy path (first submit, no pending application) but
+#   fails for a re-entry scenario:
+#
+#     User has kyc_status='approved' (webhook fired in the past) but
+#     onboarding_step is still 'role_selected' (e.g. DB seed, or a
+#     prior submit that crashed before the advancement landed).
+#     Visiting /onboarding/kyc shows the "approved" branch with a
+#     Continue button. Clicking Continue navigates to /, the
+#     onboarding guard sees step=role_selected, redirects back to
+#     /onboarding/kyc. Silent infinite loop -- safeNavigate's
+#     no-throw contract on the frontend swallows the redirect,
+#     leaving no console trace.
+#
+#   The fix extracts the advancement rule into a standalone helper
+#   `advance_onboarding_after_kyc()` -- idempotent, callable from
+#   any site where we want to ensure the user is past the KYC step
+#   when their kyc_status indicates they have at least submitted
+#   once. submit_kyc() delegates to it; the new endpoint
+#   POST /api/v1/kyc/advance also delegates to it for the
+#   re-entry case described above. Mirrors documents.service's
+#   maybe_complete_onboarding() shape -- single source of truth for
+#   one advancement rule, multiple callsites.
+#
+#   process_webhook() is intentionally NOT modified: the webhook
+#   arrives after submit_kyc() has already advanced the user, so
+#   step is already past ROLE_SELECTED in the normal flow. Adding
+#   the call there would be a no-op in practice and would broaden
+#   the test blast radius for no gain.
 #
 # SYNC RULE:
 #   Every status change on KYCApplication MUST also update User.kyc_status.
@@ -58,6 +93,67 @@ _VALID_WEBHOOK_STATUSES = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Onboarding step advancement (iter 2.7 hotfix)
+# ---------------------------------------------------------------------------
+
+
+async def advance_onboarding_after_kyc(
+    user: User,
+    session: AsyncSession,
+) -> None:
+    """Advance onboarding past the KYC step if the user is stuck on it.
+
+    Idempotent. Safe to call from any site that wants to ensure the
+    user is past the KYC step when their kyc_status indicates a
+    submission has happened at least once.
+
+    Rules:
+      * No-op if onboarding_step is not ROLE_SELECTED -- the user is
+        either still earlier in the flow (we have no business
+        advancing them) or already past KYC (no work to do).
+      * No-op if kyc_status is NOT_STARTED -- there is no submission
+        to base the advancement on. Calling this before a real
+        submit_kyc() would be a programming error elsewhere.
+      * Otherwise: ROLE_SELECTED -> KYC_DONE, then delegate to
+        maybe_complete_onboarding() which may cascade to
+        ONBOARDING_COMPLETE for roles with zero required documents
+        (BP-15 contract).
+
+    Mirrors documents.service.maybe_complete_onboarding() in shape --
+    single source of truth for one advancement rule, idempotent,
+    safe to call repeatedly.
+
+    The caller is responsible for ensuring `user` is attached to
+    `session`. A `session.refresh(user)` at the end reloads any
+    state changed by maybe_complete_onboarding().
+    """
+    if user.onboarding_step != OnboardingStep.ROLE_SELECTED:
+        return
+    if user.kyc_status == KYCApplicationStatus.NOT_STARTED:
+        return
+
+    user.onboarding_step = OnboardingStep.KYC_DONE
+    await session.flush()
+
+    # Cascade: a role with zero required documents jumps straight to
+    # ONBOARDING_COMPLETE. The helper is safe no-op when step is not
+    # exactly KYC_DONE.
+    await maybe_complete_onboarding(user.id, session)
+    await session.refresh(user)
+
+    logger.info(
+        "onboarding_advanced_after_kyc",
+        user_id=str(user.id),
+        to_step=user.onboarding_step,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Submit
+# ---------------------------------------------------------------------------
+
+
 async def submit_kyc(
     user: User,
     session: AsyncSession,
@@ -65,10 +161,10 @@ async def submit_kyc(
     """Submit a new KYC application.
 
     Creates a KYCApplication with status=submitted, syncs
-    User.kyc_status to "submitted", advances onboarding_step
-    to KYC_DONE immediately (non-blocking KYC), and (BP-15)
-    advances further to ONBOARDING_COMPLETE if the role has no
-    required documents.
+    User.kyc_status to "submitted", and advances onboarding_step
+    via advance_onboarding_after_kyc() (which moves ROLE_SELECTED
+    to KYC_DONE and may cascade to ONBOARDING_COMPLETE per BP-15
+    for roles with zero required documents).
 
     Raises:
         ConflictError: If user already has a pending (submitted) application.
@@ -98,20 +194,14 @@ async def submit_kyc(
     old_status = user.kyc_status
     user.kyc_status = KYCApplicationStatus.SUBMITTED
 
-    # Advance onboarding step immediately — KYC runs in background.
-    if user.onboarding_step == OnboardingStep.ROLE_SELECTED:
-        user.onboarding_step = OnboardingStep.KYC_DONE
-
     await session.flush()
     await session.refresh(application)
 
-    # BP-15: if the role requires zero documents, auto-advance past
-    # the docs page. The helper is a no-op when step != KYC_DONE
-    # (e.g. user came in on a re-submit), so the unconditional call
-    # is safe.
-    await maybe_complete_onboarding(user.id, session)
-
-    await session.refresh(user)
+    # Advance onboarding step via the idempotent helper. It checks
+    # both step and kyc_status before doing anything, so calling it
+    # unconditionally here is safe -- the flush above guarantees it
+    # sees user.kyc_status=SUBMITTED.
+    await advance_onboarding_after_kyc(user, session)
 
     await record_audit(
         session=session,
@@ -130,6 +220,11 @@ async def submit_kyc(
     )
 
     return application
+
+
+# ---------------------------------------------------------------------------
+# Status
+# ---------------------------------------------------------------------------
 
 
 async def get_kyc_status(
@@ -152,6 +247,11 @@ async def get_kyc_status(
         application_id=application.id if application else None,
         application_status=application.status if application else None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Webhook
+# ---------------------------------------------------------------------------
 
 
 async def process_webhook(
