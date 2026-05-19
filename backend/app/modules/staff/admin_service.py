@@ -1,10 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Admin Service (Sprint 3.3, G5 fix, iter 2.6c B1)
+# CBSHOME Backend -- Admin Service (Sprint 3.3, G5 fix, iter 2.6c B1,
+#                                    iter 2.7 A5 KYC-in-detail extension)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   list_users()          -- unified user list with pagination + role/kyc_status filter
-#   get_user_detail()     -- full user detail for staff view
+#   get_user_detail()     -- full user detail for staff view (incl. KYC history)
 #   block_user()          -- deactivate user + kill all sessions
 #   dashboard_stats()     -- platform-wide statistics
 #   kyc_queue()           -- pending KYC applications with user info
@@ -26,6 +27,23 @@
 #   to base_filter when it is not None. Pagination, role filter,
 #   and platform exclusion are unaffected.
 #
+# iter 2.7 A5 KYC-in-detail extension:
+#   get_user_detail() now hydrates three new fields on the response:
+#     - latest_application_id      (UUID | None)
+#     - latest_application_status  (str | None)
+#     - kyc_applications_history   (list[KYCApplicationSummary], up to
+#                                    KYC_HISTORY_LIMIT rows, newest first)
+#
+#   The StaffUsersView detail modal needs the application id to fire
+#   Approve / Reject without bouncing through the old StaffKYCView
+#   queue page (which was deleted in iter 2.7 A2). The same fetch
+#   feeds the "re-submit history" section requested by R1 §3.
+#
+#   Cost: one extra SELECT per detail view, bounded by
+#   KYC_HISTORY_LIMIT (10 rows). No JOIN -- KYCApplication has all
+#   we need for the summary schema; user identity is already in the
+#   parent response.
+#
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
 # =============================================================================
@@ -42,7 +60,9 @@ from app.modules.auth.service import delete_all_sessions
 from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
 from app.modules.kyc.service import process_webhook
 from app.modules.staff.admin_schemas import (
+    KYC_HISTORY_LIMIT,
     DashboardStatsResponse,
+    KYCApplicationSummary,
     KYCQueueItem,
     UserDetailResponse,
     UserListItem,
@@ -82,6 +102,30 @@ def _build_staff_profile_response(
     response = StaffProfileResponse.model_validate(profile)
     response.permissions = get_effective_permissions(profile)
     return response
+
+
+async def _load_kyc_history(
+    user_id: UUID,
+    session: AsyncSession,
+) -> list[KYCApplication]:
+    """Load up to KYC_HISTORY_LIMIT newest applications for a user.
+
+    Newest first. Empty list when the user has never submitted KYC
+    (a clean investor at registration time, for example -- nothing
+    inserts a row into kyc_applications until submit_kyc fires).
+
+    Helper extracted from get_user_detail so the order, limit, and
+    filter live in one place. Future callsites (e.g. a per-user KYC
+    history endpoint) reuse the same query shape.
+    """
+    stmt = (
+        select(KYCApplication)
+        .where(KYCApplication.user_id == user_id)
+        .order_by(KYCApplication.created_at.desc())
+        .limit(KYC_HISTORY_LIMIT)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
 # ---------------------------------------------------------------------------
@@ -177,9 +221,16 @@ async def get_user_detail(
     user_id: UUID,
     session: AsyncSession,
 ) -> UserDetailResponse:
-    """Get full user detail for staff view.
+    """Get full user detail for staff view, including KYC history.
 
     Platform user cannot be viewed.
+
+    iter 2.7 A5: also surfaces the user's KYC application history
+    (up to KYC_HISTORY_LIMIT newest rows, newest first) plus
+    convenience fields for the latest application. Used by
+    StaffUsersView's detail modal to render Approve / Reject buttons
+    without an extra round-trip; the modal reads the id from
+    latest_application_id.
 
     Raises:
         NotFoundError: If user not found or is platform.
@@ -195,7 +246,6 @@ async def get_user_detail(
         raise NotFoundError("User not found")
 
     email = _extract_user_email(user)
-    first_name, last_name = _extract_user_name(user)
 
     # Load staff profile if staff.
     staff_profile = None
@@ -205,6 +255,23 @@ async def get_user_detail(
         sp = sp_result.scalar_one_or_none()
         if sp:
             staff_profile = _build_staff_profile_response(sp)
+
+    # iter 2.7 A5: hydrate KYC application history.
+    #
+    # Always materialise the list (never None) so the frontend can
+    # iterate without a null check. The schema default_factory=list
+    # would cover an omitted field, but we pass it explicitly to
+    # keep the response shape consistent for every user.
+    #
+    # `latest_*` mirrors the head of the list for convenience --
+    # the modal renders Approve / Reject from these two fields and
+    # avoids re-implementing the "newest first" assumption on the
+    # client.
+    kyc_apps = await _load_kyc_history(user.id, session)
+    history = [
+        KYCApplicationSummary.model_validate(app) for app in kyc_apps
+    ]
+    latest = kyc_apps[0] if kyc_apps else None
 
     return UserDetailResponse(
         id=user.id,
@@ -218,6 +285,9 @@ async def get_user_detail(
         updated_at=user.updated_at,
         email=email,
         staff_profile=staff_profile,
+        latest_application_id=latest.id if latest else None,
+        latest_application_status=latest.status if latest else None,
+        kyc_applications_history=history,
     )
 
 
