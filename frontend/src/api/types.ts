@@ -681,3 +681,10 @@ export type { PriceHistoryListResponse } from './generated'
 // mini-iter). Consumed by StaffCompanyDetailView (header name) and
 // StaffCompanyProfileSection (read-only profile inspection).
 export type { CompanyDetailResponse } from './generated'
+
+// Price change (iter 2.7 C2). UpdatePriceRequest is the PATCH body for
+// /staff/companies/{id}/price; PriceHistoryResponse types each row of
+// the price-history table rendered by StaffCompanyPriceSection.
+export type { UpdatePriceRequest } from './generated'
+
+export type { PriceHistoryResponse } from './generated'

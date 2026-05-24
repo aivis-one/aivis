@@ -392,6 +392,19 @@
         "promoVideoUrl": "Promo video",
         "presentationUrl": "Presentation",
         "distributionConfig": "Distribution config"
+      },
+      "price": {
+        "current": "Current price",
+        "editCta": "Change price",
+        "editTitle": "Change price",
+        "editHint": "The new price cascades to all products and is recorded in the history below.",
+        "fieldPrice": "Price per unit (USD)",
+        "fieldPricePlaceholder": "0.00",
+        "historyTitle": "Price history",
+        "historyEmpty": "No price changes yet",
+        "colPrice": "Price",
+        "colChangedAt": "Changed at",
+        "updated": "Price updated"
       }
     }
   },

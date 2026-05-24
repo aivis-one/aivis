@@ -19,12 +19,12 @@
 // Endpoints covered here:
 //   GET /api/v1/staff/companies                     -- list (paginated)
 //   GET /api/v1/staff/companies/{id}                -- detail (+ roadmap)
-//   GET /api/v1/staff/companies/{id}/price-history  -- price history (B3)
+//   GET   /api/v1/staff/companies/{id}/price-history -- price history (B3)
+//   PATCH /api/v1/staff/companies/{id}/price         -- change price (C2)
 //
 // Endpoints deferred to Block C / D:
 //   POST   /api/v1/staff/companies
 //   PATCH  /api/v1/staff/companies/{id}
-//   PATCH  /api/v1/staff/companies/{id}/price
 //   POST   /api/v1/staff/companies/{id}/roadmap
 //   PATCH  /api/v1/staff/companies/{id}/roadmap/{item_id}
 //   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}
@@ -36,7 +36,9 @@ import { buildQueryString } from '@/utils/querystring'
 import type {
   CompanyDetailResponse,
   CompanyListResponse,
+  CompanyResponse,
   PriceHistoryListResponse,
+  UpdatePriceRequest,
 } from '@/api/types'
 
 /**
@@ -113,5 +115,25 @@ export function fetchStaffCompanyPriceHistory(
   })
   return api.get<PriceHistoryListResponse>(
     `/api/v1/staff/companies/${companyId}/price-history${qs}`,
+  )
+}
+
+
+/**
+ * PATCH /api/v1/staff/companies/{id}/price -- change the company's
+ * share price (iter 2.7 C2). Cascades to active/hidden products
+ * server-side and appends a CompanyPriceHistory row.
+ *
+ * Requires company_manage AND financial_operations server-side; the
+ * Price section gates the edit CTA on both (FP-23). Returns the
+ * updated CompanyResponse (new price reflected).
+ */
+export function updateStaffCompanyPrice(
+  companyId: string,
+  body: UpdatePriceRequest,
+): Promise<CompanyResponse> {
+  return api.patch<CompanyResponse>(
+    `/api/v1/staff/companies/${companyId}/price`,
+    body,
   )
 }
