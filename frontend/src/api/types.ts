@@ -626,3 +626,52 @@ export type { EventListResponse } from './generated'
 // ===========================================================================
 
 export type { AttachmentResponse } from './generated'
+
+// ===========================================================================
+// iter 2.7 Block B -- Staff Platform tab (posts / events / companies write
+//                                          surfaces + staff company list)
+//
+// The Staff Platform tab (R1 §4) drives create / update flows that the
+// earlier read-only re-exports above did not need:
+//
+//   - Posts / Events: the F9.1 section re-exported the read shapes
+//     (PostResponse / PostListResponse / EventResponse /
+//     EventListResponse) for the dashboard widget and public feed.
+//     Block B adds the staff write shapes (Create* / Update*) consumed
+//     by PostListEditor and EventEditor via api/staff-posts.ts and
+//     api/staff-events.ts.
+//
+//   - Companies: CompanyListResponse backs StaffCompaniesListView's
+//     all-statuses list (api/staff-companies.ts::fetchStaffCompanies),
+//     distinct from the public PublicCompanyListResponse already
+//     re-exported above. PriceHistoryListResponse backs the Block C
+//     price-history surface; declared here so Block C picks it up
+//     without another types.ts commit (same forward-declare pattern
+//     as the F9.1 EventResponse note above).
+//
+// Source of truth:
+//   backend/app/modules/posts/schemas.py     (Create/Update Post/Event)
+//   backend/app/modules/companies/schemas.py (CompanyListResponse,
+//                                             PriceHistoryListResponse)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Posts / Events -- staff write surfaces
+// ---------------------------------------------------------------------------
+
+export type { CreatePostRequest } from './generated'
+
+export type { UpdatePostRequest } from './generated'
+
+export type { CreateEventRequest } from './generated'
+
+export type { UpdateEventRequest } from './generated'
+
+// ---------------------------------------------------------------------------
+// Companies -- staff list + price history (price history forward-declared
+// for Block C)
+// ---------------------------------------------------------------------------
+
+export type { CompanyListResponse } from './generated'
+
+export type { PriceHistoryListResponse } from './generated'

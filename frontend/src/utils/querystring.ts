@@ -14,6 +14,9 @@
 //     `amount_min=0`. Previous inline calls used `if (params?.page)`
 //     which swallowed 0 too, but none of today's callers pass 0,
 //     so this widens behaviour without regressing any current path.
+//   - boolean is coerced via String() -> "true" / "false", which
+//     FastAPI parses back into a bool query param. Added in iter 2.7
+//     Block B for the ?is_published= / ?upcoming= staff filters.
 //   - everything else is coerced via String() (numbers, dates already
 //     serialised as ISO strings by the caller).
 //
@@ -27,7 +30,7 @@
 // batch B1.1 of the same phase.
 // =============================================================================
 
-export type QueryValue = string | number | undefined | null
+export type QueryValue = string | number | boolean | undefined | null
 
 export type QueryParams = Record<string, QueryValue>
 
