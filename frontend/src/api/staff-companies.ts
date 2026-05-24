@@ -23,6 +23,9 @@
 //   PATCH /api/v1/staff/companies/{id}/price         -- change price (C2)
 //   GET   /api/v1/staff/companies/{id}/templates     -- template list (C2)
 //   GET   /api/v1/staff/companies/{id}/templates/{tid} -- template detail (C2)
+//   GET    /api/v1/staff/companies/{id}/attachments         -- doc list (C2)
+//   PATCH  /api/v1/staff/companies/{id}/attachments/reorder -- reorder (C2)
+//   DELETE /api/v1/staff/companies/{id}/attachments/{aid}   -- soft-delete (C2)
 //
 // Endpoints deferred to Block C / D:
 //   POST   /api/v1/staff/companies
@@ -40,6 +43,8 @@ import type {
   CompanyListResponse,
   CompanyResponse,
   PriceHistoryListResponse,
+  ReorderAttachmentsRequest,
+  StaffAttachmentResponse,
   TemplateDetailResponse,
   TemplateResponse,
   UpdatePriceRequest,
@@ -195,5 +200,75 @@ export function fetchStaffCompanyTemplate(
 ): Promise<TemplateDetailResponse> {
   return api.get<TemplateDetailResponse>(
     `/api/v1/staff/companies/${companyId}/templates/${templateId}`,
+  )
+}
+
+
+/**
+ * GET /api/v1/staff/companies/{id}/attachments -- staff document list
+ * (iter 2.7 C2). Returns every non-deleted attachment (all publish
+ * states) unless include_deleted is set. NOT paginated -- the backend
+ * returns a plain array.
+ *
+ * Filters (all optional):
+ *   - category:        exact category match
+ *   - category_prefix: prefix match (e.g. "legal/" for a subtree)
+ *   - language:        en | ru | de | ar
+ *   - include_deleted: true to surface soft-deleted rows (trash view)
+ *
+ * 404 when the company id does not exist.
+ */
+export function fetchStaffCompanyAttachments(
+  companyId: string,
+  params?: {
+    category?: string
+    category_prefix?: string
+    language?: string
+    include_deleted?: boolean
+  },
+): Promise<StaffAttachmentResponse[]> {
+  const qs = buildQueryString({
+    category: params?.category,
+    category_prefix: params?.category_prefix,
+    language: params?.language,
+    include_deleted: params?.include_deleted,
+  })
+  return api.get<StaffAttachmentResponse[]>(
+    `/api/v1/staff/companies/${companyId}/attachments${qs}`,
+  )
+}
+
+/**
+ * PATCH /api/v1/staff/companies/{id}/attachments/reorder -- bulk
+ * reorder within ONE (company, category) scope (iter 2.7 C2).
+ *
+ * `item_ids` must be the COMPLETE ordered list of every non-deleted
+ * attachment in that category. A partial / extended / duplicate list
+ * is rejected 400 with the `attachments_reorder_set_mismatch:` prefix
+ * -- the caller catches that prefix and tells the user the list is
+ * stale (someone else changed it), then reloads. Returns 204.
+ */
+export function reorderStaffCompanyAttachments(
+  companyId: string,
+  body: ReorderAttachmentsRequest,
+): Promise<void> {
+  return api.patch<void>(
+    `/api/v1/staff/companies/${companyId}/attachments/reorder`,
+    body,
+  )
+}
+
+/**
+ * DELETE /api/v1/staff/companies/{id}/attachments/{attachmentId} --
+ * soft-delete one attachment (iter 2.7 C2). Sets is_deleted=True; the
+ * MinIO object is left in place (hard delete is a separate admin-only
+ * endpoint not surfaced here). Returns 204.
+ */
+export function deleteStaffCompanyAttachment(
+  companyId: string,
+  attachmentId: string,
+): Promise<void> {
+  return api.delete(
+    `/api/v1/staff/companies/${companyId}/attachments/${attachmentId}`,
   )
 }

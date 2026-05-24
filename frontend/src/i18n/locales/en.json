@@ -427,6 +427,17 @@
           "active": "Active",
           "archived": "Archived"
         }
+      },
+      "documents": {
+        "empty": "No documents yet",
+        "uploadHint": "Documents are uploaded through the MinIO console and synced via reconcile. This view manages order, visibility, and removal.",
+        "published": "Published",
+        "unpublished": "Draft",
+        "public": "Public",
+        "deleted": "Document deleted",
+        "reorderStale": "The document list changed since you loaded it. Reloaded with the latest order — please try again.",
+        "deleteTitle": "Delete document",
+        "deleteConfirm": "This document will be hidden from all flows. The file stays in storage and can be restored by an admin."
       }
     }
   },

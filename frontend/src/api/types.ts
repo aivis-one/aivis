@@ -696,3 +696,12 @@ export type { PriceHistoryResponse } from './generated'
 export type { TemplateResponse } from './generated'
 
 export type { TemplateDetailResponse } from './generated'
+
+// Attachments (iter 2.7 C2, R2 §6.2). Staff document list +
+// reorder + soft-delete. StaffAttachmentResponse carries storage_key
+// (MinIO deep-link) and operational flags hidden from the public
+// AttachmentResponse; ReorderAttachmentsRequest is the {category,
+// item_ids} body for the per-category reorder endpoint.
+export type { StaffAttachmentResponse } from './generated'
+
+export type { ReorderAttachmentsRequest } from './generated'
