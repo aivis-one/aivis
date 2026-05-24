@@ -171,6 +171,26 @@ export interface CompanyDashboardResponse {
   recent_transactions: CompanyTransactionResponse[]
 }
 
+/** Full company detail with roadmap items (staff). */
+export interface CompanyDetailResponse {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  logo_url: string | null
+  cover_url: string | null
+  promo_video_url: string | null
+  presentation_url: string | null
+  price_per_unit_cents: number
+  distribution_config: Record<string, unknown>
+  total_supply: number
+  shares_per_option: number
+  status: string
+  created_at: string
+  updated_at: string | null
+  roadmap?: RoadmapItemResponse[]
+}
+
 /** Paginated list of companies (staff). */
 export interface CompanyListResponse {
   items: CompanyResponse[]
