@@ -380,6 +380,18 @@
         "deleted": "Event deleted",
         "deleteTitle": "Delete event",
         "deleteConfirm": "This event will be removed. This cannot be undone."
+      },
+      "profile": {
+        "status": "Status",
+        "price": "Price per unit",
+        "totalSupply": "Total supply",
+        "sharesPerOption": "Shares per option",
+        "description": "Description",
+        "links": "Links",
+        "logoUrl": "Logo",
+        "promoVideoUrl": "Promo video",
+        "presentationUrl": "Presentation",
+        "distributionConfig": "Distribution config"
       }
     }
   },

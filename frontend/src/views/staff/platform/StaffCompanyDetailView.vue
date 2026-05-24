@@ -15,12 +15,12 @@
 // sidebar -- iPhone viewport 380px is too narrow for a vertical
 // sidebar, confirmed in iter 2.6c review.
 //
-// SCAFFOLDING NOTE.
-//   This is the Block B1 stub: it routes correctly and renders the
-//   tab strip, but the company-name fetch and per-section content
-//   land in Block C. For now the header shows the company id as a
-//   placeholder. The 6 child stubs are also in place so deep links
-//   like /staff/platform/companies/:id/roadmap resolve without 404.
+// iter 2.7 Block C: the header now fetches the real company via
+//   fetchStaffCompany (staff detail endpoint, any status) and shows
+//   its name. While the fetch is in flight or on error, the header
+//   falls back to the "Company <id8>" placeholder so the tab strip
+//   and navigation never block on the name. Per-section content is
+//   filled by the section components rendered in <router-view>.
 //
 // FP-21 goBack. History-aware: prefers router.back() so the
 // originating screen (StaffCompaniesListView most commonly) keeps
@@ -28,12 +28,14 @@
 // prior history (deep-link).
 // =============================================================================
 
-import { computed } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import { CBackLink } from '@/components/ui'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { fetchStaffCompany } from '@/api/staff-companies'
+import type { CompanyDetailResponse } from '@/api/types'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -86,11 +88,44 @@ function goBack(): void {
   )
 }
 
-// Placeholder title until Block C wires the real company fetch.
-const headerTitle = computed<string>(() => {
+// Company name fetch (iter 2.7 Block C). The detail endpoint returns
+// any-status companies, so a hidden / archived company still resolves
+// its name here. We keep the id-based placeholder as the fallback for
+// the in-flight and error states -- the header must never block the
+// tab strip or back navigation on a slow / failed name lookup.
+const company = ref<CompanyDetailResponse | null>(null)
+
+const placeholderTitle = computed<string>(() => {
   const id = companyId.value
-  return id ? `${t('staff.platform.company.headerPrefix')} ${id.slice(0, 8)}` : t('staff.platform.company.headerPrefix')
+  return id
+    ? `${t('staff.platform.company.headerPrefix')} ${id.slice(0, 8)}`
+    : t('staff.platform.company.headerPrefix')
 })
+
+const headerTitle = computed<string>(() =>
+  company.value?.name ?? placeholderTitle.value,
+)
+
+async function loadCompany(): Promise<void> {
+  const id = companyId.value
+  if (!id) return
+  try {
+    company.value = await fetchStaffCompany(id)
+  } catch {
+    // Leave company null -- headerTitle falls back to the placeholder.
+    // The section components surface their own load errors; the header
+    // staying on the id placeholder is a benign degraded state.
+    company.value = null
+  }
+}
+
+// Re-fetch if the route id changes (rare, but keeps the header honest).
+watch(companyId, () => {
+  company.value = null
+  void loadCompany()
+})
+
+onMounted(loadCompany)
 </script>
 
 <template>

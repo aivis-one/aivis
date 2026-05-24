@@ -18,6 +18,7 @@
 //
 // Endpoints covered here:
 //   GET /api/v1/staff/companies                     -- list (paginated)
+//   GET /api/v1/staff/companies/{id}                -- detail (+ roadmap)
 //   GET /api/v1/staff/companies/{id}/price-history  -- price history (B3)
 //
 // Endpoints deferred to Block C / D:
@@ -33,6 +34,7 @@
 import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
 import type {
+  CompanyDetailResponse,
   CompanyListResponse,
   PriceHistoryListResponse,
 } from '@/api/types'
@@ -67,6 +69,26 @@ export function fetchStaffCompanies(params?: {
     per_page: params?.per_page,
   })
   return api.get<CompanyListResponse>(`/api/v1/staff/companies${qs}`)
+}
+
+/**
+ * GET /api/v1/staff/companies/{id} -- one company's full detail in ANY
+ * status (active / hidden / archived) plus its inline roadmap.
+ *
+ * iter 2.7 Block C enabler. Unlike api/companies.ts::getCompany (the
+ * public detail, which 404s on non-active companies and omits
+ * distribution_config), this staff variant returns the full
+ * CompanyResponse projection regardless of status -- so
+ * StaffCompanyDetailView can open a hidden / archived company.
+ *
+ * 404 only when the company id does not exist at all.
+ */
+export function fetchStaffCompany(
+  companyId: string,
+): Promise<CompanyDetailResponse> {
+  return api.get<CompanyDetailResponse>(
+    `/api/v1/staff/companies/${companyId}`,
+  )
 }
 
 /**

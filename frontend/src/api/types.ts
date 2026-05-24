@@ -675,3 +675,9 @@ export type { UpdateEventRequest } from './generated'
 export type { CompanyListResponse } from './generated'
 
 export type { PriceHistoryListResponse } from './generated'
+
+// CompanyDetailResponse (staff): CompanyResponse + inline roadmap.
+// Backed by GET /staff/companies/{id} (iter 2.7 Block C enabler
+// mini-iter). Consumed by StaffCompanyDetailView (header name) and
+// StaffCompanyProfileSection (read-only profile inspection).
+export type { CompanyDetailResponse } from './generated'

@@ -1,45 +1,49 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyPostsSection (iter 2.7 Block C stub)
+// CBSHOME Frontend -- StaffCompanyPostsSection (iter 2.7 Block C)
 // =============================================================================
 //
-// SCAFFOLDING. Real content lands in Block C.
+// Company-scoped post management. Thin wrapper over the shared
+// PostListEditor with fixedOwner={type:'company', id:companyId}: the
+// list is scoped to this company and the editor hides the owner picker,
+// always authoring company posts for this id.
 //
-// Reuses PostListEditor with ownerType='company' + ownerId=:companyId from route params. All CRUD logic lives in the shared editor.
-//
-// FP-24 lazy-import stub policy: this file exists so the router
-// import in /staff/platform/* resolves at build time. The block
-// that owns the view replaces this stub wholesale -- no partial
-// implementations in the stub.
+// companyId comes from the parent route params (the detail view renders
+// this section inside its <router-view>). content_manage gate is
+// resolved here and passed as canEdit (FP-23) -- identical contract to
+// StaffNewsView, just with the owner fixed.
 // =============================================================================
 
-import { useI18n } from 'vue-i18n'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import PostListEditor from '@/components/staff/PostListEditor.vue'
 
-const { t } = useI18n()
+const route = useRoute()
+const { canDo } = useStaffPermissions()
+const canManageContent = canDo('content_manage')
+
+const companyId = computed<string>(() => {
+  const raw = route.params.id
+  return typeof raw === 'string' ? raw : ''
+})
+
+// fixedOwner forces company ownership + hides the picker in the editor.
+const fixedOwner = computed<{ type: 'company'; id: string }>(() => ({
+  type: 'company',
+  id: companyId.value,
+}))
 </script>
 
 <template>
-  <div class="staff-platform-stub">
-    <h2 class="staff-platform-stub__title">{{ t('staff.platform.company.tabs.posts') }}</h2>
-    <p class="staff-platform-stub__placeholder">
-      {{ t('staff.platform.scaffolding.placeholder') }}
-    </p>
+  <div class="scps">
+    <PostListEditor
+      :fixed-owner="fixedOwner"
+      :can-edit="canManageContent"
+    />
   </div>
 </template>
 
 <style scoped>
-.staff-platform-stub {
-  padding: var(--space-md, 16px);
-}
-.staff-platform-stub__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0 0 8px;
-}
-.staff-platform-stub__placeholder {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin: 0;
-}
+.scps { padding: var(--space-md, 16px); }
 </style>
