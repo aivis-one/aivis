@@ -55,7 +55,7 @@ import type {
  * Pagination: page (1-indexed), per_page (1..100).
  */
 export function fetchStaffCompanies(params?: {
-  status?: string
+  status?: 'active' | 'hidden' | 'archived'
   search?: string
   page?: number
   per_page?: number

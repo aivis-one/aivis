@@ -43,7 +43,7 @@ import type {
  * server-side.
  */
 export function fetchStaffPosts(params?: {
-  owner_type?: string
+  owner_type?: 'platform' | 'company'
   owner_id?: string
   is_published?: boolean
   search?: string

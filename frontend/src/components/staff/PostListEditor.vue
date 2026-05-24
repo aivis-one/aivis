@@ -292,10 +292,15 @@ async function handleDelete(): Promise<void> {
     showToast(t('staff.platform.post.deleted'), 'success')
     deleteTarget.value = null
     // If we just deleted the last row on a page beyond the first, step back.
+    // BUG-38-01: stepping the page back triggers the page watcher,
+    // which reloads on its own. Only reload inline when the page is
+    // unchanged -- otherwise both this call and the watcher fire and
+    // race two requests for the same list.
     if (items.value.length === 1 && page.value > 1) {
       page.value -= 1
+    } else {
+      await loadPosts()
     }
-    await loadPosts()
   } catch {
     showToast(t('common.error'), 'error')
   } finally {

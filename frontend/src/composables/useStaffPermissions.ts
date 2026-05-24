@@ -49,22 +49,14 @@
 //   </script>
 //
 // PERMISSION KEY TYPE.
-//   StaffPermissionKey unions:
-//     - keyof Required<UpdatePermissionsRequest> -- the 8 keys the
-//       backend's UpdatePermissionsRequest schema accepts on write.
-//     - 'content_manage' -- added to DEFAULT_STAFF_PERMISSIONS in
-//       backend Sprint 9.1 but NOT yet exposed on
-//       UpdatePermissionsRequest (extra='forbid'). The effective
-//       dict surfaced via /users/me always contains it (read-side),
-//       so reads are safe; writes are not -- they go through
-//       StaffUsersView::togglePermission which keeps its narrower
-//       PermissionKey type derived from the schema.
-//
-//   When the backend mini-iter adds content_manage to
-//   UpdatePermissionsRequest, the extension term comes out of this
-//   union and the type collapses to the bare
-//   `keyof Required<UpdatePermissionsRequest>`. Callers continue
-//   to compile because the union shrinks.
+//   StaffPermissionKey = keyof Required<UpdatePermissionsRequest> --
+//   the full set of permission keys the backend schema accepts on
+//   write. As of iter 2.7 A6 that includes content_manage (the A6
+//   schema-sync mini-iter added it to UpdatePermissionsRequest, so
+//   the earlier `| 'content_manage'` extension term is no longer
+//   needed -- keyof already yields it). The effective dict surfaced
+//   via /users/me always carries every key with a definitive
+//   boolean, so any of them is safe to read through canDo().
 //
 // MEMOIZATION.
 //   `canDo` returns a `computed` -- multiple template references to
@@ -82,14 +74,12 @@ import type { UpdatePermissionsRequest } from '@/api/types'
 /**
  * Permission keys readable through canDo().
  *
- * Mirrors backend DEFAULT_STAFF_PERMISSIONS (the read-side source of
- * truth): the eight schema keys plus `content_manage`, which lives in
- * the defaults but not yet in UpdatePermissionsRequest. See the file
- * header for the schema-sync TODO.
+ * Derived from the backend UpdatePermissionsRequest schema, which
+ * since iter 2.7 A6 carries all nine keys (content_manage included).
+ * The effective dict on /users/me mirrors DEFAULT_STAFF_PERMISSIONS,
+ * so every key resolves to a definitive boolean at read time.
  */
-export type StaffPermissionKey =
-  | keyof Required<UpdatePermissionsRequest>
-  | 'content_manage'
+export type StaffPermissionKey = keyof Required<UpdatePermissionsRequest>
 
 /**
  * Read-only access to the current user's effective staff permissions.

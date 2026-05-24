@@ -259,9 +259,9 @@ async def get_user_detail(
     # iter 2.7 A5: hydrate KYC application history.
     #
     # Always materialise the list (never None) so the frontend can
-    # iterate without a null check. The schema default_factory=list
-    # would cover an omitted field, but we pass it explicitly to
-    # keep the response shape consistent for every user.
+    # iterate without a null check. The UserDetailResponse schema
+    # declares this field as required (no default) as of iter 2.7 A5,
+    # and we populate it explicitly here for every user.
     #
     # `latest_*` mirrors the head of the list for convenience --
     # the modal renders Approve / Reject from these two fields and

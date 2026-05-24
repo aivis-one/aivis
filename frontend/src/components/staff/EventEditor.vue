@@ -247,10 +247,15 @@ async function handleDelete(): Promise<void> {
     await deleteStaffEvent(deleteTarget.value.id)
     showToast(t('staff.platform.event.deleted'), 'success')
     deleteTarget.value = null
+    // BUG-38-01: stepping the page back triggers the page watcher,
+    // which reloads on its own. Only reload inline when the page is
+    // unchanged -- otherwise both this call and the watcher fire and
+    // race two requests for the same list.
     if (items.value.length === 1 && page.value > 1) {
       page.value -= 1
+    } else {
+      await loadEvents()
     }
-    await loadEvents()
   } catch {
     showToast(t('common.error'), 'error')
   } finally {
