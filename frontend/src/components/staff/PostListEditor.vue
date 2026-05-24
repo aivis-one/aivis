@@ -112,7 +112,11 @@ const ownerTypeModel = computed<string>({
   },
 })
 
-function ownerBadgeVariant(ownerType: string): string {
+// Return type intentionally inferred (not annotated as string) so TS
+// narrows to the 'primary' | 'accent' literal union that CBadge's
+// variant prop accepts -- an explicit `: string` widens it and fails
+// the assignment (same pattern as StaffUsersView's kycVariant).
+function ownerBadgeVariant(ownerType: string) {
   return ownerType === 'platform' ? 'primary' : 'accent'
 }
 
