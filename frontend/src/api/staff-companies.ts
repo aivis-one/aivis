@@ -21,6 +21,8 @@
 //   GET /api/v1/staff/companies/{id}                -- detail (+ roadmap)
 //   GET   /api/v1/staff/companies/{id}/price-history -- price history (B3)
 //   PATCH /api/v1/staff/companies/{id}/price         -- change price (C2)
+//   GET   /api/v1/staff/companies/{id}/templates     -- template list (C2)
+//   GET   /api/v1/staff/companies/{id}/templates/{tid} -- template detail (C2)
 //
 // Endpoints deferred to Block C / D:
 //   POST   /api/v1/staff/companies
@@ -38,6 +40,8 @@ import type {
   CompanyListResponse,
   CompanyResponse,
   PriceHistoryListResponse,
+  TemplateDetailResponse,
+  TemplateResponse,
   UpdatePriceRequest,
 } from '@/api/types'
 
@@ -135,5 +139,61 @@ export function updateStaffCompanyPrice(
   return api.patch<CompanyResponse>(
     `/api/v1/staff/companies/${companyId}/price`,
     body,
+  )
+}
+
+
+/**
+ * GET /api/v1/staff/companies/{id}/templates -- staff template list
+ * (iter 2.7 C2). Returns per-company rows merged with platform-default
+ * `active` fallbacks for any (kind, language) the company has not
+ * overridden, so staff sees what the renderer would actually pick.
+ * Each row carries is_platform_default (computed) to tell overrides
+ * from fallbacks.
+ *
+ * NOT paginated -- the backend returns a plain array (templates per
+ * company are few). Filters (all optional, backend StrEnum, 422 on a
+ * bad value):
+ *   - kind:     purchase_agreement | gift_certificate |
+ *               installment_subcontract | ownership_certificate
+ *   - language: en | ru | de | ar
+ *   - status:   draft | active | archived (per-company branch only)
+ *
+ * 404 when the company id does not exist.
+ */
+export function fetchStaffCompanyTemplates(
+  companyId: string,
+  params?: {
+    kind?: string
+    language?: string
+    status?: string
+  },
+): Promise<TemplateResponse[]> {
+  const qs = buildQueryString({
+    kind: params?.kind,
+    language: params?.language,
+    status: params?.status,
+  })
+  return api.get<TemplateResponse[]>(
+    `/api/v1/staff/companies/${companyId}/templates${qs}`,
+  )
+}
+
+/**
+ * GET /api/v1/staff/companies/{id}/templates/{templateId} -- one
+ * template with the HTML body inlined for inspection (iter 2.7 C2).
+ * Adds html_content + storage_prefix on top of the list shape.
+ *
+ * Platform-default rows (company_id IS NULL) are reachable here too.
+ * 404 on an unknown company or template id; a 500 surfaces a broken
+ * template (MinIO object missing / storage down) -- the caller shows
+ * a load error rather than treating it as "no template".
+ */
+export function fetchStaffCompanyTemplate(
+  companyId: string,
+  templateId: string,
+): Promise<TemplateDetailResponse> {
+  return api.get<TemplateDetailResponse>(
+    `/api/v1/staff/companies/${companyId}/templates/${templateId}`,
   )
 }

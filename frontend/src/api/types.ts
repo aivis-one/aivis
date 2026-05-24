@@ -688,3 +688,11 @@ export type { CompanyDetailResponse } from './generated'
 export type { UpdatePriceRequest } from './generated'
 
 export type { PriceHistoryResponse } from './generated'
+
+// Templates (iter 2.7 C2, R2 §6.3). Read-only staff inspection.
+// TemplateResponse = list row (+ is_platform_default computed flag);
+// TemplateDetailResponse adds html_content + storage_prefix for the
+// per-template inspect modal in StaffCompanyTemplatesSection.
+export type { TemplateResponse } from './generated'
+
+export type { TemplateDetailResponse } from './generated'

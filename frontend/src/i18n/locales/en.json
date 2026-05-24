@@ -405,6 +405,28 @@
         "colPrice": "Price",
         "colChangedAt": "Changed at",
         "updated": "Price updated"
+      },
+      "templates": {
+        "allKinds": "All kinds",
+        "allLanguages": "All languages",
+        "allStatuses": "All statuses",
+        "empty": "No templates found",
+        "platformDefault": "Platform default",
+        "storagePrefix": "Storage prefix",
+        "assetFiles": "Asset files",
+        "htmlSource": "HTML source",
+        "detailError": "Could not load this template. The HTML body may be missing in storage.",
+        "kind": {
+          "purchase_agreement": "Purchase agreement",
+          "gift_certificate": "Gift certificate",
+          "installment_subcontract": "Installment subcontract",
+          "ownership_certificate": "Ownership certificate"
+        },
+        "status": {
+          "draft": "Draft",
+          "active": "Active",
+          "archived": "Archived"
+        }
       }
     }
   },
