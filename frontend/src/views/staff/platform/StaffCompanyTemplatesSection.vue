@@ -42,11 +42,11 @@ const companyId = computed<string>(() => {
   return typeof raw === 'string' ? raw : ''
 })
 
-// -- Filters (chip rows). '' = no filter. --
-const kindFilter = ref<'' | string>('')
-const languageFilter = ref<'' | string>('')
-const statusFilter = ref<'' | string>('')
-
+// -- Filter options + types. Options are the single source of truth;
+// the filter refs derive their value type from them so a ref can
+// only ever hold '' (no filter) or one of the option literals --
+// which is exactly what fetchStaffCompanyTemplates' narrowed params
+// accept (so `value || undefined` type-checks).
 const KIND_OPTIONS = [
   'purchase_agreement',
   'gift_certificate',
@@ -55,6 +55,15 @@ const KIND_OPTIONS = [
 ] as const
 const LANGUAGE_OPTIONS = ['en', 'ru', 'de', 'ar'] as const
 const STATUS_OPTIONS = ['draft', 'active', 'archived'] as const
+
+type KindFilter = '' | (typeof KIND_OPTIONS)[number]
+type LanguageFilter = '' | (typeof LANGUAGE_OPTIONS)[number]
+type StatusFilter = '' | (typeof STATUS_OPTIONS)[number]
+
+// '' = no filter.
+const kindFilter = ref<KindFilter>('')
+const languageFilter = ref<LanguageFilter>('')
+const statusFilter = ref<StatusFilter>('')
 
 // -- List state --
 const items = ref<TemplateResponse[]>([])
@@ -108,9 +117,9 @@ async function openDetail(template: TemplateResponse): Promise<void> {
   }
 }
 
-function setKind(v: '' | string): void { kindFilter.value = v }
-function setLanguage(v: '' | string): void { languageFilter.value = v }
-function setStatus(v: '' | string): void { statusFilter.value = v }
+function setKind(v: KindFilter): void { kindFilter.value = v }
+function setLanguage(v: LanguageFilter): void { languageFilter.value = v }
+function setStatus(v: StatusFilter): void { statusFilter.value = v }
 
 watch([kindFilter, languageFilter, statusFilter], () => loadTemplates())
 watch(companyId, () => loadTemplates())
