@@ -5,6 +5,7 @@
 #
 # ENDPOINTS:
 #   GET   /api/v1/staff/companies                          -- list (paginated)
+#   GET   /api/v1/staff/companies/{id}                     -- detail (+ roadmap)
 #   POST  /api/v1/staff/companies                          -- create company
 #   PATCH /api/v1/staff/companies/{id}                     -- update profile
 #   PATCH /api/v1/staff/companies/{id}/price               -- change price
@@ -42,6 +43,18 @@
 #   company_id is delivered by the service (get_company), so a probe
 #   for an invalid id cannot leak existence via an empty 200 response.
 #
+# iter 2.7 (Block C enabler):
+#   GET /staff/companies/{id} returns one company in ANY status
+#   (active / hidden / archived) as CompanyDetailResponse -- profile
+#   fields plus the inline roadmap. The public detail endpoint
+#   (/api/v1/public/companies/{id}) 404s on non-active companies, so
+#   staff could not open a hidden / archived company's detail surface
+#   in StaffCompanyDetailView; this read-only staff variant closes
+#   that gap (the single-resource counterpart to the 2.6c B2 list).
+#   404 only when the company physically does not exist (raised by
+#   get_company inside get_company_detail) -- never for a non-active
+#   status. Gated on company_manage, consistent with the list.
+#
 # COMMIT RULE (P-01):
 #   Routers never call session.commit(). get_db_session commits
 #   automatically after yield.
@@ -64,6 +77,7 @@ from app.modules.companies.constants import (
     CompanyStatus,
 )
 from app.modules.companies.schemas import (
+    CompanyDetailResponse,
     CompanyListResponse,
     CompanyResponse,
     CreateCompanyRequest,
@@ -82,6 +96,7 @@ from app.modules.companies.service import (
     create_roadmap_item,
     delete_roadmap_cover,
     delete_roadmap_item,
+    get_company_detail,
     list_companies,
     list_price_history,
     reorder_roadmap,
@@ -155,6 +170,51 @@ async def list_companies_endpoint(
         page=page,
         per_page=per_page,
     )
+
+
+@router.get(
+    "/{company_id}",
+    response_model=CompanyDetailResponse,
+)
+async def get_company_detail_endpoint(
+    company_id: UUID,
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_reader),
+) -> CompanyDetailResponse:
+    """Get one company's full detail (any status) plus its roadmap.
+
+    iter 2.7 Block C enabler. Unlike the public detail endpoint, this
+    returns the company regardless of lifecycle status -- staff must be
+    able to open a hidden or archived company in StaffCompanyDetailView.
+    404 is raised (by get_company inside get_company_detail) only when
+    the company id does not exist at all.
+
+    Permission: company_manage -- a read-only inspection surface, same
+    gate as the list and price-history endpoints (not a financial
+    operation).
+
+    The roadmap is assembled exactly like the public detail flow: a
+    single batch-load of referenced published posts (no N+1), each item
+    rendered through build_roadmap_item_response so cover URLs are
+    presigned and post snippets embedded. Building the list here mirrors
+    public_router so the two detail surfaces never drift.
+    """
+    profile, roadmap_items, posts_map = await get_company_detail(
+        company_id, session
+    )
+
+    roadmap = [
+        await build_roadmap_item_response(
+            item, posts_map.get(item.post_id), session
+        )
+        for item in roadmap_items
+    ]
+
+    # CompanyDetailResponse(CompanyResponse) adds `roadmap`; validate the
+    # ORM profile into the base shape, then attach the assembled list.
+    response = CompanyDetailResponse.model_validate(profile)
+    response.roadmap = roadmap
+    return response
 
 
 @router.post(

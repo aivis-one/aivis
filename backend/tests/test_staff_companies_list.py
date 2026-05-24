@@ -321,3 +321,61 @@ async def test_staff_list_forbidden_for_non_staff(
     # require_staff_permission raises ForbiddenError -> 403 for any
     # non-staff user (and for staff missing the specific permission).
     assert resp.status_code == 403, resp.text
+
+
+# ---------------------------------------------------------------------------
+# 6: GET /staff/companies/{id} returns a hidden company (iter 2.7)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_staff_detail_returns_hidden(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /staff/companies/{id} returns a HIDDEN company with 200.
+
+    The public detail endpoint 404s on non-active companies; the staff
+    variant must not. _create_company leaves the company hidden, so no
+    activation is needed. We also assert the CompanyDetailResponse shape
+    carries the inline `roadmap` list (empty here -- no items staged).
+    """
+    admin_token = await _admin_token(client, db_session)
+    hidden_co = await _create_company(client, admin_token)
+
+    resp = await client.get(
+        f"/api/v1/staff/companies/{hidden_co['id']}",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["id"] == hidden_co["id"]
+    assert body["status"] == CompanyStatus.HIDDEN.value
+    # CompanyDetailResponse adds roadmap (defaults to [] for a fresh co).
+    assert "roadmap" in body
+    assert body["roadmap"] == []
+    # distribution_config is staff-only -- confirm the staff projection
+    # (not the public one) came back.
+    assert "distribution_config" in body
+
+
+# ---------------------------------------------------------------------------
+# 7: GET /staff/companies/{id} 404 for a non-existent id (iter 2.7)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_staff_detail_404_for_unknown(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A random UUID that maps to no company -> 404 (get_company raises
+    NotFoundError). Confirms the 404 path is existence-based, not
+    status-based.
+    """
+    admin_token = await _admin_token(client, db_session)
+    missing_id = uuid.uuid4()
+
+    resp = await client.get(
+        f"/api/v1/staff/companies/{missing_id}",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 404, resp.text
