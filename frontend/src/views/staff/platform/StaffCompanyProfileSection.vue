@@ -3,9 +3,10 @@
 // CBSHOME Frontend -- StaffCompanyProfileSection (iter 2.7 Block C)
 // =============================================================================
 //
-// Read-only company profile inspection. Reads the company id from the
-// parent route params and fetches the staff detail (any status) via
-// fetchStaffCompany. Renders name, description, status, cover, price,
+// Read-only company profile inspection. Reads the company from the
+// shared STAFF_COMPANY_KEY context (PERF-40-01) -- the parent detail
+// view already loaded it for the header, so this section does not fire
+// its own detail GET. Renders name, description, status, cover, price,
 // supply, and the raw distribution_config.
 //
 // Editing is out of MVP scope (R1 §4.3) -- this surface is inspection
@@ -16,24 +17,26 @@
 // the render when absent rather than showing empty rows.
 // =============================================================================
 
-import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { inject, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CLoader, CBadge, CButton, CEmptyState } from '@/components/ui'
-import { fetchStaffCompany } from '@/api/staff-companies'
-import type { CompanyDetailResponse } from '@/api/types'
+import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const { t } = useI18n()
-const route = useRoute()
 
-const companyId = computed<string>(() => {
-  const raw = route.params.id
-  return typeof raw === 'string' ? raw : ''
-})
+// PERF-40-01: read the company the parent detail view already loaded
+// instead of firing a second GET /staff/companies/{id}. The injection
+// is always present in practice -- sections only ever render inside
+// StaffCompanyDetailView's <router-view>.
+const ctx = inject(STAFF_COMPANY_KEY)
 
-const company = ref<CompanyDetailResponse | null>(null)
-const loading = ref(true)
-const error = ref(false)
+const company = computed(() => ctx?.company.value ?? null)
+const loading = computed(() => ctx?.loading.value ?? false)
+const error = computed(() => ctx?.error.value ?? false)
+
+function reload(): void {
+  void ctx?.reload()
+}
 
 const statusVariant = (s: string) => {
   if (s === 'active') return 'success'
@@ -54,22 +57,8 @@ const distributionJson = computed<string>(() => {
   return JSON.stringify(company.value.distribution_config, null, 2)
 })
 
-async function loadCompany(): Promise<void> {
-  const id = companyId.value
-  if (!id) return
-  loading.value = true
-  error.value = false
-  try {
-    company.value = await fetchStaffCompany(id)
-  } catch {
-    error.value = true
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(companyId, () => loadCompany())
-onMounted(loadCompany)
+// No local fetch -- the parent detail view owns the company load and
+// provides it via STAFF_COMPANY_KEY. The retry button calls ctx.reload.
 </script>
 
 <template>
@@ -81,7 +70,7 @@ onMounted(loadCompany)
 
     <!-- Error -->
     <div v-else-if="error" class="scp__center">
-      <CButton variant="secondary" size="sm" @click="loadCompany">
+      <CButton variant="secondary" size="sm" @click="reload">
         {{ t('common.retry') }}
       </CButton>
     </div>

@@ -28,18 +28,18 @@
 // everywhere is dollars via formatPrice.
 // =============================================================================
 
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import {
-  fetchStaffCompany,
   fetchStaffCompanyPriceHistory,
   updateStaffCompanyPrice,
 } from '@/api/staff-companies'
 import type { PriceHistoryResponse } from '@/api/types'
+import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const { t } = useI18n()
 const { showToast } = useToast()
@@ -56,8 +56,25 @@ const companyId = computed<string>(() => {
   return typeof raw === 'string' ? raw : ''
 })
 
-// Current price (cents) from the company detail.
-const currentPriceCents = ref<number | null>(null)
+// Current price (cents). Seeded from the company the parent detail
+// view already loaded (PERF-40-01 -- no duplicate detail GET here),
+// then kept as a local ref so a price change updates it from the
+// PATCH response without round-tripping the parent. The header does
+// not show price, so a brief divergence from the injected company is
+// harmless.
+const ctx = inject(STAFF_COMPANY_KEY)
+const currentPriceCents = ref<number | null>(
+  ctx?.company.value?.price_per_unit_cents ?? null,
+)
+
+// The parent may still be loading when this section mounts; sync the
+// price once the injected company resolves (or changes).
+watch(
+  () => ctx?.company.value,
+  (c) => {
+    if (c) currentPriceCents.value = c.price_per_unit_cents
+  },
+)
 
 // History table.
 const history = ref<PriceHistoryResponse[]>([])
@@ -82,20 +99,6 @@ function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString()
 }
 
-async function loadCurrentPrice(): Promise<void> {
-  const id = companyId.value
-  if (!id) return
-  try {
-    const company = await fetchStaffCompany(id)
-    currentPriceCents.value = company.price_per_unit_cents
-  } catch {
-    // Non-fatal: the history still renders; current-price row falls back
-    // to a dash. The section-level error state is driven by the history
-    // load, the primary content here.
-    currentPriceCents.value = null
-  }
-}
-
 async function loadHistory(): Promise<void> {
   const id = companyId.value
   if (!id) return
@@ -116,7 +119,9 @@ async function loadHistory(): Promise<void> {
 }
 
 async function reload(): Promise<void> {
-  await Promise.all([loadCurrentPrice(), loadHistory()])
+  // Price comes from the injected company; only the history is
+  // this section's own fetch.
+  await loadHistory()
 }
 
 // -- Edit --

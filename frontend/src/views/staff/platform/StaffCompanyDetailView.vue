@@ -28,7 +28,7 @@
 // prior history (deep-link).
 // =============================================================================
 
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
@@ -36,6 +36,7 @@ import { CBackLink } from '@/components/ui'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { fetchStaffCompany } from '@/api/staff-companies'
 import type { CompanyDetailResponse } from '@/api/types'
+import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -94,6 +95,8 @@ function goBack(): void {
 // the in-flight and error states -- the header must never block the
 // tab strip or back navigation on a slow / failed name lookup.
 const company = ref<CompanyDetailResponse | null>(null)
+const companyLoading = ref(true)
+const companyError = ref(false)
 
 const placeholderTitle = computed<string>(() => {
   const id = companyId.value
@@ -109,19 +112,37 @@ const headerTitle = computed<string>(() =>
 async function loadCompany(): Promise<void> {
   const id = companyId.value
   if (!id) return
+  companyLoading.value = true
+  companyError.value = false
   try {
     company.value = await fetchStaffCompany(id)
   } catch {
     // Leave company null -- headerTitle falls back to the placeholder.
-    // The section components surface their own load errors; the header
-    // staying on the id placeholder is a benign degraded state.
+    // The header staying on the id placeholder is a benign degraded
+    // state; injected sections surface the error / retry through
+    // companyError.
     company.value = null
+    companyError.value = true
+  } finally {
+    companyLoading.value = false
   }
 }
+
+// PERF-40-01: expose the loaded company (+ load state + reload) to
+// the child sections rendered in <router-view>. ProfileSection and
+// PriceSection consume this instead of issuing duplicate detail GETs.
+provide(STAFF_COMPANY_KEY, {
+  company,
+  loading: companyLoading,
+  error: companyError,
+  reload: loadCompany,
+})
 
 // Re-fetch if the route id changes (rare, but keeps the header honest).
 watch(companyId, () => {
   company.value = null
+  companyError.value = false
+  companyLoading.value = true
   void loadCompany()
 })
 

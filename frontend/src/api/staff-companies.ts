@@ -169,9 +169,13 @@ export function updateStaffCompanyPrice(
 export function fetchStaffCompanyTemplates(
   companyId: string,
   params?: {
-    kind?: string
-    language?: string
-    status?: string
+    kind?:
+      | 'purchase_agreement'
+      | 'gift_certificate'
+      | 'installment_subcontract'
+      | 'ownership_certificate'
+    language?: 'en' | 'ru' | 'de' | 'ar'
+    status?: 'draft' | 'active' | 'archived'
   },
 ): Promise<TemplateResponse[]> {
   const qs = buildQueryString({
