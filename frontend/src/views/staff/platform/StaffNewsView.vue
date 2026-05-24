@@ -1,45 +1,37 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffNewsView (iter 2.7 Block B stub)
+// CBSHOME Frontend -- StaffNewsView (iter 2.7 Block B)
 // =============================================================================
 //
-// SCAFFOLDING. Real content lands in Block B.
+// Platform-wide post management. Thin wrapper over the shared
+// PostListEditor with no fixedOwner -- the list shows every post
+// (platform + company) and the editor exposes the owner picker so
+// staff can author either kind.
 //
-// Lists all posts across the platform: owner_type=platform plus owner_type=company. CRUD via PostListEditor reused with no pre-filled props. Source: GET /api/v1/staff/posts.
-//
-// FP-24 lazy-import stub policy: this file exists so the router
-// import in /staff/platform/* resolves at build time. The block
-// that owns the view replaces this stub wholesale -- no partial
-// implementations in the stub.
+// The content_manage gate is resolved here once via useStaffPermissions
+// and handed to the editor as `canEdit` (FP-23). A staffer without the
+// permission still sees the read-only list.
 // =============================================================================
 
 import { useI18n } from 'vue-i18n'
+import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import PostListEditor from '@/components/staff/PostListEditor.vue'
 
 const { t } = useI18n()
+const { canDo } = useStaffPermissions()
+const canManageContent = canDo('content_manage')
 </script>
 
 <template>
-  <div class="staff-platform-stub">
-    <h2 class="staff-platform-stub__title">{{ t('staff.platform.news.title') }}</h2>
-    <p class="staff-platform-stub__placeholder">
-      {{ t('staff.platform.scaffolding.placeholder') }}
-    </p>
+  <div class="staff-news">
+    <h2 class="staff-news__title">{{ t('staff.platform.news.title') }}</h2>
+    <PostListEditor :can-edit="canManageContent" />
   </div>
 </template>
 
 <style scoped>
-.staff-platform-stub {
-  padding: var(--space-md, 16px);
-}
-.staff-platform-stub__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0 0 8px;
-}
-.staff-platform-stub__placeholder {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin: 0;
+.staff-news { padding: 16px; }
+.staff-news__title {
+  font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 12px;
 }
 </style>

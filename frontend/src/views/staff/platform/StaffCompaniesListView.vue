@@ -1,45 +1,220 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompaniesListView (iter 2.7 Block B stub)
+// CBSHOME Frontend -- StaffCompaniesListView (iter 2.7 Block B)
 // =============================================================================
 //
-// SCAFFOLDING. Real content lands in Block B.
+// Lists every company (active / hidden / archived) with a status
+// filter chip row, a name search, and pagination. Each row navigates
+// to the company detail surface (/staff/platform/companies/:id) whose
+// section tabs land in Block C.
 //
-// Lists all companies across statuses (active / hidden / archived). Filter chips + search. Source: GET /api/v1/staff/companies (iter 2.6c B2). Each card links to /staff/platform/companies/:id.
+// Source: api/staff-companies.ts::fetchStaffCompanies (company_manage
+// gated server-side). This view is read + navigate only -- no company
+// CRUD here; creation / editing live behind the detail sections.
 //
-// FP-24 lazy-import stub policy: this file exists so the router
-// import in /staff/platform/* resolves at build time. The block
-// that owns the view replaces this stub wholesale -- no partial
-// implementations in the stub.
+// Search is debounced (300ms) so each keystroke doesn't fire a request;
+// the timer resets page to 1 on a new term.
 // =============================================================================
 
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { Building2 } from 'lucide-vue-next'
+import { CBadge, CLoader, CButton, CEmptyState, CInput } from '@/components/ui'
+import { useToast } from '@/composables/useToast'
+import { safeNavigate } from '@/composables/safeNavigate'
+import { fetchStaffCompanies } from '@/api/staff-companies'
+import type { CompanyResponse } from '@/api/types'
 
 const { t } = useI18n()
+const { showToast } = useToast()
+const router = useRouter()
+
+const items = ref<CompanyResponse[]>([])
+const total = ref(0)
+const page = ref(1)
+const perPage = 20
+const statusFilter = ref<'' | 'active' | 'hidden' | 'archived'>('')
+const search = ref('')
+const loading = ref(true)
+const error = ref(false)
+
+// Debounce handle for the search box.
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+const totalPages = computed(() => Math.ceil(total.value / perPage))
+
+const statusVariant = (s: string) => {
+  if (s === 'active') return 'success'
+  if (s === 'hidden') return 'warning'
+  if (s === 'archived') return 'neutral'
+  return 'neutral'
+}
+
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
+}
+
+async function loadCompanies(): Promise<void> {
+  loading.value = true
+  error.value = false
+  try {
+    const resp = await fetchStaffCompanies({
+      status: statusFilter.value || undefined,
+      search: search.value.trim() || undefined,
+      page: page.value,
+      per_page: perPage,
+    })
+    items.value = resp.items
+    total.value = resp.total
+  } catch {
+    error.value = true
+    showToast(t('common.error'), 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+function setStatusFilter(s: '' | 'active' | 'hidden' | 'archived'): void {
+  statusFilter.value = s
+  page.value = 1
+}
+
+function openCompany(id: string): void {
+  void safeNavigate(
+    router.push(`/staff/platform/companies/${id}`),
+    `[StaffCompaniesListView] to company ${id}`,
+  )
+}
+
+// Status chip + page changes reload immediately.
+watch([statusFilter, page], () => loadCompanies())
+
+// Search debounce: reset to page 1 and reload 300ms after the last
+// keystroke. The watch on `page` above won't double-fire because we
+// only assign page.value = 1 when it isn't already 1.
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    if (page.value !== 1) {
+      page.value = 1 // triggers the [statusFilter, page] watcher -> reload
+    } else {
+      void loadCompanies()
+    }
+  }, 300)
+})
+
+onMounted(loadCompanies)
 </script>
 
 <template>
-  <div class="staff-platform-stub">
-    <h2 class="staff-platform-stub__title">{{ t('staff.platform.companies.title') }}</h2>
-    <p class="staff-platform-stub__placeholder">
-      {{ t('staff.platform.scaffolding.placeholder') }}
-    </p>
+  <div class="scl">
+    <h2 class="scl__title">{{ t('staff.platform.companies.title') }}</h2>
+
+    <!-- Status filter chips -->
+    <div class="scl__filters">
+      <button
+        class="filter-chip"
+        :class="{ active: !statusFilter }"
+        @click="setStatusFilter('')"
+      >{{ t('staff.platform.companies.filterAll') }}</button>
+      <button
+        v-for="s in (['active', 'hidden', 'archived'] as const)"
+        :key="s"
+        class="filter-chip"
+        :class="{ active: statusFilter === s }"
+        @click="setStatusFilter(s)"
+      >{{ t(`staff.platform.companies.filter.${s}`) }}</button>
+    </div>
+
+    <!-- Search -->
+    <CInput
+      v-model="search"
+      :placeholder="t('staff.platform.companies.searchPlaceholder')"
+    />
+
+    <!-- Loading -->
+    <div v-if="loading" class="scl__center">
+      <CLoader :size="32" />
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="error" class="scl__center">
+      <CButton variant="secondary" size="sm" @click="loadCompanies">
+        {{ t('common.retry') }}
+      </CButton>
+    </div>
+
+    <!-- Empty -->
+    <CEmptyState v-else-if="!items.length" :title="t('staff.platform.companies.empty')">
+      <template #icon><Building2 :size="40" /></template>
+    </CEmptyState>
+
+    <!-- List -->
+    <template v-else>
+      <div class="company-list">
+        <div
+          v-for="c in items"
+          :key="c.id"
+          class="company-item"
+          @click="openCompany(c.id)"
+        >
+          <div class="company-item__info">
+            <div class="company-item__name">{{ c.name }}</div>
+            <div class="company-item__detail">
+              {{ formatPrice(c.price_per_unit_cents) }} &bull;
+              {{ t('staff.platform.companies.supply', { n: c.total_supply }) }}
+            </div>
+          </div>
+          <CBadge :variant="statusVariant(c.status)" :text="c.status" />
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="scl__pagination">
+        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">&larr;</CButton>
+        <span class="scl__page">{{ page }} / {{ totalPages }}</span>
+        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">&rarr;</CButton>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.staff-platform-stub {
-  padding: var(--space-md, 16px);
+.scl { padding: 16px; }
+.scl__title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 12px; }
+
+.scl__filters {
+  display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px;
 }
-.staff-platform-stub__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0 0 8px;
+.filter-chip {
+  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--bg); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; text-transform: capitalize;
 }
-.staff-platform-stub__placeholder {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin: 0;
+.filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+.scl__center {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 200px; gap: 16px;
 }
+
+.company-list { display: flex; flex-direction: column; }
+.company-item {
+  display: flex; align-items: center; gap: 12px; padding: 14px 0;
+  border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s;
+}
+.company-item:hover { background: var(--bg-subtle); }
+.company-item__info { flex: 1; min-width: 0; }
+.company-item__name {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.company-item__detail { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+.scl__pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; margin-top: 16px;
+}
+.scl__page { font-size: 13px; color: var(--text-secondary); }
 </style>

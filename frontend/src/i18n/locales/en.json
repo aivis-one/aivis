@@ -301,7 +301,16 @@
         "title": "Platform events"
       },
       "companies": {
-        "title": "Companies"
+        "title": "Companies",
+        "filterAll": "All",
+        "filter": {
+          "active": "Active",
+          "hidden": "Hidden",
+          "archived": "Archived"
+        },
+        "searchPlaceholder": "Search companies by name...",
+        "empty": "No companies found",
+        "supply": "{n} supply"
       },
       "company": {
         "backLink": "Back to companies",
@@ -317,6 +326,60 @@
       },
       "scaffolding": {
         "placeholder": "Coming up in the next commits of iter 2.7."
+      },
+      "post": {
+        "createCta": "New post",
+        "createTitle": "New post",
+        "editTitle": "Edit post",
+        "empty": "No posts yet",
+        "ownerType": "Owner",
+        "ownerPlatform": "Platform",
+        "ownerCompany": "Company",
+        "ownerId": "Company ID",
+        "ownerIdPlaceholder": "company_profiles.id (UUID)",
+        "fieldTitle": "Title",
+        "fieldBody": "Body",
+        "fieldCover": "Cover image URL",
+        "fieldCoverPlaceholder": "https://...",
+        "fieldTags": "Tags",
+        "tagPlaceholder": "Type a tag, press Enter",
+        "isBanner": "Show as banner",
+        "isPublished": "Published",
+        "bannerBadge": "Banner",
+        "published": "Published",
+        "draft": "Draft",
+        "created": "Post created",
+        "updated": "Post updated",
+        "deleted": "Post deleted",
+        "deleteTitle": "Delete post",
+        "deleteConfirm": "This post will be removed. This cannot be undone."
+      },
+      "event": {
+        "createCta": "New event",
+        "createTitle": "New event",
+        "editTitle": "Edit event",
+        "empty": "No events yet",
+        "filterAll": "All",
+        "filterUpcoming": "Upcoming",
+        "filterPast": "Past",
+        "fieldTitle": "Title",
+        "fieldDescription": "Description",
+        "fieldStartsAt": "Starts at",
+        "fieldEndsAt": "Ends at (optional)",
+        "fieldLocation": "Location",
+        "fieldUrl": "Event URL",
+        "fieldUrlPlaceholder": "https://...",
+        "fieldCover": "Cover image URL",
+        "fieldCoverPlaceholder": "https://...",
+        "isPublished": "Published",
+        "published": "Published",
+        "draft": "Draft",
+        "endsAfterStartsError": "End time must be after the start time.",
+        "created": "Event created",
+        "updated": "Event updated",
+        "deleted": "Event deleted",
+        "deleteTitle": "Delete event",
+        "deleteConfirm": "This event will be removed. This cannot be undone."
       }
     }
   },
