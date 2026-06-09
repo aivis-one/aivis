@@ -74,11 +74,13 @@ import {
   Wallet,
 } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import EventCard from '@/components/shared/EventCard.vue'
 import { listPosts } from '@/api/posts'
+import { listUpcomingEvents } from '@/api/events'
 import { useDashboardStore } from '@/stores/dashboard'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { formatNumber, formatPrice } from '@/utils/format'
-import type { PostResponse } from '@/api/types'
+import type { PostResponse, EventResponse } from '@/api/types'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -104,6 +106,38 @@ async function loadPosts(): Promise<void> {
     postsErrored.value = true
   } finally {
     postsLoading.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Upcoming-events widget (local state -- one probe, no reuse, no
+// pagination). Independent of the posts probe: either can fail or be
+// empty without affecting the other. Unlike posts, this widget SELF-
+// HIDES when empty (FP-25) -- staff control the content, and an empty
+// events list should leave no trace rather than show a placeholder.
+// ---------------------------------------------------------------------------
+
+const EVENTS_PREVIEW_LIMIT = 3
+
+const events = ref<EventResponse[]>([])
+const eventsLoading = ref(false)
+const eventsErrored = ref(false)
+
+// Show the section only while loading, on error, or when there are
+// events to render. A settled-empty result removes it from the DOM.
+const showEventsSection = computed<boolean>(
+  () => eventsLoading.value || eventsErrored.value || events.value.length > 0,
+)
+
+async function loadEvents(): Promise<void> {
+  eventsLoading.value = true
+  eventsErrored.value = false
+  try {
+    events.value = await listUpcomingEvents(EVENTS_PREVIEW_LIMIT)
+  } catch {
+    eventsErrored.value = true
+  } finally {
+    eventsLoading.value = false
   }
 }
 
@@ -190,6 +224,16 @@ function goMarket(): void {
   )
 }
 
+function goEvents(): void {
+  // Dashboard is mounted under the investor shell only (the agent shell
+  // has its own AgentDashboardView), so the events screen is always the
+  // investor-side route -- no shell-aware route name needed here.
+  void safeNavigate(
+    router.push({ name: 'investor-events' }),
+    '[InvestorDashboardView] to events',
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Date formatting -- shared between posts list, matches BalanceView's
 // locale-aware pattern without pulling in a dedicated util (one call-
@@ -220,6 +264,7 @@ onMounted(() => {
   // balance spinners; posts have their own local flags.
   void dashboardStore.refresh()
   void loadPosts()
+  void loadEvents()
 
   // Start the greeting tick. 60 s matches the worst-case lag we're
   // willing to carry between a boundary crossing and the UI update.
@@ -375,6 +420,44 @@ onBeforeUnmount(() => {
               {{ formatPostDate(post.published_at ?? post.created_at) }}
             </div>
           </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Upcoming events (FP-25: whole section absent when settled-empty) -->
+    <section v-if="showEventsSection" class="dash__events">
+      <h2 class="dash__events-title">
+        {{ t('inv.dashboard.events.title') }}
+      </h2>
+
+      <!-- Loading -->
+      <div
+        v-if="eventsLoading && events.length === 0 && !eventsErrored"
+        class="dash__events-center"
+      >
+        <CLoader :size="24" />
+      </div>
+
+      <!-- Error (does NOT hide -- a failed fetch must not look like
+           "no events"; offer a retry instead) -->
+      <div
+        v-else-if="eventsErrored && events.length === 0"
+        class="dash__events-center"
+      >
+        <CEmptyState :title="t('inv.dashboard.events.errorTitle')" />
+        <CButton variant="outline" size="sm" @click="loadEvents">
+          {{ t('inv.dashboard.events.errorRetry') }}
+        </CButton>
+      </div>
+
+      <!-- List: each card opens the full events screen -->
+      <ul v-else class="dash__events-list">
+        <li
+          v-for="event in events"
+          :key="event.id"
+          class="dash__event"
+        >
+          <EventCard :event="event" variant="compact" @click="goEvents" />
         </li>
       </ul>
     </section>
@@ -592,5 +675,29 @@ onBeforeUnmount(() => {
 .dash__post-date {
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+/* Upcoming events widget */
+.dash__events { display: flex; flex-direction: column; gap: 10px; }
+.dash__events-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+.dash__events-center {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px;
+  min-height: 80px;
+  padding: 16px 8px;
+}
+.dash__events-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>

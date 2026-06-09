@@ -701,6 +701,24 @@
         "errorTitle": "Could not load news",
         "errorRetry": "Retry",
         "seeAll": "See all"
+      },
+      "events": {
+        "title": "Upcoming events",
+        "errorTitle": "Couldn't load events",
+        "errorRetry": "Retry"
+      }
+    },
+    "events": {
+      "title": "Events",
+      "filter": {
+        "upcoming": "Upcoming",
+        "past": "Past"
+      },
+      "empty": "No events yet",
+      "errorTitle": "Couldn't load events",
+      "errorRetry": "Retry",
+      "eventCard": {
+        "openUrl": "Open link"
       }
     },
     "portfolio": {

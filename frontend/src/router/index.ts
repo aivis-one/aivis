@@ -271,6 +271,13 @@ export const router = createRouter({
           component: () => import('@/views/investor/TransactionsView.vue'),
         },
         {
+          // iter 2.7b C: events surface (R1 §6.3). Shares
+          // InvestorEventsView with the agent shell below.
+          path: 'events',
+          name: 'investor-events',
+          component: () => import('@/views/investor/InvestorEventsView.vue'),
+        },
+        {
           path: 'docs',
           name: 'investor-docs',
           component: () => import('@/views/investor/InvestorDocsView.vue'),
@@ -386,6 +393,15 @@ export const router = createRouter({
           path: 'installment/:id',
           name: 'agent-installment',
           component: () => import('@/views/investor/InstallmentView.vue'),
+        },
+        {
+          // iter 2.7b C: events mirror -- same InvestorEventsView,
+          // agent layout. Parallel to /investor/events. meta.shell
+          // ('agent') is inherited from the AgentShell record so the
+          // view needs no per-route shell tag.
+          path: 'events',
+          name: 'agent-events',
+          component: () => import('@/views/investor/InvestorEventsView.vue'),
         },
       ],
     },
