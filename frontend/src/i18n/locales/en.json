@@ -468,7 +468,20 @@
         "updated": "Roadmap item updated",
         "deleted": "Roadmap item deleted",
         "deleteTitle": "Delete roadmap item",
-        "deleteConfirm": "This roadmap item will be removed. This cannot be undone."
+        "deleteConfirm": "This roadmap item will be removed. This cannot be undone.",
+        "cover": {
+          "label": "Cover image",
+          "upload": "Upload cover",
+          "replace": "Replace cover",
+          "remove": "Remove cover",
+          "createFirst": "Save the item first, then add a cover image.",
+          "uploaded": "Cover image uploaded",
+          "removed": "Cover image removed",
+          "errorMime": "Cover must be a PNG, JPEG, or WEBP image.",
+          "errorSize": "Cover image must be 10 MB or smaller.",
+          "removeTitle": "Remove cover image",
+          "removeConfirm": "The cover image will be removed from this roadmap item."
+        }
       }
     }
   },

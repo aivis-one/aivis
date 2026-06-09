@@ -41,8 +41,15 @@
 //   PUT    /api/v1/staff/companies/{id}/roadmap/{item_id}/cover
 //   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}/cover
 // =============================================================================
-
-import { api } from '@/api/client'
+import {
+  API_BASE_URL,
+  ApiNetworkError,
+  ApiResponseError,
+  ApiTimeoutError,
+  api,
+  getAuthToken,
+  parseRetryAfterHeader,
+} from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
 import type {
   CompanyDetailResponse,
@@ -392,5 +399,146 @@ export function reorderRoadmap(
   return api.patch<RoadmapItemResponse[]>(
     `/api/v1/staff/companies/${companyId}/roadmap/reorder`,
     body,
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Roadmap cover image (iter 2.7 D2, R1 §5.5)
+// ---------------------------------------------------------------------------
+//
+// Covers are multipart uploads, which the JSON `api` client cannot
+// send -- it hard-codes Content-Type: application/json. These two go
+// through a raw fetch() instead (the same shape as attachments.ts's
+// _downloadBlob, minus the blob materialisation -- the cover endpoint
+// returns JSON, not a redirect to bytes).
+
+// 30s upload window (vs the 15s JSON default) -- a 10 MiB image over
+// slow mobile needs the slack, mirroring the attachments download
+// timeout.
+const COVER_UPLOAD_TIMEOUT_MS = 30_000
+
+/**
+ * PUT /api/v1/staff/companies/{id}/roadmap/{itemId}/cover -- upload or
+ * replace a roadmap item's cover image (R1 §5.5). Requires
+ * company_manage server-side.
+ *
+ * Multipart with a single form field named `file` (matches the
+ * backend `file: UploadFile = File(...)` parameter). The mime is
+ * derived server-side from the filename extension -- the multipart
+ * Content-Type the browser sets is ignored there to neutralise
+ * spoofed-mime stored-XSS, so we do NOT set it ourselves either:
+ * letting the browser fill in `multipart/form-data; boundary=...` is
+ * mandatory (a manual Content-Type would omit the boundary and the
+ * upload would fail to parse).
+ *
+ * Whitelist (PNG / JPEG / WEBP) and the 10 MiB cap are enforced
+ * server-side; the section pre-checks both before calling to avoid an
+ * obvious 400. Returns the updated RoadmapItemResponse with a fresh
+ * presigned `cover_url`.
+ *
+ * Errors mirror the JSON client surface: ApiResponseError (4xx/5xx,
+ * with retryAfter on 429), ApiTimeoutError (abort), ApiNetworkError
+ * (transport). The caller renders the toast.
+ */
+export async function uploadRoadmapCover(
+  companyId: string,
+  itemId: string,
+  file: File,
+): Promise<RoadmapItemResponse> {
+  const url =
+    `${API_BASE_URL}/api/v1/staff/companies/${companyId}`
+    + `/roadmap/${itemId}/cover`
+
+  const form = new FormData()
+  // Field name MUST be `file` to bind the backend UploadFile param.
+  form.append('file', file)
+
+  // NB: no Content-Type header -- the browser sets multipart/form-data
+  // with the boundary. Only the auth header is added by hand.
+  const headers: Record<string, string> = {}
+  const token = getAuthToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    COVER_UPLOAD_TIMEOUT_MS,
+  )
+
+  try {
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: form,
+        signal: controller.signal,
+      })
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new ApiTimeoutError()
+      }
+      throw new ApiNetworkError(
+        err instanceof Error ? err.message : 'Network error',
+      )
+    }
+
+    // Parse the JSON body. On success it's the RoadmapItemResponse; on
+    // error it's the FastAPI detail / CBSError message envelope.
+    let data: unknown
+    try {
+      data = await response.json()
+    } catch {
+      const retryAfter =
+        response.status === 429 ? parseRetryAfterHeader(response) : undefined
+      throw new ApiResponseError(
+        response.status,
+        `HTTP ${response.status}: non-JSON response`,
+        retryAfter,
+      )
+    }
+
+    if (!response.ok) {
+      // Mirror client.ts extractErrorMessage: prefer `detail`, then
+      // `message`, else a status string.
+      let detail = `HTTP ${response.status}`
+      if (data && typeof data === 'object') {
+        const obj = data as { detail?: unknown; message?: unknown }
+        if ('detail' in obj && obj.detail != null) {
+          detail = String(obj.detail)
+        } else if ('message' in obj && typeof obj.message === 'string') {
+          detail = obj.message
+        }
+      }
+      const retryAfter =
+        response.status === 429 ? parseRetryAfterHeader(response) : undefined
+      throw new ApiResponseError(response.status, detail, retryAfter)
+    }
+
+    return data as RoadmapItemResponse
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+/**
+ * DELETE /api/v1/staff/companies/{id}/roadmap/{itemId}/cover -- remove
+ * the cover image (R1 §5.5). Requires company_manage server-side.
+ *
+ * Plain JSON-client DELETE (no multipart), returns 204. The backend
+ * 404s when the item has no cover -- an explicit "nothing to remove"
+ * rather than a silent success -- so the caller treats a 404 here as a
+ * benign already-removed case if it wants. Nulls cover_storage_key;
+ * the section reloads the detail to drop the thumbnail.
+ */
+export function deleteRoadmapCover(
+  companyId: string,
+  itemId: string,
+): Promise<void> {
+  return api.delete(
+    `/api/v1/staff/companies/${companyId}/roadmap/${itemId}/cover`,
   )
 }

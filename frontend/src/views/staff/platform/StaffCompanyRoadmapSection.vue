@@ -58,7 +58,15 @@
 import { ref, computed, onMounted, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon } from 'lucide-vue-next'
+import {
+  ChevronUp,
+  ChevronDown,
+  Pencil,
+  Trash2,
+  Map as MapIcon,
+  ImageUp,
+  X,
+} from 'lucide-vue-next'
 import {
   CLoader,
   CButton,
@@ -77,6 +85,8 @@ import {
   updateRoadmapItem,
   deleteRoadmapItem,
   reorderRoadmap,
+  uploadRoadmapCover,
+  deleteRoadmapCover,
 } from '@/api/staff-companies'
 import type {
   RoadmapItemResponse,
@@ -278,6 +288,7 @@ function openCreate(): void {
   }
   editingId.value = null
   editingOriginal.value = null
+  coverPreviewUrl.value = ''
   resetDraft('milestone')
   showForm.value = true
 }
@@ -289,6 +300,7 @@ function openEdit(item: RoadmapItemResponse): void {
   }
   editingId.value = item.id
   editingOriginal.value = item
+  coverPreviewUrl.value = item.cover_url ?? ''
   draftKind.value = item.kind as RoadmapItemKind
   draftTitle.value = item.title
   draftDescription.value = item.description ?? ''
@@ -523,6 +535,122 @@ async function handleDelete(): Promise<void> {
     showToast(t('common.error'), 'error')
   } finally {
     deleting.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cover image (D2, R1 §5.5)
+//
+// Cover operations are IMMEDIATE -- upload and remove hit the API on
+// click, independent of the form's Save button (the cover has its own
+// item-scoped endpoints and there is no item to attach a cover to until
+// the row exists, so covers are edit-only). coverPreviewUrl mirrors the
+// item's presigned cover_url so the modal updates without waiting on the
+// list reload; the reload still runs so the card thumbnail stays in sync.
+// ---------------------------------------------------------------------------
+
+const COVER_MIME_WHITELIST = ['image/png', 'image/jpeg', 'image/webp'] as const
+const COVER_MAX_BYTES = 10 * 1024 * 1024 // 10 MiB, mirrors backend cap
+
+// Hidden file input ref (clicked via the upload button).
+const coverInputEl = ref<HTMLInputElement | null>(null)
+
+// Presigned URL of the current cover for the item being edited, or '' if
+// none. Seeded in openEdit, updated from the upload response, cleared on
+// remove. Separate from editingOriginal because reload() swaps the
+// underlying roadmap array, detaching the original reference.
+const coverPreviewUrl = ref('')
+
+const coverUploading = ref(false)
+const coverRemoving = ref(false)
+
+// Remove-confirm modal target (the item id being cleared).
+const coverRemoveTarget = ref<string | null>(null)
+
+function triggerCoverPicker(): void {
+  if (!canManage.value) {
+    console.warn('[StaffCompanyRoadmapSection] cover picker blocked: no company_manage')
+    return
+  }
+  coverInputEl.value?.click()
+}
+
+async function onCoverSelected(e: Event): Promise<void> {
+  if (!canManage.value) {
+    console.warn('[StaffCompanyRoadmapSection] cover upload blocked: no company_manage')
+    return
+  }
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Reset the input value so selecting the same file again re-triggers
+  // change (browsers suppress change when the value is identical).
+  input.value = ''
+  if (!file) return
+  if (!editingId.value) return
+
+  // Client-side validation (defence in depth; backend re-validates).
+  if (!(COVER_MIME_WHITELIST as readonly string[]).includes(file.type)) {
+    showToast(t('staff.platform.roadmap.cover.errorMime'), 'error')
+    return
+  }
+  if (file.size > COVER_MAX_BYTES) {
+    showToast(t('staff.platform.roadmap.cover.errorSize'), 'error')
+    return
+  }
+
+  coverUploading.value = true
+  try {
+    const updated = await uploadRoadmapCover(companyId.value, editingId.value, file)
+    coverPreviewUrl.value = updated.cover_url ?? ''
+    showToast(t('staff.platform.roadmap.cover.uploaded'), 'success')
+    // Refresh the list so the card thumbnail reflects the new cover.
+    await reload()
+  } catch (e) {
+    if (e instanceof ApiResponseError && e.detail) {
+      showToast(e.detail, 'error')
+    } else {
+      showToast(t('common.error'), 'error')
+    }
+  } finally {
+    coverUploading.value = false
+  }
+}
+
+function openCoverRemove(): void {
+  if (!canManage.value) {
+    console.warn('[StaffCompanyRoadmapSection] cover remove blocked: no company_manage')
+    return
+  }
+  if (!editingId.value) return
+  coverRemoveTarget.value = editingId.value
+}
+
+async function handleCoverRemove(): Promise<void> {
+  if (!canManage.value || !coverRemoveTarget.value) {
+    if (!canManage.value) {
+      console.warn('[StaffCompanyRoadmapSection] cover remove blocked: no company_manage')
+    }
+    return
+  }
+  coverRemoving.value = true
+  try {
+    await deleteRoadmapCover(companyId.value, coverRemoveTarget.value)
+    coverPreviewUrl.value = ''
+    coverRemoveTarget.value = null
+    showToast(t('staff.platform.roadmap.cover.removed'), 'success')
+    await reload()
+  } catch (e) {
+    // A 404 means the cover was already gone -- treat as success-ish:
+    // clear the preview and reload rather than alarming the user.
+    if (e instanceof ApiResponseError && e.status === 404) {
+      coverPreviewUrl.value = ''
+      coverRemoveTarget.value = null
+      await reload()
+    } else {
+      showToast(t('common.error'), 'error')
+    }
+  } finally {
+    coverRemoving.value = false
   }
 }
 
@@ -764,6 +892,59 @@ onMounted(() => {
         :error="!externalUrlValid ? t('staff.platform.roadmap.externalUrlError') : ''"
       />
 
+      <!-- Cover image (D2). Edit-only: a cover needs an item id, and on
+           create the row does not exist yet. Operations are immediate
+           (not tied to Save). FP-23: gated on canManage (the whole
+           section's controls only render for managers anyway). -->
+      <div class="scr__cover">
+        <label class="scr__field-label">{{ t('staff.platform.roadmap.cover.label') }}</label>
+
+        <template v-if="isEditing">
+          <!-- Preview (FP-25 self-hide when no cover) -->
+          <div v-if="coverPreviewUrl" class="scr__cover-preview">
+            <img :src="coverPreviewUrl" alt="" class="scr__cover-img" />
+          </div>
+
+          <div class="scr__cover-actions">
+            <CButton
+              variant="outline"
+              size="sm"
+              :loading="coverUploading"
+              @click="triggerCoverPicker"
+            >
+              <ImageUp :size="16" />
+              {{ coverPreviewUrl
+                ? t('staff.platform.roadmap.cover.replace')
+                : t('staff.platform.roadmap.cover.upload') }}
+            </CButton>
+            <CButton
+              v-if="coverPreviewUrl"
+              variant="outline"
+              size="sm"
+              :loading="coverRemoving"
+              @click="openCoverRemove"
+            >
+              <X :size="16" />
+              {{ t('staff.platform.roadmap.cover.remove') }}
+            </CButton>
+          </div>
+
+          <!-- Hidden native picker (no CFileInput in the kit). -->
+          <input
+            ref="coverInputEl"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            class="scr__cover-input"
+            @change="onCoverSelected"
+          />
+        </template>
+
+        <!-- Create mode: cover not available until the item exists. -->
+        <p v-else class="scr__hint">
+          {{ t('staff.platform.roadmap.cover.createFirst') }}
+        </p>
+      </div>
+
       <div class="scr__modal-actions">
         <CButton variant="outline" size="sm" @click="closeForm">
           {{ t('common.cancel') }}
@@ -792,6 +973,23 @@ onMounted(() => {
           :loading="deleting"
           @click="handleDelete"
         >{{ t('common.delete') }}</CButton>
+      </div>
+    </CModal>
+
+    <!-- Cover remove confirm (D2) -->
+    <CModal :open="!!coverRemoveTarget" @close="coverRemoveTarget = null">
+      <h3 class="scr__modal-title">{{ t('staff.platform.roadmap.cover.removeTitle') }}</h3>
+      <p class="scr__modal-hint">{{ t('staff.platform.roadmap.cover.removeConfirm') }}</p>
+      <div class="scr__modal-actions">
+        <CButton variant="outline" size="sm" @click="coverRemoveTarget = null">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="danger"
+          size="sm"
+          :loading="coverRemoving"
+          @click="handleCoverRemove"
+        >{{ t('staff.platform.roadmap.cover.remove') }}</CButton>
       </div>
     </CModal>
   </div>
@@ -894,4 +1092,14 @@ onMounted(() => {
 }
 .scr__date:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
 .scr__field-error { font-size: 12px; color: var(--danger); margin-top: 4px; }
+
+/* Cover block (D2) */
+.scr__cover { margin-bottom: 16px; }
+.scr__cover-preview { margin-bottom: 8px; }
+.scr__cover-img {
+  width: 100%; max-height: 180px; object-fit: cover;
+  border-radius: var(--radius-md); display: block;
+}
+.scr__cover-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.scr__cover-input { display: none; }
 </style>
