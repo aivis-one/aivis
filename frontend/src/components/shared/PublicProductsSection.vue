@@ -66,11 +66,8 @@
 // =============================================================================
 
 import { computed, onMounted, watch } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { useRouter } from 'vue-router'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
@@ -182,24 +179,13 @@ function openProduct(product: PublicProductResponse): void {
   // Anonymous storefront stays on /public/* throughout. The detail
   // route lands as a stub in Batch 2 and gets its real implementation
   // in Batch 6; navigation succeeds either way.
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: 'public-product-detail',
       params: { id: product.id },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PublicProductsSection] navigation to product failed:',
-        err,
-      )
-    })
+    }),
+    '[PublicProductsSection] to product',
+  )
 }
 
 function onSeeAllClick(): void {
@@ -235,24 +221,13 @@ function onSeeAllClick(): void {
     )
     return
   }
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: targetRoute,
       params: { id: props.companyId },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PublicProductsSection] navigation to auth products failed:',
-        err,
-      )
-    })
+    }),
+    '[PublicProductsSection] to auth products',
+  )
 }
 
 function onRetry(): void {

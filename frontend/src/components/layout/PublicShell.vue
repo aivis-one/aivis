@@ -41,12 +41,8 @@
 // =============================================================================
 
 import { computed } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 
 import CHeader from '@/components/layout/CHeader.vue'
@@ -67,24 +63,13 @@ const nextQuery = computed<string | undefined>(() => {
 })
 
 function goToLogin(): void {
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: 'login',
       query: nextQuery.value ? { next: nextQuery.value } : undefined,
-    })
-    .catch((err: unknown) => {
-      // Benign vue-router rejection types stay silent (see
-      // useAuthWall R20 STYLE-20-01 for the rationale). Real
-      // navigation issues log with a contextual prefix.
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error('[PublicShell] navigation to login failed:', err)
-    })
+    }),
+    '[PublicShell] to login',
+  )
 }
 </script>
 

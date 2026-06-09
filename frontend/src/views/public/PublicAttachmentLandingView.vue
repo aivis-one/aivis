@@ -57,7 +57,8 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter, isNavigationFailure, NavigationFailureType } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowLeft,
@@ -178,24 +179,13 @@ function onRetry(): void {
 }
 
 function goToCompany(): void {
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: 'public-company-overview',
       params: { id: companyId.value },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PublicAttachmentLandingView] navigation to company failed:',
-        err,
-      )
-    })
+    }),
+    '[PublicAttachmentLandingView] to company',
+  )
 }
 
 async function onDownload(): Promise<void> {

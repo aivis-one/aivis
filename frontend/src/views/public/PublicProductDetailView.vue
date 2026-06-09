@@ -49,12 +49,8 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
 
@@ -202,24 +198,13 @@ function onRetry(): void {
 function goToCompany(): void {
   const p = product.value
   if (!p) return
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: 'public-company-overview',
       params: { id: p.company_id },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PublicProductDetailView] navigation to company failed:',
-        err,
-      )
-    })
+    }),
+    '[PublicProductDetailView] to company',
+  )
 }
 
 function onBuyClick(): void {
@@ -253,24 +238,13 @@ function onBuyClick(): void {
     )
     return
   }
-  router
-    .push({
+  void safeNavigate(
+    router.push({
       name: targetRoute,
       params: { id: p.id },
-    })
-    .catch((err: unknown) => {
-      if (
-        isNavigationFailure(err, NavigationFailureType.duplicated)
-        || isNavigationFailure(err, NavigationFailureType.cancelled)
-        || isNavigationFailure(err, NavigationFailureType.aborted)
-      ) {
-        return
-      }
-      console.error(
-        '[PublicProductDetailView] navigation to purchase failed:',
-        err,
-      )
-    })
+    }),
+    '[PublicProductDetailView] to purchase',
+  )
 }
 </script>
 
