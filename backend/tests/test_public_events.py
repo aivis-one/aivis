@@ -376,16 +376,30 @@ async def test_upcoming_endpoint_limit_clamped_to_50(
 async def test_upcoming_endpoint_default_limit_three(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """With no ?limit, the endpoint defaults to 3 items.
+    """With no ?limit, the endpoint defaults to 3 items, and the
+    earliest future event is among them.
 
-    Seed four future published events; the default response must
-    carry at most 3. (At most, not exactly: the dev DB may already
-    hold future events, but the cap is what we assert.)
+    OBS-43-01: asserting only `len <= 3` is too weak -- if the dev DB
+    already holds 3+ future events, all of this test's seeds could be
+    pushed past the limit and the test would pass while verifying
+    nothing about our own rows. To make the assertion meaningful we
+    seed one event anchored just after now() (`near`), which under the
+    ASC ordering is the earliest future event there can be (nothing
+    realistic is scheduled in the next second), so it is guaranteed to
+    occupy one of the first 3 slots. The remaining seeds (further out)
+    only exist to make the list longer than the cap.
     """
     admin_token = await _admin_token(client, db_session)
     now = datetime.now(UTC)
 
-    for d in (1, 2, 3, 4):
+    # Earliest-future anchor: +1s puts it ahead of any plausibly
+    # pre-existing future row, so ASC ordering must surface it first.
+    near = await _create_event(
+        client, admin_token, is_published=True,
+        starts_at=now + timedelta(seconds=1),
+    )
+    # Fillers further out so the unbounded list exceeds the default cap.
+    for d in (2, 3, 4):
         await _create_event(
             client, admin_token, is_published=True,
             starts_at=now + timedelta(days=d),
@@ -397,4 +411,9 @@ async def test_upcoming_endpoint_default_limit_three(
     assert isinstance(items, list)
     assert len(items) <= 3, (
         f"default limit must be 3, got {len(items)} items"
+    )
+    # The earliest future event must be in the (ASC) default page.
+    assert near["id"] in [i["id"] for i in items], (
+        "earliest future event missing from the default upcoming page -- "
+        "default limit or ASC ordering is wrong"
     )
