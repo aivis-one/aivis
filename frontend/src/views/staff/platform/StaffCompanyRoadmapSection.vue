@@ -55,7 +55,7 @@
 // both and the backend leaves them null.
 // =============================================================================
 
-import { ref, computed, onMounted, watch, inject } from 'vue'
+import { ref, computed, onMounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -654,14 +654,12 @@ async function handleCoverRemove(): Promise<void> {
   }
 }
 
-// The injected company may resolve / change after mount; nothing to
-// fetch here (the parent owns the load), but keep an explicit reload on
-// id change so a (rare) :id swap re-pulls through the parent.
-watch(companyId, () => {
-  // Parent re-fetches on its own id watch; this is a safety net for the
-  // case where this section outlives a parent id change.
-  void reload()
-})
+// No watch(companyId) here. The parent StaffCompanyDetailView owns the
+// reload on an :id change (it re-fetches the company and the injected
+// context updates); this section reads the roadmap reactively from that
+// context through the `items` computed, so it re-renders without its own
+// watcher. onMounted only covers the first-paint case where the parent
+// has not started loading yet (e.g. a deep-link straight into this tab).
 onMounted(() => {
   // If the parent hasn't loaded yet, its own onMounted will; if it has,
   // items is already populated from the injected company. No-op fetch
