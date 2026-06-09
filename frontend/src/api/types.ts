@@ -705,3 +705,28 @@ export type { TemplateDetailResponse } from './generated'
 export type { StaffAttachmentResponse } from './generated'
 
 export type { ReorderAttachmentsRequest } from './generated'
+
+// ---------------------------------------------------------------------------
+// Roadmap CRUD (iter 2.7 D1, R1 §5)
+//
+// Write surfaces for StaffCompanyRoadmapSection. RoadmapItemResponse
+// itself is already re-exported in the F4.1 public-storefront block
+// above (the public CompanyOverview timeline consumes the same shape),
+// so it is NOT repeated here -- only the staff write-side request
+// bodies plus the kind enum land below.
+//
+// `kind` is required + immutable on create (CreateRoadmapItemRequest);
+// UpdateRoadmapItemRequest deliberately omits it. RoadmapItemStatus is
+// NOT a generated TS type -- the backend types status as bare `str` on
+// the wire, so the section owns a local `as const` status list for its
+// select options + badge variants (same narrowing rationale as the
+// UserRole / KycStatus unions near the top of this file).
+// ---------------------------------------------------------------------------
+
+export type { CreateRoadmapItemRequest } from './generated'
+
+export type { UpdateRoadmapItemRequest } from './generated'
+
+export type { ReorderRoadmapRequest } from './generated'
+
+export type { RoadmapItemKind } from './generated'

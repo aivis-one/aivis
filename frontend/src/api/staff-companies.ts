@@ -26,14 +26,20 @@
 //   GET    /api/v1/staff/companies/{id}/attachments         -- doc list (C2)
 //   PATCH  /api/v1/staff/companies/{id}/attachments/reorder -- reorder (C2)
 //   DELETE /api/v1/staff/companies/{id}/attachments/{aid}   -- soft-delete (C2)
+//   POST   /api/v1/staff/companies/{id}/roadmap             -- create item (D1)
+//   PATCH  /api/v1/staff/companies/{id}/roadmap/reorder     -- reorder (D1)
+//   PATCH  /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update item (D1)
+//   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}   -- soft-delete (D1)
 //
 // Endpoints deferred to Block C / D:
 //   POST   /api/v1/staff/companies
 //   PATCH  /api/v1/staff/companies/{id}
-//   POST   /api/v1/staff/companies/{id}/roadmap
-//   PATCH  /api/v1/staff/companies/{id}/roadmap/{item_id}
-//   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}
-//   PATCH  /api/v1/staff/companies/{id}/roadmap/reorder
+//
+// Block D2 (cover upload) adds two more here -- they speak multipart
+// via fetch() (the JSON `api` client cannot send FormData), so they
+// land alongside the D2 view that drives them:
+//   PUT    /api/v1/staff/companies/{id}/roadmap/{item_id}/cover
+//   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}/cover
 // =============================================================================
 
 import { api } from '@/api/client'
@@ -42,12 +48,16 @@ import type {
   CompanyDetailResponse,
   CompanyListResponse,
   CompanyResponse,
+  CreateRoadmapItemRequest,
   PriceHistoryListResponse,
   ReorderAttachmentsRequest,
+  ReorderRoadmapRequest,
+  RoadmapItemResponse,
   StaffAttachmentResponse,
   TemplateDetailResponse,
   TemplateResponse,
   UpdatePriceRequest,
+  UpdateRoadmapItemRequest,
 } from '@/api/types'
 
 /**
@@ -274,5 +284,113 @@ export function deleteStaffCompanyAttachment(
 ): Promise<void> {
   return api.delete(
     `/api/v1/staff/companies/${companyId}/attachments/${attachmentId}`,
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Roadmap CRUD + reorder (iter 2.7 D1, R1 §5)
+// ---------------------------------------------------------------------------
+//
+// The roadmap itself is NOT fetched here -- it arrives inline on
+// CompanyDetailResponse.roadmap via fetchStaffCompany, which the parent
+// StaffCompanyDetailView already loads and provides through
+// STAFF_COMPANY_KEY. The section mutates via these endpoints and then
+// calls ctx.reload() to re-pull the detail (cheap, unpaginated).
+//
+// Per-kind invariants (milestone / event / announcement) and the
+// milestone state machine (completed is terminal) are enforced
+// server-side; the section pre-validates in the form to avoid an
+// obvious 400, but the backend is the source of truth.
+
+/**
+ * POST /api/v1/staff/companies/{id}/roadmap -- create one roadmap item
+ * (R1 §5). Requires company_manage server-side.
+ *
+ * `kind` is required and immutable after create. Per-kind body rules
+ * (Pydantic _check_kind_rules): milestone forbids valid_until; event
+ * requires target_date + valid_until with valid_until > target_date;
+ * announcement forbids target_date / valid_until / status. A violation
+ * is a 422 (Pydantic) -- the form mirrors these rules to prevent it.
+ *
+ * `cover_storage_key` is NOT part of the body -- the cover is managed
+ * by the dedicated D2 multipart endpoint. Returns the created item
+ * (201) including a presigned `cover_url` (null on create).
+ */
+export function createRoadmapItem(
+  companyId: string,
+  body: CreateRoadmapItemRequest,
+): Promise<RoadmapItemResponse> {
+  return api.post<RoadmapItemResponse>(
+    `/api/v1/staff/companies/${companyId}/roadmap`,
+    body,
+  )
+}
+
+/**
+ * PATCH /api/v1/staff/companies/{id}/roadmap/{itemId} -- partial update
+ * of a roadmap item (R1 §5). Requires company_manage server-side.
+ *
+ * `kind` is intentionally absent from UpdateRoadmapItemRequest -- it is
+ * immutable. Send ONLY the fields that actually changed: the backend
+ * uses exclude_unset + a `...` sentinel to tell "field omitted" (keep)
+ * from "field set to null" (clear). Sending an unchanged field as null
+ * would wipe it.
+ *
+ * Milestone state machine: moving a `completed` milestone to any other
+ * status is a 400 ("Cannot move a completed milestone to another
+ * status. ..."). The text carries no machine-readable prefix, so the
+ * section blocks this in the form (disabled status select on a
+ * completed milestone) rather than parsing the message.
+ */
+export function updateRoadmapItem(
+  companyId: string,
+  itemId: string,
+  body: UpdateRoadmapItemRequest,
+): Promise<RoadmapItemResponse> {
+  return api.patch<RoadmapItemResponse>(
+    `/api/v1/staff/companies/${companyId}/roadmap/${itemId}`,
+    body,
+  )
+}
+
+/**
+ * DELETE /api/v1/staff/companies/{id}/roadmap/{itemId} -- soft-delete
+ * one roadmap item (R1 §5). Sets is_deleted=True server-side; any
+ * uploaded cover object is left in MinIO. Returns 204. Requires
+ * company_manage server-side.
+ */
+export function deleteRoadmapItem(
+  companyId: string,
+  itemId: string,
+): Promise<void> {
+  return api.delete(
+    `/api/v1/staff/companies/${companyId}/roadmap/${itemId}`,
+  )
+}
+
+/**
+ * PATCH /api/v1/staff/companies/{id}/roadmap/reorder -- bulk reorder
+ * (R1 §5). Requires company_manage server-side.
+ *
+ * `item_ids` must be the COMPLETE ordered list of every non-deleted
+ * roadmap item for the company (per-company scope, NOT per-kind). A
+ * partial / extended / duplicate list is rejected 400.
+ *
+ * NOTE: unlike the attachments reorder (which emits the
+ * `attachments_reorder_set_mismatch:` prefix), the roadmap reorder
+ * error message is plain prose ("Reorder mismatch: ...", "Duplicate
+ * IDs in reorder list") with NO machine-readable prefix. The section
+ * therefore treats any ApiResponseError from this call as a stale-list
+ * signal: it shows a generic error toast and reloads, rather than
+ * matching on a prefix. Returns the items in their new order.
+ */
+export function reorderRoadmap(
+  companyId: string,
+  body: ReorderRoadmapRequest,
+): Promise<RoadmapItemResponse[]> {
+  return api.patch<RoadmapItemResponse[]>(
+    `/api/v1/staff/companies/${companyId}/roadmap/reorder`,
+    body,
   )
 }
