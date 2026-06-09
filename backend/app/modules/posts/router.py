@@ -6,8 +6,8 @@
 #   GET  /api/v1/posts             -- post feed (paginated, filters)
 #   GET  /api/v1/posts/{id}        -- single post
 #   POST /api/v1/posts/{id}/dismiss -- dismiss banner
-#   GET  /api/v1/events            -- event list (paginated)
-#   GET  /api/v1/events/upcoming   -- next 30 days
+#   GET  /api/v1/events            -- event list (paginated, ?upcoming)
+#   GET  /api/v1/events/upcoming   -- next N events (?limit, default 3)
 #
 # AUTH:
 #   GET endpoints use get_optional_user (anonymous allowed).
@@ -131,11 +131,23 @@ async def dismiss_post_endpoint(
 async def list_events_endpoint(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
+    upcoming: bool | None = Query(default=None),
     user: User | None = Depends(get_optional_user),
     session: AsyncSession = Depends(get_db_reader),
 ) -> EventListResponse:
-    """List published events (paginated)."""
-    items, total = await list_events(session, page=page, per_page=per_page)
+    """List published events (paginated).
+
+    iter 2.7b A: optional `upcoming` splits the list on now() at
+    request time (the service captures one wall-clock value for both
+    count and page). Sort order:
+      upcoming=true  -> starts_at ASC (next event at the top).
+      upcoming=false -> starts_at DESC (most recent past at the top).
+      upcoming=None  -> starts_at DESC (unfiltered, the default).
+    Omitting `upcoming` reproduces the pre-2.7b behaviour exactly.
+    """
+    items, total = await list_events(
+        session, page=page, per_page=per_page, upcoming=upcoming
+    )
     return EventListResponse(
         items=[EventResponse.model_validate(e) for e in items],
         total=total,
@@ -149,9 +161,22 @@ async def list_events_endpoint(
     response_model=list[EventResponse],
 )
 async def upcoming_events_endpoint(
+    limit: int = Query(default=3, ge=1),
     user: User | None = Depends(get_optional_user),
     session: AsyncSession = Depends(get_db_reader),
 ) -> list[EventResponse]:
-    """List published events starting within the next 30 days."""
-    events = await list_upcoming_events(session)
+    """List the next `limit` published events (soonest first).
+
+    iter 2.7b A: drives the InvestorDashboardView "Upcoming events"
+    widget (calls with limit=3). Returns a plain list (no pagination
+    envelope) -- the widget renders the top N and never paginates;
+    the full /investor/events screen uses GET /events?upcoming=true
+    for the paginated surface instead.
+
+    `limit` has a floor of 1 here and a ceiling of 50 enforced in the
+    service (an over-large value is clamped to 50, not rejected). The
+    previous 30-day upper window was removed in 2.7b -- "upcoming" is
+    now simply starts_at >= now().
+    """
+    events = await list_upcoming_events(session, limit=limit)
     return [EventResponse.model_validate(e) for e in events]

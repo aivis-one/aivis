@@ -19,14 +19,16 @@
 #     create_event()           -- create calendar event (staff only)
 #     update_event()           -- partial update (PATCH)
 #     delete_event()           -- soft delete (is_deleted=True)
-#     list_events()            -- published events (paginated)
-#     list_upcoming_events()   -- next 30 days (LIMIT 100)
+#     list_events()            -- published events (paginated, ?upcoming)
+#     list_upcoming_events()   -- next N (?limit, default 3, max 50)
 #     staff_list_events()      -- staff feed: includes drafts +
 #                                upcoming/past split (iter 2.6c B4)
 #
 # REVIEW FIXES:
 #   - dismiss_post: begin_nested() SAVEPOINT instead of session.rollback()
-#   - list_upcoming_events: .limit(100) safety cap
+#   - list_upcoming_events: limit clamped to
+#                           settings.events_upcoming_max_limit (50);
+#                           30-day window dropped in iter 2.7b (A1-i)
 #   - owner_type validation moved to Pydantic Literal (schema layer)
 #
 # COMMIT RULE (P-01):
@@ -34,7 +36,7 @@
 # =============================================================================
 
 import json
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, UTC
 from uuid import UUID
 
 import structlog
@@ -43,6 +45,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.config import settings
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.models import CompanyProfile
 from app.modules.posts.constants import OwnerType
@@ -635,16 +638,37 @@ async def list_events(
     *,
     page: int = 1,
     per_page: int = 20,
+    upcoming: bool | None = None,
 ) -> tuple[list[Event], int]:
     """List published, non-deleted events (paginated).
 
+    iter 2.7b A: optional `upcoming` time-window split, mirroring
+    staff_list_events so the public list and the staff list behave
+    identically on the now() boundary:
+        upcoming=True  -> Event.starts_at >= now(), ORDER BY ASC.
+        upcoming=False -> Event.starts_at <  now(), ORDER BY DESC.
+        upcoming=None  -> no time filter, ORDER BY DESC.
+    upcoming=None reproduces the pre-2.7b behaviour exactly (DESC,
+    full pagination) so existing callers and tests are unaffected.
+
     Returns:
-        (events, total) tuple.
+        (events, total) tuple. Order depends on `upcoming` -- see above.
     """
     conditions = [
         Event.is_published.is_(True),
         Event.is_deleted.is_(False),
     ]
+
+    # Time-window split. Captured once so the count and the page select
+    # agree on the wall clock; otherwise a slow query could straddle the
+    # boundary and the page returns rows the count missed. Same pattern
+    # as staff_list_events.
+    if upcoming is not None:
+        now = datetime.now(UTC)
+        if upcoming:
+            conditions.append(Event.starts_at >= now)
+        else:
+            conditions.append(Event.starts_at < now)
 
     count_stmt = (
         select(func.count())
@@ -653,10 +677,18 @@ async def list_events(
     )
     total = (await session.execute(count_stmt)).scalar_one()
 
+    # ASC for upcoming=True so the next event surfaces first; DESC for
+    # everything else (past split, or the unfiltered default).
+    order_clause = (
+        Event.starts_at.asc()
+        if upcoming is True
+        else Event.starts_at.desc()
+    )
+
     stmt = (
         select(Event)
         .where(*conditions)
-        .order_by(Event.starts_at.desc())
+        .order_by(order_clause)
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
@@ -668,16 +700,30 @@ async def list_events(
 
 async def list_upcoming_events(
     session: AsyncSession,
+    *,
+    limit: int = 3,
 ) -> list[Event]:
-    """List published events starting within the next 30 days.
+    """List published events starting now or later, soonest first.
 
-    Safety cap: max 100 results to prevent unbounded queries.
+    iter 2.7b A (A1-i): the previous 30-day upper window was dropped.
+    "Upcoming" now means simply starts_at >= now() with no far-future
+    cap -- the dashboard widget wants the next N events whenever they
+    are, not only those inside an arbitrary month. The only bound is
+    `limit`.
+
+    `limit` is clamped to settings.events_upcoming_max_limit (50) here
+    in the service rather than at the router so an over-large value
+    degrades gracefully to the ceiling instead of failing the request
+    with a 422 -- the caller asking for "too many" still gets a sensible
+    page. The router supplies the default (3) and a floor (ge=1); the
+    ceiling lives in config.
 
     Returns:
-        List of upcoming events sorted by starts_at ASC.
+        Published, non-deleted events with starts_at >= now(), sorted
+        ascending, capped at min(limit, 50).
     """
     now = datetime.now(UTC)
-    cutoff = now + timedelta(days=30)
+    effective_limit = min(limit, settings.events_upcoming_max_limit)
 
     stmt = (
         select(Event)
@@ -685,10 +731,9 @@ async def list_upcoming_events(
             Event.is_published.is_(True),
             Event.is_deleted.is_(False),
             Event.starts_at >= now,
-            Event.starts_at <= cutoff,
         )
         .order_by(Event.starts_at.asc())
-        .limit(100)
+        .limit(effective_limit)
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())

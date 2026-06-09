@@ -130,6 +130,13 @@ class Settings(BaseSettings):
     leaderboard_top_quarterly: int = 10
     leaderboard_worker_interval_minutes: int = 60
 
+    # -- Events (iter 2.7b) --
+    # Ceiling for GET /api/v1/events/upcoming?limit=N. The dashboard
+    # widget asks for 3; this bounds an over-large client request so the
+    # query stays cheap. Clamped in posts/service.py::list_upcoming_events
+    # (an oversized limit degrades to this value, not a 422).
+    events_upcoming_max_limit: int = 50
+
     # -- Computed properties --
 
     @property
