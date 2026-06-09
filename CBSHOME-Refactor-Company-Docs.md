@@ -1,9 +1,9 @@
 # CBSHOME -- Refactor: Company Attachments, Templates & Purchase Docs
 
-**Версия:** 0.8 / decision-locked
+**Версия:** 0.9 final / decision-locked / **fully implemented**
 **Дата:** 13 мая 2026
 
-**Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
+**Статус:** все блоки (§1-§7) реализованы в итерациях 2.1-2.4 (backend) + iter 2.5 / 2.6 / 2.7 (frontend). Документ закрыт; дальше — только обращение как к историческому источнику дизайна.
 
 **Changelog v0.6 (10 May 2026):**
 - §4 закрыт (✅ iter 2.3): templates module, platform default seed, 4-stage fallback, reconcile-templates per-company + platform, Redis HTML-кэш, draft изоляция в `.draft-v<N>/`. 421 → 450 тестов, 0 регрессий. New head migration `0031_company_document_templates`.
@@ -66,7 +66,7 @@
 
 ---
 
-## 1. Инфраструктура: MinIO + install_cbshome.sh
+## 1. Инфраструктура: MinIO + install_cbshome.sh ✅ closed (iter 2.1)
 
 ### 1.1. MinIO в docker-compose
 
@@ -201,7 +201,7 @@ AAAA / CAA / TXT для этого поддомена не требуются.
 - MinIO bucket versioning -- **OFF**. Перезаливание файла перезаписывает старую версию. Если юристам потребуется история -- включаем потом отдельной задачей.
 - Retention/lock policy -- не настраиваем.
 
-## 2. Backend: Storage abstraction layer
+## 2. Backend: Storage abstraction layer ✅ closed (iter 2.1)
 
 **✓ Реализовано (iter 2.1).** Все четыре подраздела закрыты, тесты против реального MinIO зелёные.
 
@@ -267,7 +267,7 @@ Storage layer используется в нескольких местах:
 
 Тестовый bucket -- отдельный, `cbshome-attachments-test`, создаётся `minio-init` рядом с основным. Очищается перед каждым тестом через fixture (mc rm --recursive --force, либо через aiobotocore list_objects + delete).
 
-## 3. Backend: модуль `company_attachments`
+## 3. Backend: модуль `company_attachments` ✅ closed (iter 2.2 + iter 2.4-attachments-lang)
 
 **✓ Реализовано (iter 2.2).** Все подразделы закрыты. Deviations от спеки:
 - **Размещение кода (deviation от изначального §3.1):** код живёт **внутри** `backend/app/modules/companies/`, не в отдельной директории `backend/app/modules/company_attachments/`. Конкретные файлы: `companies/attachments_router.py` (auth flow), `companies/attachments_staff_router.py` (staff flow), `companies/attachments_public_router.py` (public flow), `companies/models.py` (модель `CompanyAttachment`), `companies/service.py` (бизнес-логика). Решение: не плодить сущности, потому что `CompanyAttachment` не существует без `Company` и имеет смысл только в её namespace. Когда дальше в этом разделе спека ссылается на "модуль `company_attachments`" -- читай это как "набор файлов `attachments_*.py` в `companies/`".
@@ -481,7 +481,7 @@ Drag-drop всю папку в Web UI в `inbox/`, потом один `cbshome 
 
 ---
 
-## 4. Backend: модуль `company_doc_templates`
+## 4. Backend: модуль `company_doc_templates` ✅ closed (iter 2.3)
 
 **✅ Реализовано (iter 2.3).** Templates backend + platform default seed закрыты одной итерацией. Финальные показатели: 421 → 450 тестов (+29), 0 регрессий, 8 раундов code review (Round 8: 7 фиксов; Round 9: BUG-DRAFT-01 -- draft перезатирал active bytes; Round 10: 2 QC). New head migration `0031_company_document_templates`.
 
@@ -716,7 +716,7 @@ Bootstrap-данные лежат под `backend/scripts/templates/_default/`, 
 
 ---
 
-## 5. Backend: Purchase docs fix
+## 5. Backend: Purchase docs fix ✅ closed (iter 2.4)
 
 **Реализовано в iter 2.4** (HEAD migration `0033_roadmap_extension`, pytest 461 passed). См. §5.6 ниже для Round 11 hardening.
 
@@ -825,7 +825,7 @@ Code review iter 2.4 (раунд 11) вскрыл 4 дефекта поверх 
 
 Файлы Round 11: `purchases/document_utils.py` (новый), `purchases/agreement_service.py`, `purchases/ownership_certificate_service.py`, `companies/constants.py`.
 
-## 6. Frontend: Staff UI
+## 6. Frontend: Staff UI ✅ closed (iter 2.7 Blocks C4 + C5)
 
 ### 6.1. Контекст
 
@@ -886,7 +886,7 @@ Permissions: `company_manage` (read-only listing). Post-MVP edit -- `company_man
 
 ---
 
-## 7. Frontend: Investor UI
+## 7. Frontend: Investor UI ✅ closed (iter 2.5 §7.1 + iter 2.6 §7.2)
 
 ### 7.1. Секция "Документы" на CompanyOverviewView
 
@@ -1060,3 +1060,31 @@ Post-MVP (вне scope refactor'а):
 
 - **Q-TPL-1, Q-TPL-2**: вопросы про preview-эндпоинт с реальными данными и WYSIWYG vs textarea -- **отменены** в v0.4. UI editor templates в MVP не делается, эти вопросы переезжают в post-MVP.
 - **"Платформенный default-шаблон -- НЕТ"** (закрыто в v0.2) -- **перевёрнуто в v0.4**. Platform default ЕСТЬ (§4.9), для гарантированного fallback на свежесозданных компаниях и в тестах. См. v0.4 closed выше.
+
+---
+
+## 11. Implementation summary (v0.9)
+
+| § | Что | Итерация |
+|---|---|---|
+| §1 | MinIO + install_cbshome.sh | iter 2.1 |
+| §2 | Storage abstraction layer (app/core/storage.py) | iter 2.1 |
+| §3 | company_attachments backend + reconcile + language NOT NULL (migration 0034) | iter 2.2 + 2.4-attachments-lang |
+| §4 | company_doc_templates backend + 4-stage fallback + Redis cache | iter 2.3 |
+| §5 | Purchase docs: agreement/ownership rename + new services + Round 11 | iter 2.4 |
+| §6 | Frontend Staff UI: DocumentsSection (read+edit+reorder) + TemplatesSection (read-only inspection) | iter 2.7 Blocks C4 + C5 |
+| §7.1 | Frontend Investor UI: AttachmentsSection в CompanyOverview | iter 2.5 |
+| §7.2 | Frontend Public UI: PublicAttachmentLandingView | iter 2.6 |
+
+**Открытые TD (post-MVP):**
+- TD-DOC-01 — R2 §5.3 описание HTML vs PDF контракта устарело относительно реализации. Sweep при следующем revision.
+- TD-ATTACH-01 — single-attachment fetch endpoint для оптимизации landing page payload (сейчас list-fetch + filter).
+- TD-FORMAT-BYTES-DEDUP — `formatBytes` дублируется между Documents (auth-flow и public-flow). Shared util `utils/format.ts` существует — нужно дедуплицировать.
+
+**Backend pattern зафиксирован в Backend ТЗ v3.7 §X:** "Bulk reorder: per-category scope" (attachments `{category, item_ids}`) и "Bulk validate-then-apply, never validate-while-applying".
+
+---
+
+*Version 0.9 final | 2026-05-13 | R2 полностью реализован. Все § закрыты. Документ переходит в read-only режим как исторический источник дизайна.*
+
+*Version 0.8 | 2026-05-13 | §6.4 (Templates editor вне MVP) + §7.2 (Public attachment landing) + §5.7 (Purchase docs final form) decision-locked.*

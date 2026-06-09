@@ -1,15 +1,15 @@
 # CBSHOME — Техническое задание: Frontend
 
-**Версия:** 2.9
+**Версия:** 2.10
 **Дата:** 13 мая 2026
 **Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
 **Зависимости (читать перед работой):**
 - `CBSHOME-Design-Document.md` — Конституция v1.6 (§4.7 "Принципы проверяются на каждом решении")
-- `CBSHOME-Backend.md` — Backend ТЗ v3.6
-- `CBSHOME-Refactor-Investor-Market-And-Staff.md` v0.6 (R1)
-- `CBSHOME-Refactor-Company-Docs.md` v0.8 (R2)
+- `CBSHOME-Backend.md` — Backend ТЗ v3.7
+- `CBSHOME-Refactor-Investor-Market-And-Staff.md` v0.7 final (R1, fully implemented)
+- `CBSHOME-Refactor-Company-Docs.md` v0.9 final (R2, fully implemented)
 - `CBSHOME-Observability-Frontend.md` v0.3 (draft, реализация после F6)
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
@@ -1735,6 +1735,8 @@ async function confirm() {
 
 **Единственное исключение — `useAvatar.ts:145`.** Zombie-staff-token guard намеренно трактует `NavigationFailureType.aborted` как **ожидаемый** результат (route-guard отверг redirect), а всё остальное — `console.warn`. Filter shape отличается от `safeNavigate`'s (там `aborted` — benign noise). Документировано inline-комментарием с ссылкой на этот FP.
 
+**Note (iter 2.8 closure):** до iter 2.8 в public-flow было ещё 6 файлов с inline `isNavigationFailure` (TD-FP18-PUBLIC-FLOW). Iter 2.8 (`e7238f5`) мигрировал их все на `safeNavigate`, −110 строк boilerplate. Теперь **`useAvatar.ts:145` — действительно единственное** разрешённое отступление. Если новый код хочет inline `isNavigationFailure` — это **bug в подходе**, не feature; см. §4.1.2 (anti-creep policy).
+
 **Не добавлять новые исключения.** Если кажется что нужно — 90% случаев это `safeNavigate`-совместимая ситуация, и нужно перечитать docstring. 9% — нужен параллельный helper. 1% — действительно one-off, inline `.catch` с явным комментарием `// SPECIAL CASE -- NOT using safeNavigate, see <reason>`.
 
 ---
@@ -2024,6 +2026,11 @@ Catch-up batch перед launch:
 [ ] Lazy import target существует физически в том же батче              FP-24
 [ ] Back-link target route name существует в router/index.ts
 [ ] Удалённый prop binding — проверить computed/ref на dead-code
+[ ] Baseline check: git status + git fetch + сверка локального HEAD     iter 2.7 D lesson
+    с origin/main ДО старта блока
+[ ] Backend rename → grep на orphan frontend компоненты                 iter 2.7 lesson
+    (lesson из CertificateSheet.vue — backend переименовался в iter 2.4,
+    frontend orphan жил до iter 2.7)
 ```
 
 **Grep-команды для self-check:**
@@ -2042,9 +2049,15 @@ grep -rn "<CHeader" frontend/src/views/
 
 # 4. Старые back-link классы:
 grep -rnE "__back[^-]" frontend/src/
+
+# 5. Baseline check ДО старта работы:
+git status              # должно быть clean
+git fetch origin
+git log HEAD..origin/main --oneline  # пусто? значит локальный = origin
+# Если что-то выводится — git merge --ff-only origin/main перед началом
 ```
 
-Если хоть один grep что-то нашёл — fix перед презентацией.
+Если хоть один grep что-то нашёл — fix перед презентацией. Lesson iter 2.7 Block D: локальная база может отставать от `origin/main` на несколько коммитов (предыдущий блок запушился пока чат не fetch'нул) → "свежие" файлы из брифа окажутся stale → потерянное время на confusion. Fast-forward проверка дешевле отлова расхождения по ходу.
 
 ---
 
@@ -2223,6 +2236,34 @@ grep -rnE "__back[^-]" frontend/src/
 
 ---
 
+### TD-F16: TD-ROADMAP-LINKING
+
+iter 2.7 Block D реализовал базовый CRUD roadmap items + reorder + cover upload. **Не реализован UI для linking** этапа с Post (`post_id`) или Product (`linked_product_id`). Backend принимает оба поля опционально (ON DELETE SET NULL). Целевой UX по R1 §5.7 — combobox с поиском по company-scope постам/продуктам + опция "+ Создать связанный пост".
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F16 | Combobox с search'ем для post_id + linked_product_id в RoadmapEditor edit modal. Включая "+ Создать связанный пост" sub-flow (reuse PostListEditor create-form через emit, pre-fill owner_type=company + owner_id=companyId). | 🟢 (feature) | Post-MVP feature |
+
+### TD-F17: TD-CHIP-DEDUP
+
+`.filter-chip` CSS дублируется в 3 view: `EventEditor.vue`, `TemplatesSection.vue` (iter 2.7 Block C), `InvestorEventsView.vue` (iter 2.7b). Каждый ≈25 строк CSS. Существующий паттерн extraction: CBackLink в iter 2.7 (B3) — extract on 2nd-3rd duplication.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F17 | Extract в shared `CFilterChip.vue` либо utility-классы. Pattern: caller передаёт `:options + :modelValue + @update`. | 🟢 | В следующий drive-by cleanup |
+
+### TD-F18: TD-FORMAT-BYTES-DEDUP
+
+`formatBytes` функция дублируется между auth-flow `AttachmentsSection` (iter 2.5) и public-flow `PublicAttachmentsSection` (iter 2.6). Shared util `utils/format.ts::formatBytes` существует — обе локальные копии byte-identical. iter 2.7 Block D (Roadmap cover) **НЕ добавил** новой копии (использует число `COVER_MAX_BYTES` без человекочитаемого форматирования), так что долг не усугубил.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F18 | Заменить локальные копии `formatBytes` на импорт из `@/utils/format`. | 🟢 | В следующий drive-by cleanup |
+
+---
+
+*Version 2.10 | 2026-05-13 | iter 2.7 (Staff Platform Tab) + iter 2.7b (Events widget) + iter 2.8 (TD-FP18-PUBLIC-FLOW) закрыты. R1+R2 рефакторинг **полностью завершён** — все спеки переведены в v0.7/v0.9 final / fully implemented. FP-18 уточнён: useAvatar.ts — действительно единственное разрешённое исключение после iter 2.8 migration. Self-check checklist расширен: baseline check (git status + fetch + сверка с origin/main) и orphan component check после backend rename (lessons из iter 2.7 Block D + iter 2.7 B3). Добавлены TD-F16 (ROADMAP-LINKING), TD-F17 (CHIP-DEDUP), TD-F18 (FORMAT-BYTES-DEDUP).*
+
 *Version 2.9 | 2026-05-13 | iter 2.6 (Public Flow Frontend) + iter 2.5 (Investor frontend для R1) + iter 2.7 (Cleanup) закрыты. Добавлены 10 новых FP (FP-18 — FP-27): safeNavigate canonical helper, single CHeader policy, CBackLink shared component, history-aware goBack, role-aware route names через computed, role-conditional CTA с двойной защитой (template guard + defensive role check), lazy import stub policy, self-hiding sections, auth-state branching CTA, i18n reuse domain-neutral/specific. Closed BUG-28-01 (NavigationFailure → false purchase toast) и BUG-29-01 (NavigationFailure → ApiResponseError rethrow в auth). Двойной CHeader в 8 views — закрыт. ~60 navigation call-sites переведены на safeNavigate. CBackLink — единый компонент back-link (раньше 7 копий локального CSS). i18n catch-up зафиксирован как **policy** (не tech debt) — новые ключи только в en.json, ru/de/ar batch'ем перед public launch. Self-check checklist + grep команды добавлены в §7.*
 
 *Version 2.8 | 2026-05-11 | Frontend ТЗ обновлён после iter 2.5 (Investor frontend, R1 §1) — F4.1 структурно переписана: MarketView удалён, заменён цепочкой CompanyListView → CompanyOverviewView → ProductsByCompanyView. AgentShell зеркала под /agent/*. CompanyPositionView с ownership + agreement buttons (R2 §5.5 carryover). Backend gaps (G1-G5) все закрыты. R1+R2 backend полностью закрыты в iter 2.4. Strategy: iter 2.6 (Public flow) → iter 2.7 (Staff Platform tab) → F6 (Agent shell) → F8 (Notifications) → F7 (i18n) → F9 (polish).*
@@ -2230,6 +2271,3 @@ grep -rnE "__back[^-]" frontend/src/
 *Version 3.7 | 2026-05-05 | Phase F5 (Company UI) closed. F5.1 deployed: dashboard with hero / balance / pool widget / metrics row / recent transactions. F5.2 deployed: B0 Products list (read-only), B1+B2 Analytics (top metrics + sales-by-month chart + sales-by-product table), B3+B4 Balance (passive balance card + withdrawals history with status badges + payout details preview + write forms for POST /withdrawals and PUT /users/me/payout-details), B5 Settings (read-only profile). Code review TD batch: +TD-F14 (withdrawal bounds frontend↔backend duplication) + TD-F15 (vue-i18n placeholder pitfall, обнаружен в B4 — JSON-пример в локали ломал bottom sheet рендер). en.json: +comp.{dashboard,products,settings,analytics,balance}.* (~75 keys). ru / de / ar — i18n catchup отложен до отдельного спринта (объём + native-speaker review).*
 
 *Version 3.6 | 2026-05-03 | Sprint 4.5 prep: Phase F5 re-exports в types.ts (CompanyDashboardResponse, CompanyAnalyticsResponse, CompanyTransactionResponse, PoolEmbedResponse, SalesByMonthEntry, SalesByProductEntry). `getMyCompany()` wrapper в companies.ts (singular vs plural file split mirrors backend module split: `companies` для public storefront + `/me`, `company` для company-side dashboard + analytics). Frontend готов к Phase F5 имплементации.*
-
-
-

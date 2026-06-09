@@ -1,9 +1,9 @@
 # CBSHOME -- Refactor: Investor Market & Staff Shell
 
-**Версия:** 0.6 final / decision-locked
+**Версия:** 0.7 final / decision-locked / **fully implemented**
 **Дата:** 13 мая 2026
 
-**Статус:** дизайн зафиксирован, дальше -- только реализация. Изменения в этом документе допускаются только через явный поворот решения (через обсуждение и новый changelog в issue/PR).
+**Статус:** все блоки реализованы в итерациях 2.5 / 2.6 / 2.7 / 2.7b. Документ закрыт; дальше — только обращение как к историческому источнику дизайна.
 
 **Связанные документы:**
 - `CBSHOME-Refactor-Company-Docs.md` v0.4 final -- параллельный refactor (storage, attachments, templates, Purchase docs). **Двусторонняя зависимость:** этот документ ссылается на storage-layer Refactor 2 для cover-загрузок Roadmap-items, Refactor 2 ссылается обратно для public investor flow context.
@@ -37,7 +37,7 @@
 
 ---
 
-## 1. Investor Market: новая навигация
+## 1. Investor Market: новая навигация ✅ closed (iter 2.5 + iter 2.6)
 
 ### 1.1. Текущее состояние
 
@@ -215,7 +215,7 @@ function useAuthWall() {
 
 ---
 
-## 2. Staff Shell: новый Tab Bar
+## 2. Staff Shell: новый Tab Bar ✅ closed (iter 2.7 Block A)
 
 ### 2.1. Текущий каркас
 
@@ -253,7 +253,7 @@ L1-экраны из "Ещё": `Agent Applications`, `Avatar Mode`.
 
 ---
 
-## 3. Слияние "Пользователи" и "KYC"
+## 3. Слияние "Пользователи" и "KYC" ✅ closed (iter 2.7 Block A + mini-iter #2)
 
 ### 3.1. Обоснование
 
@@ -281,7 +281,7 @@ KYC -- атрибут User, а не отдельная сущность с lifec
 
 ---
 
-## 4. Tab "Платформа": каркас
+## 4. Tab "Платформа": каркас ✅ closed (iter 2.7 Blocks B+C + iter 2.6c backend + mini-iter #5)
 
 ### 4.1. Назначение
 
@@ -384,7 +384,7 @@ KYC -- атрибут User, а не отдельная сущность с lifec
 
 ---
 
-## 5. Roadmap: модель и UX
+## 5. Roadmap: модель и UX ✅ closed (iter 2.7 Block D — кроме post/product picker, см. §5.7 ниже / TD-ROADMAP-LINKING)
 
 ### 5.1. Текущая модель `CompanyRoadmapItem`
 
@@ -467,22 +467,24 @@ Soft-delete и hard-delete -- независимы от state machine, разр�
 
 ### 5.7. UX редактора
 
+**Note (iter 2.7 Block D implementation):** реализован базовый CRUD + reorder через кнопки ↑/↓ + cover upload через простой `<input type="file">`. **Drag-and-drop через vuedraggable не использовался** — выбран более mobile-friendly паттерн ↑/↓ кнопок (consistent с DocumentsSection из Block C). Post/Product picker через combobox **не реализован** (TD-ROADMAP-LINKING, post-MVP) — backend принимает `post_id`/`linked_product_id` опционально, UI для их установки требует API-обвязки поиска по company-scope; отложено.
+
 Структура секции `Roadmap` в `StaffCompanyDetailView` (на роуте `/staff/platform/companies/:id/roadmap`):
 
 - Список этапов в текущем порядке (`order ASC`).
-- Drag-handle на каждом этапе для drag-and-drop reorder (через `vuedraggable` -- уже в стеке).
+- Кнопки ↑/↓ на каждом этапе для reorder (вместо drag-and-drop — выбор iter 2.7 Block D).
 - На карточке этапа: cover-thumbnail (если есть), title, дата (target_date / valid_until), бейдж kind (цветная плашка milestone/event/announcement), бейдж status (если milestone), кнопки `Edit` и `Delete`.
 - Кнопка `+ Добавить этап` -- открывает модалку с табами `milestone | event | announcement`. По табу подставляются нужные поля формы (с обязательными по таблице §5.4).
 
 В форме редактирования:
-- Cover -- drag-drop zone или file input.
-- Связь с Post -- комбобокс с поиском по постам этой компании + опция "+ Создать связанный пост" (открывает sub-форму создания Post с pre-filled owner_type/owner_id).
-- Связь с Product -- комбобокс с поиском по продуктам этой компании.
+- Cover -- простой `<input type="file" accept="image/png,image/jpeg,image/webp">` (drag-drop zone не используется, mobile-first).
+- ~~Связь с Post -- комбобокс с поиском~~ — **TD-ROADMAP-LINKING**, отложено post-MVP.
+- ~~Связь с Product -- комбобокс с поиском~~ — **TD-ROADMAP-LINKING**, отложено post-MVP.
 - External URL -- text input с валидацией http/https.
 
 ---
 
-## 6. Roadmap & News: публичная подача на Investor
+## 6. Roadmap & News: публичная подача на Investor ✅ closed (iter 2.5 §6.1-§6.2 + iter 2.7b §6.3)
 
 ### 6.1. RoadmapTimeline на CompanyOverviewView
 
@@ -657,3 +659,36 @@ class RoadmapItemResponse(BaseModel):
 - Объединённая лента `/investor/feed` (Posts + Events) -- если по UX потребуется после запуска.
 - Public роуты с deep-link `?intent=apply_agent` -- для маркетинговых ссылок на agent-application.
 - Архивный toggle в RoadmapTimeline -- если по UX-метрикам станет нужно.
+
+---
+
+## 10. Implementation summary (v0.7)
+
+Полная имплементационная цепочка для аудита:
+
+| § | Что | Итерация | Commit anchor |
+|---|---|---|---|
+| §1 (Investor Market) | CompanyListView / CompanyOverviewView / ProductsByCompanyView + AgentShell mirrors | iter 2.5 | — |
+| §1.6 (Public flow) | PublicShell + useAuthWall + 4 public views + AttachmentLanding + referral capture | iter 2.6 | — |
+| §1.7 (Clean removal `/investor/market`) | router/index.ts | iter 2.5 | — |
+| §2 (Staff Tab Bar) | KYC tab removed, Platform tab added | iter 2.7 Block A | — |
+| §3 (KYC merge в Users) | StaffUsersView KYC chips + detail-modal section | iter 2.7 Block A + mini-iter #2 | — |
+| §3.3 (`?kyc_status=`) | Backend extension | iter 2.6c B1 | — |
+| §4 (Platform tab) | PlatformView + StaffCompaniesListView + 6-section StaffCompanyDetailView | iter 2.7 Blocks B+C | — |
+| §4.6 (PostListEditor + EventEditor) | Shared editors | iter 2.7 Block B | — |
+| §5 (Roadmap CRUD) | RoadmapEditor + per-kind validation + state machine | iter 2.7 Block D | `5b830dc`, `6bc09ff`, `0585032` |
+| §6.1 (RoadmapTimeline) | Vertical timeline component | iter 2.5 | — |
+| §6.2 (Embedded post snippet) | RoadmapItemResponse.post LEFT JOIN | iter 2.4 backend + iter 2.5 frontend | — |
+| §6.3 (Events on Investor) | Widget + /investor/events + /agent/events mirror + backend `/events/upcoming` parametrization | iter 2.7b | — |
+
+**Open follow-ups (post-MVP):**
+- TD-ROADMAP-LINKING — Post/Product picker в RoadmapEditor (§5.7).
+- TD-KYC-QUEUE-ENDPOINT — `/staff/kyc/queue` без consumer'а после A2.
+- F9.2 — полный экран `/investor/posts` (Frontend ТЗ).
+- Архивный toggle в RoadmapTimeline — по UX-сигналу.
+
+---
+
+*Version 0.7 final | 2026-05-13 | R1 полностью реализован. Все § закрыты в итерациях 2.5 / 2.6 / 2.7 / 2.7b. Документ переходит в read-only режим как исторический источник дизайна.*
+
+*Version 0.6 | 2026-05-13 | §8 уточнён про clean removal `/investor/market` без redirect.*

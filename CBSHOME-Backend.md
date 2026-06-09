@@ -1,12 +1,12 @@
 # CBSHOME -- Техническое задание (Backend)
 
-**Версия:** 3.6
-**Дата:** 3 мая 2026
-**Статус:** В работе
+**Версия:** 3.7
+**Дата:** 13 мая 2026
+**Статус:** Active
 **Репозиторий:** https://github.com/aivis-one/cbshome
 
 **Зависимости (читать перед работой):**
-- `CBSHOME-Design-Document.md` — Конституция v1.5
+- `CBSHOME-Design-Document.md` — Конституция v1.6
 - `CBSHOME-Financial-System.md` — финансовая логика
 - `CBSHOME-State-Machines.md` — переходы статусов
 - `CBSHOME-Installment.md` — механика рассрочки
@@ -3276,6 +3276,223 @@ backend/app/modules/transactions/
 
 ---
 
+## R1 + R2 Refactor — Backend artefacts (iter 2.1 — iter 2.7b)
+
+Серия refactor-итераций R1 (Investor Market & Staff) + R2 (Company Attachments/Templates/Purchase docs) полностью закрыта. Этот раздел сводит backend артефакты в единую справку — то что добавилось к Phase 0-10, остаётся актуальным как backend контракт.
+
+### Storage layer (iter 2.1, R2 §2)
+
+`backend/app/core/storage.py` — `StorageBackend` abstraction. Production — MinIO через aiobotocore. CDN-стиль presigned URLs для read, multipart upload для write. Используется для:
+- `CompanyAttachment` (R2 §3).
+- `CompanyDocTemplate` (R2 §4).
+- `CompanyRoadmapItem.cover_storage_key` (R1 §5.5).
+
+### Company Attachments (iter 2.2, R2 §3)
+
+- Модель `CompanyAttachment` с `language NOT NULL DEFAULT 'en'` (migration 0034, iter 2.4-attachments-lang).
+- `order` unique per `(company_id, category)`, **не per-company** — see backend pattern "Bulk reorder per-category scope" ниже.
+- Bulk reorder через `PATCH /staff/companies/{id}/attachments/reorder` с body `{category, item_ids}` (iter 2.6c).
+- Public flow: `GET /api/v1/public/companies/{id}/attachments` (iter 2.2) + single attachment download (iter 2.2).
+- Reconcile script: `cbshome storage reconcile <company_id>` — синхронизирует MinIO ↔ DB.
+
+### Company Doc Templates (iter 2.3, R2 §4)
+
+- Модель `CompanyDocTemplate` с 4-stage fallback: `(kind, language)` per-company active → `(kind, language='en')` per-company → `(kind, language)` platform-default → `(kind, language='en')` platform-default.
+- Redis cache keyed by `(company_id, kind, language)` с TTL 5 min.
+- Templates **read-only** в Staff UI (iter 2.7 Block C5) — editor вне MVP.
+- Reconcile: `cbshome storage reconcile-templates <company_id>`.
+
+### Purchase Documents (iter 2.4, R2 §5)
+
+- `Agreement` (renamed from `Certificate`) + новый `OwnershipCertificate`.
+- Endpoints: `POST /purchases/{id}/agreement`, `GET /purchases/{id}/agreement/download`, `POST /purchases/{id}/ownership-certificate`, etc.
+- 4-stage fallback применяется при генерации (через templates module).
+
+### Roadmap (iter 2.4 backend + iter 2.7 Block D frontend, R1 §5)
+
+- `CompanyRoadmapItem` с полями: `kind` (milestone/event/announcement), `title`, `description`, `cover_storage_key`, `external_url`, `post_id` (FK, SET NULL), `linked_product_id` (FK same-company, SET NULL), `target_date`, `valid_until`, `status` (только для milestone), `order`.
+- Per-kind Pydantic validation в `CreateRoadmapItemRequest._check_kind_rules`:
+  - `milestone`: target_date опц., valid_until **запрещён**, status опц.
+  - `event`: target_date + valid_until обязательны, valid_until > target_date.
+  - `announcement`: target_date / valid_until / status **все запрещены**.
+- `kind` immutable после create — `UpdateRoadmapItemRequest` не содержит `kind`.
+- State machine (только milestone, R1 §5.6): `planned → in_progress → completed`. `completed → *` forbidden, 400 с сообщением `"Cannot move a completed milestone to another status. Soft-delete and recreate if the change is intentional."` (без машинного префикса — frontend ловит через generic error toast).
+- Cover upload: `PUT /staff/companies/{id}/roadmap/{item_id}/cover` (multipart, mime PNG/JPEG/WEBP, 10MB, form field name `file`).
+- Reorder: `PATCH /staff/companies/{id}/roadmap/reorder` body `{item_ids: [...]}` (per-company, **не per-category** в отличие от attachments). Error message `"Reorder mismatch: ..."` / `"Duplicate IDs in reorder list"` — без машинного префикса (frontend ловит любой 400 → toast + reload).
+
+### Public Investor Flow (iter 2.6, R1 §1.6 + R2 §7.2)
+
+- Префикс `/api/v1/public/*` для всех публичных эндпоинтов. Rate limit 60 req/min/IP (через `check_rate_limit_per_ip`).
+- `PublicCompanyResponse`, `PublicProductResponse`, `PublicProductDetailResponse` — отдельные schemas с stripped полями (`agent_bonus_units` не leaked в public).
+- `PublicCompanyDetailResponse.stats` — 5 метрик: `pool_total_options`, `options_sold`, `options_sold_percent`, `price_growth_90d_percent`, `founded_at`.
+- Referral capture: `POST /api/v1/kyc/advance` (iter 2.7 mini #1) для idempotent advancement.
+
+### Staff Platform endpoints (iter 2.6c + iter 2.7 mini #5)
+
+Backend для Staff Platform Tab (R1 §4). Все под `company_manage` / `content_manage` permissions:
+
+- `GET /staff/users?role=&kyc_status=&page=&per_page=` (iter 2.6c B1).
+- `GET /staff/companies?status=&search=&page=&per_page=` (iter 2.6c B2). Status: `active / hidden / archived` (нет `draft` — companies create как `hidden`).
+- `GET /staff/companies/{id}` → `CompanyDetailResponse` (iter 2.7 mini #5). Любой status (включая hidden/archived), не фильтрует на active.
+- `GET /staff/companies/{id}/price-history?page=&per_page=` (iter 2.6c B3). Permission `company_manage` (не OR с financial_operations — см. backend pattern "OR-permission primitive" ниже).
+- `GET /staff/posts?owner_type=&owner_id=&is_published=&search=&page=&per_page=` (iter 2.6c B4). Включает drafts (vs public `/posts` фильтр).
+- `GET /staff/events?is_published=&upcoming=&search=&page=&per_page=` (iter 2.6c B4). Sort ASC для `upcoming=true`, DESC иначе.
+- `PATCH /staff/companies/{id}/attachments/reorder` body `{category, item_ids}` → 204 (iter 2.6c B5).
+- `UserResponse.staff_profile.permissions` — effective dict (defaults merged с overrides), приходит при `role=staff` через `/users/me` (iter 2.6c B6).
+
+### Events public extension (iter 2.7b)
+
+- `GET /api/v1/events?upcoming=true|false|null` — query param добавлен. Sort ASC для upcoming=true, DESC иначе. Backward-compat без параметра (DESC, all events).
+- `GET /api/v1/events/upcoming?limit=N` — параметризован (раньше hardcode "next 30 days + LIMIT 100"). Default limit=3, clamp на 50 (`settings.events_upcoming_max_limit`). Sort ASC всегда (preview ближайших).
+- **Не** меняли response shape — `/events` всегда `EventListResponse`, `/events/upcoming` всегда `list[EventResponse]`. Никаких union response models.
+
+### Onboarding advance helper (iter 2.7 mini #1)
+
+- `POST /api/v1/kyc/advance` — idempotent helper для onboarding-step advancement после KYC. 204 на happy-path (no-op если уже advanced).
+- Закрывает deadlock при re-entry с `kyc_status=approved` + `onboarding_step=role_selected`.
+
+---
+
+## Backend patterns (зафиксированы по итогам R1+R2)
+
+Эти patterns выявились по ходу iter 2.6c, iter 2.7, iter 2.7b. Применяются ко всем будущим backend задачам.
+
+### Pattern 1: Bulk reorder — per-category scope, не per-company
+
+Если ORM поле `order` unique per `(parent_id, category)` (a-la `CompanyAttachment`) — bulk reorder endpoint должен принимать `category` в body как часть scope:
+
+```python
+@router.patch("/companies/{id}/attachments/reorder", status_code=204)
+async def reorder_attachments(
+    id: UUID,
+    body: ReorderAttachmentsRequest,  # {category, item_ids}
+    ...
+):
+    # Validate: set(body.item_ids) == set(active attachments в (id, body.category))
+    ...
+```
+
+Per-company reorder без category схлопнет уникальность по category (две категории с пересекающимися order values становятся неотличимы). Если хочется per-company reorder — нужна вторая `global_order` колонка с миграцией.
+
+### Pattern 2: Validate-then-apply for bulk mutations
+
+Bulk mutations с whole-set validation (reorder, mass-update, multi-delete) **обязаны** следовать схеме:
+
+```
+1. Load all affected rows
+2. Validate (set match, value constraints)  ← if fails, return 400
+3. Apply changes in-memory
+4. Flush/commit
+```
+
+**Никогда** не начинать `apply` внутри validation loop — failure в середине оставляет DB в inconsistent state. Pattern зафиксирован в `reorder_roadmap` (iter 2.4) + `reorder_attachments` (iter 2.6c).
+
+### Pattern 3: Route ordering — literal path before path-param
+
+FastAPI matches routes in declaration order. Для `PATCH /resource/{id}/reorder` literal path **обязан** идти перед `PATCH /resource/{id}/{sub_id}` — иначе "reorder" попытается распарситься как UUID и упадёт 422.
+
+```python
+# CORRECT order
+@router.patch("/resource/{id}/reorder")   # literal "reorder"
+@router.patch("/resource/{id}/{sub_id}")  # generic {sub_id}
+```
+
+### Pattern 4: Query param name shadowing `fastapi.status`
+
+Если Query param семантически называется `status` — Python arg name **не должен** совпадать с `from fastapi import status`. Use alias:
+
+```python
+async def endpoint(
+    company_status: CompanyStatus | None = Query(default=None, alias="status"),
+    ...,
+) -> Response:
+    return Response(status_code=status.HTTP_200_OK, ...)  # `status` module не shadowed
+```
+
+### Pattern 5: LIKE-metacharacter escape order
+
+Для `?search=` фильтров с `ilike("%needle%")` — escape `\`, потом `%` и `_`. Backslash первый, иначе второй pass re-escape'ит escape-character из первого pass'а:
+
+```python
+escaped = needle.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+condition = Model.field.ilike(f"%{escaped}%", escape="\\")
+```
+
+### Pattern 6: Staff-list endpoints return ORM rows, validation in router
+
+Public endpoints с per-user computation (e.g., `is_dismissed`) возвращают pre-validated `list[ResponseSchema]`. Staff endpoints **без** per-user computation возвращают `list[ORM]`, router валидирует через `ResponseSchema.model_validate(row)` в comprehension. Не pre-validate "для безопасности" — лишний pass без выигрыша.
+
+### Pattern 7: Cross-module private import avoidance
+
+Если модуль A нуждается в функциональности модуля B, упакованной в underscored helper (`_build_something`) — **не импортировать**. Re-implement 3-5 строк на A's side. Reasons:
+
+1. Underscored = "module-internal, do not import" Python convention.
+2. Изоляция от refactors внутри B (B's underscored helper может переродиться — A не должен страдать).
+3. Public API B должна быть достаточной. Если её недостаточно — это сигнал что B нужен новый public export.
+
+Pattern из iter 2.6c §2.3: `users.service::build_user_response` re-implements 3 lines from `staff/admin_service::_build_staff_profile_response`, **не** импортирует.
+
+### Pattern 8: StrEnum binding for Query params
+
+`role: UserRole | None = Query(...)`, потом `role.value if role else None` при передаче в service. Service signature остаётся `str | None`. FastAPI делает framework-edge validation (422 на garbage), service decoupled от enum:
+
+```python
+async def endpoint(
+    role: UserRole | None = Query(default=None),
+    ...,
+):
+    rows = await list_users_service(
+        session,
+        role=role.value if role else None,
+    )
+```
+
+### Pattern 9: `{operation}_set_mismatch:` error message convention для bulk mutations
+
+Для bulk mutations с set validation — error message **с машинным префиксом**:
+
+```python
+raise BadRequestError("attachments_reorder_set_mismatch: missing 2 ids, unknown 1 id")
+```
+
+Frontend ловит через `error.detail.startsWith("attachments_reorder_set_mismatch:")` → типизированный toast. Note из iter 2.7b: **не все existing endpoints** следуют этой convention (roadmap reorder использует "Reorder mismatch: ..." без префикса). Pattern применяется к **новым** endpoints; existing — at-discretion при touching.
+
+---
+
+## Open questions for future ТЗ revisions
+
+Зафиксированы по итогам iter 2.6c — не блокеры MVP, но recur при росте.
+
+### Q-BE-01: OR-permission primitive
+
+Project не имеет `require_any_staff_permission([X, Y])`. Когда endpoint legitimately serves two staff roles (e.g., price-history — `company_manage` OR `financial_operations`) — текущее решение единичное permission на более permissive из двух. Это работает, но при росте usecases станет тесно. Suggested wording: "Перед expand'ом permission set'а для cross-role read endpoint — build OR-primitive".
+
+### Q-BE-02: `_SELECTABLE_ROLES` SSOT
+
+`users/schemas.py::_SELECTABLE_ROLES = {"investor", "agent", "company"}` — string set, не связан с `UserRole` enum. Если в `UserRole` добавится новая роль (staff-types и т.п.) — whitelist не подтянет автоматически. Refactor: `frozenset[UserRole]` вместо string set.
+
+### Q-BE-03: Recovery flow для soft-deleted
+
+Staff list endpoints (posts/events/attachments) скрывают `is_deleted=True` rows. **Нет UI** для восстановления — это deliberate cut в iter 2.6c. Если позже понадобится — нужны `?include_deleted=true` + `PATCH /undelete` + "trash" UI section.
+
+### Q-BE-04: Search performance на large dev DB
+
+`ilike("%needle%")` без GIN indexes — sequential scan. На сегодня (hundreds of rows per table) терпимо. При prod-scale (10k+) нужны `pg_trgm` trigram indexes.
+
+### Q-BE-05: TD-REF-CLICKS-01 — click tracking endpoint
+
+`/r/<code>` redirect handler уже работает (frontend), но backend не записывает click counts. Нужен `POST /api/v1/public/referral-click` endpoint + counter. **Обязательно перед F6** (Agent shell будет рендерить click stats).
+
+### Q-BE-06: TD-PERMISSION-SSOT
+
+`DEFAULT_STAFF_PERMISSIONS` (Python dict) + `UpdatePermissionsRequest` (Pydantic schema) — два источника truth для permission keys. iter 2.7 mini #3 закрыл текущий drift (9-vs-8), но архитектура остаётся хрупкой. Suggested refactor: `Literal[...]` enum как SSOT, оба места читают из enum.
+
+### Q-BE-07: AUTH-HEADER-IN-302 leak
+
+Auth-flow download endpoint делает 302 на presigned MinIO URL. Если client'ский HTTP library не strip'ит Authorization при cross-origin redirect — header утечёт на MinIO. MinIO ignores, но семантически утечка. Public flow обходит (no Authorization вообще, iter 2.6 design). Backend fix: возвращать JSON `{url}` вместо 302, client сам делает второй GET.
+
+---
+
 ## Реестр технического долга
 
 | ID | Файл | Проблема | Приоритет | Статус |
@@ -3366,7 +3583,9 @@ backend/app/modules/transactions/
 
 ---
 
-*Version 3.7 | 2026-05-05 | Phase F5 (Company UI) closed: F5.1 dashboard + F5.2 products / analytics / balance / settings deployed. F5.2 B4 forms (POST /withdrawals, PUT payout-details) wired and verified. Code review TD batch landed: TD-072..079 — sign error в WITHDRAWAL_REJECTED/FAILED transaction log (CRITICAL), KYC webhook без HMAC (production blocker), N+1 в get_my_commissions, rate limit на /withdrawals, sign convention аудит, mini-fixes (None-safe email_token compare, unused secret_key, AML defensive assertion). Все TD-72..79 — Before Prod / Backlog, не блокируют F5.*
+*Version 3.7 | 2026-05-13 | R1 + R2 рефакторинг полностью закрыт (iter 2.1 — iter 2.7b). Новый раздел "R1 + R2 Refactor — Backend artefacts" суммирует все backend артефакты: storage layer, attachments, templates (4-stage fallback + Redis cache), purchase docs (agreement/ownership), roadmap (per-kind validation + state machine + cover upload), public investor flow (rate-limited /public/*), 7 staff endpoints из iter 2.6c + GET /staff/companies/{id} + POST /kyc/advance + UserResponse.staff_profile, events public extension (?upcoming + /events/upcoming?limit). Добавлен раздел "Backend patterns" из 9 паттернов: per-category reorder scope, validate-then-apply, route ordering literal-before-param, Query alias shadowing fastapi.status, LIKE escape order, ORM rows vs validated responses, cross-module private import avoidance, StrEnum binding, {operation}_set_mismatch error message convention. 7 open questions для будущих revisions: OR-permission primitive, _SELECTABLE_ROLES SSOT, recovery flow, search performance, click tracking (TD-REF-CLICKS-01 — обязательно до F6), permission keys SSOT, AUTH-HEADER-IN-302 leak. Pytest 247 → 254 после iter 2.7b. R1+R2 documents переведены в final / fully implemented.*
+
+*Version 3.7-F5 | 2026-05-05 | Phase F5 (Company UI) closed: F5.1 dashboard + F5.2 products / analytics / balance / settings deployed. F5.2 B4 forms (POST /withdrawals, PUT payout-details) wired and verified. Code review TD batch landed: TD-072..079 — sign error в WITHDRAWAL_REJECTED/FAILED transaction log (CRITICAL), KYC webhook без HMAC (production blocker), N+1 в get_my_commissions, rate limit на /withdrawals, sign convention аудит, mini-fixes (None-safe email_token compare, unused secret_key, AML defensive assertion). Все TD-72..79 — Before Prod / Backlog, не блокируют F5.*
 
 *Version 3.6 | 2026-05-03 | Sprint 4.5: GET /companies/me canonical path для company-роли (CompanyResponse staff-side schema). Sprint 4.6 hotfix: portfolio + company_dashboard installment regression — installment_tranche purchases теперь корректно классифицируются как paid acquisitions (был silent fall-through в gift bucket из-за `!= SALE` else-branch, оставшегося с pre-Sprint-6.2 кода). Sprint 4.5 frontend prep: `getMyCompany()` wrapper + Phase F5 re-exports в types.ts. 368 tests, all green. Deploys: b539ee8 → b9d1fee (4.5) → 75168f0 (4.6) → 0f11197 (prep).*
 
