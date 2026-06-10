@@ -908,7 +908,7 @@ export interface ReadAllResponse {
   marked: number
 }
 
-/** Public referral-click payload (Task 1 Block B). Fire-and-forget: the endpoint answers 204 whether or not the code matches a link, so this schema is the only validation surface. max_length mirrors ReferralLink.code String(20). */
+/** Public referral-click payload (Task 1 Block B). max_length mirrors ReferralLink.code String(20). Fire-and-forget: the endpoint replies 204 whether or not the code matches a link. */
 export interface ReferralClickRequest {
   code: string
 }
@@ -921,17 +921,23 @@ export interface ReferralLinkListResponse {
   per_page: number
 }
 
-/** Single referral link. */
+/** Single referral link with per-link funnel counters (Task 1 D). click_count is the raw counter column; registration_count and purchase_count are aggregates computed in get_my_links via two batched GROUP BY queries (never per-link queries). */
 export interface ReferralLinkResponse {
   id: string
   agent_id: string
   code: string
+  is_active: boolean
+  click_count: number
+  registration_count: number
+  purchase_count: number
   created_at: string
 }
 
-/** Agent referral statistics. */
+/** Agent referral statistics (funnel order: links -> clicks -> registrations -> purchases -> commission). */
 export interface ReferralStatsResponse {
   total_links: number
+  total_clicks: number
+  total_registrations: number
   total_purchases: number
   total_commission_cents: number
 }
