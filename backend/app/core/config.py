@@ -115,6 +115,13 @@ class Settings(BaseSettings):
     # -- Agent --
     agent_application_cooldown_days: int = 30
 
+    # -- Referral click rate limit (Task 1 Block B) --
+    # Per-IP anti-abuse limit for POST /api/v1/public/referral-click.
+    # This is NOT click deduplication: click_count is a raw counter by
+    # design; the limit only caps how fast one IP can inflate it.
+    referral_click_rate_limit_max_requests: int = 60
+    referral_click_rate_limit_window_seconds: int = 60
+
     # -- Social proof cache --
     social_proof_cache_ttl: int = 300
 

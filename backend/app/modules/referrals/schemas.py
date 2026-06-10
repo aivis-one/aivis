@@ -1,11 +1,22 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Schemas (Sprint 7.2)
+# CBSHOME Backend -- Referral Schemas (Sprint 7.2, extended Task 1 Block B)
 # =============================================================================
 
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ReferralClickRequest(BaseModel):
+    """Public referral-click payload (Task 1 Block B).
+
+    Fire-and-forget: the endpoint answers 204 whether or not the code
+    matches a link, so this schema is the only validation surface.
+    max_length mirrors ReferralLink.code String(20).
+    """
+
+    code: str = Field(max_length=20)
 
 
 class ReferralLinkResponse(BaseModel):

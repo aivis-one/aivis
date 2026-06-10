@@ -5,6 +5,7 @@
 # RESPONSIBILITIES:
 #   resolve_referral_code()  -- code -> agent_id or None (silent fallback)
 #   create_link()            -- generate unique referral link for agent
+#   record_click()           -- atomic click_count increment by code (Block B)
 #   get_agent_chain()        -- walk User.referred_by up to max_depth
 #   create_attribution()     -- record purchase-to-link mapping
 #   get_my_links()           -- paginated list of agent's links
@@ -35,7 +36,7 @@ import secrets
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -165,6 +166,42 @@ async def create_link(
 
     # Extremely unlikely: 3 collisions in a row.
     raise RuntimeError("Failed to generate unique referral code after 3 attempts")
+
+
+async def record_click(
+    code: str,
+    session: AsyncSession,
+) -> bool:
+    """Atomically increment click_count for the link matching code.
+
+    The increment is a single DB-level UPDATE expression
+    (click_count = click_count + 1) -- never load-modify-save, which
+    would lose clicks under concurrency. update() is a SQLAlchemy
+    Core/ORM expression, so the ORM-only rule holds.
+
+    Counts regardless of is_active: the click happened even if the
+    agent later deactivated the link (boss-locked decision #3/#4).
+
+    Returns True if a row matched (known code), False otherwise.
+    Never raises for unknown codes -- the caller answers 204 either
+    way (fire-and-forget, code existence is not confirmed).
+
+    Does NOT commit -- caller manages the transaction (P-01).
+    """
+    stmt = (
+        update(ReferralLink)
+        .where(ReferralLink.code == code)
+        .values(click_count=ReferralLink.click_count + 1)
+    )
+    result = await session.execute(stmt)
+    matched = (result.rowcount or 0) > 0
+
+    if matched:
+        logger.info("referral_click_recorded", code=code)
+    else:
+        logger.debug("referral_click_unknown_code", code=code)
+
+    return matched
 
 
 async def get_my_links(

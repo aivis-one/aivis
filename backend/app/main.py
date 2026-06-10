@@ -45,6 +45,7 @@
 #   agent_applications_router -> /api/v1/agent/* (Sprint 7.1)
 #   staff_agent_applications_router -> /api/v1/staff/agent-applications/* (Sprint 7.1)
 #   referrals_router          -> /api/v1/referrals/* (Sprint 7.2)
+#   referrals_public_router   -> /api/v1/public/referral-click (Task 1 Block B)
 #   commissions_router        -> /api/v1/agent/* (Sprint 7.3)
 #   notifications_router      -> /api/v1/notifications/* (Sprint 8.3)
 #   staff_notifications_router -> /api/v1/staff/notifications/* (Sprint 8.2)
@@ -188,6 +189,7 @@ from app.modules.purchases.agreement_router import (
     ownership_router,
 )
 from app.modules.purchases.router import router as purchases_router
+from app.modules.referrals.public_router import router as referrals_public_router
 from app.modules.referrals.router import router as referrals_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
@@ -479,6 +481,10 @@ app.include_router(consistency_router)
 app.include_router(agent_applications_router)
 app.include_router(staff_agent_applications_router)
 app.include_router(referrals_router)
+# Task 1 Block B: public fire-and-forget click endpoint, wired right
+# after referrals_router so both referral surfaces sit together in
+# the OpenAPI doc.
+app.include_router(referrals_public_router)
 app.include_router(commissions_router)
 app.include_router(notifications_router)
 app.include_router(staff_notifications_router)
