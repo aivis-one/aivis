@@ -66,15 +66,33 @@ async def _create_second_link(
     ).scalar_one()
 
 
+async def _clear_email_auth_rate_limit() -> None:
+    """Drop the shared email-auth rate-limit key (5 req / 60s per IP).
+
+    conftest.clear_rate_limit resets it BEFORE each test, but the
+    stats test below performs 6 register calls WITHIN one test (two
+    agents + four referred users) -- one over the budget. Mirroring
+    the conftest approach mid-test keeps the seeding honest without
+    weakening the production limit.
+    """
+    from app.core.redis import get_redis
+
+    redis = get_redis()
+    await redis.delete("email_auth:127.0.0.1")
+
+
 async def _seed_registrations(
     client: AsyncClient, code: str, count: int
 ) -> list[str]:
     """Register `count` users through the real flow with `code`.
 
     Returns their user ids -- handy as investor_ids for purchases.
+    Clears the per-IP auth rate limit before every call so multi-agent
+    seeding inside a single test never trips the 5/60s budget.
     """
     user_ids: list[str] = []
     for _ in range(count):
+        await _clear_email_auth_rate_limit()
         body = await register_user(client, referral_code=code)
         user_ids.append(body["user"]["id"])
     return user_ids
