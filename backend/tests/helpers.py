@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.modules.referrals.models import ReferralLink
 from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import (
@@ -328,3 +329,48 @@ async def create_admin_user(
     await session.commit()
     await session.refresh(profile)
     return user, token
+
+
+# ---------------------------------------------------------------------------
+# Agent factory helpers (Task 1 Block C)
+# ---------------------------------------------------------------------------
+
+
+async def create_agent_with_link(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> tuple[User, str, ReferralLink]:
+    """Register a user, promote to agent, create one referral link.
+
+    Returns (agent User, token, ReferralLink). Promotion is a direct
+    role flip via the DB session -- the referrals router only checks
+    user.role == AGENT (_require_agent), mirroring how create_staff_user
+    promotes staff. The link is created through the real endpoint so
+    the code-generation path stays covered.
+    """
+    data = await register_user(client)
+    token = data["session_token"]
+
+    user = (
+        await session.execute(
+            select(User).where(
+                User.credentials["email"]["email"].as_string()
+                == data["email"]
+            )
+        )
+    ).scalar_one()
+    user.role = UserRole.AGENT
+    await session.commit()
+
+    resp = await client.post(
+        "/api/v1/referrals/links", headers=auth_headers(token)
+    )
+    assert resp.status_code == 201, resp.text
+    link_id = resp.json()["id"]
+
+    link = (
+        await session.execute(
+            select(ReferralLink).where(ReferralLink.id == link_id)
+        )
+    ).scalar_one()
+    return user, token, link

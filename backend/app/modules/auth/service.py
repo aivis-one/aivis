@@ -18,10 +18,12 @@
 #   is rolled back on exception (P-01), which would discard any audit
 #   entries written to the same session.
 #
-# REFERRAL (Sprint 7.2):
+# REFERRAL (Sprint 7.2, extended Task 1 Block C):
 #   referral_code is resolved FIRST at registration. Valid code ->
-#   referred_by = agent_id. Invalid/missing -> referred_by = platform_id.
-#   Silent fallback, never blocks registration.
+#   referred_by = agent_id AND referred_by_link_id = link.id. Invalid/
+#   missing -> referred_by = platform_id, referred_by_link_id = NULL.
+#   Silent fallback, never blocks registration. Existing users keep
+#   their original referred_by / referred_by_link_id.
 #
 # EMAIL VERIFICATION (G1):
 #   6-digit numeric code, stored in credentials.onboarding.email_token.
@@ -128,42 +130,46 @@ async def get_platform_user_id(session: AsyncSession) -> UUID:
 
 
 # ---------------------------------------------------------------------------
-# Referral resolution helper (Sprint 7.2)
+# Referral resolution helper (Sprint 7.2, extended Task 1 Block C)
 # ---------------------------------------------------------------------------
 
 
 async def _resolve_referrer(
     referral_code: str | None,
     session: AsyncSession,
-) -> UUID:
-    """Resolve referral_code to a referrer UUID.
+) -> tuple[UUID, UUID | None]:
+    """Resolve referral_code to (referred_by, referred_by_link_id).
 
-    Returns agent_id if code is valid, platform_id otherwise.
-    Never raises -- silent fallback to Platform.
+    Valid code -> (agent_id, link_id). Invalid/missing -> (platform_id,
+    None). Never raises -- silent fallback to Platform; registration is
+    never blocked by a bad code (P7-02). Task 1 Block C: the specific
+    link is captured alongside the agent for per-link registration
+    stats; commission logic still uses only referred_by.
     """
     platform_id = await get_platform_user_id(session)
 
     if not referral_code:
-        return platform_id
+        return platform_id, None
 
     # Lazy import to avoid circular dependency.
-    from app.modules.referrals.service import resolve_referral_code
+    from app.modules.referrals.service import resolve_referral_link
 
-    agent_id = await resolve_referral_code(referral_code, session)
+    link = await resolve_referral_link(referral_code, session)
 
-    if agent_id is None:
+    if link is None:
         logger.debug(
             "referral_code_fallback_to_platform",
             code=referral_code,
         )
-        return platform_id
+        return platform_id, None
 
     logger.info(
         "referral_code_resolved",
         code=referral_code,
-        agent_id=str(agent_id),
+        agent_id=str(link.agent_id),
+        link_id=str(link.id),
     )
-    return agent_id
+    return link.agent_id, link.id
 
 
 # ---------------------------------------------------------------------------
@@ -225,8 +231,9 @@ async def register_email(
     6-digit verification code in credentials JSONB. Sends verification
     email with the code.
 
-    referral_code is resolved FIRST: valid code -> referred_by = agent_id,
-    invalid/missing -> referred_by = platform_id. Never blocks registration.
+    referral_code is resolved FIRST: valid code -> referred_by = agent_id
+    AND referred_by_link_id = link.id; invalid/missing -> referred_by =
+    platform_id, referred_by_link_id = NULL. Never blocks registration.
 
     Does NOT commit or rollback -- caller (get_db_session) manages
     the transaction lifecycle (P-01).
@@ -241,11 +248,15 @@ async def register_email(
     expires_at = now + timedelta(minutes=_VERIFICATION_CODE_TTL_MINUTES)
 
     # Sprint 7.2: resolve referrer FIRST -- agents' bread and butter.
-    referred_by = await _resolve_referrer(referral_code, session)
+    # Task 1 Block C: the specific link is captured alongside the agent.
+    referred_by, referred_by_link_id = await _resolve_referrer(
+        referral_code, session
+    )
 
     user = User(
         role=UserRole.INVESTOR,
         referred_by=referred_by,
+        referred_by_link_id=referred_by_link_id,
         credentials={
             "email": {
                 "email": email_lower,
@@ -281,6 +292,9 @@ async def register_email(
             "auth_method": "email",
             "referral_code": referral_code,
             "referred_by": str(referred_by),
+            "referred_by_link_id": (
+                str(referred_by_link_id) if referred_by_link_id else None
+            ),
         },
     )
 
@@ -501,7 +515,7 @@ async def upsert_telegram_user(
     If not found -- create new User with role=investor.
 
     referral_code is only used for NEW users (is_new=True).
-    Existing users keep their original referred_by.
+    Existing users keep their original referred_by / referred_by_link_id.
 
     Race condition (two simultaneous first logins) is handled via
     begin_nested() (SAVEPOINT) + IntegrityError catch + retry SELECT.
@@ -568,12 +582,16 @@ async def upsert_telegram_user(
     # condition only rolls back the INSERT, not the outer transaction (P-05).
 
     # Sprint 7.2: resolve referrer for new user.
-    referred_by = await _resolve_referrer(referral_code, session)
+    # Task 1 Block C: the specific link is captured alongside the agent.
+    referred_by, referred_by_link_id = await _resolve_referrer(
+        referral_code, session
+    )
 
     lang = (telegram_user.get("language_code") or "en")[:2] or "en"
     new_user = User(
         role=UserRole.INVESTOR,
         referred_by=referred_by,
+        referred_by_link_id=referred_by_link_id,
         credentials={"telegram": telegram_creds},
         language=lang,
     )
@@ -632,6 +650,9 @@ async def upsert_telegram_user(
             "auth_method": "telegram",
             "referral_code": referral_code,
             "referred_by": str(referred_by),
+            "referred_by_link_id": (
+                str(referred_by_link_id) if referred_by_link_id else None
+            ),
         },
     )
 

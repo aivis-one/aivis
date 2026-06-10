@@ -3,9 +3,10 @@
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   resolve_referral_code()  -- code -> agent_id or None (silent fallback)
+#   resolve_referral_link()  -- code -> validated ReferralLink or None (Task 1 C)
+#   resolve_referral_code()  -- code -> agent_id or None (thin wrapper)
 #   create_link()            -- generate unique referral link for agent
-#   record_click()           -- atomic click_count increment by code (Block B)
+#   record_click()           -- atomic click_count increment by code (Task 1 B)
 #   get_agent_chain()        -- walk User.referred_by up to max_depth
 #   create_attribution()     -- record purchase-to-link mapping
 #   get_my_links()           -- paginated list of agent's links
@@ -13,7 +14,9 @@
 #
 # RESOLVE SEMANTICS:
 #   Invalid/expired/deactivated codes return None (never raise).
-#   Caller falls back to platform_id on None.
+#   Caller falls back to platform_id on None. All validation lives in
+#   resolve_referral_link(); resolve_referral_code() only narrows the
+#   result to agent_id for callers that don't need the link itself.
 #
 # AGENT CHAIN:
 #   Walks User.referred_by upward. Stops when:
@@ -52,14 +55,15 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 
-async def resolve_referral_code(
+async def resolve_referral_link(
     code: str,
     session: AsyncSession,
-) -> UUID | None:
-    """Resolve a referral code to the owning agent's UUID.
+) -> ReferralLink | None:
+    """Resolve a referral code to a fully validated ReferralLink (Task 1 C).
 
-    Returns None if code not found, link deactivated, agent inactive,
-    or agent role changed. Caller should fall back to platform_id on None.
+    Single source of resolve validation. Returns None if code not
+    found, link deactivated, agent inactive, or agent role changed.
+    Callers fall back to platform attribution on None.
     """
     stmt = (
         select(ReferralLink)
@@ -90,7 +94,21 @@ async def resolve_referral_code(
         )
         return None
 
-    return link.agent_id
+    return link
+
+
+async def resolve_referral_code(
+    code: str,
+    session: AsyncSession,
+) -> UUID | None:
+    """Resolve a referral code to the owning agent's UUID.
+
+    Thin wrapper over resolve_referral_link() kept for callers that
+    only need the agent. Same None semantics: code not found, link
+    deactivated, agent inactive, or agent role changed -> None.
+    """
+    link = await resolve_referral_link(code, session)
+    return link.agent_id if link is not None else None
 
 
 # ---------------------------------------------------------------------------
@@ -168,42 +186,6 @@ async def create_link(
     raise RuntimeError("Failed to generate unique referral code after 3 attempts")
 
 
-async def record_click(
-    code: str,
-    session: AsyncSession,
-) -> bool:
-    """Atomically increment click_count for the link matching code.
-
-    The increment is a single DB-level UPDATE expression
-    (click_count = click_count + 1) -- never load-modify-save, which
-    would lose clicks under concurrency. update() is a SQLAlchemy
-    Core/ORM expression, so the ORM-only rule holds.
-
-    Counts regardless of is_active: the click happened even if the
-    agent later deactivated the link (boss-locked decision #3/#4).
-
-    Returns True if a row matched (known code), False otherwise.
-    Never raises for unknown codes -- the caller answers 204 either
-    way (fire-and-forget, code existence is not confirmed).
-
-    Does NOT commit -- caller manages the transaction (P-01).
-    """
-    stmt = (
-        update(ReferralLink)
-        .where(ReferralLink.code == code)
-        .values(click_count=ReferralLink.click_count + 1)
-    )
-    result = await session.execute(stmt)
-    matched = (result.rowcount or 0) > 0
-
-    if matched:
-        logger.info("referral_click_recorded", code=code)
-    else:
-        logger.debug("referral_click_unknown_code", code=code)
-
-    return matched
-
-
 async def get_my_links(
     agent_id: UUID,
     session: AsyncSession,
@@ -231,6 +213,51 @@ async def get_my_links(
     links = list(result.scalars().all())
 
     return links, total
+
+
+# ---------------------------------------------------------------------------
+# Click tracking (Task 1 Block B)
+# ---------------------------------------------------------------------------
+
+
+async def record_click(
+    code: str,
+    session: AsyncSession,
+) -> bool:
+    """Atomically increment click_count for the link matching `code`.
+
+    Single UPDATE expression -- the increment happens DB-side, so
+    concurrent clicks never lose counts (no load-modify-save race).
+    update() is a SQLAlchemy ORM-enabled expression; the ORM-only rule
+    is intact.
+
+    Counts regardless of is_active: the click happened even if the
+    agent later deactivated the link (boss-locked decision). Raw
+    counter, no deduplication -- per-IP rate limiting at the router
+    is anti-abuse, not dedup.
+
+    Returns True if a link matched (counter incremented), False for an
+    unknown code. The public endpoint replies 204 either way; the
+    return value exists for logging and tests.
+
+    Does NOT commit -- caller manages the transaction (P-01).
+    """
+    stmt = (
+        update(ReferralLink)
+        .where(ReferralLink.code == code)
+        .values(click_count=ReferralLink.click_count + 1)
+    )
+    result = await session.execute(stmt)
+    matched = result.rowcount > 0
+
+    if matched:
+        logger.debug("referral_click_recorded", code=code)
+    else:
+        # Unknown code: no increment, still 204 at the edge (do not
+        # confirm code existence to unauthenticated callers).
+        logger.debug("referral_click_unknown_code", code=code)
+
+    return matched
 
 
 # ---------------------------------------------------------------------------
