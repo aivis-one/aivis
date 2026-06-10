@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Models (Sprint 7.2)
+# CBSHOME Backend -- Referral Models (Sprint 7.2, extended Task 1 Block A)
 # =============================================================================
 #
 # ReferralLink:
@@ -16,6 +16,11 @@
 # RULES:
 #   - ReferralLink.code is unique (partial retry on collision).
 #   - ReferralLink.is_active can be set to False to disable a link.
+#   - ReferralLink.click_count is a raw counter (no dedup), incremented
+#     atomically at the DB level (update().values(click_count + 1)) by
+#     the public referral-click endpoint. Never load-modify-save.
+#     Clicks are counted regardless of is_active -- the click happened
+#     even if the agent later deactivated the link.
 #   - ReferralAttribution is immutable (no updated_at).
 #   - ReferralAttribution.purchase_id is unique (one attribution per purchase).
 #   - referral_link_id=NULL means organic purchase (no referral link used).
@@ -25,7 +30,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -54,6 +59,17 @@ class ReferralLink(UUIDMixin, Base):
         Boolean,
         default=True,
         server_default="true",
+        nullable=False,
+    )
+
+    # -- Click counter (Task 1, migration 0035) --
+    # Raw count of public referral-click hits. No deduplication --
+    # per-IP rate limiting on the endpoint is anti-abuse, not dedup.
+    # Incremented via an atomic UPDATE expression, never in Python.
+    click_count: Mapped[int] = mapped_column(
+        BigInteger,
+        default=0,
+        server_default="0",
         nullable=False,
     )
 

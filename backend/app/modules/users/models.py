@@ -23,6 +23,15 @@
 #   for Platform itself). Set once at registration, immutable after.
 #   Agent chain for commission calculation walks up this field.
 #
+# REFERRED_BY_LINK_ID (Task 1, migration 0035):
+#   Which specific referral link brought the user in. Set at
+#   registration alongside referred_by when a valid link code resolves;
+#   NULL for organic / platform-fallback registrations and for every
+#   user registered before migration 0035 (historically only the agent
+#   is known, not the link). Used for per-link registration counts.
+#   Does NOT participate in commission logic -- that stays on
+#   referred_by.
+#
 # JSONB COLUMNS:
 #   credentials    -- auth data: {email: {...}, telegram: {...}, onboarding: {...}}
 #   profile        -- personal data: {first_name, last_name, country, phone, ...}
@@ -123,6 +132,19 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     referred_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
+        index=True,
+    )
+
+    # -- Referring link (Task 1, migration 0035) --
+    # The specific referral link the user registered through. Set
+    # alongside referred_by when a valid link code resolves at
+    # registration; NULL otherwise (organic, platform fallback, or
+    # pre-0035 users). ON DELETE SET NULL: removing a link never
+    # blocks or cascades onto users. Indexed for per-link
+    # registration aggregates (Block D).
+    referred_by_link_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("referral_links.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
 
