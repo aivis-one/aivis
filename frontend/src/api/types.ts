@@ -730,3 +730,32 @@ export type { UpdateRoadmapItemRequest } from './generated'
 export type { ReorderRoadmapRequest } from './generated'
 
 export type { RoadmapItemKind } from './generated'
+
+// ---------------------------------------------------------------------------
+// Agent referrals + commissions (Task 2 Block A, Phase F6.1)
+//
+// Read/write surfaces for AgentHubView / AgentDashboardView and the
+// upcoming Task 3 views (CommissionsView / LeaderboardView reuse this
+// exact layer -- do not re-declare there).
+//
+// ReferralLinkResponse carries the per-link funnel counters added by
+// backend Task 1 Block D (click_count / registration_count /
+// purchase_count + is_active); ReferralStatsResponse carries the
+// aggregate funnel (total_clicks / total_registrations on top of the
+// pre-existing totals). Both regenerate from OpenAPI -- this block
+// only re-exports.
+// ---------------------------------------------------------------------------
+
+export type { ReferralLinkResponse } from './generated'
+
+export type { ReferralLinkListResponse } from './generated'
+
+export type { ReferralStatsResponse } from './generated'
+
+export type { LeaderboardEntry } from './generated'
+
+export type { LeaderboardResponse } from './generated'
+
+export type { CommissionEntry } from './generated'
+
+export type { CommissionListResponse } from './generated'

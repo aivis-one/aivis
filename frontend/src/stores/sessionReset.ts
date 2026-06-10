@@ -35,6 +35,7 @@
 //                         token / user / loading is the caller's job.
 // =============================================================================
 
+import { useAgentStore } from '@/stores/agent'
 import { useAttachmentsStore } from '@/stores/attachments'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyListStore } from '@/stores/companyList'
@@ -61,6 +62,10 @@ import { useTransactionsStore } from '@/stores/transactions'
  * deleted CompanyFilterSheet on MarketView; both are gone now that
  * the catalogue moved to CompanyListView and per-company products
  * live in ProductsByCompanyView (R1 §1.4). One fewer reset call.
+ *
+ * Task 2 Block A (F6.1): +useAgentStore (AgentHubView referral links
+ * and stats, AgentDashboardView rank/commission widgets). Without
+ * this line the agent's links and earnings would survive logout.
  */
 export function resetAllDataStores(): void {
   useDashboardStore().reset()
@@ -71,4 +76,5 @@ export function resetAllDataStores(): void {
   useAttachmentsStore().reset()
   useCompanyProfileStore().reset()
   useCompanyDashboardStore().reset()
+  useAgentStore().reset()
 }
