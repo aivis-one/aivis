@@ -9,8 +9,8 @@
 #   record_click()           -- atomic click_count increment by code (Task 1 B)
 #   get_agent_chain()        -- walk User.referred_by up to max_depth
 #   create_attribution()     -- record purchase-to-link mapping
-#   get_my_links()           -- paginated list of agent's links
-#   get_my_stats()           -- agent referral stats
+#   get_my_links()           -- paginated links + per-link counters (Task 1 D)
+#   get_my_stats()           -- agent referral stats (incl. clicks/regs)
 #
 # RESOLVE SEMANTICS:
 #   Invalid/expired/deactivated codes return None (never raise).
@@ -192,8 +192,18 @@ async def get_my_links(
     *,
     page: int = 1,
     per_page: int = 20,
-) -> tuple[list[ReferralLink], int]:
-    """Return paginated list of agent's referral links."""
+) -> tuple[list[tuple[ReferralLink, int, int]], int]:
+    """Return paginated agent links enriched with per-link counters.
+
+    Returns ([(link, registration_count, purchase_count), ...], total).
+    click_count rides on the ReferralLink row itself.
+
+    Anti-N+1 (Task 1 Block D, same batching as commissions/service.py
+    Round-4 fix): exactly two aggregate queries per page, both scoped
+    to the current page's link_ids -- one COUNT GROUP BY over users
+    (registrations) and one over referral_attributions (purchases).
+    Never a query inside the links loop.
+    """
     count_stmt = (
         select(func.count())
         .select_from(ReferralLink)
@@ -212,7 +222,41 @@ async def get_my_links(
     result = await session.execute(stmt)
     links = list(result.scalars().all())
 
-    return links, total
+    link_ids = [link.id for link in links]
+
+    registrations_map: dict[UUID, int] = {}
+    purchases_map: dict[UUID, int] = {}
+
+    if link_ids:
+        # Batch 1: registrations per link (users.referred_by_link_id,
+        # indexed by migration 0035).
+        reg_stmt = (
+            select(User.referred_by_link_id, func.count())
+            .where(User.referred_by_link_id.in_(link_ids))
+            .group_by(User.referred_by_link_id)
+        )
+        reg_rows = (await session.execute(reg_stmt)).all()
+        registrations_map = {row[0]: row[1] for row in reg_rows}
+
+        # Batch 2: purchases per link (referral_attributions).
+        purch_stmt = (
+            select(ReferralAttribution.referral_link_id, func.count())
+            .where(ReferralAttribution.referral_link_id.in_(link_ids))
+            .group_by(ReferralAttribution.referral_link_id)
+        )
+        purch_rows = (await session.execute(purch_stmt)).all()
+        purchases_map = {row[0]: row[1] for row in purch_rows}
+
+    enriched = [
+        (
+            link,
+            registrations_map.get(link.id, 0),
+            purchases_map.get(link.id, 0),
+        )
+        for link in links
+    ]
+
+    return enriched, total
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +418,8 @@ async def get_my_stats(
 ) -> dict:
     """Return referral stats for an agent.
 
-    Returns dict with: total_links, total_purchases, total_commission_cents.
+    Returns dict with: total_links, total_clicks, total_registrations,
+    total_purchases, total_commission_cents.
     """
     # Count links.
     links_stmt = (
@@ -384,10 +429,31 @@ async def get_my_stats(
     )
     total_links = (await session.execute(links_stmt)).scalar_one()
 
-    # Count purchases via agent's links.
+    # Sum of raw clicks across all the agent's links (Task 1 Block D).
+    clicks_stmt = select(
+        func.coalesce(func.sum(ReferralLink.click_count), 0)
+    ).where(ReferralLink.agent_id == agent_id)
+    total_clicks = (await session.execute(clicks_stmt)).scalar_one()
+
+    # Subquery of the agent's link ids -- shared by the registrations
+    # and purchases aggregates below.
     link_ids_stmt = select(ReferralLink.id).where(
         ReferralLink.agent_id == agent_id
     )
+
+    # Registrations attributed to any of the agent's links (Task 1 D,
+    # mirrors the total_purchases subquery shape). Pre-0035 users have
+    # referred_by_link_id = NULL and are correctly excluded.
+    registrations_stmt = (
+        select(func.count())
+        .select_from(User)
+        .where(User.referred_by_link_id.in_(link_ids_stmt))
+    )
+    total_registrations = (
+        await session.execute(registrations_stmt)
+    ).scalar_one()
+
+    # Count purchases via agent's links.
     purchases_stmt = (
         select(func.count())
         .select_from(ReferralAttribution)
@@ -409,6 +475,8 @@ async def get_my_stats(
 
     return {
         "total_links": total_links,
+        "total_clicks": total_clicks,
+        "total_registrations": total_registrations,
         "total_purchases": total_purchases,
         "total_commission_cents": total_commission_cents,
     }

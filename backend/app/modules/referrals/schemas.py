@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Schemas (Sprint 7.2, extended Task 1 Block B)
+# CBSHOME Backend -- Referral Schemas (Sprint 7.2)
 # =============================================================================
 
 from datetime import datetime
@@ -11,22 +11,30 @@ from pydantic import BaseModel, ConfigDict, Field
 class ReferralClickRequest(BaseModel):
     """Public referral-click payload (Task 1 Block B).
 
-    Fire-and-forget: the endpoint answers 204 whether or not the code
-    matches a link, so this schema is the only validation surface.
-    max_length mirrors ReferralLink.code String(20).
+    max_length mirrors ReferralLink.code String(20). Fire-and-forget:
+    the endpoint replies 204 whether or not the code matches a link.
     """
 
     code: str = Field(max_length=20)
 
 
 class ReferralLinkResponse(BaseModel):
-    """Single referral link."""
+    """Single referral link with per-link funnel counters (Task 1 D).
+
+    click_count is the raw counter column; registration_count and
+    purchase_count are aggregates computed in get_my_links via two
+    batched GROUP BY queries (never per-link queries).
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     agent_id: UUID
     code: str
+    is_active: bool
+    click_count: int
+    registration_count: int
+    purchase_count: int
     created_at: datetime
 
 
@@ -40,8 +48,11 @@ class ReferralLinkListResponse(BaseModel):
 
 
 class ReferralStatsResponse(BaseModel):
-    """Agent referral statistics."""
+    """Agent referral statistics (funnel order: links -> clicks ->
+    registrations -> purchases -> commission)."""
 
     total_links: int
+    total_clicks: int
+    total_registrations: int
     total_purchases: int
     total_commission_cents: int
