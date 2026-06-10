@@ -11,11 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field
 class ReferralClickRequest(BaseModel):
     """Public referral-click payload (Task 1 Block B).
 
-    max_length mirrors ReferralLink.code String(20). Fire-and-forget:
-    the endpoint replies 204 whether or not the code matches a link.
+    max_length mirrors ReferralLink.code String(20); min_length=1
+    rejects empty strings at the framework edge instead of spending a
+    no-op UPDATE (STYLE-44-01). Fire-and-forget: the endpoint replies
+    204 whether or not the code matches a link.
     """
 
-    code: str = Field(max_length=20)
+    code: str = Field(min_length=1, max_length=20)
 
 
 class ReferralLinkResponse(BaseModel):

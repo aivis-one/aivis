@@ -109,9 +109,14 @@ async def test_click_deactivated_link_still_increments(
     assert link.click_count == 1
 
 
-async def test_click_oversized_code_422(client: AsyncClient) -> None:
-    """Code longer than 20 chars fails the Pydantic schema -> 422."""
+async def test_click_out_of_bounds_code_422(client: AsyncClient) -> None:
+    """Schema bounds: >20 chars and empty string both fail with 422.
+
+    Empty-string rejection is STYLE-44-01 (min_length=1) -- previously
+    it passed the schema and produced a no-op UPDATE.
+    """
     assert await _click(client, "x" * 21) == 422
+    assert await _click(client, "") == 422
 
 
 async def test_click_rate_limit_429(
