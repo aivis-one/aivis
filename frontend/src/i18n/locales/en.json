@@ -1104,6 +1104,66 @@
       }
     }
   },
+  "agent": {
+    "dashboard": {
+      "title": "Agent Dashboard",
+      "subtitle": "Your performance at a glance",
+      "widgets": {
+        "monthCommission": "Commission this month",
+        "rank": "Leaderboard rank",
+        "rankNone": "—",
+        "balance": "Passive balance",
+        "balanceFrozen": "frozen",
+        "registrations": "Registrations"
+      },
+      "errors": {
+        "commission": "Couldn't load commissions",
+        "rank": "Couldn't load leaderboard",
+        "balance": "Couldn't load balance",
+        "registrations": "Couldn't load referral stats"
+      },
+      "actions": {
+        "title": "Quick actions",
+        "createLink": "Create link",
+        "myCommissions": "My commissions"
+      }
+    },
+    "hub": {
+      "title": "Agent Hub",
+      "subtitle": "Your referral links and earnings",
+      "stats": {
+        "title": "Overview",
+        "links": "Links",
+        "clicks": "Clicks",
+        "registrations": "Registrations",
+        "purchases": "Purchases",
+        "commission": "Commission",
+        "errorTitle": "Couldn't load stats"
+      },
+      "createLink": "Create link",
+      "created": "Link created",
+      "createError": "Couldn't create link",
+      "links": {
+        "title": "My links",
+        "errorTitle": "Couldn't load links",
+        "loadMore": "Load more",
+        "empty": {
+          "title": "No links yet",
+          "desc": "Create your first referral link and share it to start earning commissions."
+        }
+      },
+      "link": {
+        "inactive": "Inactive",
+        "copy": "Copy",
+        "copied": "Link copied",
+        "copyError": "Couldn't copy the link",
+        "clicks": "Clicks",
+        "registrations": "Registrations",
+        "purchases": "Purchases",
+        "createdAt": "Created"
+      }
+    }
+  },
   "public": {
     "shell": {
       "loginButton": "Sign in"

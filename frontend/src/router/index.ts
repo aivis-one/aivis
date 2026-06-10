@@ -107,6 +107,7 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { API_BASE_URL } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { captureReferralFromPath } from '@/composables/useAuth'
 import { globalGuard, getRoleDashboard } from './guards'
@@ -644,6 +645,25 @@ export const router = createRouter({
     // matching [A-Za-z0-9_-]+. The same character class is used by
     // REFERRAL_PATH_RE in useAuth.ts for cold-reload path scans, so
     // both code paths reject the same shape of malformed input.
+    //
+    // Task 2 Block D: the same beforeEnter also fires the click
+    // beacon -- POST /api/v1/public/referral-click (backend Task 1 B,
+    // 204 always, per-IP rate limited). Fire-and-forget by contract:
+    //   - NOT awaited; next() runs immediately, the redirect never
+    //     waits on the network;
+    //   - every error is swallowed (the endpoint is a metric, not a
+    //     feature -- a failed beacon must not break the visit);
+    //   - raw fetch WITHOUT the Authorization header (same no-auth
+    //     raw-fetch convention as api/attachments.ts withAuth=false):
+    //     the endpoint is public and an authenticated agent clicking
+    //     a link must look like any other visitor;
+    //   - keepalive lets the request survive an immediate unload on
+    //     the off-chance the visitor closes the tab mid-redirect.
+    // The beacon deliberately does NOT live in _saveReferralCode()
+    // (useAuth.ts): a cold reload on /r/<code> runs both the initAuth
+    // path scan AND this beforeEnter -- a beacon in both would double
+    // count. clicks = visits to /r/<code>; the ?ref= and Telegram
+    // start_param capture sources do not fire clicks by design.
     // -----------------------------------------------------------------
     {
       path: '/r/:code([A-Za-z0-9_-]+)',
@@ -657,6 +677,18 @@ export const router = createRouter({
         const code = to.params.code
         if (typeof code === 'string' && code.length > 0) {
           captureReferralFromPath(code)
+
+          // Fire-and-forget click beacon -- see the route comment
+          // above. No await, no auth header, all errors swallowed.
+          void fetch(`${API_BASE_URL}/api/v1/public/referral-click`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+            keepalive: true,
+          }).catch(() => {
+            // Metric-only endpoint: a lost beacon is acceptable,
+            // a broken redirect is not.
+          })
         }
         next({ name: 'public-companies' })
       },
