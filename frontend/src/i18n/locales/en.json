@@ -1110,6 +1110,7 @@
       "subtitle": "Your performance at a glance",
       "widgets": {
         "monthCommission": "Commission this month",
+        "monthCommissionTruncated": "based on the last 100 entries",
         "rank": "Leaderboard rank",
         "rankNone": "—",
         "balance": "Passive balance",

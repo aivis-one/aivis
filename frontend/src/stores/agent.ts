@@ -21,10 +21,23 @@
 //   existing stores/dashboard.ts (GET /dashboard/summary). One
 //   endpoint, one store -- no duplication.
 //
-// RACE POLICY (FP-17):
-//   Single monotonic fetchEpoch, bumped by reset() and captured by
-//   every async action. A resolve that lost the race writes nothing.
-//   Identical pattern to stores/dashboard.ts / stores/products.ts.
+// RACE POLICY (FP-17, fixed in R45-2.1):
+//   One monotonic epoch PER STATE GROUP (links / stats / leaderboard /
+//   commissions), bumped by that group's fetch and by reset(), and
+//   captured by the group's async action. A resolve that lost the
+//   race writes nothing.
+//
+//   WHY PER-GROUP, NOT SHARED (R45-2.1 post-mortem): the first
+//   version shared ONE counter across all four groups, copying the
+//   single-fetch-path stores (dashboard.ts / products.ts) without
+//   accounting for the difference. Views fire several group fetches
+//   synchronously in onMounted, so the shared counter reached its
+//   final value before any response arrived -- every group except the
+//   last had its response discarded AND its loading flag stuck true
+//   (the `finally` was epoch-gated too). Deterministic infinite
+//   spinners on both agent screens. Epochs only guard against STALE
+//   responses within the same group; concurrent fetches of DIFFERENT
+//   groups are independent and must never invalidate each other.
 //
 // MONTH COMMISSION CAVEAT:
 //   There is no server-side "commission this month" aggregate yet.
@@ -89,9 +102,14 @@ export const useAgentStore = defineStore('agent', () => {
   const commissionsLoading = ref(false)
   const commissionsError = ref<string | null>(null)
 
-  // Monotonic epoch (FP-17). Non-reactive by design -- read only
-  // inside async closures after await points.
-  let fetchEpoch = 0
+  // Monotonic per-group epochs (FP-17, R45-2.1). Non-reactive by
+  // design -- read only inside async closures after await points.
+  // One counter per independent state group: a fetch in one group
+  // must never invalidate an in-flight fetch of another.
+  let linksEpoch = 0
+  let statsEpoch = 0
+  let leaderboardEpoch = 0
+  let commissionsEpoch = 0
 
   // ---------------------------------------------------------------------------
   // Computed
@@ -127,6 +145,16 @@ export const useAgentStore = defineStore('agent', () => {
     }, 0)
   })
 
+  /**
+   * True when the commission history page came back full
+   * (items.length >= MONTH_FETCH_LIMIT) -- the month sum may then be
+   * undercounted and the widget must say so (R45-2.2). Disappears
+   * once a server-side monthly aggregate exists (Task 2b/3 candidate).
+   */
+  const monthCommissionTruncated = computed<boolean>(
+    () => (commissions.value?.items.length ?? 0) >= MONTH_FETCH_LIMIT,
+  )
+
   // ---------------------------------------------------------------------------
   // Actions -- referral links (Hub)
   // ---------------------------------------------------------------------------
@@ -136,20 +164,20 @@ export const useAgentStore = defineStore('agent', () => {
    * Never throws -- errors land on linksError.
    */
   async function fetchLinksFirstPage(): Promise<void> {
-    const mine = ++fetchEpoch
+    const mine = ++linksEpoch
     linksLoading.value = true
     linksError.value = null
     try {
       const resp = await getMyReferralLinks(1, LINKS_PER_PAGE)
-      if (mine !== fetchEpoch) return
+      if (mine !== linksEpoch) return
       links.value = resp.items
       linksTotal.value = resp.total
       linksPage.value = 1
     } catch (err) {
-      if (mine !== fetchEpoch) return
+      if (mine !== linksEpoch) return
       linksError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
-      if (mine === fetchEpoch) linksLoading.value = false
+      if (mine === linksEpoch) linksLoading.value = false
     }
   }
 
@@ -159,21 +187,21 @@ export const useAgentStore = defineStore('agent', () => {
    */
   async function loadMoreLinks(): Promise<void> {
     if (linksLoading.value || !hasMoreLinks.value) return
-    const mine = ++fetchEpoch
+    const mine = ++linksEpoch
     linksLoading.value = true
     linksError.value = null
     try {
       const next = linksPage.value + 1
       const resp = await getMyReferralLinks(next, LINKS_PER_PAGE)
-      if (mine !== fetchEpoch) return
+      if (mine !== linksEpoch) return
       links.value = [...links.value, ...resp.items]
       linksTotal.value = resp.total
       linksPage.value = next
     } catch (err) {
-      if (mine !== fetchEpoch) return
+      if (mine !== linksEpoch) return
       linksError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
-      if (mine === fetchEpoch) linksLoading.value = false
+      if (mine === linksEpoch) linksLoading.value = false
     }
   }
 
@@ -206,54 +234,54 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** Pull /referrals/stats/me. Never throws. */
   async function fetchStats(): Promise<void> {
-    const mine = ++fetchEpoch
+    const mine = ++statsEpoch
     statsLoading.value = true
     statsError.value = null
     try {
       const resp = await getMyReferralStats()
-      if (mine !== fetchEpoch) return
+      if (mine !== statsEpoch) return
       stats.value = resp
     } catch (err) {
-      if (mine !== fetchEpoch) return
+      if (mine !== statsEpoch) return
       statsError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
-      if (mine === fetchEpoch) statsLoading.value = false
+      if (mine === statsEpoch) statsLoading.value = false
     }
   }
 
   /** Pull /agent/leaderboard. Never throws. */
   async function fetchLeaderboard(): Promise<void> {
-    const mine = ++fetchEpoch
+    const mine = ++leaderboardEpoch
     leaderboardLoading.value = true
     leaderboardError.value = null
     try {
       const resp = await getLeaderboard()
-      if (mine !== fetchEpoch) return
+      if (mine !== leaderboardEpoch) return
       leaderboard.value = resp
     } catch (err) {
-      if (mine !== fetchEpoch) return
+      if (mine !== leaderboardEpoch) return
       leaderboardError.value =
         err instanceof Error ? err.message : 'Unknown error'
     } finally {
-      if (mine === fetchEpoch) leaderboardLoading.value = false
+      if (mine === leaderboardEpoch) leaderboardLoading.value = false
     }
   }
 
   /** Pull the first commission-history page. Never throws. */
   async function fetchCommissions(): Promise<void> {
-    const mine = ++fetchEpoch
+    const mine = ++commissionsEpoch
     commissionsLoading.value = true
     commissionsError.value = null
     try {
       const resp = await getMyCommissions(MONTH_FETCH_LIMIT, 0)
-      if (mine !== fetchEpoch) return
+      if (mine !== commissionsEpoch) return
       commissions.value = resp
     } catch (err) {
-      if (mine !== fetchEpoch) return
+      if (mine !== commissionsEpoch) return
       commissionsError.value =
         err instanceof Error ? err.message : 'Unknown error'
     } finally {
-      if (mine === fetchEpoch) commissionsLoading.value = false
+      if (mine === commissionsEpoch) commissionsLoading.value = false
     }
   }
 
@@ -262,12 +290,16 @@ export const useAgentStore = defineStore('agent', () => {
   // ---------------------------------------------------------------------------
 
   /**
-   * Drop all state. Bumps the epoch first so in-flight fetches
-   * resolving after logout cannot repopulate the cleared state.
-   * Synchronous, never throws.
+   * Drop all state. Bumps every group epoch first so in-flight
+   * fetches resolving after logout cannot repopulate the cleared
+   * state -- ALL FOUR groups, not just one (the per-group split of
+   * R45-2.1 applies here too). Synchronous, never throws.
    */
   function reset(): void {
-    ++fetchEpoch
+    ++linksEpoch
+    ++statsEpoch
+    ++leaderboardEpoch
+    ++commissionsEpoch
     links.value = []
     linksTotal.value = 0
     linksPage.value = 1
@@ -311,6 +343,7 @@ export const useAgentStore = defineStore('agent', () => {
     commissionsLoading,
     commissionsError,
     monthCommissionCents,
+    monthCommissionTruncated,
     fetchCommissions,
     // session
     reset,

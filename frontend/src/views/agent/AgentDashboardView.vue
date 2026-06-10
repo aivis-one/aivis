@@ -130,6 +130,9 @@ onMounted(() => {
           <div class="dash__widget-value">
             <template v-if="agentStore.commissionsError">—</template>
             <template v-else>
+              <!-- R45-2.2: a full history page means the month sum may
+                   be undercounted -- mark the figure as approximate. -->
+              <template v-if="agentStore.monthCommissionTruncated">≈ </template>
               {{ formatPrice(agentStore.monthCommissionCents) }}
             </template>
           </div>
@@ -139,6 +142,12 @@ onMounted(() => {
                 ? t('agent.dashboard.errors.commission')
                 : t('agent.dashboard.widgets.monthCommission')
             }}
+            <span
+              v-if="!agentStore.commissionsError && agentStore.monthCommissionTruncated"
+              class="dash__widget-sub"
+            >
+              {{ t('agent.dashboard.widgets.monthCommissionTruncated') }}
+            </span>
           </div>
         </template>
       </div>
