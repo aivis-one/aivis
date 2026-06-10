@@ -43,7 +43,7 @@ from uuid import UUID
 import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from sqlalchemy import select
+from sqlalchemy import BigInteger, cast, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -542,8 +542,15 @@ async def upsert_telegram_user(
     }
 
     # Step 1: Lookup existing user by telegram_id in JSONB.
+    # Drive-by fix (found during Task 1): the lookup used as_integer(),
+    # i.e. CAST(... AS INTEGER). Real Telegram ids exceeded int32 long
+    # ago, so any such user got an asyncpg int4 bind overflow -> 500 on
+    # login. The functional index ix_users_telegram_id (migration 0002)
+    # was ALWAYS ::bigint -- this BIGINT cast both fixes the overflow
+    # and makes the expression actually match the index.
     stmt = select(User).where(
-        User.credentials["telegram"]["id"].as_integer() == telegram_id
+        cast(User.credentials["telegram"]["id"].astext, BigInteger)
+        == telegram_id
     )
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
