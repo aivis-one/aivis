@@ -294,13 +294,22 @@ async def test_upcoming_endpoint_limit_future_only_asc(
     With limit large enough to include both our future events, the
     nearer must precede the farther, and a past event must be absent.
     A bare list (no pagination envelope) is returned.
+
+    OBS-43-01 family (Task 2 drive-by): `near` was originally anchored
+    at +2 days, hoping limit=50 would always reach it. The shared dev
+    DB accumulates future events from every suite run (nothing cleans
+    them), so after enough runs in one day the [now, now+2d) window
+    holds 50+ rows and pushes the anchor past the cap -- the assertion
+    fails on accumulation alone. Same medicine as the default-limit
+    test below: +1s makes `near` the earliest possible future row, so
+    under ASC it is guaranteed a slot regardless of dev-DB volume.
     """
     admin_token = await _admin_token(client, db_session)
     now = datetime.now(UTC)
 
     near = await _create_event(
         client, admin_token, is_published=True,
-        starts_at=now + timedelta(days=2),
+        starts_at=now + timedelta(seconds=1),
     )
     far = await _create_event(
         client, admin_token, is_published=True,
