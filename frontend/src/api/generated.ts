@@ -908,6 +908,11 @@ export interface ReadAllResponse {
   marked: number
 }
 
+/** Public referral-click payload (Task 1 Block B). Fire-and-forget: the endpoint answers 204 whether or not the code matches a link, so this schema is the only validation surface. max_length mirrors ReferralLink.code String(20). */
+export interface ReferralClickRequest {
+  code: string
+}
+
 /** Paginated list of referral links. */
 export interface ReferralLinkListResponse {
   items: ReferralLinkResponse[]
