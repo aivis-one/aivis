@@ -295,21 +295,25 @@ async def test_upcoming_endpoint_limit_future_only_asc(
     nearer must precede the farther, and a past event must be absent.
     A bare list (no pagination envelope) is returned.
 
-    OBS-43-01 family (Task 2 drive-by): `near` was originally anchored
-    at +2 days, hoping limit=50 would always reach it. The shared dev
-    DB accumulates future events from every suite run (nothing cleans
-    them), so after enough runs in one day the [now, now+2d) window
-    holds 50+ rows and pushes the anchor past the cap -- the assertion
-    fails on accumulation alone. Same medicine as the default-limit
-    test below: +1s makes `near` the earliest possible future row, so
-    under ASC it is guaranteed a slot regardless of dev-DB volume.
+    OBS-43-01 family (Task 2 drive-by, widened R46-2.1): `near` was
+    originally anchored at +2 days, hoping limit=50 would always reach
+    it. The shared dev DB accumulates future events from every suite
+    run (nothing cleans them), so after enough runs in one day the
+    [now, now+2d) window holds 50+ rows and pushes the anchor past the
+    cap -- the assertion fails on accumulation alone. The anchor is
+    +60s, not +1s: the three event-creating HTTP calls between
+    capturing now() and the GET can exceed a second on a loaded shared
+    server, and a +1s anchor would slip into the past (future-only
+    filter drops it -- flake in the opposite direction). +60s keeps
+    the accumulation immunity (previous runs' +60s anchors are long
+    past by the next run) without the timing window.
     """
     admin_token = await _admin_token(client, db_session)
     now = datetime.now(UTC)
 
     near = await _create_event(
         client, admin_token, is_published=True,
-        starts_at=now + timedelta(seconds=1),
+        starts_at=now + timedelta(seconds=60),
     )
     far = await _create_event(
         client, admin_token, is_published=True,
@@ -394,18 +398,24 @@ async def test_upcoming_endpoint_default_limit_three(
     nothing about our own rows. To make the assertion meaningful we
     seed one event anchored just after now() (`near`), which under the
     ASC ordering is the earliest future event there can be (nothing
-    realistic is scheduled in the next second), so it is guaranteed to
+    realistic is scheduled in the next minute), so it is guaranteed to
     occupy one of the first 3 slots. The remaining seeds (further out)
     only exist to make the list longer than the cap.
+
+    R46-2.1: the anchor is +60s, not +1s -- the event-creating HTTP
+    calls between now() and the GET can exceed a second on a loaded
+    shared server, and a +1s anchor would slip into the past. +60s
+    keeps the earliest-future guarantee (previous runs' anchors are
+    long past) without the timing window.
     """
     admin_token = await _admin_token(client, db_session)
     now = datetime.now(UTC)
 
-    # Earliest-future anchor: +1s puts it ahead of any plausibly
+    # Earliest-future anchor: +60s puts it ahead of any plausibly
     # pre-existing future row, so ASC ordering must surface it first.
     near = await _create_event(
         client, admin_token, is_published=True,
-        starts_at=now + timedelta(seconds=1),
+        starts_at=now + timedelta(seconds=60),
     )
     # Fillers further out so the unbounded list exceeds the default cap.
     for d in (2, 3, 4):
