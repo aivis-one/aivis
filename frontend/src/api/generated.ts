@@ -908,7 +908,7 @@ export interface ReadAllResponse {
   marked: number
 }
 
-/** Public referral-click payload (Task 1 Block B). max_length mirrors ReferralLink.code String(20). Fire-and-forget: the endpoint replies 204 whether or not the code matches a link. */
+/** Public referral-click payload (Task 1 Block B). max_length mirrors ReferralLink.code String(20); min_length=1 rejects empty strings at the framework edge instead of spending a no-op UPDATE (STYLE-44-01). Fire-and-forget: the endpoint replies 204 whether or not the code matches a link. */
 export interface ReferralClickRequest {
   code: string
 }
