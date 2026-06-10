@@ -53,8 +53,17 @@ from tests.helpers import (
 
 
 def _fresh_telegram_id() -> int:
-    """Random 10-digit telegram id, unique across runs on the shared DB."""
-    return 10**9 + secrets.randbelow(9 * 10**9)
+    """Random telegram id in [1e8, 2.1e9), unique across runs on the
+    shared dev DB (a reused id would hit the is_new=False branch and
+    skip referral capture).
+
+    Upper bound stays below int32 max (2_147_483_647): the telegram
+    lookup in upsert_telegram_user casts the JSONB id via as_integer()
+    (PG INTEGER), so larger values overflow at the asyncpg bind. Real
+    Telegram ids already exceed int32 in the wild -- that latent app
+    bug is flagged as a separate TD, not worked around here.
+    """
+    return 100_000_000 + secrets.randbelow(2_000_000_000)
 
 
 async def _load_user_by_id(session: AsyncSession, user_id: str) -> User:
