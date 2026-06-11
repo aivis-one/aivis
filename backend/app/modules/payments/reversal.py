@@ -8,27 +8,47 @@
 #                        ledger entries, mark originals as reversed.
 #                        + write transaction log entries (Sprint 6.4)
 #
-# REVERSAL FLOW (from CBSHOME-Financial-System.md section 5.5):
+# REVERSAL FLOW (R47 invariant fix; supersedes the literal reading of
+# CBSHOME-Financial-System.md section 5.5 / P5-19 -- see MIRROR ENTRIES):
 #   1. SELECT FOR UPDATE Payment (serialize concurrent reversals)
 #   2. Validate status transition -> reversed
 #   3. SELECT active_ledger WHERE origin_payment_id=X AND status IN (frozen, confirmed)
 #   4. SELECT passive_ledger WHERE origin_payment_id=X AND status IN (frozen, confirmed)
 #   5. For each entry:
 #        INSERT mirror entry: amount=-original, reason=original+":reversal",
-#                             status=confirmed (reversal acts immediately)
+#                             then immediately flip mirror -> status=reversed
 #        UPDATE original -> status=reversed
 #   6. Payment -> status=reversed
 #   7. Audit: payment.chargeback
 #   8. Transaction log: deposit:reversed + reversal:completed (Sprint 6.4)
 #
-# MIRROR ENTRIES:
-#   Created via record_active/passive_ledger() with status=confirmed.
-#   This ensures full audit trail and correct balance calculation.
-#   Balance may go negative -- this is intentional (user owes platform).
+# MIRROR ENTRIES (R47 -- the double-debit fix):
+#   Mirrors are written through record_active/passive_ledger() (audit
+#   trail, immutability doctrine intact) and then flipped to REVERSED
+#   via the same authorized direct-ORM path as the originals.
+#
+#   WHY REVERSED AND NOT CONFIRMED. The system carries four invariants
+#   that must hold simultaneously after a reversal:
+#     * get_*_balance() EXCLUDES reversed entries;
+#     * S-01: SUM(all entries INCLUDING reversed) = 0 -- the mirror
+#       must exist to cancel the original in the global sum;
+#     * S-08: NO CONFIRMED entries may reference a reversed Payment;
+#     * S-09: every ":reversal" entry pairs with a reversed original.
+#   A CONFIRMED mirror (the pre-R47 behaviour) broke two of them: the
+#   user's balance dropped by 2x the deposit (original excluded AND
+#   mirror subtracted -- an unspent reversed deposit left the user at
+#   -X instead of 0), and S-08 flagged every reversal. A REVERSED
+#   mirror satisfies all four: both rows are excluded from spendable
+#   balance (net effect exactly -X: the deposit disappears), the pair
+#   sums to zero inside S-01, S-08 sees no confirmed rows, S-09 pairs
+#   1:1. Balance can still go negative when the user already SPENT the
+#   reversed deposit (purchase debits stay confirmed) -- that genuine
+#   "user owes platform" case remains, the phantom one is gone.
 #
 # ORIGINAL ENTRIES:
 #   Status updated directly via ORM (bypassing _WRITABLE_STATUSES guard).
-#   This is the only authorized path to set status=reversed.
+#   reverse_payment() is the only authorized path to set status=reversed
+#   (applies to mirrors as well, see above).
 #
 # TOTAL_REVERSED_CENTS:
 #   Calculated from the sum of actual reversed entries, not payment.amount_cents.
@@ -72,8 +92,11 @@ async def reverse_payment(
 ) -> dict:
     """Reverse a payment (chargeback).
 
-    Creates mirror ledger entries with negative amounts and marks
-    originals as reversed. Payment status transitions to reversed.
+    Creates mirror ledger entries with negative amounts; both the
+    originals AND the mirrors end up status=reversed (R47 -- see the
+    MIRROR ENTRIES header for the four invariants this satisfies).
+    Net spendable-balance effect: exactly minus the reversed amounts.
+    Payment status transitions to reversed.
 
     Uses SELECT FOR UPDATE to prevent concurrent reversals of the
     same payment creating duplicate mirror entries.
@@ -123,9 +146,10 @@ async def reverse_payment(
     affected_user_ids: set[UUID] = set()
     total_reversed_cents = 0
 
-    # 5. Create mirror entries for active_ledger and mark originals reversed.
+    # 5. Create mirror entries for active_ledger and mark BOTH the
+    # original and the mirror reversed (see MIRROR ENTRIES header).
     for entry in active_entries:
-        await record_active_ledger(
+        mirror = await record_active_ledger(
             session,
             user_id=entry.user_id,
             amount_cents=-entry.amount_cents,
@@ -133,14 +157,18 @@ async def reverse_payment(
             reason=f"{entry.reason}:reversal",
             origin_payment_id=payment_id,
         )
-        # Direct ORM update -- only authorized path to set reversed.
+        # Direct ORM updates -- reverse_payment() is the only
+        # authorized path to set reversed (R47: the mirror too, so the
+        # pair nets to zero in S-01 while BOTH stay out of spendable
+        # balance and S-08 sees no confirmed rows).
+        mirror.status = LedgerStatus.REVERSED
         entry.status = LedgerStatus.REVERSED
         affected_user_ids.add(entry.user_id)
         total_reversed_cents += abs(entry.amount_cents)
 
-    # 6. Create mirror entries for passive_ledger and mark originals reversed.
+    # 6. Same for passive_ledger: mirror + flip both to reversed.
     for entry in passive_entries:
-        await record_passive_ledger(
+        mirror = await record_passive_ledger(
             session,
             user_id=entry.user_id,
             amount_cents=-entry.amount_cents,
@@ -148,6 +176,7 @@ async def reverse_payment(
             reason=f"{entry.reason}:reversal",
             origin_payment_id=payment_id,
         )
+        mirror.status = LedgerStatus.REVERSED
         entry.status = LedgerStatus.REVERSED
         affected_user_ids.add(entry.user_id)
         total_reversed_cents += abs(entry.amount_cents)

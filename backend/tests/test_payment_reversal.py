@@ -3,12 +3,18 @@
 # =============================================================================
 #
 # Tests cover:
-#   1:  Reverse frozen payment -> 200, mirror entries created, originals reversed
+#   1:  Reverse frozen payment -> 200, mirror entries created, BOTH
+#       original and mirror reversed (R47), balances zeroed
 #   2:  Reverse confirmed payment -> 200 (fraud dispute path)
 #   3:  Reverse already reversed payment -> 400 (terminal status)
 #   4:  Reverse failed payment -> 400 (terminal status)
 #   5:  Reverse non-existent payment -> 404
 #   6:  Reverse without payment_review permission -> 403
+#   7:  R47 money assertion: reversing an UNSPENT confirmed deposit
+#       leaves the user's spendable balance at exactly 0 (the pre-R47
+#       confirmed mirror left it at -amount: double debit)
+#   8:  R47 invariants: after reversal no CONFIRMED entries reference
+#       the payment (S-08) and the original+mirror pair sums to 0 (S-01)
 #
 # Email prefix: "s53r_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -22,7 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus
-from app.modules.ledgers.service import record_active_ledger
+from app.modules.ledgers.service import get_active_balance, record_active_ledger
 from app.modules.payments.constants import PaymentStatus, PaymentType
 from app.modules.payments.models import Payment
 from tests.helpers import (
@@ -138,9 +144,17 @@ async def test_reverse_frozen_payment(
     assert original.status == LedgerStatus.REVERSED
     assert original.amount_cents == 10050
 
-    assert mirror.status == LedgerStatus.CONFIRMED
+    # R47: the mirror is REVERSED too -- a CONFIRMED mirror was the
+    # double-debit bug (balance excludes reversed originals AND
+    # subtracted the confirmed mirror).
+    assert mirror.status == LedgerStatus.REVERSED
     assert mirror.amount_cents == -10050
     assert mirror.reason.endswith(":reversal")
+
+    # Net spendable effect: the frozen deposit simply disappears.
+    balance = await get_active_balance(db_session, user_id)
+    assert balance["frozen"] == 0
+    assert balance["confirmed"] == 0
 
 
 @pytest.mark.asyncio
@@ -276,3 +290,77 @@ async def test_reverse_without_permission(
         headers=auth_headers(restricted_token),
     )
     assert resp2.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_reverse_unspent_deposit_balance_zero(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R47 money assertion: reversing an unspent CONFIRMED deposit
+    leaves the user's spendable balance at exactly 0.
+
+    This is the assertion whose absence let the double-debit ship:
+    pre-R47 the confirmed mirror left the user at -10050 (the original
+    was excluded as reversed AND the mirror was subtracted).
+    """
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    payment_id = await _create_frozen_payment_with_ledger(
+        user_id, db_session, status=PaymentStatus.CONFIRMED
+    )
+
+    before = await get_active_balance(db_session, user_id)
+    assert before["confirmed"] == 10050
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={"reason": "chargeback"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+    db_session.expire_all()
+    after = await get_active_balance(db_session, user_id)
+    assert after["confirmed"] == 0, (
+        f"unspent reversed deposit must net to 0, got {after['confirmed']} "
+        "(negative means the double-debit regressed)"
+    )
+    assert after["frozen"] == 0
+
+
+@pytest.mark.asyncio
+async def test_reverse_invariants_s08_s01_pair(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R47 invariant pins: after a reversal,
+
+    * S-08: NO entry referencing the payment is CONFIRMED (the pre-R47
+      confirmed mirror tripped this semaphore on every reversal);
+    * S-01 (pair-local): original + mirror sum to exactly 0, so the
+      global all-statuses ledger sum is unchanged by the reversal.
+    """
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+    db_session.expire_all()
+    entries = (await db_session.execute(
+        select(ActiveLedger)
+        .where(ActiveLedger.origin_payment_id == payment_id)
+    )).scalars().all()
+    assert len(entries) == 2  # original + mirror
+
+    # S-08: no confirmed rows reference the reversed payment.
+    assert all(e.status == LedgerStatus.REVERSED for e in entries), (
+        "every entry of a reversed payment must be status=reversed"
+    )
+
+    # S-01 pair: the reversal is net-zero in the all-statuses sum.
+    assert sum(e.amount_cents for e in entries) == 0
