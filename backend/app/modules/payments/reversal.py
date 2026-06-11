@@ -49,18 +49,19 @@
 #   sums to zero inside S-01, S-08 sees no confirmed rows, S-09 pairs
 #   1:1.
 #
-# SPENT-DEPOSIT SEMANTICS (corrected per R47 review):
+# SPENT-DEPOSIT SEMANTICS (corrected per R47 review; asset side R-2.2):
 #   FROZEN-funded purchase debits INHERIT the deposit's
 #   origin_payment_id (purchases/service.py compute_frozen_context),
 #   so step 3 of this flow captures them too: the deposit credit AND
 #   those purchase debits unwind together. Balance lands at exactly 0
-#   and NO debt is recorded -- the purchased asset must be revoked
-#   instead (PurchaseStatus.REVERSED), which is NOT implemented yet:
-#   today the buyer keeps the units (open R-2.2, see
+#   and NO debt is recorded -- and the purchased ASSET is revoked in
+#   the same operation: step 5b below flips those Purchases to
+#   REVERSED (units leave pool consumption implicitly; pinned by
 #   test_reverse_spent_frozen_deposit_unwinds_purchase_debit).
 #   CONFIRMED-funded purchases carry origin_payment_id=None and stay
 #   booked -- only there the balance goes genuinely negative
-#   ("user owes platform").
+#   ("user owes platform"); their chargeback path is the manual
+#   staff endpoint (purchases/reversal.py).
 #
 # ORIGINAL ENTRIES:
 #   Status updated directly via ORM (bypassing _WRITABLE_STATUSES guard).
@@ -147,10 +148,16 @@ async def reverse_payment(
     validate_payment_status_transition(payment.status, PaymentStatus.REVERSED)
 
     # 3. Find active_ledger entries linked to this payment.
+    # R49-3.2: FOR UPDATE on the captured originals. The two reversal
+    # paths (payment / purchase) hold different primary locks, so two
+    # staff reversing a linked pair concurrently could both capture the
+    # same rows and write duplicate mirrors. Locking the originals
+    # serializes the capture: the loser re-reads after the winner's
+    # commit, sees status=reversed and captures nothing.
     active_stmt = select(ActiveLedger).where(
         ActiveLedger.origin_payment_id == payment_id,
         ActiveLedger.status.in_(_REVERSIBLE_STATUSES),
-    )
+    ).with_for_update()
     active_result = await session.execute(active_stmt)
     active_entries = list(active_result.scalars().all())
 
@@ -158,7 +165,7 @@ async def reverse_payment(
     passive_stmt = select(PassiveLedger).where(
         PassiveLedger.origin_payment_id == payment_id,
         PassiveLedger.status.in_(_REVERSIBLE_STATUSES),
-    )
+    ).with_for_update()
     passive_result = await session.execute(passive_stmt)
     passive_entries = list(passive_result.scalars().all())
 

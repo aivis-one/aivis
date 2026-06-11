@@ -38,8 +38,9 @@
 #   0 so installers do not fail.
 #
 #   --remove-only is the rotation path: it NEUTRALIZES the accounts
-#   (random never-printed passwords, StaffProfile deleted, referral
-#   links deactivated -- see _neutralize) and seeds NOTHING. Works in
+#   (random never-printed passwords, ALL live sessions revoked via
+#   logout-all, StaffProfile deleted, referral links deactivated --
+#   see _neutralize) and seeds NOTHING. Works in
 #   ANY environment WITHOUT --allow-production -- disarming the
 #   backdoor must never be gated. Financial history stays untouched
 #   (deleting users is impossible anyway: ledger FKs are RESTRICT).
@@ -76,7 +77,11 @@ from app.core.database import dispose_engine, get_session_factory
 from app.core.logging import setup_logging
 from app.modules.agent_applications.constants import AgentApplicationStatus
 from app.modules.agent_applications.models import AgentApplication
-from app.modules.auth.service import get_platform_user_id, hash_password
+from app.modules.auth.service import (
+    delete_all_sessions,
+    get_platform_user_id,
+    hash_password,
+)
 from app.modules.companies.constants import CompanyStatus
 from app.modules.companies.models import CompanyProfile
 from app.modules.ledgers.models import LedgerStatus
@@ -299,14 +304,20 @@ async def _neutralize(session: AsyncSession) -> None:
 
       * every test account gets a random password that is never
         printed or stored anywhere -- seedpass123 logins die;
+      * ALL live sessions of each account are revoked via
+        delete_all_sessions (auth-module Lua logout-all, R49-3.3) --
+        an attacker already logged in is cut off immediately, not at
+        session TTL;
       * the test staff's StaffProfile rows are deleted -- the
         all-permission grant (the actual backdoor power) is gone;
       * the test agent's referral links are deactivated.
 
     Users, ledgers, payments and audit history stay untouched.
 
-    KNOWN RESIDUAL: sessions already issued to these accounts live
-    until their TTL -- password rotation does not revoke them.
+    Session revocation is best-effort: a Redis hiccup logs a warning
+    and the neutralization continues -- the password rotation alone
+    already kills new logins, and the removal path must never fail on
+    a degraded box.
 
     Re-seeding later (with the production gate satisfied) fully
     restores the accounts: the _ensure_* existing-user branches
@@ -322,6 +333,15 @@ async def _neutralize(session: AsyncSession) -> None:
         _set_password(user, secrets.token_urlsafe(32))
         user_ids.append(user.id)
         log(f"  Password rotated: {email}")
+
+        # R49-3.3: revoke every live session (Lua logout-all). Best
+        # effort -- removal must survive a degraded Redis (see
+        # docstring); the rotated password already blocks new logins.
+        try:
+            revoked = await delete_all_sessions(user.id)
+            log(f"  Sessions revoked: {email} ({revoked})")
+        except Exception as exc:  # noqa: BLE001 -- removal never fails
+            warn(f"  Session revocation failed for {email}: {exc!r}")
 
     if user_ids:
         await session.execute(

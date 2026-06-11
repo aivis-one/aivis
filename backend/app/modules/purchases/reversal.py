@@ -137,11 +137,17 @@ async def reverse_purchase(
     pid = str(purchase_id)
 
     # 3. Capture the money graph by reason (see CAPTURE PATTERN).
+    # R49-3.2: FOR UPDATE on the captured originals. The two reversal
+    # paths (payment / purchase) hold different primary locks, so two
+    # staff reversing a linked pair concurrently could both capture the
+    # same rows and write duplicate mirrors. Locking the originals
+    # serializes the capture: the loser re-reads after the winner's
+    # commit, sees status=reversed and captures nothing.
     active_stmt = select(ActiveLedger).where(
         ActiveLedger.reason.like(f"%{pid}%"),
         ~ActiveLedger.reason.like("%:reversal"),
         ActiveLedger.status.in_(_REVERSIBLE_STATUSES),
-    )
+    ).with_for_update()
     active_entries = list(
         (await session.execute(active_stmt)).scalars().all()
     )
@@ -150,7 +156,7 @@ async def reverse_purchase(
         PassiveLedger.reason.like(f"%{pid}%"),
         ~PassiveLedger.reason.like("%:reversal"),
         PassiveLedger.status.in_(_REVERSIBLE_STATUSES),
-    )
+    ).with_for_update()
     passive_entries = list(
         (await session.execute(passive_stmt)).scalars().all()
     )
