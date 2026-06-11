@@ -26,14 +26,21 @@
 #     2. CACHING: FastAPI caches Depends within a request, so the user
 #        is loaded exactly once -- no extra Redis or DB round-trip.
 #
-# GUARDED OPERATIONS (R49): sign_document (documents/router.py),
+# GUARDED OPERATIONS (R49 + R50): sign_document (documents/router.py),
 #   create_withdrawal (withdrawals/router.py), create_payment
 #   (payments/router.py crypto-address), create_installment
-#   (installments/router.py), modify_kyc (kyc/router.py /submit;
+#   (installments/router.py), create_purchase (purchases/router.py --
+#   R50 boss decision: spending the user's balance is exactly the
+#   threat class this guard exists for; reversibility via R-2.2 is
+#   cleanup, not prevention), modify_kyc (kyc/router.py /submit;
 #   /advance intentionally NOT guarded -- it is an idempotent
 #   onboarding unstick helper, and blocking it would prevent staff
 #   from legitimately unsticking users via avatar; boss decision,
 #   see R-2.2 session report Open Notes).
+#
+#   The set is SELF-CHECKING: test_avatar.py walks app.routes and
+#   asserts every operation above carries its forbid_avatar_*
+#   dependency -- removing a guard from a route fails the suite.
 #   The remaining RESTRICTED_OPERATIONS entries have no live endpoints
 #   yet (change_password / change_email / delete_account /
 #   access_staff_shell) -- apply forbid_avatar when they appear.
@@ -58,6 +65,7 @@ RESTRICTED_OPERATIONS = frozenset({
     "create_withdrawal",
     "sign_document",
     "create_installment",
+    "create_purchase",
     "access_staff_shell",
     "modify_kyc",
 })

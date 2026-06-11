@@ -17,6 +17,10 @@
 #   12: R49 -- create_payment (crypto-address) blocked in avatar mode (403)
 #   13: R49 -- create_installment blocked in avatar mode (403)
 #   14: R49 -- modify_kyc (/kyc/submit) blocked in avatar mode (403)
+#   15: R50 -- create_purchase blocked in avatar mode (403)
+#   16: R50 -- route-walk: every restricted operation with a live
+#       endpoint carries its forbid_avatar_* dependency (the guard
+#       is self-checking: removing one from a route fails the suite)
 #
 # Email prefix: "s32_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -479,3 +483,67 @@ async def test_avatar_blocked_modify_kyc(
     )
     assert resp.status_code == 403
     assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_create_purchase(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R50: POST /products/{id}/purchase in avatar mode -> 403.
+
+    Boss decision (R50): spending the user's balance is exactly the
+    threat class the avatar guard exists for -- reversibility via the
+    R-2.2 chargeback is cleanup, not prevention. The guard dependency
+    fires before the handler, so the random product_id never reaches
+    the 404 path.
+    """
+    from uuid import uuid4
+
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        f"/api/v1/products/{uuid4()}/purchase",
+        json={},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+def test_every_restricted_operation_endpoint_carries_guard() -> None:
+    """R50: the avatar guard is self-checking (reviewer R50-3.1).
+
+    Walks app.routes and asserts every restricted operation with a
+    live endpoint carries its forbid_avatar_* dependency. Removing a
+    guard from a route -- or adding a new endpoint for a restricted
+    operation without wiring the guard -- fails this test.
+
+    Operations without live endpoints (change_password, change_email,
+    delete_account, access_staff_shell) are intentionally absent from
+    the expected set; extend it when their endpoints appear.
+    """
+    from app.main import app
+
+    guarded: set[str] = set()
+    for route in app.routes:
+        dependant = getattr(route, "dependant", None)
+        if dependant is None:
+            continue
+        for dep in dependant.dependencies:
+            name = getattr(dep.call, "__name__", "")
+            if name.startswith("forbid_avatar_"):
+                guarded.add(name)
+
+    expected = {
+        "forbid_avatar_create_withdrawal",
+        "forbid_avatar_create_payment",
+        "forbid_avatar_create_installment",
+        "forbid_avatar_create_purchase",
+        "forbid_avatar_modify_kyc",
+        "forbid_avatar_sign_document",
+    }
+    missing = expected - guarded
+    assert not missing, (
+        f"restricted operations without a wired forbid_avatar guard: "
+        f"{sorted(missing)}"
+    )

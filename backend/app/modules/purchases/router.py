@@ -7,6 +7,7 @@
 #
 # AUTH:
 #   Requires authenticated buyer (role=investor or role=agent).
+#   Blocked in avatar mode (R50, forbid_avatar).
 #
 # COMMIT RULE (P-01):
 #   Router never calls session.commit(). get_db_session manages it.
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.core.exceptions import ForbiddenError
+from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user_write
 from app.modules.purchases.schemas import (
     CreatePurchaseRequest,
@@ -40,6 +42,10 @@ _BUYER_ROLES = {UserRole.INVESTOR, UserRole.AGENT}
     "/{product_id}/purchase",
     response_model=list[PurchaseResponse],
     status_code=status.HTTP_201_CREATED,
+    # R50 (boss decision): staff in avatar mode must not spend the
+    # user's balance -- reversibility via the R-2.2 chargeback is
+    # cleanup, not prevention.
+    dependencies=[Depends(forbid_avatar("create_purchase"))],
 )
 async def purchase_product(
     product_id: UUID,
