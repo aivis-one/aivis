@@ -903,6 +903,16 @@ export interface PurchaseResponse {
   created_at: string
 }
 
+/** Manual purchase reversal result summary (R-2.2 Block B). */
+export interface PurchaseReversalResponse {
+  purchase_id: string
+  total_reversed_cents: number
+  active_entries_reversed: number
+  passive_entries_reversed: number
+  units_returned: number
+  affected_user_ids: string[]
+}
+
 /** Result of mark-all-read operation. */
 export interface ReadAllResponse {
   marked: number
@@ -969,6 +979,7 @@ export interface ReversalResponse {
   total_reversed_cents: number
   active_entries_reversed: number
   passive_entries_reversed: number
+  purchases_reversed: number
   affected_user_ids: string[]
 }
 
@@ -1074,6 +1085,11 @@ export interface StaffProfileResponse {
   permissions: Record<string, unknown>
   is_active: boolean
   created_at: string
+}
+
+/** Request body for manual purchase reversal (R-2.2 Block B). */
+export interface StaffReversePurchaseRequest {
+  reason?: string | null
 }
 
 /** POST /api/v1/auth/telegram -- request body. */
