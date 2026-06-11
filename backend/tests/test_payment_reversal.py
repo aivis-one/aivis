@@ -446,9 +446,13 @@ async def test_reverse_spent_frozen_deposit_unwinds_purchase_debit(
     assert before["confirmed"] == 0
 
     # Pool consumption baseline AFTER the purchase exists (shared dev
-    # DB -- only the delta is assertable).
+    # DB -- only the delta is assertable). company_id is captured into
+    # a plain variable HERE: after db_session.expire_all() below the
+    # `product` ORM object is expired and attribute access would
+    # trigger a lazy refresh outside the greenlet (MissingGreenlet).
+    company_id = product.company_id
     consumed_with_purchase = await get_pool_consumed(
-        product.company_id, db_session
+        company_id, db_session
     )
 
     resp = await client.post(
@@ -487,7 +491,7 @@ async def test_reverse_spent_frozen_deposit_unwinds_purchase_debit(
 
     # Units returned to the pool: consumption dropped by exactly the
     # purchase's units.
-    consumed_after = await get_pool_consumed(product.company_id, db_session)
+    consumed_after = await get_pool_consumed(company_id, db_session)
     assert consumed_after == consumed_with_purchase - p.units
 
 
