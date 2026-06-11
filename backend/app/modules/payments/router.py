@@ -7,7 +7,8 @@
 #   GET  /api/v1/payments/history              -- payment history (investor)
 #
 # AUTH:
-#   All endpoints require authentication.
+#   All endpoints require authentication. crypto-address is blocked
+#   in avatar mode (R49, forbid_avatar).
 #
 # Sprint 6.1 FIX (TD-029):
 #   create_crypto_address uses get_current_user_write (not get_current_user)
@@ -24,6 +25,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.payments.schemas import (
     CreateAddressRequest,
@@ -45,6 +47,10 @@ router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 @router.post(
     "/crypto-address",
     response_model=DepositAddressResponse,
+    # R49: the user-facing payment-creation surface (the Payment row
+    # itself is created by the unauthenticated webhook) -- staff in
+    # avatar mode must not initiate deposits for the user.
+    dependencies=[Depends(forbid_avatar("create_payment"))],
 )
 async def create_crypto_address(
     body: CreateAddressRequest,

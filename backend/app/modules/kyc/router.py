@@ -47,6 +47,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import UnauthorizedError
+from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.kyc.schemas import (
     KYCStatusResponse,
@@ -70,6 +71,11 @@ router = APIRouter(prefix="/api/v1/kyc", tags=["kyc"])
     "/submit",
     response_model=KYCSubmitResponse,
     status_code=status.HTTP_201_CREATED,
+    # R49: staff in avatar mode must not submit KYC for the user.
+    # POST /advance is intentionally NOT guarded (boss decision): it is
+    # an idempotent onboarding unstick helper that changes no KYC data,
+    # and staff legitimately use it via avatar to unstick users.
+    dependencies=[Depends(forbid_avatar("modify_kyc"))],
 )
 async def kyc_submit(
     user: User = Depends(get_current_user_write),

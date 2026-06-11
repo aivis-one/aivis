@@ -1,32 +1,52 @@
 # =============================================================================
-# CBSHOME Backend -- Avatar Guard (Sprint 1.3)
+# CBSHOME Backend -- Avatar Guard (Sprint 1.3, dependency-layer R49)
 # =============================================================================
 #
-# Decorator that blocks certain operations when Staff is in avatar mode
-# (logged in as another user via Sprint 3.2 avataring).
+# Blocks certain operations when Staff is in avatar mode (logged in as
+# another user via Sprint 3.2 avataring).
 #
 # HOW IT WORKS:
-#   TraceIdMiddleware (Sprint 3.2) will bind avatar_session_id to
-#   structlog contextvars when the Redis session contains it. This
-#   decorator reads that value. If present + operation is restricted,
-#   the request is blocked with 403.
+#   _load_user_from_request() (auth/dependencies.py) binds
+#   avatar_session_id to structlog contextvars when the Redis session
+#   contains it. The forbid_avatar() dependency reads that value; if
+#   present, the request is blocked with 403.
 #
-# UNTIL PHASE 3:
-#   avatar_session_id is never bound in contextvars, so the decorator
-#   always passes. No functional impact -- pure infrastructure prep.
+# R49 -- DEPENDENCY LAYER, NOT DECORATOR:
+#   The original implementation was a function decorator applied to a
+#   single endpoint (sign_document, 1 of 9 restricted operations). It
+#   is now a FastAPI dependency factory applied at the route level:
 #
-# USAGE:
-#   @require_not_avatar("create_payment")
-#   async def create_payment(...):
-#       ...
+#     @router.post("", dependencies=[Depends(forbid_avatar("create_withdrawal"))])
+#
+#   The inner dependency declares Depends(get_current_user_write) --
+#   the same dependency every guarded (mutating) endpoint already
+#   uses -- which guarantees two things at zero cost:
+#     1. ORDERING: the user (and thus the avatar contextvars) is loaded
+#        BEFORE the check runs -- no reliance on parameter order;
+#     2. CACHING: FastAPI caches Depends within a request, so the user
+#        is loaded exactly once -- no extra Redis or DB round-trip.
+#
+# GUARDED OPERATIONS (R49): sign_document (documents/router.py),
+#   create_withdrawal (withdrawals/router.py), create_payment
+#   (payments/router.py crypto-address), create_installment
+#   (installments/router.py), modify_kyc (kyc/router.py /submit;
+#   /advance intentionally NOT guarded -- it is an idempotent
+#   onboarding unstick helper, and blocking it would prevent staff
+#   from legitimately unsticking users via avatar; boss decision,
+#   see R-2.2 session report Open Notes).
+#   The remaining RESTRICTED_OPERATIONS entries have no live endpoints
+#   yet (change_password / change_email / delete_account /
+#   access_staff_shell) -- apply forbid_avatar when they appear.
 # =============================================================================
 
-from functools import wraps
-from typing import Any, Callable
+from typing import Callable
 
 import structlog
+from fastapi import Depends
 
 from app.core.exceptions import ForbiddenError
+from app.modules.auth.dependencies import get_current_user_write
+from app.modules.users.models import User
 
 # Operations that Staff cannot perform while avataring.
 # Defined here as the single source of truth.
@@ -53,16 +73,26 @@ def _get_avatar_session_id() -> str | None:
     return ctx.get("avatar_session_id")
 
 
-def require_not_avatar(operation: str) -> Callable:
-    """Decorator that blocks the operation in avatar mode.
+def forbid_avatar(operation: str) -> Callable:
+    """Factory: FastAPI dependency that blocks the operation in avatar mode.
+
+    Apply at the route level so endpoint signatures stay clean:
+
+        @router.post(
+            "",
+            dependencies=[Depends(forbid_avatar("create_withdrawal"))],
+        )
+
+    The dependency loads the current user via get_current_user_write
+    (cached by FastAPI -- the endpoint's own user Depends reuses it),
+    which guarantees the avatar contextvars are bound before the check.
 
     Args:
         operation: Name of the operation (must be in RESTRICTED_OPERATIONS).
 
     Raises:
-        ForbiddenError: If avatar_session_id is present in contextvars
-            and the operation is restricted.
-        ValueError: If operation is not in RESTRICTED_OPERATIONS (dev guard).
+        ForbiddenError: If avatar_session_id is present in contextvars.
+        ValueError: At import time if operation is unknown (dev guard).
     """
     if operation not in RESTRICTED_OPERATIONS:
         raise ValueError(
@@ -70,14 +100,16 @@ def require_not_avatar(operation: str) -> Callable:
             f"Must be one of: {sorted(RESTRICTED_OPERATIONS)}"
         )
 
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            avatar_id = _get_avatar_session_id()
-            if avatar_id is not None:
-                raise ForbiddenError(
-                    f"Operation '{operation}' is not allowed in avatar mode"
-                )
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
+    async def _dependency(
+        user: User = Depends(get_current_user_write),
+    ) -> None:
+        if _get_avatar_session_id() is not None:
+            raise ForbiddenError(
+                f"Operation '{operation}' is not allowed in avatar mode"
+            )
+
+    # Meaningful name for FastAPI's dependency resolution / OpenAPI.
+    _dependency.__name__ = f"forbid_avatar_{operation}"
+    _dependency.__qualname__ = f"forbid_avatar.<locals>.forbid_avatar_{operation}"
+
+    return _dependency

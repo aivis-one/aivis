@@ -9,6 +9,7 @@
 #
 # AUTH:
 #   All endpoints require authenticated buyer (role=investor or role=agent).
+#   Plan creation is blocked in avatar mode (R49, forbid_avatar).
 #
 # COMMIT RULE (P-01):
 #   Router never calls session.commit(). get_db_session manages it.
@@ -22,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError
+from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.installments.schemas import (
     CreateInstallmentPlanRequest,
@@ -63,6 +65,9 @@ def _require_buyer(user: User) -> None:
     "/{product_id}/installment",
     response_model=InstallmentPlanResponse,
     status_code=status.HTTP_201_CREATED,
+    # R49: staff in avatar mode must not open payment obligations
+    # on the user's behalf.
+    dependencies=[Depends(forbid_avatar("create_installment"))],
 )
 async def create_installment_plan(
     product_id: UUID,

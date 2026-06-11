@@ -13,6 +13,10 @@
 #   8:  Avatar into non-existent user -> 404
 #   9:  Re-start avatar auto-closes previous session
 #   10: Avatar guard blocks restricted operation in avatar mode
+#   11: R49 -- create_withdrawal blocked in avatar mode (403)
+#   12: R49 -- create_payment (crypto-address) blocked in avatar mode (403)
+#   13: R49 -- create_installment blocked in avatar mode (403)
+#   14: R49 -- modify_kyc (/kyc/submit) blocked in avatar mode (403)
 #
 # Email prefix: "s32_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -331,7 +335,8 @@ async def test_restart_avatar_closes_previous(
 async def test_avatar_guard_blocks_in_avatar_mode(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """require_not_avatar blocks restricted operations via avatar token.
+    """forbid_avatar dependency blocks restricted operations (R49: was
+    the require_not_avatar decorator; this test pins the migration).
 
     Uses sign_document as a restricted operation (in RESTRICTED_OPERATIONS).
     Avatar token should get 403 when trying to sign.
@@ -380,3 +385,97 @@ async def test_avatar_guard_blocks_in_avatar_mode(
     )
     assert sign_resp.status_code == 403
     assert "avatar" in sign_resp.json()["message"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Avatar guard -- R49: the four financial/KYC operations
+# ---------------------------------------------------------------------------
+
+
+async def _avatar_token_for_fresh_investor(
+    client: AsyncClient, db_session: AsyncSession
+) -> str:
+    """Helper: admin avatars into a fresh investor, returns avatar token."""
+    admin_token = await _admin_token(client, db_session)
+    investor_id, _ = await _investor_id_and_token(client)
+
+    resp = await client.post(
+        "/api/v1/staff/avatar/start",
+        json={"target_user_id": investor_id},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    return resp.json()["session_token"]
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_create_withdrawal(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R49: POST /withdrawals in avatar mode -> 403 (forbid_avatar)."""
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 1000},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_create_payment(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R49: POST /payments/crypto-address in avatar mode -> 403."""
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/payments/crypto-address",
+        json={"network": "TRC20"},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_create_installment(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R49: POST /products/{id}/installment in avatar mode -> 403.
+
+    The guard dependency fires before the handler -- the random
+    product_id never reaches the 404 path.
+    """
+    from uuid import uuid4
+
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        f"/api/v1/products/{uuid4()}/installment",
+        json={"product_installment_id": str(uuid4())},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_modify_kyc(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R49: POST /kyc/submit in avatar mode -> 403.
+
+    /kyc/advance is intentionally NOT guarded (idempotent onboarding
+    unstick helper -- staff legitimately use it via avatar).
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/kyc/submit",
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
