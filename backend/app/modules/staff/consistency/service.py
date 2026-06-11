@@ -95,15 +95,27 @@ async def s_02(session: AsyncSession) -> SemaphoreResult:
     """S-02: Each Purchase has exactly one active_ledger entry.
 
     COUNT(active_ledger with purchase/gift reasons) = COUNT(purchases).
+
+    R-2.2 Block C: ":reversal" mirrors are EXCLUDED from the ledger
+    count. A reversed purchase keeps its 1:1 pairing -- the Purchase
+    row stays in COUNT(purchases) and its original debit (now
+    status=reversed) stays in the ledger count; only the mirror row is
+    extra, and matching it by the "purchase:%" prefix broke the parity
+    on every spent-deposit reversal.
     """
     purchase_count_stmt = select(func.count()).select_from(Purchase)
     purchase_count = (await session.execute(purchase_count_stmt)).scalar_one()
 
     # Active ledger entries linked to purchases via reason prefix.
+    # Reversal mirrors ("...:reversal") are bookkeeping rows, not
+    # purchase entries -- excluded (R-2.2).
     ledger_count_stmt = select(func.count()).select_from(ActiveLedger).where(
-        ActiveLedger.reason.like("purchase:%")
-        | ActiveLedger.reason.like("gift:%")
-        | ActiveLedger.reason.like("installment:tranche:%")
+        (
+            ActiveLedger.reason.like("purchase:%")
+            | ActiveLedger.reason.like("gift:%")
+            | ActiveLedger.reason.like("installment:tranche:%")
+        ),
+        ~ActiveLedger.reason.like("%:reversal"),
     )
     ledger_count = (await session.execute(ledger_count_stmt)).scalar_one()
 
@@ -114,7 +126,14 @@ async def s_02(session: AsyncSession) -> SemaphoreResult:
 
 
 async def s_03(session: AsyncSession) -> SemaphoreResult:
-    """S-03: SUM(paid_cents) = ABS(SUM(active debits by purchases))."""
+    """S-03: SUM(paid_cents) = ABS(SUM(active debits by purchases)).
+
+    R-2.2 Block C: ":reversal" mirrors are EXCLUDED from the debit
+    sum. A reversed purchase keeps the equality -- its paid_cents stay
+    in the Purchase sum and its original debit stays in the ledger
+    sum; the positive mirror cancelled the debit and broke the
+    equality on every spent-deposit reversal.
+    """
     paid_stmt = select(
         func.coalesce(func.sum(Purchase.paid_cents), 0)
     )
@@ -122,7 +141,10 @@ async def s_03(session: AsyncSession) -> SemaphoreResult:
 
     debit_stmt = select(
         func.coalesce(func.sum(ActiveLedger.amount_cents), 0)
-    ).where(ActiveLedger.reason.like("purchase:%"))
+    ).where(
+        ActiveLedger.reason.like("purchase:%"),
+        ~ActiveLedger.reason.like("%:reversal"),
+    )
     debit_total = (await session.execute(debit_stmt)).scalar_one()
 
     return _result(

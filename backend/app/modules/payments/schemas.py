@@ -123,6 +123,10 @@ class ReversalResponse(BaseModel):
     total_reversed_cents: int
     active_entries_reversed: int
     passive_entries_reversed: int
+    # R-2.2 Block A: frozen-funded purchases flipped to REVERSED as
+    # part of this payment reversal (their debits inherited the
+    # deposit's origin_payment_id and were captured by the unwind).
+    purchases_reversed: int
     affected_user_ids: list[UUID]
 
 

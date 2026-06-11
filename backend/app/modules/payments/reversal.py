@@ -7,6 +7,10 @@
 #   reverse_payment() -- chargeback: mark Payment as reversed, create mirror
 #                        ledger entries, mark originals as reversed.
 #                        + write transaction log entries (Sprint 6.4)
+#                        + flip frozen-funded purchases to REVERSED so the
+#                          asset side unwinds with the money (R-2.2 Block A;
+#                          units return to the pool implicitly -- pool
+#                          consumption counts ACTIVE purchases only)
 #
 # REVERSAL FLOW (R47 invariant fix; supersedes the literal reading of
 # CBSHOME-Financial-System.md section 5.5 / P5-19 -- see MIRROR ENTRIES):
@@ -18,6 +22,8 @@
 #        INSERT mirror entry: amount=-original, reason=original+":reversal",
 #                             then immediately flip mirror -> status=reversed
 #        UPDATE original -> status=reversed
+#   5b. Parse "purchase:{id}" / "gift:{id}" from captured active originals,
+#       flip those Purchases -> REVERSED, log purchase:reversed (R-2.2)
 #   6. Payment -> status=reversed
 #   7. Audit: payment.chargeback
 #   8. Transaction log: deposit:reversed + reversal:completed (Sprint 6.4)
@@ -85,6 +91,8 @@ from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.ledgers.service import record_active_ledger, record_passive_ledger
 from app.modules.payments.constants import PaymentStatus, validate_payment_status_transition
 from app.modules.payments.models import Payment
+from app.modules.purchases.constants import PurchaseStatus
+from app.modules.purchases.models import Purchase
 from app.modules.transactions.constants import ReferenceType, TransactionType
 from app.modules.transactions.service import record_transaction
 
@@ -192,6 +200,69 @@ async def reverse_payment(
         affected_user_ids.add(entry.user_id)
         total_reversed_cents += abs(entry.amount_cents)
 
+    # 6b. R-2.2 Block A: flip the frozen-funded purchases whose money
+    # was just unwound. One ACTIVE purchase == one investor debit with
+    # reason "purchase:{id}" (or "gift:{id}" for bonus allocations, see
+    # purchases/engine.write_transactions), so the captured active
+    # originals are the authoritative purchase list. Distribution /
+    # commission reasons live passive-side and are intentionally not
+    # parsed (they would only duplicate ids). Installment-tranche
+    # debits ("installment:tranche:{tranche_id}") cannot be resolved
+    # to a Purchase from the reason -- their money unwinds with the
+    # rest, the plan/purchase rows are the installment layer's problem
+    # (out of R-2.2 scope; warn-logged so it is visible).
+    purchase_ids: list[UUID] = []
+    for entry in active_entries:
+        prefix, _, suffix = entry.reason.partition(":")
+        if prefix == "installment":
+            logger.warning(
+                "reversal_tranche_entry_money_unwound_purchase_left",
+                payment_id=str(payment_id),
+                reason=entry.reason,
+            )
+            continue
+        if prefix not in ("purchase", "gift"):
+            continue
+        try:
+            purchase_ids.append(UUID(suffix))
+        except ValueError:
+            continue
+
+    purchases_reversed = 0
+    purchase_ids_reversed: list[str] = []
+    if purchase_ids:
+        p_stmt = (
+            select(Purchase)
+            .where(Purchase.id.in_(purchase_ids))
+            .with_for_update()
+        )
+        p_result = await session.execute(p_stmt)
+        for purchase in p_result.scalars().all():
+            if purchase.status == PurchaseStatus.REVERSED:
+                # Defensive: a reversed purchase has no capturable
+                # debit, so this should be unreachable.
+                continue
+            purchase.status = PurchaseStatus.REVERSED
+            purchases_reversed += 1
+            purchase_ids_reversed.append(str(purchase.id))
+            # Units return to the pool implicitly: pool consumption is
+            # SUM(units) over ACTIVE purchases (pools/service.py
+            # get_pool_consumed), so the flip alone frees them.
+            await record_transaction(
+                session,
+                user_id=purchase.investor_id,
+                type=TransactionType.PURCHASE_REVERSED,
+                amount_cents=purchase.paid_cents,
+                reference_id=purchase.id,
+                reference_type=ReferenceType.PURCHASE,
+                details={
+                    "trigger": "payment_reversal",
+                    "payment_id": str(payment_id),
+                    "units": purchase.units,
+                    "reason": reason,
+                },
+            )
+
     # 7. Update payment status.
     payment.status = PaymentStatus.REVERSED
     await session.flush()
@@ -208,6 +279,8 @@ async def reverse_payment(
             "total_reversed_cents": total_reversed_cents,
             "active_entries_reversed": len(active_entries),
             "passive_entries_reversed": len(passive_entries),
+            "purchases_reversed": purchases_reversed,
+            "purchase_ids_reversed": purchase_ids_reversed,
             "affected_user_ids": [str(uid) for uid in affected_user_ids],
             "reason": reason,
         },
@@ -251,6 +324,7 @@ async def reverse_payment(
         total_reversed_cents=total_reversed_cents,
         active_entries=len(active_entries),
         passive_entries=len(passive_entries),
+        purchases_reversed=purchases_reversed,
         reason=reason,
     )
 
@@ -259,5 +333,6 @@ async def reverse_payment(
         "total_reversed_cents": total_reversed_cents,
         "active_entries_reversed": len(active_entries),
         "passive_entries_reversed": len(passive_entries),
+        "purchases_reversed": purchases_reversed,
         "affected_user_ids": list(affected_user_ids),
     }

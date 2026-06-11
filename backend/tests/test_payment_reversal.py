@@ -15,9 +15,13 @@
 #       confirmed mirror left it at -amount: double debit)
 #   8:  R47 invariants: after reversal no CONFIRMED entries reference
 #       the payment (S-08) and the original+mirror pair sums to 0 (S-01)
-#   9:  R-2.2 groundwork: frozen deposit -> purchase -> chargeback pins
-#       the full-unwind behaviour (balance 0, no debt, 4 REVERSED rows)
-#       and the open hole: Purchase stays ACTIVE, buyer keeps units
+#   9:  R-2.2 Block A: frozen deposit -> purchase -> chargeback unwinds
+#       the asset too -- Purchase flips to REVERSED, pool consumption
+#       drops by the purchase units, purchases_reversed == 1
+#   10: plain deposit reversal reports purchases_reversed == 0
+#   11: R-2.2 commission clawback pin: a frozen-funded commission
+#       credit (origin_payment_id inherited) is unwound by the payment
+#       reversal -- agent passive balance returns to 0
 #
 # Email prefix: "s53r_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -125,6 +129,7 @@ async def test_reverse_frozen_payment(
     assert body["total_reversed_cents"] == 10050
     assert body["active_entries_reversed"] == 1
     assert body["passive_entries_reversed"] == 0
+    assert body["purchases_reversed"] == 0  # no purchase debit captured
 
     # Verify payment status.
     db_session.expire_all()
@@ -375,23 +380,21 @@ async def test_reverse_spent_frozen_deposit_unwinds_purchase_debit(
 ) -> None:
     """R-2.2 groundwork: frozen deposit -> purchase -> chargeback.
 
-    Pins the CURRENT behaviour of the spent-deposit path (the one the
-    pre-R47 header described wrongly):
+    R-2.2 Block A regression guard (formerly pinned the open hole):
 
       * frozen-funded purchase debits inherit the deposit's
         origin_payment_id (compute_frozen_context), so the reversal
         captures BOTH rows -- deposit credit and purchase debit unwind
         together, every entry ends up REVERSED;
       * spendable balance lands at exactly 0 -- NO debt is recorded;
-      * Purchase.status stays ACTIVE -- the buyer KEEPS the units.
-
-    The last assertion is the open R-2.2 hole, pinned deliberately:
-    when purchase chargeback lands, flip it to PurchaseStatus.REVERSED
-    and this test becomes the regression guard for the full unwind.
+      * the ASSET unwinds too: Purchase flips to REVERSED, the units
+        leave pool consumption (get_pool_consumed counts ACTIVE only),
+        and the response reports purchases_reversed == 1.
     """
     from sqlalchemy import select as sa_select
 
     from app.modules.ledgers.service import record_active_ledger as _ral
+    from app.modules.pools.service import get_pool_consumed
     from app.modules.products.models import Product
     from app.modules.purchases.constants import (
         PurchaseLegalBasis,
@@ -442,6 +445,12 @@ async def test_reverse_spent_frozen_deposit_unwinds_purchase_debit(
     assert before["frozen"] == 0
     assert before["confirmed"] == 0
 
+    # Pool consumption baseline AFTER the purchase exists (shared dev
+    # DB -- only the delta is assertable).
+    consumed_with_purchase = await get_pool_consumed(
+        product.company_id, db_session
+    )
+
     resp = await client.post(
         f"/api/v1/staff/payments/{payment_id}/reverse",
         json={"reason": "chargeback after spending"},
@@ -452,6 +461,7 @@ async def test_reverse_spent_frozen_deposit_unwinds_purchase_debit(
     # Both captured rows count: |+10050| + |-10050|.
     assert body["total_reversed_cents"] == 20100
     assert body["active_entries_reversed"] == 2
+    assert body["purchases_reversed"] == 1
 
     db_session.expire_all()
 
@@ -469,10 +479,81 @@ async def test_reverse_spent_frozen_deposit_unwinds_purchase_debit(
     assert after["frozen"] == 0
     assert after["confirmed"] == 0
 
-    # THE open R-2.2 hole, pinned on purpose: the buyer keeps the
-    # units. Flip this to PStatus.REVERSED when purchase chargeback
-    # lands.
+    # R-2.2 Block A: the asset unwinds with the money.
     p = (await db_session.execute(
         sa_select(Purchase).where(Purchase.id == purchase_id)
     )).scalar_one()
-    assert p.status == PStatus.ACTIVE
+    assert p.status == PStatus.REVERSED
+
+    # Units returned to the pool: consumption dropped by exactly the
+    # purchase's units.
+    consumed_after = await get_pool_consumed(product.company_id, db_session)
+    assert consumed_after == consumed_with_purchase - p.units
+
+
+@pytest.mark.asyncio
+async def test_reverse_payment_claws_back_frozen_funded_commission(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R-2.2 pin: commissions funded by a frozen deposit are clawed
+    back by the payment reversal automatically.
+
+    purchases/engine.py writes the deposit's origin_payment_id into
+    EVERY entry of the purchase transaction -- including the agent's
+    passive commission credit -- so step 4 of reverse_payment captures
+    it and the passive loop unwinds it. This test seeds the commission
+    entry in exactly that shape and asserts the clawback.
+    """
+    from uuid import uuid4 as _uuid4
+
+    from app.modules.ledgers.service import (
+        get_passive_balance,
+        record_passive_ledger,
+    )
+    from app.modules.ledgers.models import PassiveLedger
+
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    agent_id = await _create_investor(client)  # any user can hold passive
+    payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
+
+    # Commission credit shaped like ReferralProcessor output for a
+    # frozen-funded purchase: origin_payment_id inherited, frozen.
+    await record_passive_ledger(
+        db_session,
+        user_id=agent_id,
+        amount_cents=500,
+        status=LedgerStatus.FROZEN,
+        reason=f"commission:l1:{agent_id}:{_uuid4()}",
+        frozen_until=datetime.now(UTC) + timedelta(hours=24),
+        origin_payment_id=payment_id,
+    )
+    await db_session.commit()
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={"reason": "chargeback"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["passive_entries_reversed"] == 1
+    assert body["total_reversed_cents"] == 10050 + 500
+
+    db_session.expire_all()
+
+    # Clawback: the agent's passive balance is back to zero, both the
+    # credit and its mirror are REVERSED.
+    balance = await get_passive_balance(db_session, agent_id)
+    assert balance["frozen"] == 0
+    assert balance["confirmed"] == 0
+
+    from sqlalchemy import select as sa_select
+    entries = (await db_session.execute(
+        sa_select(PassiveLedger).where(
+            PassiveLedger.origin_payment_id == payment_id
+        )
+    )).scalars().all()
+    assert len(entries) == 2
+    assert all(e.status == LedgerStatus.REVERSED for e in entries)
+    assert sum(e.amount_cents for e in entries) == 0

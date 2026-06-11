@@ -36,6 +36,7 @@
 #   payments_webhook_router   -> /api/v1/payments/webhooks/* (Sprint 5.2)
 #   staff_payments_router     -> /api/v1/staff/payments/* (Sprint 5.3)
 #   purchases_router          -> /api/v1/purchases/* (Sprint 6.1)
+#   staff_purchases_router    -> /api/v1/staff/purchases/* (R-2.2)
 #   installment_create_router -> /api/v1/installments/* (Sprint 6.2)
 #   installment_query_router  -> /api/v1/installments/* (Sprint 6.2)
 #   withdrawals_router        -> /api/v1/withdrawals/* (Sprint 6.3)
@@ -189,6 +190,7 @@ from app.modules.purchases.agreement_router import (
     ownership_router,
 )
 from app.modules.purchases.router import router as purchases_router
+from app.modules.purchases.staff_router import router as staff_purchases_router
 from app.modules.referrals.public_router import router as referrals_public_router
 from app.modules.referrals.router import router as referrals_router
 from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
@@ -472,6 +474,7 @@ app.include_router(payments_router)
 app.include_router(payments_webhook_router)
 app.include_router(staff_payments_router)
 app.include_router(purchases_router)
+app.include_router(staff_purchases_router)
 app.include_router(installment_create_router)
 app.include_router(installment_query_router)
 app.include_router(withdrawals_router)

@@ -11,6 +11,7 @@
 #   deposit:reversed           -- chargeback on deposit
 #   purchase:completed         -- instant purchase executed
 #   purchase:gift              -- bonus units allocated
+#   purchase:reversed          -- purchase unwound by chargeback (R-2.2)
 #   installment:tranche_paid   -- installment tranche paid
 #   installment:completed      -- plan closed, bonuses issued
 #   installment:defaulted      -- plan defaulted after overdue
@@ -39,6 +40,7 @@ class TransactionType(enum.StrEnum):
     # Purchases
     PURCHASE_COMPLETED = "purchase:completed"
     PURCHASE_GIFT = "purchase:gift"
+    PURCHASE_REVERSED = "purchase:reversed"
 
     # Installments
     INSTALLMENT_TRANCHE_PAID = "installment:tranche_paid"
