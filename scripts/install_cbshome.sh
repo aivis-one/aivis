@@ -884,8 +884,11 @@ docker compose exec -T app python -m scripts.seed_storefront
 success "Storefront seeded"
 
 # Seed test accounts (investor / company / agent / staff for manual testing)
+# R-2.3: on APP_ENV=production the seeder refuses the well-known
+# seedpass123 accounts unless explicitly allowed -- opt in by exporting
+# CBSHOME_SEED_TEST_ACCOUNTS=1 before running.
 log "Seeding test accounts (dev fixtures)..."
-docker compose exec -T app python -m scripts.seed_test_accounts
+docker compose exec -T app python -m scripts.seed_test_accounts ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
 success "Test accounts seeded"
 
 # ------------------------------------------------------------------------------
@@ -1264,7 +1267,8 @@ case_update() {
     docker compose exec -T app python -m scripts.seed_platform_templates
     docker compose exec -T app python scripts/seed_documents.py
     docker compose exec -T app python -m scripts.seed_storefront
-    docker compose exec -T app python -m scripts.seed_test_accounts
+    # R-2.3: refuses on APP_ENV=production unless CBSHOME_SEED_TEST_ACCOUNTS=1.
+    docker compose exec -T app python -m scripts.seed_test_accounts ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
     echo -e "${GREEN}✓ Prod DB seeded${NC}"
 
     # ----------------------------------------------------------------------
@@ -1599,16 +1603,18 @@ case_db() {
 
 case_seed() {
     cd_compose
+    # R-2.3: seed_test_accounts refuses on APP_ENV=production unless
+    # CBSHOME_SEED_TEST_ACCOUNTS=1 is exported (well-known credentials).
     if [ "${1:-}" = "--reset" ]; then
         docker compose exec -T app python scripts/seed_platform.py --reset
         docker compose exec -T app python scripts/seed_documents.py
         docker compose exec -T app python -m scripts.seed_storefront --reset
-        docker compose exec -T app python -m scripts.seed_test_accounts --reset
+        docker compose exec -T app python -m scripts.seed_test_accounts --reset ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
     else
         docker compose exec -T app python scripts/seed_platform.py
         docker compose exec -T app python scripts/seed_documents.py
         docker compose exec -T app python -m scripts.seed_storefront
-        docker compose exec -T app python -m scripts.seed_test_accounts
+        docker compose exec -T app python -m scripts.seed_test_accounts ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
     fi
 }
 

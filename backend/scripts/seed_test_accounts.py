@@ -27,9 +27,20 @@
 #   installments), by code (referral link), by company_id (pool).
 #   Re-running without --reset is a no-op for anything already present.
 #
+# PRODUCTION GUARD (R-2.3):
+#   seedpass123 is a WELL-KNOWN credential and the staff account gets
+#   every permission -- on a real production install this is a
+#   ready-made admin backdoor. The script therefore REFUSES to run
+#   when settings.app_env == "production" unless --allow-production
+#   is passed explicitly. The installer forwards that flag only when
+#   the operator exports CBSHOME_SEED_TEST_ACCOUNTS=1 (prod-like dev
+#   boxes that genuinely need the accounts opt in consciously).
+#   The skip exits 0 so installers do not fail.
+#
 # USAGE:
 #   docker compose exec app python -m scripts.seed_test_accounts
 #   docker compose exec app python -m scripts.seed_test_accounts --reset
+#   docker compose exec app python -m scripts.seed_test_accounts --allow-production
 # =============================================================================
 
 from __future__ import annotations
@@ -50,6 +61,7 @@ import structlog
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import dispose_engine, get_session_factory
 from app.core.logging import setup_logging
 from app.modules.agent_applications.constants import AgentApplicationStatus
@@ -696,7 +708,33 @@ def main() -> None:
         action="store_true",
         help="Remove previously-seeded test accounts before seeding",
     )
+    parser.add_argument(
+        "--allow-production",
+        action="store_true",
+        help=(
+            "Explicitly allow seeding the well-known test accounts on "
+            "APP_ENV=production (R-2.3 guard; see header)"
+        ),
+    )
     args = parser.parse_args()
+
+    # PRODUCTION GUARD (R-2.3): refuse to plant well-known credentials
+    # (seedpass123, all-permission staff) on a production environment
+    # unless the operator opted in explicitly. Exit 0 -- a skipped seed
+    # must not fail installers.
+    if settings.app_env == "production" and not args.allow_production:
+        warn("SKIPPED: APP_ENV=production.")
+        warn(
+            "Test accounts use the well-known password 'seedpass123' and "
+            "include an all-permission staff account -- seeding them on "
+            "production is a ready-made backdoor."
+        )
+        warn(
+            "If this is a prod-like dev box that genuinely needs them, "
+            "re-run with --allow-production (installer: export "
+            "CBSHOME_SEED_TEST_ACCOUNTS=1)."
+        )
+        return
 
     asyncio.run(seed_test_accounts(reset=args.reset))
 
