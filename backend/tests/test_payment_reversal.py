@@ -15,6 +15,9 @@
 #       confirmed mirror left it at -amount: double debit)
 #   8:  R47 invariants: after reversal no CONFIRMED entries reference
 #       the payment (S-08) and the original+mirror pair sums to 0 (S-01)
+#   9:  R-2.2 groundwork: frozen deposit -> purchase -> chargeback pins
+#       the full-unwind behaviour (balance 0, no debt, 4 REVERSED rows)
+#       and the open hole: Purchase stays ACTIVE, buyer keeps units
 #
 # Email prefix: "s53r_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -364,3 +367,112 @@ async def test_reverse_invariants_s08_s01_pair(
 
     # S-01 pair: the reversal is net-zero in the all-statuses sum.
     assert sum(e.amount_cents for e in entries) == 0
+
+
+@pytest.mark.asyncio
+async def test_reverse_spent_frozen_deposit_unwinds_purchase_debit(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """R-2.2 groundwork: frozen deposit -> purchase -> chargeback.
+
+    Pins the CURRENT behaviour of the spent-deposit path (the one the
+    pre-R47 header described wrongly):
+
+      * frozen-funded purchase debits inherit the deposit's
+        origin_payment_id (compute_frozen_context), so the reversal
+        captures BOTH rows -- deposit credit and purchase debit unwind
+        together, every entry ends up REVERSED;
+      * spendable balance lands at exactly 0 -- NO debt is recorded;
+      * Purchase.status stays ACTIVE -- the buyer KEEPS the units.
+
+    The last assertion is the open R-2.2 hole, pinned deliberately:
+    when purchase chargeback lands, flip it to PurchaseStatus.REVERSED
+    and this test becomes the regression guard for the full unwind.
+    """
+    from sqlalchemy import select as sa_select
+
+    from app.modules.ledgers.service import record_active_ledger as _ral
+    from app.modules.products.models import Product
+    from app.modules.purchases.constants import (
+        PurchaseLegalBasis,
+        PurchaseStatus as PStatus,
+    )
+    from app.modules.purchases.models import Purchase
+
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
+
+    # Spend the frozen deposit: minimal Purchase against any seeded
+    # storefront product + the ledger debit shaped exactly like
+    # compute_frozen_context writes it -- reason "purchase:{id}" and
+    # the deposit's origin_payment_id inherited.
+    product = (
+        await db_session.execute(sa_select(Product).limit(1))
+    ).scalar_one_or_none()
+    assert product is not None, "storefront seed must run before tests"
+
+    purchase = Purchase(
+        investor_id=user_id,
+        product_id=product.id,
+        company_id=product.company_id,
+        legal_basis=PurchaseLegalBasis.SALE,
+        units=1,
+        paid_cents=10050,
+        price_per_unit_cents=10050,
+        status=PStatus.ACTIVE,
+    )
+    db_session.add(purchase)
+    await db_session.flush()
+
+    await _ral(
+        db_session,
+        user_id=user_id,
+        amount_cents=-10050,
+        status=LedgerStatus.FROZEN,
+        reason=f"purchase:{purchase.id}",
+        frozen_until=datetime.now(UTC) + timedelta(hours=24),
+        origin_payment_id=payment_id,
+    )
+    await db_session.commit()
+    purchase_id = purchase.id
+
+    # Sanity: deposit +10050 and debit -10050 net to zero pre-reversal.
+    before = await get_active_balance(db_session, user_id)
+    assert before["frozen"] == 0
+    assert before["confirmed"] == 0
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={"reason": "chargeback after spending"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    # Both captured rows count: |+10050| + |-10050|.
+    assert body["total_reversed_cents"] == 20100
+    assert body["active_entries_reversed"] == 2
+
+    db_session.expire_all()
+
+    # Full unwind: 2 originals + 2 mirrors, all REVERSED, sum 0.
+    entries = (await db_session.execute(
+        sa_select(ActiveLedger)
+        .where(ActiveLedger.origin_payment_id == payment_id)
+    )).scalars().all()
+    assert len(entries) == 4
+    assert all(e.status == LedgerStatus.REVERSED for e in entries)
+    assert sum(e.amount_cents for e in entries) == 0
+
+    # No debt recorded: balance is 0, not negative.
+    after = await get_active_balance(db_session, user_id)
+    assert after["frozen"] == 0
+    assert after["confirmed"] == 0
+
+    # THE open R-2.2 hole, pinned on purpose: the buyer keeps the
+    # units. Flip this to PStatus.REVERSED when purchase chargeback
+    # lands.
+    p = (await db_session.execute(
+        sa_select(Purchase).where(Purchase.id == purchase_id)
+    )).scalar_one()
+    assert p.status == PStatus.ACTIVE

@@ -41,9 +41,20 @@
 #   mirror satisfies all four: both rows are excluded from spendable
 #   balance (net effect exactly -X: the deposit disappears), the pair
 #   sums to zero inside S-01, S-08 sees no confirmed rows, S-09 pairs
-#   1:1. Balance can still go negative when the user already SPENT the
-#   reversed deposit (purchase debits stay confirmed) -- that genuine
-#   "user owes platform" case remains, the phantom one is gone.
+#   1:1.
+#
+# SPENT-DEPOSIT SEMANTICS (corrected per R47 review):
+#   FROZEN-funded purchase debits INHERIT the deposit's
+#   origin_payment_id (purchases/service.py compute_frozen_context),
+#   so step 3 of this flow captures them too: the deposit credit AND
+#   those purchase debits unwind together. Balance lands at exactly 0
+#   and NO debt is recorded -- the purchased asset must be revoked
+#   instead (PurchaseStatus.REVERSED), which is NOT implemented yet:
+#   today the buyer keeps the units (open R-2.2, see
+#   test_reverse_spent_frozen_deposit_unwinds_purchase_debit).
+#   CONFIRMED-funded purchases carry origin_payment_id=None and stay
+#   booked -- only there the balance goes genuinely negative
+#   ("user owes platform").
 #
 # ORIGINAL ENTRIES:
 #   Status updated directly via ORM (bypassing _WRITABLE_STATUSES guard).

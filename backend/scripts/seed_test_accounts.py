@@ -27,20 +27,27 @@
 #   installments), by code (referral link), by company_id (pool).
 #   Re-running without --reset is a no-op for anything already present.
 #
-# PRODUCTION GUARD (R-2.3):
+# PRODUCTION GUARD (R-2.3, hardened fail-closed per R48 review):
 #   seedpass123 is a WELL-KNOWN credential and the staff account gets
 #   every permission -- on a real production install this is a
-#   ready-made admin backdoor. The script therefore REFUSES to run
-#   when settings.app_env == "production" unless --allow-production
+#   ready-made admin backdoor. The script therefore REFUSES to seed
+#   whenever settings.app_env != "development" (fail-closed: an unset
+#   or mistyped APP_ENV counts as production) unless --allow-production
 #   is passed explicitly. The installer forwards that flag only when
-#   the operator exports CBSHOME_SEED_TEST_ACCOUNTS=1 (prod-like dev
-#   boxes that genuinely need the accounts opt in consciously).
-#   The skip exits 0 so installers do not fail.
+#   the operator exports CBSHOME_SEED_TEST_ACCOUNTS=1. The skip exits
+#   0 so installers do not fail.
+#
+#   --remove-only is the rotation path: it runs the _reset() removal
+#   and seeds NOTHING, works in ANY environment WITHOUT
+#   --allow-production -- removing the backdoor accounts must never be
+#   gated. Use it once on live installs that received the accounts
+#   before this guard existed.
 #
 # USAGE:
 #   docker compose exec app python -m scripts.seed_test_accounts
 #   docker compose exec app python -m scripts.seed_test_accounts --reset
 #   docker compose exec app python -m scripts.seed_test_accounts --allow-production
+#   docker compose exec app python -m scripts.seed_test_accounts --remove-only
 # =============================================================================
 
 from __future__ import annotations
@@ -638,15 +645,24 @@ async def _ensure_staff(
 # ---------------------------------------------------------------------------
 
 
-async def seed_test_accounts(reset: bool) -> None:
-    """Main entry point -- create the four test accounts."""
+async def seed_test_accounts(reset: bool, *, remove_only: bool = False) -> None:
+    """Main entry point -- create the four test accounts.
+
+    remove_only=True runs the _reset() removal and seeds nothing
+    (the environment-agnostic rotation path, see header).
+    """
     setup_logging()
     factory = get_session_factory()
 
     async with factory() as session:
         try:
-            if reset:
+            if reset or remove_only:
                 await _reset(session)
+
+            if remove_only:
+                await session.commit()
+                log("Test accounts removed (--remove-only); nothing seeded.")
+                return
 
             platform_user_id = await get_platform_user_id(session)
 
@@ -712,27 +728,44 @@ def main() -> None:
         "--allow-production",
         action="store_true",
         help=(
-            "Explicitly allow seeding the well-known test accounts on "
-            "APP_ENV=production (R-2.3 guard; see header)"
+            "Explicitly allow seeding the well-known test accounts when "
+            "APP_ENV is not 'development' (R-2.3 fail-closed guard)"
+        ),
+    )
+    parser.add_argument(
+        "--remove-only",
+        action="store_true",
+        help=(
+            "Remove the seeded test accounts and seed nothing. Works in "
+            "any environment WITHOUT --allow-production -- the rotation "
+            "path for installs that received the accounts pre-guard"
         ),
     )
     args = parser.parse_args()
 
-    # PRODUCTION GUARD (R-2.3): refuse to plant well-known credentials
-    # (seedpass123, all-permission staff) on a production environment
-    # unless the operator opted in explicitly. Exit 0 -- a skipped seed
-    # must not fail installers.
-    if settings.app_env == "production" and not args.allow_production:
-        warn("SKIPPED: APP_ENV=production.")
+    # Removal is environment-agnostic and never gated: deleting the
+    # backdoor accounts must always be possible, especially on the very
+    # production installs the guard protects.
+    if args.remove_only:
+        asyncio.run(seed_test_accounts(reset=False, remove_only=True))
+        return
+
+    # PRODUCTION GUARD (R-2.3, fail-closed per R48): anything that is
+    # not explicitly "development" is treated as production -- an unset
+    # or mistyped APP_ENV must not seed the well-known credentials.
+    # Exit 0 -- a skipped seed must not fail installers.
+    if settings.app_env != "development" and not args.allow_production:
+        warn(f"SKIPPED: APP_ENV={settings.app_env!r} is not 'development' (fail-closed).")
         warn(
             "Test accounts use the well-known password 'seedpass123' and "
             "include an all-permission staff account -- seeding them on "
-            "production is a ready-made backdoor."
+            "anything but a dev box is a ready-made backdoor."
         )
         warn(
             "If this is a prod-like dev box that genuinely needs them, "
             "re-run with --allow-production (installer: export "
-            "CBSHOME_SEED_TEST_ACCOUNTS=1)."
+            "CBSHOME_SEED_TEST_ACCOUNTS=1). To remove previously seeded "
+            "accounts, use --remove-only."
         )
         return
 
