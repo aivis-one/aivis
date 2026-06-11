@@ -37,11 +37,13 @@
 #   the operator exports CBSHOME_SEED_TEST_ACCOUNTS=1. The skip exits
 #   0 so installers do not fail.
 #
-#   --remove-only is the rotation path: it runs the _reset() removal
-#   and seeds NOTHING, works in ANY environment WITHOUT
-#   --allow-production -- removing the backdoor accounts must never be
-#   gated. Use it once on live installs that received the accounts
-#   before this guard existed.
+#   --remove-only is the rotation path: it NEUTRALIZES the accounts
+#   (random never-printed passwords, StaffProfile deleted, referral
+#   links deactivated -- see _neutralize) and seeds NOTHING. Works in
+#   ANY environment WITHOUT --allow-production -- disarming the
+#   backdoor must never be gated. Financial history stays untouched
+#   (deleting users is impossible anyway: ledger FKs are RESTRICT).
+#   A later gated re-seed fully restores the accounts.
 #
 # USAGE:
 #   docker compose exec app python -m scripts.seed_test_accounts
@@ -54,6 +56,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import secrets
 import sys
 from datetime import datetime, UTC
 from decimal import Decimal
@@ -65,7 +68,7 @@ if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
 import structlog
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -268,6 +271,73 @@ async def _reset(session: AsyncSession) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Neutralize (--remove-only rotation path, R48-2.2)
+# ---------------------------------------------------------------------------
+
+
+def _set_password(user: User, password: str) -> None:
+    """Replace the user's email password hash.
+
+    Full-dict reassignment (not in-place mutation) so SQLAlchemy's
+    JSONB change detection registers the update.
+    """
+    creds = dict(user.credentials)
+    email_creds = dict(creds.get("email", {}))
+    email_creds["password_hash"] = hash_password(password)
+    creds["email"] = email_creds
+    user.credentials = creds
+
+
+async def _neutralize(session: AsyncSession) -> None:
+    """Kill the backdoor WITHOUT deleting anything financial.
+
+    Why not DELETE (the first --remove-only attempt): the seeded
+    investor carries active_ledger rows (FK RESTRICT), and deleting
+    ledger / payment / audit rows on a production install would both
+    fight every FK in the schema and violate the "ledger entries are
+    never deleted" doctrine. Neutralizing removes the threat instead:
+
+      * every test account gets a random password that is never
+        printed or stored anywhere -- seedpass123 logins die;
+      * the test staff's StaffProfile rows are deleted -- the
+        all-permission grant (the actual backdoor power) is gone;
+      * the test agent's referral links are deactivated.
+
+    Users, ledgers, payments and audit history stay untouched.
+
+    KNOWN RESIDUAL: sessions already issued to these accounts live
+    until their TTL -- password rotation does not revoke them.
+
+    Re-seeding later (with the production gate satisfied) fully
+    restores the accounts: the _ensure_* existing-user branches
+    restore the seedpass123 password, the staff profile and the link.
+    """
+    log("Neutralize: rotating passwords + stripping permissions")
+
+    user_ids: list = []
+    for email in ALL_TEST_EMAILS:
+        user = await _get_user_by_email(session, email)
+        if user is None:
+            continue
+        _set_password(user, secrets.token_urlsafe(32))
+        user_ids.append(user.id)
+        log(f"  Password rotated: {email}")
+
+    if user_ids:
+        await session.execute(
+            delete(StaffProfile).where(StaffProfile.user_id.in_(user_ids))
+        )
+        await session.execute(
+            update(ReferralLink)
+            .where(ReferralLink.agent_id.in_(user_ids))
+            .values(is_active=False)
+        )
+
+    await session.commit()
+    log("Neutralize: done -- accounts unusable, financial history intact")
+
+
+# ---------------------------------------------------------------------------
 # User creation primitives
 # ---------------------------------------------------------------------------
 
@@ -328,6 +398,9 @@ async def _ensure_investor(
     """Return the test investor, creating it (with balance + KYC) if missing."""
     existing = await _get_user_by_email(session, INVESTOR_EMAIL)
     if existing is not None:
+        # Heal a possibly neutralized account: seeding declares that
+        # this account logs in with seedpass123 -- make it true.
+        _set_password(existing, TEST_PASSWORD)
         return existing
 
     investor = _make_user(
@@ -369,6 +442,7 @@ async def _ensure_company_owner(
     """Return the company owner User, creating it if missing."""
     existing = await _get_user_by_email(session, COMPANY_OWNER_EMAIL)
     if existing is not None:
+        _set_password(existing, TEST_PASSWORD)  # heal after --remove-only
         return existing
 
     owner = _make_user(
@@ -565,6 +639,13 @@ async def _ensure_agent(
     """Return the test agent (registered + approved + linked), creating it if missing."""
     existing = await _get_user_by_email(session, AGENT_EMAIL)
     if existing is not None:
+        # Heal after --remove-only: password back + links reactivated.
+        _set_password(existing, TEST_PASSWORD)
+        await session.execute(
+            update(ReferralLink)
+            .where(ReferralLink.agent_id == existing.id)
+            .values(is_active=True)
+        )
         return existing
 
     agent = _make_user(
@@ -612,6 +693,22 @@ async def _ensure_staff(
     """Return the test staff user with all permissions, creating it if missing."""
     existing = await _get_user_by_email(session, STAFF_EMAIL)
     if existing is not None:
+        # Heal after --remove-only: password back + profile re-created
+        # (neutralize deletes the StaffProfile to strip permissions).
+        _set_password(existing, TEST_PASSWORD)
+        profile_stmt = select(StaffProfile).where(
+            StaffProfile.user_id == existing.id
+        )
+        profile = (await session.execute(profile_stmt)).scalar_one_or_none()
+        if profile is None:
+            session.add(
+                StaffProfile(
+                    user_id=existing.id,
+                    permissions={key: True for key in VALID_PERMISSION_KEYS},
+                    is_active=True,
+                )
+            )
+            await session.flush()
         return existing
 
     staff = _make_user(
@@ -648,21 +745,21 @@ async def _ensure_staff(
 async def seed_test_accounts(reset: bool, *, remove_only: bool = False) -> None:
     """Main entry point -- create the four test accounts.
 
-    remove_only=True runs the _reset() removal and seeds nothing
-    (the environment-agnostic rotation path, see header).
+    remove_only=True neutralizes the accounts (password rotation +
+    permission strip, see _neutralize) and seeds nothing -- the
+    environment-agnostic rotation path.
     """
     setup_logging()
     factory = get_session_factory()
 
     async with factory() as session:
         try:
-            if reset or remove_only:
-                await _reset(session)
-
             if remove_only:
-                await session.commit()
-                log("Test accounts removed (--remove-only); nothing seeded.")
+                await _neutralize(session)
                 return
+
+            if reset:
+                await _reset(session)
 
             platform_user_id = await get_platform_user_id(session)
 
