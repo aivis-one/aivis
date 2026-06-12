@@ -77,7 +77,10 @@ async def test_consistency_response_structure(
     assert resp.status_code == 200
     body = resp.json()
     assert body["overall_status"] in ("pass", "fail")
-    assert body["total"] == 18
+    # 19 = 18 original semaphores + IS-07 (completed plans with
+    # reversed tranche funding, tranche-unwind round). Bump this pin
+    # whenever a semaphore is added to _ALL_SEMAPHORES.
+    assert body["total"] == 19
     assert body["passed"] + body["failed"] == body["total"]
     for r in body["results"]:
         assert r["status"] in ("pass", "fail")
@@ -116,7 +119,7 @@ async def test_consistency_staff_with_permission(
         "/api/v1/staff/consistency", headers=auth_headers(token),
     )
     assert resp.status_code == 200
-    assert resp.json()["total"] == 18
+    assert resp.json()["total"] == 19  # see structure test for the pin note
 
 
 # ---------------------------------------------------------------------------

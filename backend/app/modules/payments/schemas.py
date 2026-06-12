@@ -127,6 +127,11 @@ class ReversalResponse(BaseModel):
     # part of this payment reversal (their debits inherited the
     # deposit's origin_payment_id and were captured by the unwind).
     purchases_reversed: int
+    # Tranche-unwind: installment tranches whose funding this payment
+    # provided. Each entry: {tranche_id, plan_id, plan_outcome
+    # ("defaulted" | "completed_flagged" | terminal status),
+    # cancelled_count}. Empty when no tranche debits were captured.
+    tranches_unwound: list[dict] = []
     affected_user_ids: list[UUID]
 
 

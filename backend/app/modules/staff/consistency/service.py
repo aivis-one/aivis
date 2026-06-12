@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   run_all()   -- execute all 20 semaphores, return aggregated results
+#   run_all()   -- execute all 19 semaphores, return aggregated results
 #   s_01..s_13  -- core financial consistency checks
 #   is_01..is_06 -- installment-specific checks
 #
