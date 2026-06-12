@@ -218,15 +218,30 @@ async def s_05(session: AsyncSession) -> SemaphoreResult:
     balance goes negative by design (R-2.2), and that is a collections
     case, not a ledger-corruption signal. Users who carry at least one
     REVERSED active-ledger row are therefore excused from this
-    semaphore; their count is still surfaced in details so the
+    semaphore WITHIN the amount their reversals clawed back (bounded
+    excuse, review 3.1); their count is surfaced in details so the
     operator sees how many "owes platform" cases exist. A negative
-    balance on a user with NO reversal history remains a critical
-    failure exactly as before.
+    balance deeper than the reversal cap -- or on a user with no
+    reversal history -- remains a critical failure exactly as before.
     """
-    reversed_users = (
-        select(ActiveLedger.user_id)
-        .where(ActiveLedger.status == LedgerStatus.REVERSED)
-        .distinct()
+    # BOUNDED excuse (review note 3.1): a reversal history must not be
+    # a lifetime indulgence -- otherwise a future REAL corruption of
+    # this user's balance would go unnoticed. The excuse cap is the
+    # sum of the user's REVERSED positive entries (the clawed-back
+    # credits): a negative balance is explained only while
+    # |balance| <= cap, i.e. balance + cap >= 0. Anything deeper than
+    # what the reversals removed is critical exactly as before.
+    excuse_caps = (
+        select(
+            ActiveLedger.user_id,
+            func.sum(ActiveLedger.amount_cents).label("cap"),
+        )
+        .where(
+            ActiveLedger.status == LedgerStatus.REVERSED,
+            ActiveLedger.amount_cents > 0,
+        )
+        .group_by(ActiveLedger.user_id)
+        .subquery()
     )
 
     negative_users = (
@@ -240,19 +255,24 @@ async def s_05(session: AsyncSession) -> SemaphoreResult:
         .subquery()
     )
 
-    unexplained_stmt = (
-        select(func.count())
-        .select_from(negative_users)
-        .where(negative_users.c.user_id.notin_(reversed_users))
+    joined = negative_users.outerjoin(
+        excuse_caps,
+        negative_users.c.user_id == excuse_caps.c.user_id,
     )
-    excused_stmt = (
-        select(func.count())
-        .select_from(negative_users)
-        .where(negative_users.c.user_id.in_(reversed_users))
+    capped_total = (
+        negative_users.c.balance
+        + func.coalesce(excuse_caps.c.cap, 0)
     )
 
-    count = (await session.execute(unexplained_stmt)).scalar_one()
-    excused = (await session.execute(excused_stmt)).scalar_one()
+    unexplained_stmt = (
+        select(func.count()).select_from(joined).where(capped_total < 0)
+    )
+    excused_stmt = (
+        select(func.count()).select_from(joined).where(capped_total >= 0)
+    )
+
+    count = int((await session.execute(unexplained_stmt)).scalar_one())
+    excused = int((await session.execute(excused_stmt)).scalar_one())
     return _result(
         "S-05", "critical", count == 0,
         {
