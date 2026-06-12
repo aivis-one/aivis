@@ -29,6 +29,7 @@
 #   confirmation_worker and installment_worker.
 # =============================================================================
 
+import hashlib
 from datetime import date, datetime, UTC
 from uuid import UUID
 
@@ -58,6 +59,28 @@ _volume_processor = VolumeProcessor()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _period_lock_key(scope: str, period_type: str, period_start: date) -> int:
+    """Deterministic 63-bit advisory-lock key for a period (R51).
+
+    Replaces hash((period_type, str(period_start))): Python's hash()
+    is randomized per process (PYTHONHASHSEED), so two workers in
+    different processes derived DIFFERENT keys and the lock never
+    serialized them -- under the broken lock the idempotency check in
+    _distribute_pool could pass in both processes and the pool would
+    be paid out twice. sha256 of a stable string is identical across
+    processes and restarts.
+
+    scope namespaces the key so the payout lock and the snapshot
+    refresh lock never collide ("volume_payout" / "leaderboard_refresh").
+    Each caller takes its locks in a fixed order, and the two scopes
+    never nest, so no deadlock is possible.
+    """
+    digest = hashlib.sha256(
+        f"{scope}:{period_type}:{period_start.isoformat()}".encode()
+    ).digest()
+    return int.from_bytes(digest[:8], "big") & 0x7FFFFFFFFFFFFFFF
 
 
 def _previous_month_start() -> date:
@@ -202,8 +225,28 @@ async def run_leaderboard_update() -> None:
         try:
             now = datetime.now(UTC)
 
-            # -- Monthly snapshot --
+            # -- Advisory locks (R51): serialize concurrent refreshers.
+            # The replace cycle is DELETE non-final + INSERT; two
+            # unserialized refreshers race that into duplicate rows --
+            # and, after migration 0037 (uq_leaderboard_period_agent),
+            # into IntegrityError. Both locks are taken up front in a
+            # fixed order (monthly, then quarterly) by every refresher,
+            # so refreshers cannot deadlock each other; the payout path
+            # uses a different scope and holds only one lock.
             m_start = current_month_start()
+            q_start_for_lock = _current_quarter_start()
+            for scope_pt, scope_ps in (
+                (PeriodType.MONTHLY, m_start),
+                (PeriodType.QUARTERLY, q_start_for_lock),
+            ):
+                await session.execute(
+                    text("SELECT pg_advisory_xact_lock(:lock_id)"),
+                    {"lock_id": _period_lock_key(
+                        "leaderboard_refresh", scope_pt, scope_ps
+                    )},
+                )
+
+            # -- Monthly snapshot --
             m_end = _next_period_start(m_start, PeriodType.MONTHLY)
 
             agents_monthly = await _aggregate_agent_volumes(
@@ -367,8 +410,11 @@ async def _distribute_pool(
     Args:
         bonus_bp: Bonus percentage in basis points (200 = 2.00%).
     """
-    # -- 0. Advisory lock -- serialize concurrent workers
-    lock_key = hash((period_type, str(period_start))) & 0x7FFFFFFFFFFFFFFF
+    # -- 0. Advisory lock -- serialize concurrent workers.
+    # R51: deterministic key (see _period_lock_key). The previous
+    # hash()-based key was per-process random and did not lock across
+    # workers -- a double-payout hazard.
+    lock_key = _period_lock_key("volume_payout", period_type, period_start)
     await session.execute(
         text("SELECT pg_advisory_xact_lock(:lock_id)"),
         {"lock_id": lock_key},

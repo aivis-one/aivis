@@ -19,7 +19,9 @@
 #   - VolumePayout has UNIQUE(agent_id, period_type, period_start) --
 #     one bonus per agent per period.
 #   - LeaderboardSnapshot rows for current period are replaced on each
-#     worker cycle (DELETE + INSERT WHERE is_final=False).
+#     worker cycle (DELETE + INSERT WHERE is_final=False). The cycle is
+#     serialized by an advisory lock (worker.py R51) and backstopped by
+#     UNIQUE(period_type, period_start, agent_id) -- migration 0037.
 # =============================================================================
 
 from datetime import date, datetime
@@ -98,6 +100,18 @@ class LeaderboardSnapshot(UUIDMixin, Base):
     )
 
     __table_args__ = (
+        # R51 (migration 0037): one row per agent per period. The
+        # worker replace cycle (DELETE non-final + INSERT) is
+        # serialized by an advisory lock; this constraint is the
+        # backstop that turns any remaining duplication into a loud
+        # IntegrityError instead of a silently double-paid agent
+        # (the payout path reads snapshots LIMIT top_n).
+        UniqueConstraint(
+            "period_type",
+            "period_start",
+            "agent_id",
+            name="uq_leaderboard_period_agent",
+        ),
         # Fast lookup for GET /agent/leaderboard.
         Index(
             "ix_leaderboard_period_rank",
