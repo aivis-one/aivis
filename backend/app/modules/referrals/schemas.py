@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Schemas (Sprint 7.2)
+# CBSHOME Backend -- Referral Schemas (Sprint 7.2, downline Task 2b)
 # =============================================================================
 
 from datetime import datetime
@@ -58,3 +58,56 @@ class ReferralStatsResponse(BaseModel):
     total_registrations: int
     total_purchases: int
     total_commission_cents: int
+
+
+# ---------------------------------------------------------------------------
+# Downline (Task 2b Block A)
+# ---------------------------------------------------------------------------
+
+
+class DownlineInvestorEntry(BaseModel):
+    """Investor in the agent's downline (commission-mirror levels).
+
+    Level = number of agent hops from the investor up to the
+    requesting agent: direct investors are L1, investors under a
+    direct sub-agent are L2, one agent deeper -- L3. L4+ are outside
+    the 3-level commission area and excluded.
+
+    display_name is MASKED (decision #5): no email, phone or KYC
+    status is ever exposed, uniformly across all levels.
+    """
+
+    user_id: UUID
+    display_name: str
+    level: int
+    registered_at: datetime
+    purchase_volume_cents: int
+
+
+class DownlineSubAgentEntry(BaseModel):
+    """Sub-agent in the agent's downline, agent-hop depth 1..3.
+
+    recruited_investor_count / direct_volume_cents cover only the
+    sub-agent's DIRECT investors (decision #4, non-recursive).
+    own_purchase_volume_cents is the sub-agent's OWN purchases
+    (decision #8): agents are buyers too, and their purchases feed the
+    requesting agent's commission exactly like investor purchases --
+    without this field the screen would show less volume than the
+    agent is actually commissioned on.
+    """
+
+    user_id: UUID
+    display_name: str
+    level: int
+    registered_at: datetime
+    recruited_investor_count: int
+    direct_volume_cents: int
+    own_purchase_volume_cents: int
+
+
+class ReferralDownlineResponse(BaseModel):
+    """Response for GET /referrals/downline/me (two collections,
+    decision #1 -- not a polymorphic flat tree)."""
+
+    investors: list[DownlineInvestorEntry]
+    sub_agents: list[DownlineSubAgentEntry]

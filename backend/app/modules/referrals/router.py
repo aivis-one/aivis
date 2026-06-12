@@ -1,11 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Router (Sprint 7.2, extended Task 1 Block D)
+# CBSHOME Backend -- Referral Router (Sprint 7.2, Task 1 Block D, Task 2b)
 # =============================================================================
 #
 # ENDPOINTS:
-#   POST /api/v1/referrals/links    -- create referral link (agent only)
-#   GET  /api/v1/referrals/links/me -- list my referral links (agent only)
-#   GET  /api/v1/referrals/stats/me -- referral stats (agent only)
+#   POST /api/v1/referrals/links       -- create referral link (agent only)
+#   GET  /api/v1/referrals/links/me    -- list my referral links (agent only)
+#   GET  /api/v1/referrals/stats/me    -- referral stats (agent only)
+#   GET  /api/v1/referrals/downline/me -- my downline by level (agent only)
 #
 # AUTH:
 #   All endpoints require role=agent.
@@ -17,6 +18,11 @@
 #   tuples; the router builds the response explicitly. A freshly
 #   created link has zero registrations/purchases by definition, so
 #   the create endpoint hardcodes 0/0 instead of querying.
+#
+#   Task 2b: downline assembly + PII MASKING also happen here -- the
+#   service returns raw User rows, the router applies
+#   _mask_display_name uniformly to both collections. The wire never
+#   carries email, phone or KYC status (decision #5).
 #
 # COMMIT RULE (P-01):
 #   Router never calls session.commit(). get_db_session manages it.
@@ -31,11 +37,19 @@ from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.referrals.models import ReferralLink
 from app.modules.referrals.schemas import (
+    DownlineInvestorEntry,
+    DownlineSubAgentEntry,
+    ReferralDownlineResponse,
     ReferralLinkListResponse,
     ReferralLinkResponse,
     ReferralStatsResponse,
 )
-from app.modules.referrals.service import create_link, get_my_links, get_my_stats
+from app.modules.referrals.service import (
+    create_link,
+    get_downline,
+    get_my_links,
+    get_my_stats,
+)
 from app.modules.users.models import User, UserRole
 
 logger = structlog.get_logger()
@@ -47,6 +61,33 @@ def _require_agent(user: User) -> None:
     """Raise 403 if user is not an agent."""
     if user.role != UserRole.AGENT:
         raise ForbiddenError("Only agents can access referral features")
+
+
+def _mask_display_name(user: User) -> str:
+    """Masked display name for downline entries (decision #5).
+
+    Uniform for ALL levels -- never the full identity, never email,
+    phone or KYC. Resolution order:
+      1. profile first_name + last-name initial ("Ivan P.");
+      2. telegram first_name + last-name initial;
+      3. masked email local-part, first two chars ("iv***");
+      4. role-generic fallback ("Investor" / "Agent").
+    """
+    profile = user.profile or {}
+    tg = (user.credentials or {}).get("telegram", {})
+
+    for source in (profile, tg):
+        first = (source.get("first_name") or "").strip()
+        last = (source.get("last_name") or "").strip()
+        if first:
+            return f"{first} {last[0]}." if last else first
+
+    email = user.email
+    if email:
+        local = email.split("@", 1)[0]
+        return f"{local[:2]}***"
+
+    return "Agent" if user.role == UserRole.AGENT else "Investor"
 
 
 def _link_response(
@@ -125,3 +166,48 @@ async def my_referral_stats(
 
     stats = await get_my_stats(user.id, session)
     return ReferralStatsResponse(**stats)
+
+
+@router.get(
+    "/downline/me",
+    response_model=ReferralDownlineResponse,
+)
+async def my_downline(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_reader),
+) -> ReferralDownlineResponse:
+    """My downline by level (Task 2b). Agent only.
+
+    Two collections (decision #1): investors L1-L3 (commission-mirror
+    levels) and sub-agents at agent-hop depth 1-3. Assembly and PII
+    masking happen here (Pattern 6); the service returns raw rows.
+    No pagination in v1 (decision #7) -- depth-3 bounds the size.
+    """
+    _require_agent(user)
+
+    investors, sub_agents = await get_downline(user.id, session)
+
+    return ReferralDownlineResponse(
+        investors=[
+            DownlineInvestorEntry(
+                user_id=u.id,
+                display_name=_mask_display_name(u),
+                level=level,
+                registered_at=u.created_at,
+                purchase_volume_cents=volume,
+            )
+            for u, level, volume in investors
+        ],
+        sub_agents=[
+            DownlineSubAgentEntry(
+                user_id=a.id,
+                display_name=_mask_display_name(a),
+                level=level,
+                registered_at=a.created_at,
+                recruited_investor_count=recruited,
+                direct_volume_cents=direct_vol,
+                own_purchase_volume_cents=own_vol,
+            )
+            for a, level, recruited, direct_vol, own_vol in sub_agents
+        ],
+    )

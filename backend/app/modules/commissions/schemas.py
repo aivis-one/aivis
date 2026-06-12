@@ -1,11 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Commission Schemas (Sprint 7.3)
+# CBSHOME Backend -- Commission Schemas (Sprint 7.3, Task 2b Block C)
 # =============================================================================
 #
 # Pydantic models for leaderboard and commission endpoints.
 #
-# GET /api/v1/agent/leaderboard    -> LeaderboardResponse
-# GET /api/v1/agent/commissions/me -> CommissionListResponse
+# GET /api/v1/agent/leaderboard         -> LeaderboardResponse
+# GET /api/v1/agent/commissions/me      -> CommissionListResponse
+# GET /api/v1/agent/commissions/summary -> CommissionSummaryResponse
 # =============================================================================
 
 from datetime import date, datetime
@@ -66,3 +67,16 @@ class CommissionListResponse(BaseModel):
 
     items: list[CommissionEntry]
     total: int
+
+
+class CommissionSummaryResponse(BaseModel):
+    """Response for GET /agent/commissions/summary (Task 2b Block C).
+
+    Server-side month-to-date commission aggregate -- replaces the
+    dashboard's client-side sum over the first 100 history entries
+    (TD-COMMISSION-MONTH-AGG). Statuses frozen+confirmed, reversed
+    excluded; "commission:" reason prefix only (volume bonuses are a
+    separate concept on the dashboard).
+    """
+
+    month_to_date_cents: int

@@ -1,10 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Commission Service (Sprint 7.3)
+# CBSHOME Backend -- Commission Service (Sprint 7.3, Task 2b Block C)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   get_leaderboard()      -- current leaderboard snapshot for display
-#   get_my_commissions()   -- agent's commission + volume bonus history
+#   get_leaderboard()              -- current leaderboard snapshot for display
+#   get_my_commissions()           -- agent's commission + volume bonus history
+#   get_commission_month_to_date() -- server-side month aggregate (Task 2b)
 #
 # DATA SOURCES:
 #   Leaderboard: LeaderboardSnapshot table (pre-computed by worker).
@@ -32,7 +33,7 @@ from app.modules.commissions.schemas import (
     LeaderboardEntry,
     LeaderboardResponse,
 )
-from app.modules.ledgers.models import PassiveLedger
+from app.modules.ledgers.models import LedgerStatus, PassiveLedger
 from app.modules.purchases.models import Purchase
 from app.modules.products.models import Product
 from app.modules.users.models import User
@@ -272,3 +273,46 @@ async def get_my_commissions(
             ))
 
     return CommissionListResponse(items=items, total=total)
+
+
+# ---------------------------------------------------------------------------
+# Month-to-date aggregate (Task 2b Block C)
+# ---------------------------------------------------------------------------
+
+
+async def get_commission_month_to_date(
+    agent_id: UUID,
+    session: AsyncSession,
+) -> int:
+    """Server-side commission sum for the current UTC month.
+
+    Closes TD-COMMISSION-MONTH-AGG: the dashboard used to sum the
+    first 100 entries of /commissions/me client-side with an
+    approximation indicator on truncation.
+
+    Filter parity with the dashboard's "commission this month" tile:
+      * "commission:" reason prefix ONLY -- volume bonuses are a
+        separate concept there (NOTE: /commissions/me itself does NOT
+        filter by status and lists reversed entries with their status;
+        this aggregate deliberately counts frozen+confirmed only);
+      * statuses frozen + confirmed -- reversed (clawed-back) excluded;
+      * window by PassiveLedger.created_at >= first instant of the
+        current UTC month (current_month_start, same helper the
+        leaderboard uses).
+    """
+    month_start = current_month_start()
+    window_start = datetime(
+        month_start.year, month_start.month, month_start.day, tzinfo=UTC
+    )
+
+    stmt = select(
+        func.coalesce(func.sum(PassiveLedger.amount_cents), 0)
+    ).where(
+        PassiveLedger.user_id == agent_id,
+        PassiveLedger.reason.startswith("commission:"),
+        PassiveLedger.status.in_(
+            [LedgerStatus.FROZEN, LedgerStatus.CONFIRMED]
+        ),
+        PassiveLedger.created_at >= window_start,
+    )
+    return int((await session.execute(stmt)).scalar_one())

@@ -44,6 +44,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.modules.purchases.constants import PurchaseStatus
+from app.modules.purchases.models import Purchase
 from app.modules.referrals.models import ReferralAttribution, ReferralLink
 from app.modules.users.models import User, UserRole
 
@@ -480,3 +482,195 @@ async def get_my_stats(
         "total_purchases": total_purchases,
         "total_commission_cents": total_commission_cents,
     }
+
+
+# ---------------------------------------------------------------------------
+# Downline (Task 2b Block A)
+# ---------------------------------------------------------------------------
+
+
+async def _active_agents_under(
+    parent_ids: list[UUID],
+    seen: set[UUID],
+    session: AsyncSession,
+) -> list[User]:
+    """One batched hop down the agent subtree.
+
+    Returns ACTIVE agents whose referred_by is in parent_ids, excluding
+    ids already seen (dedup guard against a malformed referred_by graph;
+    depth-3 bounds the runtime anyway). Single IN query -- never a
+    query per node.
+    """
+    if not parent_ids:
+        return []
+    stmt = select(User).where(
+        User.referred_by.in_(parent_ids),
+        User.role == UserRole.AGENT,
+        User.is_active.is_(True),
+        User.id.notin_(seen) if seen else True,  # noqa: E712
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_downline(
+    agent_id: UUID,
+    session: AsyncSession,
+) -> tuple[
+    list[tuple[User, int, int]],
+    list[tuple[User, int, int, int, int]],
+]:
+    """Agent's downline: investors and sub-agents by level (Task 2b).
+
+    LEVEL SEMANTICS -- commission-mirror (boss decision #2): the
+    investor's level equals the number of agent hops from the investor
+    up to the requesting agent X -- the same definition get_agent_chain
+    uses to pay commissions. Concretely:
+
+      agents_d1 = active agents with referred_by == X      (sub level 1)
+      agents_d2 = active agents under agents_d1            (sub level 2)
+      agents_d3 = active agents under agents_d2            (sub level 3)
+      investors under X         -> L1
+      investors under agents_d1 -> L2
+      investors under agents_d2 -> L3
+      investors under agents_d3 would be L4 -> EXCLUDED (outside the
+      3-level commission area).
+
+    Traversal goes through ACTIVE agents only (decision #6) -- an
+    inactive sub-agent breaks the chain exactly like get_agent_chain
+    stops on `not is_active`, so the screen never shows investors X is
+    not commissioned on. INVESTOR leaves are shown regardless of their
+    own is_active (decision #9): their historical volume already paid
+    X's commission, hiding them would understate the picture.
+
+    ANTI-N+1: the whole walk is 7 batched queries -- 3 agent hops, one
+    combined investor query, and 3 aggregate GROUP BYs. No query ever
+    runs inside a per-node loop.
+
+    Returns raw rows; response assembly and PII masking happen in the
+    router (Pattern 6):
+      investors:  [(User, level, purchase_volume_cents)]
+      sub_agents: [(User, level, recruited_investor_count,
+                    direct_volume_cents, own_purchase_volume_cents)]
+    """
+    # -- Agent subtree, 3 hops, batched, deduped. --
+    seen: set[UUID] = {agent_id}
+    agents_d1 = await _active_agents_under([agent_id], seen, session)
+    seen.update(a.id for a in agents_d1)
+    agents_d2 = await _active_agents_under(
+        [a.id for a in agents_d1], seen, session
+    )
+    seen.update(a.id for a in agents_d2)
+    agents_d3 = await _active_agents_under(
+        [a.id for a in agents_d2], seen, session
+    )
+    seen.update(a.id for a in agents_d3)
+
+    sub_agent_levels: dict[UUID, int] = {}
+    for level, bucket in ((1, agents_d1), (2, agents_d2), (3, agents_d3)):
+        for a in bucket:
+            sub_agent_levels[a.id] = level
+    all_sub_agents = agents_d1 + agents_d2 + agents_d3
+
+    # -- Investors: one combined query; level = parent agent depth + 1.
+    # Parents at depth 3 (agents_d3) are intentionally absent -- their
+    # investors would be L4. No is_active filter (decision #9).
+    parent_level: dict[UUID, int] = {agent_id: 0}
+    for a in agents_d1:
+        parent_level[a.id] = 1
+    for a in agents_d2:
+        parent_level[a.id] = 2
+
+    inv_stmt = select(User).where(
+        User.referred_by.in_(list(parent_level.keys())),
+        User.role == UserRole.INVESTOR,
+    )
+    investors = list((await session.execute(inv_stmt)).scalars().all())
+
+    # -- Aggregate 1: ACTIVE purchase volume per buyer, ONE query for
+    # investors AND sub-agents' own purchases together (decision #8:
+    # agents are buyers too -- their purchases feed X's commission).
+    buyer_ids = [u.id for u in investors] + [a.id for a in all_sub_agents]
+    volumes: dict[UUID, int] = {}
+    if buyer_ids:
+        vol_stmt = (
+            select(
+                Purchase.investor_id,
+                func.coalesce(func.sum(Purchase.paid_cents), 0),
+            )
+            .where(
+                Purchase.investor_id.in_(buyer_ids),
+                Purchase.status == PurchaseStatus.ACTIVE,
+            )
+            .group_by(Purchase.investor_id)
+        )
+        volumes = {
+            row[0]: int(row[1])
+            for row in (await session.execute(vol_stmt)).all()
+        }
+
+    sub_agent_ids = [a.id for a in all_sub_agents]
+    recruited: dict[UUID, int] = {}
+    direct_volume: dict[UUID, int] = {}
+    if sub_agent_ids:
+        # -- Aggregate 2: direct recruited INVESTOR count per sub-agent.
+        # No is_active filter -- count mirrors investor visibility (#9).
+        cnt_stmt = (
+            select(User.referred_by, func.count())
+            .where(
+                User.referred_by.in_(sub_agent_ids),
+                User.role == UserRole.INVESTOR,
+            )
+            .group_by(User.referred_by)
+        )
+        recruited = {
+            row[0]: int(row[1])
+            for row in (await session.execute(cnt_stmt)).all()
+        }
+
+        # -- Aggregate 3: direct volume per sub-agent = ACTIVE purchases
+        # of their direct INVESTORS (role filter is explicit so agent
+        # buyers never leak in here -- they are covered by decision #8's
+        # own_purchase_volume_cents, never double-counted).
+        dvol_stmt = (
+            select(
+                User.referred_by,
+                func.coalesce(func.sum(Purchase.paid_cents), 0),
+            )
+            .select_from(Purchase)
+            .join(User, Purchase.investor_id == User.id)
+            .where(
+                User.referred_by.in_(sub_agent_ids),
+                User.role == UserRole.INVESTOR,
+                Purchase.status == PurchaseStatus.ACTIVE,
+            )
+            .group_by(User.referred_by)
+        )
+        direct_volume = {
+            row[0]: int(row[1])
+            for row in (await session.execute(dvol_stmt)).all()
+        }
+
+    # -- Assemble raw rows, stable order: level ASC, registered ASC. --
+    investors_out = sorted(
+        (
+            (u, parent_level[u.referred_by] + 1, volumes.get(u.id, 0))
+            for u in investors
+        ),
+        key=lambda t: (t[1], t[0].created_at),
+    )
+    sub_agents_out = sorted(
+        (
+            (
+                a,
+                sub_agent_levels[a.id],
+                recruited.get(a.id, 0),
+                direct_volume.get(a.id, 0),
+                volumes.get(a.id, 0),
+            )
+            for a in all_sub_agents
+        ),
+        key=lambda t: (t[1], t[0].created_at),
+    )
+
+    return investors_out, sub_agents_out
