@@ -164,8 +164,22 @@ AGENT_REFERRAL_CODE = "TEST_AGENT_LINK"
 
 
 async def _reset(session: AsyncSession) -> None:
-    """Remove everything this script creates, in FK-safe order."""
-    log("Reset: removing previously-seeded test accounts")
+    """Remove the RECREATABLE artifacts this script creates; keep users.
+
+    Dev-only path. Earlier versions also deleted the four test users
+    (old step 9) -- that tripped FK RESTRICT the moment the seeded
+    investor carried active_ledger rows, for the same doctrine reason
+    _neutralize exists: ledger / payment / audit rows are never
+    deleted. The fix mirrors the neutralize+heal philosophy:
+
+      * products / company / pool / links / attributions / agent
+        applications / staff profile are deleted here and recreated
+        from scratch by the seeding pass that follows;
+      * the user rows themselves are KEPT (financial history intact)
+        and healed in place by the _ensure_* functions -- passwords,
+        roles, profiles, links all come back to the seeded state.
+    """
+    log("Reset: removing recreatable test artifacts (users are kept)")
 
     # Resolve user IDs by email so we can clean their dependents first.
     user_ids: list = []
@@ -263,13 +277,13 @@ async def _reset(session: AsyncSession) -> None:
             delete(StaffProfile).where(StaffProfile.user_id.in_(user_ids))
         )
 
-    # 9. The four test users themselves.
-    for email in ALL_TEST_EMAILS:
-        await session.execute(
-            delete(User).where(
-                User.credentials["email"]["email"].as_string() == email
-            )
-        )
+    # 9. The users themselves are intentionally KEPT (see docstring):
+    # deleting them trips ledger/payment/audit FK RESTRICT and would
+    # violate the "ledger entries are never deleted" doctrine. The
+    # seeding pass that follows heals the accounts in place.
+    if user_ids:
+        log(f"Reset: kept {len(user_ids)} test user(s); "
+            "seeding will heal them in place")
 
     await session.commit()
     log("Reset: done")
@@ -839,7 +853,11 @@ def main() -> None:
     parser.add_argument(
         "--reset",
         action="store_true",
-        help="Remove previously-seeded test accounts before seeding",
+        help=(
+            "Remove recreatable seeded artifacts (company, products, "
+            "links, ...) before seeding; user rows are kept and healed "
+            "in place (ledger FK doctrine)"
+        ),
     )
     parser.add_argument(
         "--allow-production",

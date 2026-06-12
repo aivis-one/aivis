@@ -75,19 +75,56 @@ def _result(
 
 
 async def s_01(session: AsyncSession) -> SemaphoreResult:
-    """S-01: SUM(all ledger entries including reversed) = 0."""
+    """S-01: SUM(internal-transfer ledger entries) = 0.
+
+    Boss-locked semantics (small-tails round): the platform is not a
+    closed system -- money legitimately ENTERS via deposits (single
+    active-ledger credit, the counterparty is the outside world) and
+    LEAVES via withdrawals (single passive-ledger debit). Summing
+    those makes S-01 structurally red on any live install, so the
+    legitimately one-sided families are excluded:
+
+      * active reason  'deposit:%'    -- crypto/manual deposits and
+        their ':reversal' mirrors (same prefix);
+      * passive reason 'withdrawal:%' -- withdrawal debits and their
+        rejection/failed compensating credits (net 0 when refunded).
+
+    Everything else (purchases, commissions, installments, volume
+    bonuses, reversal unwinds of internal transfers) is double-entry
+    and must net to exactly 0. The excluded sums are reported in
+    details for the operator's eyeball.
+    """
     active_sum_stmt = select(
         func.coalesce(func.sum(ActiveLedger.amount_cents), 0)
-    )
+    ).where(~ActiveLedger.reason.startswith("deposit:"))
     passive_sum_stmt = select(
         func.coalesce(func.sum(PassiveLedger.amount_cents), 0)
-    )
+    ).where(~PassiveLedger.reason.startswith("withdrawal:"))
+
+    deposit_sum_stmt = select(
+        func.coalesce(func.sum(ActiveLedger.amount_cents), 0)
+    ).where(ActiveLedger.reason.startswith("deposit:"))
+    withdrawal_sum_stmt = select(
+        func.coalesce(func.sum(PassiveLedger.amount_cents), 0)
+    ).where(PassiveLedger.reason.startswith("withdrawal:"))
+
     active_sum = (await session.execute(active_sum_stmt)).scalar_one()
     passive_sum = (await session.execute(passive_sum_stmt)).scalar_one()
+    deposit_sum = (await session.execute(deposit_sum_stmt)).scalar_one()
+    withdrawal_sum = (await session.execute(withdrawal_sum_stmt)).scalar_one()
+
     total = active_sum + passive_sum
     return _result(
         "S-01", "critical", total == 0,
-        {"active_sum": active_sum, "passive_sum": passive_sum, "total": total},
+        {
+            "active_sum": active_sum,
+            "passive_sum": passive_sum,
+            "total": total,
+            "excluded_one_sided": {
+                "deposits_active": deposit_sum,
+                "withdrawals_passive": withdrawal_sum,
+            },
+        },
     )
 
 
@@ -169,24 +206,55 @@ async def s_04(session: AsyncSession) -> SemaphoreResult:
 
 
 async def s_05(session: AsyncSession) -> SemaphoreResult:
-    """S-05: No users with confirmed active_balance < 0."""
-    stmt = (
-        select(func.count())
-        .select_from(
-            select(
-                ActiveLedger.user_id,
-                func.sum(ActiveLedger.amount_cents).label("balance"),
-            )
-            .where(ActiveLedger.status == LedgerStatus.CONFIRMED)
-            .group_by(ActiveLedger.user_id)
-            .having(func.sum(ActiveLedger.amount_cents) < 0)
-            .subquery()
-        )
+    """S-05: No UNEXPLAINED users with confirmed active_balance < 0.
+
+    Boss-locked semantics (small-tails round): after a payment
+    reversal claws back a confirmed deposit the user already spent,
+    the user legitimately OWES the platform -- their confirmed active
+    balance goes negative by design (R-2.2), and that is a collections
+    case, not a ledger-corruption signal. Users who carry at least one
+    REVERSED active-ledger row are therefore excused from this
+    semaphore; their count is still surfaced in details so the
+    operator sees how many "owes platform" cases exist. A negative
+    balance on a user with NO reversal history remains a critical
+    failure exactly as before.
+    """
+    reversed_users = (
+        select(ActiveLedger.user_id)
+        .where(ActiveLedger.status == LedgerStatus.REVERSED)
+        .distinct()
     )
-    count = (await session.execute(stmt)).scalar_one()
+
+    negative_users = (
+        select(
+            ActiveLedger.user_id,
+            func.sum(ActiveLedger.amount_cents).label("balance"),
+        )
+        .where(ActiveLedger.status == LedgerStatus.CONFIRMED)
+        .group_by(ActiveLedger.user_id)
+        .having(func.sum(ActiveLedger.amount_cents) < 0)
+        .subquery()
+    )
+
+    unexplained_stmt = (
+        select(func.count())
+        .select_from(negative_users)
+        .where(negative_users.c.user_id.notin_(reversed_users))
+    )
+    excused_stmt = (
+        select(func.count())
+        .select_from(negative_users)
+        .where(negative_users.c.user_id.in_(reversed_users))
+    )
+
+    count = (await session.execute(unexplained_stmt)).scalar_one()
+    excused = (await session.execute(excused_stmt)).scalar_one()
     return _result(
         "S-05", "critical", count == 0,
-        {"users_with_negative_active": count},
+        {
+            "users_with_negative_active": count,
+            "negative_excused_by_reversal": excused,
+        },
     )
 
 
