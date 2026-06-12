@@ -561,3 +561,283 @@ async def test_reverse_payment_claws_back_frozen_funded_commission(
     assert len(entries) == 2
     assert all(e.status == LedgerStatus.REVERSED for e in entries)
     assert sum(e.amount_cents for e in entries) == 0
+
+
+# ---------------------------------------------------------------------------
+# Tranche-unwind (boss-locked semantics; closes the R-2.2 accepted risk)
+# ---------------------------------------------------------------------------
+
+
+async def _build_plan_with_paid_tranche(
+    user_id: UUID,
+    payment_id: UUID,
+    db_session: AsyncSession,
+    *,
+    plan_status: str,
+):
+    """Scaffold: plan + PAID tranche (with Purchase) + SCHEDULED sibling,
+    funded by the given frozen payment. Mirrors the shapes pay_tranche /
+    compute_frozen_context write: tranche debit reason
+    "installment:tranche:{id}" with the deposit's origin_payment_id.
+
+    Returns (plan, paid_tranche, sibling, purchase).
+    """
+    from datetime import date as _date
+
+    from sqlalchemy import select as sa_select
+
+    from app.modules.installments.constants import (
+        InstallmentPlanStatus,
+        InstallmentTrancheStatus,
+    )
+    from app.modules.installments.models import (
+        InstallmentPlan,
+        InstallmentTranche,
+    )
+    from app.modules.ledgers.service import record_active_ledger as _ral
+    from app.modules.products.models import Product, ProductInstallment
+    from app.modules.purchases.constants import (
+        PurchaseLegalBasis,
+        PurchaseStatus as PStatus,
+    )
+    from app.modules.purchases.models import Purchase
+
+    # Any seeded installment template anchors the FK chain; use its
+    # product/company so the rows are mutually consistent.
+    template = (
+        await db_session.execute(sa_select(ProductInstallment).limit(1))
+    ).scalar_one_or_none()
+    assert template is not None, "storefront seed must run before tests"
+    product = (
+        await db_session.execute(
+            sa_select(Product).where(Product.id == template.product_id)
+        )
+    ).scalar_one()
+
+    plan = InstallmentPlan(
+        investor_id=user_id,
+        product_id=product.id,
+        product_installment_id=template.id,
+        company_id=product.company_id,
+        plan_config_snapshot={"tranches": [], "bonus_units": 0},
+        total_price_cents=10050,
+        total_units=2,
+        price_per_unit_cents=5025,
+        status=plan_status,
+    )
+    if plan_status == InstallmentPlanStatus.COMPLETED:
+        plan.completed_at = datetime.now(UTC)
+    db_session.add(plan)
+    await db_session.flush()
+
+    purchase = Purchase(
+        investor_id=user_id,
+        product_id=product.id,
+        company_id=product.company_id,
+        legal_basis=PurchaseLegalBasis.INSTALLMENT_TRANCHE,
+        units=1,
+        paid_cents=10050,
+        price_per_unit_cents=10050,
+        status=PStatus.ACTIVE,
+    )
+    db_session.add(purchase)
+    await db_session.flush()
+
+    paid_tranche = InstallmentTranche(
+        plan_id=plan.id,
+        number=1,
+        due_date=_date.today(),
+        amount_cents=10050,
+        units_unlocked=1,
+        status=InstallmentTrancheStatus.PAID,
+        paid_at=datetime.now(UTC),
+        purchase_id=purchase.id,
+    )
+    sibling = InstallmentTranche(
+        plan_id=plan.id,
+        number=2,
+        due_date=_date.today(),
+        amount_cents=10050,
+        units_unlocked=1,
+        status=(
+            InstallmentTrancheStatus.SCHEDULED
+            if plan_status == InstallmentPlanStatus.ACTIVE
+            else InstallmentTrancheStatus.PAID
+        ),
+        purchase_id=None,
+    )
+    db_session.add_all([paid_tranche, sibling])
+    await db_session.flush()
+
+    # The frozen-funded tranche debit, exactly as pay_tranche writes it.
+    await _ral(
+        db_session,
+        user_id=user_id,
+        amount_cents=-10050,
+        status=LedgerStatus.FROZEN,
+        reason=f"installment:tranche:{paid_tranche.id}",
+        frozen_until=datetime.now(UTC) + timedelta(hours=24),
+        origin_payment_id=payment_id,
+    )
+    await db_session.commit()
+    return plan, paid_tranche, sibling, purchase
+
+
+@pytest.mark.asyncio
+async def test_reverse_payment_unwinds_tranche_and_defaults_plan(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Tranche-unwind on an ACTIVE plan (boss-locked p.1-3):
+
+      * the tranche's Purchase flips to REVERSED (units leave the
+        portfolio/pool implicitly, same as the instant unwind);
+      * the tranche goes to terminal REVERSED;
+      * the plan defaults: sibling SCHEDULED tranche -> CANCELLED,
+        plan -> DEFAULTED with defaulted_at set;
+      * the reversal summary reports the unwind.
+    """
+    from sqlalchemy import select as sa_select
+
+    from app.modules.installments.constants import (
+        InstallmentPlanStatus,
+        InstallmentTrancheStatus,
+    )
+    from app.modules.installments.models import (
+        InstallmentPlan,
+        InstallmentTranche,
+    )
+    from app.modules.purchases.constants import PurchaseStatus as PStatus
+    from app.modules.purchases.models import Purchase
+
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
+
+    plan, paid_tranche, sibling, purchase = (
+        await _build_plan_with_paid_tranche(
+            user_id, payment_id, db_session,
+            plan_status=InstallmentPlanStatus.ACTIVE,
+        )
+    )
+    plan_id, tranche_id = plan.id, paid_tranche.id
+    sibling_id, purchase_id = sibling.id, purchase.id
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={"reason": "chargeback funded a tranche"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["purchases_reversed"] == 1
+    assert len(body["tranches_unwound"]) == 1
+    assert body["tranches_unwound"][0]["plan_outcome"] == "defaulted"
+    assert body["tranches_unwound"][0]["cancelled_count"] == 1
+
+    db_session.expire_all()
+    purchase_after = (
+        await db_session.execute(
+            sa_select(Purchase).where(Purchase.id == purchase_id)
+        )
+    ).scalar_one()
+    tranche_after = (
+        await db_session.execute(
+            sa_select(InstallmentTranche).where(
+                InstallmentTranche.id == tranche_id
+            )
+        )
+    ).scalar_one()
+    sibling_after = (
+        await db_session.execute(
+            sa_select(InstallmentTranche).where(
+                InstallmentTranche.id == sibling_id
+            )
+        )
+    ).scalar_one()
+    plan_after = (
+        await db_session.execute(
+            sa_select(InstallmentPlan).where(InstallmentPlan.id == plan_id)
+        )
+    ).scalar_one()
+
+    assert purchase_after.status == PStatus.REVERSED
+    assert tranche_after.status == InstallmentTrancheStatus.REVERSED
+    assert sibling_after.status == InstallmentTrancheStatus.CANCELLED
+    assert plan_after.status == InstallmentPlanStatus.DEFAULTED
+    assert plan_after.defaulted_at is not None
+
+
+@pytest.mark.asyncio
+async def test_reverse_payment_flags_completed_plan_is07(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Tranche-unwind on a COMPLETED plan (boss-locked p.4): the plan
+    is NOT unwound -- it stays COMPLETED, the tranche flips to
+    REVERSED, and semaphore IS-07 goes up by exactly one so the case
+    cannot be quietly forgotten. Delta-assert (shared dev DB)."""
+    from sqlalchemy import select as sa_select
+
+    from app.modules.installments.constants import (
+        InstallmentPlanStatus,
+        InstallmentTrancheStatus,
+    )
+    from app.modules.installments.models import (
+        InstallmentPlan,
+        InstallmentTranche,
+    )
+
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
+
+    plan, paid_tranche, _, _ = await _build_plan_with_paid_tranche(
+        user_id, payment_id, db_session,
+        plan_status=InstallmentPlanStatus.COMPLETED,
+    )
+    plan_id, tranche_id = plan.id, paid_tranche.id
+
+    # IS-07 baseline before the reversal.
+    resp0 = await client.get(
+        "/api/v1/staff/consistency", headers=auth_headers(admin_token),
+    )
+    assert resp0.status_code == 200
+    is07 = next(r for r in resp0.json()["results"] if r["name"] == "IS-07")
+    baseline = is07["details"]["completed_plans_with_reversed_funding"]
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={"reason": "chargeback after completion"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["tranches_unwound"][0]["plan_outcome"] == (
+        "completed_flagged"
+    )
+
+    db_session.expire_all()
+    plan_after = (
+        await db_session.execute(
+            sa_select(InstallmentPlan).where(InstallmentPlan.id == plan_id)
+        )
+    ).scalar_one()
+    tranche_after = (
+        await db_session.execute(
+            sa_select(InstallmentTranche).where(
+                InstallmentTranche.id == tranche_id
+            )
+        )
+    ).scalar_one()
+    assert plan_after.status == InstallmentPlanStatus.COMPLETED
+    assert tranche_after.status == InstallmentTrancheStatus.REVERSED
+
+    resp1 = await client.get(
+        "/api/v1/staff/consistency", headers=auth_headers(admin_token),
+    )
+    is07_after = next(
+        r for r in resp1.json()["results"] if r["name"] == "IS-07"
+    )
+    assert (
+        is07_after["details"]["completed_plans_with_reversed_funding"]
+        == baseline + 1
+    )
+    assert is07_after["status"] == "fail"

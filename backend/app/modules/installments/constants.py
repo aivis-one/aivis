@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Constants (Sprint 6.2)
+# CBSHOME Backend -- Installment Constants (Sprint 6.2, tranche-unwind R51+)
 # =============================================================================
 #
 # INSTALLMENT PLAN STATUS:
@@ -14,12 +14,16 @@
 #   overdue   -- due_date passed, insufficient funds
 #   defaulted -- overdue exceeded INSTALLMENT_DEFAULT_DAYS
 #   cancelled -- cancelled due to plan default/cancellation
+#   reversed  -- the payment that funded this PAID tranche was
+#                charged back (tranche-unwind); terminal
 #
-# STATE MACHINES (from CBSHOME-State-Machines.md v1.4):
+# STATE MACHINES (from CBSHOME-State-Machines.md v1.4 + tranche-unwind):
 #
 #   InstallmentPlan:
 #     active    -> completed  (all tranches paid)
-#     active    -> defaulted  (tranche overdue > limit)
+#     active    -> defaulted  (tranche overdue > limit, OR funding of a
+#                              paid tranche reversed -- boss-locked
+#                              tranche-unwind semantics)
 #     active    -> cancelled  (admin cancellation)
 #
 #   InstallmentTranche:
@@ -29,13 +33,17 @@
 #     overdue   -> paid       (daemon: funds appeared within grace period)
 #     overdue   -> defaulted  (daemon: overdue > INSTALLMENT_DEFAULT_DAYS)
 #     overdue   -> cancelled  (plan -> cancelled)
+#     paid      -> reversed   (funding payment charged back; the ONLY
+#                              transition out of paid, executed solely
+#                              by the payment-reversal unwind)
 #
 # TERMINAL STATUSES:
 #   Plan:    completed, defaulted, cancelled
-#   Tranche: paid, defaulted, cancelled
+#   Tranche: paid (except -> reversed), defaulted, cancelled, reversed
 #
 # RULE: All columns use String (not SAEnum) to avoid PostgreSQL type
-# conflicts in migrations.
+# conflicts in migrations. The DB CHECK ck_installment_tranches_status
+# mirrors the tranche enum -- migration 0038 added 'reversed'.
 # =============================================================================
 
 import enum
@@ -65,6 +73,7 @@ class InstallmentTrancheStatus(enum.StrEnum):
     OVERDUE = "overdue"
     DEFAULTED = "defaulted"
     CANCELLED = "cancelled"
+    REVERSED = "reversed"
 
 
 # ---------------------------------------------------------------------------
@@ -94,10 +103,16 @@ VALID_TRANCHE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
         InstallmentTrancheStatus.DEFAULTED,
         InstallmentTrancheStatus.CANCELLED,
     }),
+    # Tranche-unwind (boss-locked): the funding payment of a PAID
+    # tranche was charged back. Executed only by the payment-reversal
+    # unwind path -- pay_tranche and the daemons never set it.
+    InstallmentTrancheStatus.PAID: frozenset({
+        InstallmentTrancheStatus.REVERSED,
+    }),
     # Terminal statuses -- no transitions out.
-    InstallmentTrancheStatus.PAID: frozenset(),
     InstallmentTrancheStatus.DEFAULTED: frozenset(),
     InstallmentTrancheStatus.CANCELLED: frozenset(),
+    InstallmentTrancheStatus.REVERSED: frozenset(),
 }
 
 

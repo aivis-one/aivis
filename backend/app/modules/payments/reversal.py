@@ -92,6 +92,16 @@ from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.ledgers.service import record_active_ledger, record_passive_ledger
 from app.modules.payments.constants import PaymentStatus, validate_payment_status_transition
 from app.modules.payments.models import Payment
+from app.modules.installments.constants import (
+    InstallmentTrancheStatus,
+)
+from app.modules.installments.models import (
+    InstallmentPlan,
+    InstallmentTranche,
+)
+from app.modules.installments.service import (
+    unwind_plan_for_reversed_tranche,
+)
 from app.modules.purchases.constants import PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.transactions.constants import ReferenceType, TransactionType
@@ -219,14 +229,24 @@ async def reverse_payment(
     # rest, the plan/purchase rows are the installment layer's problem
     # (out of R-2.2 scope; warn-logged so it is visible).
     purchase_ids: list[UUID] = []
+    tranche_ids: list[UUID] = []
     for entry in active_entries:
         prefix, _, suffix = entry.reason.partition(":")
         if prefix == "installment":
-            logger.warning(
-                "reversal_tranche_entry_money_unwound_purchase_left",
-                payment_id=str(payment_id),
-                reason=entry.reason,
-            )
+            # Tranche-unwind (boss-locked, closes the R-2.2 accepted
+            # risk): "installment:tranche:{tranche_id}" -- resolve the
+            # tranche so step 6c can flip its Purchase, reverse the
+            # tranche and default the plan.
+            kind, _, tranche_suffix = suffix.partition(":")
+            if kind == "tranche":
+                try:
+                    tranche_ids.append(UUID(tranche_suffix))
+                except ValueError:
+                    logger.warning(
+                        "reversal_tranche_reason_unparseable",
+                        payment_id=str(payment_id),
+                        reason=entry.reason,
+                    )
             continue
         if prefix not in ("purchase", "gift"):
             continue
@@ -269,6 +289,75 @@ async def reverse_payment(
                     "reason": reason,
                 },
             )
+
+    # 6c. Tranche-unwind (boss-locked semantics; closes the R-2.2
+    # "money unwound, purchase left" accepted risk). For every
+    # installment-tranche debit this payment funded:
+    #   * flip the tranche's Purchase to REVERSED (units leave the
+    #     portfolio and pool consumption implicitly, same as 6b);
+    #   * tranche -> terminal REVERSED, ACTIVE plan -> DEFAULTED via
+    #     the installments unwind helper (remaining schedule
+    #     cancelled, R51 pool reservation frees by status);
+    #   * COMPLETED plans are flagged (audit + IS-05), never unwound.
+    # FOR UPDATE on tranches and plans serializes with the
+    # installment daemon (TD-042 pattern).
+    tranches_unwound: list[dict] = []
+    if tranche_ids:
+        t_stmt = (
+            select(InstallmentTranche)
+            .where(InstallmentTranche.id.in_(tranche_ids))
+            .with_for_update()
+        )
+        tranches = list((await session.execute(t_stmt)).scalars().all())
+
+        plan_ids = {t.plan_id for t in tranches}
+        pl_stmt = (
+            select(InstallmentPlan)
+            .where(InstallmentPlan.id.in_(plan_ids))
+            .with_for_update()
+        )
+        plans = {
+            pl.id: pl
+            for pl in (await session.execute(pl_stmt)).scalars().all()
+        }
+
+        for tranche in tranches:
+            if tranche.status == InstallmentTrancheStatus.REVERSED:
+                # Defensive: a reversed tranche has no capturable debit.
+                continue
+
+            # Flip the tranche's Purchase -- same mechanics as 6b.
+            if tranche.purchase_id is not None:
+                t_purchase = await session.get(
+                    Purchase, tranche.purchase_id, with_for_update=True
+                )
+                if (
+                    t_purchase is not None
+                    and t_purchase.status != PurchaseStatus.REVERSED
+                ):
+                    t_purchase.status = PurchaseStatus.REVERSED
+                    purchases_reversed += 1
+                    purchase_ids_reversed.append(str(t_purchase.id))
+                    await record_transaction(
+                        session,
+                        user_id=t_purchase.investor_id,
+                        type=TransactionType.PURCHASE_REVERSED,
+                        amount_cents=t_purchase.paid_cents,
+                        reference_id=t_purchase.id,
+                        reference_type=ReferenceType.PURCHASE,
+                        details={
+                            "trigger": "payment_reversal",
+                            "payment_id": str(payment_id),
+                            "tranche_id": str(tranche.id),
+                            "units": t_purchase.units,
+                            "reason": reason,
+                        },
+                    )
+
+            summary = await unwind_plan_for_reversed_tranche(
+                plans[tranche.plan_id], tranche, session
+            )
+            tranches_unwound.append(summary)
 
     # 7. Update payment status.
     payment.status = PaymentStatus.REVERSED
@@ -341,5 +430,6 @@ async def reverse_payment(
         "active_entries_reversed": len(active_entries),
         "passive_entries_reversed": len(passive_entries),
         "purchases_reversed": purchases_reversed,
+        "tranches_unwound": tranches_unwound,
         "affected_user_ids": list(affected_user_ids),
     }

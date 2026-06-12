@@ -990,3 +990,151 @@ async def _award_completion_bonuses(
                 "legal_basis": purchase.legal_basis,
             },
         )
+
+
+# ---------------------------------------------------------------------------
+# Tranche-unwind on payment reversal (boss-locked semantics)
+# ---------------------------------------------------------------------------
+
+
+async def unwind_plan_for_reversed_tranche(
+    plan: InstallmentPlan,
+    tranche: InstallmentTranche,
+    session: AsyncSession,
+) -> dict:
+    """Unwind the installment layer after a tranche's funding reversed.
+
+    Called ONLY by payments/reversal.reverse_payment after it has
+    unwound the money and flipped the tranche's Purchase to REVERSED
+    (units leave the portfolio and pool consumption with that flip --
+    same implicit mechanism as the instant-purchase unwind).
+
+    Boss-locked semantics (small-tails round):
+      1. The tranche goes to terminal REVERSED -- never back to a
+         payable state: the payer's trust is broken (chargeback), an
+         open schedule for them is an invitation to repeat.
+      2. An ACTIVE plan defaults immediately via the existing default
+         mechanics (remaining tranches cancelled, plan -> DEFAULTED);
+         the R51 pool reservation frees itself by status, no extra
+         code.
+      3. Units are NOT handled here -- the Purchase flip already took
+         them (caller's responsibility, see above).
+      4. A COMPLETED plan is NOT unwound (terminal by the state
+         machine; bonus units / completion records are immutable
+         doctrine) -- it is flagged loudly instead: audit event here
+         + consistency semaphore IS-05 keeps it red until staff
+         resolves it by hand.
+      5. (Manual tranche chargeback stays forbidden in
+         purchases/reversal -- unchanged.)
+
+    Caller holds FOR UPDATE on both rows and manages commit (P-01).
+
+    Returns:
+        Summary dict for the reversal response/audit:
+        {tranche_id, plan_id, plan_outcome, cancelled_count}.
+    """
+    now = datetime.now(UTC)
+
+    # -- 1. Tranche: paid -> reversed (terminal). --
+    validate_tranche_status_transition(
+        tranche.status, InstallmentTrancheStatus.REVERSED
+    )
+    tranche.status = InstallmentTrancheStatus.REVERSED
+    await session.flush()
+
+    cancelled_count = 0
+    if plan.status == InstallmentPlanStatus.ACTIVE:
+        # -- 2. Active plan defaults: cancel the open schedule, flip
+        # the plan. Mirrors default_plan() steps 2-3 (which we cannot
+        # call verbatim: its step 1 expects an OVERDUE trigger).
+        stmt = (
+            select(InstallmentTranche)
+            .where(
+                InstallmentTranche.plan_id == plan.id,
+                InstallmentTranche.id != tranche.id,
+                InstallmentTranche.status.in_([
+                    InstallmentTrancheStatus.SCHEDULED,
+                    InstallmentTrancheStatus.OVERDUE,
+                ]),
+            )
+        )
+        remaining = list((await session.execute(stmt)).scalars().all())
+        for t in remaining:
+            validate_tranche_status_transition(
+                t.status, InstallmentTrancheStatus.CANCELLED
+            )
+            t.status = InstallmentTrancheStatus.CANCELLED
+        cancelled_count = len(remaining)
+
+        validate_plan_status_transition(
+            plan.status, InstallmentPlanStatus.DEFAULTED
+        )
+        plan.status = InstallmentPlanStatus.DEFAULTED
+        plan.defaulted_at = now
+        await session.flush()
+
+        plan_outcome = "defaulted"
+
+        await record_audit(
+            session=session,
+            event="installment.plan_defaulted",
+            actor_id=plan.investor_id,
+            actor_type="system",
+            target_type="installment_plan",
+            target_id=plan.id,
+            data={
+                "trigger": "payment_reversal",
+                "trigger_tranche_id": str(tranche.id),
+                "trigger_tranche_number": tranche.number,
+                "cancelled_count": cancelled_count,
+            },
+        )
+        await record_transaction(
+            session,
+            user_id=plan.investor_id,
+            type=TransactionType.INSTALLMENT_DEFAULTED,
+            amount_cents=-plan.total_price_cents,
+            reference_id=plan.id,
+            reference_type=ReferenceType.INSTALLMENT_PLAN,
+            details={
+                "trigger": "payment_reversal",
+                "trigger_tranche_number": tranche.number,
+            },
+        )
+
+    elif plan.status == InstallmentPlanStatus.COMPLETED:
+        # -- 4. Completed plan: flag, do not unwind. IS-05 stays red
+        # until staff resolves the bonus/units question by hand.
+        plan_outcome = "completed_flagged"
+        await record_audit(
+            session=session,
+            event="installment.completed_plan_reversed_funding",
+            actor_id=plan.investor_id,
+            actor_type="system",
+            target_type="installment_plan",
+            target_id=plan.id,
+            data={
+                "tranche_id": str(tranche.id),
+                "tranche_number": tranche.number,
+                "note": "manual review required (boss-locked p.4)",
+            },
+        )
+
+    else:
+        # Already defaulted/cancelled -- the schedule is dead anyway;
+        # the tranche flip above is the whole story.
+        plan_outcome = plan.status
+
+    logger.info(
+        "installment_tranche_unwound",
+        plan_id=str(plan.id),
+        tranche_id=str(tranche.id),
+        plan_outcome=plan_outcome,
+        cancelled_count=cancelled_count,
+    )
+    return {
+        "tranche_id": str(tranche.id),
+        "plan_id": str(plan.id),
+        "plan_outcome": plan_outcome,
+        "cancelled_count": cancelled_count,
+    }

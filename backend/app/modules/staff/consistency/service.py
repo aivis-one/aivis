@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   run_all()   -- execute all 19 semaphores, return aggregated results
+#   run_all()   -- execute all 20 semaphores, return aggregated results
 #   s_01..s_13  -- core financial consistency checks
 #   is_01..is_06 -- installment-specific checks
 #
@@ -644,6 +644,36 @@ async def is_06(session: AsyncSession) -> SemaphoreResult:
     )
 
 
+async def is_07(session: AsyncSession) -> SemaphoreResult:
+    """IS-07: No COMPLETED plans funded by a reversed tranche.
+
+    Tranche-unwind (boss-locked p.4): when a payment reversal hits a
+    tranche of an already-COMPLETED plan, the plan is deliberately NOT
+    unwound (terminal status; bonus units / completion records are
+    immutable doctrine). The unwind flags it instead -- this semaphore
+    keeps the case red until staff resolves the bonus/units question
+    by hand, so the flag cannot be quietly forgotten.
+    """
+    stmt = (
+        select(func.count(func.distinct(InstallmentPlan.id)))
+        .select_from(InstallmentPlan)
+        .join(
+            InstallmentTranche,
+            InstallmentTranche.plan_id == InstallmentPlan.id,
+        )
+        .where(
+            InstallmentPlan.status == InstallmentPlanStatus.COMPLETED,
+            InstallmentTranche.status
+            == InstallmentTrancheStatus.REVERSED,
+        )
+    )
+    count = int((await session.execute(stmt)).scalar_one())
+    return _result(
+        "IS-07", "high", count == 0,
+        {"completed_plans_with_reversed_funding": count},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -652,7 +682,7 @@ async def is_06(session: AsyncSession) -> SemaphoreResult:
 _ALL_SEMAPHORES = [
     s_01, s_02, s_03, s_04, s_05, s_06,
     s_08, s_09, s_10, s_11, s_12, s_13,
-    is_01, is_02, is_03, is_04, is_05, is_06,
+    is_01, is_02, is_03, is_04, is_05, is_06, is_07,
 ]
 
 
