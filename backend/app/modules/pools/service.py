@@ -150,23 +150,104 @@ async def get_pool_consumed(
     return int(result.scalar_one())
 
 
+async def get_pool_reserved(
+    company_id: UUID,
+    session: AsyncSession,
+) -> int:
+    """Units reserved by ACTIVE installment plans, net of paid tranches.
+
+    R51 (boss decision (a)): an installment plan RESERVES all its units
+    at creation. A paid tranche turns its units into a Purchase row --
+    which get_pool_consumed already counts -- so the reservation
+    formula subtracts paid tranches to avoid double counting:
+
+        reserved = SUM(plan.total_units      | plan ACTIVE)
+                 - SUM(tranche.units_unlocked | tranche PAID, plan ACTIVE)
+
+    Lifecycle for free, via plan.status alone:
+      * tranche paid: +units in consumed, -units here -> net 0;
+      * plan COMPLETED: drops out of the sum; its Purchases remain
+        counted once in consumed;
+      * plan DEFAULTED: drops out -> the unpaid remainder returns to
+        the pool automatically (no code in default_plan needed).
+    """
+    plans_stmt = (
+        select(func.coalesce(func.sum(InstallmentPlan.total_units), 0))
+        .where(
+            InstallmentPlan.company_id == company_id,
+            InstallmentPlan.status == InstallmentPlanStatus.ACTIVE,
+        )
+    )
+    reserved_total = int((await session.execute(plans_stmt)).scalar_one())
+
+    paid_stmt = (
+        select(func.coalesce(func.sum(InstallmentTranche.units_unlocked), 0))
+        .select_from(InstallmentTranche)
+        .join(
+            InstallmentPlan,
+            InstallmentTranche.plan_id == InstallmentPlan.id,
+        )
+        .where(
+            InstallmentPlan.company_id == company_id,
+            InstallmentPlan.status == InstallmentPlanStatus.ACTIVE,
+            InstallmentTranche.status == InstallmentTrancheStatus.PAID,
+        )
+    )
+    paid_units = int((await session.execute(paid_stmt)).scalar_one())
+
+    return reserved_total - paid_units
+
+
+async def lock_pool(
+    company_id: UUID,
+    session: AsyncSession,
+) -> None:
+    """Serialize pool consumption for a company (R51).
+
+    pg_advisory_xact_lock keyed by company_id.int masked to a signed
+    64-bit value -- the exact derivation the engine uses for the
+    investor lock. Deterministic across processes and restarts (unlike
+    hash(), which is randomized per process by PYTHONHASHSEED and must
+    never key a cross-process lock). Held until transaction end, so a
+    caller that locks, checks capacity and writes does all three
+    atomically with respect to other pool consumers.
+
+    Call sites (R51): execute_purchase step 4, create_plan step 4b.
+    pay_tranche intentionally does NOT lock -- the plan's capacity was
+    reserved at creation, paying a tranche consumes no new capacity.
+
+    Raw SQL via text() follows the engine precedent: advisory locks
+    have no ORM API.
+    """
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": company_id.int & 0x7FFFFFFFFFFFFFFF},
+    )
+
+
 async def get_pool_remaining(
     pool: OptionPool,
     session: AsyncSession,
 ) -> int:
-    """Options remaining in pool: total_options - consumed.
+    """Options remaining in pool: total_options - consumed - reserved.
 
     Sprint 4.4: consolidated from the local copy in purchases/service.py
     (`_get_pool_remaining`). Single source of truth so future changes
     to the consumption query (logging, new statuses, etc.) land in one
     place.
 
+    R51: subtracts ACTIVE-plan reservations (get_pool_reserved) so an
+    installment plan holds its units from the moment of creation --
+    instant buyers cannot purchase capacity already promised to a plan,
+    and a plan cannot be created over capacity reserved by others.
+
     Can return a negative number when gifts have overflowed into owner
     supply (spec §3.7). Callers MUST treat negative as zero-or-less for
     any "can the user buy" decision.
     """
     consumed = await get_pool_consumed(pool.company_id, session)
-    return pool.total_options - consumed
+    reserved = await get_pool_reserved(pool.company_id, session)
+    return pool.total_options - consumed - reserved
 
 
 async def with_consumed_remaining(

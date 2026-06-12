@@ -75,6 +75,7 @@ from app.modules.installments.constants import (
 from app.modules.installments.models import InstallmentPlan, InstallmentTranche
 from app.modules.installments.scheduler import calculate_due_date
 from app.modules.ledgers.service import get_active_balance
+from app.modules.pools.service import get_active_pool, get_pool_remaining, lock_pool
 from app.modules.processors.base import LedgerEntry, PurchaseContext, Transaction
 from app.modules.products.models import Product, ProductInstallment
 from app.modules.purchases import engine
@@ -175,6 +176,24 @@ async def create_plan(
     if available_cents < first_tranche_cents:
         raise BadRequestError(
             "Insufficient balance for the first installment tranche"
+        )
+
+    # -- 4b. Pool capacity check + reservation (R51, boss decision (a)) --
+    # The plan RESERVES all its units at creation: get_pool_remaining
+    # subtracts ACTIVE-plan reservations (pools/service.get_pool_reserved),
+    # so inserting the ACTIVE plan below consumes capacity immediately.
+    # lock_pool serializes this check+insert against concurrent instant
+    # buyers and other plan creations; the xact lock holds to commit.
+    # Lifecycle is status-driven: paid tranches convert reservation into
+    # consumption 1:1, COMPLETED/DEFAULTED plans release the remainder
+    # automatically -- pay_tranche and default_plan need no pool code.
+    await lock_pool(company.id, session)
+    pool = await get_active_pool(company.id, session)
+    pool_remaining = await get_pool_remaining(pool, session)
+    if pool_remaining < total_units:
+        raise BadRequestError(
+            f"Insufficient pool capacity: {max(0, pool_remaining)} options "
+            f"remaining, installment plan requires {total_units}"
         )
 
     # -- 5. Create InstallmentPlan --

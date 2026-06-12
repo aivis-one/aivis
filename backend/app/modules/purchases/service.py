@@ -44,13 +44,13 @@
 #   - PurchaseContext.units is named `units` (the field stays). What
 #     CHANGED is its source: product.package_size (previously product.units,
 #     same semantic, renamed column).
-#   - Race conditions on pool consumption are an accepted MVP risk
-#     (no advisory lock at the pool level). Two concurrent purchases
-#     can both pass the check and tip pool_remaining negative by one
-#     package; that overflow is treated as gifts spilling into owner
-#     supply (spec §3.7). For high-traffic operation we'd add an
-#     advisory_xact_lock on hash(pool_id) here, just like the engine
-#     already does on hash(investor_id).
+#   - (HISTORY) Pool-consumption races were an accepted MVP risk until
+#     R51: step 4 now takes pg_advisory_xact_lock keyed by company_id
+#     (pools/service.lock_pool) before the capacity check, serializing
+#     concurrent buyers and installment-plan creation. NOTE the key is
+#     company_id.int masked -- NOT hash(): hash() is randomized per
+#     process and never locks across workers. Gift overflow into owner
+#     supply (spec §3.7) remains sanctioned and outside the check.
 #
 # Sprint 4.4 CHANGES:
 #   - Removed the local `_POOL_STATUS_ACTIVE` constant -- now imported
@@ -93,7 +93,7 @@ from app.modules.companies.constants import CompanyStatus
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus
 from app.modules.pools.constants import POOL_STATUS_ACTIVE
 from app.modules.pools.models import OptionPool
-from app.modules.pools.service import get_active_pool, get_pool_remaining
+from app.modules.pools.service import get_active_pool, get_pool_remaining, lock_pool
 from app.modules.processors.base import PurchaseContext
 from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
@@ -414,13 +414,16 @@ async def execute_purchase(
     platform_user = await get_platform_user(session)
 
     # -- 4. Sprint 4.3: pool capacity check BEFORE any money moves. --
-    # Race condition note: no advisory lock here. Two concurrent buyers
-    # can both pass the check and push pool_remaining negative by one
-    # package. That overflow is treated as gifts spilling into owner
-    # supply per spec §3.7 -- accepted MVP risk.
+    # R51: lock_pool serializes check+write per company -- the
+    # pre-R51 "accepted MVP risk" oversell race (two buyers pass the
+    # check on the last units) is closed. The xact lock is held until
+    # commit, so the Purchase rows written by the engine below land
+    # inside the same critical section. Remaining also subtracts
+    # ACTIVE installment-plan reservations (pools/service R51).
     #
-    # Sprint 4.4: get_active_pool / get_pool_remaining now imported
+    # Sprint 4.4: get_active_pool / get_pool_remaining imported
     # from pools/service (was a private duplicate inside this module).
+    await lock_pool(company.id, session)
     pool = await get_active_pool(company.id, session)
     pool_remaining = await get_pool_remaining(pool, session)
     if pool_remaining < product.package_size:
