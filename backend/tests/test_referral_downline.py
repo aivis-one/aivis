@@ -43,6 +43,19 @@ from tests.helpers import auth_headers, register_user
 _PRICE = 1000
 
 
+async def _clear_auth_rate_limit() -> None:
+    """Drop the per-IP email-auth rate-limit key.
+
+    conftest's autouse fixture clears it BEFORE each test, but the
+    big-tree tests here register up to 9 users inside ONE test --
+    well past auth_rate_limit_max_requests (5/60s). Mirrors the
+    conftest pattern exactly.
+    """
+    from app.core.redis import get_redis
+
+    await get_redis().delete("email_auth:127.0.0.1")
+
+
 async def _make_agent(
     client: AsyncClient,
     db_session: AsyncSession,
@@ -53,6 +66,7 @@ async def _make_agent(
 
     Returns (user_id, token, link_code).
     """
+    await _clear_auth_rate_limit()
     data = await register_user(client, referral_code=referral_code)
     user_id = UUID(data["user"]["id"])
     token = data["session_token"]
@@ -74,6 +88,7 @@ async def _make_investor(
     client: AsyncClient, referral_code: str
 ) -> UUID:
     """Register an investor under the given referral code."""
+    await _clear_auth_rate_limit()
     data = await register_user(client, referral_code=referral_code)
     return UUID(data["user"]["id"])
 
