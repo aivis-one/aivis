@@ -33,8 +33,38 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.posts.models import Event
 from tests.helpers import auth_headers, create_admin_user
+
+
+@pytest.fixture(scope="module", autouse=True)
+async def _purge_leftover_test_events() -> None:
+    """Hard-delete event rows left behind by prior suite runs.
+
+    SHARED-DB ACCUMULATION (flake fix): the dev DB is never reset
+    between runs, so every run of this file (and of
+    test_staff_content_list.py) leaves a handful of future events
+    behind. After ~15 runs the 2-day window in front of now() holds
+    50+ rows, and the limit=50 ceiling in
+    test_upcoming_endpoint_limit_future_only_asc pushes this run's
+    `near` event off the page. Both prefixes are pure test garbage
+    (UUID-suffixed titles created only by tests), so purging them is
+    safe and keeps the per-run event population bounded.
+    """
+    from app.core.database import get_session_factory
+
+    factory = get_session_factory()
+    async with factory() as session:
+        await session.execute(
+            delete(Event).where(
+                Event.title.like("PublicEvtTest %")
+                | Event.title.like("StaffListEvent %")
+            )
+        )
+        await session.commit()
 
 
 # ---------------------------------------------------------------------------
