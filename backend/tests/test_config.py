@@ -70,8 +70,11 @@ def test_settings_non_development_is_production_grade(
     assert s.app_env == "development"
     assert s.is_dev is True
 
-    # A typo'd / staging value is production-grade: the very first
-    # production requirement (CORS) fires.
+    # A typo'd / staging value is production-grade. The container's
+    # real production env vars (CORS_ORIGINS, DATABASE_URL, ...) leak
+    # into Settings and would satisfy the requirements, so the trigger
+    # is forced deterministically: an explicit CORS wildcard kwarg
+    # overrides the env, and non-development must reject it.
     with pytest.raises(ValidationError) as exc:
-        Settings(_env_file=None, app_env="staging")
+        Settings(_env_file=None, app_env="staging", cors_origins="*")
     assert "CORS_ORIGINS" in str(exc.value)

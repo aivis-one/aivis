@@ -100,6 +100,11 @@ async def _mini_company(
         price_per_unit_cents=_PRICE,
         total_supply=total_options,
         shares_per_option=1,
+        # NOT NULL in company_profiles; shape mirrors the seed script.
+        distribution_config={
+            "company_pct": 0.80,
+            "agent_levels": [0.10, 0.05, 0.05],
+        },
         status=CompanyStatus.ACTIVE,
     )
     db_session.add(company)
