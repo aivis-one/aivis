@@ -108,10 +108,16 @@ async def s_01(session: AsyncSession) -> SemaphoreResult:
         func.coalesce(func.sum(PassiveLedger.amount_cents), 0)
     ).where(PassiveLedger.reason.startswith("withdrawal:"))
 
-    active_sum = (await session.execute(active_sum_stmt)).scalar_one()
-    passive_sum = (await session.execute(passive_sum_stmt)).scalar_one()
-    deposit_sum = (await session.execute(deposit_sum_stmt)).scalar_one()
-    withdrawal_sum = (await session.execute(withdrawal_sum_stmt)).scalar_one()
+    # int() everywhere: asyncpg returns SUM(bigint) as NUMERIC/Decimal,
+    # and Decimal is not JSON-serializable -- it would crash both the
+    # response and the audit JSONB insert. Details stay FLAT (no nested
+    # dicts) so every value passes through the same coercion discipline.
+    active_sum = int((await session.execute(active_sum_stmt)).scalar_one())
+    passive_sum = int((await session.execute(passive_sum_stmt)).scalar_one())
+    deposit_sum = int((await session.execute(deposit_sum_stmt)).scalar_one())
+    withdrawal_sum = int(
+        (await session.execute(withdrawal_sum_stmt)).scalar_one()
+    )
 
     total = active_sum + passive_sum
     return _result(
@@ -120,10 +126,8 @@ async def s_01(session: AsyncSession) -> SemaphoreResult:
             "active_sum": active_sum,
             "passive_sum": passive_sum,
             "total": total,
-            "excluded_one_sided": {
-                "deposits_active": deposit_sum,
-                "withdrawals_passive": withdrawal_sum,
-            },
+            "excluded_deposits_active": deposit_sum,
+            "excluded_withdrawals_passive": withdrawal_sum,
         },
     )
 
