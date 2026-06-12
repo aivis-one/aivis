@@ -152,6 +152,11 @@ export interface CommissionListResponse {
   total: number
 }
 
+/** Response for GET /agent/commissions/summary (Task 2b Block C). Server-side month-to-date commission aggregate -- replaces the dashboard's client-side sum over the first 100 history entries (TD-COMMISSION-MONTH-AGG). Statuses frozen+confirmed, reversed excluded; "commission:" reason prefix only (volume bonuses are a separate concept on the dashboard). */
+export interface CommissionSummaryResponse {
+  month_to_date_cents: number
+}
+
 /** Sales analytics for the authenticated company. Fields: total_revenue_cents: SUM(paid_cents) on active purchases (lifetime). revenue_this_month_cents: SUM(paid_cents) on active purchases with created_at >= start of current UTC month. total_options_sold: SUM(units WHERE legal_basis='sale') on active purchases (lifetime). sales_by_month: last 12 months that had at least one sale, oldest first (so the UI can render a left-to-right time axis without sorting). Empty months are skipped (no zero-padding). sales_by_product: ALL products of the company (including archived and zero-sales), sorted by revenue_cents DESC. Lets staff see what isn't selling at a glance. */
 export interface CompanyAnalyticsResponse {
   total_revenue_cents: number
@@ -456,6 +461,26 @@ export interface DocumentUpdateRequest {
   title?: string | null
   status?: string | null
   required_for_roles?: string[] | null
+}
+
+/** Investor in the agent's downline (commission-mirror levels). Level = number of agent hops from the investor up to the requesting agent: direct investors are L1, investors under a direct sub-agent are L2, one agent deeper -- L3. L4+ are outside the 3-level commission area and excluded. display_name is MASKED (decision #5): no email, phone or KYC status is ever exposed, uniformly across all levels. */
+export interface DownlineInvestorEntry {
+  user_id: string
+  display_name: string
+  level: number
+  registered_at: string
+  purchase_volume_cents: number
+}
+
+/** Sub-agent in the agent's downline, agent-hop depth 1..3. recruited_investor_count / direct_volume_cents cover only the sub-agent's DIRECT investors (decision #4, non-recursive). own_purchase_volume_cents is the sub-agent's OWN purchases (decision #8): agents are buyers too, and their purchases feed the requesting agent's commission exactly like investor purchases -- without this field the screen would show less volume than the agent is actually commissioned on. */
+export interface DownlineSubAgentEntry {
+  user_id: string
+  display_name: string
+  level: number
+  registered_at: string
+  recruited_investor_count: number
+  direct_volume_cents: number
+  own_purchase_volume_cents: number
 }
 
 /** POST /api/v1/auth/email/login -- request body. */
@@ -921,6 +946,12 @@ export interface ReadAllResponse {
 /** Public referral-click payload (Task 1 Block B). max_length mirrors ReferralLink.code String(20); min_length=1 rejects empty strings at the framework edge instead of spending a no-op UPDATE (STYLE-44-01). Fire-and-forget: the endpoint replies 204 whether or not the code matches a link. */
 export interface ReferralClickRequest {
   code: string
+}
+
+/** Response for GET /referrals/downline/me (two collections, decision #1 -- not a polymorphic flat tree). */
+export interface ReferralDownlineResponse {
+  investors: DownlineInvestorEntry[]
+  sub_agents: DownlineSubAgentEntry[]
 }
 
 /** Paginated list of referral links. */
