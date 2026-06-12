@@ -47,8 +47,7 @@ from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import record_active_ledger
 from app.modules.pools.models import OptionPool
 from app.modules.pools.service import get_pool_remaining, get_pool_reserved
-from app.modules.products.constants import ProductStatus
-from app.modules.products.models import Product, ProductInstallment
+from app.modules.products.models import Product, ProductInstallment, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.purchases.service import execute_purchase

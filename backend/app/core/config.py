@@ -7,6 +7,15 @@
 #
 # All settings loaded from environment variables (or .env file).
 # Pydantic-settings validates types and applies defaults automatically.
+#
+# APP_ENV (R51, fail-closed):
+#   REQUIRED, no default. An unset or empty APP_ENV refuses to start
+#   the application -- the pre-R51 default of "development" silently
+#   enabled the entire dev profile (CORS *, dev webhook secrets, dev
+#   DB fallback) on any host missing its .env. The empty-string
+#   sentinel below exists only so the validator can raise a readable
+#   error instead of pydantic's bare "Field required".
+#   Anything other than "development" is treated as production-grade.
 # =============================================================================
 
 from pydantic import model_validator
@@ -24,7 +33,9 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # -- Application --
-    app_env: str = "development"
+    # R51: empty sentinel, NOT a default -- the validator rejects it
+    # first thing (see APP_ENV note in the module header).
+    app_env: str = ""
     log_level: str = "INFO"
     cors_origins: str = "*"
 
@@ -169,7 +180,19 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
         """Apply dev defaults and enforce production requirements."""
-        is_dev = self.app_env == "development"
+        # -- APP_ENV is REQUIRED (R51, fail-closed) -- checked FIRST so
+        # a missing value produces this message and not a cascade of
+        # production-requirement errors.
+        env = self.app_env.strip().lower()
+        if not env:
+            raise ValueError(
+                "APP_ENV is required and has no default (fail-closed). "
+                "Set APP_ENV=development for a dev box or "
+                "APP_ENV=production for a deployment. Anything other "
+                "than 'development' is treated as production-grade."
+            )
+        self.app_env = env
+        is_dev = env == "development"
 
         # -- log_level --
         if self.log_level.upper() not in _VALID_LOG_LEVELS:

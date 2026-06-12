@@ -72,13 +72,21 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.service import get_company
+# R51: pools/service reads installment MODELS only (reservation math).
+# No cycle: installments/service imports pools/service, and
+# installments/models imports nothing from pools.
+from app.modules.installments.constants import (
+    InstallmentPlanStatus,
+    InstallmentTrancheStatus,
+)
+from app.modules.installments.models import InstallmentPlan, InstallmentTranche
 from app.modules.pools.constants import POOL_STATUS_ACTIVE
 from app.modules.pools.models import OptionPool
 from app.modules.pools.schemas import CreatePoolRequest, UpdatePoolRequest
