@@ -1011,6 +1011,7 @@ export interface ReversalResponse {
   active_entries_reversed: number
   passive_entries_reversed: number
   purchases_reversed: number
+  tranches_unwound?: Record<string, unknown>[]
   affected_user_ids: string[]
 }
 
