@@ -1185,6 +1185,45 @@
         "directVolume": "Direct investor volume",
         "ownVolume": "Own purchases"
       }
+    },
+    "commissions": {
+      "title": "Commissions",
+      "subtitle": "Your commission and bonus history",
+      "errorTitle": "Couldn't load commissions",
+      "loadMore": "Load more",
+      "level": "L{n}",
+      "empty": {
+        "title": "No commissions yet",
+        "desc": "Commissions and volume bonuses from your network will appear here as it earns."
+      },
+      "type": {
+        "commission": "Commission",
+        "volume_bonus": "Volume bonus"
+      },
+      "status": {
+        "frozen": "Frozen",
+        "confirmed": "Confirmed",
+        "reversed": "Clawed back"
+      },
+      "period": {
+        "monthly": "Monthly",
+        "quarterly": "Quarterly"
+      },
+      "bonus": {
+        "rankLabel": "Rank"
+      }
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "subtitle": "Top agents by referral volume",
+      "backLink": "Back",
+      "errorTitle": "Couldn't load the leaderboard",
+      "period": "Since {date}",
+      "you": "You",
+      "empty": {
+        "title": "Leaderboard not ready yet",
+        "desc": "Rankings appear once the first snapshot of the period is taken. Check back soon."
+      }
     }
   },
   "public": {

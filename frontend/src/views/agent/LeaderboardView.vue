@@ -1,45 +1,264 @@
 <script setup lang="ts">
-// Stub — will be replaced with full implementation in F6.2.
-// Agent leaderboard — monthly/quarterly ranking.
+// =============================================================================
+// CBSHOME Frontend -- LeaderboardView (Task 3 Block C, Phase F6.2)
+// =============================================================================
+//
+// Replaces the F6.2 stub. The agent leaderboard for the current period,
+// GET /agent/leaderboard via the store's leaderboard group. Ranked
+// rows (rank / agent_name / volume); the caller's own row is
+// highlighted from the server is_me flag.
+//
+// EMPTY STATE.
+//   entries is empty until the leaderboard worker takes the first
+//   snapshot of the period -- a real, expected state, not an error. It
+//   gets its own CEmptyState ("not ready yet"), distinct from the
+//   error path.
+//
+// FP notes:
+//   FP-19 -- shell owns the header; inline lb__page-header h1, no
+//            header component here.
+//   FP-20 -- /agent/leaderboard is a SUB-ROUTE (not in AGENT_TABS), so
+//            a CBackLink is mandatory; goBack is history-aware with a
+//            Hub fallback.
+//   FP-18 -- the back fallback navigates via safeNavigate (router.back
+//            is neither push nor replace, so it stays bare).
+//
+// ENTRY POINT (open note, Task 3 report).
+//   Same as ReferralsView: no shipped Hub/Dashboard link points here
+//   yet; the entry point is expected from AgentMoreView (Block D).
+// =============================================================================
 
+import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useAgentStore } from '@/stores/agent'
+import { safeNavigate } from '@/composables/safeNavigate'
+import { formatPrice } from '@/utils/format'
+
+const router = useRouter()
+const { t, locale } = useI18n()
+const agentStore = useAgentStore()
+
+// ---------------------------------------------------------------------------
+// Derived
+// ---------------------------------------------------------------------------
+
+const entries = computed(() => agentStore.leaderboard?.entries ?? [])
+
+const periodStart = computed(() => agentStore.leaderboard?.period_start ?? null)
+
+// Loaded payload with zero ranked rows -- the worker has not taken the
+// first snapshot of the period yet.
+const isEmpty = computed(
+  () =>
+    !agentStore.leaderboardLoading
+    && !agentStore.leaderboardError
+    && agentStore.leaderboard !== null
+    && entries.value.length === 0,
+)
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString(locale.value)
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+function goBack(): void {
+  // History-aware (More tab in the wired flow); cold deep-link falls
+  // through to the Hub. router.back() is neither push nor replace, so
+  // it does not need safeNavigate; the fallback push does (FP-18).
+  if (window.history.state?.back) {
+    router.back()
+    return
+  }
+  void safeNavigate(
+    router.push({ name: 'agent-hub' }),
+    '[LeaderboardView] back fallback to agent-hub',
+  )
+}
+
+function retry(): void {
+  void agentStore.fetchLeaderboard()
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+
+onMounted(() => {
+  void agentStore.fetchLeaderboard()
+})
 </script>
 
 <template>
-  <div class="view-stub">
-    <h1 class="view-stub__title">{{ t('agent.leaderboard.title') }}</h1>
-    <div class="view-stub__badge">F6.2</div>
+  <div class="lb">
+    <!-- Page header (FP-19: shell owns the header; FP-20: sub-route back-link) -->
+    <div class="lb__page-header">
+      <CBackLink :label="t('agent.leaderboard.backLink')" @click="goBack" />
+      <h1 class="lb__title">{{ t('agent.leaderboard.title') }}</h1>
+      <p class="lb__subtitle">{{ t('agent.leaderboard.subtitle') }}</p>
+    </div>
+
+    <!-- Loading -->
+    <div
+      v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null"
+      class="lb__center"
+    >
+      <CLoader :size="24" />
+    </div>
+
+    <!-- Error -->
+    <div
+      v-else-if="agentStore.leaderboardError && agentStore.leaderboard === null"
+      class="lb__center"
+    >
+      <CEmptyState :title="t('agent.leaderboard.errorTitle')">
+        <CButton variant="secondary" @click="retry">
+          {{ t('common.retry') }}
+        </CButton>
+      </CEmptyState>
+    </div>
+
+    <!-- Empty: no snapshot yet (not an error) -->
+    <div v-else-if="isEmpty" class="lb__center">
+      <CEmptyState
+        :title="t('agent.leaderboard.empty.title')"
+        :description="t('agent.leaderboard.empty.desc')"
+      />
+    </div>
+
+    <!-- Ranked list -->
+    <template v-else>
+      <p v-if="periodStart" class="lb__period">
+        {{ t('agent.leaderboard.period', { date: formatDate(periodStart) }) }}
+      </p>
+
+      <ul class="lb__list">
+        <li
+          v-for="entry in entries"
+          :key="entry.agent_id"
+          class="lb__row"
+          :class="{ 'lb__row--me': entry.is_me }"
+        >
+          <span class="lb__rank">#{{ entry.rank }}</span>
+          <span class="lb__name">
+            {{ entry.agent_name }}
+            <span v-if="entry.is_me" class="lb__you">
+              {{ t('agent.leaderboard.you') }}
+            </span>
+          </span>
+          <span class="lb__volume">{{ formatPrice(entry.volume_cents) }}</span>
+        </li>
+      </ul>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.view-stub {
+.lb {
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
-  padding: 24px;
-  text-align: center;
+  gap: 16px;
 }
 
-.view-stub__title {
-  font-size: 20px;
+.lb__page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lb__title {
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 16px;
+  margin: 8px 0 0;
 }
 
-.view-stub__badge {
-  padding: 6px 14px;
-  border-radius: var(--radius-sm, 6px);
-  background: var(--bg-secondary, var(--surface));
-  color: var(--text-tertiary);
+.lb__subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.lb__center {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.lb__period {
   font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* -- Ranked list -- */
+
+.lb__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lb__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 12px);
+  padding: 12px 14px;
+}
+
+.lb__row--me {
+  border-color: var(--primary);
+  background: var(--primary-dim, var(--bg-elevated));
+}
+
+.lb__rank {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 36px;
+}
+
+.lb__name {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb__you {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--primary);
+  color: #fff;
+}
+
+.lb__volume {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
 }
 </style>

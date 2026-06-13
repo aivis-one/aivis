@@ -18,7 +18,7 @@
 //                        Task 3 ReferralsView consumer (Block B)
 //   commissionSummary -- server-side month-to-date aggregate; backs the
 //                        Dashboard "commission this month" widget
-//   commissions       -- commission-history first page; Task 3
+//   commissions       -- paginated commission history; Task 3
 //                        CommissionsView consumer (Block C)
 //
 // WHAT IS DELIBERATELY NOT HERE:
@@ -48,8 +48,8 @@
 //   commissionSummary holds the server-side month aggregate from
 //   GET /agent/commissions/summary (current UTC month, frozen+confirmed,
 //   reversed excluded). monthCommissionCents reads it directly. This
-//   replaced the former client-side sum over the first MONTH_FETCH_LIMIT
-//   history entries -- the server figure is exact, so the old
+//   replaced the former client-side sum over the first 100 history
+//   entries -- the server figure is exact, so the old
 //   ">100-entries undercount / approximate" caveat is gone, and the
 //   truncated flag that drove it has been removed
 //   (TD-COMMISSION-MONTH-AGG closed).
@@ -72,7 +72,7 @@ import {
   getMyReferralStats,
 } from '@/api/agent'
 import type {
-  CommissionListResponse,
+  CommissionEntry,
   CommissionSummaryResponse,
   LeaderboardResponse,
   ReferralDownlineResponse,
@@ -82,9 +82,9 @@ import type {
 
 const LINKS_PER_PAGE = 20
 
-// 100 is the server-side cap for /agent/commissions/me. Used by the
-// commission-history fetch (Task 3 CommissionsView, Block C).
-const MONTH_FETCH_LIMIT = 100
+// Page size for the paginated commission history (Task 3
+// CommissionsView, Block C). The endpoint caps limit at 100.
+const COMMISSIONS_PER_PAGE = 20
 
 export const useAgentStore = defineStore('agent', () => {
   // ---------------------------------------------------------------------------
@@ -118,8 +118,9 @@ export const useAgentStore = defineStore('agent', () => {
   const commissionSummaryLoading = ref(false)
   const commissionSummaryError = ref<string | null>(null)
 
-  // -- Commission history first page (Task 3 CommissionsView, Block C) --
-  const commissions = ref<CommissionListResponse | null>(null)
+  // -- Commission history, paginated (Task 3 CommissionsView, Block C) --
+  const commissions = ref<CommissionEntry[]>([])
+  const commissionsTotal = ref(0)
   const commissionsLoading = ref(false)
   const commissionsError = ref<string | null>(null)
 
@@ -161,6 +162,14 @@ export const useAgentStore = defineStore('agent', () => {
    */
   const monthCommissionCents = computed<number>(
     () => commissionSummary.value?.month_to_date_cents ?? 0,
+  )
+
+  /**
+   * Whether more commission-history entries remain to load. Mirrors
+   * hasMoreLinks: accumulated items < server total.
+   */
+  const hasMoreCommissions = computed(
+    () => commissions.value.length < commissionsTotal.value,
   )
 
   // ---------------------------------------------------------------------------
@@ -318,15 +327,49 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  /** Pull the first commission-history page (Block C). Never throws. */
-  async function fetchCommissions(): Promise<void> {
+  /**
+   * Load page 1 of commission history, REPLACING the list. Never
+   * throws -- errors land on commissionsError. Shares commissionsEpoch
+   * with loadMoreCommissions so a fresh first page invalidates any
+   * in-flight append (R45-2.1).
+   */
+  async function fetchCommissionsFirstPage(): Promise<void> {
     const mine = ++commissionsEpoch
     commissionsLoading.value = true
     commissionsError.value = null
     try {
-      const resp = await getMyCommissions(MONTH_FETCH_LIMIT, 0)
+      const resp = await getMyCommissions(COMMISSIONS_PER_PAGE, 0)
       if (mine !== commissionsEpoch) return
-      commissions.value = resp
+      commissions.value = resp.items
+      commissionsTotal.value = resp.total
+    } catch (err) {
+      if (mine !== commissionsEpoch) return
+      commissionsError.value =
+        err instanceof Error ? err.message : 'Unknown error'
+    } finally {
+      if (mine === commissionsEpoch) commissionsLoading.value = false
+    }
+  }
+
+  /**
+   * Append the next commission-history page. No-op while loading or
+   * when exhausted. The endpoint is limit/offset, so offset = the
+   * current item count. Never throws -- errors land on
+   * commissionsError.
+   */
+  async function loadMoreCommissions(): Promise<void> {
+    if (commissionsLoading.value || !hasMoreCommissions.value) return
+    const mine = ++commissionsEpoch
+    commissionsLoading.value = true
+    commissionsError.value = null
+    try {
+      const resp = await getMyCommissions(
+        COMMISSIONS_PER_PAGE,
+        commissions.value.length,
+      )
+      if (mine !== commissionsEpoch) return
+      commissions.value = [...commissions.value, ...resp.items]
+      commissionsTotal.value = resp.total
     } catch (err) {
       if (mine !== commissionsEpoch) return
       commissionsError.value =
@@ -370,7 +413,8 @@ export const useAgentStore = defineStore('agent', () => {
     commissionSummary.value = null
     commissionSummaryLoading.value = false
     commissionSummaryError.value = null
-    commissions.value = null
+    commissions.value = []
+    commissionsTotal.value = 0
     commissionsLoading.value = false
     commissionsError.value = null
   }
@@ -410,9 +454,12 @@ export const useAgentStore = defineStore('agent', () => {
     fetchCommissionSummary,
     // commission history (Task 3 CommissionsView)
     commissions,
+    commissionsTotal,
     commissionsLoading,
     commissionsError,
-    fetchCommissions,
+    hasMoreCommissions,
+    fetchCommissionsFirstPage,
+    loadMoreCommissions,
     // session
     reset,
   }
