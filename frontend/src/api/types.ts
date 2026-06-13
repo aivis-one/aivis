@@ -759,3 +759,18 @@ export type { LeaderboardResponse } from './generated'
 export type { CommissionEntry } from './generated'
 
 export type { CommissionListResponse } from './generated'
+
+// Downline (Task 2b backend, Task 3 Block A frontend). Two collections
+// consumed by ReferralsView: investors at commission-mirror levels
+// L1-L3 and sub-agents at agent-hop depth 1-3. display_name is masked
+// server-side. CommissionSummaryResponse backs the Dashboard
+// month-to-date widget (server aggregate replacing the old client-side
+// sum). Re-export only -- shapes regenerate from OpenAPI.
+
+export type { ReferralDownlineResponse } from './generated'
+
+export type { DownlineInvestorEntry } from './generated'
+
+export type { DownlineSubAgentEntry } from './generated'
+
+export type { CommissionSummaryResponse } from './generated'

@@ -18,7 +18,9 @@
 import { api } from '@/api/client'
 import type {
   CommissionListResponse,
+  CommissionSummaryResponse,
   LeaderboardResponse,
+  ReferralDownlineResponse,
   ReferralLinkListResponse,
   ReferralLinkResponse,
   ReferralStatsResponse,
@@ -62,6 +64,20 @@ export function getMyReferralStats(): Promise<ReferralStatsResponse> {
 }
 
 /**
+ * GET /api/v1/referrals/downline/me
+ *
+ * The agent's downline as two collections (decision #1 -- not a
+ * polymorphic flat tree): investors at commission-mirror levels L1-L3
+ * and sub-agents at agent-hop depth 1-3. display_name is masked
+ * server-side; the server sorts investors by level then registered_at.
+ * No pagination (decision #7 -- depth-3 bounds the size). Agent only
+ * (403 otherwise).
+ */
+export function getDownline(): Promise<ReferralDownlineResponse> {
+  return api.get<ReferralDownlineResponse>('/api/v1/referrals/downline/me')
+}
+
+/**
  * GET /api/v1/agent/leaderboard
  *
  * Current monthly leaderboard snapshot (top agents). The caller's
@@ -84,5 +100,19 @@ export function getMyCommissions(
 ): Promise<CommissionListResponse> {
   return api.get<CommissionListResponse>(
     `/api/v1/agent/commissions/me?limit=${limit}&offset=${offset}`,
+  )
+}
+
+/**
+ * GET /api/v1/agent/commissions/summary
+ *
+ * Month-to-date commission aggregate for the current UTC month
+ * (frozen+confirmed, reversed excluded). Server-side replacement for
+ * the dashboard's former client-side sum over the first 100 history
+ * entries (TD-COMMISSION-MONTH-AGG). Agent only.
+ */
+export function getCommissionSummary(): Promise<CommissionSummaryResponse> {
+  return api.get<CommissionSummaryResponse>(
+    '/api/v1/agent/commissions/summary',
   )
 }

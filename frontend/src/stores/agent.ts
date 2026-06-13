@@ -1,20 +1,25 @@
 // =============================================================================
-// CBSHOME Frontend -- Agent Store (Task 2 Block A, Phase F6.1)
+// CBSHOME Frontend -- Agent Store (Task 2 Block A, Phase F6.1; Task 3 Block A)
 // =============================================================================
 //
-// Pinia store backing AgentHubView (referral links + funnel stats)
-// and AgentDashboardView (rank / month commission / registrations
-// widgets). Task 3 views (CommissionsView / LeaderboardView) reuse
-// the same store + api/agent.ts layer -- do not duplicate it there.
+// Pinia store backing AgentHubView (referral links + funnel stats),
+// AgentDashboardView (rank / month commission / registrations widgets)
+// and the Task 3 views (ReferralsView / CommissionsView /
+// LeaderboardView reuse this same store + api/agent.ts layer -- do not
+// duplicate it there).
 //
-// STATE GROUPS (each with its own loading / error pair):
-//   links        -- paginated referral links, infinite-scroll shape
-//                   (fetchFirstPage / loadMore / hasMore), same as
-//                   stores/products.ts
-//   stats        -- ReferralStatsResponse aggregate funnel
-//   leaderboard  -- monthly snapshot; myRank computed from is_me
-//   commissions  -- first page of commission history;
-//                   monthCommissionCents computed client-side
+// STATE GROUPS (each with its own loading / error pair + epoch):
+//   links             -- paginated referral links, infinite-scroll shape
+//                        (fetchFirstPage / loadMore / hasMore), same as
+//                        stores/products.ts
+//   stats             -- ReferralStatsResponse aggregate funnel
+//   leaderboard       -- monthly snapshot; myRank computed from is_me
+//   downline          -- two collections (investors L1-L3 + sub-agents);
+//                        Task 3 ReferralsView consumer (Block B)
+//   commissionSummary -- server-side month-to-date aggregate; backs the
+//                        Dashboard "commission this month" widget
+//   commissions       -- commission-history first page; Task 3
+//                        CommissionsView consumer (Block C)
 //
 // WHAT IS DELIBERATELY NOT HERE:
 //   balance -- AgentDashboardView reads passive_balance from the
@@ -23,29 +28,31 @@
 //
 // RACE POLICY (FP-17, fixed in R45-2.1):
 //   One monotonic epoch PER STATE GROUP (links / stats / leaderboard /
-//   commissions), bumped by that group's fetch and by reset(), and
-//   captured by the group's async action. A resolve that lost the
-//   race writes nothing.
+//   downline / commissionSummary / commissions), bumped by that
+//   group's fetch and by reset(), and captured by the group's async
+//   action. A resolve that lost the race writes nothing.
 //
-//   WHY PER-GROUP, NOT SHARED (R45-2.1 post-mortem): the first
-//   version shared ONE counter across all four groups, copying the
-//   single-fetch-path stores (dashboard.ts / products.ts) without
-//   accounting for the difference. Views fire several group fetches
-//   synchronously in onMounted, so the shared counter reached its
-//   final value before any response arrived -- every group except the
-//   last had its response discarded AND its loading flag stuck true
-//   (the `finally` was epoch-gated too). Deterministic infinite
-//   spinners on both agent screens. Epochs only guard against STALE
-//   responses within the same group; concurrent fetches of DIFFERENT
-//   groups are independent and must never invalidate each other.
+//   WHY PER-GROUP, NOT SHARED (R45-2.1 post-mortem): the first version
+//   shared ONE counter across all groups, copying the single-fetch-path
+//   stores (dashboard.ts / products.ts) without accounting for the
+//   difference. Views fire several group fetches synchronously in
+//   onMounted, so the shared counter reached its final value before any
+//   response arrived -- every group except the last had its response
+//   discarded AND its loading flag stuck true (the `finally` was
+//   epoch-gated too). Deterministic infinite spinners on both agent
+//   screens. Epochs only guard against STALE responses within the same
+//   group; concurrent fetches of DIFFERENT groups are independent and
+//   must never invalidate each other.
 //
-// MONTH COMMISSION CAVEAT:
-//   There is no server-side "commission this month" aggregate yet.
-//   monthCommissionCents sums the first MONTH_FETCH_LIMIT (100)
-//   history entries that fall in the current UTC month -- both
-//   frozen and confirmed count as "earned". An agent with >100
-//   entries in one month would be undercounted; flagged in the Task 2
-//   report as a backend candidate for Task 2b/3.
+// MONTH-TO-DATE COMMISSION (Task 3 Block A):
+//   commissionSummary holds the server-side month aggregate from
+//   GET /agent/commissions/summary (current UTC month, frozen+confirmed,
+//   reversed excluded). monthCommissionCents reads it directly. This
+//   replaced the former client-side sum over the first MONTH_FETCH_LIMIT
+//   history entries -- the server figure is exact, so the old
+//   ">100-entries undercount / approximate" caveat is gone, and the
+//   truncated flag that drove it has been removed
+//   (TD-COMMISSION-MONTH-AGG closed).
 //
 // COMMIT / RESET:
 //   reset() registered in stores/sessionReset.ts (logout + avatar
@@ -57,6 +64,8 @@ import { defineStore } from 'pinia'
 
 import {
   createReferralLink,
+  getCommissionSummary,
+  getDownline,
   getLeaderboard,
   getMyCommissions,
   getMyReferralLinks,
@@ -64,15 +73,17 @@ import {
 } from '@/api/agent'
 import type {
   CommissionListResponse,
+  CommissionSummaryResponse,
   LeaderboardResponse,
+  ReferralDownlineResponse,
   ReferralLinkResponse,
   ReferralStatsResponse,
 } from '@/api/types'
 
 const LINKS_PER_PAGE = 20
 
-// limit=100 is the server-side cap for /agent/commissions/me; one
-// page is the best month approximation available today (see header).
+// 100 is the server-side cap for /agent/commissions/me. Used by the
+// commission-history fetch (Task 3 CommissionsView, Block C).
 const MONTH_FETCH_LIMIT = 100
 
 export const useAgentStore = defineStore('agent', () => {
@@ -97,18 +108,30 @@ export const useAgentStore = defineStore('agent', () => {
   const leaderboardLoading = ref(false)
   const leaderboardError = ref<string | null>(null)
 
-  // -- Commission history (Dashboard month-commission widget) --
+  // -- Downline: investors (L1-L3) + sub-agents (Task 3 ReferralsView) --
+  const downline = ref<ReferralDownlineResponse | null>(null)
+  const downlineLoading = ref(false)
+  const downlineError = ref<string | null>(null)
+
+  // -- Month-to-date commission aggregate (Dashboard widget) --
+  const commissionSummary = ref<CommissionSummaryResponse | null>(null)
+  const commissionSummaryLoading = ref(false)
+  const commissionSummaryError = ref<string | null>(null)
+
+  // -- Commission history first page (Task 3 CommissionsView, Block C) --
   const commissions = ref<CommissionListResponse | null>(null)
   const commissionsLoading = ref(false)
   const commissionsError = ref<string | null>(null)
 
   // Monotonic per-group epochs (FP-17, R45-2.1). Non-reactive by
-  // design -- read only inside async closures after await points.
-  // One counter per independent state group: a fetch in one group
-  // must never invalidate an in-flight fetch of another.
+  // design -- read only inside async closures after await points. One
+  // counter per independent state group: a fetch in one group must
+  // never invalidate an in-flight fetch of another.
   let linksEpoch = 0
   let statsEpoch = 0
   let leaderboardEpoch = 0
+  let downlineEpoch = 0
+  let commissionSummaryEpoch = 0
   let commissionsEpoch = 0
 
   // ---------------------------------------------------------------------------
@@ -130,29 +153,14 @@ export const useAgentStore = defineStore('agent', () => {
   })
 
   /**
-   * Commission accrued in the current UTC month, in cents. Sums both
-   * frozen and confirmed entries (both are earned; frozen is merely
-   * not yet withdrawable). See MONTH COMMISSION CAVEAT in the header.
+   * Month-to-date commission in cents, taken straight from the
+   * server-side /agent/commissions/summary aggregate (current UTC
+   * month, frozen+confirmed, reversed excluded). Exact -- replaces the
+   * former client-side sum over the first 100 history entries; see
+   * MONTH-TO-DATE COMMISSION in the header.
    */
-  const monthCommissionCents = computed<number>(() => {
-    const items = commissions.value?.items
-    if (!items) return 0
-    const now = new Date()
-    const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
-    return items.reduce((sum, item) => {
-      const ts = Date.parse(item.created_at)
-      return ts >= monthStart ? sum + item.amount_cents : sum
-    }, 0)
-  })
-
-  /**
-   * True when the commission history page came back full
-   * (items.length >= MONTH_FETCH_LIMIT) -- the month sum may then be
-   * undercounted and the widget must say so (R45-2.2). Disappears
-   * once a server-side monthly aggregate exists (Task 2b/3 candidate).
-   */
-  const monthCommissionTruncated = computed<boolean>(
-    () => (commissions.value?.items.length ?? 0) >= MONTH_FETCH_LIMIT,
+  const monthCommissionCents = computed<number>(
+    () => commissionSummary.value?.month_to_date_cents ?? 0,
   )
 
   // ---------------------------------------------------------------------------
@@ -207,11 +215,11 @@ export const useAgentStore = defineStore('agent', () => {
 
   /**
    * Create a new referral link and prepend it to the list -- no
-   * refetch, no double request. Local mirrors keep the visible
-   * numbers consistent: linksTotal and stats.total_links both +1.
+   * refetch, no double request. Local mirrors keep the visible numbers
+   * consistent: linksTotal and stats.total_links both +1.
    *
-   * THROWS on failure (unlike the fetch actions): the Hub button is
-   * the only caller and owns the error UX (toast). FP-04 double-submit
+   * THROWS on failure (unlike the fetch actions): the Hub button is the
+   * only caller and owns the error UX (toast). FP-04 double-submit
    * guard lives at the call-site via the returned promise + a local
    * `creating` flag in the view.
    */
@@ -229,7 +237,7 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   // ---------------------------------------------------------------------------
-  // Actions -- aggregate stats / leaderboard / commissions
+  // Actions -- stats / leaderboard / downline / commission summary / history
   // ---------------------------------------------------------------------------
 
   /** Pull /referrals/stats/me. Never throws. */
@@ -267,7 +275,50 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  /** Pull the first commission-history page. Never throws. */
+  /**
+   * Pull /referrals/downline/me (investors L1-L3 + sub-agents).
+   * Its own epoch (R45-2.1): a concurrent fetch of another group must
+   * not invalidate this one. Never throws -- errors land on
+   * downlineError.
+   */
+  async function fetchDownline(): Promise<void> {
+    const mine = ++downlineEpoch
+    downlineLoading.value = true
+    downlineError.value = null
+    try {
+      const resp = await getDownline()
+      if (mine !== downlineEpoch) return
+      downline.value = resp
+    } catch (err) {
+      if (mine !== downlineEpoch) return
+      downlineError.value =
+        err instanceof Error ? err.message : 'Unknown error'
+    } finally {
+      if (mine === downlineEpoch) downlineLoading.value = false
+    }
+  }
+
+  /** Pull /agent/commissions/summary (month-to-date). Never throws. */
+  async function fetchCommissionSummary(): Promise<void> {
+    const mine = ++commissionSummaryEpoch
+    commissionSummaryLoading.value = true
+    commissionSummaryError.value = null
+    try {
+      const resp = await getCommissionSummary()
+      if (mine !== commissionSummaryEpoch) return
+      commissionSummary.value = resp
+    } catch (err) {
+      if (mine !== commissionSummaryEpoch) return
+      commissionSummaryError.value =
+        err instanceof Error ? err.message : 'Unknown error'
+    } finally {
+      if (mine === commissionSummaryEpoch) {
+        commissionSummaryLoading.value = false
+      }
+    }
+  }
+
+  /** Pull the first commission-history page (Block C). Never throws. */
   async function fetchCommissions(): Promise<void> {
     const mine = ++commissionsEpoch
     commissionsLoading.value = true
@@ -290,15 +341,17 @@ export const useAgentStore = defineStore('agent', () => {
   // ---------------------------------------------------------------------------
 
   /**
-   * Drop all state. Bumps every group epoch first so in-flight
-   * fetches resolving after logout cannot repopulate the cleared
-   * state -- ALL FOUR groups, not just one (the per-group split of
-   * R45-2.1 applies here too). Synchronous, never throws.
+   * Drop all state. Bumps every group epoch first so in-flight fetches
+   * resolving after logout cannot repopulate the cleared state -- ALL
+   * SIX groups, not just one (the per-group split of R45-2.1 applies
+   * here too). Synchronous, never throws.
    */
   function reset(): void {
     ++linksEpoch
     ++statsEpoch
     ++leaderboardEpoch
+    ++downlineEpoch
+    ++commissionSummaryEpoch
     ++commissionsEpoch
     links.value = []
     linksTotal.value = 0
@@ -311,6 +364,12 @@ export const useAgentStore = defineStore('agent', () => {
     leaderboard.value = null
     leaderboardLoading.value = false
     leaderboardError.value = null
+    downline.value = null
+    downlineLoading.value = false
+    downlineError.value = null
+    commissionSummary.value = null
+    commissionSummaryLoading.value = false
+    commissionSummaryError.value = null
     commissions.value = null
     commissionsLoading.value = false
     commissionsError.value = null
@@ -338,12 +397,21 @@ export const useAgentStore = defineStore('agent', () => {
     leaderboardError,
     myRank,
     fetchLeaderboard,
-    // commissions
+    // downline (Task 3 ReferralsView)
+    downline,
+    downlineLoading,
+    downlineError,
+    fetchDownline,
+    // commission summary (month-to-date; Dashboard widget)
+    commissionSummary,
+    commissionSummaryLoading,
+    commissionSummaryError,
+    monthCommissionCents,
+    fetchCommissionSummary,
+    // commission history (Task 3 CommissionsView)
     commissions,
     commissionsLoading,
     commissionsError,
-    monthCommissionCents,
-    monthCommissionTruncated,
     fetchCommissions,
     // session
     reset,

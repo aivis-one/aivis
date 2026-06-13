@@ -8,9 +8,8 @@
 //
 // WIDGETS AND THEIR SOURCES:
 //   Commission this month -- stores/agent.ts monthCommissionCents
-//       (client-side sum of the current-UTC-month entries from
-//       GET /agent/commissions/me; see the store header for the
-//       >100-entries caveat -- flagged in the Task 2 report).
+//       (server-side month-to-date aggregate from
+//       GET /agent/commissions/summary; exact, no client-side sum).
 //   Leaderboard rank      -- stores/agent.ts myRank (is_me entry of
 //       GET /agent/leaderboard); renders an em-dash when the agent is
 //       outside the snapshot top or no snapshot exists yet.
@@ -101,7 +100,7 @@ onMounted(() => {
   if (!isAgent.value) return
   // Four independent never-throw probes -- one widget failing must
   // not blank the others (same philosophy as InvestorDashboardView).
-  void agentStore.fetchCommissions()
+  void agentStore.fetchCommissionSummary()
   void agentStore.fetchLeaderboard()
   void agentStore.fetchStats()
   void dashboardStore.refresh()
@@ -123,31 +122,22 @@ onMounted(() => {
         <div class="dash__widget-icon dash__widget-icon--accent">
           <Gem :size="16" />
         </div>
-        <div v-if="agentStore.commissionsLoading" class="dash__widget-loader">
+        <div v-if="agentStore.commissionSummaryLoading" class="dash__widget-loader">
           <CLoader :size="18" />
         </div>
         <template v-else>
           <div class="dash__widget-value">
-            <template v-if="agentStore.commissionsError">—</template>
+            <template v-if="agentStore.commissionSummaryError">—</template>
             <template v-else>
-              <!-- R45-2.2: a full history page means the month sum may
-                   be undercounted -- mark the figure as approximate. -->
-              <template v-if="agentStore.monthCommissionTruncated">≈ </template>
               {{ formatPrice(agentStore.monthCommissionCents) }}
             </template>
           </div>
           <div class="dash__widget-label">
             {{
-              agentStore.commissionsError
+              agentStore.commissionSummaryError
                 ? t('agent.dashboard.errors.commission')
                 : t('agent.dashboard.widgets.monthCommission')
             }}
-            <span
-              v-if="!agentStore.commissionsError && agentStore.monthCommissionTruncated"
-              class="dash__widget-sub"
-            >
-              {{ t('agent.dashboard.widgets.monthCommissionTruncated') }}
-            </span>
           </div>
         </template>
       </div>
