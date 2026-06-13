@@ -1163,6 +1163,28 @@
         "purchases": "Purchases",
         "createdAt": "Created"
       }
+    },
+    "referrals": {
+      "title": "My network",
+      "subtitle": "Investors and sub-agents in your downline",
+      "backLink": "Back",
+      "errorTitle": "Couldn't load your network",
+      "joined": "Joined",
+      "level": "L{n}",
+      "empty": {
+        "title": "No downline yet",
+        "desc": "Investors and sub-agents you refer will appear here as your network grows."
+      },
+      "investors": {
+        "title": "Investors",
+        "volume": "Purchase volume"
+      },
+      "subAgents": {
+        "title": "Sub-agents",
+        "recruited": "Recruited investors",
+        "directVolume": "Direct investor volume",
+        "ownVolume": "Own purchases"
+      }
     }
   },
   "public": {
