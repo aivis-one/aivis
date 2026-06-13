@@ -639,6 +639,7 @@
         "deposit:reversed": "Deposit reversed",
         "purchase:completed": "Purchase",
         "purchase:gift": "Bonus units",
+        "purchase:reversed": "Purchase reversed",
         "installment:tranche_paid": "Installment tranche paid",
         "installment:completed": "Installment plan completed",
         "installment:defaulted": "Installment plan defaulted",
@@ -1110,7 +1111,6 @@
       "subtitle": "Your performance at a glance",
       "widgets": {
         "monthCommission": "Commission this month",
-        "monthCommissionTruncated": "based on the last 100 entries",
         "rank": "Leaderboard rank",
         "rankNone": "—",
         "balance": "Passive balance",
@@ -1223,6 +1223,95 @@
       "empty": {
         "title": "Leaderboard not ready yet",
         "desc": "Rankings appear once the first snapshot of the period is taken. Check back soon."
+      }
+    },
+    "balance": {
+      "title": "Passive balance",
+      "subtitle": "Your commission earnings and withdrawals",
+      "errorTitle": "Couldn't load your balance",
+      "errorRetry": "Retry",
+      "card": {
+        "title": "Available balance",
+        "frozen": "Frozen"
+      },
+      "withdrawals": {
+        "title": "Withdrawals",
+        "empty": "No withdrawals yet",
+        "newButton": "Request withdrawal",
+        "setupPayout": "Set up payout details",
+        "needPayout": "Add payout details before you can withdraw",
+        "lowBalance": "Balance is below the minimum withdrawal",
+        "status": {
+          "pending": "Pending",
+          "confirmed": "Confirmed",
+          "processing": "Processing",
+          "completed": "Completed",
+          "rejected": "Rejected",
+          "failed": "Failed"
+        },
+        "form": {
+          "title": "Request withdrawal",
+          "amountLabel": "Amount (USD)",
+          "amountPlaceholder": "0.00",
+          "amountHint": "Min {min} · Max {max} · Available {available}",
+          "errorBelowMin": "Below the minimum withdrawal ({min})",
+          "errorAboveMax": "Above the maximum withdrawal ({max})",
+          "errorInsuff": "Exceeds your available balance ({available})",
+          "submit": "Request",
+          "cancel": "Cancel",
+          "successToast": "Withdrawal requested",
+          "error": "Couldn't request the withdrawal"
+        }
+      }
+    },
+    "more": {
+      "title": "More",
+      "subtitle": "Your network, ranking and settings",
+      "network": {
+        "title": "My network",
+        "desc": "Investors and sub-agents in your downline"
+      },
+      "leaderboard": {
+        "title": "Leaderboard",
+        "desc": "See how you rank against other agents"
+      },
+      "settings": {
+        "title": "Settings",
+        "desc": "Profile, payout details and sign out"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Your profile and payout details",
+      "backLink": "Back",
+      "unnamed": "Agent",
+      "role": {
+        "agent": "Agent"
+      },
+      "payout": {
+        "title": "Payout details",
+        "desc": "Where your withdrawals are sent.",
+        "empty": "No payout details yet",
+        "loadError": "Couldn't load payout details",
+        "retry": "Retry",
+        "editButton": "Edit details",
+        "addButton": "Add payout details",
+        "form": {
+          "title": "Payout details",
+          "label": "Details (JSON)",
+          "placeholder": "{ \"method\": \"bank\", \"iban\": \"...\" }",
+          "hint": "Enter your payout details as a JSON object.",
+          "errorJson": "Not valid JSON",
+          "errorObject": "Must be a JSON object",
+          "submit": "Save",
+          "cancel": "Cancel",
+          "successToast": "Payout details saved",
+          "error": "Couldn't save payout details"
+        }
+      },
+      "actions": {
+        "title": "Account",
+        "logout": "Sign out"
       }
     }
   },
