@@ -52,7 +52,7 @@ import { useI18n } from 'vue-i18n'
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useAgentStore } from '@/stores/agent'
 import { safeNavigate } from '@/composables/safeNavigate'
-import { formatNumber, formatPrice } from '@/utils/format'
+import { formatDate, formatNumber, formatPrice } from '@/utils/format'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -75,10 +75,6 @@ const isEmpty = computed(
     && investors.value.length === 0
     && subAgents.value.length === 0,
 )
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(locale.value)
-}
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -175,7 +171,7 @@ onMounted(() => {
               </div>
               <div class="ref__joined">
                 {{ t('agent.referrals.joined') }}
-                {{ formatDate(inv.registered_at) }}
+                {{ formatDate(inv.registered_at, locale) }}
               </div>
             </div>
           </li>
@@ -226,7 +222,7 @@ onMounted(() => {
 
             <div class="ref__joined">
               {{ t('agent.referrals.joined') }}
-              {{ formatDate(sa.registered_at) }}
+              {{ formatDate(sa.registered_at, locale) }}
             </div>
           </li>
         </ul>

@@ -20,6 +20,16 @@
 //                         at the time of writing -- a separate iteration
 //                         will fold it onto this implementation.
 //   - resolveCoverImage:  ProductCard, ProductDetailView.
+//   - formatDateTime / formatDate: agent views (Balance/Commissions/
+//                         Referrals/Leaderboard). Extracted in the F6
+//                         review follow-up to collapse the per-view
+//                         try/catch copies. CompanyBalanceView and the
+//                         shared TransactionDetailSheet still carry their
+//                         own inline copies -- folding them on is a
+//                         separate pass (noted in the review handoff).
+//   - parseAmountToCents: AgentBalanceView withdrawal form. Float-safe
+//                         amount parser; CompanyBalanceView still uses
+//                         its inline Math.round variant (same handoff note).
 // =============================================================================
 
 /**
@@ -121,4 +131,64 @@ export function resolveCoverImage(source: {
 }): string | null {
   const raw = source.cover_url ?? source.company_logo_url
   return raw ? `url("${encodeURI(raw)}")` : null
+}
+
+/**
+ * ISO timestamp -> locale date+time string (year, short month, day,
+ * hour, minute). Wrapped in try/catch so a malformed timestamp
+ * degrades to the raw input instead of throwing. Consolidates the
+ * per-view `formatDate` copies in the agent balance view (and matches
+ * the shared TransactionDetailSheet copy it will eventually replace).
+ */
+export function formatDateTime(iso: string, locale?: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
+
+/**
+ * ISO timestamp -> locale date string (no time-of-day). For list rows
+ * where the clock time is noise rather than signal -- commission,
+ * referral and leaderboard entries. Same try/catch degradation as
+ * formatDateTime.
+ */
+export function formatDate(iso: string, locale?: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(locale)
+  } catch {
+    return iso
+  }
+}
+
+/**
+ * User-typed amount string -> integer cents, or null when empty or
+ * malformed.
+ *
+ *   parseAmountToCents("12")    -> 1200
+ *   parseAmountToCents("12.3")  -> 1230
+ *   parseAmountToCents("12.34") -> 1234
+ *   parseAmountToCents("2.675") -> null  (3 fraction digits rejected)
+ *   parseAmountToCents("-5")    -> null
+ *   parseAmountToCents("")      -> null
+ *
+ * Parses the whole and fractional parts as integers and combines them
+ * arithmetically, so there is no binary-float rounding error the way
+ * `Math.round(Number("2.675") * 100)` (-> 267, not 268) has. Accepts
+ * only digits with an optional 1-2 digit fraction: no sign, no
+ * exponent, no thousands separators.
+ */
+export function parseAmountToCents(raw: string): number | null {
+  const s = raw.trim()
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return null
+  const [whole, frac = ''] = s.split('.')
+  const cents = Number(whole) * 100 + Number((frac + '00').slice(0, 2))
+  return Number.isSafeInteger(cents) ? cents : null
 }

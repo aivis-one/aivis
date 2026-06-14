@@ -46,6 +46,9 @@ class LeaderboardResponse(BaseModel):
 class CommissionEntry(BaseModel):
     """Single commission or volume bonus entry."""
 
+    # Underlying PassiveLedger row id -- stable PK for client list keys.
+    id: UUID
+
     # "commission" or "volume_bonus"
     type: str
     amount_cents: int

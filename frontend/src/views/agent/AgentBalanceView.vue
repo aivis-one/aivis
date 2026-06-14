@@ -45,7 +45,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
-import { formatPrice } from '@/utils/format'
+import { formatDateTime, formatPrice, parseAmountToCents } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { WithdrawalResponse } from '@/api/types'
 
@@ -54,7 +54,7 @@ const MAX_WITHDRAWAL_CENTS = 10_000_000
 const PER_PAGE = 20
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const dashboardStore = useDashboardStore()
 const { showToast } = useToast()
 
@@ -68,6 +68,7 @@ const withdrawalsPage = ref(1)
 const withdrawalsLoading = ref(false)
 const withdrawalsErrored = ref(false)
 const withdrawalsEpoch = ref(0)
+const withdrawalsLoadMoreErrored = ref(false)
 const sentinelRef = ref<HTMLElement | null>(null)
 
 const hasMoreWithdrawals = computed(
@@ -78,6 +79,7 @@ async function fetchWithdrawalsFirstPage(): Promise<void> {
   const epoch = ++withdrawalsEpoch.value
   withdrawalsLoading.value = true
   withdrawalsErrored.value = false
+  withdrawalsLoadMoreErrored.value = false
   try {
     const resp = await listMyWithdrawals({ page: 1, per_page: PER_PAGE })
     if (epoch !== withdrawalsEpoch.value) return
@@ -92,7 +94,13 @@ async function fetchWithdrawalsFirstPage(): Promise<void> {
 }
 
 async function loadMoreWithdrawals(): Promise<void> {
-  if (withdrawalsLoading.value || !hasMoreWithdrawals.value) return
+  if (
+    withdrawalsLoading.value
+    || !hasMoreWithdrawals.value
+    || withdrawalsLoadMoreErrored.value
+  ) {
+    return
+  }
   const epoch = withdrawalsEpoch.value
   withdrawalsLoading.value = true
   try {
@@ -103,13 +111,30 @@ async function loadMoreWithdrawals(): Promise<void> {
     withdrawalsTotal.value = resp.total
     withdrawalsPage.value = next
   } catch {
-    // Non-destructive: keep already-loaded pages visible.
+    // FP-16 brake: flag the failure so the IntersectionObserver stops
+    // re-firing; the retry banner lets the user resume. Non-destructive
+    // -- already-loaded pages stay visible (review §3).
+    if (epoch === withdrawalsEpoch.value) {
+      withdrawalsLoadMoreErrored.value = true
+    }
   } finally {
     if (epoch === withdrawalsEpoch.value) withdrawalsLoading.value = false
   }
 }
 
-useInfiniteScroll(sentinelRef, hasMoreWithdrawals, loadMoreWithdrawals)
+function retryLoadMoreWithdrawals(): void {
+  withdrawalsLoadMoreErrored.value = false
+  void loadMoreWithdrawals()
+}
+
+// FP-16 brake fed as the `paused` parameter -- a failed load-more
+// suppresses the observer until the user taps retry.
+useInfiniteScroll(
+  sentinelRef,
+  hasMoreWithdrawals,
+  loadMoreWithdrawals,
+  withdrawalsLoadMoreErrored,
+)
 
 // ---------------------------------------------------------------------------
 // Payout details -- boolean gate only (editor lives in AgentSettingsView)
@@ -156,7 +181,11 @@ const hasFrozen = computed(() => passiveFrozen.value > 0)
 
 const hasError = computed(
   () =>
-    dashboardStore.error !== null
+    // Couple to the shared dashboard error ONLY when there is no
+    // cached summary to fall back on -- otherwise a transient refresh
+    // failure with a still-valid cached balance would hide the whole
+    // screen and retry could not clear it (review §2).
+    (dashboardStore.error !== null && dashboardStore.summary === null)
     || withdrawalsErrored.value
     || payoutErrored.value,
 )
@@ -188,20 +217,6 @@ function statusLabel(status: string): string {
   return tOrRaw(t, `agent.balance.withdrawals.status.${status}`, status)
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Withdraw form
 // ---------------------------------------------------------------------------
@@ -211,13 +226,9 @@ const withdrawAmountInput = ref('')
 const withdrawSubmitting = ref(false)
 const withdrawError = ref('')
 
-const parsedAmountCents = computed<number | null>(() => {
-  const raw = withdrawAmountInput.value.trim()
-  if (!raw) return null
-  const dollars = Number(raw)
-  if (!Number.isFinite(dollars) || dollars <= 0) return null
-  return Math.round(dollars * 100)
-})
+const parsedAmountCents = computed<number | null>(
+  () => parseAmountToCents(withdrawAmountInput.value),
+)
 
 const withdrawValidationKey = computed<string | null>(() => {
   const cents = parsedAmountCents.value
@@ -257,8 +268,7 @@ function goSettingsForPayout(): void {
 
 function openWithdrawSheet(): void {
   if (!canWithdraw.value) return
-  withdrawAmountInput.value = ''
-  withdrawError.value = ''
+  // Fields are cleared by the close watcher below; just open.
   withdrawSheetOpen.value = true
 }
 
@@ -303,12 +313,11 @@ watch(withdrawSheetOpen, (open) => {
 // ---------------------------------------------------------------------------
 
 async function loadAll(): Promise<void> {
-  const dashboardPromise =
-    dashboardStore.summary === null
-      ? dashboardStore.refresh()
-      : Promise.resolve()
+  // Refresh the dashboard unconditionally (parity with the investor
+  // BalanceView). A conditional "only if summary is null" refresh left
+  // retry unable to clear a stale shared error (review §2).
   await Promise.all([
-    dashboardPromise,
+    dashboardStore.refresh(),
     fetchWithdrawalsFirstPage(),
     fetchPayoutDetails(),
   ])
@@ -412,7 +421,7 @@ onMounted(() => {
                 </span>
               </div>
               <div class="abal__item-line abal__item-line--sub">
-                <span class="abal__item-date">{{ formatDate(w.created_at) }}</span>
+                <span class="abal__item-date">{{ formatDateTime(w.created_at, locale) }}</span>
                 <span
                   v-if="w.rejection_reason"
                   class="abal__item-reason"
@@ -431,6 +440,16 @@ onMounted(() => {
           class="abal__sentinel"
         >
           <CLoader v-if="withdrawalsLoading" :size="20" />
+        </div>
+
+        <div
+          v-if="withdrawals.length > 0 && withdrawalsLoadMoreErrored && !withdrawalsLoading"
+          class="abal__loadmore-error"
+        >
+          <span>{{ t('agent.balance.withdrawals.loadMoreError') }}</span>
+          <CButton variant="outline" size="sm" @click="retryLoadMoreWithdrawals">
+            {{ t('common.retry') }}
+          </CButton>
         </div>
       </section>
     </template>
@@ -695,6 +714,21 @@ onMounted(() => {
   justify-content: center;
   padding: 16px 0 0;
   min-height: 32px;
+}
+
+.abal__loadmore-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated, var(--bg));
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 .abal__form { display: flex; flex-direction: column; gap: 14px; }

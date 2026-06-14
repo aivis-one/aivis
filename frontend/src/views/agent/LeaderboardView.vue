@@ -35,7 +35,7 @@ import { useI18n } from 'vue-i18n'
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useAgentStore } from '@/stores/agent'
 import { safeNavigate } from '@/composables/safeNavigate'
-import { formatPrice } from '@/utils/format'
+import { formatDate, formatPrice } from '@/utils/format'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -59,10 +59,16 @@ const isEmpty = computed(
     && entries.value.length === 0,
 )
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString(locale.value)
-}
+// Period caption -- empty when no snapshot period is known yet (the
+// v-if hides the element; the null guard also keeps the shared,
+// non-null formatDate happy).
+const periodCaption = computed(() =>
+  periodStart.value
+    ? t('agent.leaderboard.period', {
+        date: formatDate(periodStart.value, locale.value),
+      })
+    : '',
+)
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -135,7 +141,7 @@ onMounted(() => {
     <!-- Ranked list -->
     <template v-else>
       <p v-if="periodStart" class="lb__period">
-        {{ t('agent.leaderboard.period', { date: formatDate(periodStart) }) }}
+        {{ periodCaption }}
       </p>
 
       <ul class="lb__list">

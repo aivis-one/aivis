@@ -125,7 +125,7 @@ const payoutEditInput = ref('')
 const payoutSubmitting = ref(false)
 const payoutError = ref('')
 
-const payoutValidation = computed<true | 'json' | 'object' | null>(() => {
+const payoutValidation = computed<true | 'json' | 'object' | 'empty' | null>(() => {
   const raw = payoutEditInput.value.trim()
   if (!raw) return null
   let parsed: unknown
@@ -137,6 +137,12 @@ const payoutValidation = computed<true | 'json' | 'object' | null>(() => {
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return 'object'
   }
+  // An empty object would save as "{}" -> hasPayoutDetails reads false
+  // afterwards, leaving the withdraw gate stuck on "no payout details"
+  // despite a successful save (review §6).
+  if (Object.keys(parsed as Record<string, unknown>).length === 0) {
+    return 'empty'
+  }
   return true
 })
 
@@ -144,6 +150,7 @@ const payoutValidationKey = computed<string | null>(() => {
   const v = payoutValidation.value
   if (v === 'json') return 'agent.settings.payout.form.errorJson'
   if (v === 'object') return 'agent.settings.payout.form.errorObject'
+  if (v === 'empty') return 'agent.settings.payout.form.errorEmpty'
   return null
 })
 

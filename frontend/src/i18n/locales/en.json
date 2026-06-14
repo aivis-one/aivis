@@ -1241,6 +1241,7 @@
         "setupPayout": "Set up payout details",
         "needPayout": "Add payout details before you can withdraw",
         "lowBalance": "Balance is below the minimum withdrawal",
+        "loadMoreError": "Couldn't load more withdrawals",
         "status": {
           "pending": "Pending",
           "confirmed": "Confirmed",
@@ -1303,6 +1304,7 @@
           "hint": "Enter your payout details as a JSON object.",
           "errorJson": "Not valid JSON",
           "errorObject": "Must be a JSON object",
+          "errorEmpty": "Add at least one payout field",
           "submit": "Save",
           "cancel": "Cancel",
           "successToast": "Payout details saved",

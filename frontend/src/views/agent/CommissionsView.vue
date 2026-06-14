@@ -40,7 +40,7 @@ import { useI18n } from 'vue-i18n'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useAgentStore } from '@/stores/agent'
 import { tOrRaw } from '@/utils/i18n'
-import { formatPrice } from '@/utils/format'
+import { formatDate, formatPrice } from '@/utils/format'
 
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
@@ -86,10 +86,6 @@ function statusVariant(
   if (status === 'frozen') return 'warning'
   if (status === 'reversed') return 'danger'
   return 'neutral'
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(locale.value)
 }
 
 // ---------------------------------------------------------------------------
@@ -153,8 +149,8 @@ onMounted(() => {
     <template v-else>
       <ul class="comm__list">
         <li
-          v-for="(entry, i) in agentStore.commissions"
-          :key="`${entry.created_at}-${i}`"
+          v-for="entry in agentStore.commissions"
+          :key="entry.id"
           class="comm__card"
         >
           <div class="comm__row">
@@ -197,7 +193,7 @@ onMounted(() => {
               >
                 {{ statusLabel(entry.status) }}
               </span>
-              <span class="comm__date">{{ formatDate(entry.created_at) }}</span>
+              <span class="comm__date">{{ formatDate(entry.created_at, locale) }}</span>
             </div>
           </div>
         </li>
@@ -209,6 +205,7 @@ onMounted(() => {
       >
         <CButton
           variant="secondary"
+          :loading="agentStore.commissionsLoading"
           :disabled="agentStore.commissionsLoading"
           @click="loadMore"
         >

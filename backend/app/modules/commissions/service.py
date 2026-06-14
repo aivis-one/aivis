@@ -231,6 +231,7 @@ async def get_my_commissions(
                 pass
 
             items.append(CommissionEntry(
+                id=entry.id,
                 type="commission",
                 amount_cents=entry.amount_cents,
                 status=entry.status,
@@ -255,6 +256,7 @@ async def get_my_commissions(
                 pass
 
             items.append(CommissionEntry(
+                id=entry.id,
                 type="volume_bonus",
                 amount_cents=entry.amount_cents,
                 status=entry.status,
@@ -266,6 +268,7 @@ async def get_my_commissions(
         else:
             # Unknown reason format -- include as generic commission.
             items.append(CommissionEntry(
+                id=entry.id,
                 type="commission",
                 amount_cents=entry.amount_cents,
                 status=entry.status,
