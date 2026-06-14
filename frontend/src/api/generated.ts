@@ -135,6 +135,7 @@ export interface Body_set_roadmap_cover_endpoint_api_v1_staff_companies__company
 
 /** Single commission or volume bonus entry. */
 export interface CommissionEntry {
+  id: string
   type: string
   amount_cents: number
   status: string
