@@ -173,14 +173,30 @@ function closePayoutSheet(): void {
 
 async function submitPayout(): Promise<void> {
   if (!canSubmitPayout.value) return
-  const parsed = JSON.parse(payoutEditInput.value) as Record<string, unknown>
+  // canSubmitPayout === true guarantees payoutValidation === true (the
+  // input already parsed to a non-empty object), so this cannot throw --
+  // kept explicit rather than relying on that invariant silently (2.7).
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(payoutEditInput.value) as Record<string, unknown>
+  } catch {
+    payoutError.value = t('agent.settings.payout.form.errorJson')
+    return
+  }
   payoutSubmitting.value = true
   payoutError.value = ''
   try {
     await updatePayoutDetails(parsed)
     showToast(t('agent.settings.payout.form.successToast'), 'success')
+    // PUT replaces payout_details wholesale -> the submitted object IS
+    // the new server state. Write it locally instead of refetching: a
+    // failing refetch here would flip payoutErrored and replace the
+    // just-saved details with an error screen right after the success
+    // toast (review 2.4).
+    payoutDetails.value = parsed
+    payoutLoaded.value = true
+    payoutErrored.value = false
     closePayoutSheet()
-    await fetchPayoutDetails()
   } catch (err) {
     payoutError.value =
       err instanceof Error && err.message

@@ -123,11 +123,10 @@ onMounted(() => {
       v-else-if="agentStore.leaderboardError && agentStore.leaderboard === null"
       class="lb__center"
     >
-      <CEmptyState :title="t('agent.leaderboard.errorTitle')">
-        <CButton variant="secondary" @click="retry">
-          {{ t('common.retry') }}
-        </CButton>
-      </CEmptyState>
+      <CEmptyState :title="t('agent.leaderboard.errorTitle')" />
+      <CButton variant="outline" size="sm" @click="retry">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- Empty: no snapshot yet (not an error) -->
@@ -139,7 +138,7 @@ onMounted(() => {
     </div>
 
     <!-- Ranked list -->
-    <template v-else>
+    <template v-else-if="agentStore.leaderboard !== null">
       <p v-if="periodStart" class="lb__period">
         {{ periodCaption }}
       </p>
@@ -194,7 +193,9 @@ onMounted(() => {
 
 .lb__center {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 24px 0;
 }
 

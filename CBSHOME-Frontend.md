@@ -1191,16 +1191,16 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 **Цель:** Агент управляет реферальными ссылками.
 
 **Задачи:**
-- [ ] src/views/agent/AgentDashboardView.vue:
+- [x] src/views/agent/AgentDashboardView.vue:
   - Виджеты: комиссии за месяц, количество рефералов, ранг в лидерборде
   - GET /api/v1/dashboard/summary — балансы
   - Quick actions: Создать ссылку, Мои комиссии
-- [ ] src/views/agent/AgentHubView.vue:
+- [x] src/views/agent/AgentHubView.vue:
   - POST /api/v1/referrals/links → ReferralLinkResponse (code generated server-side)
   - GET /api/v1/referrals/links/me → ReferralLinkListResponse (paginated)
   - Каждая ссылка: код, copy button, is_active flag
   - GET /api/v1/referrals/stats/me → ReferralStatsResponse — общая статистика
-- [ ] src/views/agent/ReferralsView.vue:
+- [x] src/views/agent/ReferralsView.vue:
   - Список привлечённых инвесторов (L1/L2/L3)
 
 **Зависимость от бэкенда:** Referrals (Sprint 7.2 ✅). Permission: только role=agent.
@@ -1214,26 +1214,38 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 **Цель:** Агент видит заработок и рейтинг.
 
 **Задачи:**
-- [ ] src/views/agent/CommissionsView.vue:
+- [x] src/views/agent/CommissionsView.vue:
   - GET /api/v1/agent/commissions/me → CommissionListResponse (limit/offset)
   - Каждая запись: type (commission/volume_bonus), amount_cents, level, investor_name, product_name, status, created_at
   - Фильтры: уровень, период
-- [ ] src/views/agent/LeaderboardView.vue:
+- [x] src/views/agent/LeaderboardView.vue:
   - GET /api/v1/agent/leaderboard → LeaderboardResponse
   - Каждая запись: rank, agent_name, volume_cents, is_me
   - Подсветка своей позиции (is_me = true)
   - snapshot_at, period_start для контекста
-- [ ] src/views/agent/BalanceView.vue (passive):
+- [x] src/views/agent/BalanceView.vue (passive):
   - Passive balance из GET /api/v1/dashboard/summary → passive_balance
   - Кнопка "Вывести" → POST /api/v1/withdrawals (body: `{ amount_cents }`)
   - GET /api/v1/withdrawals/me — история выводов
   - Настройка реквизитов: GET/PUT /api/v1/users/me/payout-details
-- [ ] src/views/agent/AgentMoreView.vue:
+- [x] src/views/agent/AgentMoreView.vue:
   - Навигация к: Settings, Leaderboard, Investor Portfolio, Notifications
 
 **Зависимость от бэкенда:** Commissions (Sprint 7.3 ✅), Leaderboard (Sprint 7.3 ✅), Withdrawals (Sprint 6.3 ✅).
 
 **Критерий готовности:** Агент видит комиссии, лидерборд, может запросить вывод.
+
+---
+
+### F6 — статус реализации (✅ shipped + review follow-up)
+
+**Реализовано (blocks A–F).** Shipped views: `ReferralsView` (downline L1/L2/L3 — маскированные investor'ы + sub-agents с never-summed метриками, sub-route CBackLink), `CommissionsView` (paginated, reversed → danger «Clawed back» badge, server total, enum'ы через `tOrRaw` — FP-15), `LeaderboardView` (is_me highlight, empty-state, period caption), `AgentBalanceView` (passive balance из shared `useDashboardStore`, история выводов на `useInfiniteScroll`, withdraw-форма с FP-04 guard, Balance→Settings CTA при отсутствии реквизитов), `AgentSettingsView` (read-only профиль + payout-details JSON-редактор + logout), `AgentMoreView` (3 tile'а — точки входа к Settings/Leaderboard/Notifications). Factual drift vs план: реализованные имена — `AgentBalanceView`/`AgentSettingsView` (не `BalanceView`), Settings — отдельный sub-route. i18n: `agent.*` ключи — en-only по policy i18n catch-up.
+
+**Review follow-up (external code review, score 8/10):**
+- **§2** (латентный баг, `AgentBalanceView`): full-screen error при закэшированном `summary` + транзиентной ошибке shared dashboard'а, retry не чистил. Фикс: `hasError` завязан на shared error только при `summary===null` + безусловный `refresh()` в loadAll (паритет с investor BalanceView).
+- **§6** (`AgentSettingsView`): пустой `{}` сохранялся как «реквизиты заданы», гейт вывода залипал. Фикс: ветка `'empty'` в `payoutValidation` + `agent.settings.payout.form.errorEmpty`.
+- **§3** (`AgentBalanceView`): ошибка дозагрузки истории глоталась молча. Фикс: FP-16 brake (`withdrawalsLoadMoreErrored` как `paused` в `useInfiniteScroll`) + retry-баннер + `agent.balance.withdrawals.loadMoreError`.
+- **Полировка:** shared `formatDateTime`/`formatDate`/`parseAmountToCents` (float-safe парсер) вынесены в `utils/format.ts`, 4 вью (Balance/Commissions/Referrals/Leaderboard) мигрированы; commission-строки keyed по выставленному backend'ом `CommissionEntry.id` (⚠ порядок: backend id-exposure + regen `generated.ts` ДО фронт-билда); load-more спиннер в CommissionsView. Bundle: 10 файлов, 5 коммитов. Открытые ноты → TD-F19 / TD-F20 + FP-20 gap (InvestorSettings back-link).
 
 ---
 
@@ -2260,7 +2272,26 @@ iter 2.7 Block D реализовал базовый CRUD roadmap items + reorde
 |---|----------|-----------|-------|
 | TD-F18 | Заменить локальные копии `formatBytes` на импорт из `@/utils/format`. | 🟢 | В следующий drive-by cleanup |
 
+### TD-F19: Company-views на shared date/amount хелперы (F6 follow-up)
+
+F6 follow-up вынес `formatDateTime` / `formatDate` / `parseAmountToCents` (float-safe парсер) в `utils/format.ts` и мигрировал 4 agent-вью. `CompanyBalanceView` и shared `TransactionDetailSheet` всё ещё несут инлайн-копии `formatDate` и `Math.round(Number(...)*100)`-парсинг ввода суммы — тот же класс дублирования, что TD-F18 / TD-F09a.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F19 | Заменить инлайн `formatDate` в `CompanyBalanceView` + `TransactionDetailSheet` на `formatDateTime`/`formatDate` из `@/utils/format`; заменить `Math.round`-парсинг ввода суммы на `parseAmountToCents`. | 🟢 | В следующий drive-by cleanup |
+
+### TD-F20: usePaginatedList extraction + frontend unit-test infra
+
+Список выводов в `AgentBalanceView` — локальный `ref`-based paginated список (FP-16 позволяет локальным view-спискам отложить brake; brake для него всё же добавлен в §3). Паттерн «page/total/hasMore/loadMore + epoch + FP-16 paused» повторяется по вью. Отдельно: на фронте до сих пор нет unit-тест-инфры.
+
+| # | Описание | Приоритет | Когда |
+|---|----------|-----------|-------|
+| TD-F20a | Вынести общий `composables/usePaginatedList.ts` (page/total/hasMore/loadMore + epoch guard + FP-16 paused), мигрировать локальные ref-списки. | 🟢 | Grooming, когда появится 3-й локальный ref-список |
+| TD-F20b | Завести фронтовую unit-тест-инфру (Vitest); начать с `utils/format.ts` (`parseAmountToCents` edge-cases) и `usePaginatedList`. | 🟡 | Before Scale |
+
 ---
+
+*Version 2.11-F6 | 2026-07-24 | PHASE F6 (Agent shell) реализован + review follow-up. Blocks A–F: `ReferralsView` (downline L1/L2/L3 + sub-agents), `CommissionsView` (paginated, «Clawed back» badge), `LeaderboardView` (is_me highlight), `AgentBalanceView` (passive balance + история выводов + withdraw-форма), `AgentSettingsView` (payout JSON-редактор), `AgentMoreView` (точки входа). Имена реализации: `AgentBalanceView`/`AgentSettingsView` (не `BalanceView`), Settings — отдельный sub-route. Review follow-up (score 8/10): §2 balance error-gate stale-error trap (hasError на `summary===null` + безусловный refresh), §6 reject пустого payout `{}` (+`errorEmpty`), §3 withdrawal load-more errors через FP-16 brake (+`loadMoreError` + retry-баннер), shared `formatDateTime`/`formatDate`/`parseAmountToCents` в `utils/format.ts` (4 вью мигрированы), commission `:key` по выставленному backend'ом `CommissionEntry.id`, load-more спиннер. Bundle 10 файлов / 5 коммитов. +TD-F19 (company-views на shared хелперы), +TD-F20 (usePaginatedList + Vitest unit-инфра). FP-20 gap отмечен: InvestorSettingsView back-link. Agent i18n en-only по catch-up policy. Гейт зелёный: 312 backend tests + build.*
 
 *Version 2.10 | 2026-05-13 | iter 2.7 (Staff Platform Tab) + iter 2.7b (Events widget) + iter 2.8 (TD-FP18-PUBLIC-FLOW) закрыты. R1+R2 рефакторинг **полностью завершён** — все спеки переведены в v0.7/v0.9 final / fully implemented. FP-18 уточнён: useAvatar.ts — действительно единственное разрешённое исключение после iter 2.8 migration. Self-check checklist расширен: baseline check (git status + fetch + сверка с origin/main) и orphan component check после backend rename (lessons из iter 2.7 Block D + iter 2.7 B3). Добавлены TD-F16 (ROADMAP-LINKING), TD-F17 (CHIP-DEDUP), TD-F18 (FORMAT-BYTES-DEDUP).*
 

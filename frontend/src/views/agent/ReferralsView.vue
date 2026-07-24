@@ -130,11 +130,10 @@ onMounted(() => {
       v-else-if="agentStore.downlineError && agentStore.downline === null"
       class="ref__center"
     >
-      <CEmptyState :title="t('agent.referrals.errorTitle')">
-        <CButton variant="secondary" @click="retry">
-          {{ t('common.retry') }}
-        </CButton>
-      </CEmptyState>
+      <CEmptyState :title="t('agent.referrals.errorTitle')" />
+      <CButton variant="outline" size="sm" @click="retry">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- FP-25: whole-screen empty (both collections empty) -->
@@ -260,7 +259,9 @@ onMounted(() => {
 
 .ref__center {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 24px 0;
 }
 

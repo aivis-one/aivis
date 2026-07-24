@@ -135,37 +135,34 @@ export function resolveCoverImage(source: {
 
 /**
  * ISO timestamp -> locale date+time string (year, short month, day,
- * hour, minute). Wrapped in try/catch so a malformed timestamp
- * degrades to the raw input instead of throwing. Consolidates the
- * per-view `formatDate` copies in the agent balance view (and matches
- * the shared TransactionDetailSheet copy it will eventually replace).
+ * hour, minute). A malformed timestamp degrades to the raw input.
+ * `new Date(bad)` does NOT throw -- it yields an Invalid Date -- so the
+ * guard is an explicit getTime() NaN check, not try/catch. Consolidates
+ * the per-view `formatDate` copies in the agent balance view (and
+ * matches the shared TransactionDetailSheet copy it will replace).
  */
 export function formatDateTime(iso: string, locale?: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(locale, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString(locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 /**
  * ISO timestamp -> locale date string (no time-of-day). For list rows
  * where the clock time is noise rather than signal -- commission,
- * referral and leaderboard entries. Same try/catch degradation as
+ * referral and leaderboard entries. Same Invalid-Date degradation as
  * formatDateTime.
  */
 export function formatDate(iso: string, locale?: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(locale)
-  } catch {
-    return iso
-  }
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString(locale)
 }
 
 /**

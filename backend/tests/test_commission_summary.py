@@ -3,10 +3,12 @@
 # =============================================================================
 #
 # Tests cover:
-#   1: month-to-date sum: frozen + confirmed commission entries of the
-#      current UTC month are summed; reversed entries, volume-bonus
-#      entries and a previous-month entry are all excluded
+#   1: month-to-date sum: frozen + confirmed commission AND volume-bonus
+#      entries of the current UTC month are summed; reversed entries and
+#      a previous-month entry are excluded
 #   2: empty agent -> 0; non-agent -> 403
+#   3: /commissions/me offset pagination is stable when rows share
+#      created_at (id tie-breaker) -- no duplicate/skip across pages
 #
 # Previous-month entry is inserted as a direct PassiveLedger row with
 # an explicit created_at (the service helper always stamps "now").
@@ -66,8 +68,8 @@ def _ledger_row(
 async def test_commission_summary_month_window_and_status_parity(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """frozen+confirmed of the current month in; reversed, volume
-    bonus and previous-month entries out."""
+    """frozen+confirmed commission AND volume-bonus of the current month
+    in; reversed and previous-month entries out."""
     agent_id, token = await _make_agent(client, db_session)
 
     month_start = current_month_start()
@@ -89,7 +91,7 @@ async def test_commission_summary_month_window_and_status_parity(
             agent_id, amount_cents=5_000,
             status=LedgerStatus.REVERSED, reason=_commission_reason(),
         ),
-        # Volume bonus -- separate concept, excluded from this tile.
+        # Volume bonus -- part of monthly agent earnings, INCLUDED.
         _ledger_row(
             agent_id, amount_cents=700,
             status=LedgerStatus.CONFIRMED,
@@ -108,7 +110,9 @@ async def test_commission_summary_month_window_and_status_parity(
         "/api/v1/agent/commissions/summary", headers=auth_headers(token)
     )
     assert resp.status_code == 200, resp.text
-    assert resp.json() == {"month_to_date_cents": 3_000}
+    # 1000 + 2000 (commissions) + 700 (volume bonus); 5000 reversed and
+    # 9000 previous-month excluded.
+    assert resp.json() == {"month_to_date_cents": 3_700}
 
 
 @pytest.mark.asyncio
@@ -129,3 +133,39 @@ async def test_commission_summary_empty_and_403(
         headers=auth_headers(investor["session_token"]),
     )
     assert resp2.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_commissions_list_pagination_stable_on_equal_created_at(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Rows written in one transaction share created_at (func.now()).
+    Offset pagination must still be total-order stable via the id
+    tie-breaker -- no row duplicated or skipped across pages."""
+    agent_id, token = await _make_agent(client, db_session)
+
+    # Three commission rows in ONE commit -> identical created_at.
+    db_session.add_all([
+        _ledger_row(
+            agent_id, amount_cents=amt,
+            status=LedgerStatus.CONFIRMED, reason=_commission_reason(),
+        )
+        for amt in (1_000, 2_000, 3_000)
+    ])
+    await db_session.commit()
+
+    # Page one row at a time; collect ids.
+    seen: list[str] = []
+    for offset in range(3):
+        resp = await client.get(
+            f"/api/v1/agent/commissions/me?limit=1&offset={offset}",
+            headers=auth_headers(token),
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["total"] == 3
+        assert len(body["items"]) == 1
+        seen.append(body["items"][0]["id"])
+
+    # All three distinct -> no dup, no skip across pages.
+    assert len(set(seen)) == 3

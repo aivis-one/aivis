@@ -186,8 +186,12 @@ const hasError = computed(
     // failure with a still-valid cached balance would hide the whole
     // screen and retry could not clear it (review §2).
     (dashboardStore.error !== null && dashboardStore.summary === null)
-    || withdrawalsErrored.value
-    || payoutErrored.value,
+    // Same "no cached data to fall back on" gate for the local fetches:
+    // a transient reload failure after a first page already loaded (e.g.
+    // the refetch right after a successful withdrawal) must not replace
+    // the whole screen with an error and make the balance vanish (2.2).
+    || (withdrawalsErrored.value && withdrawals.value.length === 0)
+    || (payoutErrored.value && !payoutLoaded.value),
 )
 
 const initialLoading = computed(() => {

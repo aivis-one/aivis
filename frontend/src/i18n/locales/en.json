@@ -1191,6 +1191,7 @@
       "subtitle": "Your commission and bonus history",
       "errorTitle": "Couldn't load commissions",
       "loadMore": "Load more",
+      "loadMoreError": "Couldn't load more. Tap Load more to retry.",
       "level": "L{n}",
       "empty": {
         "title": "No commissions yet",

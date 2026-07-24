@@ -130,11 +130,10 @@ onMounted(() => {
       v-else-if="agentStore.commissionsError && agentStore.commissions.length === 0"
       class="comm__center"
     >
-      <CEmptyState :title="t('agent.commissions.errorTitle')">
-        <CButton variant="secondary" @click="retry">
-          {{ t('common.retry') }}
-        </CButton>
-      </CEmptyState>
+      <CEmptyState :title="t('agent.commissions.errorTitle')" />
+      <CButton variant="outline" size="sm" @click="retry">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- FP-25: self-hiding empty state -->
@@ -212,6 +211,13 @@ onMounted(() => {
           {{ t('agent.commissions.loadMore') }}
         </CButton>
       </div>
+
+      <p
+        v-if="agentStore.commissionsError && agentStore.commissions.length > 0"
+        class="comm__loadmore-error"
+      >
+        {{ t('agent.commissions.loadMoreError') }}
+      </p>
     </template>
   </div>
 </template>
@@ -245,8 +251,17 @@ onMounted(() => {
 
 .comm__center {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 24px 0;
+}
+
+.comm__loadmore-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 /* -- List -- */

@@ -157,7 +157,7 @@ async def get_my_commissions(
                 | PassiveLedger.reason.startswith("volume_bonus:")
             ),
         )
-        .order_by(desc(PassiveLedger.created_at))
+        .order_by(desc(PassiveLedger.created_at), desc(PassiveLedger.id))
         .limit(limit)
         .offset(offset)
     )
@@ -287,18 +287,19 @@ async def get_commission_month_to_date(
     agent_id: UUID,
     session: AsyncSession,
 ) -> int:
-    """Server-side commission sum for the current UTC month.
+    """Server-side agent-earnings sum for the current UTC month.
 
     Closes TD-COMMISSION-MONTH-AGG: the dashboard used to sum the
     first 100 entries of /commissions/me client-side with an
     approximation indicator on truncation.
 
-    Filter parity with the dashboard's "commission this month" tile:
-      * "commission:" reason prefix ONLY -- volume bonuses are a
-        separate concept there (NOTE: /commissions/me itself does NOT
-        filter by status and lists reversed entries with their status;
-        this aggregate deliberately counts frozen+confirmed only);
-      * statuses frozen + confirmed -- reversed (clawed-back) excluded;
+    Matches what that removed client-side sum counted -- BOTH commission
+    and volume-bonus entries (the "Commission this month" tile aggregates
+    the agent's whole passive earnings for the month):
+      * reason prefix "commission:" OR "volume_bonus:";
+      * statuses frozen + confirmed -- reversed (clawed-back) excluded
+        (the /commissions/me LIST does list reversed entries with their
+        status; this aggregate deliberately drops them);
       * window by PassiveLedger.created_at >= first instant of the
         current UTC month (current_month_start, same helper the
         leaderboard uses).
@@ -312,7 +313,10 @@ async def get_commission_month_to_date(
         func.coalesce(func.sum(PassiveLedger.amount_cents), 0)
     ).where(
         PassiveLedger.user_id == agent_id,
-        PassiveLedger.reason.startswith("commission:"),
+        (
+            PassiveLedger.reason.startswith("commission:")
+            | PassiveLedger.reason.startswith("volume_bonus:")
+        ),
         PassiveLedger.status.in_(
             [LedgerStatus.FROZEN, LedgerStatus.CONFIRMED]
         ),
