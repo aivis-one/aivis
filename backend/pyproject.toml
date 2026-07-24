@@ -13,7 +13,12 @@ description = "CBSHOME -- Investment platform"
 requires-python = ">=3.12"
 
 dependencies = [
-    "fastapi>=0.115.0,<1.0",
+    # FastAPI 0.137 reworked include_router (a sub-router's routes are no
+    # longer flattened into app.routes -- they sit behind a lazy
+    # _IncludedRouter wrapper). Cap below the next minor so a rebuild
+    # cannot silently pull an unvetted breaking release; bump the cap
+    # deliberately after testing. A lock file would be the stronger fix.
+    "fastapi>=0.115.0,<0.140",
     "uvicorn[standard]>=0.30.0,<1.0",
     "sqlalchemy[asyncio]>=2.0.30,<3.0",
     "asyncpg>=0.30.0,<1.0",

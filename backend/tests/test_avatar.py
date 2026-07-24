@@ -521,18 +521,38 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
     Operations without live endpoints (change_password, change_email,
     delete_account, access_staff_shell) are intentionally absent from
     the expected set; extend it when their endpoints appear.
+
+    The walk is recursive: since FastAPI 0.137 include_router no longer
+    flattens a sub-router's routes into app.routes -- it inserts a lazy
+    _IncludedRouter wrapper that keeps them in .original_router.routes.
+    Descending through that wrapper (duck-typed on its presence) keeps
+    the check working on both the flat (< 0.137) and wrapped (>= 0.137)
+    representations. Fail-closed is preserved: dropping a guard removes
+    the dependency from its route's dependant, so the expected set can
+    no longer be satisfied and the test fails.
     """
     from app.main import app
+    from starlette.routing import BaseRoute
 
     guarded: set[str] = set()
-    for route in app.routes:
-        dependant = getattr(route, "dependant", None)
-        if dependant is None:
-            continue
-        for dep in dependant.dependencies:
-            name = getattr(dep.call, "__name__", "")
-            if name.startswith("forbid_avatar_"):
-                guarded.add(name)
+
+    def collect(routes: list[BaseRoute]) -> None:
+        for route in routes:
+            # FastAPI >= 0.137: a sub-router's routes live behind a lazy
+            # _IncludedRouter wrapper rather than flattened in place.
+            original = getattr(route, "original_router", None)
+            if original is not None:
+                collect(original.routes)
+                continue
+            dependant = getattr(route, "dependant", None)
+            if dependant is None:
+                continue
+            for dep in dependant.dependencies:
+                name = getattr(dep.call, "__name__", "")
+                if name.startswith("forbid_avatar_"):
+                    guarded.add(name)
+
+    collect(app.routes)
 
     expected = {
         "forbid_avatar_create_withdrawal",
