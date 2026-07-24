@@ -634,19 +634,32 @@ async def test_snapshot_resolves_level_3_platform_lang(
     The seeded platform 'en' template (L4) still exists -- we just don't
     touch it -- but L3 priority beats L4 in the CASE ordering when
     investor_language matches.
+
+    Uses a per-test unique language code rather than the shared
+    SYNTHETIC_LANG, the same way test_snapshot_resolves_level_4 does:
+    find_active_template resolves stage 3 with ORDER BY priority LIMIT 1
+    and NO version/id tie-break, so two active platform rows sharing one
+    language (residue from an earlier run of this test on a persistent
+    DB -- the direct _insert_template bypasses reconcile and never
+    archives the previous row) would let the query return an arbitrary
+    one. A unique code guarantees exactly one platform+lang row at stage
+    3 for this run.
     """
     admin_token = await _admin_token(client, db_session)
     _, product = await _create_company_with_product(client, admin_token)
+
+    # Per-test unique, non-en language code. String(10) column -> 9 chars fits.
+    l3_lang = f"l3_{uuid.uuid4().hex[:6]}"
 
     l3 = await _insert_template(
         db_session,
         company_id=None,
         kind=DocumentTemplateKind.PURCHASE_AGREEMENT,
-        language=SYNTHETIC_LANG,
+        language=l3_lang,
     )
 
     _, purchase = await _make_purchase_with_language(
-        client, db_session, product["id"], language=SYNTHETIC_LANG
+        client, db_session, product["id"], language=l3_lang
     )
 
     assert purchase.purchase_agreement_template_id == l3.id, (
