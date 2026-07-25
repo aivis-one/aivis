@@ -43,7 +43,7 @@ import CBottomSheet from '@/components/ui/CBottomSheet.vue'
 import { CEmptyState, CLoader } from '@/components/ui'
 import { getTransaction } from '@/api/transactions'
 import { useToast } from '@/composables/useToast'
-import { formatPrice, formatSignedPrice } from '@/utils/format'
+import { formatDateTime, formatPrice, formatSignedPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { TransactionResponse } from '@/api/types'
 
@@ -54,7 +54,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: [] }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { showToast } = useToast()
 
 const txn = ref<TransactionResponse | null>(null)
@@ -132,20 +132,6 @@ async function copyValue(value: string): Promise<void> {
   }
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
-}
-
 async function load(id: string): Promise<void> {
   const epoch = ++fetchEpoch
   loading.value = true
@@ -212,7 +198,7 @@ function onClose(): void {
         <div class="tds__amount" :class="amountClass">
           {{ signedAmount }}
         </div>
-        <div class="tds__date">{{ formatDate(txn.created_at) }}</div>
+        <div class="tds__date">{{ formatDateTime(txn.created_at, locale) }}</div>
       </div>
 
       <!-- Details key-value -->

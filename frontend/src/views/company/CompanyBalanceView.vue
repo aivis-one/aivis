@@ -40,7 +40,7 @@ import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { useToast } from '@/composables/useToast'
-import { formatPrice } from '@/utils/format'
+import { formatDateTime, formatPrice, parseAmountToCents } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { WithdrawalResponse } from '@/api/types'
 
@@ -48,7 +48,7 @@ const MIN_WITHDRAWAL_CENTS = 1000
 const MAX_WITHDRAWAL_CENTS = 10_000_000
 const PER_PAGE = 20
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const dashboardStore = useCompanyDashboardStore()
 const { showToast } = useToast()
 
@@ -183,9 +183,13 @@ const initialLoading = computed(() => {
 
 const hasError = computed(
   () =>
-    dashboardStore.error !== null
-    || withdrawalsErrored.value
-    || payoutErrored.value,
+    // Gate every error source on "no cached data to fall back on": a
+    // transient reload failure (e.g. the refetch after a successful
+    // withdrawal) must not blank the whole money screen and make the
+    // balance vanish (review §2/2.2, mirrors AgentBalanceView).
+    (dashboardStore.error !== null && dashboardStore.summary === null)
+    || (withdrawalsErrored.value && withdrawals.value.length === 0)
+    || (payoutErrored.value && !payoutLoaded.value),
 )
 
 // ---------------------------------------------------------------------------
@@ -207,20 +211,6 @@ function statusLabel(status: string): string {
   return tOrRaw(t, `comp.balance.withdrawals.status.${status}`, status)
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Withdraw form
 // ---------------------------------------------------------------------------
@@ -230,13 +220,9 @@ const withdrawAmountInput = ref('')
 const withdrawSubmitting = ref(false)
 const withdrawError = ref('')
 
-const parsedAmountCents = computed<number | null>(() => {
-  const raw = withdrawAmountInput.value.trim()
-  if (!raw) return null
-  const dollars = Number(raw)
-  if (!Number.isFinite(dollars) || dollars <= 0) return null
-  return Math.round(dollars * 100)
-})
+const parsedAmountCents = computed<number | null>(
+  () => parseAmountToCents(withdrawAmountInput.value),
+)
 
 const withdrawValidationKey = computed<string | null>(() => {
   const cents = parsedAmountCents.value
@@ -315,7 +301,7 @@ const payoutEditInput = ref('')
 const payoutSubmitting = ref(false)
 const payoutError = ref('')
 
-const payoutValidation = computed<true | 'json' | 'object' | null>(() => {
+const payoutValidation = computed<true | 'json' | 'object' | 'empty' | null>(() => {
   const raw = payoutEditInput.value.trim()
   if (!raw) return null
   let parsed: unknown
@@ -327,6 +313,12 @@ const payoutValidation = computed<true | 'json' | 'object' | null>(() => {
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return 'object'
   }
+  // An empty object would save as "{}" -> hasPayoutDetails reads false
+  // afterwards, leaving the withdraw gate stuck on "no payout details"
+  // despite a successful save (review §6, mirrors AgentSettings).
+  if (Object.keys(parsed as Record<string, unknown>).length === 0) {
+    return 'empty'
+  }
   return true
 })
 
@@ -334,6 +326,7 @@ const payoutValidationKey = computed<string | null>(() => {
   const v = payoutValidation.value
   if (v === 'json') return 'comp.balance.payout.form.errorJson'
   if (v === 'object') return 'comp.balance.payout.form.errorObject'
+  if (v === 'empty') return 'comp.balance.payout.form.errorEmpty'
   return null
 })
 
@@ -356,14 +349,30 @@ function closePayoutSheet(): void {
 
 async function submitPayout(): Promise<void> {
   if (!canSubmitPayout.value) return
-  const parsed = JSON.parse(payoutEditInput.value) as Record<string, unknown>
+  // canSubmitPayout === true guarantees payoutValidation === true (the
+  // input already parsed to a non-empty object), so this cannot throw --
+  // kept explicit rather than relying on that invariant silently (2.7).
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(payoutEditInput.value) as Record<string, unknown>
+  } catch {
+    payoutError.value = t('comp.balance.payout.form.errorJson')
+    return
+  }
   payoutSubmitting.value = true
   payoutError.value = ''
   try {
     await updatePayoutDetails(parsed)
     showToast(t('comp.balance.payout.form.successToast'), 'success')
+    // PUT replaces payout_details wholesale -> the submitted object IS
+    // the new server state. Write it locally instead of refetching: a
+    // failing refetch here would flip payoutErrored and replace the
+    // just-saved details with an error screen right after the success
+    // toast (review 2.4, mirrors AgentSettings).
+    payoutDetails.value = parsed
+    payoutLoaded.value = true
+    payoutErrored.value = false
     closePayoutSheet()
-    await fetchPayoutDetails()
   } catch (err) {
     payoutError.value =
       err instanceof Error && err.message
@@ -484,7 +493,7 @@ onMounted(() => {
                 </span>
               </div>
               <div class="cbal__item-line cbal__item-line--sub">
-                <span class="cbal__item-date">{{ formatDate(w.created_at) }}</span>
+                <span class="cbal__item-date">{{ formatDateTime(w.created_at, locale) }}</span>
                 <span
                   v-if="w.rejection_reason"
                   class="cbal__item-reason"

@@ -1099,6 +1099,7 @@
           "cancel": "Cancel",
           "errorJson": "Must be valid JSON",
           "errorObject": "Must be a JSON object",
+          "errorEmpty": "Add at least one payout field",
           "error": "Could not save payout details",
           "successToast": "Payout details updated"
         }
