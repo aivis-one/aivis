@@ -24,7 +24,7 @@
 #   15. Set up backup cron (4 AM daily, 7-day rotation)
 #
 # USAGE:
-#   curl -fsSL https://raw.githubusercontent.com/aivis-one/cbshome/main/scripts/install_cbshome.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/aivis-one/aivis/main/scripts/install_cbshome.sh | bash
 #
 # REQUIREMENTS:
 #   - Ubuntu 22.04+ (fresh VPS, root access)
@@ -33,7 +33,7 @@
 #       api.cbshome.org
 #       mail.cbshome.org
 #       storage-mc-admin.cbshome.org
-#   - GitHub repository aivis-one/cbshome exists
+#   - GitHub repository aivis-one/aivis exists
 # ==============================================================================
 
 set -euo pipefail
@@ -43,7 +43,7 @@ set -euo pipefail
 # ==============================================================================
 
 INSTALL_BASE="/opt/cbshome"
-GITHUB_REPO="aivis-one/cbshome"
+GITHUB_REPO="aivis-one/aivis"
 DEPLOY_USER="cbshome"
 API_DOMAIN="api.cbshome.org"
 FRONTEND_DOMAIN="cbshome.org"

@@ -3,7 +3,7 @@
 **Версия:** 1.6
 **Дата:** 12 мая 2026
 **Статус:** Active
-**Репозиторий:** https://github.com/aivis-one/cbshome
+**Репозиторий:** https://github.com/aivis-one/aivis
 
 ---
 
@@ -531,7 +531,7 @@ import { PAYMENT_STATUS_LABEL } from '@/utils/displayHelpers'
 ## 5. Структура репозитория
 
 ```
-cbshome/                           -- GitHub: aivis-one/cbshome
+cbshome/                           -- GitHub: aivis-one/aivis
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                -- FastAPI app + lifespan
@@ -575,7 +575,7 @@ cbshome/                           -- GitHub: aivis-one/cbshome
 1. Preflight: OS, RAM, disk, DNS
 2. System deps: Docker, Nginx, Certbot, UFW
 3. Deploy user `cbshome` (non-root, в docker group)
-4. SSH deploy key -> GitHub (`aivis-one/cbshome`) -> clone repo
+4. SSH deploy key -> GitHub (`aivis-one/aivis`) -> clone repo
 5. Генерация `.env` с рандомными паролями + запрос чувствительных переменных
 6. Nginx reverse proxy (`api.cbshome.org`, `cbshome.org`) + SSL
 7. `docker compose up` -> healthcheck -> миграции Alembic -> seed системного пользователя Platform
@@ -710,4 +710,4 @@ Phase 2 -- формальная e-signature контрактов. MVP: checkbox 
 
 ---
 
-*Version 1.5 | 2026-03-27 | aivis-one/cbshome*
+*Version 1.5 | 2026-03-27 | aivis-one/aivis*

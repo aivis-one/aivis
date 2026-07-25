@@ -3,7 +3,7 @@
 **Версия:** 3.7
 **Дата:** 13 мая 2026
 **Статус:** Active
-**Репозиторий:** https://github.com/aivis-one/cbshome
+**Репозиторий:** https://github.com/aivis-one/aivis
 
 **Зависимости (читать перед работой):**
 - `CBSHOME-Design-Document.md` — Конституция v1.6
@@ -39,7 +39,7 @@
 **Цель:** Базовая структура репозитория, готовая к разработке на VPS.
 
 **Задачи:**
-- [x] GitHub репозиторий `aivis-one/cbshome`
+- [x] GitHub репозиторий `aivis-one/aivis`
 - [x] `.gitignore` (PyCharm, VS Code, .env, __pycache__)
 - [x] Структура папок:
 ```
@@ -222,7 +222,7 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
 - [x] System deps: Docker, Nginx, Certbot, UFW, git, curl, dnsutils
 - [x] UFW: 22/80/443 + Docker→Postfix (172.16.0.0/12 → port 25)
 - [x] Deploy user `cbshome` (non-root, в docker group)
-- [x] SSH deploy key -> GitHub (`aivis-one/cbshome`) -> clone repo
+- [x] SSH deploy key -> GitHub (`aivis-one/aivis`) -> clone repo
 - [x] Генерация `.env` с рандомными паролями (openssl rand)
 - [x] Интерактивный ввод секретов:
   - `SUMSUB_API_KEY` (placeholder, можно пропустить)
