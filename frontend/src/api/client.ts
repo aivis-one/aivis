@@ -63,7 +63,7 @@ export class ApiResponseError extends Error {
    * message when undefined (header missing, malformed, or non-positive).
    *
    * Note: HTTP defines Retry-After as either delta-seconds (int) or an
-   * HTTP-date. Our backend (app/main.py CBSError handler) only emits
+   * HTTP-date. Our backend (app/main.py AivisError handler) only emits
    * delta-seconds; the date variant is intentionally not parsed here.
    */
   retryAfter?: number
@@ -163,7 +163,7 @@ function extractErrorMessage(status: number, data: unknown): string {
  * integer. Returns undefined when the header is absent, not parseable
  * as a base-10 integer, or non-positive.
  *
- * Backend emits delta-seconds only (see app/main.py CBSError handler);
+ * Backend emits delta-seconds only (see app/main.py AivisError handler);
  * the HTTP-date variant of Retry-After is out of scope.
  *
  * Exported (R20 FE-20-01) so api/attachments.ts can reuse the same

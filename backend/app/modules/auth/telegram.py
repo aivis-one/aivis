@@ -174,6 +174,6 @@ async def check_auth_rate_limit(telegram_id: int) -> None:
 
     Raises:
         RateLimitError: If rate limit is exceeded. Propagates to the
-            global CBSError handler; not wrapped here.
+            global AivisError handler; not wrapped here.
     """
     await check_rate_limit(f"auth_rate:{telegram_id}")

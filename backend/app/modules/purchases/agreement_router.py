@@ -44,7 +44,7 @@
 #   load_agreement_data raises TemplateMissingError when the Purchase
 #   row exists but template_id is NULL; render_ownership_html raises
 #   the same when the 4-stage fallback finds nothing. Both surface to
-#   the CBSError handler as 500 with code "agreement_template_missing"
+#   the AivisError handler as 500 with code "agreement_template_missing"
 #   and a Russian-language message ("Договор для этой покупки не
 #   сконфигурирован (system error)").
 #

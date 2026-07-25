@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// CBS HOME logo — SVG icon + text, configurable height.
+// AIVIS.ONE logo — SVG icon + text, configurable height.
 
 withDefaults(
   defineProps<{
@@ -14,9 +14,9 @@ withDefaults(
 </script>
 
 <template>
-  <span class="cbs-logo">
+  <span class="aivis-logo">
     <svg
-      class="cbs-logo-icon"
+      class="aivis-logo-icon"
       viewBox="0 0 100 100"
       xmlns="http://www.w3.org/2000/svg"
       :style="{ width: height + 'px', height: height + 'px' }"
@@ -34,23 +34,23 @@ withDefaults(
         C
       </text>
     </svg>
-    <span v-if="showText" class="cbs-logo-text">CBS HOME</span>
+    <span v-if="showText" class="aivis-logo-text">AIVIS.ONE</span>
   </span>
 </template>
 
 <style scoped>
-.cbs-logo {
+.aivis-logo {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   text-decoration: none;
 }
 
-.cbs-logo-icon {
+.aivis-logo-icon {
   flex-shrink: 0;
 }
 
-.cbs-logo-text {
+.aivis-logo-text {
   font-size: 16px;
   font-weight: 700;
   color: var(--primary-dark);

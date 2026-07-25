@@ -214,7 +214,7 @@ async def auth_telegram(
 
     # Step 3: Rate limit.
     # iter 2.5-finishing: rate-limit hits raise RateLimitError (HTTP 429)
-    # and propagate to the global CBSError handler unchanged. Earlier
+    # and propagate to the global AivisError handler unchanged. Earlier
     # revisions caught and remapped them to 400 alongside invalid-signature
     # and replay errors -- that masked the rate-limit signal. Invalid
     # signature and replay still raise TelegramValidationError above and

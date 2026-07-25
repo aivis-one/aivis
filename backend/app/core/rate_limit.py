@@ -24,7 +24,7 @@
 # iter 2.5-finishing FIX:
 #   On exceeded limit, raise RateLimitError (HTTP 429) with
 #   retry_after_seconds populated from the Redis key TTL. The global
-#   CBSError handler in main.py turns retry_after_seconds into the
+#   AivisError handler in main.py turns retry_after_seconds into the
 #   standard `Retry-After` response header. Previously the helper raised
 #   BadRequestError (HTTP 400), which was semantically wrong and forced
 #   clients to parse the error message to distinguish rate-limit hits

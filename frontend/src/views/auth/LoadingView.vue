@@ -2,14 +2,14 @@
 // Full-screen loading view displayed during auth initialization.
 
 import { useI18n } from 'vue-i18n'
-import CbsLogo from '@/components/ui/CbsLogo.vue'
+import AivisLogo from '@/components/ui/AivisLogo.vue'
 
 const { t } = useI18n()
 </script>
 
 <template>
   <div class="loading-view">
-    <CbsLogo :height="64" />
+    <AivisLogo :height="64" />
     <div class="loading-spinner" />
     <p class="loading-text">{{ t('common.loading') }}</p>
   </div>

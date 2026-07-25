@@ -59,7 +59,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.email import send_email
-from app.core.exceptions import BadRequestError, CBSError, NotFoundError
+from app.core.exceptions import BadRequestError, AivisError, NotFoundError
 from app.modules.companies.models import CompanyDocumentTemplate, CompanyProfile
 from app.modules.companies.service import (
     get_template_html_cached,
@@ -78,7 +78,7 @@ from app.modules.users.models import User
 logger = structlog.get_logger()
 
 
-class TemplateMissingError(CBSError):
+class TemplateMissingError(AivisError):
     """Raised when Purchase.purchase_agreement_template_id is NULL.
 
     Surfaced as HTTP 500 because in normal production every Purchase has
@@ -282,7 +282,7 @@ def generate_agreement_pdf(html: str) -> bytes:
 
     if result.err:
         logger.error("agreement_pdf_generation_failed", errors=result.err)
-        raise CBSError(
+        raise AivisError(
             message="Failed to generate agreement PDF",
             code="pdf_generation_failed",
             status_code=500,
@@ -319,7 +319,7 @@ async def send_agreement_email(
             f"Units: {data.purchase.units}\n"
             f"Total paid: {format_cents(data.purchase.paid_cents)}\n\n"
             f"Best regards,\n"
-            f"CBSHOME Platform"
+            f"AIVIS.ONE Platform"
         ),
         attachment=(filename, pdf_bytes, "application/pdf"),
     )

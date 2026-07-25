@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # HIERARCHY:
-#   CBSError (base)
+#   AivisError (base)
 #   ├── UnauthorizedError        -> 401
 #   ├── ForbiddenError           -> 403
 #   ├── NotFoundError            -> 404
@@ -17,13 +17,13 @@
 #   from app.core.exceptions import NotFoundError
 #   raise NotFoundError("Company not found", code="company_not_found")
 #
-# FastAPI exception handler in main.py converts CBSError -> JSON response:
+# FastAPI exception handler in main.py converts AivisError -> JSON response:
 #   {"error": "<code>", "message": "<message>"}
 # =============================================================================
 
 
-class CBSError(Exception):
-    """Base exception for all CBSHOME application errors.
+class AivisError(Exception):
+    """Base exception for all AIVIS.ONE application errors.
 
     Attributes:
         message: Human-readable error description.
@@ -43,7 +43,7 @@ class CBSError(Exception):
         super().__init__(message)
 
 
-class UnauthorizedError(CBSError):
+class UnauthorizedError(AivisError):
     """Authentication required or token invalid (HTTP 401)."""
 
     def __init__(
@@ -54,7 +54,7 @@ class UnauthorizedError(CBSError):
         super().__init__(message=message, code=code, status_code=401)
 
 
-class ForbiddenError(CBSError):
+class ForbiddenError(AivisError):
     """Action not allowed for this user (HTTP 403)."""
 
     def __init__(
@@ -65,7 +65,7 @@ class ForbiddenError(CBSError):
         super().__init__(message=message, code=code, status_code=403)
 
 
-class NotFoundError(CBSError):
+class NotFoundError(AivisError):
     """Resource not found (HTTP 404)."""
 
     def __init__(
@@ -76,7 +76,7 @@ class NotFoundError(CBSError):
         super().__init__(message=message, code=code, status_code=404)
 
 
-class ConflictError(CBSError):
+class ConflictError(AivisError):
     """Action conflicts with current state (HTTP 409).
 
     Examples: duplicate purchase, concurrent plan creation.
@@ -90,7 +90,7 @@ class ConflictError(CBSError):
         super().__init__(message=message, code=code, status_code=409)
 
 
-class BadRequestError(CBSError):
+class BadRequestError(AivisError):
     """Invalid request beyond Pydantic validation (HTTP 400).
 
     Examples: buying a hidden product, insufficient balance.
@@ -126,7 +126,7 @@ class InsufficientBalanceError(BadRequestError):
         )
 
 
-class RateLimitError(CBSError):
+class RateLimitError(AivisError):
     """Rate limit exceeded (HTTP 429 Too Many Requests).
 
     iter 2.5-finishing: previously check_rate_limit() raised
@@ -139,7 +139,7 @@ class RateLimitError(CBSError):
     NOT a subclass of BadRequestError -- callers that catch
     BadRequestError to wrap rate-limit hits into a different exception
     (see auth/telegram.py history) should now let the 429 propagate
-    untouched so the global CBSError handler in main.py can emit the
+    untouched so the global AivisError handler in main.py can emit the
     Retry-After header.
 
     Attributes:
@@ -159,7 +159,7 @@ class RateLimitError(CBSError):
         self.retry_after_seconds = retry_after_seconds
 
 
-class AMLViolationError(CBSError):
+class AMLViolationError(AivisError):
     """AML matrix violation -- Active -> Passive ledger route forbidden (HTTP 403).
 
     Raised by ledger service when a transfer would violate

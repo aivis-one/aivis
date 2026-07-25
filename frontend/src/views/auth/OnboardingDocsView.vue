@@ -24,7 +24,7 @@ import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import type { DocumentResponse } from '@/api/types'
-import CbsLogo from '@/components/ui/CbsLogo.vue'
+import AivisLogo from '@/components/ui/AivisLogo.vue'
 import { CModal } from '@/components/ui'
 
 const router = useRouter()
@@ -186,7 +186,7 @@ async function handleSignAll(): Promise<void> {
 <template>
   <div class="auth-screen">
     <header class="auth-header">
-      <CbsLogo :height="28" />
+      <AivisLogo :height="28" />
     </header>
 
     <div class="auth-content">

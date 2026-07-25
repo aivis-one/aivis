@@ -8,7 +8,7 @@
 
 import { useRouter } from 'vue-router'
 import { ChevronLeft } from 'lucide-vue-next'
-import CbsLogo from '@/components/ui/CbsLogo.vue'
+import AivisLogo from '@/components/ui/AivisLogo.vue'
 import { safeNavigate } from '@/composables/safeNavigate'
 
 withDefaults(
@@ -37,7 +37,7 @@ function goBack(): void {
       <button v-if="showBack" class="c-header__back" @click="goBack">
         <ChevronLeft :size="24" />
       </button>
-      <CbsLogo v-if="showLogo && !showBack" :height="28" :show-text="false" />
+      <AivisLogo v-if="showLogo && !showBack" :height="28" :show-text="false" />
       <span v-if="title" class="c-header__title">{{ title }}</span>
     </div>
     <div class="c-header__right">

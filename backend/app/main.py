@@ -126,7 +126,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from app.core.config import APP_VERSION, settings
 from app.core.database import dispose_engine, get_engine
-from app.core.exceptions import CBSError, RateLimitError
+from app.core.exceptions import AivisError, RateLimitError
 from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
 from app.core.redis import close_redis, get_redis, init_redis
@@ -413,7 +413,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="CBSHOME API",
+    title="AIVIS.ONE API",
     description="Investment platform",
     version=APP_VERSION,
     lifespan=lifespan,
@@ -507,9 +507,9 @@ app.include_router(ownership_router)
 # Exception Handlers
 # ---------------------------------------------------------------------------
 
-@app.exception_handler(CBSError)
-async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
-    """Convert CBSError exceptions into proper HTTP JSON responses.
+@app.exception_handler(AivisError)
+async def aivis_error_handler(request: Request, exc: AivisError) -> JSONResponse:
+    """Convert AivisError exceptions into proper HTTP JSON responses.
 
     iter 2.5-finishing: RateLimitError carries retry_after_seconds and
     is surfaced with the standard HTTP `Retry-After` response header,
@@ -537,7 +537,7 @@ async def cbs_error_handler(request: Request, exc: CBSError) -> JSONResponse:
 @app.get("/")
 async def root() -> dict:
     """API info."""
-    return {"name": "CBSHOME API", "version": APP_VERSION}
+    return {"name": "AIVIS.ONE API", "version": APP_VERSION}
 
 
 @app.get("/health")

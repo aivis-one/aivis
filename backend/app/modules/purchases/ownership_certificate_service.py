@@ -47,7 +47,7 @@
 #   QC-11-01  -- helpers (extract_investor_*, format_cents) imported
 #                from purchases.document_utils, not as underscore-
 #                prefixed cross-module imports.
-#   ERR-11-01 -- generate_ownership_pdf raises CBSError(500), not 400.
+#   ERR-11-01 -- generate_ownership_pdf raises AivisError(500), not 400.
 #   SEC-11-01 -- OwnershipData no longer stores the full User ORM
 #                instance (which carries credentials / password_hash).
 #                Only the minimum required scalars (investor_id +
@@ -69,7 +69,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.email import send_email
-from app.core.exceptions import BadRequestError, CBSError, NotFoundError
+from app.core.exceptions import BadRequestError, AivisError, NotFoundError
 from app.modules.companies.constants import DocumentTemplateKind
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.service import (
@@ -348,7 +348,7 @@ def generate_ownership_pdf(html: str) -> bytes:
 
     if result.err:
         logger.error("ownership_pdf_generation_failed", errors=result.err)
-        raise CBSError(
+        raise AivisError(
             message="Failed to generate ownership certificate PDF",
             code="pdf_generation_failed",
             status_code=500,
@@ -385,7 +385,7 @@ async def send_ownership_email(
             f"Current value: {format_cents(data.current_value_cents)}\n"
             f"As of: {data.as_of_date.strftime('%B %d, %Y')}\n\n"
             f"Best regards,\n"
-            f"CBSHOME Platform"
+            f"AIVIS.ONE Platform"
         ),
         attachment=(filename, pdf_bytes, "application/pdf"),
     )

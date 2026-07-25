@@ -43,7 +43,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
-import CbsLogo from '@/components/ui/CbsLogo.vue'
+import AivisLogo from '@/components/ui/AivisLogo.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -123,7 +123,7 @@ async function handleRegister(): Promise<void> {
 <template>
   <div class="auth-screen">
     <header class="auth-header">
-      <CbsLogo :height="28" />
+      <AivisLogo :height="28" />
       <button type="button" class="btn-link btn-back" @click="goToLogin">
         <svg
           viewBox="0 0 24 24"

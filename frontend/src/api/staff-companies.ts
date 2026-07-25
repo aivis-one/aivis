@@ -487,7 +487,7 @@ export async function uploadRoadmapCover(
     }
 
     // Parse the JSON body. On success it's the RoadmapItemResponse; on
-    // error it's the FastAPI detail / CBSError message envelope.
+    // error it's the FastAPI detail / AivisError message envelope.
     let data: unknown
     try {
       data = await response.json()
