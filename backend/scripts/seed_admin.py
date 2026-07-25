@@ -105,7 +105,7 @@ async def seed_admin(email: str, password: str) -> None:
                         "password_hash": password_hash,
                     },
                 },
-                profile={"first_name": "Admin", "last_name": "CBSHOME"},
+                profile={"first_name": "Admin", "last_name": "AIVIS.ONE"},
                 language="en",
             )
             session.add(admin)

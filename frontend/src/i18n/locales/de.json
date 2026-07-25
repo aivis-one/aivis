@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "CBS HOME"
+    "name": "AIVIS.ONE"
   },
   "common": {
     "save": "Speichern",
@@ -27,7 +27,7 @@
     "back": "Zurück",
     "login": {
       "title": "Anmelden",
-      "subtitle": "Melden Sie sich bei CBS HOME an, um Ihre Investitionen zu verwalten",
+      "subtitle": "Melden Sie sich bei AIVIS.ONE an, um Ihre Investitionen zu verwalten",
       "email": "E-Mail",
       "password": "Passwort",
       "passPlaceholder": "Passwort eingeben",
@@ -40,7 +40,7 @@
     },
     "register": {
       "title": "Konto erstellen",
-      "subtitle": "Werden Sie Teil der CBS HOME Investitionsplattform",
+      "subtitle": "Werden Sie Teil der AIVIS.ONE Investitionsplattform",
       "email": "E-Mail",
       "password": "Passwort",
       "passwordHint": "Mindestens 8 Zeichen, Buchstaben und Zahlen",

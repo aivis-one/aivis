@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "CBS HOME"
+    "name": "AIVIS.ONE"
   },
   "common": {
     "save": "Save",
@@ -28,7 +28,7 @@
     "back": "Back",
     "login": {
       "title": "Sign In",
-      "subtitle": "Sign in to CBS HOME to manage your investments",
+      "subtitle": "Sign in to AIVIS.ONE to manage your investments",
       "email": "Email",
       "password": "Password",
       "passPlaceholder": "Enter password",
@@ -41,7 +41,7 @@
     },
     "register": {
       "title": "Create Account",
-      "subtitle": "Join the CBS HOME investment platform",
+      "subtitle": "Join the AIVIS.ONE investment platform",
       "email": "Email",
       "password": "Password",
       "passwordHint": "Minimum 8 characters, letters and numbers",
@@ -1325,7 +1325,7 @@
     },
     "companyList": {
       "title": "Discover companies",
-      "subtitle": "Explore companies raising on CBS HOME.",
+      "subtitle": "Explore companies raising on AIVIS.ONE.",
       "errorTitle": "Couldn't load companies",
       "errorRetry": "Try again",
       "empty": {

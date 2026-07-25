@@ -11,7 +11,7 @@
 //   - Click target is `public-company-overview` (anonymous detail
 //     page) instead of the role-aware investor-/agent- variant.
 //   - i18n strings come from the `public.companyList.*` block so
-//     marketing copy ("Discover companies on CBS HOME ...") can
+//     marketing copy ("Discover companies on AIVIS.ONE ...") can
 //     differ from the investor-side strings ("Companies you can
 //     buy from", etc.) without coupling.
 //   - The header CTA inside PublicShell ("Sign in") covers the

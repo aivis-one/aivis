@@ -40,7 +40,7 @@
  * The `translated === key` check relies on vue-i18n returning the raw
  * key string when the key is not found. This is the default. Projects
  * that override missingWarn to a custom handler that swallows the key
- * (returns '' or null) would break this discriminator silently. CBSHOME
+ * (returns '' or null) would break this discriminator silently. AIVIS.ONE
  * keeps defaults in src/i18n/index.ts; do not change that without
  * updating tOrRaw to match.
  */

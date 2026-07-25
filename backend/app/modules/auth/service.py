@@ -102,7 +102,7 @@ async def _send_verification_email(email: str, code: str) -> None:
     try:
         await send_email(
             recipient=email,
-            subject="CBS HOME - Email Verification",
+            subject="AIVIS.ONE - Email Verification",
             body=(
                 f"Your verification code is: {code}\n\n"
                 f"This code expires in {_VERIFICATION_CODE_TTL_MINUTES} minutes.\n\n"

@@ -29,7 +29,7 @@
 #   - default values (fields with defaults are optional)
 #
 # SKIPPED:
-#   - allOf, oneOf, discriminator (not used in CBSHOME Pydantic schemas)
+#   - allOf, oneOf, discriminator (not used in AIVIS.ONE Pydantic schemas)
 #   - If encountered, an `unknown` is emitted instead of crashing
 # =============================================================================
 
@@ -84,7 +84,7 @@ def _resolve_type(prop: dict) -> str:
             base = _resolve_type(non_null[0])
             return f"{base} | null" if has_null else base
 
-        # Multiple non-null variants (rare in CBSHOME schemas).
+        # Multiple non-null variants (rare in AIVIS.ONE schemas).
         parts = [_resolve_type(v) for v in non_null]
         result = " | ".join(parts)
         if has_null:

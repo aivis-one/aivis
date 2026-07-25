@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "CBS HOME"
+    "name": "AIVIS.ONE"
   },
   "common": {
     "save": "Сохранить",
@@ -27,7 +27,7 @@
     "back": "Назад",
     "login": {
       "title": "Вход в аккаунт",
-      "subtitle": "Войдите в CBS HOME для управления инвестициями",
+      "subtitle": "Войдите в AIVIS.ONE для управления инвестициями",
       "email": "Email",
       "password": "Пароль",
       "passPlaceholder": "Введите пароль",
@@ -40,7 +40,7 @@
     },
     "register": {
       "title": "Создать аккаунт",
-      "subtitle": "Присоединяйтесь к инвестиционной платформе CBS HOME",
+      "subtitle": "Присоединяйтесь к инвестиционной платформе AIVIS.ONE",
       "email": "Email",
       "password": "Пароль",
       "passwordHint": "Минимум 8 символов, буквы и цифры",

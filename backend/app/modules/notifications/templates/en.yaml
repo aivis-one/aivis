@@ -16,20 +16,20 @@ system:
   telegram:
     body: "{title}\n\n{body}"
   email:
-    subject: "CBSHOME: {title}"
+    subject: "AIVIS.ONE: {title}"
     body: |
       {title}
 
       {body}
 
       --
-      CBSHOME Platform
+      AIVIS.ONE Platform
 
 transaction:
   telegram:
     body: "Transaction: {title}\n\n{body}\n\nAmount: ${amount}"
   email:
-    subject: "CBSHOME Transaction: {title}"
+    subject: "AIVIS.ONE Transaction: {title}"
     body: |
       {title}
 
@@ -38,13 +38,13 @@ transaction:
       Amount: ${amount}
 
       --
-      CBSHOME Platform
+      AIVIS.ONE Platform
 
 commission:
   telegram:
     body: "Commission earned!\n\n{body}\n\nAmount: ${amount}"
   email:
-    subject: "CBSHOME: Commission Earned"
+    subject: "AIVIS.ONE: Commission Earned"
     body: |
       {title}
 
@@ -53,26 +53,26 @@ commission:
       Commission amount: ${amount}
 
       --
-      CBSHOME Platform
+      AIVIS.ONE Platform
 
 news:
   telegram:
     body: "{title}\n\n{body}"
   email:
-    subject: "CBSHOME News: {title}"
+    subject: "AIVIS.ONE News: {title}"
     body: |
       {title}
 
       {body}
 
       --
-      CBSHOME Platform
+      AIVIS.ONE Platform
 
 installment:
   telegram:
     body: "Installment update: {title}\n\n{body}\n\nAmount: ${amount}\nDue: {due_date}"
   email:
-    subject: "CBSHOME Installment: {title}"
+    subject: "AIVIS.ONE Installment: {title}"
     body: |
       {title}
 
@@ -82,4 +82,4 @@ installment:
       Due date: {due_date}
 
       --
-      CBSHOME Platform
+      AIVIS.ONE Platform
