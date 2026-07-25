@@ -1,33 +1,39 @@
 # =============================================================================
-# CBSHOME Backend -- pytest conftest (post-rollback, plain-DB edition)
+# CBSHOME Backend -- pytest conftest (TD-068: dedicated test DB edition)
 # =============================================================================
 #
-# Tests run against the same Postgres database the dev site uses. There
-# is no isolation infrastructure: no per-worker template DB clones, no
-# bucket provisioning, no Redis-db swapping. Earlier attempts at that
-# kind of isolation never actually worked -- the FastAPI app's engine
-# initialised on import time, before any env-var override conftest
-# could perform, so HTTP-driven tests always wrote to the live DB
-# regardless of what conftest pretended.
+# Tests run against a DEDICATED `cbshome_test` database, never the live dev
+# DB. The `cbshome test` / `cbshome update` CLI provisions it per run --
+# DROP + CREATE cbshome_test, `alembic upgrade head`, minimal seed (platform
+# user + platform templates) -- then invokes pytest with `-e DATABASE_URL`
+# pointing at it. The lazy engine (app.core.database) reads
+# settings.database_url on first use, so both the HTTP layer and db_session
+# pick up that override automatically -- no monkeypatching here.
 #
-# WHY THIS IS FINE:
-#   * The dev DB is treated as disposable. install_cbshome.sh drops
-#     and recreates it on every full reinstall.
-#   * Tests achieve cross-run isolation by generating UUID-suffixed
-#     emails (see tests/helpers.py register_user signature). No two
-#     test runs collide on email-unique constraints.
-#   * Tests that intentionally re-use one email (e.g. duplicate-email
-#     check) opt in by passing email= explicitly.
+# FAIL-CLOSED INVARIANT (pytest_sessionstart):
+#   A bare `pytest` that skipped the CLI provisioning would fall back to the
+#   default DATABASE_URL -- the live dev DB -- and write to it. The
+#   sessionstart guard aborts unless the target database name ends with
+#   `_test`, so tests can never silently write to the live DB regardless of
+#   entry point (IDE, CI, manual `docker compose exec app pytest`).
 #
-# WHAT THIS LEAVES BEHIND:
+# ISOLATION SCOPE:
+#   Per-RUN: each run starts from a freshly created cbshome_test, so
+#   cross-run residue (the class of flakes behind TD-068) cannot accumulate.
+#   Per-TEST isolation is NOT provided -- tests still share state within a
+#   single run (no rollback-per-test). That is a possible Stage-3b (savepoint
+#   per test), gated on auditing for tests that fire concurrent requests on
+#   one connection.
+#
+#   UUID-suffixed emails (tests/helpers.register_user) are retained -- now
+#   belt-and-suspenders rather than the sole isolation mechanism.
+#
+# FIXTURES:
 #   * client                  -- AsyncClient backed by ASGITransport.
-#   * db_session              -- AsyncSession from the app's session
-#                                factory (writes to the live DB).
-#   * mock_email autouse      -- swap _send_verification_email for a
-#                                no-op so verification doesn't hit SMTP.
-#   * clear_rate_limit autouse -- delete the email-auth Redis key so a
-#                                 single test calling register_user
-#                                 many times doesn't trip the limit.
+#   * db_session              -- AsyncSession from the app's session factory
+#                                (same engine as the HTTP layer).
+#   * mock_email autouse      -- swap _send_verification_email for a no-op.
+#   * clear_rate_limit autouse -- delete the email-auth Redis keys.
 # =============================================================================
 
 from __future__ import annotations
@@ -62,8 +68,37 @@ def pytest_configure(config: pytest.Config) -> None:
     if config.getoption("numprocesses", None):
         raise pytest.UsageError(
             "pytest-xdist (-n / --numprocesses) is not supported: tests "
-            "share a single dev DB without transactional isolation. "
+            "share a single test DB without transactional isolation. "
             "Run tests sequentially."
+        )
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Fail-closed guard: refuse to run unless the target DB is a test DB.
+
+    TD-068 hybrid: the `cbshome test` / `cbshome update` CLI provisions a
+    dedicated `cbshome_test` database and points the app at it via
+    `-e DATABASE_URL=...` before invoking pytest. This guard is the
+    invariant backstop -- a bare `pytest` that skipped that provisioning
+    would fall back to the default DATABASE_URL (the live dev DB) and write
+    to it. Rather than let that happen silently, abort before the first
+    query. The contract is purely the database NAME: it must end `_test`.
+
+    Reads settings.database_url (which reflects the -e override) and parses
+    just the name -- no engine, no connection, no secrets logged.
+    """
+    from sqlalchemy.engine.url import make_url
+
+    from app.core.config import settings
+
+    db_name = make_url(settings.database_url).database or ""
+    if not db_name.endswith("_test"):
+        raise pytest.UsageError(
+            f"Refusing to run the test suite against database {db_name!r}: "
+            "it is not a test database (name must end with '_test'). Run via "
+            "`cbshome test` or `cbshome update`, which provision and target "
+            "'cbshome_test'. To run pytest directly, first export DATABASE_URL "
+            "pointing at a *_test database."
         )
 
 

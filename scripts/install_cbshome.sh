@@ -1029,6 +1029,79 @@ case_logs() {
 }
 
 # ==============================================================================
+# TEST DATABASE PROVISIONING (TD-068)
+# ==============================================================================
+
+# Provision an isolated test database so the suite never touches the live
+# dev DB. Derives the test URL from the app's own DATABASE_URL (same
+# creds/host, DB name -> cbshome_test), drops + recreates it, migrates via
+# alembic, and seeds the minimum the suite needs (platform user + platform
+# templates; tests build the rest through register_user). Exports
+# TEST_DB_URL (global) for the caller to pass to pytest via -e.
+prepare_test_db() {
+    echo ""
+    echo "Provisioning isolated test database (cbshome_test)..."
+
+    local app_db_url
+    app_db_url=$(docker compose exec -T app printenv DATABASE_URL | tr -d '\r\n')
+    if [ -z "$app_db_url" ]; then
+        echo -e "${RED}✗ Could not read DATABASE_URL from app container${NC}"
+        return 1
+    fi
+    # Strip the trailing "/cbshome" DB name, append "/cbshome_test".
+    # % removes the shortest matching suffix, so credentials/host are
+    # untouched even if the password contained the substring "cbshome".
+    TEST_DB_URL="${app_db_url%/cbshome}/cbshome_test"
+
+    # Drop + recreate via the maintenance DB. FORCE terminates any
+    # lingering connections left by a previous run (PG13+).
+    docker compose exec -T postgres psql -U cbshome -d postgres \
+        -c "DROP DATABASE IF EXISTS cbshome_test WITH (FORCE);" \
+        -c "CREATE DATABASE cbshome_test OWNER cbshome;" >/dev/null || {
+        echo -e "${RED}✗ Could not (re)create cbshome_test${NC}"
+        return 1
+    }
+
+    # Schema via alembic -- faithful to migrations (NOT metadata.create_all,
+    # which would miss functional indexes added in migration files).
+    docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app \
+        python -m alembic upgrade head || {
+        echo -e "${RED}✗ Test DB migration failed${NC}"
+        return 1
+    }
+
+    # Minimal seed. `import app.main` first so every model is registered in
+    # Base.metadata before the Platform user is flushed -- otherwise the
+    # users.referred_by_link_id -> referral_links FK cannot resolve on a
+    # fresh DB (standalone seed scripts import only a subset of models).
+    docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app \
+        python -c "import app.main, runpy; runpy.run_path('scripts/seed_platform.py', run_name='__main__')" || {
+        echo -e "${RED}✗ Test DB seed (platform user) failed${NC}"
+        return 1
+    }
+    docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app \
+        python -c "import app.main, runpy; runpy.run_module('scripts.seed_platform_templates', run_name='__main__')" || {
+        echo -e "${RED}✗ Test DB seed (platform templates) failed${NC}"
+        return 1
+    }
+
+    # Smoke check: 16 active platform-default templates (mirrors the dev-DB
+    # check below -- template seeding is the historically fragile part).
+    local tmpl_count
+    tmpl_count=$(
+        docker compose exec -T postgres psql -U cbshome -d cbshome_test \
+            -tAc "SELECT COUNT(*) FROM company_document_templates WHERE company_id IS NULL AND status='active';" \
+            2>/dev/null | tr -d '[:space:]'
+    )
+    if [ "$tmpl_count" != "16" ]; then
+        echo -e "${RED}✗ Test DB platform-templates smoke check failed (found: '$tmpl_count', expected 16)${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN}✓ cbshome_test ready (migrated + seeded, 16 templates)${NC}"
+}
+
+# ==============================================================================
 # TEST
 # ==============================================================================
 
@@ -1038,7 +1111,11 @@ case_test() {
     case "${1:-all}" in
         backend|"")
             echo "=== Backend Tests ==="
-            if ! docker compose exec -T app python -m pytest tests/ -v --tb=short; then
+            if ! prepare_test_db; then
+                echo -e "${RED}✗ Test DB provisioning failed${NC}"
+                exit 1
+            fi
+            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short; then
                 FAILED=1
             fi
             ;;
@@ -1050,7 +1127,11 @@ case_test() {
             ;;
         all)
             echo "=== Backend Tests ==="
-            if ! docker compose exec -T app python -m pytest tests/ -v --tb=short; then
+            if ! prepare_test_db; then
+                echo -e "${RED}✗ Test DB provisioning failed${NC}"
+                exit 1
+            fi
+            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short; then
                 FAILED=1
             fi
             ;;
@@ -1300,18 +1381,21 @@ case_update() {
 
 
     # ----------------------------------------------------------------------
-    # Run tests against the shared dev DB. Sequential -- xdist parallelism
-    # was an artefact of the abandoned per-worker DB design; with a single
-    # shared DB it would just cause workers to step on each other's rows.
-    # Tests achieve cross-run isolation via UUID-suffixed emails (see
-    # helpers.register_user); inside a single run they share state, which
-    # is fine because the dev DB is disposable.
+    # Run tests against an ISOLATED cbshome_test DB (TD-068), provisioned
+    # fresh here -- so a run never accumulates cross-run residue and never
+    # touches the live dev DB. Sequential -- xdist was an artefact of the
+    # abandoned per-worker design and conftest refuses it. The dev-DB seed
+    # above is for the running app; tests use cbshome_test via -e DATABASE_URL.
     # ----------------------------------------------------------------------
     pytest_status=0
     if [ $SKIP_TESTS -eq 0 ]; then
+        if ! prepare_test_db; then
+            echo -e "${RED}✗ Test DB provisioning failed${NC}"
+            return 1
+        fi
         echo ""
-        echo "Running backend tests..."
-        docker compose exec -T app python -m pytest tests/ -v --tb=short \
+        echo "Running backend tests (against cbshome_test)..."
+        docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short \
             || pytest_status=$?
 
         if [ $pytest_status -eq 0 ]; then
