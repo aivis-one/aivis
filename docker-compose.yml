@@ -5,9 +5,9 @@
 # Full stack: app + frontend + postgres + redis + minio
 #
 # Usage:
-#   cbshome update   -- pull, build, migrate, test, restart
-#   cbshome test     -- run tests inside container
-#   cbshome status   -- health check
+#   aivis update   -- pull, build, migrate, test, restart
+#   aivis test     -- run tests inside container
+#   aivis status   -- health check
 #
 # Note: lives in repo root -- manages both backend/ and frontend/ contexts.
 # =============================================================================
@@ -105,14 +105,14 @@ services:
   #   The known privilege-escalation CVE in this version (GHSA-jjjj-jwhf-8rgr)
   #   does not affect us: MinIO is bound to 127.0.0.1, exposed only via
   #   nginx + basic-auth, and the only accounts are the root + backend
-  #   service account both managed by install_cbshome.sh.
+  #   service account both managed by install_aivis.sh.
   #
   # PORTS:
   #   9000 -- S3 API. Backend talks to it through the docker network as
   #           http://minio:9000; never exposed beyond the host loopback.
   #   9001 -- Web UI / Object Browser. Reachable from outside ONLY via
   #           nginx reverse proxy at https://storage-mc-admin.cbshome.org
-  #           with basic-auth (configured in install_cbshome.sh).
+  #           with basic-auth (configured in install_aivis.sh).
   #
   # Healthcheck uses the live endpoint shipped with MinIO; curl is
   # included in the official minio/minio image.

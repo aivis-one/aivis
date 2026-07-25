@@ -31,7 +31,7 @@
 #
 # READ-ONLY in MVP (R2 §4.5):
 #   No POST / PATCH / DELETE in this iteration. Template upload happens
-#   through MinIO Web UI + `cbshome storage reconcile-templates` (R2
+#   through MinIO Web UI + `aivis storage reconcile-templates` (R2
 #   §4.8). The full UI editor + multipart POST are post-MVP and will
 #   take the same TemplateInboxMetadata schema as the inbox flow, so
 #   any future router additions are additive on top of this surface.

@@ -35,7 +35,7 @@
 # USAGE:
 #   docker compose exec -T app python scripts/seed_documents.py
 #
-# Called by install_cbshome.sh after seed_platform.py / seed_admin.py.
+# Called by install_aivis.sh after seed_platform.py / seed_admin.py.
 # =============================================================================
 
 import asyncio
@@ -182,7 +182,7 @@ async def _pick_creator_id(session) -> UUID:
 
     Prefer staff (seeded by seed_admin.py); fall back to Platform user
     (seeded by seed_platform.py). Both seeds run before this script in
-    install_cbshome.sh, so one of them is always available.
+    install_aivis.sh, so one of them is always available.
     """
     stmt = (
         select(User.id)

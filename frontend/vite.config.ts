@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: false, // Using public/manifest.json directly
       workbox: {
         // Precache all static assets including self-hosted woff2 fonts.
-        // Fonts are downloaded to public/fonts/ by install_cbshome.sh
+        // Fonts are downloaded to public/fonts/ by install_aivis.sh
         // and served from /fonts/<filename>.woff2 -- no external CDN needed.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: 'index.html',

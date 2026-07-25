@@ -154,7 +154,7 @@ def upgrade() -> None:
     # Pool covers the entire supply (equity_percent = 100). Staff can later
     # carve out a smaller equity slice via PATCH /staff/companies/{id}/pool.
     # gen_random_uuid() is built into PostgreSQL 13+ (no extension needed);
-    # CBSHOME runs Postgres 16. Other migrations rely on the same builtin.
+    # AIVIS.ONE runs Postgres 16. Other migrations rely on the same builtin.
     op.execute("""
         INSERT INTO option_pools (
             id, company_id, equity_percent, total_options, status, created_at

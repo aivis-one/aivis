@@ -54,7 +54,7 @@
 
 ### 0.3. Инфраструктура -- начинаем со скрипта
 
-Заказчик ждёт от нас один артефакт: `install_cbshome.sh`. Это означает: всё новое окружение должно подниматься одним запуском без ручных шагов после установки. MinIO встаёт в `docker-compose.yml` рядом с postgres/redis и поднимается автоматически. Новые секции в management-скрипте `cbshome` (backup/restore с учётом MinIO) -- обязательны.
+Заказчик ждёт от нас один артефакт: `install_aivis.sh`. Это означает: всё новое окружение должно подниматься одним запуском без ручных шагов после установки. MinIO встаёт в `docker-compose.yml` рядом с postgres/redis и поднимается автоматически. Новые секции в management-скрипте `cbshome` (backup/restore с учётом MinIO) -- обязательны.
 
 ### 0.4. Что НЕ делаем в этом рефакторе
 
@@ -66,7 +66,7 @@
 
 ---
 
-## 1. Инфраструктура: MinIO + install_cbshome.sh ✅ closed (iter 2.1)
+## 1. Инфраструктура: MinIO + install_aivis.sh ✅ closed (iter 2.1)
 
 ### 1.1. MinIO в docker-compose
 
@@ -120,9 +120,9 @@ mc anonymous set none local/cbshome-attachments  # explicitly private
 
 Service account (`MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) создаётся `minio-init`-сервисом отдельно от root credentials -- backend никогда не использует root.
 
-Login для basic-auth перед Web UI -- фиксированный `admin`. `.htpasswd` генерируется в `install_cbshome.sh` из `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` и кладётся по пути `/etc/nginx/.htpasswd-storage-mc-admin`.
+Login для basic-auth перед Web UI -- фиксированный `admin`. `.htpasswd` генерируется в `install_aivis.sh` из `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` и кладётся по пути `/etc/nginx/.htpasswd-storage-mc-admin`.
 
-### 1.4. install_cbshome.sh -- что добавляется
+### 1.4. install_aivis.sh -- что добавляется
 
 **◐ Реализовано частично (iter 1).** Открыто: seed platform default templates -- `mc cp -r backend/scripts/templates/_default/ ...` и `python backend/scripts/seed_platform_templates.py`. Закрывается в iter 2.3.
 
@@ -504,7 +504,7 @@ Open TODO для iter 2.4:
 
 **Platform default fallback.** Помимо per-company template'ов, существуют **platform default templates** -- общие для всех компаний, лежат в MinIO под префиксом `_platform/templates/`. Если у компании нет своего active template для нужной пары `(kind, language)` -- используется platform default. Это гарантирует что свежесозданная компания может генерировать договоры сразу, без ручных действий со стороны Staff'а. См. §4.7 (fallback) и §4.9 (platform default flow).
 
-Платформа default'ы устанавливаются скриптом `install_cbshome.sh` при первой установке (см. §1.4) -- HTML + placeholder-ассеты копируются из репо в MinIO, в БД создаются rows с `company_id=NULL`.
+Платформа default'ы устанавливаются скриптом `install_aivis.sh` при первой установке (см. §1.4) -- HTML + placeholder-ассеты копируются из репо в MinIO, в БД создаются rows с `company_id=NULL`.
 
 ### 4.2. Модель `CompanyDocumentTemplate`
 
@@ -600,7 +600,7 @@ Validation шаблона при reconcile (см. §4.8): парсинг чер�
 3. **Platform default, локаль юзера:** `WHERE company_id IS NULL AND kind AND language=user_lang AND status=active`. Нашёл? Используй.
 4. **Platform default, English fallback:** `WHERE company_id IS NULL AND kind AND language='en' AND status=active`.
 
-**Если ничего не нашлось -- 500 (system error).** В production такого быть не должно, потому что platform default гарантированно есть после `install_cbshome.sh` (см. §1.4 + §4.9). 500 в этом случае означает что что-то сломалось в seed'е или MinIO -- сигнал на починку, не штатное поведение.
+**Если ничего не нашлось -- 500 (system error).** В production такого быть не должно, потому что platform default гарантированно есть после `install_aivis.sh` (см. §1.4 + §4.9). 500 в этом случае означает что что-то сломалось в seed'е или MinIO -- сигнал на починку, не штатное поведение.
 
 В тестах эта 4-ступенчатая логика обеспечивает работу свежесозданных компаний "из коробки": тест создаёт компанию через `POST /staff/companies`, не загружает свои template'ы, и сразу может дёргать `GET /purchases/{id}/agreement` -- рендер идёт через platform default (ступень 3 или 4).
 
@@ -686,7 +686,7 @@ backend/scripts/templates/_default/
 
 Bootstrap-данные лежат под `backend/scripts/templates/_default/`, рядом со скриптом-потребителем `backend/scripts/seed_platform_templates.py`. Раскладка соответствует существующему паттерну `backend/app/modules/notifications/templates/*.yaml` -- данные модуля держатся одноуровнево под модулем-потребителем.
 
-**Установка (часть install_cbshome.sh, см. §1.4):**
+**Установка (часть install_aivis.sh, см. §1.4):**
 
 1. `mc cp -r backend/scripts/templates/_default/ local/cbshome-attachments/_platform/templates/` -- заливает все файлы.
 2. `python backend/scripts/seed_platform_templates.py` -- создаёт rows для каждой пары `(kind, language)` с `company_id=NULL`, `storage_prefix='_platform/templates/<kind>/<lang>/'`, `status=active`. Идемпотентен.
@@ -730,7 +730,7 @@ Bootstrap-данные лежат под `backend/scripts/templates/_default/`, 
 
 Поле **NULLABLE** по техническим причинам -- ondelete=SET NULL для устойчивости к удалению старых archived rows. Но в **штатной production-логике** значение всегда non-NULL:
 
-- При создании Purchase -- `find_active_template()` (4-ступенчатый fallback, см. §4.7) гарантированно находит template, потому что platform default есть для всех `(kind, language)` пар, заданных в `install_cbshome.sh`.
+- При создании Purchase -- `find_active_template()` (4-ступенчатый fallback, см. §4.7) гарантированно находит template, потому что platform default есть для всех `(kind, language)` пар, заданных в `install_aivis.sh`.
 - Если `find_active_template()` возвращает None -- это **ошибка инфраструктуры** (что-то сломалось в seed'е или MinIO). Логика создания Purchase в этом случае:
   - Пишет structured лог через `structlog`: `logger.error("template_missing", company_id=X, kind=Y, language=Z)`.
   - Пишет audit event `purchase.template_missing` (через `record_audit`) с теми же полями + `purchase_id` -- так Staff видит broken Purchase в audit dashboard.
@@ -1017,7 +1017,7 @@ Post-MVP (вне scope refactor'а):
 - **Canonical path для template'ов в MinIO** (§2.2): `companies/<id>/templates/<kind>/<lang>/template.html`, `_platform/templates/<kind>/<lang>/template.html`. Один active per `(kind, language)`, версионирование делает БД, MinIO перезаписывает.
 - **Workflow Staff per-company templates -- через MinIO Web UI + `cbshome storage reconcile-templates`** (§4.8). Inbox pattern в `companies/<id>/templates-inbox/<kind>__<lang>/`, companion `_meta.cbsmeta.json`. UI editor templates -- post-MVP.
 - **Workflow Platform default updates -- через MinIO Web UI + `cbshome storage reconcile-platform-templates`** (§4.9). Inbox pattern в `_platform/templates-inbox/`. Обновляются юристами платформы.
-- **Bootstrap defaults в репозитории**: `backend/scripts/templates/_default/<kind>/<lang>/{template.html, logo.png, signature.png, stamp.png}` для всех 4 kind × 4 lang. Заливаются в MinIO при `install_cbshome.sh` (§1.4) + `seed_platform_templates.py` создаёт rows с `company_id=NULL`. Финальный путь зафиксирован в v0.6 (была эволюция: v0.4 `backend/seed/...` -> v0.5 `backend/scripts/seed_data/...` -> v0.6 `backend/scripts/templates/...`).
+- **Bootstrap defaults в репозитории**: `backend/scripts/templates/_default/<kind>/<lang>/{template.html, logo.png, signature.png, stamp.png}` для всех 4 kind × 4 lang. Заливаются в MinIO при `install_aivis.sh` (§1.4) + `seed_platform_templates.py` создаёт rows с `company_id=NULL`. Финальный путь зафиксирован в v0.6 (была эволюция: v0.4 `backend/seed/...` -> v0.5 `backend/scripts/seed_data/...` -> v0.6 `backend/scripts/templates/...`).
 - **Redis-кэш HTML template'ов** (§4.10), TTL 5 мин, key `template_html:<storage_prefix>`, инвалидация в reconcile-скриптах. Значение -- base64-encoded строка (Redis-клиент проекта инициализируется с `decode_responses=True`). Ассеты не кэшируем.
 - **`Purchase.purchase_agreement_template_id` остаётся nullable** (§5.1) для устойчивости к удалению, но в production гарантированно non-NULL благодаря platform default fallback. NULL = ошибка инфраструктуры -- structlog `error`-event + audit event `purchase.template_missing`.
 - **`GET /purchases/{id}/agreement` отдаёт 500 (не 404) при NULL template_id** (§5.3) -- сигнал поломки, не штатное "не сконфигурировано".
@@ -1043,7 +1043,7 @@ Post-MVP (вне scope refactor'а):
 
 ### Architectural decisions (общие)
 
-- **Q-INFRA-1** (вариант A): MinIO service account создаётся в `install_cbshome.sh` через `mc admin user svcacct add`. Root credentials живут только в `.env`.
+- **Q-INFRA-1** (вариант A): MinIO service account создаётся в `install_aivis.sh` через `mc admin user svcacct add`. Root credentials живут только в `.env`.
 - **Q-INFRA-2** (вариант A): Backup стратегия -- `mc mirror local/cbshome-attachments` в tarball рядом с `pg_dump`.
 - **Q-STOR-1**: Multipart upload через `aiobotocore.upload_fileobj` всегда.
 - **Q-STOR-2**: Presigned PUT не нужен. Frontend всегда грузит через backend.
@@ -1067,7 +1067,7 @@ Post-MVP (вне scope refactor'а):
 
 | § | Что | Итерация |
 |---|---|---|
-| §1 | MinIO + install_cbshome.sh | iter 2.1 |
+| §1 | MinIO + install_aivis.sh | iter 2.1 |
 | §2 | Storage abstraction layer (app/core/storage.py) | iter 2.1 |
 | §3 | company_attachments backend + reconcile + language NOT NULL (migration 0034) | iter 2.2 + 2.4-attachments-lang |
 | §4 | company_doc_templates backend + 4-stage fallback + Redis cache | iter 2.3 |

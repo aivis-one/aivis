@@ -16,7 +16,7 @@
 # USAGE:
 #   python scripts/seed_platform.py          -- idempotent, safe to re-run
 #
-# Called automatically by install_cbshome.sh after migrations.
+# Called automatically by install_aivis.sh after migrations.
 # =============================================================================
 
 import asyncio

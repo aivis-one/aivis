@@ -243,7 +243,7 @@ cbshome/                              -- GitHub repo root (существует)
 ├── mockups/                          -- UI-прототипы (существуют, read-only reference)
 ├── docker-compose.yml                -- Весь стек (backend + frontend + postgres + redis)
 ├── scripts/
-│   └── install_cbshome.sh            -- Целевой артефакт поставки
+│   └── install_aivis.sh            -- Целевой артефакт поставки
 └── CBSHOME-Frontend.md               -- ЭТОТ ДОКУМЕНТ
 ```
 
@@ -338,14 +338,14 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - [x] Dockerfile: multi-stage (node:22-alpine build → nginx:alpine serve)
 - [x] nginx.conf: SPA fallback, gzip, cache headers, CSP с Telegram SDK, health check `/health`
 - [x] docker-compose.yml: сервис `frontend` с build context `./frontend`
-- [x] `install_cbshome.sh`: Nginx-блок для `cbshome.org` → `localhost:3000`
+- [x] `install_aivis.sh`: Nginx-блок для `cbshome.org` → `localhost:3000`
 
 **Обновления (F1):**
 - Dockerfile: `npm ci` → `npm install` (автоматическое подтягивание новых зависимостей при `cbshome update`)
 - Dockerfile: `ENV VITE_API_BASE_URL=https://api.cbshome.org` + `ENV VITE_TELEGRAM_BOT_URL=https://t.me/cbshome_bot` — baked into build stage
 - `.env.production` — Vite production env vars (дублирует Dockerfile ENV для dev-сборки)
 - `.dockerignore` — разрешён `.env.production`
-- `install_cbshome.sh`: убран `--no-cache` из `case_update()` (оставлен при первичной установке)
+- `install_aivis.sh`: убран `--no-cache` из `case_update()` (оставлен при первичной установке)
 
 **Критерий готовности:** `docker compose up frontend` → cbshome.org отдаёт SPA.
 

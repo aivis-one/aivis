@@ -15,7 +15,7 @@ Vue 3 + TypeScript + Vite SPA for the CBSHOME investment platform.
 
 ## Development
 
-Development and deployment happen on VPS via `cbshome update`.
+Development and deployment happen on VPS via `aivis update`.
 
 ```bash
 # Local dev (if needed)
@@ -29,12 +29,12 @@ npm run type-check   # TypeScript check
 
 ## Deployment
 
-Managed by `scripts/install_cbshome.sh` and `cbshome update`.
+Managed by `scripts/install_aivis.sh` and `aivis update`.
 
 ```
-cbshome update    # git pull -> docker compose build -> restart
-cbshome logs frontend
-cbshome status
+aivis update    # git pull -> docker compose build -> restart
+aivis logs frontend
+aivis status
 ```
 
 ## Environment

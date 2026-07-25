@@ -14,7 +14,7 @@
 #     python scripts/generate_ts_types.py /dev/stdin frontend/src/api/generated.ts
 #
 # Output is deterministic: same input JSON always produces the same .ts file.
-# This lets `cbshome update` diff the regenerated file against the committed
+# This lets `aivis update` diff the regenerated file against the committed
 # one to detect drift between Pydantic schemas and frontend types.
 #
 # SUPPORTED OPENAPI PATTERNS:
@@ -187,7 +187,7 @@ def generate(openapi: dict) -> str:
         "backend/scripts/generate_ts_types.py"
     )
     output.append(
-        "// Regenerated automatically by `cbshome update` and committed by"
+        "// Regenerated automatically by `aivis update` and committed by"
     )
     output.append("// aivis-bot when the live OpenAPI schema changes.")
     output.append(f"// API version: {version}")
@@ -248,7 +248,7 @@ def main() -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(result)
 
-    # Stats for CI / cbshome update output.
+    # Stats for CI / aivis update output.
     schemas = openapi.get("components", {}).get("schemas", {})
     total = len(schemas) - len(_SKIP_SCHEMAS & set(schemas.keys()))
     print(f"Generated {total} types -> {output_path}")

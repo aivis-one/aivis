@@ -559,7 +559,7 @@ cbshome/                           -- GitHub: aivis-one/aivis
 │   └── package.json
 ├── docker-compose.yml             -- Весь стек: app + frontend + postgres + redis
 ├── scripts/
-│   └── install_cbshome.sh         -- Целевой артефакт поставки заказчику
+│   └── install_aivis.sh         -- Целевой артефакт поставки заказчику
 ├── notifications/
 │   └── templates/                 -- en.yaml, ru.yaml (notification templates)
 ├── diagrams/                      -- Mermaid-схемы (не источник правды)
@@ -568,9 +568,9 @@ cbshome/                           -- GitHub: aivis-one/aivis
 
 **Источник правды по схеме БД:** `backend/app/modules/*/models.py`
 
-### 5.1. install_cbshome.sh -- главный артефакт поставки
+### 5.1. install_aivis.sh -- главный артефакт поставки
 
-`scripts/install_cbshome.sh` -- это то, что передаётся заказчику. Скрипт запускается на чистом Ubuntu 22.04+ сервере и разворачивает полностью рабочую платформу "из коробки":
+`scripts/install_aivis.sh` -- это то, что передаётся заказчику. Скрипт запускается на чистом Ubuntu 22.04+ сервере и разворачивает полностью рабочую платформу "из коробки":
 
 1. Preflight: OS, RAM, disk, DNS
 2. System deps: Docker, Nginx, Certbot, UFW
@@ -700,7 +700,7 @@ Phase 2 -- формальная e-signature контрактов. MVP: checkbox 
 | Конституция (этот документ) | `CBSHOME-Design-Document.md` | Актуален |
 | Бэковый Кодекс | `CBSHOME-Backend.md` | Создаётся |
 | Фронтовый Кодекс | `CBSHOME-Frontend.md` | Создаётся |
-| Install script | `scripts/install_cbshome.sh` | Целевой артефакт |
+| Install script | `scripts/install_aivis.sh` | Целевой артефакт |
 | Notification templates | `notifications/templates/en.yaml` | MVP |
 | Схема БД (правда) | `backend/app/modules/*/models.py` | Актуальна |
 

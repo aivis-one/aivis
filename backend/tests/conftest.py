@@ -2,9 +2,9 @@
 # CBSHOME Backend -- pytest conftest (TD-068: dedicated test DB edition)
 # =============================================================================
 #
-# Tests run against a DEDICATED `cbshome_test` database, never the live dev
-# DB. The `cbshome test` / `cbshome update` CLI provisions it per run --
-# DROP + CREATE cbshome_test, `alembic upgrade head`, minimal seed (platform
+# Tests run against a DEDICATED `aivis_test` database, never the live dev
+# DB. The `aivis test` / `aivis update` CLI provisions it per run --
+# DROP + CREATE aivis_test, `alembic upgrade head`, minimal seed (platform
 # user + platform templates) -- then invokes pytest with `-e DATABASE_URL`
 # pointing at it. The lazy engine (app.core.database) reads
 # settings.database_url on first use, so both the HTTP layer and db_session
@@ -18,7 +18,7 @@
 #   entry point (IDE, CI, manual `docker compose exec app pytest`).
 #
 # ISOLATION SCOPE:
-#   Per-RUN: each run starts from a freshly created cbshome_test, so
+#   Per-RUN: each run starts from a freshly created aivis_test, so
 #   cross-run residue (the class of flakes behind TD-068) cannot accumulate.
 #   Per-TEST isolation is NOT provided -- tests still share state within a
 #   single run (no rollback-per-test). That is a possible Stage-3b (savepoint
@@ -76,8 +76,8 @@ def pytest_configure(config: pytest.Config) -> None:
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Fail-closed guard: refuse to run unless the target DB is a test DB.
 
-    TD-068 hybrid: the `cbshome test` / `cbshome update` CLI provisions a
-    dedicated `cbshome_test` database and points the app at it via
+    TD-068 hybrid: the `aivis test` / `aivis update` CLI provisions a
+    dedicated `aivis_test` database and points the app at it via
     `-e DATABASE_URL=...` before invoking pytest. This guard is the
     invariant backstop -- a bare `pytest` that skipped that provisioning
     would fall back to the default DATABASE_URL (the live dev DB) and write
@@ -96,8 +96,8 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         raise pytest.UsageError(
             f"Refusing to run the test suite against database {db_name!r}: "
             "it is not a test database (name must end with '_test'). Run via "
-            "`cbshome test` or `cbshome update`, which provision and target "
-            "'cbshome_test'. To run pytest directly, first export DATABASE_URL "
+            "`aivis test` or `aivis update`, which provision and target "
+            "'aivis_test'. To run pytest directly, first export DATABASE_URL "
             "pointing at a *_test database."
         )
 
@@ -207,7 +207,7 @@ async def clear_rate_limit() -> None:
           -- Telegram auth keyed by telegram_id (int). Tests use a
           handful of fixed tg_ids in 100001..100099 and short TTLs
           would normally let them expire between runs, but a fast
-          repeat of `cbshome update` can fire before TTL clears.
+          repeat of `aivis update` can fire before TTL clears.
           Pattern-delete handles every tg_id the test suite has ever
           used without coupling conftest to the test-side constants.
 

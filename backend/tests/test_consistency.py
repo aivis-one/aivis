@@ -346,7 +346,7 @@ async def test_s05_recovers_after_cleanup(
     S-05 is `pass` after cleanup would require the entire ledger to
     be free of negative confirmed balances, which is not true across
     test runs -- test_purchases / test_installments / test_withdrawals
-    leave residual ledger entries that survive cbshome update. So we
+    leave residual ledger entries that survive aivis update. So we
     measure the relative change in the S-05 counter, which is a
     stricter check anyway: it proves our orphan -- and only our
     orphan -- moved the count by exactly one in each direction.

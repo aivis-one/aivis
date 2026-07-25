@@ -61,7 +61,7 @@ cbshome/
 ├── diagrams/
 ├── docker-compose.yml
 ├── scripts/
-│   └── install_cbshome.sh
+│   └── install_aivis.sh
 └── CBSHOME-Design-Document.md
 ```
 - [x] `pyproject.toml` — зависимости, ruff, mypy, pytest конфиг
@@ -210,13 +210,13 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
 
 ---
 
-### ✅ Sprint 0.4: VPS + install_cbshome.sh
+### ✅ Sprint 0.4: VPS + install_aivis.sh
 
 **Цель:** Приложение работает на сервере с HTTPS. Главный артефакт поставки.
 
 **Задачи:**
 
-**install_cbshome.sh:**
+**install_aivis.sh:**
 - [x] Preflight: OS (Ubuntu 22.04+), RAM (>= 2GB), disk (>= 10GB), DNS
 - [x] Fix locale (en_US.UTF-8)
 - [x] System deps: Docker, Nginx, Certbot, UFW, git, curl, dnsutils
@@ -507,10 +507,10 @@ backend/tests/
 **Решения реализации:**
 - Минимальная модель KYCApplication: `id, user_id, status, created_at, updated_at`. Поля SumSub (applicant_id, external_status, rejection_reason) добавятся через ALTER ADD COLUMN при реальной интеграции (TD-003)
 - История заявок: rejected → повторная подача → новая строка KYCApplication. Полноценная логика заложена сразу, хотя заглушка всегда approved
-- Webhook защищён `X-Webhook-Secret` header, секрет генерируется при установке (`install_cbshome.sh`), обязателен в production. В будущем — замена на SumSub signature validation (TD-003)
+- Webhook защищён `X-Webhook-Secret` header, секрет генерируется при установке (`install_aivis.sh`), обязателен в production. В будущем — замена на SumSub signature validation (TD-003)
 - `process_webhook()` содержит guard `_VALID_WEBHOOK_STATUSES = {"approved", "rejected"}` — защита от невалидных статусов при вызове из других модулей
 - `User.kyc_status` синхронизируется при каждом изменении статуса KYCApplication + audit `kyc.status_changed`
-- `KYC_WEBHOOK_SECRET` добавлен в `config.py` (dev default: `"dev-webhook-secret"`, production: ValueError при пустом) и в `install_cbshome.sh` (генерируется через `gen_password`)
+- `KYC_WEBHOOK_SECRET` добавлен в `config.py` (dev default: `"dev-webhook-secret"`, production: ValueError при пустом) и в `install_aivis.sh` (генерируется через `gen_password`)
 
 **Config (новые настройки):**
 ```
@@ -649,7 +649,7 @@ backend/tests/
   - Идемпотент: нет записи → v1 active; хэш совпал → metadata-only update title/roles; хэш разный → archive current + v+1 active; файл удалён → archive (никогда не delete, чтобы не сломать FK на DocumentSigning)
 - [x] `frontend/public/legal/<lang>/<type>.html` × 5 типов × 4 локали = **20 HTML-болванок** с Lorem ipsum (TD-066)
 - [x] `docker-compose.yml` — `./frontend/public/legal:/legal:ro` bind mount в сервис `app`
-- [x] `scripts/install_cbshome.sh` — `seed_documents.py` вызывается в `install`, `update`, `case_seed` ветках после `seed_platform.py` / `seed_admin.py`
+- [x] `scripts/install_aivis.sh` — `seed_documents.py` вызывается в `install`, `update`, `case_seed` ветках после `seed_platform.py` / `seed_admin.py`
 - [x] `tests/test_documents.py` — все прямые POST `/staff/documents` + хелпер `_create_active_document` шлют `"language": "en"`; `_cleanup_documents` фикстура перед/после каждого теста (TD-067)
 - [x] `tests/test_onboarding.py` — хелпер `_create_active_doc` принимает `language` (default `en`)
 - [x] `tests/test_avatar.py::test_avatar_guard_blocks_in_avatar_mode` — `content_url` → `language: "en"` в POST body
@@ -700,7 +700,7 @@ Document:
 - `core/middleware.py` — `USER_AGENT_MAX_LEN` из constants (было локальное `_USER_AGENT_MAX_LEN`)
 - `main.py` — `+kyc_router`, `+documents_router`, `+staff_documents_router`
 - `.env.example` — `+KYC_WEBHOOK_SECRET=`
-- `install_cbshome.sh` — `+KYC_WEBHOOK_SECRET` генерация в `.env`
+- `install_aivis.sh` — `+KYC_WEBHOOK_SECRET` генерация в `.env`
 
 ---
 
@@ -1599,7 +1599,7 @@ confirmation_worker_interval_minutes: int = 5
 - P5-10: tx_hash uniqueness — partial unique index на `(provider_data->>'tx_hash') WHERE NOT NULL`. Race condition обрабатывается через `begin_nested()` + `IntegrityError` catch на `uq_payments_tx_hash` (P-05)
 - P5-11: `provider_data` заполняется в конструкторе Payment перед `session.add()` — один flush вместо двух. `set_jsonb()` не нужен для новых объектов
 - P5-12: Daemon skeleton: пустой loop с `asyncio.sleep(interval)`. Proper `CancelledError` handling в shutdown. Ошибки не вызывают двойной sleep
-- P5-13: `install_cbshome.sh` обновлён: генерация `CRYPTO_WEBHOOK_SECRET` в `.env`
+- P5-13: `install_aivis.sh` обновлён: генерация `CRYPTO_WEBHOOK_SECRET` в `.env`
 - P5-14: Idempotent address creation через `begin_nested()` (P-05) на `uq_crypto_addresses_user_network`
 - P5-15: Stub address generation: `CBS_{network}_{uuid4().hex[:16]}`. Реальная интеграция — Phase 2
 
@@ -1716,7 +1716,7 @@ backend/tests/
 - `kyc/router.py` — `hmac.compare_digest()` для webhook (SEC-1)
 - `staff/admin_service.py` — убраны `str()` обёртки для KYC calls
 - `main.py` — `+payments_router`, `+payments_webhook_router`, `+staff_payments_router`, confirmation daemon (batch-first, фикс code review)
-- `install_cbshome.sh` — `+CRYPTO_WEBHOOK_SECRET` генерация
+- `install_aivis.sh` — `+CRYPTO_WEBHOOK_SECRET` генерация
 - `tests/helpers.py` — cleanup для Payment, CryptoAddress, ActiveLedger, PassiveLedger
 - `tests/conftest.py` — `+clear_rate_limit` autouse fixture
 
@@ -2823,7 +2823,7 @@ backend/tests/
 - [x] Concurrent delivery: `asyncio.gather` + `Semaphore(20)` (broadcast safety)
 - [x] `POST /api/v1/staff/notifications/templates/reload` — Staff reload templates (translation_edit permission)
 - [x] `tests/test_notification_delivery.py` — 18 тестов
-- [x] Mail server: Postfix + OpenDKIM в `install_cbshome.sh`
+- [x] Mail server: Postfix + OpenDKIM в `install_aivis.sh`
 - [x] Config: EMAP удалён, SMTP + Mailgun fallback, `high_secured_domains`
 - [x] Security: `_sanitize_error()`, `_mask_email()`, `lang.isalnum()` path traversal protection
 - [x] Bug fix: `config.py` validator indentation (crypto/telegram/return вынесены на верхний уровень)
@@ -2853,7 +2853,7 @@ TelegramFormatter:
 - `_DeliveryOutcome` — результат применяется к delivery объектам последовательно после gather
 - 1000 users × 30s timeout ÷ 20 concurrent = 25 мин worst case (vs 8.3 часов sequential)
 
-**Mail Server (install_cbshome.sh):**
+**Mail Server (install_aivis.sh):**
 - Postfix: send-only, `inet_interfaces = all` (UFW блокирует 25 снаружи), Docker subnet `172.16.0.0/12` в mynetworks
 - OpenDKIM: 2048-bit DKIM key, milter integration, автогенерация + вывод TXT-записи
 - `DEBIAN_FRONTEND=noninteractive` + `debconf-set-selections` перед установкой
@@ -2910,7 +2910,7 @@ backend/tests/
 - `pyproject.toml` — +aiosmtplib
 - `.env.example` — EMAP удалён, +SMTP settings, +HIGH_SECURED_DOMAINS
 - `docker-compose.yml` — +extra_hosts для app service (Docker→host Postfix)
-- `scripts/install_cbshome.sh` — EMAP удалён, +MAIL_DOMAIN, +Postfix/OpenDKIM section, +SMTP .env template
+- `scripts/install_aivis.sh` — EMAP удалён, +MAIL_DOMAIN, +Postfix/OpenDKIM section, +SMTP .env template
 
 **Решения реализации (Sprint 8.2):**
 - P8-09: **Mailgun primary, SMTP fallback** (v3.3: inverted from original SMTP-primary). Mailgun HTTP API → primary (50K/month free, EU endpoint `api.eu.mailgun.net`). SMTP Postfix → fallback (own server, may be blocked by hosting provider). `send_email()` tries Mailgun first, falls back to SMTP on failure. `high_secured_domains` removed — Mailgun handles all domains. Config: `mailgun_api_url` setting for US/EU endpoint selection. `start_tls` explicitly set to `use_tls` value (prevents auto-negotiate with self-signed Postfix cert)
@@ -3561,7 +3561,7 @@ Auth-flow download endpoint делает 302 на presigned MinIO URL. Если 
 | TD-062 | `payments/staff_router.py`, `payments/service.py`, `payments/schemas.py` | ~~Staff не может видеть список всех платежей~~ → `GET /staff/payments` с фильтрами (status, user_id), `StaffPaymentResponse` (+user_id), permission `payment_review` | G2 | ✅ G2 fix |
 | TD-063 | `tests/conftest.py` | ~~`_send_verification_email()` вызывается в тестах~~ → SMTP timeout (Postfix → example.com) + Mailgun timeout (placeholder key) = ~60с на каждую регистрацию. Фикс: `mock_email` autouse fixture, `monkeypatch` на noop. Продакшен-код не тронут | F1 | ✅ F1 fix |
 | TD-064 | `tests/test_staff_admin.py` | ~~`test_kyc_reject` не отправляет JSON body~~ → G5 добавил `KYCRejectRequest` (обязательный body), тест не обновлён. 422 вместо 204. Фикс: `json={}` | F1 | ✅ F1 fix |
-| TD-065 | `scripts/install_cbshome.sh` | ~~`docker compose build --no-cache` в `case_update()`~~ → каждый `cbshome update` пересобирал все слои с нуля (~105с + 17GB мусора). Фикс: убран `--no-cache` из update (оставлен только при первичной установке) | F1 | ✅ F1 fix |
+| TD-065 | `scripts/install_aivis.sh` | ~~`docker compose build --no-cache` в `case_update()`~~ → каждый `cbshome update` пересобирал все слои с нуля (~105с + 17GB мусора). Фикс: убран `--no-cache` из update (оставлен только при первичной установке) | F1 | ✅ F1 fix |
 | TD-066 | `frontend/public/legal/**/*.html` | 20 legal-болванок с Lorem ipsum вместо реального текста. Pre-launch blocker (не код-блокер): юрист должен заменить тексты до production. CI-гейта намеренно нет — проверяется в release-checklist | Pre-launch | ⬜ |
 | TD-067 | `backend/tests/test_documents.py`, `test_onboarding.py` | `_cleanup_documents` fixture делает `DELETE FROM document_signings; DELETE FROM documents` перед/после каждого теста. Чтобы тесты могли создавать `(type, version, language)` без конфликта с seed-записями. На общей БД (TEST = PROD) снесёт реальные seed и подписания — но тесты против production и не запускаются. Правильный фикс — изолированная test-DB (TD-068) | Backlog | ⬜ |
 | TD-068 | `docker-compose.yml`, `backend/tests/conftest.py` | Нет изолированной тестовой БД: тесты гоняются по тому же `postgres` сервису что и приложение. Нужен `test-postgres` service + `TEST_DATABASE_URL`. Снимет TD-067 и вернёт тестам нормальные fixtures-scoped cleanups | Before Scale | ⬜ |
@@ -3599,4 +3599,4 @@ Auth-flow download endpoint делает 302 на presigned MinIO URL. Если 
 
 *Version 3.4 | 2026-04-17 | Sprint 2.2 UPDATE: `content_url` dropped, Document body moved to static HTML in `frontend/public/legal/<lang>/<type>.html`, `required_for_roles` JSONB replaces `ROLE_REQUIRED_DOCUMENT_TYPES` dict, localisation (en/ru/de/ar) via `Document.language` + `UNIQUE (type, version, language)`, seed_documents.py syncs hash-based. 336 tests, all green.*
 
-*Version 3.3 | 2026-04-17 | Email: Mailgun primary + SMTP fallback (inverted), EU endpoint support, start_tls fix. KYC non-blocking onboarding. install_cbshome.sh: UFW Docker SMTP, /dev/tty reads, docker stdin fix, test-email command. 336 tests, all green*
+*Version 3.3 | 2026-04-17 | Email: Mailgun primary + SMTP fallback (inverted), EU endpoint support, start_tls fix. KYC non-blocking onboarding. install_aivis.sh: UFW Docker SMTP, /dev/tty reads, docker stdin fix, test-email command. 336 tests, all green*

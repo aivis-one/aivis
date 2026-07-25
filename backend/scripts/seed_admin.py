@@ -18,7 +18,7 @@
 # RULES:
 #   - Idempotent: skips if any admin (all-True permissions) exists
 #   - Creates User (role=staff) + StaffProfile (all permissions True)
-#   - Called by install_cbshome.sh after seed_platform.py
+#   - Called by install_aivis.sh after seed_platform.py
 # =============================================================================
 
 import argparse

@@ -52,7 +52,7 @@
 #     - emit a structured log: `template_missing`,
 #     - record an audit event: `purchase.template_missing` so Staff
 #       sees the broken Purchase in the audit dashboard and can fix it
-#       with `cbshome storage reconcile-platform-templates`.
+#       with `aivis storage reconcile-platform-templates`.
 #
 # COMMIT RULE (P-01):
 #   Engine never commits. Caller (get_db_session) manages the transaction.

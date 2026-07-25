@@ -20,7 +20,7 @@
 #   * All titles are UUID-suffixed so no test collides with another
 #     test's body / lookup.
 #   * Post and Event are soft-deleted at most -- once created in a
-#     test run they live until install_cbshome.sh wipes the dev DB,
+#     test run they live until install_aivis.sh wipes the dev DB,
 #     so we MUST scope assertions to rows this test just made.
 #
 # Email prefix:

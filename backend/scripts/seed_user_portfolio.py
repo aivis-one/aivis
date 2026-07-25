@@ -41,7 +41,7 @@
 #       --email foo@example.com --deposit 50000000 --purchases 10
 #
 #   # via management script:
-#   cbshome seed-portfolio foo@example.com
+#   aivis seed-portfolio foo@example.com
 # =============================================================================
 
 from __future__ import annotations

@@ -612,7 +612,7 @@ class AttachmentResponse(BaseModel):
     # iter 2.4-post mini-fix: language is NOT NULL on the column.
     # The API surface therefore drops the | None and always emits a
     # concrete ISO 639-1 code. Frontend codegen will pick this up on
-    # the next `cbshome update`; until then, frontend reads the
+    # the next `aivis update`; until then, frontend reads the
     # field as string | null but only ever sees real strings.
     language: str
     title: str

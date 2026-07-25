@@ -16,7 +16,7 @@
 #   rows in the DB, the next seed run hit UniqueConstraint on
 #   (company_id, kind, language, version)=NULL/.../.../1 and the entire
 #   seed transaction died. The pair stayed broken on every subsequent
-#   `cbshome update`.
+#   `aivis update`.
 #
 #   This version computes new_version = max(version)+1 across all
 #   statuses (R2 §4.8 BUG-NEW-01 pattern). When the table is empty for
@@ -39,7 +39,7 @@
 #   active at version = max(version across all statuses)+1.
 #
 # UPDATING PLATFORM DEFAULTS LATER:
-#   Use `cbshome storage reconcile-platform-templates` (R2 §4.9). That
+#   Use `aivis storage reconcile-platform-templates` (R2 §4.9). That
 #   flow archives the old `active` row, creates a new one with
 #   version+1, and invalidates the Redis HTML cache. This script is
 #   install-time only.
@@ -241,8 +241,8 @@ async def seed_platform_templates(
     # platform_user_id is required for the system-actor audit row.
     # Resolving it before the loop fails fast if the platform user does
     # not yet exist -- which would mean install order is wrong (the
-    # `cbshome seed` step that creates the platform user must run
-    # BEFORE this script; see install_cbshome.sh).
+    # `aivis seed` step that creates the platform user must run
+    # BEFORE this script; see install_aivis.sh).
     platform_user_id = await get_platform_user_id(session)
 
     for kind in DocumentTemplateKind:
