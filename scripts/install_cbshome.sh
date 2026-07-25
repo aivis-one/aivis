@@ -10,7 +10,7 @@
 #   3.  Install system deps (Docker, Nginx, Certbot, UFW, git, dnsutils,
 #       apache2-utils, mc binary)
 #   4.  Configure firewall (22/80/443 only)
-#   5.  Create deploy user `cbshome` (non-root, docker group)
+#   5.  Create deploy user `aivis` (non-root, docker group)
 #   6.  Generate SSH deploy key -> add to GitHub -> clone repo
 #   7.  Generate .env with random passwords (incl. MinIO secrets)
 #   8.  Prompt for sensitive secrets (bot token, API keys)
@@ -310,7 +310,7 @@ success "User '$DEPLOY_USER' in docker group"
 
 section "SSH Deploy Key & Repository"
 
-DEPLOY_KEY="/root/.ssh/id_ed25519_cbshome_deploy"
+DEPLOY_KEY="/root/.ssh/id_ed25519_aivis_deploy"
 mkdir -p /root/.ssh
 chmod 700 /root/.ssh
 
@@ -319,7 +319,7 @@ if ! grep -q "github.com" /root/.ssh/known_hosts 2>/dev/null; then
 fi
 
 if [ ! -f "$DEPLOY_KEY" ]; then
-    ssh-keygen -t ed25519 -C "cbshome-deploy@$(hostname)" \
+    ssh-keygen -t ed25519 -C "aivis-deploy@$(hostname)" \
         -f "$DEPLOY_KEY" -N "" > /dev/null 2>&1
     success "Deploy key generated"
 fi
@@ -1236,7 +1236,7 @@ case_update() {
     fi
 
     # Fetch and check if there are any remote changes.
-    GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" git fetch origin
+    GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" git fetch origin
     if git diff --quiet HEAD "origin/$BRANCH" 2>/dev/null; then
         echo -e "${GREEN}✓ Already up to date${NC}"
         return 0
@@ -1244,7 +1244,7 @@ case_update() {
 
     # Pull changes.
     echo "Pulling updates..."
-    if ! GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" git pull origin "$BRANCH"; then
+    if ! GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" git pull origin "$BRANCH"; then
         echo -e "${RED}✗ git pull failed. Local changes may conflict.${NC}"
         echo "  Inspect: git -C $COMPOSE_DIR status"
         echo "  To force: git -C $COMPOSE_DIR stash && cbshome update"
@@ -1464,14 +1464,14 @@ Triggered by cbshome update on commit $NEW_COMMIT" || {
         # and warrants manual investigation.
         PUSH_OK=0
         for attempt in 1 2; do
-            if GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" \
+            if GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" \
                 git push origin "$BRANCH"; then
                 PUSH_OK=1
                 break
             fi
             if [ "$attempt" = "1" ]; then
                 echo "Push failed (likely a parallel push). Rebasing and retrying..."
-                GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_cbshome_deploy" \
+                GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" \
                     git pull --rebase origin "$BRANCH" || break
             fi
         done
@@ -1480,7 +1480,7 @@ Triggered by cbshome update on commit $NEW_COMMIT" || {
             echo -e "${RED}✗ Failed to push regenerated types to GitHub${NC}"
             echo "  Bot commit exists locally on $COMPOSE_DIR but is not on origin."
             echo "  Resolve manually:"
-            echo "    cd $COMPOSE_DIR && GIT_SSH_COMMAND=\"ssh -i /root/.ssh/id_ed25519_cbshome_deploy\" git push"
+            echo "    cd $COMPOSE_DIR && GIT_SSH_COMMAND=\"ssh -i /root/.ssh/id_ed25519_aivis_deploy\" git push"
             return 1
         fi
         echo -e "${GREEN}✓ Bot pushed regenerated types${NC}"
@@ -2016,7 +2016,7 @@ success "Management script: /usr/local/bin/cbshome"
 
 section "Backup Cron"
 
-(crontab -l 2>/dev/null; echo "0 4 * * * /usr/local/bin/cbshome backup >> /var/log/cbshome-backup.log 2>&1") \
+(crontab -l 2>/dev/null; echo "0 4 * * * /usr/local/bin/cbshome backup >> /var/log/aivis-backup.log 2>&1") \
     | sort -u | crontab -
 success "Backup cron: 4 AM daily, 7-day rotation"
 
