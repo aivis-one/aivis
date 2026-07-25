@@ -74,6 +74,9 @@ from app.modules.products.constants import ProductStatus
 from app.modules.products.models import Product, ProductInstallment
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
+# Register referral_links in Base.metadata so User.referred_by_link_id's FK
+# resolves when a User is flushed on a fresh DB. Import-only.
+from app.modules.referrals.models import ReferralLink  # noqa: F401
 
 logger = structlog.get_logger()
 

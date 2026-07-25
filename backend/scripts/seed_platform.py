@@ -35,6 +35,10 @@ from sqlalchemy import select
 from app.core.database import dispose_engine, get_session_factory
 from app.core.logging import setup_logging
 from app.modules.users.models import User, UserRole, OnboardingStep, KYCStatus
+# Register referral_links in Base.metadata so User.referred_by_link_id's FK
+# resolves when the User is flushed on a fresh DB (this seed runs before any
+# referral rows exist). Import-only -- the model itself isn't referenced.
+from app.modules.referrals.models import ReferralLink  # noqa: F401
 
 logger = structlog.get_logger()
 

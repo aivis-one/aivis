@@ -42,6 +42,9 @@ from app.modules.auth.service import hash_password
 from app.modules.staff.constants import VALID_PERMISSION_KEYS, is_admin
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
+# Register referral_links in Base.metadata so User.referred_by_link_id's FK
+# resolves when a User is flushed on a fresh DB. Import-only.
+from app.modules.referrals.models import ReferralLink  # noqa: F401
 
 logger = structlog.get_logger()
 

@@ -1070,17 +1070,16 @@ prepare_test_db() {
         return 1
     }
 
-    # Minimal seed. `import app.main` first so every model is registered in
-    # Base.metadata before the Platform user is flushed -- otherwise the
-    # users.referred_by_link_id -> referral_links FK cannot resolve on a
-    # fresh DB (standalone seed scripts import only a subset of models).
+    # Minimal seed. The seed scripts themselves import referrals.models so
+    # the users.referred_by_link_id -> referral_links FK resolves on a
+    # fresh DB, so they run plainly here.
     docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app \
-        python -c "import app.main, runpy; runpy.run_path('scripts/seed_platform.py', run_name='__main__')" || {
+        python scripts/seed_platform.py || {
         echo -e "${RED}✗ Test DB seed (platform user) failed${NC}"
         return 1
     }
     docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app \
-        python -c "import app.main, runpy; runpy.run_module('scripts.seed_platform_templates', run_name='__main__')" || {
+        python -m scripts.seed_platform_templates || {
         echo -e "${RED}✗ Test DB seed (platform templates) failed${NC}"
         return 1
     }
