@@ -2272,13 +2272,15 @@ iter 2.7 Block D реализовал базовый CRUD roadmap items + reorde
 |---|----------|-----------|-------|
 | TD-F18 | Заменить локальные копии `formatBytes` на импорт из `@/utils/format`. | 🟢 | В следующий drive-by cleanup |
 
-### TD-F19: Company-views на shared date/amount хелперы (F6 follow-up)
+### TD-F19: Company-views на shared date/amount хелперы (F6 follow-up) — ✅ ЗАКРЫТ
 
 F6 follow-up вынес `formatDateTime` / `formatDate` / `parseAmountToCents` (float-safe парсер) в `utils/format.ts` и мигрировал 4 agent-вью. `CompanyBalanceView` и shared `TransactionDetailSheet` всё ещё несут инлайн-копии `formatDate` и `Math.round(Number(...)*100)`-парсинг ввода суммы — тот же класс дублирования, что TD-F18 / TD-F09a.
 
+**✅ Закрыт (Version 2.12-F6):** `CompanyBalanceView` (`formatDate`→`formatDateTime`, `Math.round`→`parseAmountToCents`) и shared `components/shared/TransactionDetailSheet.vue` (`formatDate`→`formatDateTime`) переведены на shared-хелперы.
+
 | # | Описание | Приоритет | Когда |
 |---|----------|-----------|-------|
-| TD-F19 | Заменить инлайн `formatDate` в `CompanyBalanceView` + `TransactionDetailSheet` на `formatDateTime`/`formatDate` из `@/utils/format`; заменить `Math.round`-парсинг ввода суммы на `parseAmountToCents`. | 🟢 | В следующий drive-by cleanup |
+| ~~TD-F19~~ | ~~Заменить инлайн `formatDate` в `CompanyBalanceView` + `TransactionDetailSheet` на `formatDateTime`/`formatDate` из `@/utils/format`; заменить `Math.round`-парсинг ввода суммы на `parseAmountToCents`.~~ ✅ | 🟢 | ✅ done (2.12-F6) |
 
 ### TD-F20: usePaginatedList extraction + frontend unit-test infra
 
@@ -2290,6 +2292,8 @@ F6 follow-up вынес `formatDateTime` / `formatDate` / `parseAmountToCents` (
 | TD-F20b | Завести фронтовую unit-тест-инфру (Vitest); начать с `utils/format.ts` (`parseAmountToCents` edge-cases) и `usePaginatedList`. | 🟡 | Before Scale |
 
 ---
+
+*Version 2.12-F6 | 2026-07-25 | Code-review round-2 fixes + company-balance consistency. **Agent (round-2):** retry-кнопка вынесена соседом slotless `CEmptyState` в Commissions/Leaderboard/Referrals — был мёртвый retry (2.1); `AgentBalanceView.hasError` локальные флаги гейтнуты на «данных нет» → транзиентный сбой рефетча после успешного вывода больше не сносит денежный экран (2.2); `CommissionsView` показывает ошибку дозагрузки (`loadMoreError`, 2.3); `AgentSettingsView` пишет сохранённый payout локально вместо рефетча + parse в try (2.4/2.7); `format.ts` `formatDate`/`formatDateTime` через `Number.isNaN(getTime())` (`new Date` не бросает — старый try/catch был мёртвый, 2.7); `LeaderboardView` ranked-list гейтнут на non-null (после reset нет пустого списка без подписи, 2.7). **Company:** `CompanyBalanceView` оказался нетронутым близнецом денежного экрана агента — сложены ВСЕ те же фиксы (§6 пустой payout + §2/2.2 error-gate + 2.4 payout-local + 2.7) для консистентности; **TD-F19 закрыт** — `CompanyBalanceView` + shared `components/shared/TransactionDetailSheet.vue` мигрированы на shared `formatDateTime`/`parseAmountToCents`. Гейт зелёный: 313 backend tests + frontend build.*
 
 *Version 2.11-F6 | 2026-07-24 | PHASE F6 (Agent shell) реализован + review follow-up. Blocks A–F: `ReferralsView` (downline L1/L2/L3 + sub-agents), `CommissionsView` (paginated, «Clawed back» badge), `LeaderboardView` (is_me highlight), `AgentBalanceView` (passive balance + история выводов + withdraw-форма), `AgentSettingsView` (payout JSON-редактор), `AgentMoreView` (точки входа). Имена реализации: `AgentBalanceView`/`AgentSettingsView` (не `BalanceView`), Settings — отдельный sub-route. Review follow-up (score 8/10): §2 balance error-gate stale-error trap (hasError на `summary===null` + безусловный refresh), §6 reject пустого payout `{}` (+`errorEmpty`), §3 withdrawal load-more errors через FP-16 brake (+`loadMoreError` + retry-баннер), shared `formatDateTime`/`formatDate`/`parseAmountToCents` в `utils/format.ts` (4 вью мигрированы), commission `:key` по выставленному backend'ом `CommissionEntry.id`, load-more спиннер. Bundle 10 файлов / 5 коммитов. +TD-F19 (company-views на shared хелперы), +TD-F20 (usePaginatedList + Vitest unit-инфра). FP-20 gap отмечен: InvestorSettingsView back-link. Agent i18n en-only по catch-up policy. Гейт зелёный: 312 backend tests + build.*
 
