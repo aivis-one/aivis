@@ -189,7 +189,7 @@ def generate(openapi: dict) -> str:
     output.append(
         "// Regenerated automatically by `cbshome update` and committed by"
     )
-    output.append("// cbshome-bot when the live OpenAPI schema changes.")
+    output.append("// aivis-bot when the live OpenAPI schema changes.")
     output.append(f"// API version: {version}")
     output.append(bar)
     output.append("")

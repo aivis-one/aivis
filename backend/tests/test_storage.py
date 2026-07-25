@@ -4,16 +4,16 @@
 #
 # Integration tests for app/core/storage.py. Run against the real MinIO
 # instance from docker-compose (no moto, no mock) using the dedicated
-# `cbshome-attachments-test` bucket created by minio-init.
+# `aivis-attachments-test` bucket created by minio-init.
 #
 # FIXTURE LIFECYCLE:
 #   use_test_bucket (autouse, function-scoped):
-#       1. Monkeypatch settings.minio_bucket -> "cbshome-attachments-test".
+#       1. Monkeypatch settings.minio_bucket -> "aivis-attachments-test".
 #       2. Wipe the bucket (list + delete every object).
 #       3. Yield to the test.
 #   The post-cleanup is intentionally skipped: pre-cleanup on the next
 #   test handles it, and a failed test leaves the bucket in a state we
-#   can inspect manually via `mc ls local/cbshome-attachments-test`.
+#   can inspect manually via `mc ls local/aivis-attachments-test`.
 #
 # COVERAGE PER PUBLIC API:
 #   upload_object            -> tests 1, 2, 5, 8, 10, 13
@@ -50,7 +50,7 @@ from app.core.storage import (
     upload_object,
 )
 
-TEST_BUCKET = "cbshome-attachments-test"
+TEST_BUCKET = "aivis-attachments-test"
 TEST_PREFIX = "test_storage/"
 
 # Bucket name guaranteed to never exist. Used by the missing-bucket

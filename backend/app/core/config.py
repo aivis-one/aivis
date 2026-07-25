@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     minio_endpoint: str = ""
     minio_access_key: str = ""
     minio_secret_key: str = ""
-    minio_bucket: str = "cbshome-attachments"
+    minio_bucket: str = "aivis-attachments"
     minio_region: str = "us-east-1"
     # Presigned URL TTL: short for authenticated download, long for public.
     minio_presigned_ttl_auth: int = 900       # 15 minutes
@@ -213,7 +213,7 @@ class Settings(BaseSettings):
         if not self.database_url:
             if is_dev:
                 self.database_url = (
-                    "postgresql+asyncpg://cbshome:cbshome@localhost:5432/cbshome"
+                    "postgresql+asyncpg://aivis:aivis@localhost:5432/aivis"
                 )
             else:
                 raise ValueError("DATABASE_URL is required in production.")

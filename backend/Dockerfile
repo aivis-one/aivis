@@ -51,8 +51,8 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists/*
 
 # Non-root user for security.
-RUN groupadd --gid 1000 cbshome && \
-    useradd --uid 1000 --gid cbshome --shell /bin/sh cbshome
+RUN groupadd --gid 1000 aivis && \
+    useradd --uid 1000 --gid aivis --shell /bin/sh aivis
 
 COPY --from=builder /opt/venv /opt/venv
 
@@ -70,7 +70,7 @@ ENV PYTHONUNBUFFERED=1
 # CRITICAL: alembic, pytest, and CLI tools must find the `app` package.
 ENV PYTHONPATH="/app"
 
-USER cbshome
+USER aivis
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", \

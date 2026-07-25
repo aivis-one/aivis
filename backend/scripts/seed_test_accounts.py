@@ -34,7 +34,7 @@
 #   whenever settings.app_env != "development" (fail-closed: an unset
 #   or mistyped APP_ENV counts as production) unless --allow-production
 #   is passed explicitly. The installer forwards that flag only when
-#   the operator exports CBSHOME_SEED_TEST_ACCOUNTS=1. The skip exits
+#   the operator exports AIVIS_SEED_TEST_ACCOUNTS=1. The skip exits
 #   0 so installers do not fail.
 #
 #   --remove-only is the rotation path: it NEUTRALIZES the accounts
@@ -899,7 +899,7 @@ def main() -> None:
         warn(
             "If this is a prod-like dev box that genuinely needs them, "
             "re-run with --allow-production (installer: export "
-            "CBSHOME_SEED_TEST_ACCOUNTS=1). To remove previously seeded "
+            "AIVIS_SEED_TEST_ACCOUNTS=1). To remove previously seeded "
             "accounts, use --remove-only."
         )
         return

@@ -48,7 +48,7 @@
 #
 # BUCKET:
 #   Every call reads settings.minio_bucket fresh. Tests redirect to
-#   `cbshome-attachments-test` via monkeypatch on settings.
+#   `aivis-attachments-test` via monkeypatch on settings.
 #
 # DELETE IDEMPOTENCY:
 #   delete_object on a missing KEY is a no-op (logged, no raise). A

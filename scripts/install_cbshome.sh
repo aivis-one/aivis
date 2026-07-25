@@ -42,9 +42,9 @@ set -euo pipefail
 # CONFIGURATION
 # ==============================================================================
 
-INSTALL_BASE="/opt/cbshome"
+INSTALL_BASE="/opt/aivis"
 GITHUB_REPO="aivis-one/aivis"
-DEPLOY_USER="cbshome"
+DEPLOY_USER="aivis"
 API_DOMAIN="api.cbshome.org"
 FRONTEND_DOMAIN="cbshome.org"
 MAIL_DOMAIN="mail.cbshome.org"
@@ -405,9 +405,9 @@ LOG_LEVEL=INFO
 CORS_ORIGINS=https://${FRONTEND_DOMAIN}
 
 # -- Database --
-DATABASE_URL=postgresql+asyncpg://cbshome:${DB_PASS}@postgres:5432/cbshome
-POSTGRES_DB=cbshome
-POSTGRES_USER=cbshome
+DATABASE_URL=postgresql+asyncpg://aivis:${DB_PASS}@postgres:5432/aivis
+POSTGRES_DB=aivis
+POSTGRES_USER=aivis
 POSTGRES_PASSWORD=${DB_PASS}
 
 # -- Redis --
@@ -424,7 +424,7 @@ MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY_VAL}
 MINIO_SECRET_KEY=${MINIO_SECRET_KEY_VAL}
 # Endpoint as seen from inside the docker network.
 MINIO_ENDPOINT=http://minio:9000
-MINIO_BUCKET=cbshome-attachments
+MINIO_BUCKET=aivis-attachments
 MINIO_REGION=us-east-1
 # Presigned URL TTL: 15 min for auth flow, 24h for public flow.
 MINIO_PRESIGNED_TTL_AUTH=900
@@ -548,7 +548,7 @@ section "Nginx Configuration"
 # `POST /api/v1/staff/companies/{id}/attachments` arrives in a later
 # iteration; setting the limit now means we don't have to come back and
 # reload nginx when the endpoint goes live.
-cat > /etc/nginx/sites-available/cbshome-api << NGINX_API
+cat > /etc/nginx/sites-available/aivis-api << NGINX_API
 server {
     listen 80;
     server_name ${API_DOMAIN};
@@ -568,7 +568,7 @@ server {
 NGINX_API
 
 # Frontend
-cat > /etc/nginx/sites-available/cbshome-frontend << NGINX_FRONTEND
+cat > /etc/nginx/sites-available/aivis-frontend << NGINX_FRONTEND
 server {
     listen 80;
     server_name ${FRONTEND_DOMAIN};
@@ -583,10 +583,10 @@ server {
 }
 NGINX_FRONTEND
 
-ln -sf /etc/nginx/sites-available/cbshome-api \
-    /etc/nginx/sites-enabled/cbshome-api
-ln -sf /etc/nginx/sites-available/cbshome-frontend \
-    /etc/nginx/sites-enabled/cbshome-frontend
+ln -sf /etc/nginx/sites-available/aivis-api \
+    /etc/nginx/sites-enabled/aivis-api
+ln -sf /etc/nginx/sites-available/aivis-frontend \
+    /etc/nginx/sites-enabled/aivis-frontend
 rm -f /etc/nginx/sites-enabled/default
 
 nginx -t && systemctl reload nginx
@@ -763,7 +763,7 @@ success "Basic-auth file: /etc/nginx/.htpasswd-storage-mc-admin"
 #      for real-time bucket updates.
 #    - client_max_body_size 100M matches MINIO_MAX_FILE_SIZE_MB (Refactor 2 §1.6),
 #      so Staff can upload files up to that size through the Web UI.
-cat > /etc/nginx/sites-available/cbshome-storage-mc-admin << NGINX_STORAGE
+cat > /etc/nginx/sites-available/aivis-storage-mc-admin << NGINX_STORAGE
 server {
     listen 80;
     server_name ${STORAGE_DOMAIN};
@@ -805,8 +805,8 @@ server {
 }
 NGINX_STORAGE
 
-ln -sf /etc/nginx/sites-available/cbshome-storage-mc-admin \
-    /etc/nginx/sites-enabled/cbshome-storage-mc-admin
+ln -sf /etc/nginx/sites-available/aivis-storage-mc-admin \
+    /etc/nginx/sites-enabled/aivis-storage-mc-admin
 
 nginx -t && systemctl reload nginx
 success "Nginx configured for $STORAGE_DOMAIN"
@@ -886,9 +886,9 @@ success "Storefront seeded"
 # Seed test accounts (investor / company / agent / staff for manual testing)
 # R-2.3: on APP_ENV=production the seeder refuses the well-known
 # seedpass123 accounts unless explicitly allowed -- opt in by exporting
-# CBSHOME_SEED_TEST_ACCOUNTS=1 before running.
+# AIVIS_SEED_TEST_ACCOUNTS=1 before running.
 log "Seeding test accounts (dev fixtures)..."
-docker compose exec -T app python -m scripts.seed_test_accounts ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
+docker compose exec -T app python -m scripts.seed_test_accounts ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
 success "Test accounts seeded"
 
 # ------------------------------------------------------------------------------
@@ -912,7 +912,7 @@ success "Test accounts seeded"
 
 log "Seeding platform default templates to MinIO..."
 mc cp -r "$INSTALL_BASE/repo/backend/scripts/templates/_default/" \
-    local/cbshome-attachments/_platform/templates/
+    local/aivis-attachments/_platform/templates/
 
 log "Seeding platform default templates to DB..."
 docker compose exec -T app python -m scripts.seed_platform_templates
@@ -932,7 +932,7 @@ cat > "$MANAGE_SCRIPT" << 'MANAGE_EOF'
 # cbshome -- CBSHOME Platform Management Script
 # ==============================================================================
 
-INSTALL_BASE="/opt/cbshome"
+INSTALL_BASE="/opt/aivis"
 COMPOSE_DIR="$INSTALL_BASE/repo"
 API_DOMAIN="api.cbshome.org"
 FRONTEND_DOMAIN="cbshome.org"
@@ -1034,13 +1034,13 @@ case_logs() {
 
 # Provision an isolated test database so the suite never touches the live
 # dev DB. Derives the test URL from the app's own DATABASE_URL (same
-# creds/host, DB name -> cbshome_test), drops + recreates it, migrates via
+# creds/host, DB name -> aivis_test), drops + recreates it, migrates via
 # alembic, and seeds the minimum the suite needs (platform user + platform
 # templates; tests build the rest through register_user). Exports
 # TEST_DB_URL (global) for the caller to pass to pytest via -e.
 prepare_test_db() {
     echo ""
-    echo "Provisioning isolated test database (cbshome_test)..."
+    echo "Provisioning isolated test database (aivis_test)..."
 
     local app_db_url
     app_db_url=$(docker compose exec -T app printenv DATABASE_URL | tr -d '\r\n')
@@ -1048,17 +1048,17 @@ prepare_test_db() {
         echo -e "${RED}✗ Could not read DATABASE_URL from app container${NC}"
         return 1
     fi
-    # Strip the trailing "/cbshome" DB name, append "/cbshome_test".
+    # Strip the trailing "/aivis" DB name, append "/aivis_test".
     # % removes the shortest matching suffix, so credentials/host are
-    # untouched even if the password contained the substring "cbshome".
-    TEST_DB_URL="${app_db_url%/cbshome}/cbshome_test"
+    # untouched even if the password contained the substring "aivis".
+    TEST_DB_URL="${app_db_url%/aivis}/aivis_test"
 
     # Drop + recreate via the maintenance DB. FORCE terminates any
     # lingering connections left by a previous run (PG13+).
-    docker compose exec -T postgres psql -U cbshome -d postgres \
-        -c "DROP DATABASE IF EXISTS cbshome_test WITH (FORCE);" \
-        -c "CREATE DATABASE cbshome_test OWNER cbshome;" >/dev/null || {
-        echo -e "${RED}✗ Could not (re)create cbshome_test${NC}"
+    docker compose exec -T postgres psql -U aivis -d postgres \
+        -c "DROP DATABASE IF EXISTS aivis_test WITH (FORCE);" \
+        -c "CREATE DATABASE aivis_test OWNER aivis;" >/dev/null || {
+        echo -e "${RED}✗ Could not (re)create aivis_test${NC}"
         return 1
     }
 
@@ -1088,7 +1088,7 @@ prepare_test_db() {
     # check below -- template seeding is the historically fragile part).
     local tmpl_count
     tmpl_count=$(
-        docker compose exec -T postgres psql -U cbshome -d cbshome_test \
+        docker compose exec -T postgres psql -U aivis -d aivis_test \
             -tAc "SELECT COUNT(*) FROM company_document_templates WHERE company_id IS NULL AND status='active';" \
             2>/dev/null | tr -d '[:space:]'
     )
@@ -1097,7 +1097,7 @@ prepare_test_db() {
         return 1
     fi
 
-    echo -e "${GREEN}✓ cbshome_test ready (migrated + seeded, 16 templates)${NC}"
+    echo -e "${GREEN}✓ aivis_test ready (migrated + seeded, 16 templates)${NC}"
 }
 
 # ==============================================================================
@@ -1347,8 +1347,8 @@ case_update() {
     docker compose exec -T app python -m scripts.seed_platform_templates
     docker compose exec -T app python scripts/seed_documents.py
     docker compose exec -T app python -m scripts.seed_storefront
-    # R-2.3: refuses on APP_ENV=production unless CBSHOME_SEED_TEST_ACCOUNTS=1.
-    docker compose exec -T app python -m scripts.seed_test_accounts ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
+    # R-2.3: refuses on APP_ENV=production unless AIVIS_SEED_TEST_ACCOUNTS=1.
+    docker compose exec -T app python -m scripts.seed_test_accounts ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
     echo -e "${GREEN}✓ Prod DB seeded${NC}"
 
     # ----------------------------------------------------------------------
@@ -1364,7 +1364,7 @@ case_update() {
     echo ""
     echo "Smoke check: platform templates seeded..."
     template_count=$(
-        docker compose exec -T postgres psql -U cbshome -d cbshome \
+        docker compose exec -T postgres psql -U aivis -d aivis \
             -tAc "SELECT COUNT(*) FROM company_document_templates WHERE company_id IS NULL AND status='active';" \
             2>/dev/null | tr -d '[:space:]'
     )
@@ -1380,11 +1380,11 @@ case_update() {
 
 
     # ----------------------------------------------------------------------
-    # Run tests against an ISOLATED cbshome_test DB (TD-068), provisioned
+    # Run tests against an ISOLATED aivis_test DB (TD-068), provisioned
     # fresh here -- so a run never accumulates cross-run residue and never
     # touches the live dev DB. Sequential -- xdist was an artefact of the
     # abandoned per-worker design and conftest refuses it. The dev-DB seed
-    # above is for the running app; tests use cbshome_test via -e DATABASE_URL.
+    # above is for the running app; tests use aivis_test via -e DATABASE_URL.
     # ----------------------------------------------------------------------
     pytest_status=0
     if [ $SKIP_TESTS -eq 0 ]; then
@@ -1393,7 +1393,7 @@ case_update() {
             return 1
         fi
         echo ""
-        echo "Running backend tests (against cbshome_test)..."
+        echo "Running backend tests (against aivis_test)..."
         docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short \
             || pytest_status=$?
 
@@ -1420,7 +1420,7 @@ case_update() {
     # Regenerate frontend TypeScript types from live OpenAPI schema.
     #
     # If regeneration changes the file (or creates it for the first time),
-    # cbshome-bot commits and pushes it, so the next `cbshome update` on
+    # aivis-bot commits and pushes it, so the next `cbshome update` on
     # any environment pulls the up-to-date types via plain git.
     #
     # Frontend developers MUST NOT edit generated.ts manually -- the file
@@ -1447,8 +1447,8 @@ case_update() {
     if [ -n "$(git status --porcelain frontend/src/api/generated.ts)" ]; then
         echo "Schema drift detected -- committing regenerated generated.ts"
 
-        BOT_NAME="cbshome-bot"
-        BOT_EMAIL="bot@cbshome.local"
+        BOT_NAME="aivis-bot"
+        BOT_EMAIL="bot@aivis.local"
 
         git add frontend/src/api/generated.ts
         git -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" commit -m \
@@ -1579,7 +1579,7 @@ case_restart() {
 # Tarball includes:
 #   - PostgreSQL dump (pg_dump)
 #   - backend/.env
-#   - MinIO bucket snapshot (mc mirror local/cbshome-attachments)
+#   - MinIO bucket snapshot (mc mirror local/aivis-attachments)
 #
 # Rotation: 7 days. The MinIO mirror step is best-effort -- if mc fails
 # (network blip, MinIO down), we proceed with DB-only backup and warn.
@@ -1589,9 +1589,9 @@ case_backup() {
     cd_compose
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     BACKUP_DIR="$INSTALL_BASE/backups"
-    BACKUP_FILE="$BACKUP_DIR/cbshome_backup_${TIMESTAMP}.tar.gz"
-    DB_DUMP_FILE="/tmp/cbshome_db_${TIMESTAMP}.sql"
-    MINIO_DUMP_DIR="/tmp/cbshome_minio_${TIMESTAMP}"
+    BACKUP_FILE="$BACKUP_DIR/aivis_backup_${TIMESTAMP}.tar.gz"
+    DB_DUMP_FILE="/tmp/aivis_db_${TIMESTAMP}.sql"
+    MINIO_DUMP_DIR="/tmp/aivis_minio_${TIMESTAMP}"
     mkdir -p "$BACKUP_DIR"
 
     echo "Creating backup..."
@@ -1599,12 +1599,12 @@ case_backup() {
     # 1. Dump database.
     echo "  Dumping PostgreSQL..."
     docker compose exec -T postgres pg_dump \
-        -U cbshome cbshome > "$DB_DUMP_FILE"
+        -U aivis aivis > "$DB_DUMP_FILE"
 
     # 2. Mirror MinIO bucket (best-effort).
     echo "  Mirroring MinIO bucket..."
     mkdir -p "$MINIO_DUMP_DIR"
-    if mc mirror --quiet local/cbshome-attachments "$MINIO_DUMP_DIR/" 2>/dev/null; then
+    if mc mirror --quiet local/aivis-attachments "$MINIO_DUMP_DIR/" 2>/dev/null; then
         MINIO_OBJECTS=$(find "$MINIO_DUMP_DIR" -type f 2>/dev/null | wc -l)
         echo "  MinIO: $MINIO_OBJECTS objects mirrored"
     else
@@ -1615,16 +1615,16 @@ case_backup() {
     # 3. Archive: DB dump + .env + MinIO snapshot.
     echo "  Creating archive..."
     tar -czf "$BACKUP_FILE" \
-        -C /tmp "cbshome_db_${TIMESTAMP}.sql" \
+        -C /tmp "aivis_db_${TIMESTAMP}.sql" \
         -C "$COMPOSE_DIR/backend" ".env" \
-        -C /tmp "cbshome_minio_${TIMESTAMP}"
+        -C /tmp "aivis_minio_${TIMESTAMP}"
 
     # 4. Cleanup tmp.
     rm -f "$DB_DUMP_FILE"
     rm -rf "$MINIO_DUMP_DIR"
 
     # 5. Rotate: keep last 7 days.
-    find "$BACKUP_DIR" -name "cbshome_backup_*.tar.gz" -mtime +7 -delete
+    find "$BACKUP_DIR" -name "aivis_backup_*.tar.gz" -mtime +7 -delete
 
     echo -e "${GREEN}✓ Backup: $BACKUP_FILE${NC}"
     ls -lh "$BACKUP_FILE"
@@ -1638,13 +1638,13 @@ case_db() {
     cd_compose
     case "${1:-connect}" in
         connect)
-            docker compose exec postgres psql -U cbshome -d cbshome
+            docker compose exec postgres psql -U aivis -d aivis
             ;;
         dump)
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-            DUMP_FILE="$INSTALL_BASE/backups/cbshome_db_${TIMESTAMP}.sql"
+            DUMP_FILE="$INSTALL_BASE/backups/aivis_db_${TIMESTAMP}.sql"
             mkdir -p "$INSTALL_BASE/backups"
-            docker compose exec -T postgres pg_dump -U cbshome cbshome > "$DUMP_FILE"
+            docker compose exec -T postgres pg_dump -U aivis aivis > "$DUMP_FILE"
             echo -e "${GREEN}✓ Dump: $DUMP_FILE${NC}"
             ;;
         restore)
@@ -1661,7 +1661,7 @@ case_db() {
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 echo "Restoring database..."
-                cat "$2" | docker compose exec -T postgres psql -U cbshome cbshome
+                cat "$2" | docker compose exec -T postgres psql -U aivis aivis
                 echo -e "${GREEN}✓ Database restored${NC}"
             fi
             ;;
@@ -1687,17 +1687,17 @@ case_db() {
 case_seed() {
     cd_compose
     # R-2.3: seed_test_accounts refuses on APP_ENV=production unless
-    # CBSHOME_SEED_TEST_ACCOUNTS=1 is exported (well-known credentials).
+    # AIVIS_SEED_TEST_ACCOUNTS=1 is exported (well-known credentials).
     if [ "${1:-}" = "--reset" ]; then
         docker compose exec -T app python scripts/seed_platform.py --reset
         docker compose exec -T app python scripts/seed_documents.py
         docker compose exec -T app python -m scripts.seed_storefront --reset
-        docker compose exec -T app python -m scripts.seed_test_accounts --reset ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
+        docker compose exec -T app python -m scripts.seed_test_accounts --reset ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
     else
         docker compose exec -T app python scripts/seed_platform.py
         docker compose exec -T app python scripts/seed_documents.py
         docker compose exec -T app python -m scripts.seed_storefront
-        docker compose exec -T app python -m scripts.seed_test_accounts ${CBSHOME_SEED_TEST_ACCOUNTS:+--allow-production}
+        docker compose exec -T app python -m scripts.seed_test_accounts ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
     fi
 }
 
@@ -1782,7 +1782,7 @@ case_storage() {
             echo -e "${CYAN}=== MinIO Storage Stats ===${NC}"
             echo ""
             echo "Bucket size:"
-            mc du local/cbshome-attachments 2>/dev/null || {
+            mc du local/aivis-attachments 2>/dev/null || {
                 echo -e "${RED}✗ Cannot reach MinIO via mc alias 'local'${NC}"
                 echo "  Check: mc alias list  |  cbshome status"
                 return 1
@@ -1790,7 +1790,7 @@ case_storage() {
             echo ""
             echo "Object count:"
             local COUNT
-            COUNT=$(mc ls --recursive local/cbshome-attachments 2>/dev/null | wc -l)
+            COUNT=$(mc ls --recursive local/aivis-attachments 2>/dev/null | wc -l)
             echo "  $COUNT objects"
             ;;
         console)
