@@ -111,7 +111,7 @@ services:
   #   9000 -- S3 API. Backend talks to it through the docker network as
   #           http://minio:9000; never exposed beyond the host loopback.
   #   9001 -- Web UI / Object Browser. Reachable from outside ONLY via
-  #           nginx reverse proxy at https://storage-mc-admin.cbshome.org
+  #           nginx reverse proxy at https://storage-mc-admin.aivis.one
   #           with basic-auth (configured in install_aivis.sh).
   #
   # Healthcheck uses the live endpoint shipped with MinIO; curl is

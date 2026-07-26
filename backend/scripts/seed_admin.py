@@ -7,8 +7,8 @@
 # Admin = staff with ALL permissions True.
 #
 # USAGE:
-#   ADMIN_PASSWORD=secret python scripts/seed_admin.py --email admin@cbshome.org
-#   python scripts/seed_admin.py --email admin@cbshome.org  (prompts for password)
+#   ADMIN_PASSWORD=secret python scripts/seed_admin.py --email admin@aivis.one
+#   python scripts/seed_admin.py --email admin@aivis.one  (prompts for password)
 #
 # SECURITY:
 #   Password read from ADMIN_PASSWORD env var (preferred for automation)

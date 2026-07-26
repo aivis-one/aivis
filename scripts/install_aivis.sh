@@ -14,10 +14,10 @@
 #   6.  Generate SSH deploy key -> add to GitHub -> clone repo
 #   7.  Generate .env with random passwords (incl. MinIO secrets)
 #   8.  Prompt for sensitive secrets (bot token, API keys)
-#   9.  Configure Nginx reverse proxy (api.cbshome.org, cbshome.org)
+#   9.  Configure Nginx reverse proxy (api.aivis.one, app.aivis.one)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
 #   11. Install and configure mail server (Postfix + OpenDKIM)
-#   12. Set up MinIO Web UI proxy (storage-mc-admin.cbshome.org + basic-auth)
+#   12. Set up MinIO Web UI proxy (storage-mc-admin.aivis.one + basic-auth)
 #   13. Start Docker stack -> healthcheck -> mc alias on host -> migrations
 #       -> seed Platform user
 #   14. Create `aivis` management script -> symlink /usr/local/bin/aivis
@@ -28,11 +28,13 @@
 #
 # REQUIREMENTS:
 #   - Ubuntu 22.04+ (fresh VPS, root access)
-#   - Domain cbshome.org pointing to this server
+#   - Domain aivis.one already registered (the root/apex is a SEPARATE
+#     landing page, NOT managed by this script)
 #   - Subdomains (A records to server IP):
-#       api.cbshome.org
-#       mail.cbshome.org
-#       storage-mc-admin.cbshome.org
+#       app.aivis.one
+#       api.aivis.one
+#       mail.aivis.one
+#       storage-mc-admin.aivis.one
 #   - GitHub repository aivis-one/aivis exists
 # ==============================================================================
 
@@ -45,10 +47,16 @@ set -euo pipefail
 INSTALL_BASE="/opt/aivis"
 GITHUB_REPO="aivis-one/aivis"
 DEPLOY_USER="aivis"
-API_DOMAIN="api.cbshome.org"
-FRONTEND_DOMAIN="cbshome.org"
-MAIL_DOMAIN="mail.cbshome.org"
-STORAGE_DOMAIN="storage-mc-admin.cbshome.org"
+API_DOMAIN="api.aivis.one"
+FRONTEND_DOMAIN="app.aivis.one"
+MAIL_DOMAIN="mail.aivis.one"
+STORAGE_DOMAIN="storage-mc-admin.aivis.one"
+# Bug fix: certbot's --email must NOT derive from FRONTEND_DOMAIN. That
+# domain is app.aivis.one (the app subdomain), which has no MX -- Let's
+# Encrypt expiry warnings would go nowhere and the failure would only
+# surface months later as an expired certificate. The apex aivis.one
+# has real mail (owner-confirmed); this is a decoupled, dedicated value.
+CERTBOT_EMAIL="admin@aivis.one"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
 
@@ -215,7 +223,7 @@ apt-get install -y \
     > /dev/null 2>&1
 
 # apache2-utils provides htpasswd, used to create basic-auth file for the
-# MinIO Console nginx proxy (storage-mc-admin.cbshome.org).
+# MinIO Console nginx proxy (storage-mc-admin.aivis.one).
 success "Base packages installed (incl. apache2-utils for htpasswd)"
 
 # Docker
@@ -603,7 +611,7 @@ certbot --nginx \
     -d "$FRONTEND_DOMAIN" \
     --non-interactive \
     --agree-tos \
-    --email "admin@${FRONTEND_DOMAIN}" \
+    --email "$CERTBOT_EMAIL" \
     --redirect || warn "SSL setup failed. Run manually: certbot --nginx"
 
 # Auto-renewal cron
@@ -620,7 +628,7 @@ success "SSL auto-renewal cron set (3 AM daily)"
 
 section "Mail Server"
 
-DKIM_SELECTOR="cbshome"
+DKIM_SELECTOR="aivis"
 DKIM_DIR="/etc/opendkim/keys/${MAIL_DOMAIN}"
 
 # -- Postfix: send-only configuration --
@@ -739,7 +747,7 @@ success "Mail server setup complete"
 # Sets up host-side infrastructure that lives in front of the MinIO Console.
 # The MinIO server itself runs as a docker container (started below in the
 # Docker Stack section), but its 9001 console port is bound to loopback only.
-# Public access happens through nginx at https://storage-mc-admin.cbshome.org
+# Public access happens through nginx at https://storage-mc-admin.aivis.one
 # with HTTP basic-auth (login: admin, password: MINIO_CONSOLE_BASIC_AUTH_PASSWORD).
 #
 # The mc host alias is configured later, once the docker stack is up and
@@ -757,7 +765,7 @@ chmod 640 /etc/nginx/.htpasswd-storage-mc-admin
 chown root:www-data /etc/nginx/.htpasswd-storage-mc-admin
 success "Basic-auth file: /etc/nginx/.htpasswd-storage-mc-admin"
 
-# 2. Nginx site config for storage-mc-admin.cbshome.org.
+# 2. Nginx site config for storage-mc-admin.aivis.one.
 #    - basic-auth gates everything before MinIO sees it.
 #    - WebSocket upgrade headers are required: the MinIO Console uses WS
 #      for real-time bucket updates.
@@ -816,7 +824,7 @@ certbot --nginx \
     -d "$STORAGE_DOMAIN" \
     --non-interactive \
     --agree-tos \
-    --email "admin@${FRONTEND_DOMAIN}" \
+    --email "$CERTBOT_EMAIL" \
     --redirect || warn "SSL setup for $STORAGE_DOMAIN failed. Run manually: certbot --nginx -d $STORAGE_DOMAIN"
 
 success "SSL configured for $STORAGE_DOMAIN"
@@ -934,9 +942,9 @@ cat > "$MANAGE_SCRIPT" << 'MANAGE_EOF'
 
 INSTALL_BASE="/opt/aivis"
 COMPOSE_DIR="$INSTALL_BASE/repo"
-API_DOMAIN="api.cbshome.org"
-FRONTEND_DOMAIN="cbshome.org"
-STORAGE_DOMAIN="storage-mc-admin.cbshome.org"
+API_DOMAIN="api.aivis.one"
+FRONTEND_DOMAIN="app.aivis.one"
+STORAGE_DOMAIN="storage-mc-admin.aivis.one"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -2043,7 +2051,7 @@ echo "   -- Set SUMSUB_API_KEY / SUMSUB_SECRET_KEY"
 echo "   -- Set MAILGUN_API_KEY (if not done)"
 echo "   -- Set MAILGUN_API_URL (default: EU endpoint, change to https://api.mailgun.net for US)"
 echo "2. Add DKIM DNS record (printed above during mail setup)"
-echo "3. Verify DKIM: opendkim-testkey -d ${MAIL_DOMAIN} -s cbshome -vvv"
+echo "3. Verify DKIM: opendkim-testkey -d ${MAIL_DOMAIN} -s ${DKIM_SELECTOR} -vvv"
 echo "4. Run: aivis restart app"
 echo "5. Test email: aivis test-email your@email.com"
 echo "6. Open MinIO Console: aivis storage console  (prints URL + credentials)"

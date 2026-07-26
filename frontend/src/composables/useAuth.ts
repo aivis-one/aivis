@@ -15,7 +15,7 @@
 //        (b) Telegram start_param via platform.getStartParam() -- unchanged.
 //        (c) URL path: `/r/<code>` (R1 referral patch §A6) -- NEW.
 //      The path match is a sibling source: the visitor types
-//      cbshome.org/r/AGENT_CODE in their browser, captureReferralFromPath()
+//      app.aivis.one/r/AGENT_CODE in their browser, captureReferralFromPath()
 //      is called from the /r/:code beforeEnter and also from this
 //      initAuth-time scan to cover the case where the app hot-reloads
 //      on the /r/... URL before the router boots.
