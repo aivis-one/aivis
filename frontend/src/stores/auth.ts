@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // Manages authentication state: user, token, role.
-// Token persisted via platform.getStorageDriver() under key 'cbs_token'.
+// Token persisted via platform.getStorageDriver() under key 'aivis_token'.
 // Registers _onUnauthorized callback in API client.
 //
 // Sprint 4.4 (post-VELO hardening):
@@ -81,7 +81,7 @@ import { setAvatarActive } from '@/composables/avatarState'
 import { setLocale } from '@/i18n'
 import { resetAllDataStores } from '@/stores/sessionReset'
 
-const TOKEN_KEY = 'cbs_token'
+const TOKEN_KEY = 'aivis_token'
 
 /**
  * sessionStorage key for the one-shot referral code captured per
@@ -93,7 +93,7 @@ const TOKEN_KEY = 'cbs_token'
  * arrived via a referral link should preserve the credit so the
  * visitor can register a fresh account under the same agent.
  */
-export const REFERRAL_KEY = 'cbs_referral_code'
+export const REFERRAL_KEY = 'aivis_referral_code'
 
 export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------

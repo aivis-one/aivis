@@ -104,7 +104,7 @@ async def get_or_create_deposit_address(
         )
 
     # Generate stub address (placeholder for real provider integration).
-    stub_address = f"CBS_{network}_{uuid4().hex[:16]}"
+    stub_address = f"AIVIS_{network}_{uuid4().hex[:16]}"
 
     new_addr = CryptoAddress(
         user_id=user_id,

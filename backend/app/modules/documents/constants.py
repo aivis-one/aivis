@@ -9,7 +9,7 @@
 # (documents.required_for_roles JSONB), not here. Do NOT reintroduce a
 # Python-side mapping -- adding new document types must not require a
 # code change. Role membership is declared via
-# <meta name="cbs-required-for-roles"> inside each HTML file under
+# <meta name="aivis-required-for-roles"> inside each HTML file under
 # frontend/public/legal/ and is picked up by seed_documents.py.
 # =============================================================================
 

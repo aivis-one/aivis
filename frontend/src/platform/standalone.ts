@@ -21,7 +21,7 @@ export const standalonePlatform: Platform = {
   },
 
   getTheme(): 'light' | 'dark' {
-    const stored = localStorage.getItem('cbs-theme')
+    const stored = localStorage.getItem('aivis-theme')
     if (stored === 'dark' || stored === 'light') return stored
     if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark'
     return 'light'

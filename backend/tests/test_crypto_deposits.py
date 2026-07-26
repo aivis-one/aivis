@@ -70,7 +70,7 @@ async def test_get_crypto_address_new(
 
     assert body["network"] == "TRC20"
     assert body["user_id"] == user_id
-    assert body["address"].startswith("CBS_TRC20_")
+    assert body["address"].startswith("AIVIS_TRC20_")
 
 
 @pytest.mark.asyncio
@@ -193,7 +193,7 @@ async def test_webhook_invalid_secret(
         "/api/v1/payments/crypto/webhook",
         json={
             "network": "TRC20",
-            "to_address": "CBS_TRC20_fake",
+            "to_address": "AIVIS_TRC20_fake",
             "from_address": "TSender",
             "tx_hash": f"0x{uuid4().hex}",
             "amount_crypto": "50.00",
@@ -254,7 +254,7 @@ async def test_webhook_unknown_address(
         "/api/v1/payments/crypto/webhook",
         json={
             "network": "TRC20",
-            "to_address": "CBS_TRC20_nonexistent",
+            "to_address": "AIVIS_TRC20_nonexistent",
             "from_address": "TSender",
             "tx_hash": f"0x{uuid4().hex}",
             "amount_crypto": "10.00",

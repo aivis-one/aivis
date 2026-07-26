@@ -11,7 +11,7 @@
 
 import { ref } from 'vue'
 
-export const STAFF_TOKEN_KEY = 'cbs_staff_token'
+export const STAFF_TOKEN_KEY = 'aivis_staff_token'
 
 /** Shared reactive flag — true when staff is operating as another user. */
 export const avatarActive = ref(!!sessionStorage.getItem(STAFF_TOKEN_KEY))

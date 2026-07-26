@@ -5,7 +5,7 @@
 // Three-state theme toggle: 'auto' | 'light' | 'dark'.
 //
 // STORAGE & FLUSH.
-//   'light' / 'dark' -> localStorage['cbs-theme'] + data-theme attr on
+//   'light' / 'dark' -> localStorage['aivis-theme'] + data-theme attr on
 //   <html>. 'auto' -> key removed, attr removed; CSS falls back to
 //   `@media (prefers-color-scheme)`. Matches the pre-init logic in
 //   public/theme-init.js (which runs before Vue mounts to avoid FOUC).
@@ -30,7 +30,7 @@ import { computed, ref } from 'vue'
 export type ThemeMode = 'auto' | 'light' | 'dark'
 export type EffectiveTheme = 'light' | 'dark'
 
-const STORAGE_KEY = 'cbs-theme'
+const STORAGE_KEY = 'aivis-theme'
 
 // ---------------------------------------------------------------------------
 // Module-level singleton state

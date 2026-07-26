@@ -7,9 +7,9 @@
 # /legal in the app container) into the `documents` table.
 #
 # Each HTML file must carry:
-#   <meta name="cbs-document-type"      content="privacy_policy">
-#   <meta name="cbs-language"           content="en">            (must match folder)
-#   <meta name="cbs-required-for-roles" content="investor,agent"> (optional)
+#   <meta name="aivis-document-type"      content="privacy_policy">
+#   <meta name="aivis-language"           content="en">            (must match folder)
+#   <meta name="aivis-required-for-roles" content="investor,agent"> (optional)
 #   <title>Human-readable title</title>                          (optional)
 #
 # SYNC RULES, per (type, language):
@@ -125,7 +125,7 @@ def _parse_metadata(file_path: Path, folder_language: str) -> dict | None:
 
     Returns {type, language, title, required_for_roles, content_hash}.
     The file's language is the folder it lives in; the value of the
-    `cbs-language` meta must match (so humans can't drift the two apart).
+    `aivis-language` meta must match (so humans can't drift the two apart).
 
     The hash covers raw file bytes; any whitespace change triggers a
     version bump, which is acceptable for legal documents.
@@ -135,19 +135,19 @@ def _parse_metadata(file_path: Path, folder_language: str) -> dict | None:
     parser = _MetadataParser()
     parser.feed(content.decode("utf-8", errors="replace"))
 
-    doc_type = (parser.meta.get("cbs-document-type") or "").strip()
+    doc_type = (parser.meta.get("aivis-document-type") or "").strip()
     if not doc_type:
         warn(
             f"Skipping {file_path}: missing "
-            f'<meta name="cbs-document-type">'
+            f'<meta name="aivis-document-type">'
         )
         return None
 
-    meta_language = (parser.meta.get("cbs-language") or "").strip()
+    meta_language = (parser.meta.get("aivis-language") or "").strip()
     if not meta_language:
         warn(
             f"Skipping {file_path}: missing "
-            f'<meta name="cbs-language">'
+            f'<meta name="aivis-language">'
         )
         return None
 
@@ -158,7 +158,7 @@ def _parse_metadata(file_path: Path, folder_language: str) -> dict | None:
         )
         return None
 
-    roles_raw = (parser.meta.get("cbs-required-for-roles") or "").strip()
+    roles_raw = (parser.meta.get("aivis-required-for-roles") or "").strip()
     roles = [r.strip() for r in roles_raw.split(",") if r.strip()]
 
     title = (parser.title or doc_type).strip()

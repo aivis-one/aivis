@@ -6,14 +6,14 @@ Create Date: 2026-04-17 00:00:00.000000
 
 Changes:
   - DROP CONSTRAINT ck_documents_type. Document types are no longer a
-    fixed enum; values come from <meta name="cbs-document-type"> in HTML
+    fixed enum; values come from <meta name="aivis-document-type"> in HTML
     files under frontend/public/legal/.
   - DROP COLUMN content_url. Document bodies live in the frontend as
     static HTML; the backend stores metadata only.
   - ADD COLUMN required_for_roles JSONB NOT NULL DEFAULT '[]'::jsonb.
     Replaces the hard-coded ROLE_REQUIRED_DOCUMENT_TYPES dict in
     documents/constants.py. Seed populates it from
-    <meta name="cbs-required-for-roles">.
+    <meta name="aivis-required-for-roles">.
   - ADD COLUMN content_hash String(64) NOT NULL DEFAULT ''. SHA-256 hex
     digest of the HTML body. Seed compares hashes on every run to detect
     content changes and bump version (old row -> archived, new row ->

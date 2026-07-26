@@ -11,7 +11,7 @@
 // in the active locale (see setupI18n notes).
 //
 // LOCALE RESOLUTION.
-//   1. localStorage['cbs-lang'] -- stored at login from user.language.
+//   1. localStorage['aivis-lang'] -- stored at login from user.language.
 //      Written by setLocale().
 //   2. DEFAULT_LOCALE ('en') -- anything else, including a brand new
 //      device with no prior session.
@@ -35,7 +35,7 @@ import {
   type SupportedLocale,
 } from '@/i18n/locales.config'
 
-const STORAGE_KEY = 'cbs-lang'
+const STORAGE_KEY = 'aivis-lang'
 
 // Vite turns this into a map of lazy loaders, one per matched file.
 // Only the JSON actually imported ends up in a runtime chunk.

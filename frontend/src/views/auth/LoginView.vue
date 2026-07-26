@@ -45,7 +45,7 @@
 //   The sessionStorage cleanup uses the shared `REFERRAL_KEY`
 //   constant imported from stores/auth instead of an inline literal.
 //   Eliminates the rename-miss-one trap that having three independent
-//   `'cbs_referral_code'` literals enabled.
+//   `'aivis_referral_code'` literals enabled.
 //
 // R22 STYLE-22-02:
 //   goToRegister() catches navigation rejections with the standard

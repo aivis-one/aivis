@@ -10,15 +10,15 @@
 //
 // Token swap mechanic:
 //   1. startAvatarSession() — save staff token to sessionStorage,
-//      call POST /staff/avatar/start, persist avatar token to cbs_token,
+//      call POST /staff/avatar/start, persist avatar token to aivis_token,
 //      fetchMe (now returns target user), redirect to target dashboard.
 //   2. endAvatarSession() — restore staff token from sessionStorage,
 //      call POST /staff/avatar/end (uses staff token), fetchMe,
 //      redirect to /staff/dashboard.
 //
 // Reload resilience:
-//   - cbs_token in storage = avatar token (persisted)
-//   - cbs_staff_token in sessionStorage = original staff token backup
+//   - aivis_token in storage = avatar token (persisted)
+//   - aivis_staff_token in sessionStorage = original staff token backup
 //   - restoreSession() loads avatar token → fetchMe → target user
 //   - App.vue checks isAvatarActive → shows banner
 //
@@ -54,7 +54,7 @@ import { platform } from '@/platform'
 import { avatarActive, setAvatarActive, STAFF_TOKEN_KEY } from '@/composables/avatarState'
 import { resetAllDataStores } from '@/stores/sessionReset'
 
-const TOKEN_KEY = 'cbs_token'
+const TOKEN_KEY = 'aivis_token'
 
 export function useAvatar() {
   const router = useRouter()
@@ -82,7 +82,7 @@ export function useAvatar() {
       // 2. Call start endpoint (uses staff token).
       const resp = await startAvatar(targetUserId)
 
-      // 3. Persist avatar token to cbs_token storage (so reload works).
+      // 3. Persist avatar token to aivis_token storage (so reload works).
       const storage = _getMainStorage()
       storage.setItem(TOKEN_KEY, resp.session_token)
       setAuthToken(resp.session_token)

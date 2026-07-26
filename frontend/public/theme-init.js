@@ -6,13 +6,13 @@
 // =============================================================================
 
 (function () {
-  var t = localStorage.getItem('cbs-theme')
+  var t = localStorage.getItem('aivis-theme')
   if (t === 'dark' || t === 'light') {
     document.documentElement.setAttribute('data-theme', t)
   } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
     document.documentElement.setAttribute('data-theme', 'dark')
   }
-  var l = localStorage.getItem('cbs-lang')
+  var l = localStorage.getItem('aivis-lang')
   if (l) {
     document.documentElement.lang = l
     if (l === 'ar') document.documentElement.dir = 'rtl'
