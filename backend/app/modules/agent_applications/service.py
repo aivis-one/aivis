@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Agent Application Service (Sprint 7.1)
+# AIVIS.ONE Backend -- Agent Application Service (Sprint 7.1)
 # =============================================================================
 #
 # RESPONSIBILITIES:

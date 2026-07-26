@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Schemas (Sprint 6.1, updated R-2.2)
+# AIVIS.ONE Backend -- Purchase Schemas (Sprint 6.1, updated R-2.2)
 # =============================================================================
 #
 # REQUEST SCHEMAS:

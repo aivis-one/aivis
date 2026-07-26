@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Processor Base Types (Sprint 6.1, Sprint 4.3 comment,
+# AIVIS.ONE Backend -- Processor Base Types (Sprint 6.1, Sprint 4.3 comment,
 #                                            Refactor 2 iter 2.4)
 # =============================================================================
 #

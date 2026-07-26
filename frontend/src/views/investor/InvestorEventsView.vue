@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorEventsView (iter 2.7b C, R1 §6.3)
+// AIVIS.ONE Frontend -- InvestorEventsView (iter 2.7b C, R1 §6.3)
 // =============================================================================
 //
 // Full events screen. Mounted under BOTH shells via parallel route

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Seed Test Accounts (Sprint 4.3 -- dev only)
+# AIVIS.ONE Backend -- Seed Test Accounts (Sprint 4.3 -- dev only)
 # =============================================================================
 #
 # Creates four ready-to-login accounts for manual frontend / E2E testing:

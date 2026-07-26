@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanySettingsView (Phase F5.2 B5)
+// AIVIS.ONE Frontend -- CompanySettingsView (Phase F5.2 B5)
 // =============================================================================
 //
 // Settings tab inside CompanyShell. Read-only render of CompanyResponse

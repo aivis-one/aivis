@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Products Store (Phase F4.1 + F4.1.2 hotfix)
+// AIVIS.ONE Frontend -- Products Store (Phase F4.1 + F4.1.2 hotfix)
 // =============================================================================
 //
 // Pinia store backing the Investor storefront (MarketView).

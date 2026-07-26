@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Structured Logging
+# AIVIS.ONE Backend -- Structured Logging
 # =============================================================================
 #
 # Uses structlog with two renderers:

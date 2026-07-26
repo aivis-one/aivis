@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Dashboard API (Phase F4.2)
+// AIVIS.ONE Frontend -- Dashboard API (Phase F4.2)
 // =============================================================================
 //
 // Typed wrapper for /api/v1/dashboard/summary.

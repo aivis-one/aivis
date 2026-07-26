@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Constants (Sprint 6.2, tranche-unwind R51+)
+# AIVIS.ONE Backend -- Installment Constants (Sprint 6.2, tranche-unwind R51+)
 # =============================================================================
 #
 # INSTALLMENT PLAN STATUS:
@@ -17,7 +17,7 @@
 #   reversed  -- the payment that funded this PAID tranche was
 #                charged back (tranche-unwind); terminal
 #
-# STATE MACHINES (from CBSHOME-State-Machines.md v1.4 + tranche-unwind):
+# STATE MACHINES (from AIVIS-State-Machines.md v1.4 + tranche-unwind):
 #
 #   InstallmentPlan:
 #     active    -> completed  (all tranches paid)

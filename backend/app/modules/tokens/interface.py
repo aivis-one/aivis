@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Token Interface (Sprint 10.1)
+# AIVIS.ONE Backend -- Token Interface (Sprint 10.1)
 # =============================================================================
 #
 # Stub protocol for future Solana tokenization (Q3 2027).

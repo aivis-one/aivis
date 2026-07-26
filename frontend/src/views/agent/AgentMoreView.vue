@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- AgentMoreView (Task 3 Block D, Phase F6.2)
+// AIVIS.ONE Frontend -- AgentMoreView (Task 3 Block D, Phase F6.2)
 // =============================================================================
 //
 // Top-level "More" tab for the agent shell -- navigation hub for the

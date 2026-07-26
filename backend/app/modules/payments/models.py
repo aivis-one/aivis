@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Models (Sprint 5.2)
+# AIVIS.ONE Backend -- Payment Models (Sprint 5.2)
 # =============================================================================
 #
 # Payment:
@@ -7,7 +7,7 @@
 #   corresponding active_ledger entry via the webhook flow.
 #
 #   Status lifecycle: created -> frozen -> confirmed (or reversed/failed).
-#   See CBSHOME-State-Machines.md section 1.
+#   See AIVIS-State-Machines.md section 1.
 #
 #   provider_data is JSONB -- schema depends on payment_type:
 #     crypto: {network, to_address, from_address, tx_hash, ...}

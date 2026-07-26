@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PlatformView (iter 2.7 Block B1 scaffolding)
+// AIVIS.ONE Frontend -- PlatformView (iter 2.7 Block B1 scaffolding)
 // =============================================================================
 //
 // Thin wrapper for the Staff Platform tab. Renders a horizontal

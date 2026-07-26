@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Consistency Semaphore Service (Sprint 6.4)
+# AIVIS.ONE Backend -- Consistency Semaphore Service (Sprint 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -14,8 +14,8 @@
 #   On fail, record_audit() logs the failure with details.
 #   structlog ALERT for critical failures.
 #
-# SEMAPHORE REFERENCE: CBSHOME-Financial-System.md section 12,
-#   CBSHOME-Installment.md section 8.
+# SEMAPHORE REFERENCE: AIVIS-Financial-System.md section 12,
+#   AIVIS-Installment.md section 8.
 # =============================================================================
 
 from decimal import Decimal

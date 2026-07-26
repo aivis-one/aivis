@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useAuth Composable (iter 2.6 batch 2 + R22 STYLE-22-01)
+// AIVIS.ONE Frontend -- useAuth Composable (iter 2.6 batch 2 + R22 STYLE-22-01)
 // =============================================================================
 //
 // Combines platform + auth store into a single init flow.

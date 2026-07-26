@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Constants (Sprint 6.1)
+# AIVIS.ONE Backend -- Purchase Constants (Sprint 6.1)
 # =============================================================================
 #
 # PURCHASE STATUS:

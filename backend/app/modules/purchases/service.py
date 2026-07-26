@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Service (Sprint 6.1 + Sprint 6.2 refactor
+# AIVIS.ONE Backend -- Purchase Service (Sprint 6.1 + Sprint 6.2 refactor
 #                                       + Sprint 4.3 + Sprint 4.4
 #                                       + Refactor 2 iter 2.4)
 # =============================================================================
@@ -77,7 +77,7 @@
 # AML NOTE:
 #   Purchase saga does NOT call validate_route(). This is a controlled
 #   system operation: investor active -> platform passive is always allowed.
-#   See CBSHOME-Design-Document.md decision P5-01.
+#   See AIVIS-Design-Document.md decision P5-01.
 # =============================================================================
 
 from datetime import datetime, UTC

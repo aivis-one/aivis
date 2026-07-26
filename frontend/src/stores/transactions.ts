@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Transactions Store (Phase F4.3 B3 + F4.4 B1-post + F5.1 B1)
+// AIVIS.ONE Frontend -- Transactions Store (Phase F4.3 B3 + F4.4 B1-post + F5.1 B1)
 // =============================================================================
 //
 // Pinia store for the investor transaction event log. Drives

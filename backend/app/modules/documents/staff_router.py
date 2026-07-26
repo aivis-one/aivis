@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Documents Staff Router (Sprint 2.2)
+# AIVIS.ONE Backend -- Documents Staff Router (Sprint 2.2)
 # =============================================================================
 #
 # Staff-only endpoints for document management.

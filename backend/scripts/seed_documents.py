@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Seed Legal Documents
+# AIVIS.ONE Backend -- Seed Legal Documents
 # =============================================================================
 #
 # Syncs frontend/public/legal/<language>/*.html (mounted read-only at

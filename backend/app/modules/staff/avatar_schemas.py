@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Avatar Schemas (Sprint 3.2)
+# AIVIS.ONE Backend -- Avatar Schemas (Sprint 3.2)
 # =============================================================================
 #
 # REQUEST/RESPONSE SCHEMAS:

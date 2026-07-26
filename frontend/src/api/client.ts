@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- API Client
+// AIVIS.ONE Frontend -- API Client
 // =============================================================================
 //
 // Typed fetch wrapper for CORS requests to api.cbshome.org.

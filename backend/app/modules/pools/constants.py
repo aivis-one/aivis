@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Pool Constants (Sprint 4.4)
+# AIVIS.ONE Backend -- Pool Constants (Sprint 4.4)
 # =============================================================================
 #
 # Pool status string literals. Mirror OptionPool.status column values

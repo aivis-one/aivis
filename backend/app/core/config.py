@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Application Configuration
+# AIVIS.ONE Backend -- Application Configuration
 # =============================================================================
 #
 # APP_VERSION: single source of truth for API version.

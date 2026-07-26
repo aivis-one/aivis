@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- AgentBalanceView (Task 3 Block D, Phase F6.2)
+// AIVIS.ONE Frontend -- AgentBalanceView (Task 3 Block D, Phase F6.2)
 // =============================================================================
 //
 // Replaces the F6.2 stub. The agent's passive (earnings) balance tab:

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Agent Applications API (Phase F4.4, investor side)
+// AIVIS.ONE Frontend -- Agent Applications API (Phase F4.4, investor side)
 // =============================================================================
 //
 // Typed wrappers for the investor-facing agent application endpoints.

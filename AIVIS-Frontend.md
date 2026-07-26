@@ -1,4 +1,4 @@
-# CBSHOME — Техническое задание: Frontend
+# AIVIS.ONE — Техническое задание: Frontend
 
 **Версия:** 2.10
 **Дата:** 13 мая 2026
@@ -6,15 +6,15 @@
 **Репозиторий:** https://github.com/aivis-one/aivis
 
 **Зависимости (читать перед работой):**
-- `CBSHOME-Design-Document.md` — Конституция v1.6 (§4.7 "Принципы проверяются на каждом решении")
-- `CBSHOME-Backend.md` — Backend ТЗ v3.7
-- `CBSHOME-Refactor-Investor-Market-And-Staff.md` v0.7 final (R1, fully implemented)
-- `CBSHOME-Refactor-Company-Docs.md` v0.9 final (R2, fully implemented)
+- `AIVIS-Design-Document.md` — Конституция v1.6 (§4.7 "Принципы проверяются на каждом решении")
+- `AIVIS-Backend.md` — Backend ТЗ v3.7
+- `AIVIS-Refactor-Investor-Market-And-Staff.md` v0.7 final (R1, fully implemented)
+- `AIVIS-Refactor-Company-Docs.md` v0.9 final (R2, fully implemented)
 - `CBSHOME-Observability-Frontend.md` v0.3 (draft, реализация после F6)
-- `CBSHOME-Financial-System.md` — финансовая логика
-- `CBSHOME-State-Machines.md` — переходы статусов
-- `CBSHOME-Installment.md` — механика рассрочки
-- `CBSHOME-Share-Pool-Refactor.md` — архитектурный референс OptionPool / Product Inventory (✅ closed Sprint 4.4, deployed `b539ee8`)
+- `AIVIS-Financial-System.md` — финансовая логика
+- `AIVIS-State-Machines.md` — переходы статусов
+- `AIVIS-Installment.md` — механика рассрочки
+- `AIVIS-Share-Pool-Refactor.md` — архитектурный референс OptionPool / Product Inventory (✅ closed Sprint 4.4, deployed `b539ee8`)
 - `mockups/` — UI-прототипы (auth-flow, investor-shell, agent-shell, company-shell, staff-shell)
 
 ---
@@ -23,7 +23,7 @@
 
 ### 1.1. Цель
 
-Фронтенд CBSHOME — единое SPA-приложение с ролевым роутингом, работающее в двух режимах:
+Фронтенд AIVIS.ONE — единое SPA-приложение с ролевым роутингом, работающее в двух режимах:
 
 1. **Standalone PWA** — основной канал. Устанавливается на Home Screen, авторизация через email/password
 2. **Telegram WebApp** — второй канал. Открывается внутри Telegram, авторизация через initData
@@ -130,7 +130,7 @@ interface UserResponse {
 ### 3.1. Структура проекта
 
 ```
-cbshome/                              -- GitHub repo root (существует)
+aivis/                                -- GitHub repo root (существует)
 ├── backend/                          -- Бэкенд (существует)
 ├── frontend/                         -- Фронтенд (новый)
 │   ├── src/
@@ -244,7 +244,7 @@ cbshome/                              -- GitHub repo root (существует)
 ├── docker-compose.yml                -- Весь стек (backend + frontend + postgres + redis)
 ├── scripts/
 │   └── install_aivis.sh            -- Целевой артефакт поставки
-└── CBSHOME-Frontend.md               -- ЭТОТ ДОКУМЕНТ
+└── AIVIS-Frontend.md                 -- ЭТОТ ДОКУМЕНТ
 ```
 
 ### 3.2. Интеграция с бэкендом
@@ -341,7 +341,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - [x] `install_aivis.sh`: Nginx-блок для `cbshome.org` → `localhost:3000`
 
 **Обновления (F1):**
-- Dockerfile: `npm ci` → `npm install` (автоматическое подтягивание новых зависимостей при `cbshome update`)
+- Dockerfile: `npm ci` → `npm install` (автоматическое подтягивание новых зависимостей при `aivis update`)
 - Dockerfile: `ENV VITE_API_BASE_URL=https://api.cbshome.org` + `ENV VITE_TELEGRAM_BOT_URL=https://t.me/cbshome_bot` — baked into build stage
 - `.env.production` — Vite production env vars (дублирует Dockerfile ENV для dev-сборки)
 - `.dockerignore` — разрешён `.env.production`
@@ -391,7 +391,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - [x] Базовые ключи во всех 4 локалях (en, ru, de, ar)
 - [x] main.ts: `app.use(i18n)`
 
-**Критерий готовности:** `$t('app.name')` рендерит "CBS HOME" на en. Переключение на ar → RTL.
+**Критерий готовности:** `$t('app.name')` рендерит "AIVIS.ONE" на en. Переключение на ar → RTL.
 
 ---
 
@@ -581,7 +581,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - Lucide-vue-next (^0.460) для иконок — все мокапы используют Lucide
 - CTabBar: `iconMap` Record маппит строковые имена иконок из tabs.ts на Lucide-компоненты
 - Shell'ы: minimal composition (CHeader + RouterView + CTabBar + CToast), контент рендерится через nested routes
-- Dockerfile: `npm ci` → `npm install` для автоматического подтягивания новых зависимостей при `cbshome update`
+- Dockerfile: `npm ci` → `npm install` для автоматического подтягивания новых зависимостей при `aivis update`
 
 **Критерий готовности:** Все компоненты рендерятся корректно в обеих темах (light/dark) и в RTL. ✅
 
@@ -2157,7 +2157,7 @@ git log HEAD..origin/main --oneline  # пусто? значит локальны
 - 2 новых backend теста на `price_per_pack_cents` (round-trip через list + detail) — `tests/test_products_pack_pricing.py`.
 - Регресс fix: `sessionStorage.removeItem('cbs_referral_code')` восстановлен в обоих flow `auth.ts` (был потерян при rewrite в коммите B7).
 
-Детальная спецификация — в `CBSHOME-Share-Pool-Refactor.md` (v2.4).
+Детальная спецификация — в `AIVIS-Share-Pool-Refactor.md` (v2.4).
 
 ### TD-F08: F4.2 Polish & Follow-ups
 

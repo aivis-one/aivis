@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Router (Sprint 7.2, Task 1 Block D, Task 2b)
+# AIVIS.ONE Backend -- Referral Router (Sprint 7.2, Task 1 Block D, Task 2b)
 # =============================================================================
 #
 # ENDPOINTS:

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicShell (iter 2.6 R1 §1.6, Block A1
+// AIVIS.ONE Frontend -- PublicShell (iter 2.6 R1 §1.6, Block A1
 //                                   + iter 2.6 batch 3 relocation)
 // =============================================================================
 //

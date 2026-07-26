@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Commission Summary Tests (Task 2b Block C)
+# AIVIS.ONE Backend -- Commission Summary Tests (Task 2b Block C)
 # =============================================================================
 #
 # Tests cover:

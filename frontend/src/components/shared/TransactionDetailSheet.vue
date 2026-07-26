@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- TransactionDetailSheet (Phase F4.3 B3)
+// AIVIS.ONE Frontend -- TransactionDetailSheet (Phase F4.3 B3)
 // =============================================================================
 //
 // Bottom-sheet with the full detail of a single transaction event.

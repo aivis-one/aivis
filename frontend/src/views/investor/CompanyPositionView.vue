@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyPositionView
+// AIVIS.ONE Frontend -- CompanyPositionView
 //                       (Phase F4.4 B3 + iter 2.5 batch 2 + batch 7)
 // =============================================================================
 //

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Commission Router (Sprint 7.3, Task 2b Block C)
+# AIVIS.ONE Backend -- Commission Router (Sprint 7.3, Task 2b Block C)
 # =============================================================================
 #
 # ENDPOINTS:

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Template Engine (Sprint 8.2)
+# AIVIS.ONE Backend -- Notification Template Engine (Sprint 8.2)
 # =============================================================================
 #
 # RESPONSIBILITY:

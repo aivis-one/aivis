@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffEventsView (iter 2.7 Block B)
+// AIVIS.ONE Frontend -- StaffEventsView (iter 2.7 Block B)
 // =============================================================================
 //
 // Platform event management. Thin wrapper over the shared EventEditor.

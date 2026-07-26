@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Pool Schemas (Sprint 4.3 + Sprint 4.4)
+# AIVIS.ONE Backend -- Pool Schemas (Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #
 # REQUEST SCHEMAS:

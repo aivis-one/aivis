@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Ledger Service (Sprint 5.1)
+# AIVIS.ONE Backend -- Ledger Service (Sprint 5.1)
 # =============================================================================
 #
 # RESPONSIBILITIES:

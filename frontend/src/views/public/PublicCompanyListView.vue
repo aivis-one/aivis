@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicCompanyListView (iter 2.6 batch 3, R1 §1.6.1)
+// AIVIS.ONE Frontend -- PublicCompanyListView (iter 2.6 batch 3, R1 §1.6.1)
 // =============================================================================
 //
 // Anonymous storefront catalogue. Public counterpart to
@@ -40,7 +40,7 @@
 //   and a row-level retry banner appears under the list. Retry tap
 //   calls clearLoadMoreError + loadMore -- the explicit call covers
 //   the case where the sentinel is already on-screen. See
-//   CBSHOME-Frontend.md FP-16.
+//   AIVIS-Frontend.md FP-16.
 //
 // NO HEADER COMPONENT.
 //   The shell carries the only <CHeader> for the page. The view's

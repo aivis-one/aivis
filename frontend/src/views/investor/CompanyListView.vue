@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyListView (iter 2.5 batch 5, R1 §1.2)
+// AIVIS.ONE Frontend -- CompanyListView (iter 2.5 batch 5, R1 §1.2)
 // =============================================================================
 //
 // Investor "Companies" tab. Top-level entry into the company-overview
@@ -42,7 +42,7 @@
 //   and a row-level retry banner appears under the list. The banner's
 //   Retry tap calls clearLoadMoreError + loadMore -- the explicit
 //   call covers the case where the sentinel is already on-screen.
-//   See CBSHOME-Frontend.md FP-16.
+//   See AIVIS-Frontend.md FP-16.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'

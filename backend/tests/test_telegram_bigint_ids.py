@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Telegram BIGINT id Regression Tests (Task 1 drive-by)
+# AIVIS.ONE Backend -- Telegram BIGINT id Regression Tests (Task 1 drive-by)
 # =============================================================================
 #
 # Regression guard for the int32 lookup bug found during Task 1:

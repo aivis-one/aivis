@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorMoreView (Phase F4.4 B6)
+// AIVIS.ONE Frontend -- InvestorMoreView (Phase F4.4 B6)
 // =============================================================================
 //
 // Top-level "More" tab -- navigation hub for screens that don't warrant

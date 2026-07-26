@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Permission Helpers (extracted Phase 4 fix)
+# AIVIS.ONE Backend -- Staff Permission Helpers (extracted Phase 4 fix)
 # =============================================================================
 #
 # Shared helpers for staff routers that need fine-grained permission checks

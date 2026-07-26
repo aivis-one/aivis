@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- AgreementSheet
+// AIVIS.ONE Frontend -- AgreementSheet
 //                       (iter 2.5 R2 §5.5; replaces CertificateSheet)
 // =============================================================================
 //
@@ -255,7 +255,7 @@ async function onEmail(): Promise<void> {
           sandbox="" MUST stay present. Removing it, or relaxing it
           to sandbox="allow-same-origin", would let any scripting in
           the document HTML read the SPA's localStorage + JWT. See
-          TD-F11b in CBSHOME-Frontend.md.
+          TD-F11b in AIVIS-Frontend.md.
         -->
         <iframe
           :src="blobUrl"

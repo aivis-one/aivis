@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Provider Interface (Sprint 10.1)
+# AIVIS.ONE Backend -- Payment Provider Interface (Sprint 10.1)
 # =============================================================================
 #
 # Stub protocol for future fiat payment providers (Moonpay/Transak).

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- User Model
+# AIVIS.ONE Backend -- User Model
 # =============================================================================
 #
 # Central user entity. Every person and system actor is a single User row.

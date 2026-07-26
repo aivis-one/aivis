@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Public Router (Task 1 Block B)
+# AIVIS.ONE Backend -- Referral Public Router (Task 1 Block B)
 # =============================================================================
 #
 # ENDPOINTS (no auth):

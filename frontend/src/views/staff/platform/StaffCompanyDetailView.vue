@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyDetailView (iter 2.7 Block B1 scaffolding)
+// AIVIS.ONE Frontend -- StaffCompanyDetailView (iter 2.7 Block B1 scaffolding)
 // =============================================================================
 //
 // Detail shell for a single company under the Staff Platform tab.

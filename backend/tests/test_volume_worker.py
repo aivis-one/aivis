@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Volume Worker / Leaderboard Tests (R51)
+# AIVIS.ONE Backend -- Volume Worker / Leaderboard Tests (R51)
 # =============================================================================
 #
 # Tests cover:

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PortfolioView (Phase F4.4 B3)
+// AIVIS.ONE Frontend -- PortfolioView (Phase F4.4 B3)
 // =============================================================================
 //
 // Investor portfolio screen. Rendered by InvestorShell (and AgentShell

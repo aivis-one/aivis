@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Test Helpers (post iter 2.5 mini-fix #3)
+# AIVIS.ONE Backend -- Test Helpers (post iter 2.5 mini-fix #3)
 # =============================================================================
 #
 # This module used to contain ~400 lines of cleanup_test_users and friends

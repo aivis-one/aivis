@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- AgentDashboardView (Task 2 Block C, Phase F6.1)
+// AIVIS.ONE Frontend -- AgentDashboardView (Task 2 Block C, Phase F6.1)
 // =============================================================================
 //
 // Replaces the F2.2 stub. The agent's landing screen (/agent redirects

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Auth Router (Sprint 4.5; trimmed in iter 2.4)
+# AIVIS.ONE Backend -- Company Auth Router (Sprint 4.5; trimmed in iter 2.4)
 # =============================================================================
 #
 # ENDPOINTS:

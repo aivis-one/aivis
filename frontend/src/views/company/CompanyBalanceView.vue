@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyBalanceView (Phase F5.2 B3 + B4)
+// AIVIS.ONE Frontend -- CompanyBalanceView (Phase F5.2 B3 + B4)
 // =============================================================================
 //
 // Balance tab inside CompanyShell. Shows:

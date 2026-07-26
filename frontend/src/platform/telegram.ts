@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Telegram WebApp Platform
+// AIVIS.ONE Frontend -- Telegram WebApp Platform
 // =============================================================================
 //
 // Wraps window.Telegram.WebApp SDK. Used when the app runs inside

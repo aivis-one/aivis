@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Seed Storefront (Phase F4.1 -- dev only)
+# AIVIS.ONE Backend -- Seed Storefront (Phase F4.1 -- dev only)
 # =============================================================================
 #
 # COMPANIES / PRODUCTS / INSTALLMENTS are intentionally EMPTY (owner

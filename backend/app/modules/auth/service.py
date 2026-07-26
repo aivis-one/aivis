@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Auth Service (Sprint 7.2, G1 fix)
+# AIVIS.ONE Backend -- Auth Service (Sprint 7.2, G1 fix)
 # =============================================================================
 #
 # RESPONSIBILITIES:

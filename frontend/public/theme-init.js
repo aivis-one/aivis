@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Theme & Language Pre-Init
+// AIVIS.ONE Frontend -- Theme & Language Pre-Init
 // =============================================================================
 // Extracted from index.html inline script for CSP compliance.
 // Runs before Vue mounts to prevent FOUC (Flash of Unstyled Content).

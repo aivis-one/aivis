@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Users API (Phase F4.4 B5 + F5.2 B3)
+// AIVIS.ONE Frontend -- Users API (Phase F4.4 B5 + F5.2 B3)
 // =============================================================================
 //
 // Typed wrappers for /api/v1/users/me + /me/payout-details.

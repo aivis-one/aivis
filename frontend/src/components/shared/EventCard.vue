@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- EventCard (iter 2.7b C, R1 §6.3)
+// AIVIS.ONE Frontend -- EventCard (iter 2.7b C, R1 §6.3)
 // =============================================================================
 //
 // Shared card for calendar events. Two variants from one component so

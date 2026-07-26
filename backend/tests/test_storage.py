@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Storage Layer Tests (Refactor 2 iter 2.1)
+# AIVIS.ONE Backend -- Storage Layer Tests (Refactor 2 iter 2.1)
 # =============================================================================
 #
 # Integration tests for app/core/storage.py. Run against the real MinIO
@@ -87,7 +87,7 @@ async def use_test_bucket(
 async def test_upload_and_get_metadata() -> None:
     """upload + head returns matching size and content_type."""
     key = f"{TEST_PREFIX}meta.bin"
-    payload = b"hello cbshome"
+    payload = b"hello aivis"
 
     returned_key = await upload_object(key, payload, "application/octet-stream")
     assert returned_key == key

@@ -1,10 +1,10 @@
-# CBSHOME -- Рассрочка (Installment)
+# AIVIS.ONE -- Рассрочка (Installment)
 
 **Версия:** 1.1
 **Дата:** 28 марта 2026
 **Статус:** Утверждено
 **Контекст:** Механика рассрочки. Читается перед работой над модулем `installments`.
-Зависимости: CBSHOME-Financial-System.md, CBSHOME-State-Machines.md
+Зависимости: AIVIS-Financial-System.md, AIVIS-State-Machines.md
 
 ---
 
@@ -346,4 +346,4 @@ Purchase: units=agent_bonus_units, paid_cents=0, legal_basis="gift",
 
 ---
 
-*Version 1.1 | 2026-03-28 | cbshome Installment Codex*
+*Version 1.1 | 2026-03-28 | AIVIS.ONE Installment Codex*

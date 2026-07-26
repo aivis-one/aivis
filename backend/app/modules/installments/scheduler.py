@@ -1,11 +1,11 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Scheduler (Sprint 6.2)
+# AIVIS.ONE Backend -- Installment Scheduler (Sprint 6.2)
 # =============================================================================
 #
 # RESPONSIBILITY:
 #   Calculate due dates for installment tranches using the february rule.
 #
-# FEBRUARY RULE (from CBSHOME-Installment.md v1.1):
+# FEBRUARY RULE (from AIVIS-Installment.md v1.1):
 #   When start_date.day exceeds the last day of the target month, clamp
 #   to the last day of that month. This ensures predictable dates for
 #   the investor.

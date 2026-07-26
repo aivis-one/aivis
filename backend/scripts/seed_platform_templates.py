@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Seed Platform Default Templates
+# AIVIS.ONE Backend -- Seed Platform Default Templates
 #                     (iter 2.5 mini-fix #3 rewrite)
 # =============================================================================
 #

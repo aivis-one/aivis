@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Webhook Router (Sprint 5.2, fix Phase 5 + review)
+# AIVIS.ONE Backend -- Payment Webhook Router (Sprint 5.2, fix Phase 5 + review)
 # =============================================================================
 #
 # ENDPOINTS:

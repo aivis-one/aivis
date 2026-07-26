@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CBottomSheet (Phase F4.1)
+// AIVIS.ONE Frontend -- CBottomSheet (Phase F4.1)
 // =============================================================================
 //
 // Slide-up modal anchored to the bottom of the viewport. Used for

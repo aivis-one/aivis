@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Click Endpoint Tests (Task 1 Block B)
+# AIVIS.ONE Backend -- Referral Click Endpoint Tests (Task 1 Block B)
 # =============================================================================
 #
 # Covers POST /api/v1/public/referral-click:

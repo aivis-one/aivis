@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Leaderboard & Volume Worker (Sprint 7.3)
+# AIVIS.ONE Backend -- Leaderboard & Volume Worker (Sprint 7.3)
 # =============================================================================
 #
 # RESPONSIBILITIES:

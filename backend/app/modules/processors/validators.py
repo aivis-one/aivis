@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Config Validator (Sprint 6.1)
+# AIVIS.ONE Backend -- Purchase Config Validator (Sprint 6.1)
 # =============================================================================
 #
 # RESPONSIBILITY:

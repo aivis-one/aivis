@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductCard (Phase F4.1 + F4.1.4 polish + F4.4 B7 UX)
+// AIVIS.ONE Frontend -- ProductCard (Phase F4.1 + F4.1.4 polish + F4.4 B7 UX)
 // =============================================================================
 //
 // Storefront grid card. Emits @click with the full product so the

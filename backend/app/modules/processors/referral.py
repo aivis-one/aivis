@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Processor (Sprint 7.2)
+# AIVIS.ONE Backend -- Referral Processor (Sprint 7.2)
 # =============================================================================
 #
 # RESPONSIBILITY:

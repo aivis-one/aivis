@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Seed Platform System User
+# AIVIS.ONE Backend -- Seed Platform System User
 # =============================================================================
 #
 # Creates the Platform system user (role=platform) if it does not exist.

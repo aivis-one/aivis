@@ -1,4 +1,4 @@
-# CBSHOME — Option Pool & Product Inventory Model
+# AIVIS.ONE — Option Pool & Product Inventory Model
 
 **Tracking ID (Backend):** TD-071 (✅ Closed Sprint 4.4)
 **Tracking ID (Frontend):** TD-F07 (✅ Closed Sprint 4.4)
@@ -12,9 +12,9 @@
 > If you need the implementation history, the git log on `b539ee8` and Backend.md / Frontend.md changelogs are the source of truth.
 
 **Зависимости:**
-- `CBSHOME-Backend.md` — Phase 4, актуальный код модулей `pools/`, `products/`, `purchases/`, `company_dashboard/`
-- `CBSHOME-Frontend.md` — `types.ts` (VELO Migration), pack-pricing UX, типизированный auth store
-- `CBSHOME-Financial-System.md` — `Purchase.units`, `Purchase.paid_cents`, pricing
+- `AIVIS-Backend.md` — Phase 4, актуальный код модулей `pools/`, `products/`, `purchases/`, `company_dashboard/`
+- `AIVIS-Frontend.md` — `types.ts` (VELO Migration), pack-pricing UX, типизированный auth store
+- `AIVIS-Financial-System.md` — `Purchase.units`, `Purchase.paid_cents`, pricing
 
 ---
 

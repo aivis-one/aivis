@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- EventEditor (iter 2.7 Block B)
+// AIVIS.ONE Frontend -- EventEditor (iter 2.7 Block B)
 // =============================================================================
 //
 // Shared list + create/edit surface for calendar events. Used by

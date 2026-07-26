@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Portfolio Schemas (Sprint 9.2)
+# AIVIS.ONE Backend -- Portfolio Schemas (Sprint 9.2)
 # =============================================================================
 #
 # RESPONSE SCHEMAS:

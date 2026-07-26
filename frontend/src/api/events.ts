@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Events API (iter 2.7b, public surface)
+// AIVIS.ONE Frontend -- Events API (iter 2.7b, public surface)
 // =============================================================================
 //
 // Typed wrappers for the public events surface.

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Consistency Semaphore Tests (Sprint 6.4)
+# AIVIS.ONE Backend -- Consistency Semaphore Tests (Sprint 6.4)
 # =============================================================================
 #
 # Tests cover:

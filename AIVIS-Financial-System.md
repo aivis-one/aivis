@@ -1,4 +1,4 @@
-# CBSHOME -- Финансовая система
+# AIVIS.ONE -- Финансовая система
 
 **Версия:** 1.5
 **Дата:** 28 марта 2026
@@ -527,7 +527,7 @@ Product (принадлежит Company)
     └── agent_bonus_units: int -- бонус акциями агенту L1 за закрытие
 ```
 
-> Детальная механика рассрочки: CBSHOME-Installment.md
+> Детальная механика рассрочки: AIVIS-Installment.md
 
 ### Изменение цены акции
 
@@ -673,4 +673,4 @@ PDF генерируется на лету из данных БД. Нет S3 в 
 
 ---
 
-*Version 1.5 | 2026-03-28 | cbshome Financial System Codex*
+*Version 1.5 | 2026-03-28 | AIVIS.ONE Financial System Codex*

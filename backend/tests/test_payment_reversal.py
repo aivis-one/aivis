@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Reversal Tests (Sprint 5.3)
+# AIVIS.ONE Backend -- Payment Reversal Tests (Sprint 5.3)
 # =============================================================================
 #
 # Tests cover:

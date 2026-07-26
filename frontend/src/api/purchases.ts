@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Purchases API (Phase F4.2)
+// AIVIS.ONE Frontend -- Purchases API (Phase F4.2)
 // =============================================================================
 //
 // Typed wrappers for /api/v1/products/{id}/purchase (instant purchase).

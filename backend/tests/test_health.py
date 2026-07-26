@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Health & Readiness Endpoint Tests
+# AIVIS.ONE Backend -- Health & Readiness Endpoint Tests
 # =============================================================================
 
 from unittest.mock import AsyncMock, patch

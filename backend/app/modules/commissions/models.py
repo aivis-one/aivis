@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Commission Models (Sprint 7.3)
+# AIVIS.ONE Backend -- Commission Models (Sprint 7.3)
 # =============================================================================
 #
 # LeaderboardSnapshot:

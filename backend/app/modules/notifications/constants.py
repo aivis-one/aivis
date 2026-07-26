@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Constants (Sprint 8.1)
+# AIVIS.ONE Backend -- Notification Constants (Sprint 8.1)
 # =============================================================================
 #
 # Enums for the two-level notification architecture:

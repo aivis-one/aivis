@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- LoginView (iter 2.6 batch 2 + R22 STYLE-22-01 + STYLE-22-02)
+// AIVIS.ONE Frontend -- LoginView (iter 2.6 batch 2 + R22 STYLE-22-01 + STYLE-22-02)
 // =============================================================================
 //
 // Email + password sign-in form.

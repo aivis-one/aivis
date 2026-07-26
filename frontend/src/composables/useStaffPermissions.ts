@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useStaffPermissions Composable (iter 2.7 Block A4)
+// AIVIS.ONE Frontend -- useStaffPermissions Composable (iter 2.7 Block A4)
 // =============================================================================
 //
 // Reads the effective staff permission dict surfaced on

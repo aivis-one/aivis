@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Constants (Sprint 4.1, Refactor 2 iter 2.2 + 2.3)
+# AIVIS.ONE Backend -- Company Constants (Sprint 4.1, Refactor 2 iter 2.2 + 2.3)
 # =============================================================================
 #
 # COMPANY STATUS:

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Ledger Models
+# AIVIS.ONE Backend -- Ledger Models
 # =============================================================================
 #
 # Double-entry ledger system. Every User has exactly two ledgers:
@@ -23,7 +23,7 @@
 # AML MATRIX:
 #   Active -> Passive route is forbidden.
 #   Enforced by ledgers/service.py on every write, not at DB level.
-#   See CBSHOME-Financial-System.md section 3.
+#   See AIVIS-Financial-System.md section 3.
 #
 # AMOUNT CONVENTION:
 #   Positive = credit (money coming in to this ledger)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffUsersView (iter 2.7 A3 + A5)
+// AIVIS.ONE Frontend -- StaffUsersView (iter 2.7 A3 + A5)
 // =============================================================================
 //
 // Staff user management -- list, role / kyc_status filter, detail modal.

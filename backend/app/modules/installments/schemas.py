@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Schemas (Sprint 6.2)
+# AIVIS.ONE Backend -- Installment Schemas (Sprint 6.2)
 # =============================================================================
 #
 # REQUEST SCHEMAS:

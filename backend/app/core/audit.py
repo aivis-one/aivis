@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Audit Log
+# AIVIS.ONE Backend -- Audit Log
 # =============================================================================
 #
 # AuditLog is the immutable record of all significant system events.

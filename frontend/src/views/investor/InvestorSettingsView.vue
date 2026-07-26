@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorSettingsView (Phase F4.4 B5 + B5-post + B6)
+// AIVIS.ONE Frontend -- InvestorSettingsView (Phase F4.4 B5 + B5-post + B6)
 // =============================================================================
 //
 // Reached via the More tab (tab bar -> /investor/more -> Settings tile).

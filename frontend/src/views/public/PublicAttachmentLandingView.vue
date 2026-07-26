@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicAttachmentLandingView (iter 2.6 batch 4, R2 §7.2)
+// AIVIS.ONE Frontend -- PublicAttachmentLandingView (iter 2.6 batch 4, R2 §7.2)
 // =============================================================================
 //
 // Deep-link landing for a single public attachment. Reachable via

@@ -1,12 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Withdrawal Models (Sprint 6.3)
+# AIVIS.ONE Backend -- Withdrawal Models (Sprint 6.3)
 # =============================================================================
 #
 # Withdrawal:
 #   Request to withdraw funds from passive_ledger. Created by any User
 #   with confirmed passive balance and configured payout_details.
 #
-# STATE MACHINE (CBSHOME-State-Machines.md section 4, extended):
+# STATE MACHINE (AIVIS-State-Machines.md section 4, extended):
 #   pending    -> confirmed   (Staff: approved)
 #   pending    -> rejected    (Staff: declined with reason)
 #   confirmed  -> processing  (system: pushed to payment provider)

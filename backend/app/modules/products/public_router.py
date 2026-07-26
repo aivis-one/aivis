@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Public Router (iter 2.4 R1 §1.6.2 + §1.6.3)
+# AIVIS.ONE Backend -- Product Public Router (iter 2.4 R1 §1.6.2 + §1.6.3)
 # =============================================================================
 #
 # ENDPOINTS (no authentication):

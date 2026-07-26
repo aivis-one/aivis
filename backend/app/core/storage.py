@@ -1,10 +1,10 @@
 # =============================================================================
-# CBSHOME Backend -- Storage Abstraction Layer (Refactor 2 iter 2.1)
+# AIVIS.ONE Backend -- Storage Abstraction Layer (Refactor 2 iter 2.1)
 # =============================================================================
 #
 # Thin async wrapper around aiobotocore for MinIO (S3-compatible) object
 # storage. Business code never imports aiobotocore directly -- it goes
-# through this module. See CBSHOME-Refactor-Company-Docs.md §2.
+# through this module. See AIVIS-Refactor-Company-Docs.md §2.
 #
 # PUBLIC API (per spec §2.1):
 #   upload_object(key, data, content_type) -> str

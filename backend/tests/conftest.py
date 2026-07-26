@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- pytest conftest (TD-068: dedicated test DB edition)
+# AIVIS.ONE Backend -- pytest conftest (TD-068: dedicated test DB edition)
 # =============================================================================
 #
 # Tests run against a DEDICATED `aivis_test` database, never the live dev

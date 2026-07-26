@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Company API (Phase F5.1)
+// AIVIS.ONE Frontend -- Company API (Phase F5.1)
 // =============================================================================
 //
 // Typed wrappers for the company-side dashboard + analytics endpoints.

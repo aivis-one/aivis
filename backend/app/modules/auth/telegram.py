@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Telegram Auth (Sprint 1.2, fix review)
+# AIVIS.ONE Backend -- Telegram Auth (Sprint 1.2, fix review)
 # =============================================================================
 #
 # RESPONSIBILITIES:

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Agent Application Constants (Sprint 7.1)
+# AIVIS.ONE Backend -- Agent Application Constants (Sprint 7.1)
 # =============================================================================
 #
 # STATUSES:

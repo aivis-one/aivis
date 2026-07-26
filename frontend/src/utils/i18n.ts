@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- i18n Utilities (Phase F4.4 B0)
+// AIVIS.ONE Frontend -- i18n Utilities (Phase F4.4 B0)
 // =============================================================================
 //
 // Extracted in F4.4 B0 to consolidate the "translate with raw-token

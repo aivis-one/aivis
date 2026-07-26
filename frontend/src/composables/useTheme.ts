@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useTheme Composable (Phase F4.4 B5)
+// AIVIS.ONE Frontend -- useTheme Composable (Phase F4.4 B5)
 // =============================================================================
 //
 // Three-state theme toggle: 'auto' | 'light' | 'dark'.

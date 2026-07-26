@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Dashboard Router (Sprint 4.3 / B5)
+# AIVIS.ONE Backend -- Company Dashboard Router (Sprint 4.3 / B5)
 # =============================================================================
 #
 # ENDPOINTS:

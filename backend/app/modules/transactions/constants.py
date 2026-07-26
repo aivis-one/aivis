@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Transaction Constants (Sprint 6.4)
+# AIVIS.ONE Backend -- Transaction Constants (Sprint 6.4)
 # =============================================================================
 #
 # Transaction is an immutable event log. Each row = one fact.

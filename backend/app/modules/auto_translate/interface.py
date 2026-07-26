@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Auto-Translate Interface (Sprint 10.1)
+# AIVIS.ONE Backend -- Auto-Translate Interface (Sprint 10.1)
 # =============================================================================
 #
 # Stub protocol for future automatic content translation.

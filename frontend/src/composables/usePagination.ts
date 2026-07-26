@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useInfiniteScroll Composable (Phase F4.1 + F4.4 B1-post)
+// AIVIS.ONE Frontend -- useInfiniteScroll Composable (Phase F4.1 + F4.4 B1-post)
 // =============================================================================
 //
 // Attach an IntersectionObserver to a sentinel element. When the

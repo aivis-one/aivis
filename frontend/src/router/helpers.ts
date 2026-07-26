@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Router Helpers (Phase F4.1.4 + F4.1.5 polish
+// AIVIS.ONE Frontend -- Router Helpers (Phase F4.1.4 + F4.1.5 polish
 //                                       + iter 2.6.x hotfix cleanup)
 // =============================================================================
 //

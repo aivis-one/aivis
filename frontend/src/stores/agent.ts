@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Agent Store (Task 2 Block A, Phase F6.1; Task 3 Block A)
+// AIVIS.ONE Frontend -- Agent Store (Task 2 Block A, Phase F6.1; Task 3 Block A)
 // =============================================================================
 //
 // Pinia store backing AgentHubView (referral links + funnel stats),

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Transaction Models (Sprint 6.4)
+# AIVIS.ONE Backend -- Transaction Models (Sprint 6.4)
 # =============================================================================
 #
 # Transaction:

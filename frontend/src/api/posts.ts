@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Posts API (Phase F9.1, narrow probe for F4.4 B2)
+// AIVIS.ONE Frontend -- Posts API (Phase F9.1, narrow probe for F4.4 B2)
 // =============================================================================
 //
 // Typed wrapper for the public posts feed.

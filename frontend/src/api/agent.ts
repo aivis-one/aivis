@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Agent API (Task 2 Block A, Phase F6.1)
+// AIVIS.ONE Frontend -- Agent API (Task 2 Block A, Phase F6.1)
 // =============================================================================
 //
 // Typed wrappers for the agent-side endpoints consumed by

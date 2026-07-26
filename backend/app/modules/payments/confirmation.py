@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Confirmation Service (Sprint 5.3, updated 6.4)
+# AIVIS.ONE Backend -- Payment Confirmation Service (Sprint 5.3, updated 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -9,7 +9,7 @@
 #     3. PassiveLedger
 #   + write deposit:confirmed transaction log entries (Sprint 6.4)
 #
-# ALGORITHM (from CBSHOME-Financial-System.md section 5.4):
+# ALGORITHM (from AIVIS-Financial-System.md section 5.4):
 #   SELECT entries WHERE status=frozen AND frozen_until <= now()
 #   UPDATE status=confirmed
 #

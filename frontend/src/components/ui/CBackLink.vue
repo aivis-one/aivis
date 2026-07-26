@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CBackLink (iter 2.7 batch B3)
+// AIVIS.ONE Frontend -- CBackLink (iter 2.7 batch B3)
 // =============================================================================
 //
 // Inline back-link button. The single source of truth for the back-link

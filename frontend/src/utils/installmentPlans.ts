@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Installment Plan Utilities (Phase F4.2.2)
+// AIVIS.ONE Frontend -- Installment Plan Utilities (Phase F4.2.2)
 // =============================================================================
 //
 // Shared parsing + tranche math for installment plans. Extracted

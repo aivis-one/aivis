@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- ORM Mixins
+# AIVIS.ONE Backend -- ORM Mixins
 # =============================================================================
 #
 # Reusable column sets for SQLAlchemy models.

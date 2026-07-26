@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Avatar State (shared module)
+// AIVIS.ONE Frontend -- Avatar State (shared module)
 // =============================================================================
 //
 // Extracted from useAvatar to break circular import:

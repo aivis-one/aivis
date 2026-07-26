@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorDepositView (Phase F4.3 B2)
+// AIVIS.ONE Frontend -- InvestorDepositView (Phase F4.3 B2)
 // =============================================================================
 //
 // Dedicated /investor/balance/deposit screen. Requests a TRC20 USDT
@@ -12,7 +12,7 @@
 // Network:
 //   Hardcoded to 'TRC20' per F4.3 plan. The backend supports
 //   ERC20/BEP20/PoS too; the multi-network selector is explicitly
-//   deferred -- see `CBSHOME-Frontend.md` F4.3 scope.
+//   deferred -- see `AIVIS-Frontend.md` F4.3 scope.
 //
 // QR generation:
 //   `qrcode` package renders an inline SVG string. Forced light

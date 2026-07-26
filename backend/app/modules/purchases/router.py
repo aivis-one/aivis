@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Router (Sprint 6.1, G3 fix)
+# AIVIS.ONE Backend -- Purchase Router (Sprint 6.1, G3 fix)
 # =============================================================================
 #
 # ENDPOINTS:

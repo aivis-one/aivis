@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Router (Sprint 8.3)
+# AIVIS.ONE Backend -- Notification Router (Sprint 8.3)
 # =============================================================================
 #
 # ENDPOINTS:

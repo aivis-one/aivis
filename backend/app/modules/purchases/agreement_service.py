@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Agreement Service (Refactor 2 iter 2.4, R2 §5.4)
+# AIVIS.ONE Backend -- Purchase Agreement Service (Refactor 2 iter 2.4, R2 §5.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:

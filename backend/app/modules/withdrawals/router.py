@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Withdrawal Router (Sprint 6.3)
+# AIVIS.ONE Backend -- Withdrawal Router (Sprint 6.3)
 # =============================================================================
 #
 # ENDPOINTS:

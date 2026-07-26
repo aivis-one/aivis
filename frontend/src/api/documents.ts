@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Documents API (Phase F4.4 B4)
+// AIVIS.ONE Frontend -- Documents API (Phase F4.4 B4)
 // =============================================================================
 //
 // Typed wrappers for /api/v1/documents/*.

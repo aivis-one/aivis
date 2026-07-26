@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Auth Schemas
+# AIVIS.ONE Backend -- Auth Schemas
 # =============================================================================
 #
 # Pydantic models for auth request/response validation.

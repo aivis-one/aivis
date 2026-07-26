@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Public Products HTTP Tests (iter 2.5-finishing)
+# AIVIS.ONE Backend -- Public Products HTTP Tests (iter 2.5-finishing)
 # =============================================================================
 #
 # HTTP-level coverage for app/modules/products/public_router.py.

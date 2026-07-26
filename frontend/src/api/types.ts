@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- API Type Definitions
+// AIVIS.ONE Frontend -- API Type Definitions
 // =============================================================================
 //
 // TypeScript interfaces matching backend Pydantic schemas.

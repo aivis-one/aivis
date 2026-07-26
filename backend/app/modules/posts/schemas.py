@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Posts Schemas (Sprint 9.1, review fixes)
+# AIVIS.ONE Backend -- Posts Schemas (Sprint 9.1, review fixes)
 # =============================================================================
 #
 # Request/response schemas for posts and events endpoints.

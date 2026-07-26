@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorDocsView (Phase F4.4 B4 + B5-post)
+// AIVIS.ONE Frontend -- InvestorDocsView (Phase F4.4 B4 + B5-post)
 // =============================================================================
 //
 // User's legal documents list with read + sign flow. Rendered by

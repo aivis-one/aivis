@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Seed User Portfolio (dev only)
+# AIVIS.ONE Backend -- Seed User Portfolio (dev only)
 # =============================================================================
 #
 # Fills a specific user's dashboard with realistic activity:

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Posts Public Router (Sprint 9.1)
+# AIVIS.ONE Backend -- Posts Public Router (Sprint 9.1)
 # =============================================================================
 #
 # ENDPOINTS:

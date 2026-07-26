@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InvestorDashboardView (Phase F4.4 B2 + B5-post)
+// AIVIS.ONE Frontend -- InvestorDashboardView (Phase F4.4 B2 + B5-post)
 // =============================================================================
 //
 // Investor home screen. Rendered by InvestorShell at /investor/dashboard

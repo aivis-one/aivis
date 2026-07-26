@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- AttachmentsSection (iter 2.5 batch 6, R2 §7.1)
+// AIVIS.ONE Frontend -- AttachmentsSection (iter 2.5 batch 6, R2 §7.1)
 // =============================================================================
 //
 // Investor-side "Company documents" section, embedded in

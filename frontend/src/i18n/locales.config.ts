@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Locales Config
+// AIVIS.ONE Frontend -- Locales Config
 // =============================================================================
 //
 // Single source of truth for supported UI languages.

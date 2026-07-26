@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Commission Constants (Sprint 7.3)
+# AIVIS.ONE Backend -- Commission Constants (Sprint 7.3)
 # =============================================================================
 #
 # Period types for leaderboard snapshots and volume payouts.

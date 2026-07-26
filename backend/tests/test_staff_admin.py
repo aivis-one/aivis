@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Admin Tests (Sprint 3.3, iter 2.6c B1)
+# AIVIS.ONE Backend -- Staff Admin Tests (Sprint 3.3, iter 2.6c B1)
 # =============================================================================
 #
 # Tests cover:

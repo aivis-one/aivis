@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Dashboard Service (Sprint 4.3 / B5 + Sprint 4.4
+# AIVIS.ONE Backend -- Company Dashboard Service (Sprint 4.3 / B5 + Sprint 4.4
 #                                                  + Sprint 4.6 hotfix)
 # =============================================================================
 #

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Transaction Schemas (Sprint 6.4)
+# AIVIS.ONE Backend -- Transaction Schemas (Sprint 6.4)
 # =============================================================================
 #
 # SCHEMAS:

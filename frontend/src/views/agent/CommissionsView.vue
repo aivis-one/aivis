@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CommissionsView (Task 3 Block C, Phase F6.2)
+// AIVIS.ONE Frontend -- CommissionsView (Task 3 Block C, Phase F6.2)
 // =============================================================================
 //
 // Replaces the F6.2 stub. The agent's commission + volume-bonus

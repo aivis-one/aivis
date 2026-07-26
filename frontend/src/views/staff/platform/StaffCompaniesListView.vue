@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompaniesListView (iter 2.7 Block B)
+// AIVIS.ONE Frontend -- StaffCompaniesListView (iter 2.7 Block B)
 // =============================================================================
 //
 // Lists every company (active / hidden / archived) with a status

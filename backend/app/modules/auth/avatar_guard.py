@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Avatar Guard (Sprint 1.3, dependency-layer R49)
+# AIVIS.ONE Backend -- Avatar Guard (Sprint 1.3, dependency-layer R49)
 # =============================================================================
 #
 # Blocks certain operations when Staff is in avatar mode (logged in as

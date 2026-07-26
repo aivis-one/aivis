@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Ownership Endpoints HTTP Tests (iter 2.5-finishing)
+# AIVIS.ONE Backend -- Ownership Endpoints HTTP Tests (iter 2.5-finishing)
 # =============================================================================
 #
 # HTTP-level coverage for app/modules/purchases/agreement_router.py::ownership_router

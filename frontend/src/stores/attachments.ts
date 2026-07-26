@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Attachments Store (iter 2.5 batch 4, R2 §7.1)
+// AIVIS.ONE Frontend -- Attachments Store (iter 2.5 batch 4, R2 §7.1)
 // =============================================================================
 //
 // Pinia store for the Investor `CompanyOverviewView` documents section

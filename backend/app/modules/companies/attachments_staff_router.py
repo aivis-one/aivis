@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Attachments Staff Router (Refactor 2 iter 2.2,
+# AIVIS.ONE Backend -- Company Attachments Staff Router (Refactor 2 iter 2.2,
 #                                                       iter 2.6c B5)
 # =============================================================================
 #

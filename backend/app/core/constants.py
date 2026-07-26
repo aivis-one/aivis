@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Canonical Constants
+# AIVIS.ONE Backend -- Canonical Constants
 # =============================================================================
 #
 # SHARED CONSTANTS:
@@ -25,7 +25,7 @@
 #   from app.core.constants import LedgerReason, USER_AGENT_MAX_LEN
 #   reason = LedgerReason.DEPOSIT_CRYPTO.format(tx_hash=tx_hash)
 #
-# SOURCE OF TRUTH: CBSHOME-Financial-System.md section 6
+# SOURCE OF TRUTH: AIVIS-Financial-System.md section 6
 # =============================================================================
 
 # Max length for user_agent strings stored in DB and structlog context.

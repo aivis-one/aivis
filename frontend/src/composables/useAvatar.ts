@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useAvatar Composable (Phase F3 + F5.1 B1)
+// AIVIS.ONE Frontend -- useAvatar Composable (Phase F3 + F5.1 B1)
 // =============================================================================
 //
 // Avatar mode state management. Staff operates as another user.

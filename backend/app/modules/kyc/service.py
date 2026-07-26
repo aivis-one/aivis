@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- KYC Service (Sprint 2.1, F5.1 BP-15 follow-up,
+# AIVIS.ONE Backend -- KYC Service (Sprint 2.1, F5.1 BP-15 follow-up,
 #                                  iter 2.7 onboarding-advance hotfix)
 # =============================================================================
 #

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Standalone Platform (Browser PWA)
+// AIVIS.ONE Frontend -- Standalone Platform (Browser PWA)
 // =============================================================================
 //
 // Full implementation for standalone browser mode.

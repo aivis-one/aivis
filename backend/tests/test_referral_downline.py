@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Downline Tests (Task 2b, Blocks A+B)
+# AIVIS.ONE Backend -- Referral Downline Tests (Task 2b, Blocks A+B)
 # =============================================================================
 #
 # Tests cover:

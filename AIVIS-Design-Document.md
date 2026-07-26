@@ -1,4 +1,4 @@
-# cbshome — Дизайн-документ (Конституция)
+# AIVIS.ONE — Дизайн-документ (Конституция)
 
 **Версия:** 1.6
 **Дата:** 12 мая 2026
@@ -7,13 +7,13 @@
 
 ---
 
-## 1. Что такое cbshome
+## 1. Что такое AIVIS.ONE
 
 ### 1.1. Миссия
 
-> **AIVIS.ONE -- единая инвестиционная платформа CBS Home. Инвесторы покупают продукты, агенты продают и зарабатывают комиссии, компании размещают продукты и получают выручку, система управляет всем автоматически.**
+> **AIVIS.ONE -- единая инвестиционная платформа AIVIS.ONE. Инвесторы покупают продукты, агенты продают и зарабатывают комиссии, компании размещают продукты и получают выручку, система управляет всем автоматически.**
 
-cbshome -- платформа для четырёх аудиторий, объединённая под одним доменом `cbshome.org`:
+AIVIS.ONE -- платформа для четырёх аудиторий, объединённая под одним доменом `cbshome.org`:
 
 | Аудитория | Что получает |
 |-----------|-------------|
@@ -28,7 +28,7 @@ cbshome -- платформа для четырёх аудиторий, объе
 |---------|---------|--------|
 | **Product A** -- IPI AG | DubaiCo-1 (BVI BC) | Март 2026 |
 | **Product B** -- Immo-Pro-Invest | DubaiCo-2 | Май 2026 |
-| **Product C** -- CBS Home franchise | DubaiCo-3 | Октябрь 2026 |
+| **Product C** -- AIVIS.ONE franchise | DubaiCo-3 | Октябрь 2026 |
 
 Каждый продукт маршрутизирует выручку на Passive balance соответствующей Компании. Добавление новых продуктов и компаний -- через кабинет или Staff, без рефакторинга кода.
 
@@ -120,7 +120,7 @@ cbshome -- платформа для четырёх аудиторий, объе
 | Хостинг | VPS (Ubuntu 22.04+) |
 | Reverse proxy | Nginx (на хосте) |
 | SSL | Let's Encrypt (certbot) |
-| Деплой | `cbshome update` (git pull + rebuild + migrate + restart) |
+| Деплой | `aivis update` (git pull + rebuild + migrate + restart) |
 
 ---
 
@@ -531,7 +531,7 @@ import { PAYMENT_STATUS_LABEL } from '@/utils/displayHelpers'
 ## 5. Структура репозитория
 
 ```
-cbshome/                           -- GitHub: aivis-one/aivis
+aivis/                             -- GitHub: aivis-one/aivis
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                -- FastAPI app + lifespan
@@ -563,7 +563,7 @@ cbshome/                           -- GitHub: aivis-one/aivis
 ├── notifications/
 │   └── templates/                 -- en.yaml, ru.yaml (notification templates)
 ├── diagrams/                      -- Mermaid-схемы (не источник правды)
-└── CBSHOME-Design-Document.md     -- Этот файл
+└── AIVIS-Design-Document.md       -- Этот файл
 ```
 
 **Источник правды по схеме БД:** `backend/app/modules/*/models.py`
@@ -574,34 +574,34 @@ cbshome/                           -- GitHub: aivis-one/aivis
 
 1. Preflight: OS, RAM, disk, DNS
 2. System deps: Docker, Nginx, Certbot, UFW
-3. Deploy user `cbshome` (non-root, в docker group)
+3. Deploy user `aivis` (non-root, в docker group)
 4. SSH deploy key -> GitHub (`aivis-one/aivis`) -> clone repo
 5. Генерация `.env` с рандомными паролями + запрос чувствительных переменных
 6. Nginx reverse proxy (`api.cbshome.org`, `cbshome.org`) + SSL
 7. `docker compose up` -> healthcheck -> миграции Alembic -> seed системного пользователя Platform
-8. Создание management script -> symlink `/usr/local/bin/cbshome`
+8. Создание management script -> symlink `/usr/local/bin/aivis`
 9. Cron для ежедневного backup
 
 После установки заказчик заполняет `.env` (SumSub API key, blockchain nodes, wallet addresses, Mailgun API key) и получает рабочий стек.
 
-**Разработка и тестирование ведётся на VPS, идентичном проду.** Нет понятия "локальная разработка". Все изменения -- через `cbshome update` (git pull + rebuild + migrate + restart).
+**Разработка и тестирование ведётся на VPS, идентичном проду.** Нет понятия "локальная разработка". Все изменения -- через `aivis update` (git pull + rebuild + migrate + restart).
 
 ### 5.2. Management commands
 
 ```
-cbshome status              -- Health check + Docker status
-cbshome logs [app|db|redis] -- View logs
-cbshome update              -- Pull, build, migrate, test, restart
-cbshome test                -- Run all tests
-cbshome lint                -- Run linters (ruff)
-cbshome restart [app]       -- Restart services
-cbshome db connect          -- Open psql session
-cbshome db migrate          -- Run Alembic migrations
-cbshome backup              -- Backup DB + .env
-cbshome seed                -- Populate DB with test data
-cbshome seed --reset        -- Clean seed data & re-seed
-cbshome ssl renew           -- Renew SSL certificate
-cbshome version             -- Show version info
+aivis status              -- Health check + Docker status
+aivis logs [app|db|redis] -- View logs
+aivis update              -- Pull, build, migrate, test, restart
+aivis test                -- Run all tests
+aivis lint                -- Run linters (ruff)
+aivis restart [app]       -- Restart services
+aivis db connect          -- Open psql session
+aivis db migrate          -- Run Alembic migrations
+aivis backup              -- Backup DB + .env
+aivis seed                -- Populate DB with test data
+aivis seed --reset        -- Clean seed data & re-seed
+aivis ssl renew           -- Renew SSL certificate
+aivis version             -- Show version info
 ```
 
 ---
@@ -697,9 +697,9 @@ Phase 2 -- формальная e-signature контрактов. MVP: checkbox 
 
 | Артефакт | Путь | Статус |
 |----------|------|--------|
-| Конституция (этот документ) | `CBSHOME-Design-Document.md` | Актуален |
-| Бэковый Кодекс | `CBSHOME-Backend.md` | Создаётся |
-| Фронтовый Кодекс | `CBSHOME-Frontend.md` | Создаётся |
+| Конституция (этот документ) | `AIVIS-Design-Document.md` | Актуален |
+| Бэковый Кодекс | `AIVIS-Backend.md` | Создаётся |
+| Фронтовый Кодекс | `AIVIS-Frontend.md` | Создаётся |
 | Install script | `scripts/install_aivis.sh` | Целевой артефакт |
 | Notification templates | `notifications/templates/en.yaml` | MVP |
 | Схема БД (правда) | `backend/app/modules/*/models.py` | Актуальна |

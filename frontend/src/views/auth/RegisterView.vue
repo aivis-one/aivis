@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- RegisterView (iter 2.6 batch 2 + R22 STYLE-22-02)
+// AIVIS.ONE Frontend -- RegisterView (iter 2.6 batch 2 + R22 STYLE-22-02)
 // =============================================================================
 //
 // Email + password + confirmation registration form. Reads the

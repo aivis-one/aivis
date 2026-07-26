@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyPriceSection (iter 2.7 Block C / C2)
+// AIVIS.ONE Frontend -- StaffCompanyPriceSection (iter 2.7 Block C / C2)
 // =============================================================================
 //
 // Current unit price + immutable price-history table + edit modal.

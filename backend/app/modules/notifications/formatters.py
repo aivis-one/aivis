@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Formatters (Sprint 8.1 + 8.2, refactor 9.2)
+# AIVIS.ONE Backend -- Notification Formatters (Sprint 8.1 + 8.2, refactor 9.2)
 # =============================================================================
 #
 # RESPONSIBILITY:

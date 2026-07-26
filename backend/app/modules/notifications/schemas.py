@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Schemas (Sprint 8.3)
+# AIVIS.ONE Backend -- Notification Schemas (Sprint 8.3)
 # =============================================================================
 #
 # Pydantic models for notification REST endpoints.

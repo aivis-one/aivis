@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Schemas (Sprint 4.2 + Sprint 6.1 + Sprint F4.1
+# AIVIS.ONE Backend -- Product Schemas (Sprint 4.2 + Sprint 6.1 + Sprint F4.1
 #                                       + Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #

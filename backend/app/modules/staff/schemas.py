@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Schemas (Sprint 3.1, updated Sprint 4.1,
+# AIVIS.ONE Backend -- Staff Schemas (Sprint 3.1, updated Sprint 4.1,
 #                                    iter 2.7 A6 content_manage sync)
 # =============================================================================
 #

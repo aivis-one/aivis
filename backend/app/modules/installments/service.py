@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Service (Sprint 6.2, fix #35, updated 6.4,
+# AIVIS.ONE Backend -- Installment Service (Sprint 6.2, fix #35, updated 6.4,
 #                                          UX-01, Refactor 2 iter 2.4)
 # =============================================================================
 #

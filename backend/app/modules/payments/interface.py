@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Interface (Sprint 5.2)
+# AIVIS.ONE Backend -- Payment Interface (Sprint 5.2)
 # =============================================================================
 #
 # PUBLIC BOUNDARY of the payments/ module.

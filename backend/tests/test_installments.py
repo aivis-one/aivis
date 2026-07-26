@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Tests (Sprint 6.2)
+# AIVIS.ONE Backend -- Installment Tests (Sprint 6.2)
 # =============================================================================
 #
 # Tests cover:

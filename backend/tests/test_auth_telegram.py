@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Telegram Auth Tests (Sprint 1.2)
+# AIVIS.ONE Backend -- Telegram Auth Tests (Sprint 1.2)
 # =============================================================================
 #
 # Tests cover:

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useToast Composable
+// AIVIS.ONE Frontend -- useToast Composable
 // =============================================================================
 //
 // Singleton toast state. showToast() triggers CToast rendering.

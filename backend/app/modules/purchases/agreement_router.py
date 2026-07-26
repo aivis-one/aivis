@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Agreement & Ownership Router (Refactor 2 iter 2.4,
+# AIVIS.ONE Backend -- Agreement & Ownership Router (Refactor 2 iter 2.4,
 #                                                    R2 §5.3)
 # =============================================================================
 #

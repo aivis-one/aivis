@@ -1,4 +1,4 @@
-# CBSHOME -- Техническое задание (Backend)
+# AIVIS.ONE -- Техническое задание (Backend)
 
 **Версия:** 3.7
 **Дата:** 13 мая 2026
@@ -6,11 +6,11 @@
 **Репозиторий:** https://github.com/aivis-one/aivis
 
 **Зависимости (читать перед работой):**
-- `CBSHOME-Design-Document.md` — Конституция v1.6
-- `CBSHOME-Financial-System.md` — финансовая логика
-- `CBSHOME-State-Machines.md` — переходы статусов
-- `CBSHOME-Installment.md` — механика рассрочки
-- `CBSHOME-Share-Pool-Refactor.md` — TD-071 / Sprint 4.3 + 4.4 (✅ closed, deployed `b539ee8`)
+- `AIVIS-Design-Document.md` — Конституция v1.6
+- `AIVIS-Financial-System.md` — финансовая логика
+- `AIVIS-State-Machines.md` — переходы статусов
+- `AIVIS-Installment.md` — механика рассрочки
+- `AIVIS-Share-Pool-Refactor.md` — TD-071 / Sprint 4.3 + 4.4 (✅ closed, deployed `b539ee8`)
 
 ---
 
@@ -43,7 +43,7 @@
 - [x] `.gitignore` (PyCharm, VS Code, .env, __pycache__)
 - [x] Структура папок:
 ```
-cbshome/
+aivis/
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py
@@ -62,7 +62,7 @@ cbshome/
 ├── docker-compose.yml
 ├── scripts/
 │   └── install_aivis.sh
-└── CBSHOME-Design-Document.md
+└── AIVIS-Design-Document.md
 ```
 - [x] `pyproject.toml` — зависимости, ruff, mypy, pytest конфиг
 - [x] `app/core/config.py` — pydantic-settings, загрузка из .env
@@ -110,7 +110,7 @@ backend/app/core/
 
 **Endpoints:**
 ```
-GET /        -> {"name": "CBSHOME API", "version": "0.1.0"}
+GET /        -> {"name": "AIVIS.ONE API", "version": "0.1.0"}
 GET /health  -> {"status": "ok", "db": "ok", "redis": "ok"}    (200 always)
 GET /ready   -> {"status": "ok", "db": "ok", "redis": "ok"}    (200 or 503)
 ```
@@ -221,7 +221,7 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
 - [x] Fix locale (en_US.UTF-8)
 - [x] System deps: Docker, Nginx, Certbot, UFW, git, curl, dnsutils
 - [x] UFW: 22/80/443 + Docker→Postfix (172.16.0.0/12 → port 25)
-- [x] Deploy user `cbshome` (non-root, в docker group)
+- [x] Deploy user `aivis` (non-root, в docker group)
 - [x] SSH deploy key -> GitHub (`aivis-one/aivis`) -> clone repo
 - [x] Генерация `.env` с рандомными паролями (openssl rand)
 - [x] Интерактивный ввод секретов:
@@ -233,35 +233,35 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
 - [x] Nginx reverse proxy: `api.cbshome.org` -> `127.0.0.1:8000`, `cbshome.org` -> `127.0.0.1:3000`
 - [x] SSL (Let's Encrypt, оба домена) + auto-renewal cron
 - [x] `docker compose up` -> healthcheck poll -> migrations -> seed Platform user
-- [x] Management script -> symlink `/usr/local/bin/cbshome`
+- [x] Management script -> symlink `/usr/local/bin/aivis`
 - [x] Backup cron (4 AM, ротация 7 дней)
 - [x] Проверка previous installation (предложить удалить)
 
-**Management script (`cbshome`):**
+**Management script (`aivis`):**
 ```
-cbshome status                    -- Docker ps + uptime + memory + disk + health + external access
-cbshome logs [app|db|redis|all]   -- Docker logs -f
-cbshome test [backend|all]        -- pytest внутри контейнера
-cbshome lint                      -- ruff + mypy внутри контейнера
-cbshome update                    -- git fetch -> diff -> pull -> build --no-cache -> down -> up -> migrate -> seed -> test
-cbshome restart [service]         -- restart all or specific service
-cbshome backup                    -- pg_dump + .env -> tar.gz (7-day rotation)
-cbshome db connect                -- psql в контейнер
-cbshome db dump                   -- SQL dump в файл
-cbshome db restore <file>         -- восстановление из dump с подтверждением
-cbshome db migrate                -- alembic upgrade head
-cbshome seed                      -- python scripts/seed_platform.py
-cbshome seed --reset              -- clean + re-seed
-cbshome ssl renew                 -- certbot renew + nginx reload
-cbshome ssl status                -- certbot certificates info
-cbshome nginx reload              -- nginx -t + systemctl reload
-cbshome version                   -- git log + runtime versions + image list
-cbshome test-email <email>        -- test Mailgun (primary) + SMTP (fallback) delivery
+aivis status                    -- Docker ps + uptime + memory + disk + health + external access
+aivis logs [app|db|redis|all]   -- Docker logs -f
+aivis test [backend|all]        -- pytest внутри контейнера
+aivis lint                      -- ruff + mypy внутри контейнера
+aivis update                    -- git fetch -> diff -> pull -> build --no-cache -> down -> up -> migrate -> seed -> test
+aivis restart [service]         -- restart all or specific service
+aivis backup                    -- pg_dump + .env -> tar.gz (7-day rotation)
+aivis db connect                -- psql в контейнер
+aivis db dump                   -- SQL dump в файл
+aivis db restore <file>         -- восстановление из dump с подтверждением
+aivis db migrate                -- alembic upgrade head
+aivis seed                      -- python scripts/seed_platform.py
+aivis seed --reset              -- clean + re-seed
+aivis ssl renew                 -- certbot renew + nginx reload
+aivis ssl status                -- certbot certificates info
+aivis nginx reload              -- nginx -t + systemctl reload
+aivis version                   -- git log + runtime versions + image list
+aivis test-email <email>        -- test Mailgun (primary) + SMTP (fallback) delivery
 ```
 
 **Особенности реализации:**
-- `cbshome update` выходит с `exit 0` если Already up to date (нет новых коммитов)
-- `cbshome update` не делает `git reset --hard` при ошибке — выводит инструкцию для ручного разрешения
+- `aivis update` выходит с `exit 0` если Already up to date (нет новых коммитов)
+- `aivis update` не делает `git reset --hard` при ошибке — выводит инструкцию для ручного разрешения
 - `.env` генерируется атомарно через temp file + mv (пароли генерируются один раз до heredoc)
 - `.env` template включает `MAILGUN_API_URL=https://api.eu.mailgun.net` (v3.3)
 - `read` команды читают из `/dev/tty` (v3.3: совместимость с `curl | bash`)
@@ -555,7 +555,7 @@ backend/tests/
 - [x] `tests/test_documents.py` — 10 тестов
 
 **Решения реализации:**
-- `Document.status` — `str` с CHECK constraint (`draft | active | archived`), не `is_active: bool`. State machine из CBSHOME-State-Machines.md v1.4 section 5: `draft -> active, active -> draft, active -> archived, draft -> archived`
+- `Document.status` — `str` с CHECK constraint (`draft | active | archived`), не `is_active: bool`. State machine из AIVIS-State-Machines.md v1.4 section 5: `draft -> active, active -> draft, active -> archived, draft -> archived`
 - `DocumentType` — конкретные типы (`privacy_policy, terms_of_service, investment_agreement, agent_agreement, company_agreement`). Маппинг ролей в `ROLE_REQUIRED_DOCUMENT_TYPES` dict в `constants.py` — самодокументируемо, легко расширить
 - Подпись = запись факта (checkbox consent) в `DocumentSigning`. DocuSign — розетка Phase 2+ (TD-005). `DocumentSigning` — иммутабельная запись, нет `updated_at`
 - UNIQUE constraint `(type, version)` на Document — одна версия одного типа. UNIQUE constraint `(user_id, document_id)` на DocumentSigning — одна подпись на документ
@@ -655,7 +655,7 @@ backend/tests/
 - [x] `tests/test_avatar.py::test_avatar_guard_blocks_in_avatar_mode` — `content_url` → `language: "en"` в POST body
 
 **Решения реализации:**
-- **Static HTML вместо content_url/S3.** Тело документа — не сущность БД, а часть артефакта фронта. Релиз legal-текста = PR с правкой HTML + `cbshome update`. Seed сам бампнёт версию по хэшу. Никаких внешних URL, XSS/LFI guard больше не нужен
+- **Static HTML вместо content_url/S3.** Тело документа — не сущность БД, а часть артефакта фронта. Релиз legal-текста = PR с правкой HTML + `aivis update`. Seed сам бампнёт версию по хэшу. Никаких внешних URL, XSS/LFI guard больше не нужен
 - **type как free-form String.** Легальная команда может добавить новый тип документа (напр. `risk_disclosure`) без миграции — положить файл, прописать meta. Заодно отпадает дубль `enum DocumentType` ↔ `CHECK ck_documents_type`
 - **required_for_roles JSONB.** SQLAlchemy `.contains([role])` транслируется в PostgreSQL `@>` (JSONB containment). Покрыто индексом `(type, language, status)` по первым двум колонкам — выборка `status='active' AND required_for_roles @> [role]` быстрая, containment filter добивается в памяти на небольшом результате
 - **en — гарантированный baseline.** Если для типа нет локализованной копии, должна быть `en`. Отсутствие обеих = платформа сломана → 500. Молчаливый skip недопустим (юзер прошёл бы онбординг без подписания документа)
@@ -1220,7 +1220,7 @@ backend/tests/
 - `execute_purchase()` валидирует `pool_remaining >= product.package_size` перед списанием.
 - Gift overflow: при недостатке пула gift-units «протекают» в owner supply (отрицательный pool_remaining допустим, спецификация §3.7).
 
-**Детальная спецификация, миграция, диффы кода и тестов, acceptance criteria:** `CBSHOME-Share-Pool-Refactor.md` (v2.4).
+**Детальная спецификация, миграция, диффы кода и тестов, acceptance criteria:** `AIVIS-Share-Pool-Refactor.md` (v2.4).
 
 **Реализация — батчи:**
 - B0 (миграция 0027 + модели) — deployed
@@ -1593,7 +1593,7 @@ confirmation_worker_interval_minutes: int = 5
 ```
 
 **Решения реализации:**
-- P5-07: Payment model расширена по CBSHOME-State-Machines.md: `+currency`, `+provider`, `+expires_at`, `+frozen_until`, `+origin_payment_id (FK payments.id)`. `payment_type` (не `method`) — избегает конфликта с HTTP-семантикой
+- P5-07: Payment model расширена по AIVIS-State-Machines.md: `+currency`, `+provider`, `+expires_at`, `+frozen_until`, `+origin_payment_id (FK payments.id)`. `payment_type` (не `method`) — избегает конфликта с HTTP-семантикой
 - P5-08: `POST /api/v1/payments/crypto-address` (не GET) — endpoint создаёт ресурс, HTTP-семантика корректна. Body: `{"network": "TRC20"}`
 - P5-09: Webhook auth — `hmac.compare_digest()` для timing-safe сравнения (SEC-1 fix). Shared secret из `CRYPTO_WEBHOOK_SECRET` config
 - P5-10: tx_hash uniqueness — partial unique index на `(provider_data->>'tx_hash') WHERE NOT NULL`. Race condition обрабатывается через `begin_nested()` + `IntegrityError` catch на `uq_payments_tx_hash` (P-05)
@@ -2065,7 +2065,7 @@ Withdrawal:
     created_at, confirmed_at, processing_at, completed_at, rejected_at, failed_at
 ```
 
-**State machine (CBSHOME-State-Machines.md section 4, extended):**
+**State machine (AIVIS-State-Machines.md section 4, extended):**
 ```
 pending    -> confirmed   (Staff: approved)
 pending    -> rejected    (Staff: declined with reason)
@@ -3268,9 +3268,9 @@ backend/app/modules/transactions/
   4. Staff: аватаринг -> просмотр данных -> возврат
   5. Deposit -> покупка -> chargeback -> reversal
 - [ ] Все семафоры консистентности: OK
-- [ ] `cbshome test` -> все тесты зелёные
-- [ ] `cbshome lint` -> 0 ошибок
-- [ ] Финальный `cbshome update` на VPS
+- [ ] `aivis test` -> все тесты зелёные
+- [ ] `aivis lint` -> 0 ошибок
+- [ ] Финальный `aivis update` на VPS
 
 **Критерий готовности:** Все E2E flow проходят. Семафоры зелёные. VPS обновлён.
 
@@ -3293,14 +3293,14 @@ backend/app/modules/transactions/
 - `order` unique per `(company_id, category)`, **не per-company** — see backend pattern "Bulk reorder per-category scope" ниже.
 - Bulk reorder через `PATCH /staff/companies/{id}/attachments/reorder` с body `{category, item_ids}` (iter 2.6c).
 - Public flow: `GET /api/v1/public/companies/{id}/attachments` (iter 2.2) + single attachment download (iter 2.2).
-- Reconcile script: `cbshome storage reconcile <company_id>` — синхронизирует MinIO ↔ DB.
+- Reconcile script: `aivis storage reconcile <company_id>` — синхронизирует MinIO ↔ DB.
 
 ### Company Doc Templates (iter 2.3, R2 §4)
 
 - Модель `CompanyDocTemplate` с 4-stage fallback: `(kind, language)` per-company active → `(kind, language='en')` per-company → `(kind, language)` platform-default → `(kind, language='en')` platform-default.
 - Redis cache keyed by `(company_id, kind, language)` с TTL 5 min.
 - Templates **read-only** в Staff UI (iter 2.7 Block C5) — editor вне MVP.
-- Reconcile: `cbshome storage reconcile-templates <company_id>`.
+- Reconcile: `aivis storage reconcile-templates <company_id>`.
 
 ### Purchase Documents (iter 2.4, R2 §5)
 
@@ -3561,13 +3561,13 @@ Auth-flow download endpoint делает 302 на presigned MinIO URL. Если 
 | TD-062 | `payments/staff_router.py`, `payments/service.py`, `payments/schemas.py` | ~~Staff не может видеть список всех платежей~~ → `GET /staff/payments` с фильтрами (status, user_id), `StaffPaymentResponse` (+user_id), permission `payment_review` | G2 | ✅ G2 fix |
 | TD-063 | `tests/conftest.py` | ~~`_send_verification_email()` вызывается в тестах~~ → SMTP timeout (Postfix → example.com) + Mailgun timeout (placeholder key) = ~60с на каждую регистрацию. Фикс: `mock_email` autouse fixture, `monkeypatch` на noop. Продакшен-код не тронут | F1 | ✅ F1 fix |
 | TD-064 | `tests/test_staff_admin.py` | ~~`test_kyc_reject` не отправляет JSON body~~ → G5 добавил `KYCRejectRequest` (обязательный body), тест не обновлён. 422 вместо 204. Фикс: `json={}` | F1 | ✅ F1 fix |
-| TD-065 | `scripts/install_aivis.sh` | ~~`docker compose build --no-cache` в `case_update()`~~ → каждый `cbshome update` пересобирал все слои с нуля (~105с + 17GB мусора). Фикс: убран `--no-cache` из update (оставлен только при первичной установке) | F1 | ✅ F1 fix |
+| TD-065 | `scripts/install_aivis.sh` | ~~`docker compose build --no-cache` в `case_update()`~~ → каждый `aivis update` пересобирал все слои с нуля (~105с + 17GB мусора). Фикс: убран `--no-cache` из update (оставлен только при первичной установке) | F1 | ✅ F1 fix |
 | TD-066 | `frontend/public/legal/**/*.html` | 20 legal-болванок с Lorem ipsum вместо реального текста. Pre-launch blocker (не код-блокер): юрист должен заменить тексты до production. CI-гейта намеренно нет — проверяется в release-checklist | Pre-launch | ⬜ |
 | TD-067 | `backend/tests/test_documents.py`, `test_onboarding.py` | `_cleanup_documents` fixture делает `DELETE FROM document_signings; DELETE FROM documents` перед/после каждого теста. Чтобы тесты могли создавать `(type, version, language)` без конфликта с seed-записями. На общей БД (TEST = PROD) снесёт реальные seed и подписания — но тесты против production и не запускаются. Правильный фикс — изолированная test-DB (TD-068) | Backlog | ⬜ |
 | TD-068 | `docker-compose.yml`, `backend/tests/conftest.py` | Нет изолированной тестовой БД: тесты гоняются по тому же `postgres` сервису что и приложение. Нужен `test-postgres` service + `TEST_DATABASE_URL`. Снимет TD-067 и вернёт тестам нормальные fixtures-scoped cleanups | Before Scale | ⬜ |
 | TD-069 | `backend/tests/test_dashboard.py::test_certificate_email` | Исходный мок был на `aiosmtplib.send` — `core/email.py` реально ходит Mailgun primary, SMTP только как fallback. Тест случайно проходил только потому что Mailgun placeholder-key давал ошибку и падало в SMTP, который мок ловил. Фикс: мок на `send_certificate_email` router-level. Настоящий долг — явный sender-contract (protocol), mock на который не ломается от ротации primary/fallback | Backlog | ⬜ |
 | TD-070 | `backend/app/modules/documents/service.py` | `list_documents_for_role` делает два запроса (candidates + distinct types) чтобы отличить "юзер в миноритарной локали" от "платформа сломана". Можно сократить до одного запроса с `GROUP BY type` + агрегатом по наличию en/user_lang, но читаемость пострадает. Приемлемо при <20 типов | Backlog | ⬜ |
-| TD-071 | `companies/models.py`, `products/models.py`, `purchases/service.py`, `processors/base.py`, `tests/` | ~~**Share Pool & Product Inventory refactor.** `Product.units` ошибочно трактуется как «инвентарь пакета», `sold_units = COUNT(Purchase)` не отражает акции~~ → Реализован полностью в Sprint 4.3 + 4.4: новая модель `OptionPool`, `Product.package_size`, `available_packages` через pool. Code review hardening (Sprint 4.4): `POOL_STATUS_ACTIVE` централизован, dead copies в purchases/service удалены, ORM mutation antipattern заменён explicit constructor, schema cleanup (no defaults on populated fields). 362/362 тестов зелёные. Детальная спецификация — `CBSHOME-Share-Pool-Refactor.md` (v2.4) | Sprint 4.3 + 4.4 | ✅ Sprint 4.4 |
+| TD-071 | `companies/models.py`, `products/models.py`, `purchases/service.py`, `processors/base.py`, `tests/` | ~~**Share Pool & Product Inventory refactor.** `Product.units` ошибочно трактуется как «инвентарь пакета», `sold_units = COUNT(Purchase)` не отражает акции~~ → Реализован полностью в Sprint 4.3 + 4.4: новая модель `OptionPool`, `Product.package_size`, `available_packages` через pool. Code review hardening (Sprint 4.4): `POOL_STATUS_ACTIVE` централизован, dead copies в purchases/service удалены, ORM mutation antipattern заменён explicit constructor, schema cleanup (no defaults on populated fields). 362/362 тестов зелёные. Детальная спецификация — `AIVIS-Share-Pool-Refactor.md` (v2.4) | Sprint 4.3 + 4.4 | ✅ Sprint 4.4 |
 | TD-072 | `withdrawals/service.py` | 🔴 **Sign error в transaction log.** `reject_withdrawal` и `fail_withdrawal` пишут `amount_cents=-withdrawal.amount_cents` в `record_transaction`, тогда как ledger пишется с `+amount_cents` (compensation credit). История транзакций показывает -2X для rejected withdrawal вместо 0 (CREATED -X + REJECTED -X). Реальный баланс корректен (ledger source of truth), но отображаемая история ломает доверие пользователя. Фикс: `amount_cents=withdrawal.amount_cents` в обоих местах (lines 348, 493). Code review CRITICAL. | Before Prod | ⬜ |
 | TD-073 | `transactions/constants.py`, `withdrawals/service.py`, `payments/reversal.py` | Sign convention в `TransactionType` inconsistent. Проаудитить все `record_transaction` вызовы и зафиксировать конвенцию `positive=in / negative=out` в комментариях к каждому enum-значению. Также проверить `WITHDRAWAL_COMPLETED` — может быть избыточная transaction (после CREATED ledger движения нет, только статус-переход — тогда транзакция дублирует знак или должна иметь `amount=0`). После фикса TD-072 — связанная задача. | Before Prod | ⬜ |
 | TD-074 | `withdrawals/router.py`, `auth/router.py` | Rate limiting + docstring rectification. (1) `POST /withdrawals` — нет slowapi guard (уникальный индекс `uq_withdrawals_user_active` ограничивает одним активным выводом, но каждый запрос бьёт в БД advisory lock + balance query). Добавить `check_rate_limit("withdrawal_create:{user.id}")`. (2) `/verify-email/resend` docstring: «1 per 60s» vs реализация 5/60s (auth default). Либо добавить отдельный конфиг `resend_rate_limit_max_requests=1`, либо синхронизировать docstring. | Before Prod | ⬜ |

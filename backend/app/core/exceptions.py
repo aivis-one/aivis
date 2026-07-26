@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Application Exceptions
+# AIVIS.ONE Backend -- Application Exceptions
 # =============================================================================
 #
 # HIERARCHY:
@@ -163,7 +163,7 @@ class AMLViolationError(AivisError):
     """AML matrix violation -- Active -> Passive ledger route forbidden (HTTP 403).
 
     Raised by ledger service when a transfer would violate
-    the AML route matrix defined in CBSHOME-Financial-System.md.
+    the AML route matrix defined in AIVIS-Financial-System.md.
     """
 
     def __init__(

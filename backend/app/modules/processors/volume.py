@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Volume Processor (Sprint 7.3)
+# AIVIS.ONE Backend -- Volume Processor (Sprint 7.3)
 # =============================================================================
 #
 # RESPONSIBILITY:

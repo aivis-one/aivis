@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Per-Link Stats Tests (Task 1 Block D)
+# AIVIS.ONE Backend -- Per-Link Stats Tests (Task 1 Block D)
 # =============================================================================
 #
 # Covers GET /api/v1/referrals/links/me and GET /api/v1/referrals/stats/me

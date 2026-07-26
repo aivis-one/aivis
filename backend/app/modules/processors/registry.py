@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Processor Registry (Sprint 6.1, Sprint 7.2)
+# AIVIS.ONE Backend -- Processor Registry (Sprint 6.1, Sprint 7.2)
 # =============================================================================
 #
 # RESPONSIBILITY:

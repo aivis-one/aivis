@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Option Pool Models (Sprint 4.3)
+# AIVIS.ONE Backend -- Option Pool Models (Sprint 4.3)
 # =============================================================================
 #
 # OptionPool:

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Posts Service (Sprint 9.1, review fixes)
+# AIVIS.ONE Backend -- Posts Service (Sprint 9.1, review fixes)
 # =============================================================================
 #
 # RESPONSIBILITY:

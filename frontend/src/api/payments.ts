@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Payments API (Phase F4.3)
+// AIVIS.ONE Frontend -- Payments API (Phase F4.3)
 // =============================================================================
 //
 // Typed wrappers for the INVESTOR-side payment endpoints.

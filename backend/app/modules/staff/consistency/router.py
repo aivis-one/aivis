@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Consistency Router (Sprint 6.4)
+# AIVIS.ONE Backend -- Consistency Router (Sprint 6.4)
 # =============================================================================
 #
 # ENDPOINTS:

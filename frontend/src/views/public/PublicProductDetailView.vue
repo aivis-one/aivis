@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicProductDetailView (iter 2.6 batch 6, R1 §1.6.1)
+// AIVIS.ONE Frontend -- PublicProductDetailView (iter 2.6 batch 6, R1 §1.6.1)
 // =============================================================================
 //
 // Anonymous storefront product detail. Public counterpart to the

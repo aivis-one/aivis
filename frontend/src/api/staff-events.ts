@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Staff Events API (iter 2.7 Block B)
+// AIVIS.ONE Frontend -- Staff Events API (iter 2.7 Block B)
 // =============================================================================
 //
 // Typed wrappers for /api/v1/staff/events/* (backend

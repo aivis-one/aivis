@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Installment Plans API (Phase F4.2)
+// AIVIS.ONE Frontend -- Installment Plans API (Phase F4.2)
 // =============================================================================
 //
 // Typed wrappers for installment-plan endpoints.

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyTemplatesSection (iter 2.7 Block C / C2)
+// AIVIS.ONE Frontend -- StaffCompanyTemplatesSection (iter 2.7 Block C / C2)
 // =============================================================================
 //
 // Read-only inspection of the document templates a company renders

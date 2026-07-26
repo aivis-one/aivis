@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Attachments Public Router (Refactor 2 iter 2.2)
+# AIVIS.ONE Backend -- Company Attachments Public Router (Refactor 2 iter 2.2)
 # =============================================================================
 #
 # ENDPOINTS (no auth):

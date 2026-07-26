@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Models (Sprint 8.1, Sprint 8.3)
+# AIVIS.ONE Backend -- Notification Models (Sprint 8.1, Sprint 8.3)
 # =============================================================================
 #
 # TWO-LEVEL ARCHITECTURE:

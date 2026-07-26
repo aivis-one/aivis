@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Core Email (Sprint 9.2)
+# AIVIS.ONE Backend -- Core Email (Sprint 9.2)
 # =============================================================================
 #
 # Low-level email sending with SMTP (primary) + Mailgun (fallback).

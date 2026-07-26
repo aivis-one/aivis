@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Templates Staff Router (Refactor 2 iter 2.3)
+# AIVIS.ONE Backend -- Company Templates Staff Router (Refactor 2 iter 2.3)
 # =============================================================================
 #
 # ENDPOINTS:

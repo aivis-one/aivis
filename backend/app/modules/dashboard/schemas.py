@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Dashboard Schemas (Sprint 9.2)
+# AIVIS.ONE Backend -- Dashboard Schemas (Sprint 9.2)
 # =============================================================================
 #
 # RESPONSE SCHEMAS:

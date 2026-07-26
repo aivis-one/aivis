@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- AgentSettingsView (Task 3 Block D, Phase F6.2)
+// AIVIS.ONE Frontend -- AgentSettingsView (Task 3 Block D, Phase F6.2)
 // =============================================================================
 //
 // Reached from the More tab (AgentMoreView -> Settings tile). Replaces

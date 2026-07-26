@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Staff Router (Sprint 4.1, fix Phase 4,
+# AIVIS.ONE Backend -- Company Staff Router (Sprint 4.1, fix Phase 4,
 #                                            iter 2.6c B2 + B3)
 # =============================================================================
 #

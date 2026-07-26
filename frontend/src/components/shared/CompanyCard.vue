@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyCard (iter 2.5 batch 5, R1 §1.2)
+// AIVIS.ONE Frontend -- CompanyCard (iter 2.5 batch 5, R1 §1.2)
 // =============================================================================
 //
 // Grid card for the Investor Companies tab (CompanyListView). Also

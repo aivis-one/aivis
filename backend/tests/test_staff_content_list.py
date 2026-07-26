@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Content List Tests (iter 2.6c B4)
+# AIVIS.ONE Backend -- Staff Content List Tests (iter 2.6c B4)
 # =============================================================================
 #
 # HTTP-level smoke coverage for two new endpoints:

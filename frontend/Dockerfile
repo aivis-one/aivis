@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Frontend -- Dockerfile
+# AIVIS.ONE Frontend -- Dockerfile
 # Multi-stage: node build -> nginx serve
 # =============================================================================
 

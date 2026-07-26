@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Portfolio Service (Sprint 9.2 + Sprint 4.6 hotfix)
+# AIVIS.ONE Backend -- Portfolio Service (Sprint 9.2 + Sprint 4.6 hotfix)
 # =============================================================================
 #
 # RESPONSIBILITIES:

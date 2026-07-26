@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Agent Application Model (Sprint 7.1)
+# AIVIS.ONE Backend -- Agent Application Model (Sprint 7.1)
 # =============================================================================
 #
 # AgentApplication:

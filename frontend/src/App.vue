@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- Root component (iter 2.6 batch 2)
+// AIVIS.ONE Frontend -- Root component (iter 2.6 batch 2)
 // =============================================================================
 //
 // Root auth gate + avatar overlay banner.

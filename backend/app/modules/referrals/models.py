@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Models (Sprint 7.2, extended Task 1 Block A)
+# AIVIS.ONE Backend -- Referral Models (Sprint 7.2, extended Task 1 Block A)
 # =============================================================================
 #
 # ReferralLink:

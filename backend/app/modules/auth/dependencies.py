@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Auth Dependencies
+# AIVIS.ONE Backend -- Auth Dependencies
 # =============================================================================
 #
 # FastAPI dependencies for request authentication.

@@ -1,12 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Constants (Sprint 5.2)
+# AIVIS.ONE Backend -- Payment Constants (Sprint 5.2)
 # =============================================================================
 #
 # ENUMS:
 #   PaymentType   -- crypto | bank
 #   PaymentStatus -- created | frozen | confirmed | failed | reversed
 #
-# STATE MACHINE (from CBSHOME-State-Machines.md section 1):
+# STATE MACHINE (from AIVIS-State-Machines.md section 1):
 #   created   -> frozen    (webhook: provider confirmed receipt)
 #   created   -> failed    (webhook: rejected / daemon: expires_at <= now())
 #   frozen    -> confirmed (daemon: frozen_until <= now())

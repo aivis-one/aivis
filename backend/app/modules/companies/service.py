@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Service (Sprint 4.1 + Sprint F4.1 + F4.1.1 hotfix
+# AIVIS.ONE Backend -- Company Service (Sprint 4.1 + Sprint F4.1 + F4.1.1 hotfix
 #                                       + Sprint 4.3 + Refactor 2 iter 2.2 + 2.3)
 # =============================================================================
 #

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Staff Router (Sprint 5.3, G2)
+# AIVIS.ONE Backend -- Payment Staff Router (Sprint 5.3, G2)
 # =============================================================================
 #
 # ENDPOINTS:

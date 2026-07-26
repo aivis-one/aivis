@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- TransactionsView (Phase F4.3 B3)
+// AIVIS.ONE Frontend -- TransactionsView (Phase F4.3 B3)
 // =============================================================================
 //
 // Investor transaction history screen. Replaces the F2.2 stub.

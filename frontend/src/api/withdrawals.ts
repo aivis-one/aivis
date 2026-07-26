@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Withdrawals API (Phase F5.2 B3)
+// AIVIS.ONE Frontend -- Withdrawals API (Phase F5.2 B3)
 // =============================================================================
 //
 // Typed wrappers for /api/v1/withdrawals/* (Sprint 6.3).

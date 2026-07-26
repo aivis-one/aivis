@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Referral Schemas (Sprint 7.2, downline Task 2b)
+# AIVIS.ONE Backend -- Referral Schemas (Sprint 7.2, downline Task 2b)
 # =============================================================================
 
 from datetime import datetime

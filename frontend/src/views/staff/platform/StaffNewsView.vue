@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffNewsView (iter 2.7 Block B)
+// AIVIS.ONE Frontend -- StaffNewsView (iter 2.7 Block B)
 // =============================================================================
 //
 // Platform-wide post management. Thin wrapper over the shared

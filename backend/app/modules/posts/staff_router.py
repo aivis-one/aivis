@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Posts Staff Router (Sprint 9.1, iter 2.6c B4)
+# AIVIS.ONE Backend -- Posts Staff Router (Sprint 9.1, iter 2.6c B4)
 # =============================================================================
 #
 # ENDPOINTS:

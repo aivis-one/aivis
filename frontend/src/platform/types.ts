@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Platform Abstraction Types
+// AIVIS.ONE Frontend -- Platform Abstraction Types
 // =============================================================================
 //
 // Common interface for Telegram WebApp and Standalone (browser) modes.

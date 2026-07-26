@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Router (Sprint 6.2, G4 fix)
+# AIVIS.ONE Backend -- Installment Router (Sprint 6.2, G4 fix)
 # =============================================================================
 #
 # ENDPOINTS:

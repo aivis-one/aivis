@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Reversal Service (R-2.2 Block B)
+# AIVIS.ONE Backend -- Purchase Reversal Service (R-2.2 Block B)
 # =============================================================================
 #
 # RESPONSIBILITY:

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Resolver (Sprint 8.1)
+# AIVIS.ONE Backend -- Notification Resolver (Sprint 8.1)
 # =============================================================================
 #
 # RESPONSIBILITY:

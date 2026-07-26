@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyProductsView (Phase F5.2 B0)
+// AIVIS.ONE Frontend -- CompanyProductsView (Phase F5.2 B0)
 // =============================================================================
 //
 // "Products" tab inside CompanyShell. Shows the active products of

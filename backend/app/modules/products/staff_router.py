@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1 + F4.1
+# AIVIS.ONE Backend -- Product Staff Router (Sprint 4.2 + Sprint 6.1 + F4.1
 #                                            + Sprint 4.3)
 # =============================================================================
 #

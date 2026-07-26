@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Ownership Certificate Service (Refactor 2 iter 2.4,
+# AIVIS.ONE Backend -- Ownership Certificate Service (Refactor 2 iter 2.4,
 #                                                     R2 §5.3-5.4)
 # =============================================================================
 #

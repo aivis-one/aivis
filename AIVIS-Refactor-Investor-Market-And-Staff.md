@@ -1,4 +1,4 @@
-# CBSHOME -- Refactor: Investor Market & Staff Shell
+# AIVIS.ONE -- Refactor: Investor Market & Staff Shell
 
 **Версия:** 0.7 final / decision-locked / **fully implemented**
 **Дата:** 13 мая 2026
@@ -6,11 +6,11 @@
 **Статус:** все блоки реализованы в итерациях 2.5 / 2.6 / 2.7 / 2.7b. Документ закрыт; дальше — только обращение как к историческому источнику дизайна.
 
 **Связанные документы:**
-- `CBSHOME-Refactor-Company-Docs.md` v0.4 final -- параллельный refactor (storage, attachments, templates, Purchase docs). **Двусторонняя зависимость:** этот документ ссылается на storage-layer Refactor 2 для cover-загрузок Roadmap-items, Refactor 2 ссылается обратно для public investor flow context.
-- `CBSHOME-Design-Document.md` -- Конституция v1.5
-- `CBSHOME-Backend.md` -- Backend ТЗ v3.6
-- `CBSHOME-Frontend.md` -- Frontend ТЗ v2.7
-- `CBSHOME-Share-Pool-Refactor.md` -- архитектурный референс OptionPool
+- `AIVIS-Refactor-Company-Docs.md` v0.4 final -- параллельный refactor (storage, attachments, templates, Purchase docs). **Двусторонняя зависимость:** этот документ ссылается на storage-layer Refactor 2 для cover-загрузок Roadmap-items, Refactor 2 ссылается обратно для public investor flow context.
+- `AIVIS-Design-Document.md` -- Конституция v1.5
+- `AIVIS-Backend.md` -- Backend ТЗ v3.6
+- `AIVIS-Frontend.md` -- Frontend ТЗ v2.7
+- `AIVIS-Share-Pool-Refactor.md` -- архитектурный референс OptionPool
 
 ---
 
@@ -26,7 +26,7 @@
 2. **Roadmap и Posts (Sprint 9.1) -- две независимые сущности**, хотя семантически могут пересекаться (значимая новость -- это и пост в ленте, и веха в timeline компании).
 3. **Платформа полностью закрыта auth-wall'ом.** Маркетинговая воронка невозможна -- нельзя дать инвестору посмотреть компанию и продукт по прямой ссылке (например, из LinkedIn) без регистрации. Что бьёт по conversion'у на старте.
 
-Поскольку Роадмап -- собственность Staff (Компания не редактирует свои настройки -- см. инвариант "all changes via Staff" в `CBSHOME-Design-Document.md`), мы не можем сделать "просто роадмап-редактор" в отрыве от Staff-инфраструктуры управления Компаниями. Поэтому рефакторинг расширяется до:
+Поскольку Роадмап -- собственность Staff (Компания не редактирует свои настройки -- см. инвариант "all changes via Staff" в `AIVIS-Design-Document.md`), мы не можем сделать "просто роадмап-редактор" в отрыве от Staff-инфраструктуры управления Компаниями. Поэтому рефакторинг расширяется до:
 
 - **Investor:** новая навигация Маркета через Компании.
 - **Public investor flow:** компании и продукты публичны без auth, auth-wall только на действии "Купить".
@@ -550,7 +550,7 @@ class RoadmapItemResponse(BaseModel):
 
 ### 6.4. Event.company_id
 
-**НЕ добавляем.** Платформенные Events (вебинары CBS HOME) живут как глобальная сущность без company_id. Компанейские "события" (AMA, дедлайны компании) живут как `RoadmapItem.kind=event`. Сущности разделены семантически, никакой опциональный FK на компанию у Event не нужен.
+**НЕ добавляем.** Платформенные Events (вебинары AIVIS.ONE) живут как глобальная сущность без company_id. Компанейские "события" (AMA, дедлайны компании) живут как `RoadmapItem.kind=event`. Сущности разделены семантически, никакой опциональный FK на компанию у Event не нужен.
 
 ---
 

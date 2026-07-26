@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Regression Guards
+# AIVIS.ONE Backend -- Regression Guards
 # =============================================================================
 #
 # Anti-regression tests for previously-fixed bugs. NOT CRUD coverage.

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Registration Link Capture Tests (Task 1 Block C)
+# AIVIS.ONE Backend -- Registration Link Capture Tests (Task 1 Block C)
 # =============================================================================
 #
 # Covers referred_by_link_id capture at registration (migration 0035):

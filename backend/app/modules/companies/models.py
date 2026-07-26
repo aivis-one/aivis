@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Models (Sprint 4.1, fix Phase 4, Sprint 4.3,
+# AIVIS.ONE Backend -- Company Models (Sprint 4.1, fix Phase 4, Sprint 4.3,
 #                                     Refactor 2 iter 2.2 + 2.3)
 # =============================================================================
 #
@@ -60,7 +60,7 @@
 #   - Added shares_per_option (Integer NOT NULL): denomination ratio.
 #     total_supply = total_shares / shares_per_option. Changes only on a
 #     split (future scope -- new Pool, migration purchases, see
-#     CBSHOME-Share-Pool-Refactor.md section 4).
+#     AIVIS-Share-Pool-Refactor.md section 4).
 #   - Price still lives here (NOT on OptionPool): price changes more often
 #     than the pool is restructured, and a re-valuation should not require
 #     a new pool.

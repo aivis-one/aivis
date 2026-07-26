@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Public Events List Tests (iter 2.7b A)
+# AIVIS.ONE Backend -- Public Events List Tests (iter 2.7b A)
 # =============================================================================
 #
 # HTTP-level coverage for the 2.7b extensions to the PUBLIC events

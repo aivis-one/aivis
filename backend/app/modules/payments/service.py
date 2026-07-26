@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Service (Sprint 5.2, updated Sprint 6.4, G2)
+# AIVIS.ONE Backend -- Payment Service (Sprint 5.2, updated Sprint 6.4, G2)
 # =============================================================================
 #
 # RESPONSIBILITIES:

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Portfolio API (Phase F4.4)
+// AIVIS.ONE Frontend -- Portfolio API (Phase F4.4)
 // =============================================================================
 //
 // Typed wrappers for the investor portfolio endpoints.

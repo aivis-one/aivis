@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Schemas (Sprint 2.2, updated by 0024, 0025)
+# AIVIS.ONE Backend -- Document Schemas (Sprint 2.2, updated by 0024, 0025)
 # =============================================================================
 #
 # Pydantic models for document endpoints.

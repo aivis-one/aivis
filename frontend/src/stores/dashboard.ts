@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Dashboard Store (Phase F4.4 B2 + B5-post)
+// AIVIS.ONE Frontend -- Dashboard Store (Phase F4.4 B2 + B5-post)
 // =============================================================================
 //
 // Pinia store exposing the full /api/v1/dashboard/summary payload to

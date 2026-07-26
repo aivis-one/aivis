@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Seed Admin User
+# AIVIS.ONE Backend -- Seed Admin User
 # =============================================================================
 #
 # Creates the first admin staff user if none exists.

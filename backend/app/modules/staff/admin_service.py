@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Admin Service (Sprint 3.3, G5 fix, iter 2.6c B1,
+# AIVIS.ONE Backend -- Admin Service (Sprint 3.3, G5 fix, iter 2.6c B1,
 #                                    iter 2.7 A5 KYC-in-detail extension)
 # =============================================================================
 #

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- RoadmapTimeline (iter 2.5 batch 5, R1 §6.1)
+// AIVIS.ONE Frontend -- RoadmapTimeline (iter 2.5 batch 5, R1 §6.1)
 // =============================================================================
 //
 // Vertical timeline rendered on the Investor CompanyOverviewView

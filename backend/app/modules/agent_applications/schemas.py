@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Agent Application Schemas (Sprint 7.1)
+# AIVIS.ONE Backend -- Agent Application Schemas (Sprint 7.1)
 # =============================================================================
 #
 # AgentApplicationResponse:  returned after POST and in GET /me list

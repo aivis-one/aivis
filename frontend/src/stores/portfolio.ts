@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Portfolio Store (Phase F4.4 B1 + B1-post + F5.1 B1)
+// AIVIS.ONE Frontend -- Portfolio Store (Phase F4.4 B1 + B1-post + F5.1 B1)
 // =============================================================================
 //
 // Pinia store for the investor portfolio. Drives PortfolioView

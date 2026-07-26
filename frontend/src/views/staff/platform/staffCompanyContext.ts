@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Staff Company Context (iter 2.7 PERF-40-01)
+// AIVIS.ONE Frontend -- Staff Company Context (iter 2.7 PERF-40-01)
 // =============================================================================
 //
 // Shared provide/inject contract for the staff company detail surface.

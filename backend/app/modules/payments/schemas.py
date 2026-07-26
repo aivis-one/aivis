@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Schemas (Sprint 5.2, updated Sprint 5.3 + 6.1, G2)
+# AIVIS.ONE Backend -- Payment Schemas (Sprint 5.2, updated Sprint 5.3 + 6.1, G2)
 # =============================================================================
 #
 # Request/response schemas for payment endpoints.

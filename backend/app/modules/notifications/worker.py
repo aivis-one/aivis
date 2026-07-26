@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Notification Worker (Sprint 8.1, fix review)
+# AIVIS.ONE Backend -- Notification Worker (Sprint 8.1, fix review)
 # =============================================================================
 #
 # RESPONSIBILITY:

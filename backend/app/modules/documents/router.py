@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Documents Router (Sprint 2.2 + Sprint 3.2)
+# AIVIS.ONE Backend -- Documents Router (Sprint 2.2 + Sprint 3.2)
 # =============================================================================
 #
 # User-facing endpoints for document browsing and signing.

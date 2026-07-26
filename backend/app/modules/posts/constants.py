@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Posts Constants (Sprint 9.1)
+# AIVIS.ONE Backend -- Posts Constants (Sprint 9.1)
 # =============================================================================
 #
 # OwnerType determines who owns the post:

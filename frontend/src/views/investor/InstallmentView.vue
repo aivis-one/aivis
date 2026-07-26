@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- InstallmentView (Phase F4.2 + F4.2.2 polish + F4.3 fix)
+// AIVIS.ONE Frontend -- InstallmentView (Phase F4.2 + F4.2.2 polish + F4.3 fix)
 // =============================================================================
 //
 // Installment plan confirmation screen. Shared across

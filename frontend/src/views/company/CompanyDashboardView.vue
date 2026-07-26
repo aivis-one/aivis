@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyDashboardView (Phase F5.1 B2 + B3)
+// AIVIS.ONE Frontend -- CompanyDashboardView (Phase F5.1 B2 + B3)
 // =============================================================================
 //
 // Company home screen. Rendered by CompanyShell at /company/dashboard

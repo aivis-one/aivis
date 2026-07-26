@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicAttachmentsSection (iter 2.6 batch 4, R2 §3.4 + §7.2)
+// AIVIS.ONE Frontend -- PublicAttachmentsSection (iter 2.6 batch 4, R2 §3.4 + §7.2)
 // =============================================================================
 //
 // Anonymous-storefront counterpart to AttachmentsSection. Embedded in

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Avatar Service (Sprint 3.2)
+# AIVIS.ONE Backend -- Avatar Service (Sprint 3.2)
 # =============================================================================
 #
 # RESPONSIBILITIES:

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Agreements API
+// AIVIS.ONE Frontend -- Agreements API
 //                       (iter 2.5 R2 §5.5; replaces api/certificates.ts)
 // =============================================================================
 //

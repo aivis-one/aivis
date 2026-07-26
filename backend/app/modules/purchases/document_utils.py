@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Document Helpers (Refactor 2 iter 2.4, R2 §5.4)
+# AIVIS.ONE Backend -- Purchase Document Helpers (Refactor 2 iter 2.4, R2 §5.4)
 # =============================================================================
 #
 # Shared, side-effect-free helpers used by BOTH per-Purchase agreements

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Reconcile Company Attachments
+# AIVIS.ONE Backend -- Reconcile Company Attachments
 #                     (Refactor 2 iter 2.2, batch E1)
 # =============================================================================
 #

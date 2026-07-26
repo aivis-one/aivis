@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Application Entry Point
+# AIVIS.ONE Backend -- Application Entry Point
 # =============================================================================
 #
 # FastAPI application with lifespan-managed background daemons.

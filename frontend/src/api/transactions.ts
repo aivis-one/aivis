@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Transactions API (Phase F4.3)
+// AIVIS.ONE Frontend -- Transactions API (Phase F4.3)
 // =============================================================================
 //
 // Typed wrappers for the investor transaction event log.

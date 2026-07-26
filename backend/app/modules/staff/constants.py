@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Constants (Sprint 3.1, updated Sprint 4.1, 9.1)
+# AIVIS.ONE Backend -- Staff Constants (Sprint 3.1, updated Sprint 4.1, 9.1)
 # =============================================================================
 #
 # DEFAULT_STAFF_PERMISSIONS:
@@ -13,7 +13,7 @@
 #   Admin = staff whose effective permissions are ALL True.
 #   Checked by is_admin() helper. No separate role or flag needed.
 #   "Gradations are defined by configuration, not separate roles in code."
-#   (CBSHOME-Design-Document.md, section 3.10)
+#   (AIVIS-Design-Document.md, section 3.10)
 #
 # Sprint 4.1:
 #   Added company_manage permission. Controls CRUD on CompanyProfile

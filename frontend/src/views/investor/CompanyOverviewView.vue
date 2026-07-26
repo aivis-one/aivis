@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyOverviewView (iter 2.5 batch 6, R1 §1.3)
+// AIVIS.ONE Frontend -- CompanyOverviewView (iter 2.5 batch 6, R1 §1.3)
 // =============================================================================
 //
 // Investor company profile screen. Sub-route under the Companies tab:

@@ -1,10 +1,10 @@
 # =============================================================================
-# CBSHOME Backend -- Document Models (Sprint 2.2, updated by 0024, 0025)
+# AIVIS.ONE Backend -- Document Models (Sprint 2.2, updated by 0024, 0025)
 # =============================================================================
 #
 # Document:
 #   Versioned document template. Status lifecycle:
-#   draft -> active -> archived (see CBSHOME-State-Machines.md section 5).
+#   draft -> active -> archived (see AIVIS-State-Machines.md section 5).
 #
 #   Since migration 0024 the HTML body of a document lives as a static
 #   file served by the frontend. The backend only stores metadata.

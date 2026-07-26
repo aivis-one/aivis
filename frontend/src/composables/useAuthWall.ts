@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useAuthWall Composable (iter 2.6 R1 §1.6.5)
+// AIVIS.ONE Frontend -- useAuthWall Composable (iter 2.6 R1 §1.6.5)
 // =============================================================================
 //
 // Gating helper for public-flow views. Wraps the "if not authenticated,

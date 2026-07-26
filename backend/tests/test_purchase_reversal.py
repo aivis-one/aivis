@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Reversal Tests (R-2.2 Blocks B + C)
+# AIVIS.ONE Backend -- Purchase Reversal Tests (R-2.2 Blocks B + C)
 # =============================================================================
 #
 # Tests cover:

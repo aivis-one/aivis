@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- usePublicErrorToast Composable (iter 2.6 Block C1)
+// AIVIS.ONE Frontend -- usePublicErrorToast Composable (iter 2.6 Block C1)
 // =============================================================================
 //
 // Centralised rate-limit toast handler for public-flow views. Every

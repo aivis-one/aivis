@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Document Constants (Sprint 2.2, updated by 0024)
+# AIVIS.ONE Backend -- Document Constants (Sprint 2.2, updated by 0024)
 # =============================================================================
 #
 # VALID_STATUS_TRANSITIONS:

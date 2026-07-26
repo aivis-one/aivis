@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Tab Bar Configurations
+// AIVIS.ONE Frontend -- Tab Bar Configurations
 // =============================================================================
 //
 // Each role has its own tab set. Used by CTabBar in shell components.

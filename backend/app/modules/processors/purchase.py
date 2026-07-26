@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Processor (Sprint 6.1)
+# AIVIS.ONE Backend -- Purchase Processor (Sprint 6.1)
 # =============================================================================
 #
 # RESPONSIBILITY:

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- UI Component Barrel Export
+// AIVIS.ONE Frontend -- UI Component Barrel Export
 // =============================================================================
 
 export { default as CButton } from './CButton.vue'

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company Schemas (Sprint 4.1, fix Phase 4, Sprint 4.3,
+# AIVIS.ONE Backend -- Company Schemas (Sprint 4.1, fix Phase 4, Sprint 4.3,
 #                                       Refactor 2 iter 2.2 + 2.3)
 # =============================================================================
 #
@@ -28,7 +28,7 @@
 #   - UpdateCompanyRequest: NO total_supply / shares_per_option here.
 #     A change in total_supply is a pool-level operation (PATCH
 #     /staff/companies/{id}/pool). A change in shares_per_option is a
-#     split (future scope, see CBSHOME-Share-Pool-Refactor.md §4).
+#     split (future scope, see AIVIS-Share-Pool-Refactor.md §4).
 #     Allowing scalar updates here would break the invariant
 #     `pool.equity_percent = pool.total_options / company.total_supply`.
 #   - CompanyResponse / PublicCompanyResponse: +total_supply,

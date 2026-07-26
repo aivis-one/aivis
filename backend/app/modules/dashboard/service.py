@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Dashboard Service (Sprint 9.2)
+# AIVIS.ONE Backend -- Dashboard Service (Sprint 9.2)
 # =============================================================================
 #
 # RESPONSIBILITIES:

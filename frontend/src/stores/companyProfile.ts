@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Company Profile Store (Phase F5.1)
+// AIVIS.ONE Frontend -- Company Profile Store (Phase F5.1)
 // =============================================================================
 //
 // Pinia store exposing the authenticated company's full profile

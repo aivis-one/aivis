@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Company FastAPI Dependencies (Sprint 4.3 / B5)
+# AIVIS.ONE Backend -- Company FastAPI Dependencies (Sprint 4.3 / B5)
 # =============================================================================
 #
 # Dependencies for FastAPI routes that operate on the company that the

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Staff Admin API (Phase F3)
+// AIVIS.ONE Frontend -- Staff Admin API (Phase F3)
 // =============================================================================
 //
 // Typed wrappers for all /api/v1/staff/* endpoints.

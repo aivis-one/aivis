@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicCompanyOverviewView (iter 2.6 batch 3, R1 §1.6.1
+// AIVIS.ONE Frontend -- PublicCompanyOverviewView (iter 2.6 batch 3, R1 §1.6.1
 //                                                 + iter 2.6 batch 4 §7.2
 //                                                 + iter 2.6 batch 5 products)
 // =============================================================================

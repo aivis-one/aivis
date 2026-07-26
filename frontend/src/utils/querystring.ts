@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Query String Helper (Phase F4.3, TD-F08e close)
+// AIVIS.ONE Frontend -- Query String Helper (Phase F4.3, TD-F08e close)
 // =============================================================================
 //
 // Single-source `URLSearchParams` wrapper for typed API clients.

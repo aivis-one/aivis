@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Router (Sprint 5.2, fix Sprint 6.1)
+# AIVIS.ONE Backend -- Payment Router (Sprint 5.2, fix Sprint 6.1)
 # =============================================================================
 #
 # ENDPOINTS:

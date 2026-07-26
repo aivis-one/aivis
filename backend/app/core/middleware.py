@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- ASGI Middleware
+# AIVIS.ONE Backend -- ASGI Middleware
 # =============================================================================
 #
 # Pure ASGI -- no BaseHTTPMiddleware wrapper. This guarantees that

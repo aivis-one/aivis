@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ReferralsView (Task 3 Block B, Phase F6.1)
+// AIVIS.ONE Frontend -- ReferralsView (Task 3 Block B, Phase F6.1)
 // =============================================================================
 //
 // Replaces the F6.1 stub. The agent's downline -- two server-assembled

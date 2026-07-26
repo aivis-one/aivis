@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Calculator (Sprint 4.3 / B4)
+# AIVIS.ONE Backend -- Installment Calculator (Sprint 4.3 / B4)
 # =============================================================================
 #
 # Computes a `plan_config` for a Product given staff-chosen tranche

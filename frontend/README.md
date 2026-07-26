@@ -1,6 +1,6 @@
-# CBSHOME Frontend
+# AIVIS.ONE Frontend
 
-Vue 3 + TypeScript + Vite SPA for the CBSHOME investment platform.
+Vue 3 + TypeScript + Vite SPA for the AIVIS.ONE investment platform.
 
 ## Stack
 

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Staff Posts API (iter 2.7 Block B)
+// AIVIS.ONE Frontend -- Staff Posts API (iter 2.7 Block B)
 // =============================================================================
 //
 // Typed wrappers for /api/v1/staff/posts/* (backend

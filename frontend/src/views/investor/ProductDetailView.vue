@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 + F4.2 + F4.2.2
+// AIVIS.ONE Frontend -- ProductDetailView (Phase F4.1 + F4.1.4 + F4.2 + F4.2.2
 //                                          + F4.4 B7 UX)
 // =============================================================================
 //

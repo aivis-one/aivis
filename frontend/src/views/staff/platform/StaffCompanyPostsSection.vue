@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyPostsSection (iter 2.7 Block C)
+// AIVIS.ONE Frontend -- StaffCompanyPostsSection (iter 2.7 Block C)
 // =============================================================================
 //
 // Company-scoped post management. Thin wrapper over the shared

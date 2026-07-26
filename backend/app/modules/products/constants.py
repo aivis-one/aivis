@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Product Constants (Sprint 4.2 + Sprint 6.2 + Sprint 4.3)
+# AIVIS.ONE Backend -- Product Constants (Sprint 4.2 + Sprint 6.2 + Sprint 4.3)
 # =============================================================================
 #
 # PRODUCT STATUS:

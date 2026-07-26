@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Transaction Service (Sprint 6.4)
+# AIVIS.ONE Backend -- Transaction Service (Sprint 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:

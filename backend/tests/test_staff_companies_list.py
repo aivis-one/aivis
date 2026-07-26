@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Companies List Tests (iter 2.6c B2)
+# AIVIS.ONE Backend -- Staff Companies List Tests (iter 2.6c B2)
 # =============================================================================
 #
 # HTTP-level smoke coverage for the new GET /api/v1/staff/companies

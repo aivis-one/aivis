@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Company Price History Tests (iter 2.6c B3)
+# AIVIS.ONE Backend -- Staff Company Price History Tests (iter 2.6c B3)
 # =============================================================================
 #
 # HTTP-level smoke coverage for the new

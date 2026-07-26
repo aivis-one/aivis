@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Platform Auto-Detection
+// AIVIS.ONE Frontend -- Platform Auto-Detection
 // =============================================================================
 //
 // Detects runtime environment by checking window.Telegram?.WebApp.

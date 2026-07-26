@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- MIME Utilities (iter 2.6 R25 STYLE-25-01)
+// AIVIS.ONE Frontend -- MIME Utilities (iter 2.6 R25 STYLE-25-01)
 // =============================================================================
 //
 // Shared mime-type helpers. Extracted from duplicate inline copies in

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- KYC Router (Sprint 2.1, iter 2.7 onboarding-advance hotfix)
+# AIVIS.ONE Backend -- KYC Router (Sprint 2.1, iter 2.7 onboarding-advance hotfix)
 # =============================================================================
 #
 # ENDPOINTS:

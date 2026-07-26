@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- BalanceView (Phase F4.3 B2 + F4.4 B2 store rename)
+// AIVIS.ONE Frontend -- BalanceView (Phase F4.3 B2 + F4.4 B2 store rename)
 // =============================================================================
 //
 // Investor balance screen. Shows the active ledger balance and a

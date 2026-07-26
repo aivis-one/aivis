@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Consistency Semaphore Schemas (Sprint 6.4)
+# AIVIS.ONE Backend -- Consistency Semaphore Schemas (Sprint 6.4)
 # =============================================================================
 #
 # SCHEMAS:

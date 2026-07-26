@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Alembic env.py
+# AIVIS.ONE Backend -- Alembic env.py
 # =============================================================================
 #
 # Alembic migration environment. Imports all ORM models so that

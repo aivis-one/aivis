@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Users Service (Sprint 1.3, fix TD-024, Sprint 6.3, F2.3, F4.4 B5)
+# AIVIS.ONE Backend -- Users Service (Sprint 1.3, fix TD-024, Sprint 6.3, F2.3, F4.4 B5)
 # =============================================================================
 #
 # RESPONSIBILITIES:

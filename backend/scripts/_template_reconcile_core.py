@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Template Reconcile Core
+# AIVIS.ONE Backend -- Template Reconcile Core
 #                     (iter 2.5 mini-fix #3 -- shared core)
 # =============================================================================
 #

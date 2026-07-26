@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Staff Router (R-2.2 Block B)
+# AIVIS.ONE Backend -- Purchase Staff Router (R-2.2 Block B)
 # =============================================================================
 #
 # ENDPOINTS:

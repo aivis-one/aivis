@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Withdrawal Service (Sprint 6.3, updated Sprint 6.4)
+# AIVIS.ONE Backend -- Withdrawal Service (Sprint 6.3, updated Sprint 6.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:

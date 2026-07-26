@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Commission Schemas (Sprint 7.3, Task 2b Block C)
+# AIVIS.ONE Backend -- Commission Schemas (Sprint 7.3, Task 2b Block C)
 # =============================================================================
 #
 # Pydantic models for leaderboard and commission endpoints.

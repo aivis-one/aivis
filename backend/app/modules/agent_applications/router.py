@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Agent Application Router (Sprint 7.1)
+# AIVIS.ONE Backend -- Agent Application Router (Sprint 7.1)
 # =============================================================================
 #
 # ENDPOINTS:

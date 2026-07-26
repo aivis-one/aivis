@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyProfileSection (iter 2.7 Block C)
+// AIVIS.ONE Frontend -- StaffCompanyProfileSection (iter 2.7 Block C)
 // =============================================================================
 //
 // Read-only company profile inspection. Reads the company from the

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PublicProductsSection (iter 2.6 batch 5, R1 §1.6.1)
+// AIVIS.ONE Frontend -- PublicProductsSection (iter 2.6 batch 5, R1 §1.6.1)
 // =============================================================================
 //
 // Anonymous-storefront products teaser. Embedded in

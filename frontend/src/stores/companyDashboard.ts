@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Company Dashboard Store (Phase F5.1)
+// AIVIS.ONE Frontend -- Company Dashboard Store (Phase F5.1)
 // =============================================================================
 //
 // Pinia store wrapping the single-payload company dashboard endpoint

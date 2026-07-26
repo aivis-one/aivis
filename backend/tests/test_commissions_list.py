@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Commission List Tests (review follow-up)
+# AIVIS.ONE Backend -- Commission List Tests (review follow-up)
 # =============================================================================
 #
 # Covers GET /api/v1/agent/commissions/me (the history LIST endpoint --

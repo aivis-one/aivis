@@ -1,4 +1,4 @@
-# CBSHOME -- State Machines
+# AIVIS.ONE -- State Machines
 
 **Версия:** 1.4
 **Дата:** 28 марта 2026
@@ -302,8 +302,8 @@ overdue   -> cancelled  (план -> cancelled)
 
 - `paid` транш всегда имеет `purchase_id NOT NULL`
 - Акции разблокируются (`gift_processor`) одновременно с оплатой транша
-- Детальная механика: CBSHOME-Installment.md
+- Детальная механика: AIVIS-Installment.md
 
 ---
 
-*Version 1.4 | 2026-03-28 | cbshome State Machines Codex*
+*Version 1.4 | 2026-03-28 | AIVIS.ONE State Machines Codex*

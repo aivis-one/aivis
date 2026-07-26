@@ -1,4 +1,4 @@
-# CBSHOME -- Refactor: Company Attachments, Templates & Purchase Docs
+# AIVIS.ONE -- Refactor: Company Attachments, Templates & Purchase Docs
 
 **Версия:** 0.9 final / decision-locked / **fully implemented**
 **Дата:** 13 мая 2026
@@ -23,11 +23,11 @@
 - Маркеры реализации проставлены в §2 (✓ iter 2.1), §3 (✓ iter 2.2), §4 (в работе iter 2.3), §5 (впереди iter 2.4).
 
 **Связанные документы:**
-- `CBSHOME-Refactor-Investor-Market-And-Staff.md` v0.3 -- параллельный рефакторинг. **Двусторонняя зависимость:** этот документ предоставляет storage layer (§2), которым пользуются и attachments здесь, и roadmap covers в Refactor 1 §5.5. Refactor 1 §1.6 определяет public investor flow, в котором public attachments из этого документа отображаются на public-странице компании.
-- `CBSHOME-Design-Document.md` -- Конституция v1.5
-- `CBSHOME-Backend.md` -- Backend ТЗ v3.6
-- `CBSHOME-Frontend.md` -- Frontend ТЗ v2.7
-- `CBSHOME-Financial-System.md` -- §11 "Документ на каждую покупку" (текущая спецификация, расходится с реализацией)
+- `AIVIS-Refactor-Investor-Market-And-Staff.md` v0.3 -- параллельный рефакторинг. **Двусторонняя зависимость:** этот документ предоставляет storage layer (§2), которым пользуются и attachments здесь, и roadmap covers в Refactor 1 §5.5. Refactor 1 §1.6 определяет public investor flow, в котором public attachments из этого документа отображаются на public-странице компании.
+- `AIVIS-Design-Document.md` -- Конституция v1.5
+- `AIVIS-Backend.md` -- Backend ТЗ v3.6
+- `AIVIS-Frontend.md` -- Frontend ТЗ v2.7
+- `AIVIS-Financial-System.md` -- §11 "Документ на каждую покупку" (текущая спецификация, расходится с реализацией)
 
 ---
 
@@ -42,7 +42,7 @@
   - Компании юридически разные -- у каждой свой подписант, своя печать, свой шаблон договора.
   - Один эндпоинт смешивает две сущности: договор покупки (per-Purchase, юридически фиксированный) и сертификат владения (агрегат по компании, актуальный на текущий момент).
   - Нет per-Purchase snapshot шаблона -- если Staff обновит шаблон, исторические покупки начнут рендериться "по-новому", что юридически недопустимо.
-- Семафор S-07 (`Все Purchase имеют document_id NOT NULL`) описан в `CBSHOME-Financial-System.md`, но в коде нет ни поля, ни проверки.
+- Семафор S-07 (`Все Purchase имеют document_id NOT NULL`) описан в `AIVIS-Financial-System.md`, но в коде нет ни поля, ни проверки.
 
 ### 0.2. Цели рефакторинга
 
@@ -54,7 +54,7 @@
 
 ### 0.3. Инфраструктура -- начинаем со скрипта
 
-Заказчик ждёт от нас один артефакт: `install_aivis.sh`. Это означает: всё новое окружение должно подниматься одним запуском без ручных шагов после установки. MinIO встаёт в `docker-compose.yml` рядом с postgres/redis и поднимается автоматически. Новые секции в management-скрипте `cbshome` (backup/restore с учётом MinIO) -- обязательны.
+Заказчик ждёт от нас один артефакт: `install_aivis.sh`. Это означает: всё новое окружение должно подниматься одним запуском без ручных шагов после установки. MinIO встаёт в `docker-compose.yml` рядом с postgres/redis и поднимается автоматически. Новые секции в management-скрипте `aivis` (backup/restore с учётом MinIO) -- обязательны.
 
 ### 0.4. Что НЕ делаем в этом рефакторе
 
@@ -79,7 +79,7 @@
 - Порты:
   - `127.0.0.1:9000:9000` -- S3 API. Loopback-only, наружу не выставляем; доступ только через backend (по docker-сети `http://minio:9000`).
   - `127.0.0.1:9001:9001` -- Web UI (Object Browser, см. https://min.io/docs/minio/linux/operations/installation.html). Loopback на уровне docker, наружу проксируется через nginx (см. §1.4) под доменом `storage-mc-admin.cbshome.org` с basic-auth.
-- Volume `cbshome_minio_data:/data`.
+- Volume `aivis_minio_data:/data`.
 - Healthcheck: `curl -f http://localhost:9000/minio/health/live`.
 - Restart `unless-stopped`.
 - env_file -- `./backend/.env` (читает `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`).
@@ -92,8 +92,8 @@
 
 ```
 mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
-mc mb -p local/cbshome-attachments
-mc anonymous set none local/cbshome-attachments  # explicitly private
+mc mb -p local/aivis-attachments
+mc anonymous set none local/aivis-attachments  # explicitly private
 ```
 
 Запускается каждый раз вместе с `docker compose up -d`. Идемпотентен -- повторный запуск ничего не ломает.
@@ -111,7 +111,7 @@ mc anonymous set none local/cbshome-attachments  # explicitly private
 | `MINIO_ENDPOINT` | URL для backend клиента | `http://minio:9000` |
 | `MINIO_ACCESS_KEY` | service account для backend (не root) | сгенерированный |
 | `MINIO_SECRET_KEY` | service account secret | сгенерированный |
-| `MINIO_BUCKET` | имя бакета | `cbshome-attachments` |
+| `MINIO_BUCKET` | имя бакета | `aivis-attachments` |
 | `MINIO_REGION` | region для S3 SDK | `us-east-1` (default) |
 | `MINIO_PRESIGNED_TTL_AUTH` | TTL presigned для auth flow | `900` (15 мин) |
 | `MINIO_PRESIGNED_TTL_PUBLIC` | TTL presigned для public flow | `86400` (24 ч) |
@@ -144,7 +144,7 @@ Login для basic-auth перед Web UI -- фиксированный `admin`.
 - В шаге запуска стека `docker compose up -d` явно ждём healthcheck сервиса `minio` перед запуском `app` (зависимость в compose).
 - В шаге миграций -- стандартный alembic upgrade head (новые миграции для таблиц `company_attachments`, `company_document_templates` плюс поле `purchase_agreement_template_id` в `purchases`).
 - **Новый шаг -- seed platform default templates (см. §4.9):**
-  1. `mc cp -r backend/scripts/templates/_default/ local/cbshome-attachments/_platform/templates/` -- копирует HTML + ассеты (logo placeholder, signature placeholder, stamp placeholder) для всех 4 kind'ов и поддерживаемых языков (en/de/ru/ar) в MinIO под префикс `_platform/templates/`.
+  1. `mc cp -r backend/scripts/templates/_default/ local/aivis-attachments/_platform/templates/` -- копирует HTML + ассеты (logo placeholder, signature placeholder, stamp placeholder) для всех 4 kind'ов и поддерживаемых языков (en/de/ru/ar) в MinIO под префикс `_platform/templates/`.
   2. `python backend/scripts/seed_platform_templates.py` -- создаёт rows в `company_document_templates` с `company_id=NULL`, `status=active`, `storage_prefix='_platform/templates/<kind>/<lang>/'` для каждой пары `(kind, language)`. Идемпотентен -- повторный запуск не создаёт дубли.
 
 После этого backend стартует с гарантированным fallback'ом для рендера договоров и сертификатов: даже свежесозданная компания без своих кастомных шаблонов получает рабочий рендер через platform default.
@@ -159,36 +159,36 @@ storage-mc-admin.cbshome.org    A    <server-ip>    TTL 300
 
 AAAA / CAA / TXT для этого поддомена не требуются.
 
-### 1.5. cbshome management script -- что меняется
+### 1.5. aivis management script -- что меняется
 
 **◐ Реализовано частично (iter 1).** Сделаны: backup с `mc mirror`, status с healthcheck minio, `logs minio`, `storage stats`, `storage console`. Открыто: `storage reconcile`, `storage reconcile-templates`, `storage reconcile-platform-templates` -- сейчас stub'ы, печатают "next iteration"; реальные команды появляются вместе с Python-скриптами в iter 2.1 / 2.2 / 2.3 соответственно.
 
-`cbshome backup` сейчас делает только `pg_dump` + копию `.env`. Расширяется:
+`aivis backup` сейчас делает только `pg_dump` + копию `.env`. Расширяется:
 
-- Добавляется `mc mirror local/cbshome-attachments /tmp/minio_backup_$TIMESTAMP/`.
+- Добавляется `mc mirror local/aivis-attachments /tmp/minio_backup_$TIMESTAMP/`.
 - Архив включает MinIO snapshot.
 - Rotation -- те же 7 дней.
 
-`cbshome status` -- добавляется проверка контейнера `minio` (healthcheck).
+`aivis status` -- добавляется проверка контейнера `minio` (healthcheck).
 
-`cbshome logs minio` -- новый case в `case_logs`.
+`aivis logs minio` -- новый case в `case_logs`.
 
-Новая команда `cbshome storage`:
+Новая команда `aivis storage`:
 
-- `cbshome storage stats` -- размер бакета, количество объектов (через `mc du`, `mc ls --recursive | wc -l`).
-- `cbshome storage console` -- печатает URL и credentials Web UI, чтобы Staff/админу не лазить в `.env`:
+- `aivis storage stats` -- размер бакета, количество объектов (через `mc du`, `mc ls --recursive | wc -l`).
+- `aivis storage console` -- печатает URL и credentials Web UI, чтобы Staff/админу не лазить в `.env`:
   ```
   MinIO Console:  https://storage-mc-admin.cbshome.org
   Login:          admin
   Password:       <значение MINIO_CONSOLE_BASIC_AUTH_PASSWORD из .env>
   ```
-- `cbshome storage reconcile <company_id>` -- сканирует MinIO inbox компании, создаёт rows в `company_attachments` (см. §3.7). Опции:
+- `aivis storage reconcile <company_id>` -- сканирует MinIO inbox компании, создаёт rows в `company_attachments` (см. §3.7). Опции:
   - `--all` -- по всем компаниям.
   - `--dry-run` -- показать что было бы сделано, без записи.
   - `--orphans-only` -- только направление MinIO -> БД (orphan-объекты без rows).
   - `--broken-only` -- только направление БД -> MinIO (rows со ссылкой на несуществующий объект).
-- `cbshome storage reconcile-templates <company_id>` -- сканирует `companies/{id}/templates-inbox/`, переносит набор файлов template'а (HTML + ассеты) в canonical path `companies/{id}/templates/<kind>/<lang>/`, создаёт/обновляет row в `company_document_templates` (см. §4.8). Опции `--all`, `--dry-run`.
-- `cbshome storage reconcile-platform-templates` -- сканирует `_platform/templates-inbox/`, переносит файлы в `_platform/templates/<kind>/<lang>/`, обновляет platform default row с `company_id=NULL` (см. §4.9). Используется когда юристы платформы правят общий шаблон. Опция `--dry-run`.
+- `aivis storage reconcile-templates <company_id>` -- сканирует `companies/{id}/templates-inbox/`, переносит набор файлов template'а (HTML + ассеты) в canonical path `companies/{id}/templates/<kind>/<lang>/`, создаёт/обновляет row в `company_document_templates` (см. §4.8). Опции `--all`, `--dry-run`.
+- `aivis storage reconcile-platform-templates` -- сканирует `_platform/templates-inbox/`, переносит файлы в `_platform/templates/<kind>/<lang>/`, обновляет platform default row с `company_id=NULL` (см. §4.9). Используется когда юристы платформы правят общий шаблон. Опция `--dry-run`.
 
 Под капотом эти команды запускают соответствующие Python-скрипты в `backend/scripts/` через `docker compose exec`.
 
@@ -265,7 +265,7 @@ Storage layer используется в нескольких местах:
 
 В тестах используется реальный MinIO (тот же контейнер, что в production-стеке -- `docker-compose.yml` уже включает minio + minio-init). Никакого `moto`, никакого мока -- реальный путь обнаружит больше edge cases (multipart, presigned, ACL).
 
-Тестовый bucket -- отдельный, `cbshome-attachments-test`, создаётся `minio-init` рядом с основным. Очищается перед каждым тестом через fixture (mc rm --recursive --force, либо через aiobotocore list_objects + delete).
+Тестовый bucket -- отдельный, `aivis-attachments-test`, создаётся `minio-init` рядом с основным. Очищается перед каждым тестом через fixture (mc rm --recursive --force, либо через aiobotocore list_objects + delete).
 
 ## 3. Backend: модуль `company_attachments` ✅ closed (iter 2.2 + iter 2.4-attachments-lang)
 
@@ -413,11 +413,11 @@ Rate-limit на public-эндпоинты (Q-ATT-2, см. §10): `60 req/min/IP`
 
 **MVP-flow:**
 
-1. Staff заходит в Web UI, идёт в bucket `cbshome-attachments` -> `companies/{company_uuid}/inbox/`.
+1. Staff заходит в Web UI, идёт в bucket `aivis-attachments` -> `companies/{company_uuid}/inbox/`.
 2. Загружает (drag-drop) **пары файлов**:
    - Сам документ: `<slug>.<ext>` (например, `investor-deck-q2-de.pdf`). Slug произвольный -- читабельный, без UUID, для удобства самого Staff'а.
    - Companion JSON: `<slug>.<ext>.cbsmeta.json` -- метаданные (см. формат ниже).
-3. После загрузки Staff/админ запускает `cbshome storage reconcile <company_uuid>`.
+3. После загрузки Staff/админ запускает `aivis storage reconcile <company_uuid>`.
 4. Reconcile-скрипт:
    - Сканирует `companies/{company_uuid}/inbox/`.
    - Для каждого файла ищет companion `.cbsmeta.json` рядом.
@@ -468,7 +468,7 @@ upload-batch/
 └── incorporation-cert.pdf.cbsmeta.json
 ```
 
-Drag-drop всю папку в Web UI в `inbox/`, потом один `cbshome storage reconcile <uuid>` -- всё попадает в БД.
+Drag-drop всю папку в Web UI в `inbox/`, потом один `aivis storage reconcile <uuid>` -- всё попадает в БД.
 
 **Post-MVP UI** будет загружать через `POST /api/v1/staff/companies/{id}/attachments` (multipart, см. §3.3) с body, идентичным `AttachmentInboxMetadata`. Никаких разных форматов в двух местах -- inbox + companion JSON и production POST принимают одну и ту же Pydantic-схему.
 
@@ -620,11 +620,11 @@ Validation шаблона при reconcile (см. §4.8): парсинг чер�
    └── _meta.cbsmeta.json   # метаданные template'а
    ```
 
-2. Заходит в MinIO Web UI -> bucket `cbshome-attachments` -> `companies/{company_uuid}/templates-inbox/`.
+2. Заходит в MinIO Web UI -> bucket `aivis-attachments` -> `companies/{company_uuid}/templates-inbox/`.
 
 3. Создаёт подпапку `<kind>__<lang>/` (например `purchase_agreement__de/`) и drag-drop'ает все файлы template'а внутрь.
 
-4. Запускает `cbshome storage reconcile-templates <company_uuid>`.
+4. Запускает `aivis storage reconcile-templates <company_uuid>`.
 
 5. Reconcile-скрипт:
    - Сканирует `companies/{uuid}/templates-inbox/<kind>__<lang>/`.
@@ -688,7 +688,7 @@ Bootstrap-данные лежат под `backend/scripts/templates/_default/`, 
 
 **Установка (часть install_aivis.sh, см. §1.4):**
 
-1. `mc cp -r backend/scripts/templates/_default/ local/cbshome-attachments/_platform/templates/` -- заливает все файлы.
+1. `mc cp -r backend/scripts/templates/_default/ local/aivis-attachments/_platform/templates/` -- заливает все файлы.
 2. `python backend/scripts/seed_platform_templates.py` -- создаёт rows для каждой пары `(kind, language)` с `company_id=NULL`, `storage_prefix='_platform/templates/<kind>/<lang>/'`, `status=active`. Идемпотентен.
 
 **Обновление platform default'ов (если юристы платформы захотят поправить общий шаблон):**
@@ -697,7 +697,7 @@ Bootstrap-данные лежат под `backend/scripts/templates/_default/`, 
 
 1. Staff/админ платформы заходит в MinIO Web UI -> `_platform/templates-inbox/<kind>__<lang>/`.
 2. Заливает `template.html + ассеты + _meta.cbsmeta.json`.
-3. Запускает `cbshome storage reconcile-platform-templates`.
+3. Запускает `aivis storage reconcile-platform-templates`.
 4. Скрипт через storage layer переносит файлы в `_platform/templates/<kind>/<lang>/` (или в `_platform/templates/<kind>/<lang>/.draft-v<N>/` если sidecar имеет `status="draft"`), обновляет row с `company_id=NULL` (старый -> archived, новый -> active с version+1; для draft -- INSERT row со status=DRAFT без архивации active).
 
 **Что в placeholder-ассетах при первой установке:** в репо лежат честные dummy-картинки (1x1 transparent PNG для logo/signature/stamp). При первом запуске тестовая компания получает рендер с прозрачными местами на месте печати/подписи -- юридически невалидно, но рендер не падает. В production юристы платформы заменят placeholder'ы на реальные generic-ассеты через reconcile-platform-templates до старта продаж.
@@ -768,7 +768,7 @@ purchase.purchase_agreement_template_id = template.id if template else None
 Новые эндпоинты:
 
 **Per-Purchase agreement (snapshot):**
-- `GET /api/v1/purchases/{id}/agreement` -- HTML рендер. Использует `purchase.purchase_agreement_template_id`. Если NULL -- **500** с сообщением "Договор для этой покупки не сконфигурирован (system error)". Это не штатный 404, потому что в production NULL не должен встречаться (см. §5.1 -- platform default гарантирует non-NULL). Staff видит broken Purchase в audit/dashboard, починяется через `cbshome storage reconcile-platform-templates` или загрузкой шаблона + ручным backfill `purchase.purchase_agreement_template_id` через service-script.
+- `GET /api/v1/purchases/{id}/agreement` -- HTML рендер. Использует `purchase.purchase_agreement_template_id`. Если NULL -- **500** с сообщением "Договор для этой покупки не сконфигурирован (system error)". Это не штатный 404, потому что в production NULL не должен встречаться (см. §5.1 -- platform default гарантирует non-NULL). Staff видит broken Purchase в audit/dashboard, починяется через `aivis storage reconcile-platform-templates` или загрузкой шаблона + ручным backfill `purchase.purchase_agreement_template_id` через service-script.
 - `POST /api/v1/purchases/{id}/agreement/email` -- PDF на email. Если template_id NULL -- 500 (та же логика).
 
 **Per investor-company ownership certificate (live aggregate):**
@@ -840,7 +840,7 @@ Code review iter 2.4 (раунд 11) вскрыл 4 дефекта поверх 
 
 **MVP scope:**
 
-В MVP полноценный загрузчик файлов через UI приложения **не делается** -- Staff загружает через MinIO Web UI + companion JSON + `cbshome storage reconcile` (см. §3.7). Эта секция в Staff UI в MVP служит для:
+В MVP полноценный загрузчик файлов через UI приложения **не делается** -- Staff загружает через MinIO Web UI + companion JSON + `aivis storage reconcile` (см. §3.7). Эта секция в Staff UI в MVP служит для:
 
 - Просмотра существующих attachment'ов компании (включая unpublished и deleted).
 - Редактирования метаданных уже созданных rows: `title`, `description`, `category` (с path-tree autocomplete), `language`, `is_published`, `is_public`, `order`. Через `PATCH /staff/companies/{id}/attachments/{att_id}`.
@@ -871,8 +871,8 @@ Permissions: гейт по `company_manage`.
 - Внутри таба -- список row'ов из `GET /staff/companies/{id}/templates` (см. §4.5):
   - Per-company active template'ы (`is_platform_default=false`) -- title, version, language, статус.
   - Если по какому-то `(kind, language)` нет per-company active -- показывается "Используется platform default" (read-only inspection через storage_prefix `_platform/...`).
-- Кнопка "Открыть в MinIO Web UI" -- ведёт на `https://storage-mc-admin.cbshome.org/browser/cbshome-attachments/companies/<id>/templates-inbox/<kind>__<lang>/`. Staff там готовит новую версию шаблона + загружает.
-- Подпись "После загрузки запустите `cbshome storage reconcile-templates <company_id>`".
+- Кнопка "Открыть в MinIO Web UI" -- ведёт на `https://storage-mc-admin.cbshome.org/browser/aivis-attachments/companies/<id>/templates-inbox/<kind>__<lang>/`. Staff там готовит новую версию шаблона + загружает.
+- Подпись "После загрузки запустите `aivis storage reconcile-templates <company_id>`".
 
 Никакого textarea / preview / save buttons в MVP -- всё через MinIO Web UI + reconcile-script.
 
@@ -1015,8 +1015,8 @@ Post-MVP (вне scope refactor'а):
 - **4-ступенчатая fallback логика поиска template'а** (§4.7): per-company-locale -> per-company-en -> platform-locale -> platform-en. Не нашёл -> 500 (system error, в production не должно случаться).
 - **Inline base64 ассеты через Jinja-функцию `asset_data_uri(filename)`** (§4.4). Никаких external URLs в HTML/PDF -- self-contained output.
 - **Canonical path для template'ов в MinIO** (§2.2): `companies/<id>/templates/<kind>/<lang>/template.html`, `_platform/templates/<kind>/<lang>/template.html`. Один active per `(kind, language)`, версионирование делает БД, MinIO перезаписывает.
-- **Workflow Staff per-company templates -- через MinIO Web UI + `cbshome storage reconcile-templates`** (§4.8). Inbox pattern в `companies/<id>/templates-inbox/<kind>__<lang>/`, companion `_meta.cbsmeta.json`. UI editor templates -- post-MVP.
-- **Workflow Platform default updates -- через MinIO Web UI + `cbshome storage reconcile-platform-templates`** (§4.9). Inbox pattern в `_platform/templates-inbox/`. Обновляются юристами платформы.
+- **Workflow Staff per-company templates -- через MinIO Web UI + `aivis storage reconcile-templates`** (§4.8). Inbox pattern в `companies/<id>/templates-inbox/<kind>__<lang>/`, companion `_meta.cbsmeta.json`. UI editor templates -- post-MVP.
+- **Workflow Platform default updates -- через MinIO Web UI + `aivis storage reconcile-platform-templates`** (§4.9). Inbox pattern в `_platform/templates-inbox/`. Обновляются юристами платформы.
 - **Bootstrap defaults в репозитории**: `backend/scripts/templates/_default/<kind>/<lang>/{template.html, logo.png, signature.png, stamp.png}` для всех 4 kind × 4 lang. Заливаются в MinIO при `install_aivis.sh` (§1.4) + `seed_platform_templates.py` создаёт rows с `company_id=NULL`. Финальный путь зафиксирован в v0.6 (была эволюция: v0.4 `backend/seed/...` -> v0.5 `backend/scripts/seed_data/...` -> v0.6 `backend/scripts/templates/...`).
 - **Redis-кэш HTML template'ов** (§4.10), TTL 5 мин, key `template_html:<storage_prefix>`, инвалидация в reconcile-скриптах. Значение -- base64-encoded строка (Redis-клиент проекта инициализируется с `decode_responses=True`). Ассеты не кэшируем.
 - **`Purchase.purchase_agreement_template_id` остаётся nullable** (§5.1) для устойчивости к удалению, но в production гарантированно non-NULL благодаря platform default fallback. NULL = ошибка инфраструктуры -- structlog `error`-event + audit event `purchase.template_missing`.
@@ -1032,8 +1032,8 @@ Post-MVP (вне scope refactor'а):
 ### v0.3 closed (без изменений в v0.4)
 
 - **MinIO Web UI наружу через nginx + basic-auth** (§1.1, §1.4): поддомен `storage-mc-admin.cbshome.org`, login `admin`, пароль из `MINIO_CONSOLE_BASIC_AUTH_PASSWORD`. Let's Encrypt через certbot. DNS pre-flight check.
-- **`cbshome storage console`** -- печатает URL+credentials Web UI.
-- **`cbshome storage reconcile <company_id>`** -- двунаправленная синхронизация MinIO ↔ БД для attachments (§3.7). Опции `--all`, `--dry-run`, `--orphans-only`, `--broken-only`.
+- **`aivis storage console`** -- печатает URL+credentials Web UI.
+- **`aivis storage reconcile <company_id>`** -- двунаправленная синхронизация MinIO ↔ БД для attachments (§3.7). Опции `--all`, `--dry-run`, `--orphans-only`, `--broken-only`.
 - **Path-tree категории** (§3.2, §3.2.1): `category` это string(200) с разделителем `/`, max 5 уровней, regex `^[a-z0-9_-]+(/[a-z0-9_-]+){0,4}$`.
 - **Фильтр API**: `?category=X` (exact) и `?category_prefix=Y` (LIKE prefix-match).
 - **Мультиязычность как pattern** (§3.6): один attachment per language, group-by `(category, title)` на фронте.
@@ -1044,7 +1044,7 @@ Post-MVP (вне scope refactor'а):
 ### Architectural decisions (общие)
 
 - **Q-INFRA-1** (вариант A): MinIO service account создаётся в `install_aivis.sh` через `mc admin user svcacct add`. Root credentials живут только в `.env`.
-- **Q-INFRA-2** (вариант A): Backup стратегия -- `mc mirror local/cbshome-attachments` в tarball рядом с `pg_dump`.
+- **Q-INFRA-2** (вариант A): Backup стратегия -- `mc mirror local/aivis-attachments` в tarball рядом с `pg_dump`.
 - **Q-STOR-1**: Multipart upload через `aiobotocore.upload_fileobj` всегда.
 - **Q-STOR-2**: Presigned PUT не нужен. Frontend всегда грузит через backend.
 - **Q-ATT-1**: Hard-delete -- только admin.

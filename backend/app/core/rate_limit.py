@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Rate Limiting (Sprint 5.2 fix: SEC-5, fix Sprint 6.1,
+# AIVIS.ONE Backend -- Rate Limiting (Sprint 5.2 fix: SEC-5, fix Sprint 6.1,
 #                                    extended Refactor 2 iter 2.2)
 # =============================================================================
 #

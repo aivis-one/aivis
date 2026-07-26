@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Crypto Deposit Tests (Sprint 5.2)
+# AIVIS.ONE Backend -- Crypto Deposit Tests (Sprint 5.2)
 # =============================================================================
 #
 # Tests cover:

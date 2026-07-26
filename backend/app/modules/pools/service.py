@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Pool Service (Sprint 4.3 + Sprint 4.4)
+# AIVIS.ONE Backend -- Pool Service (Sprint 4.3 + Sprint 4.4)
 # =============================================================================
 #
 # RESPONSIBILITIES:

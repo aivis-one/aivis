@@ -1,12 +1,12 @@
 # =============================================================================
-# CBSHOME Backend -- Withdrawal Constants (Sprint 6.3)
+# AIVIS.ONE Backend -- Withdrawal Constants (Sprint 6.3)
 # =============================================================================
 #
 # ENUMS:
 #   WithdrawalStatus -- pending | confirmed | processing | completed |
 #                       rejected | failed
 #
-# STATE MACHINE (from CBSHOME-State-Machines.md section 4, extended):
+# STATE MACHINE (from AIVIS-State-Machines.md section 4, extended):
 #   pending    -> confirmed   (Staff: approved)
 #   pending    -> rejected    (Staff: declined with reason)
 #   confirmed  -> processing  (system: pushed to payment provider)

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Ledger Validators (Sprint 5.1)
+# AIVIS.ONE Backend -- Ledger Validators (Sprint 5.1)
 # =============================================================================
 #
 # STANDALONE AML ROUTE VALIDATION:
@@ -16,7 +16,7 @@
 # Purchase saga does NOT call validate_route() -- it's a controlled
 # system operation that legitimately writes active -> passive.
 #
-# AML MATRIX (from CBSHOME-Financial-System.md section 3):
+# AML MATRIX (from AIVIS-Financial-System.md section 3):
 #   Active  -> Active   ALLOWED
 #   Active  -> Passive  FORBIDDEN (layering / mixing)
 #   Passive -> Active   ALLOWED

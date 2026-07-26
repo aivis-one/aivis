@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Models (Sprint 6.2)
+# AIVIS.ONE Backend -- Installment Models (Sprint 6.2)
 # =============================================================================
 #
 # InstallmentPlan:

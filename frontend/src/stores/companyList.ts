@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Company List Store (iter 2.5 batch 4, R1 §1.2)
+// AIVIS.ONE Frontend -- Company List Store (iter 2.5 batch 4, R1 §1.2)
 // =============================================================================
 //
 // Pinia store for the Investor "Companies" tab. Drives CompanyListView's

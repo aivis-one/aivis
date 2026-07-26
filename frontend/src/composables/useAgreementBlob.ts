@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- useAgreementBlob Composable
+// AIVIS.ONE Frontend -- useAgreementBlob Composable
 //                       (iter 2.5 R2 §5.5; replaces useCertificateBlob)
 // =============================================================================
 //
@@ -78,7 +78,7 @@
 //   The blob URL shares the page's origin once rendered in an iframe,
 //   so consumers MUST set `sandbox=""` (or an allow-list stricter
 //   than the default same-origin) when embedding it. See TD-F11b in
-//   CBSHOME-Frontend.md. This composable does not enforce the
+//   AIVIS-Frontend.md. This composable does not enforce the
 //   attribute -- Vue's template layer is the right place to lock it in.
 // =============================================================================
 

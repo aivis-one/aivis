@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Transaction Router (Sprint 6.4, Sprint 10.1)
+# AIVIS.ONE Backend -- Transaction Router (Sprint 6.4, Sprint 10.1)
 # =============================================================================
 #
 # ENDPOINTS:

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Auth Store (Pinia)
+// AIVIS.ONE Frontend -- Auth Store (Pinia)
 // =============================================================================
 //
 // Manages authentication state: user, token, role.

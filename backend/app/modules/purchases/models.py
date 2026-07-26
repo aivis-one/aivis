@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Purchase Model (Sprint 6.1, Refactor 2 iter 2.4)
+# AIVIS.ONE Backend -- Purchase Model (Sprint 6.1, Refactor 2 iter 2.4)
 # =============================================================================
 #
 # Purchase:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- Reconcile Per-Company Document Templates
+# AIVIS.ONE Backend -- Reconcile Per-Company Document Templates
 #                     (iter 2.5 mini-fix #3 rewrite, R2 §4.8)
 # =============================================================================
 #

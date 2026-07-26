@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Staff Attachments Reorder Tests (iter 2.6c B5)
+# AIVIS.ONE Backend -- Staff Attachments Reorder Tests (iter 2.6c B5)
 # =============================================================================
 #
 # HTTP-level smoke coverage for the new bulk reorder endpoint:

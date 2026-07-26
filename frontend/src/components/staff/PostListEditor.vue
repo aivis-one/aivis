@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- PostListEditor (iter 2.7 Block B)
+// AIVIS.ONE Frontend -- PostListEditor (iter 2.7 Block B)
 // =============================================================================
 //
 // Shared list + create/edit surface for posts. Used by:

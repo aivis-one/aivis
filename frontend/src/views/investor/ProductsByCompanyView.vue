@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- ProductsByCompanyView (iter 2.5 batch 8, R1 §1.4)
+// AIVIS.ONE Frontend -- ProductsByCompanyView (iter 2.5 batch 8, R1 §1.4)
 // =============================================================================
 //
 // Investor "company's products" view. Replaces MarketView, which used

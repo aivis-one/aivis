@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyDocumentsSection (iter 2.7 Block C / C2)
+// AIVIS.ONE Frontend -- StaffCompanyDocumentsSection (iter 2.7 Block C / C2)
 // =============================================================================
 //
 // Company document (attachment) management: list grouped by category,

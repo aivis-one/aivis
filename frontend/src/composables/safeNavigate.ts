@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- safeNavigate Composable (iter 2.7 batch D)
+// AIVIS.ONE Frontend -- safeNavigate Composable (iter 2.7 batch D)
 // =============================================================================
 //
 // Canonical wrapper around router.push / router.replace that swallows benign

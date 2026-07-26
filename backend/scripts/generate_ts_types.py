@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =============================================================================
-# CBSHOME Backend -- TypeScript Type Generator from OpenAPI
+# AIVIS.ONE Backend -- TypeScript Type Generator from OpenAPI
 # =============================================================================
 #
 # Reads openapi.json (from FastAPI) and generates TypeScript interfaces

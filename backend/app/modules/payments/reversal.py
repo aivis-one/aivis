@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Payment Reversal Service (Sprint 5.3, fix review,
+# AIVIS.ONE Backend -- Payment Reversal Service (Sprint 5.3, fix review,
 #                                              updated Sprint 6.4)
 # =============================================================================
 #
@@ -13,7 +13,7 @@
 #                          consumption counts ACTIVE purchases only)
 #
 # REVERSAL FLOW (R47 invariant fix; supersedes the literal reading of
-# CBSHOME-Financial-System.md section 5.5 / P5-19 -- see MIRROR ENTRIES):
+# AIVIS-Financial-System.md section 5.5 / P5-19 -- see MIRROR ENTRIES):
 #   1. SELECT FOR UPDATE Payment (serialize concurrent reversals)
 #   2. Validate status transition -> reversed
 #   3. SELECT active_ledger WHERE origin_payment_id=X AND status IN (frozen, confirmed)

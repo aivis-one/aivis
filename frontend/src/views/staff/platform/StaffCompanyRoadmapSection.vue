@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- StaffCompanyRoadmapSection (iter 2.7 Block D / D1)
+// AIVIS.ONE Frontend -- StaffCompanyRoadmapSection (iter 2.7 Block D / D1)
 // =============================================================================
 //
 // Roadmap CRUD + reorder for one company (R1 §5). Flat list in order

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- AgentHubView (Task 2 Block B, Phase F6.1)
+// AIVIS.ONE Frontend -- AgentHubView (Task 2 Block B, Phase F6.1)
 // =============================================================================
 //
 // Replaces the F2.2 stub. The agent's referral workspace:

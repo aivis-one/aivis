@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Users /me staff_profile Tests (iter 2.6c B6)
+# AIVIS.ONE Backend -- Users /me staff_profile Tests (iter 2.6c B6)
 # =============================================================================
 #
 # HTTP-level coverage for the staff_profile field newly exposed on

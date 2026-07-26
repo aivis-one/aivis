@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// CBSHOME Frontend -- CompanyAnalyticsView (Phase F5.2 B1)
+// AIVIS.ONE Frontend -- CompanyAnalyticsView (Phase F5.2 B1)
 // =============================================================================
 //
 // Analytics tab inside CompanyShell. CompanyShell paints the global

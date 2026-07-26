@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- User Schemas
+# AIVIS.ONE Backend -- User Schemas
 # =============================================================================
 #
 # Pydantic models for user profile endpoints.

@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- AI Trainer Interface (Sprint 10.1)
+# AIVIS.ONE Backend -- AI Trainer Interface (Sprint 10.1)
 # =============================================================================
 #
 # Stub protocol for future agent certification quiz.

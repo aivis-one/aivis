@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Withdrawal Schemas (Sprint 6.3)
+# AIVIS.ONE Backend -- Withdrawal Schemas (Sprint 6.3)
 # =============================================================================
 #
 # SCHEMAS:

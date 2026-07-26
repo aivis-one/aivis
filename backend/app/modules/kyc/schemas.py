@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- KYC Schemas (Sprint 2.1)
+# AIVIS.ONE Backend -- KYC Schemas (Sprint 2.1)
 # =============================================================================
 #
 # Pydantic models for KYC endpoints.

@@ -1,5 +1,5 @@
 // =============================================================================
-// CBSHOME Frontend -- Session Reset Helper (Phase F5.1 B1)
+// AIVIS.ONE Frontend -- Session Reset Helper (Phase F5.1 B1)
 // =============================================================================
 //
 // Centralised "drop every data store" call used by:
@@ -50,7 +50,7 @@ import { useTransactionsStore } from '@/stores/transactions'
  *
  * Each store's reset() bumps its FP-17 epoch counter first, so any
  * in-flight fetch that resolves AFTER this call cannot repopulate the
- * cleared state. See CBSHOME-Frontend.md § FP-17.
+ * cleared state. See AIVIS-Frontend.md § FP-17.
  *
  * Synchronous and never throws -- each reset() is a pure ref-mutation
  * sequence by contract.

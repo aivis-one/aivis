@@ -1,5 +1,5 @@
 # =============================================================================
-# CBSHOME Backend -- Installment Worker (Sprint 6.2, fix TD-042)
+# AIVIS.ONE Backend -- Installment Worker (Sprint 6.2, fix TD-042)
 # =============================================================================
 #
 # RESPONSIBILITY:
