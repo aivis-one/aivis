@@ -209,10 +209,35 @@ alike. That's the desired outcome: it closes any earlier credential exposure by 
 the fresh MinIO console password this run just generated. But it hasn't been checked yet at this
 point in the runbook:
 ```
-curl -sk -o /dev/null -w "%{http_code}\n" https://storage-mc-admin.aivis.one/
+curl -o /dev/null -w "%{http_code}\n" https://storage-mc-admin.aivis.one/
 ```
-Expect `401` — the basic-auth gate is active and working, not a broken site. Anything else means the
-site isn't serving correctly; see the certbot repair above if it's an HTTP/HTTPS symptom.
+**No `-k` here, deliberately** — this domain used to carry a hard TLS failure while its console site
+was disabled, and `-k` was right for that. After a re-install it carries a real Let's Encrypt
+certificate, and this line sits directly under the GAP-6 risk above (a re-install silently leaving a
+site on plain HTTP). Skipping TLS verification would hide exactly the failure this check exists to
+catch, so run it without `-k`. Expect `401` — the basic-auth gate is active, TLS is fine, and this is
+not a broken site. If the command instead fails outright (connection refused, certificate error), that
+failure IS the TLS symptom from the GAP-6 branch above — go there and use the repair command. Any other
+non-`401` result means the basic-auth gate itself isn't serving correctly.
+
+**Record the three MinIO values this run just generated — nothing in the install does it for you.**
+§4 items 7-9 had you press ENTER three times; the resulting random values now live in
+`/opt/aivis/repo/backend/.env`, and only there, under these names:
+- `MINIO_ROOT_USER`
+- `MINIO_ROOT_PASSWORD`
+- `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` — the password the `401` check just above is gating; this is
+  what you actually need to open `https://storage-mc-admin.aivis.one` in a browser.
+
+Read them off the box:
+```
+grep -E '^(MINIO_ROOT_USER|MINIO_ROOT_PASSWORD|MINIO_CONSOLE_BASIC_AUTH_PASSWORD)=' /opt/aivis/repo/backend/.env
+```
+**That command prints the values to your screen — do not run it during a screenshare or a recorded
+session.** Copy the three into `AIVIS-Server/CREDENTIALS.md` yourself, by hand, right now. Nothing in
+this runbook writes them anywhere for you, and no agent should ever be asked to do that copying either
+— it's exactly how a previous set of these same three values ended up exposed. **Do this before you
+next answer `y` at §4 item 1:** that prompt deletes this exact `.env` file (§4 item 1, above), and
+whatever isn't recorded outside the box by then is gone for good.
 
 ## 6. The browser acceptance check — this is the one that actually matters
 
