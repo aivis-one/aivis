@@ -60,6 +60,18 @@ CERTBOT_EMAIL="admin@aivis.one"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
 
+# Let's Encrypt staging switch (decision 35). Unset/default -> production
+# certificates, command line byte-identical to before this flag existed.
+# AIVIS_CERTBOT_STAGING=1 -> both certbot calls below add --staging
+# (untrusted test certs, no rate-limit exposure). Exists because retries
+# are expected during a rehearsal and both worst install-abort points sit
+# AFTER both certificates are already issued, against a cap of 5 real
+# issuances per identical domain set per rolling 168 hours.
+CERTBOT_STAGING_FLAG=""
+if [ "${AIVIS_CERTBOT_STAGING:-0}" = "1" ]; then
+    CERTBOT_STAGING_FLAG="--staging"
+fi
+
 # ==============================================================================
 # COLORS & LOGGING
 # ==============================================================================
@@ -609,6 +621,7 @@ section "SSL Certificates"
 certbot --nginx \
     -d "$API_DOMAIN" \
     -d "$FRONTEND_DOMAIN" \
+    $CERTBOT_STAGING_FLAG \
     --non-interactive \
     --agree-tos \
     --email "$CERTBOT_EMAIL" \
@@ -715,9 +728,31 @@ usermod -aG opendkim postfix
 # Enable and start services.
 systemctl enable opendkim > /dev/null 2>&1
 systemctl enable postfix  > /dev/null 2>&1
-systemctl restart opendkim
-systemctl restart postfix
-success "OpenDKIM + Postfix running"
+
+# Validate before restarting, then WARN + CONTINUE on failure instead of
+# aborting the install (decision 36). Mail is out of this migration's
+# scope entirely (decision 30) -- a subsystem the owner explicitly
+# excluded may not kill the run. Matches the precedent already set by
+# both certbot calls above, which already end `|| warn` rather than abort.
+if opendkim -n -x /etc/opendkim.conf; then
+    if systemctl restart opendkim; then
+        success "OpenDKIM restarted"
+    else
+        warn "OpenDKIM failed to restart. DKIM signing is NOT active. Check: systemctl status opendkim / journalctl -u opendkim / /etc/opendkim.conf"
+    fi
+else
+    warn "OpenDKIM config check failed (opendkim -n -x /etc/opendkim.conf). NOT restarting -- DKIM signing is NOT active. Check: /etc/opendkim.conf"
+fi
+
+if postfix check; then
+    if systemctl restart postfix; then
+        success "Postfix restarted"
+    else
+        warn "Postfix failed to restart. Outbound mail is NOT active. Check: systemctl status postfix / journalctl -u postfix / /etc/postfix/main.cf"
+    fi
+else
+    warn "Postfix config check failed (postfix check). NOT restarting -- outbound mail is NOT active. Check: /etc/postfix/main.cf"
+fi
 
 # -- Print DKIM DNS record for the user to add --
 echo ""
@@ -822,6 +857,7 @@ success "Nginx configured for $STORAGE_DOMAIN"
 # 3. SSL via Let's Encrypt for the new subdomain.
 certbot --nginx \
     -d "$STORAGE_DOMAIN" \
+    $CERTBOT_STAGING_FLAG \
     --non-interactive \
     --agree-tos \
     --email "$CERTBOT_EMAIL" \
