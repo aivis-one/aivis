@@ -18,7 +18,7 @@
   someone with admin rights on the repo. You'll paste a key here mid-install and the script will
   wait for you.
 - **The Mailgun API key** (`CREDENTIALS.md` §3), if you want it in `.env` now rather than editing
-  the file by hand later. Optional — mail is out of scope for the current migration wave (see §8).
+  the file by hand later. Optional — mail is out of scope for the current migration wave (see §7).
 - Root SSH access to the target box (`CREDENTIALS.md` §1).
 
 ## 2. Run inside `tmux` — do not run this over a bare SSH session
@@ -58,7 +58,9 @@ bash install_aivis.sh
 
 ## 4. Every prompt, in the order you will actually meet them
 
-The script pauses seven times. Each one is listed here in execution order, with the exact answer.
+The script pauses **nine times on a first install** — **ten** if `/opt/aivis/repo` already exists on
+the box and prompt 1 below fires too (a re-install, not a malfunction). Each one is listed here in
+execution order, with the exact answer.
 
 1. **`Remove existing installation and start fresh? (y/n)`** — only appears if `/opt/aivis/repo`
    already exists (i.e. this is not the first install on this box). Answer **`y`** if you intend to
@@ -76,7 +78,7 @@ The script pauses seven times. Each one is listed here in execution order, with 
    `CREDENTIALS.md` §6 confirms this is intentionally left empty.
 5. **SumSub Secret Key (optional)** — press **ENTER**, same reason.
 6. **Mailgun API Key (optional)** — type the value from `CREDENTIALS.md` §3 if you have it handy,
-   or press **ENTER** to leave it for later. Either is fine — mail is out of scope this wave (§8).
+   or press **ENTER** to leave it for later. Either is fine — mail is out of scope this wave (§7).
 7. **MinIO Root User** — **press ENTER.** ⚠
 8. **MinIO Root Password** — **press ENTER.** ⚠
 9. **MinIO Console basic-auth password** — **press ENTER.** ⚠
@@ -89,7 +91,7 @@ The script pauses seven times. Each one is listed here in execution order, with 
    not the cautious choice here, it's the only correct one.
 10. **`Add this DKIM DNS record... Press ENTER to continue.`** — the script prints a DNS TXT record
     it will not show you again. Copy it down even if you're not adding it right now (mail/DKIM is
-    out of scope for this migration wave — see §8) — you'll need it whenever that work does happen.
+    out of scope for this migration wave — see §7) — you'll need it whenever that work does happen.
     Press ENTER once you've copied it.
 
 ## 5. Post-install verification
@@ -106,7 +108,7 @@ sudo certbot certificates
 Expect two certificate lineages: one covering `api.aivis.one` + `app.aivis.one` together, one for
 `storage-mc-admin.aivis.one`. Both should show as issued by Let's Encrypt's production CA with
 roughly 90 days of validity — **if either says "STAGING" anywhere in its issuer, `AIVIS_CERTBOT_STAGING`
-was set when it shouldn't have been for a real cutover** (see §9's note on that flag).
+was set when it shouldn't have been for a real cutover** (see §8's final note on that flag).
 
 ```
 curl -s https://api.aivis.one/health
@@ -167,10 +169,10 @@ half-finished state is if you land there:
   (8000/3000/9000/9001) are already in use. Check `ss -ltnp`; something from a previous attempt
   probably never got torn down.
 - **`nginx -t` fails** at either of its two checkpoints (right after the API/frontend sites are
-  written, or right after the storage site is written) — this means something *outside* this
-  install's own files is broken. Read the error `nginx -t` prints; it names the offending file.
-  This has nothing to do with this install specifically breaking nginx — it means nginx was already
-  in a bad state before you started.
+  written, or right after the storage site is written) — this **usually** means something *outside*
+  this install's own files is broken (nginx was already in a bad state before you started), but the
+  site file the script just wrote could itself be malformed too. Read the error `nginx -t` prints —
+  it names the offending file either way, so start there rather than assuming which case you're in.
 - **`git clone` fails** — the deploy key from prompt 2 above wasn't actually saved on GitHub, or was
   saved without write access, before you pressed ENTER. Go back to the GitHub tab, confirm it's
   really there, then re-run.
@@ -179,7 +181,7 @@ half-finished state is if you land there:
   `/opt/aivis/repo`.
 - **Mail service restart (OpenDKIM/Postfix) reports a warning, not a failure** — this used to abort
   the whole install; it no longer does. If you see the warning, the install continued regardless;
-  mail itself is out of scope this wave (§8 above) so this is not something to fix right now.
+  mail itself is out of scope this wave (§7 above) so this is not something to fix right now.
 
 **One knob worth knowing about if you expect to retry more than once:** setting
 `AIVIS_CERTBOT_STAGING=1` before running the script makes both certificate requests use Let's
