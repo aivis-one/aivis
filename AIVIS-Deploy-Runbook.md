@@ -6,17 +6,36 @@
 > from whoever manages the server before you start.
 >
 > This runbook exists so that running `scripts/install_aivis.sh` — and everything after it — is a
-> job any operator can do alone, without having sat in on the sessions that built the script.
+> job any operator can do alone, without having sat in on the sessions that built the script. It
+> covers two different situations, not one — a brand-new machine and a re-install of a box that
+> already has this stack on it — and says explicitly, at every point they diverge, which one you're
+> doing. §1 asks you to decide which before you start.
 
 ---
 
-## 1. Before you start — have these ready
+## 1. Before you start — decide which install this is, then gather what you need
+
+**This runbook covers two permanent situations, not one:**
+- **Clean-box install** — nothing at `/opt/aivis` yet on this machine. This is what a brand-new
+  production box gets: production eventually migrates to a new machine, and this is the path that
+  runs there.
+- **Re-install** — `/opt/aivis/repo` already exists on this box. This is what today's box gets, every
+  time, from now on. A re-install tears down the running containers and the cloned code, but it does
+  **not** touch the nginx site files, the certificates, the deploy user, `/opt/aivis` itself,
+  `/root/.mc/config.json`, or the deploy key — several prompts and checks below behave differently as
+  a result, and are marked **RE-INSTALL:** where that matters.
+
+Know which one this is before you continue — you cannot tell from the script's banner, only from
+whether `/opt/aivis/repo` exists on the box you're on.
+
+What to have ready either way:
 
 - **The Telegram bot token** (`AIVIS-Server/CREDENTIALS.md` §2, the target `@aivisonebot` row) —
   you'll type this in during the install, once.
 - **A browser tab open on GitHub → `aivis-one/aivis` → Settings → Deploy keys**, logged in as
-  someone with admin rights on the repo. You'll paste a key here mid-install and the script will
-  wait for you.
+  someone with admin rights on the repo. On a clean-box install you'll paste a key here mid-install
+  and the script will wait for you; on a re-install you likely won't need to touch this tab at all
+  (§4 item 2).
 - **The Mailgun API key** (`CREDENTIALS.md` §3), if you want it in `.env` now rather than editing
   the file by hand later. Optional — mail is out of scope for the current migration wave (see §7).
 - Root SSH access to the target box (`CREDENTIALS.md` §1).
@@ -56,29 +75,73 @@ hash on GitHub's own web UI for the commit you expect to be running. Only once t
 bash install_aivis.sh
 ```
 
+**A mismatch here is not automatically a tampered download — a fresh `git clone` can produce one on
+its own.** If you compare against a hash taken by running `sha256sum` on a file checked out of *your
+own clone* rather than the command above, and that clone was made with `core.autocrlf=true` (a
+common default on Windows), git rewrites the file's line endings the moment it's checked out — the
+bytes on disk are no longer the bytes in the git blob, and that `sha256sum` will never match,
+regardless of whether the download is genuine. The command given above
+(`git show main:scripts/install_aivis.sh | sha256sum`) reads the blob directly and is immune to
+this; use it, don't run `sha256sum` on a file your clone checked out. **Always compute the
+comparison hash fresh, in this same session** — a value copied from an earlier chat, note, or
+transcript is a hash of whatever commit was current back then, not of what you're installing now,
+and a stale value will read as a tampered download even when nothing is wrong.
+
 ## 4. Every prompt, in the order you will actually meet them
 
-The script pauses **nine times on a first install** — **ten** if `/opt/aivis/repo` already exists on
-the box and prompt 1 below fires too (a re-install, not a malfunction). Each one is listed here in
-execution order, with the exact answer.
+The script pauses **nine times on a clean-box install** — **ten** on a re-install, where prompt 1
+below also fires. Each one is listed here in execution order, with the exact answer.
 
-1. **`Remove existing installation and start fresh? (y/n)`** — only appears if `/opt/aivis/repo`
-   already exists (i.e. this is not the first install on this box). Answer **`y`** if you intend to
-   wipe and redo it; **anything else aborts the script immediately** — there is no "keep what's
-   there and continue" option, so don't answer this one absent-mindedly.
-2. **`Press ENTER after adding the deploy key to GitHub...`** — the script generates a fresh SSH
-   keypair and prints the public half to your terminal just before this prompt. Copy it, go to the
-   GitHub tab you opened in §1, add it as a Deploy Key with **Read/write access checked** (`update`
-   later commits and pushes a regenerated file — a read-only key breaks that silently, much later).
-   **Only press ENTER once the key is visibly saved on GitHub's page**, not right after pasting it —
-   the very next thing the script does is `git clone` using that key, and it will fail if the key
-   hasn't actually landed yet.
+1. **`Remove existing installation and start fresh? (y/n)`** — only appears on a **RE-INSTALL**
+   (§1); skip straight to item 2 on a clean-box install.
+   **`y` here is destructive far beyond the code.** It runs `docker compose down -v`, and the `-v`
+   removes the named Docker volumes — the Postgres database, Redis, and every object stored in
+   MinIO, not just the running containers. It then deletes `/opt/aivis/repo` entirely, which takes
+   `backend/.env` with it: **every credential in that file that you have not already copied into
+   `AIVIS-Server/CREDENTIALS.md` is gone for good the instant you answer `y`.** Treat this prompt as
+   if it read "delete the database, forever?" — on a box carrying real data, that is exactly what it
+   does; today's box is empty enough that the cost is low, but the prompt does not know which box
+   it's running on. **Anything other than `y` aborts the script immediately** — there is no "keep
+   what's there and continue" option, so don't answer this one absent-mindedly.
+   **A second, quieter failure lives in the same line.** If the script's `cd` into the old install
+   directory fails for any reason, the teardown command is silently skipped — but the directory
+   removal that follows still runs regardless. The result is a wiped `/opt/aivis/repo` with the old
+   Docker volumes left behind and still consuming disk, and nothing the script prints tells you
+   which of the two outcomes you got. If in doubt, check yourself afterward: `docker volume ls |
+   grep aivis`.
+2. **`Press ENTER after adding the deploy key to GitHub...`**
+   - **CLEAN-BOX:** the script generates a fresh SSH keypair and prints the public half to your
+     terminal just before this prompt. Copy it, go to the GitHub tab you opened in §1, add it as a
+     Deploy Key with **Read/write access checked** (`update` later commits and pushes a regenerated
+     file — a read-only key breaks that silently, much later). **Only press ENTER once the key is
+     visibly saved on GitHub's page**, not right after pasting it — the very next thing the script
+     does is `git clone` using that key, and it fails if the key hasn't actually landed yet.
+   - **RE-INSTALL:** the script does **not** generate a new key if one already exists on the box at
+     `/root/.ssh/id_ed25519_aivis_deploy` — it just reprints the same public key you already added
+     to GitHub during a previous install. Adding it again is a no-op at best and a rejected duplicate
+     at worst. **Correct action: press ENTER immediately.** Waiting for the key to "become visibly
+     saved" describes something that will never happen here, because it already is.
+   - **Either path:** the line the script prints right after this ("GitHub SSH connection verified"
+     / "Could not verify GitHub SSH connection. Proceeding anyway.") does not gate anything — its
+     failure branch only warns and lets the script continue, so neither outcome tells you anything
+     reliable. **The real check is the `git clone` immediately after it**: if the key genuinely isn't
+     on GitHub, or lacks write access, that step fails outright and stops the script (see §8).
 3. **Telegram Bot Token** — type the value from `CREDENTIALS.md` §2 (the `@aivisonebot` row).
-4. **SumSub API Key (optional)** — press **ENTER**. No KYC integration exists in this project;
-   `CREDENTIALS.md` §6 confirms this is intentionally left empty.
-5. **SumSub Secret Key (optional)** — press **ENTER**, same reason.
-6. **Mailgun API Key (optional)** — type the value from `CREDENTIALS.md` §3 if you have it handy,
-   or press **ENTER** to leave it for later. Either is fine — mail is out of scope this wave (§7).
+   **This prompt, and every secret prompt through item 9 below, uses hidden input: the terminal
+   shows nothing as you type, not even asterisks.** That's deliberate — a secret typed here never
+   lands in your terminal scrollback — but if you don't expect it, typing a long token into total
+   silence reads exactly like a frozen terminal. It isn't: type the full value and press Enter;
+   nothing appears on screen until you do.
+4. **SumSub API Key (optional)** — press **ENTER**. No KYC integration exists in this project.
+   **Pressing ENTER does not leave this field empty** — it keeps whatever `.env` already holds
+   (`SUMSUB_API_KEY=PLACEHOLDER` on a fresh install), a non-empty placeholder string, not a blank
+   one. That's expected and harmless; `CREDENTIALS.md` §6 has no real value to give you here.
+5. **SumSub Secret Key (optional)** — press **ENTER**, same reason: `.env` keeps the `PLACEHOLDER`
+   string it already had, not an empty value.
+6. **Mailgun API Key (optional)** — type the value from `CREDENTIALS.md` §3 if you have it handy, or
+   press **ENTER** to keep whatever `.env` already holds (`PLACEHOLDER` on a fresh env, or an
+   earlier install's value on a re-install) — again not an empty field. Either is fine — mail is out
+   of scope this wave (§7).
 7. **MinIO Root User** — **press ENTER.** ⚠
 8. **MinIO Root Password** — **press ENTER.** ⚠
 9. **MinIO Console basic-auth password** — **press ENTER.** ⚠
@@ -110,12 +173,46 @@ Expect two certificate lineages: one covering `api.aivis.one` + `app.aivis.one` 
 roughly 90 days of validity — **if either says "STAGING" anywhere in its issuer, `AIVIS_CERTBOT_STAGING`
 was set when it shouldn't have been for a real cutover** (see §8's final note on that flag).
 
+**On a RE-INSTALL, two valid lineages here is not proof this run did anything.** The teardown in §4
+item 1 never removes certificates, so if they were already valid from an earlier install, this
+command reports them as fine whether or not this run's certificate steps changed anything at all —
+and both of those steps end in `|| warn`, so a failure in them is silent. **A check that cannot fail
+here is not a check; treat this command as informational, not as proof.** The two `curl` lines below
+are what actually gate the install.
+
 ```
 curl -s https://api.aivis.one/health
 curl -s https://app.aivis.one
 ```
 The first should return JSON with `"status":"ok"` (and `"db":"ok"`, `"redis":"ok"`). The second
 should return the frontend's HTML, HTTP 200.
+
+**If either HTTPS `curl` above hangs, refuses the connection, or fails TLS — while `sudo certbot
+certificates` just showed a valid, non-staging lineage covering that domain — this is the specific
+failure to expect on a RE-INSTALL, and it is reasoned, not something anyone has observed yet on a
+real run.** The script rewrites the nginx site files from scratch on every install, and those files
+are plain HTTP until `certbot --nginx --redirect` adds the TLS block back in; against a certificate
+that's already valid for the same names, certbot can decide there's nothing to reissue and skip
+adding that block, and because that certbot call ends in `|| warn`, nothing in the script's own
+output would flag it. The result is a site serving plain HTTP again even though the certificate
+itself is fine, and `sudo certbot certificates` above cannot see the difference. **Repair:**
+```
+certbot --nginx -d api.aivis.one -d app.aivis.one
+```
+Run the same shape against `storage-mc-admin.aivis.one` on its own if that site shows the identical
+symptom — it's a separate certificate lineage, issued by a separate `certbot` call in the script,
+and carries the same risk for the same reason.
+
+**Also verify — do not assume — that `https://storage-mc-admin.aivis.one` is reachable again.** The
+script re-links this site's nginx config unconditionally on every run, clean-box or re-install
+alike. That's the desired outcome: it closes any earlier credential exposure by pointing the site at
+the fresh MinIO console password this run just generated. But it hasn't been checked yet at this
+point in the runbook:
+```
+curl -sk -o /dev/null -w "%{http_code}\n" https://storage-mc-admin.aivis.one/
+```
+Expect `401` — the basic-auth gate is active and working, not a broken site. Anything else means the
+site isn't serving correctly; see the certbot repair above if it's an HTTP/HTTPS symptom.
 
 ## 6. The browser acceptance check — this is the one that actually matters
 
@@ -174,8 +271,12 @@ half-finished state is if you land there:
   site file the script just wrote could itself be malformed too. Read the error `nginx -t` prints —
   it names the offending file either way, so start there rather than assuming which case you're in.
 - **`git clone` fails** — the deploy key from prompt 2 above wasn't actually saved on GitHub, or was
-  saved without write access, before you pressed ENTER. Go back to the GitHub tab, confirm it's
-  really there, then re-run.
+  saved without write access, before you pressed ENTER. **On a RE-INSTALL there's a second possible
+  cause with the identical symptom:** the script reuses whatever deploy key already exists on the
+  box rather than generating a new one (§4 item 2), so if an *earlier* install ever added that same
+  key to GitHub as read-only, this step fails for a permissions reason that has nothing to do with
+  today's run. Either way, go back to the GitHub tab, confirm the key is really there with
+  Read/write access, then re-run.
 - **A seeding step fails** partway through — generic application-level issue at that point, not
   specific to this being a fresh install. Check `docker compose logs app` from
   `/opt/aivis/repo`.
