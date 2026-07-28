@@ -40,6 +40,15 @@
 
 set -euo pipefail
 
+# Ubuntu 22.04 runs `needrestart` after every apt transaction. Left at its
+# interactive default, it opens two whiptail dialogs mid-install -- a
+# "Pending kernel upgrade" msgbox and a "Which services should be restarted?"
+# checklist -- and the install sits there waiting for a human until answered
+# (measured: ~10 minutes lost on the live run). Mode 'a' = restart services
+# automatically, no prompts. Must be set before the first `apt-get install`
+# below, which is why it lives here rather than nearer the mail section.
+export NEEDRESTART_MODE=a
+
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
@@ -516,7 +525,13 @@ prompt_secret() {
     local VALUE
 
     while true; do
-        read -rp "  $LABEL: " VALUE < /dev/tty
+        # -s: hidden input, so a secret typed here never lands in terminal
+        # scrollback. -s suppresses the terminal's own echo of the Enter
+        # keystroke too, so the explicit `echo` below is what moves the
+        # cursor to a new line -- without it, the next warn/success line
+        # would run together with the prompt on the same line.
+        read -rsp "  $LABEL: " VALUE < /dev/tty
+        echo
         if [ -z "$VALUE" ]; then
             warn "  $LABEL: keeping current value"
             return 0
@@ -544,6 +559,10 @@ prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (optional)"
 # prompts in case the user replaced them.
 echo ""
 log "MinIO Console credentials (used to log in at https://${STORAGE_DOMAIN}):"
+log "ENTER is RECOMMENDED on all three below -- unlike the PLACEHOLDER fields"
+log "above, ENTER here keeps three INDEPENDENTLY GENERATED RANDOM values, not"
+log "a placeholder. Only type a value to restore one specific known credential"
+log "(e.g. re-installing with a password a script already depends on)."
 prompt_secret "MINIO_ROOT_USER"                   "MinIO Root User (Console login, Step 2)" 3
 prompt_secret "MINIO_ROOT_PASSWORD"               "MinIO Root Password (Console login, Step 2)" 8
 prompt_secret "MINIO_CONSOLE_BASIC_AUTH_PASSWORD" "MinIO Console basic-auth password (nginx gate, Step 1)"
