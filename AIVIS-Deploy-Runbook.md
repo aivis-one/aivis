@@ -176,6 +176,10 @@ Expect two certificate lineages: one covering `api.aivis.one` + `app.aivis.one` 
 roughly 90 days of validity — **if either says "STAGING" anywhere in its issuer, `AIVIS_CERTBOT_STAGING`
 was set when it shouldn't have been for a real cutover** (see §8's final note on that flag).
 
+**Renewal-failure notices from Let's Encrypt go to `admin@aivis.one`** — fixed in the script, not
+something you configure here. Confirm that mailbox is actually read before you rely on this cutting
+over cleanly again in 90 days: nothing else in this install surfaces a silent renewal failure.
+
 **On a RE-INSTALL, two valid lineages here is not proof this run did anything.** The teardown in §4
 item 1 never removes certificates, so if they were already valid from an earlier install, this
 command reports them as fine whether or not this run's certificate steps changed anything at all —
@@ -225,21 +229,16 @@ non-`401` result means the basic-auth gate itself isn't serving correctly.
 
 **Record the three MinIO values this run just generated — nothing in the install does it for you.**
 §4 items 7-9 had you press ENTER three times; the resulting random values live in
-`/opt/aivis/repo/backend/.env` under these names — but not *only* there, and the difference matters
-for what's recoverable if `.env` is ever lost:
-- `MINIO_ROOT_USER` — cleartext in `.env`, and also written in cleartext to `/root/.mc/config.json`
-  (the host's `mc` alias config, root-only, mode 600) when the install configures the `mc` CLI.
-- `MINIO_ROOT_PASSWORD` — same split: cleartext in both `.env` and `/root/.mc/config.json`.
+`/opt/aivis/repo/backend/.env` under these names:
+- `MINIO_ROOT_USER`
+- `MINIO_ROOT_PASSWORD`
 - `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` — the password the `401` check just above is gating, and the one
-  you actually need to open `https://storage-mc-admin.aivis.one` in a browser. **`.env` is the only
-  file this value is ever written to** — nginx only gets it hashed, into
-  `/etc/nginx/.htpasswd-storage-mc-admin`, and a hash doesn't give the password back. It is also
-  injected into all five running containers (every service in `docker-compose.yml` takes
-  `env_file: ./backend/.env`), so while the stack is up you could still recover it with
-  `docker compose exec app printenv MINIO_CONSOLE_BASIC_AUTH_PASSWORD`. **That route closes the moment
-  the containers are gone** — and `y` at §4 item 1 removes the containers in the same breath as
-  deleting `.env`. Once both are gone together, this one has no path back; the two root values above
-  still do, via `/root/.mc/config.json`.
+  you actually need to open `https://storage-mc-admin.aivis.one` in a browser.
+
+**Treat all three as gone for good the moment you next answer `y` at §4 item 1.** That prompt deletes
+this exact `.env` file and tears down the running containers in the same run. This runbook makes no
+claim about any other place these values might also happen to exist — record them now, on the
+assumption that this is the only chance you get.
 
 Read them off the box:
 ```
@@ -248,12 +247,21 @@ grep -E '^(MINIO_ROOT_USER|MINIO_ROOT_PASSWORD|MINIO_CONSOLE_BASIC_AUTH_PASSWORD
 **That command prints the values to your screen — do not run it during a screenshare or a recorded
 session.** Copy the three into `AIVIS-Server/CREDENTIALS.md` yourself, by hand, right now. Nothing in
 this runbook writes them anywhere for you, and no agent should ever be asked to do that copying either
-— it's exactly how a previous set of these same three values ended up exposed. **Do this before you
-next answer `y` at §4 item 1:** that prompt deletes this exact `.env` file *and* tears down the
-containers that were holding a live copy of the console password, in the same run — closing both
-routes back to it at once. The two root values could still be pulled from `/root/.mc/config.json`
-afterward if you forgot — but recording all three now, in one place, beats reconstructing one of them
-from a different file under pressure later.
+— it's exactly how a previous set of these same three values ended up exposed.
+
+**These three are not the only secrets `.env` holds, and the rest get no prompt at all.** The database
+password, the Redis password, the session-signing key that every login depends on, two webhook
+secrets, and the backend's own MinIO service-account pair (separate from the root credentials above)
+are all generated the same way at install time — silently, never shown on screen, never asked about.
+Recording three grepped lines does not protect any of them. Before you next answer `y` at §4 item 1,
+back up the whole file somewhere the wipe can't reach — outside `/opt/aivis/repo`, since that
+directory is exactly what gets deleted:
+```
+cp /opt/aivis/repo/backend/.env /root/aivis-backend-env-backup
+chmod 600 /root/aivis-backend-env-backup
+```
+Treat that copy exactly like `AIVIS-Server/CREDENTIALS.md` itself — root-only, never on a screenshare,
+never committed anywhere.
 
 ## 6. The browser acceptance check — this is the one that actually matters
 
@@ -288,6 +296,10 @@ no request at all*, not a 401.
   already failed. **The DNS ones are worth reading anyway** — a warning that a domain doesn't resolve to
   this box yet is telling you, right at the start, about the exact certificate failure you'd otherwise
   only meet later at §5/§8; fixing the DNS record before the script reaches certbot avoids the retry.
+- **Ubuntu's default nginx site disappears.** The script removes
+  `/etc/nginx/sites-enabled/default` unconditionally while writing its own site files. Harmless on a
+  box dedicated to this product (the only case this runbook covers) — worth knowing only if this nginx
+  instance is ever asked to serve anything else, since that config is gone without asking.
 - **Anything mail-related** — Postfix, OpenDKIM, a Mailgun-shaped complaint in `.env`. Mail is
   entirely out of scope for this migration wave (decision 30). The install no longer aborts on a
   mail-service restart failure (it warns and continues) — but even a clean mail warning is not a
