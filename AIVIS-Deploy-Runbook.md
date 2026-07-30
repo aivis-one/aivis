@@ -209,7 +209,7 @@ alike. That's the desired outcome: it closes any earlier credential exposure by 
 the fresh MinIO console password this run just generated. But it hasn't been checked yet at this
 point in the runbook:
 ```
-curl -o /dev/null -w "%{http_code}\n" https://storage-mc-admin.aivis.one/
+curl -s -o /dev/null -w "%{http_code}\n" https://storage-mc-admin.aivis.one/
 ```
 **No `-k` here, deliberately** — this domain used to carry a hard TLS failure while its console site
 was disabled, and `-k` was right for that. After a re-install it carries a real Let's Encrypt
@@ -221,12 +221,18 @@ failure IS the TLS symptom from the GAP-6 branch above — go there and use the 
 non-`401` result means the basic-auth gate itself isn't serving correctly.
 
 **Record the three MinIO values this run just generated — nothing in the install does it for you.**
-§4 items 7-9 had you press ENTER three times; the resulting random values now live in
-`/opt/aivis/repo/backend/.env`, and only there, under these names:
-- `MINIO_ROOT_USER`
-- `MINIO_ROOT_PASSWORD`
-- `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` — the password the `401` check just above is gating; this is
-  what you actually need to open `https://storage-mc-admin.aivis.one` in a browser.
+§4 items 7-9 had you press ENTER three times; the resulting random values live in
+`/opt/aivis/repo/backend/.env` under these names — but not *only* there, and the difference matters
+for what's recoverable if `.env` is ever lost:
+- `MINIO_ROOT_USER` — cleartext in `.env`, and also written in cleartext to `/root/.mc/config.json`
+  (the host's `mc` alias config, root-only, mode 600) when the install configures the `mc` CLI.
+- `MINIO_ROOT_PASSWORD` — same split: cleartext in both `.env` and `/root/.mc/config.json`.
+- `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` — the password the `401` check just above is gating, and the one
+  you actually need to open `https://storage-mc-admin.aivis.one` in a browser. **This one lives in
+  `.env` and nowhere else recoverable** — nginx only ever gets it hashed, into
+  `/etc/nginx/.htpasswd-storage-mc-admin`, and a hash doesn't give the password back. If `.env` is
+  lost, the two root values above can still be read from `/root/.mc/config.json`; this one cannot be
+  recovered from anywhere.
 
 Read them off the box:
 ```
@@ -236,8 +242,10 @@ grep -E '^(MINIO_ROOT_USER|MINIO_ROOT_PASSWORD|MINIO_CONSOLE_BASIC_AUTH_PASSWORD
 session.** Copy the three into `AIVIS-Server/CREDENTIALS.md` yourself, by hand, right now. Nothing in
 this runbook writes them anywhere for you, and no agent should ever be asked to do that copying either
 — it's exactly how a previous set of these same three values ended up exposed. **Do this before you
-next answer `y` at §4 item 1:** that prompt deletes this exact `.env` file (§4 item 1, above), and
-whatever isn't recorded outside the box by then is gone for good.
+next answer `y` at §4 item 1:** that prompt deletes this exact `.env` file. The console password has
+no other copy anywhere, so once `.env` is gone, so is it, permanently. The two root values could still
+be pulled from `/root/.mc/config.json` afterward if you forgot — but recording all three now, in one
+place, beats reconstructing one of them from a different file under pressure later.
 
 ## 6. The browser acceptance check — this is the one that actually matters
 
