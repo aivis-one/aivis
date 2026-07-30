@@ -23,7 +23,10 @@
   time, from now on. A re-install tears down the running containers and the cloned code, but it does
   **not** touch the nginx site files, the certificates, the deploy user, `/opt/aivis` itself,
   `/root/.mc/config.json`, or the deploy key — several prompts and checks below behave differently as
-  a result, and are marked **RE-INSTALL:** where that matters.
+  a result, and are marked **RE-INSTALL:** where that matters. **It also doesn't touch the host-level
+  packages the script installs** — Docker, Nginx, Certbot, the `mc` CLI. Each of those is only ever
+  installed once; every later run, including this one, finds them already present and leaves the
+  version exactly as it was. A re-install is not a way to upgrade any of them.
 
 Know which one this is before you continue — you cannot tell from the script's banner, only from
 whether `/opt/aivis/repo` exists on the box you're on.
@@ -228,11 +231,15 @@ for what's recoverable if `.env` is ever lost:
   (the host's `mc` alias config, root-only, mode 600) when the install configures the `mc` CLI.
 - `MINIO_ROOT_PASSWORD` — same split: cleartext in both `.env` and `/root/.mc/config.json`.
 - `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` — the password the `401` check just above is gating, and the one
-  you actually need to open `https://storage-mc-admin.aivis.one` in a browser. **This one lives in
-  `.env` and nowhere else recoverable** — nginx only ever gets it hashed, into
-  `/etc/nginx/.htpasswd-storage-mc-admin`, and a hash doesn't give the password back. If `.env` is
-  lost, the two root values above can still be read from `/root/.mc/config.json`; this one cannot be
-  recovered from anywhere.
+  you actually need to open `https://storage-mc-admin.aivis.one` in a browser. **`.env` is the only
+  file this value is ever written to** — nginx only gets it hashed, into
+  `/etc/nginx/.htpasswd-storage-mc-admin`, and a hash doesn't give the password back. It is also
+  injected into all five running containers (every service in `docker-compose.yml` takes
+  `env_file: ./backend/.env`), so while the stack is up you could still recover it with
+  `docker compose exec app printenv MINIO_CONSOLE_BASIC_AUTH_PASSWORD`. **That route closes the moment
+  the containers are gone** — and `y` at §4 item 1 removes the containers in the same breath as
+  deleting `.env`. Once both are gone together, this one has no path back; the two root values above
+  still do, via `/root/.mc/config.json`.
 
 Read them off the box:
 ```
@@ -242,10 +249,11 @@ grep -E '^(MINIO_ROOT_USER|MINIO_ROOT_PASSWORD|MINIO_CONSOLE_BASIC_AUTH_PASSWORD
 session.** Copy the three into `AIVIS-Server/CREDENTIALS.md` yourself, by hand, right now. Nothing in
 this runbook writes them anywhere for you, and no agent should ever be asked to do that copying either
 — it's exactly how a previous set of these same three values ended up exposed. **Do this before you
-next answer `y` at §4 item 1:** that prompt deletes this exact `.env` file. The console password has
-no other copy anywhere, so once `.env` is gone, so is it, permanently. The two root values could still
-be pulled from `/root/.mc/config.json` afterward if you forgot — but recording all three now, in one
-place, beats reconstructing one of them from a different file under pressure later.
+next answer `y` at §4 item 1:** that prompt deletes this exact `.env` file *and* tears down the
+containers that were holding a live copy of the console password, in the same run — closing both
+routes back to it at once. The two root values could still be pulled from `/root/.mc/config.json`
+afterward if you forgot — but recording all three now, in one place, beats reconstructing one of them
+from a different file under pressure later.
 
 ## 6. The browser acceptance check — this is the one that actually matters
 
@@ -273,6 +281,13 @@ no request at all*, not a 401.
 
 ## 7. Expected warnings — do not treat these as install failures
 
+- **A wall of OS/RAM/disk/DNS warnings before you see any prompt at all.** The very first thing the
+  script does, before item 1 of §4, is a set of automated checks — OS version, RAM, disk space, and DNS
+  resolution for all four subdomains — and every one of them only ever warns, never aborts the script.
+  Several `[WARN]` lines scrolling by before you've typed anything is normal, not a sign the install has
+  already failed. **The DNS ones are worth reading anyway** — a warning that a domain doesn't resolve to
+  this box yet is telling you, right at the start, about the exact certificate failure you'd otherwise
+  only meet later at §5/§8; fixing the DNS record before the script reaches certbot avoids the retry.
 - **Anything mail-related** — Postfix, OpenDKIM, a Mailgun-shaped complaint in `.env`. Mail is
   entirely out of scope for this migration wave (decision 30). The install no longer aborts on a
   mail-service restart failure (it warns and continues) — but even a clean mail warning is not a
