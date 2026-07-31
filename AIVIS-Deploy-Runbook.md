@@ -11,12 +11,12 @@
 > already has this stack on it — and says explicitly, at every point they diverge, which one you're
 > doing. §1 asks you to decide which before you start.
 >
-> **This document has two parts, not one (decision 44).** Part One (§1-§8) is the install itself —
+> **This document has two parts, not one.** Part One (§1-§8) is the install itself —
 > follow it top to bottom and stop; nothing after it is required reading to get the product running.
 > Part Two (§9-§12) covers the commands the install leaves permanently on the box — `aivis update`,
-> `aivis backup`, and the rest — for whenever you come back to operate a live box later. Decision 33
-> makes both the same person's job, by hand, forever, which is why they live in one file instead of
-> two.
+> `aivis backup`, and the rest — for whenever you come back to operate a live box later. The person
+> who installs this box and the person who operates it afterward are the same person, by hand,
+> forever — which is why both live in one file instead of two.
 
 ---
 
@@ -49,7 +49,7 @@ What to have ready either way:
   and the script will wait for you; on a re-install you likely won't need to touch this tab at all
   (§4 item 2).
 - **The Mailgun API key** (`CREDENTIALS.md` §3), if you want it in `.env` now rather than editing
-  the file by hand later. Optional — mail is out of scope for the current migration wave (see §7).
+  the file by hand later. Optional — mail is out of scope for this product as currently run (see §7).
 - Root SSH access to the target box (`CREDENTIALS.md` §1).
 
 ## 2. Run inside `tmux` — do not run this over a bare SSH session
@@ -155,7 +155,7 @@ below also fires. Each one is listed here in execution order, with the exact ans
 6. **Mailgun API Key (optional)** — type the value from `CREDENTIALS.md` §3 if you have it handy, or
    press **ENTER** to keep whatever `.env` already holds (`PLACEHOLDER` on a fresh env, or an
    earlier install's value on a re-install) — again not an empty field. Either is fine — mail is out
-   of scope this wave (§7).
+   of scope for this product as currently run (§7).
 7. **MinIO Root User** — **press ENTER.** ⚠
 8. **MinIO Root Password** — **press ENTER.** ⚠
 9. **MinIO Console basic-auth password** — **press ENTER.** ⚠
@@ -168,7 +168,8 @@ below also fires. Each one is listed here in execution order, with the exact ans
    not the cautious choice here, it's the only correct one.
 10. **`Add this DKIM DNS record... Press ENTER to continue.`** — the script prints a DNS TXT record
     it will not show you again this run. Copy it down even if you're not adding it right now (mail/DKIM
-    is out of scope for this migration wave — see §7) — you'll need it whenever that work does happen.
+    is out of scope for this product as currently run — see §7) — you'll need it whenever that work
+    does happen.
     **On a RE-INSTALL, this is very likely the SAME record as last time, not a new one:** the DKIM key
     pair is only generated if it doesn't already exist on the box — the same guarded pattern as the
     deploy key at item 2 — and nothing in the wipe branch touches it. If you already added a DKIM TXT
@@ -236,12 +237,13 @@ curl -s -o /dev/null -w "%{http_code}\n" https://storage-mc-admin.aivis.one/
 ```
 **No `-k` here, deliberately** — this domain used to carry a hard TLS failure while its console site
 was disabled, and `-k` was right for that. After a re-install it carries a real Let's Encrypt
-certificate, and this line sits directly under the GAP-6 risk above (a re-install silently leaving a
-site on plain HTTP). Skipping TLS verification would hide exactly the failure this check exists to
-catch, so run it without `-k`. Expect `401` — the basic-auth gate is active, TLS is fine, and this is
-not a broken site. If the command instead fails outright (connection refused, certificate error), that
-failure IS the TLS symptom from the GAP-6 branch above — go there and use the repair command. Any other
-non-`401` result means the basic-auth gate itself isn't serving correctly.
+certificate, and this line sits directly under the same risk explained above: a re-install can
+silently leave a site on plain HTTP even while its certificate stays valid. Skipping TLS verification
+would hide exactly the failure this check exists to catch, so run it without `-k`. Expect `401` — the
+basic-auth gate is active, TLS is fine, and this is not a broken site. If the command instead fails
+outright (connection refused, certificate error), that failure IS the same plain-HTTP-after-re-install
+symptom explained above — go there and use the repair command. Any other non-`401` result means the
+basic-auth gate itself isn't serving correctly.
 
 **Record the three MinIO values this run just generated — nothing in the install does it for you.**
 §4 items 7-9 had you press ENTER three times; the resulting random values live in
@@ -326,14 +328,15 @@ no request at all*, not a 401.
   build anything else with Docker.
 - **A live mail relay starts on this box regardless of whether product mail is ever configured.**
   Postfix and OpenDKIM are installed and started unconditionally by this section — this isn't optional,
-  and nothing in this runbook turns it off, whether or not decision 30's mail features are ever used.
+  and nothing in this runbook turns it off, whether or not this product's mail features are ever
+  turned on.
 - **Anything mail-related** — Postfix, OpenDKIM, a Mailgun-shaped complaint in `.env`. Mail is
-  entirely out of scope for this migration wave (decision 30). The install no longer aborts on a
+  deliberately out of scope for this product as currently run. The install no longer aborts on a
   mail-service restart failure (it warns and continues) — but even a clean mail warning is not a
   real problem right now. Don't chase it as if it were.
 - **"Storefront seeded" completes but adds zero companies or products.** Intentional — the demo
-  company/product/installment lists were emptied deliberately (owner, 2026-07-25; see the comment
-  at the top of `backend/scripts/seed_storefront.py`). An empty storefront after this step is the
+  company/product/installment lists were emptied deliberately (see the comment at the top of
+  `backend/scripts/seed_storefront.py`). An empty storefront after this step is the
   expected result until real company data is loaded as a separate, later task — not a bug.
 - **"Test accounts seeded" may silently create nothing.** `seed_test_accounts` refuses to create the
   well-known `seedpass123` test logins when `APP_ENV=production` (which this install sets) unless
@@ -375,7 +378,8 @@ half-finished state is if you land there:
   `/opt/aivis/repo`.
 - **Mail service restart (OpenDKIM/Postfix) reports a warning, not a failure** — this used to abort
   the whole install; it no longer does. If you see the warning, the install continued regardless;
-  mail itself is out of scope this wave (§7 above) so this is not something to fix right now.
+  mail itself is out of scope for this product as currently run (§7 above) so this is not something to
+  fix right now.
 
 **This list is not exhaustive, and it cannot be — read this before assuming a failure you hit isn't
 covered above.** Every command in this script runs under a blanket trap that catches any unhandled
@@ -455,10 +459,10 @@ on its own.
 ## 10. `aivis status`
 
 Read-only and safe to run anytime. One thing worth knowing if you're troubleshooting a certificate
-problem: its check of the MinIO console domain skips TLS verification, the same kind of check §5's
-GAP-6 discussion warns against trusting. A `✓` from `aivis status` on that one line does not rule out
-the plain-HTTP regression §5 describes — if you suspect that failure mode, use §5's own check (or its
-repair command), not this one.
+problem: its check of the MinIO console domain skips TLS verification — the same kind of check §5
+warns against trusting, for exactly the same reason. A `✓` from `aivis status` on that one line does
+not rule out the plain-HTTP-after-re-install regression §5 describes — if you suspect that failure
+mode, use §5's own check (or its repair command), not this one.
 
 ## 11. `aivis backup` and `aivis db restore`
 
