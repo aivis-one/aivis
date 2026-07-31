@@ -116,7 +116,9 @@ below also fires. Each one is listed here in execution order, with the exact ans
    - **CLEAN-BOX:** the script generates a fresh SSH keypair and prints the public half to your
      terminal just before this prompt. Copy it, go to the GitHub tab you opened in §1, add it as a
      Deploy Key with **Read/write access checked** (`update` later commits and pushes a regenerated
-     file — a read-only key breaks that silently, much later). **Only press ENTER once the key is
+     file — a read-only key breaks that later, and loudly, not silently: the push fails with a printed
+     error and recovery steps, but only whenever `update` first needs to push, which may be long after
+     this key was added). **Only press ENTER once the key is
      visibly saved on GitHub's page**, not right after pasting it — the very next thing the script
      does is `git clone` using that key, and it fails if the key hasn't actually landed yet.
    - **RE-INSTALL:** the script does **not** generate a new key if one already exists on the box at
