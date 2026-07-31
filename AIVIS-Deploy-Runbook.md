@@ -1,4 +1,4 @@
-# AIVIS.ONE — Manual Deploy Runbook
+# AIVIS.ONE — Manual Deploy & Operations Runbook
 
 > **This repo is PUBLIC.** This document contains no secrets and never will — every credential it
 > references is a POINTER to `AIVIS-Server/CREDENTIALS.md`, a file that lives outside this repo,
@@ -10,8 +10,17 @@
 > covers two different situations, not one — a brand-new machine and a re-install of a box that
 > already has this stack on it — and says explicitly, at every point they diverge, which one you're
 > doing. §1 asks you to decide which before you start.
+>
+> **This document has two parts, not one (decision 44).** Part One (§1-§8) is the install itself —
+> follow it top to bottom and stop; nothing after it is required reading to get the product running.
+> Part Two (§9-§12) covers the commands the install leaves permanently on the box — `aivis update`,
+> `aivis backup`, and the rest — for whenever you come back to operate a live box later. Decision 33
+> makes both the same person's job, by hand, forever, which is why they live in one file instead of
+> two.
 
 ---
+
+**PART ONE — INSTALL**
 
 ## 1. Before you start — decide which install this is, then gather what you need
 
@@ -259,10 +268,16 @@ this runbook writes them anywhere for you, and no agent should ever be asked to 
 **These three are not the only secrets `.env` holds — the rest get no prompt at all, and that's
 expected.** The database password, the Redis password, the session-signing key, two webhook secrets,
 and the backend's own MinIO service-account pair (separate from the root credentials above) are all
-generated the same way at install time: silently, never shown on screen, never asked about. None of it
-needs recording. Every one of them regenerates from scratch on the next install, and the systems they
-authenticate — the database, Redis, and the object store — are destroyed by that same `y` at §4 item 1.
-There is nothing old to preserve and nowhere to copy it to.
+generated the same way at install time: silently, never shown on screen, never asked about. **None of
+it needs recording, by you.** Every one of them regenerates from scratch on the next install, and the
+systems they authenticate — the database, Redis, and the object store — are destroyed by that same `y`
+at §4 item 1. This step asks nothing of you: no value here requires action on your part, and there is
+nowhere you need to copy anything to.
+
+**That is a statement about what you need to do, not about what the box does on its own.** The daily
+backup (§11) already keeps its own, separate, unencrypted trail of these same values regardless of
+anything you do here — that trail exists whether or not you act on this paragraph, and this paragraph
+still asks nothing of you. If the backup's retention matters to you, §11 is where it's covered.
 
 **That holds only as long as it stays true that nothing outside this box has a copy of any of them —
 which is the case today.** If a crypto payment provider or any other external service is ever
@@ -362,9 +377,129 @@ half-finished state is if you land there:
   the whole install; it no longer does. If you see the warning, the install continued regardless;
   mail itself is out of scope this wave (§7 above) so this is not something to fix right now.
 
+**This list is not exhaustive, and it cannot be — read this before assuming a failure you hit isn't
+covered above.** Every command in this script runs under a blanket trap that catches any unhandled
+failure anywhere in the file: `[ERROR] Installation failed at line N` is not vague noise — `N` is a
+literal, directly-readable line number in `scripts/install_aivis.sh`, and opening the file to that line
+is a real next step, not a formality. The points listed above are the ones common enough, or
+consequential enough, to walk through individually; any *other* command failing anywhere in the
+script's roughly two thousand lines aborts exactly the same way, even though it isn't named here.
+
+**The permanently-installed `/opt/aivis/aivis` management script (Part Two) does not work this way.**
+Unlike the installer, it has no equivalent blanket protection — each of its commands only stops on a
+failure if that specific line explicitly checks for one. This is why, for example, `aivis db restore`
+(§11) can print "✓ Database restored" even after a restore that partly failed: the installer would have
+caught and stopped on that kind of failure; the management script it leaves behind does not.
+
 **One knob worth knowing about if you expect to retry more than once:** setting
 `AIVIS_CERTBOT_STAGING=1` before running the script makes both certificate requests use Let's
 Encrypt's staging environment instead of issuing real, trusted certificates — useful if you're
 rehearsing and might fail-and-retry several times, since real issuances are capped at 5 per domain
 set per rolling week. **Unset it (or don't set it at all) for the actual cutover run** — a staging
 certificate is not trusted by real browsers and §6's acceptance check will not pass with one.
+
+---
+
+**PART TWO — OPERATING THE BOX AFTER INSTALL**
+
+Everything from here on is a different moment in time from Part One, not a different reader. It
+documents `/opt/aivis/aivis` (symlinked to `/usr/local/bin/aivis`) — the management script the install
+leaves permanently on the box — and what its commands actually do once the box is live. You do not
+need any of this to install the product; come back to it when you're about to run one of these
+commands, not before.
+
+## 9. `aivis update` — the command you will run for the rest of this product's life
+
+The single most important thing to know before you ever run it: **a plain `aivis update` takes the
+whole site offline for the entire run, not just the backend.** `docker compose down` with no service
+name stops every container, frontend included; only the backend, database, Redis, and MinIO come back
+immediately after. The frontend does not return until the very end — after the backend image rebuilds,
+migrations run, the database reseeds, a smoke check runs, and (unless you pass `--skip-tests`) the full
+test suite runs. If you assumed `update` was a quick, low-impact refresh, it isn't: budget for a full
+outage window, not a blip. `aivis update --frontend-only` is the one mode that skips all of this — it
+refuses outright if anything backend-side changed in the pulled commits, so it can't silently do the
+wrong thing, but when it does run, only the frontend goes down.
+
+**A failed migration and a failed test suite are not the same kind of failure, even though both can
+print in red.** If the database migration fails, or the post-seed smoke check fails, `aivis update`
+stops right there — the frontend rebuild never happens, and the site stays down until you fix whatever
+broke and re-run it. If instead the *test suite* fails, the update keeps going: the frontend still
+rebuilds and comes back up, on the theory that a broken test shouldn't take a working site offline —
+only the command's own exit code tells you something failed. Read the last few lines of output rather
+than assuming "it printed red, the site must be down" or "it finished, the site must be fine" — neither
+follows automatically from the other here.
+
+**`aivis update` can commit and push to the public GitHub repo without asking you first.** If the
+regenerated OpenAPI-derived frontend types differ from what's committed, the script commits the change
+under a bot identity (`aivis-bot`) and pushes it to `origin` on your current branch — automatically, no
+confirmation. If you think of `update` as something that only touches this box, it doesn't: it can also
+change the public repo's history. This is also why the deploy key needs write access (§4 item 2) — a
+read-only key makes this specific step fail, loudly, with a printed error and recovery instructions,
+but not until the first time a schema change actually triggers a push.
+
+**Its own destructive confirmation prompt is the script's second one, and deserves the same reading as
+§4 item 1's wipe prompt.** If `update` finds uncommitted changes in `/opt/aivis/repo`, it asks
+`Discard local changes and update? (y/n)`. Answering `y` discards every edit to every file already
+tracked by git in that checkout — if anyone has ever hand-edited a file directly on the server (a quick
+fix, a config tweak), it is gone the moment you answer `y` here. Untracked new files are not touched,
+only edits to files git already knows about. If you don't recognize the changes it's warning you about,
+stop and look at them (`git -C /opt/aivis/repo status`) before answering — the prompt itself does not
+tell you what the changes are, only that they exist.
+
+**"✓ Update complete" is not the same assurance §6 asks you to get after an install.** The command's own
+final check is a single local `curl` to the backend's health endpoint, checked only for the word
+`"status"` in the response — no HTTPS, no browser, no CSP check. If you want the level of confidence §6
+describes, repeat §6 by hand after an update; the command finishing successfully does not give you that
+on its own.
+
+## 10. `aivis status`
+
+Read-only and safe to run anytime. One thing worth knowing if you're troubleshooting a certificate
+problem: its check of the MinIO console domain skips TLS verification, the same kind of check §5's
+GAP-6 discussion warns against trusting. A `✓` from `aivis status` on that one line does not rule out
+the plain-HTTP regression §5 describes — if you suspect that failure mode, use §5's own check (or its
+repair command), not this one.
+
+## 11. `aivis backup` and `aivis db restore`
+
+**`aivis db restore <file>` warns "This will overwrite the current database!" — against a database that
+already has data in it, it does not actually overwrite.** The dumps this system produces (by `aivis
+backup` or `aivis db dump`) are not built with a "clean" flag, so they contain no instruction to drop
+existing objects first. Restoring one into a database that still has the old schema and data replays
+the dump's statements on top of what's already there, which fails, statement by statement, rather than
+cleanly replacing anything — and the command reports "✓ Database restored" whether or not any of those
+statements actually succeeded, because (per §8) the management script has no built-in mechanism to
+notice a partial failure. **Treat `db restore` as safe only against a database you have already emptied
+or recreated** — restoring into a live, populated database is not the clean swap the prompt describes,
+and you cannot rely on the printed output to tell you it went wrong.
+
+**The daily backup keeps a rolling week of unencrypted copies of every secret in `.env` — including the
+ones §5 tells you don't need recording.** `aivis backup` runs automatically every day (cron, 4 AM) and
+archives `backend/.env` in full, alongside a database dump and a MinIO snapshot, into
+`/opt/aivis/backups/` — a location the install's wipe (§4 item 1) never reaches, on a 7-day rotation.
+§5 is still right that *you* don't need to act on this — every one of those secrets regenerates on the
+next install regardless — but the box itself is quietly keeping week-old copies of them anyway, on
+disk, without restricted permissions. Nothing in this runbook asks you to manage these files; it's
+worth knowing they exist if that matters to you.
+
+**The backup's MinIO half can fail without you finding out.** If mirroring the object-storage bucket
+fails, the backup still completes — database and `.env` only — and prints a warning, but on the
+scheduled daily run that warning goes into `/var/log/aivis-backup.log`, a file nothing in this runbook
+or the script itself tells you to check. A backup that "succeeded" every night for weeks could still be
+missing every object stored in MinIO; the only way to know is to read that log yourself.
+
+## 12. A few more worth knowing
+
+- **`aivis seed --reset` has no confirmation prompt at all** — unlike the install wipe, `update`'s
+  discard, and `db restore`, this one just runs. It resets seeded storefront and test-account data with
+  no "are you sure?" of any kind.
+- **`aivis storage console` prints the MinIO Console URL and all three values §5 asks you to record by
+  hand** — it's the box's own built-in equivalent of §5's `grep` command, and easier to remember. It
+  doesn't change who does the recording: still read it yourself, still copy it into
+  `AIVIS-Server/CREDENTIALS.md` by hand, still not on a screenshare.
+- **After you hand-edit `.env`** (adding a SumSub or Mailgun key you skipped during install, per §4
+  items 4-6) **the install's own completion banner tells you to run `aivis restart app`** — this
+  runbook otherwise never mentions that step, but the app container needs a restart to pick up a
+  hand-edited `.env`.
+- **`aivis deploy` is a working, undocumented synonym for `aivis update`** — same command, absent from
+  the script's own help text.
