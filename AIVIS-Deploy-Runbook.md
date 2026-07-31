@@ -156,8 +156,13 @@ below also fires. Each one is listed here in execution order, with the exact ans
    password gating both the nginx login gate and the MinIO console behind it. ENTER three times is
    not the cautious choice here, it's the only correct one.
 10. **`Add this DKIM DNS record... Press ENTER to continue.`** — the script prints a DNS TXT record
-    it will not show you again. Copy it down even if you're not adding it right now (mail/DKIM is
-    out of scope for this migration wave — see §7) — you'll need it whenever that work does happen.
+    it will not show you again this run. Copy it down even if you're not adding it right now (mail/DKIM
+    is out of scope for this migration wave — see §7) — you'll need it whenever that work does happen.
+    **On a RE-INSTALL, this is very likely the SAME record as last time, not a new one:** the DKIM key
+    pair is only generated if it doesn't already exist on the box — the same guarded pattern as the
+    deploy key at item 2 — and nothing in the wipe branch touches it. If you already added a DKIM TXT
+    record from an earlier install, you don't need to add this one again; copying it down still costs
+    nothing and confirms the two match.
     Press ENTER once you've copied it.
 
 ## 5. Post-install verification
@@ -249,19 +254,18 @@ session.** Copy the three into `AIVIS-Server/CREDENTIALS.md` yourself, by hand, 
 this runbook writes them anywhere for you, and no agent should ever be asked to do that copying either
 — it's exactly how a previous set of these same three values ended up exposed.
 
-**These three are not the only secrets `.env` holds, and the rest get no prompt at all.** The database
-password, the Redis password, the session-signing key that every login depends on, two webhook
-secrets, and the backend's own MinIO service-account pair (separate from the root credentials above)
-are all generated the same way at install time — silently, never shown on screen, never asked about.
-Recording three grepped lines does not protect any of them. Before you next answer `y` at §4 item 1,
-back up the whole file somewhere the wipe can't reach — outside `/opt/aivis/repo`, since that
-directory is exactly what gets deleted:
-```
-cp /opt/aivis/repo/backend/.env /root/aivis-backend-env-backup
-chmod 600 /root/aivis-backend-env-backup
-```
-Treat that copy exactly like `AIVIS-Server/CREDENTIALS.md` itself — root-only, never on a screenshare,
-never committed anywhere.
+**These three are not the only secrets `.env` holds — the rest get no prompt at all, and that's
+expected.** The database password, the Redis password, the session-signing key, two webhook secrets,
+and the backend's own MinIO service-account pair (separate from the root credentials above) are all
+generated the same way at install time: silently, never shown on screen, never asked about. None of it
+needs recording. Every one of them regenerates from scratch on the next install, and the systems they
+authenticate — the database, Redis, and the object store — are destroyed by that same `y` at §4 item 1.
+There is nothing old to preserve and nowhere to copy it to.
+
+**That holds only as long as it stays true that nothing outside this box has a copy of any of them —
+which is the case today.** If a crypto payment provider or any other external service is ever
+configured with `CRYPTO_WEBHOOK_SECRET` (or any of the other six), a re-install silently invalidates it
+without telling anyone; that is the one circumstance under which this paragraph stops holding.
 
 ## 6. The browser acceptance check — this is the one that actually matters
 
@@ -300,6 +304,12 @@ no request at all*, not a 401.
   `/etc/nginx/sites-enabled/default` unconditionally while writing its own site files. Harmless on a
   box dedicated to this product (the only case this runbook covers) — worth knowing only if this nginx
   instance is ever asked to serve anything else, since that config is gone without asking.
+- **`docker compose build` starts by pruning the entire host's Docker build cache**, not just this
+  project's. Same as above — harmless on a dedicated box, worth knowing if this box is ever asked to
+  build anything else with Docker.
+- **A live mail relay starts on this box regardless of whether product mail is ever configured.**
+  Postfix and OpenDKIM are installed and started unconditionally by this section — this isn't optional,
+  and nothing in this runbook turns it off, whether or not decision 30's mail features are ever used.
 - **Anything mail-related** — Postfix, OpenDKIM, a Mailgun-shaped complaint in `.env`. Mail is
   entirely out of scope for this migration wave (decision 30). The install no longer aborts on a
   mail-service restart failure (it warns and continues) — but even a clean mail warning is not a
@@ -337,6 +347,12 @@ half-finished state is if you land there:
   key to GitHub as read-only, this step fails for a permissions reason that has nothing to do with
   today's run. Either way, go back to the GitHub tab, confirm the key is really there with
   Read/write access, then re-run.
+- **The app health check times out (`App did not respond within 120s`), but the script does not stop
+  there.** It's a warning, not an abort — the very next steps (the `mc` alias, database migrations,
+  seeding) all assume the app and its dependencies are actually up. If the app genuinely isn't healthy,
+  one of those steps — most likely the migration step right after — fails immediately, with nothing
+  protecting it. A health-check warning followed by a hard failure a few lines later is one connected
+  problem, not two: check `docker compose logs app` for why the app never became healthy.
 - **A seeding step fails** partway through — generic application-level issue at that point, not
   specific to this being a fresh install. Check `docker compose logs app` from
   `/opt/aivis/repo`.
