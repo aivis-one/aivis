@@ -10,7 +10,7 @@
 - `AIVIS-Backend.md` — Backend ТЗ v3.7
 - `AIVIS-Refactor-Investor-Market-And-Staff.md` v0.7 final (R1, fully implemented)
 - `AIVIS-Refactor-Company-Docs.md` v0.9 final (R2, fully implemented)
-- `CBSHOME-Observability-Frontend.md` v0.3 (draft, реализация после F6)
+- Документ по observability фронтенда так и не был написан (анонсированный черновик v0.3 планировался после F6); нужен ли он вообще — открытый вопрос.
 - `AIVIS-Financial-System.md` — финансовая логика
 - `AIVIS-State-Machines.md` — переходы статусов
 - `AIVIS-Installment.md` — механика рассрочки
@@ -97,7 +97,7 @@ interface UserResponse {
 | Сборка | Vite | latest | HMR, быстрая сборка |
 | Роутинг | Vue Router | 4.x | Role-based guards |
 | Стейт | Pinia | latest | Реактивные хранилища |
-| HTTP | Fetch (обёртка) | native | Запросы к API (CORS → api.cbshome.org) |
+| HTTP | Fetch (обёртка) | native | Запросы к API (CORS → api.aivis.one) |
 | i18n | vue-i18n | v10 | en/ru/de/ar + RTL |
 | PWA | vite-plugin-pwa | latest | Manifest + Service Worker |
 | Стили | Свой CSS | — | Дизайн-система из мокапов (variables.css v1.8.0) |
@@ -108,11 +108,11 @@ interface UserResponse {
 
 ### 2.1. Почему CORS, а не proxy
 
-Фронтенд (`cbshome.org`) и API (`api.cbshome.org`) — разные домены. Запросы идут напрямую на `api.cbshome.org` с CORS.
+Фронтенд (`app.aivis.one`) и API (`api.aivis.one`) — разные домены. Запросы идут напрямую на `api.aivis.one` с CORS.
 
-Причина: при переходе на микросервисы API Gateway будет за `api.cbshome.org`, фронтенд не поменяется.
+Причина: при переходе на микросервисы API Gateway будет за `api.aivis.one`, фронтенд не поменяется.
 
-Бэкенд: `CORSMiddleware` с whitelist `["https://cbshome.org"]`. Credentials allowed.
+Бэкенд: `CORSMiddleware` с whitelist `["https://app.aivis.one"]`. Credentials allowed.
 
 ### 2.2. Token storage
 
@@ -253,18 +253,18 @@ aivis/                                -- GitHub repo root (существует)
 Browser / Telegram
       │
       ▼
-   Nginx (cbshome.org)
+   Nginx (app.aivis.one)
       │
       └── /*         → frontend:3000 (Vue SPA)
 
-   Nginx (api.cbshome.org)
+   Nginx (api.aivis.one)
       │
       └── /*         → app:8000 (FastAPI)
 
-Фронтенд → CORS → api.cbshome.org/api/v1/*
+Фронтенд → CORS → api.aivis.one/api/v1/*
 ```
 
-Два домена, два Nginx-блока. CORS `CORSMiddleware` на бэкенде с whitelist `["https://cbshome.org"]`.
+Два домена, два Nginx-блока. CORS `CORSMiddleware` на бэкенде с whitelist `["https://app.aivis.one"]`.
 
 ### 3.3. Платформенная абстракция
 
@@ -1393,7 +1393,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 ```typescript
 // ЗАПРЕЩЕНО:
-fetch('https://api.cbshome.org/api/v1/users/me')
+fetch('https://api.aivis.one/api/v1/users/me')
 
 // ПРАВИЛЬНО:
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -2082,7 +2082,7 @@ git log HEAD..origin/main --oneline  # пусто? значит локальны
 | # | Описание | Приоритет | Когда |
 |---|----------|-----------|-------|
 | TD-F01a | `Dockerfile:13` — `npm install` → `npm ci` (детерминированные сборки) | 🟡 | Перед staging |
-| TD-F01b | `nginx.conf:46` — `connect-src 'self' https://api.cbshome.org` захардкожен. Параметризовать через ENV / nginx template при смене `VITE_API_BASE_URL` | 🟡 | Перед staging |
+| TD-F01b | `nginx.conf:46` — `connect-src 'self' https://api.aivis.one` захардкожен. Параметризовать через ENV / nginx template при смене `VITE_API_BASE_URL` | 🟡 | Перед staging |
 | TD-F01c | `nginx.conf` — добавить `Strict-Transport-Security`, `gzip_static on` | 🟢 | При production |
 | TD-F01d | `manifest.json` — добавить `id`, `scope`, `lang` (PWA Lighthouse) | 🟢 | При production |
 | TD-F01e | `package.json` — добавить `"engines": { "node": ">=22" }` | 🟢 | При production |
