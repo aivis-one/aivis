@@ -698,10 +698,10 @@ Phase 2 -- формальная e-signature контрактов. MVP: checkbox 
 | Артефакт | Путь | Статус |
 |----------|------|--------|
 | Конституция (этот документ) | `AIVIS-Design-Document.md` | Актуален |
-| Бэковый Кодекс | `AIVIS-Backend.md` | Создаётся |
-| Фронтовый Кодекс | `AIVIS-Frontend.md` | Создаётся |
+| Бэковый Кодекс | `AIVIS-Backend.md` | Актуален |
+| Фронтовый Кодекс | `AIVIS-Frontend.md` | Актуален |
 | Install script | `scripts/install_aivis.sh` | Целевой артефакт |
-| Notification templates | `notifications/templates/en.yaml` | MVP |
+| Notification templates | `backend/app/modules/notifications/templates/en.yaml` | MVP |
 | Схема БД (правда) | `backend/app/modules/*/models.py` | Актуальна |
 
 ---
@@ -710,4 +710,4 @@ Phase 2 -- формальная e-signature контрактов. MVP: checkbox 
 
 ---
 
-*Version 1.5 | 2026-03-27 | aivis-one/aivis*
+*Version 1.6 | 2026-05-12 | aivis-one/aivis*
