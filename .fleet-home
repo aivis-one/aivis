@@ -1,0 +1,22 @@
+FLEET HOME MARKER — read by Agent-One/hooks/routing_footer_check.py
+
+Presence of this file, in the directory a session was launched from or within six ancestors of it,
+puts that session inside the routing-footer hook's scope. The hook reads existence only; content is
+for humans. It runs in WARN mode: it never blocks, it logs one verdict per reply.
+
+THIS REPO: `aivis-one/aivis`, the product repo of Agent-Aivis (two-role, sovereign). Sessions here
+launch from this repository's own root — verified by `pwd` in the live session at the 2026-08-11
+landing, not taken from a document.
+
+WHY IT EXISTS: the hook was path-scoped to the overseer's own tree, so it covered Agent-One and
+nothing else while looking fleet-wide — every home launches from its own product repo. A roster of
+repo paths inside the script was refused because it would go stale by absence the moment an agent is
+born or a repo moves, and nothing would report it. Adoption is opt-in by the home, at its own
+landing, so scope rides the landing cycle instead of arriving as a broadcast.
+
+THIS FILE CARRIES NO LOCAL PATHS AND NO ACCOUNT NAME, DELIBERATELY — AND THE ABSENCE IS RECORDED SO
+NOBODY "RESTORES" IT. **This repository is PUBLIC.** The first version of this file, committed but
+never published, also recorded a harness setting that no repository can commit, together with the
+operator's Windows account name and two absolute paths on his machine. Publishing those is
+irreversible; rewriting an unpublished commit is not. The setting is real and still required — it
+now lives in the agent's PRIVATE home instead, and nothing about it belongs in a public tree.
