@@ -29,16 +29,24 @@
   production box gets: production eventually migrates to a new machine, and this is the path that
   runs there.
 - **Re-install** — `/opt/aivis/repo` already exists on this box. This is what today's box gets, every
-  time, from now on. A re-install tears down the running containers and the cloned code, but it does
-  **not** touch the nginx site files, the certificates, the deploy user, `/opt/aivis` itself,
-  `/root/.mc/config.json`, or the deploy key — several prompts and checks below behave differently as
-  a result, and are marked **RE-INSTALL:** where that matters. **It also doesn't touch the host-level
+  time, from now on. A re-install tears down the running containers and the cloned code. The teardown
+  itself does **not** touch the certificates, the deploy user, `/opt/aivis` itself, or the deploy key
+  — several prompts and checks below behave differently as a result, and are marked **RE-INSTALL:**
+  where that matters. **Two things are a separate case, and surviving the teardown is not the same as
+  surviving the run: the nginx site files and `/root/.mc/config.json`. The teardown leaves both alone;
+  the install phase that follows in the same run replaces both, unconditionally.** All three nginx
+  site files are rewritten and re-linked from scratch, clean-box or re-install alike (see §5), and the
+  host's `mc` alias is re-pointed at the MinIO root credentials this run has just generated — which it
+  must be, or it would go on authenticating with the old ones. **By the time the script finishes,
+  neither of those two is what it was before you started.**
+  **A re-install also doesn't touch the host-level
   packages the script installs** — Docker, Nginx, Certbot, the `mc` CLI. Each of those is only ever
   installed once; every later run, including this one, finds them already present and leaves the
   version exactly as it was. A re-install is not a way to upgrade any of them.
 
 Know which one this is before you continue — you cannot tell from the script's banner, only from
-whether `/opt/aivis/repo` exists on the box you're on.
+whether `/opt/aivis/repo` exists on the box you're on: `ls -ld /opt/aivis/repo` — present means
+RE-INSTALL, absent means clean-box.
 
 What to have ready either way:
 
@@ -79,23 +87,38 @@ curl -fsSL https://raw.githubusercontent.com/aivis-one/aivis/main/scripts/instal
 sha256sum install_aivis.sh
 ```
 
-Compare that hash against the same file computed independently — from your own clone of the repo
-(`git show main:scripts/install_aivis.sh | sha256sum`), or by checking the file's byte count and
-hash on GitHub's own web UI for the commit you expect to be running. Only once they match:
+Compare that hash against the same file computed independently. If you have your own clone of the
+repo, first confirm it's actually at the commit GitHub is serving: the download above comes from
+`raw.githubusercontent.com/.../main/...`, i.e. `origin/main`, and your local `main` can be ahead or
+behind that without you knowing it.
+
+```
+git fetch origin
+git rev-parse main origin/main
+```
+
+If the two commits differ, don't compare against local `main` — either read the blob straight off
+`origin/main` (`git show origin/main:scripts/install_aivis.sh | sha256sum`), or `git pull` first and
+re-check. If you have no local clone at all, compare instead against the file's byte count and hash
+on GitHub's own web UI for the commit you expect to be running. Only once they match:
 
 ```
 bash install_aivis.sh
 ```
 
-**A mismatch here is not automatically a tampered download — a fresh `git clone` can produce one on
-its own.** If you compare against a hash taken by running `sha256sum` on a file checked out of *your
-own clone* rather than the command above, and that clone was made with `core.autocrlf=true` (a
-common default on Windows), git rewrites the file's line endings the moment it's checked out — the
-bytes on disk are no longer the bytes in the git blob, and that `sha256sum` will never match,
-regardless of whether the download is genuine. The command given above
-(`git show main:scripts/install_aivis.sh | sha256sum`) reads the blob directly and is immune to
-this; use it, don't run `sha256sum` on a file your clone checked out. **Always compute the
-comparison hash fresh, in this same session** — a value copied from an earlier chat, note, or
+**A mismatch here is not automatically a tampered download, and there are two distinct innocent
+causes, not one.** If you compare against a hash taken by running `sha256sum` on a file checked out
+of *your own clone*, and that clone was made with `core.autocrlf=true` (a common default on
+Windows), git rewrites the file's line endings the moment it's checked out — the bytes on disk are
+no longer the bytes in the git blob, and that `sha256sum` will never match, regardless of whether
+the download is genuine. Reading the blob directly (`git show <commit>:scripts/install_aivis.sh |
+sha256sum`, the commit you actually confirmed above) is immune to this; don't run `sha256sum` on a
+file your clone checked out. **The second cause is the commit check you just did, and skipping it
+fails in both directions:** if your local clone is AHEAD of `origin/main` and the extra commit
+touched the script, you'll get a mismatch that reads exactly like tampering when nothing is wrong;
+if your local clone is BEHIND, the comparison can "match" a stale script and report nothing wrong at
+all — a check that cannot fail is not a check. **Always compute the comparison hash fresh, in this
+same session, against the commit you just confirmed** — a value copied from an earlier chat, note, or
 transcript is a hash of whatever commit was current back then, not of what you're installing now,
 and a stale value will read as a tampered download even when nothing is wrong.
 
@@ -293,9 +316,12 @@ to it — the frontend's Content-Security-Policy is baked in at build time to al
 exactly one API host, and a mismatch there is invisible to every check above; the browser just
 silently blocks the request.
 
-Open `https://app.aivis.one` in a real browser with DevTools open (Console + Network tabs). Filter
-Network to `api.aivis.one`. Do anything that triggers an API call (loading the page is usually
-enough, or attempting to log in).
+Open `https://app.aivis.one` in a real browser, **in a clean profile with no extensions active**
+(incognito/private with extensions disabled works) — an extension can trip the page's Content-
+Security-Policy on its own and log a console error indistinguishable from a real one, in the same
+panel, against the same page. With DevTools open (Console + Network tabs), filter Network to
+`api.aivis.one`. Do anything that triggers an API call (loading the page is usually enough, or
+attempting to log in).
 
 **What you're looking for:**
 - The CORS preflight request (`OPTIONS`) to `api.aivis.one` returns **200**.
