@@ -1405,6 +1405,41 @@ async def _get_roadmap_item(
 # existing rows down. Reconcile-script inserts also go through this path.
 
 
+_UNSAFE_STORAGE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._ -]")
+_MAX_STORAGE_FILENAME_LENGTH = 200
+
+
+def _sanitize_storage_filename(filename: str) -> str:
+    """Reduce an uploader-supplied filename to one safe MinIO key segment.
+
+    Allow-list, not deny-list (TASK-6 4.2): keep ASCII letters, digits,
+    spaces, dots, hyphens and underscores; drop everything else outright,
+    including `/` and `\\`. Nothing in the allowed set can reconstruct a
+    path separator, so the result has no ability to add or remove a path
+    segment -- it is a label, never an instruction.
+
+    Order matters: `../` becomes `..` once `/` is dropped, so dot runs
+    are collapsed to one AFTER the character strip, not before -- doing
+    it the other way would leave a bare `..` once the (by-then-illegal)
+    slash around it disappears.
+
+    Leading/trailing dots, spaces and hyphens are trimmed after that: a
+    leading dot is a hidden file on POSIX, a leading hyphen reads as a
+    flag to any tool that later touches these keys from a shell.
+
+    A name that cleans to nothing -- all punctuation, a bare `..`, an
+    empty string -- falls back to a fixed literal rather than an empty
+    path segment, which would leave the key ending in `/`: directory-
+    shaped, not file-shaped.
+    """
+    cleaned = _UNSAFE_STORAGE_FILENAME_CHARS.sub("", filename)
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
+    cleaned = cleaned.strip(" .-")
+    if not cleaned:
+        return "untitled"
+    return cleaned[:_MAX_STORAGE_FILENAME_LENGTH]
+
+
 def build_storage_key(company_id: UUID, attachment_id: UUID, filename: str) -> str:
     """Build the canonical MinIO key for an attachment object.
 
@@ -1414,8 +1449,20 @@ def build_storage_key(company_id: UUID, attachment_id: UUID, filename: str) -> s
     Round 4 (QC-01): public name -- the reconcile script imports this
     helper directly and the underscore prefix would falsely signal an
     internal-only contract.
+
+    TASK-6 4.2: `filename` is sanitised HERE, inside the shared helper,
+    not at each call site -- the router and reconcile_attachments.py
+    both call this function directly, and sanitising centrally is what
+    keeps them producing identical keys for the same input instead of
+    drifting the moment one call site's cleaning rule is edited and the
+    other's is not. See _sanitize_storage_filename for the rule. This
+    only changes what a NEW upload's key looks like; reads and deletes
+    use the storage_key already stored on the row (unaffected -- see
+    get_attachment / attachment.storage_key call sites), so no existing
+    object is touched.
     """
-    return f"companies/{company_id}/attachments/{attachment_id}/{filename}"
+    safe_filename = _sanitize_storage_filename(filename)
+    return f"companies/{company_id}/attachments/{attachment_id}/{safe_filename}"
 
 
 async def shift_orders_to_make_room(
