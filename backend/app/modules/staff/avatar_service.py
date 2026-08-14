@@ -13,7 +13,11 @@
 #   - NOT evicted by user's logout-all
 #   - session:{token} contains avatar_session_id + avatar_staff_id
 #   - avatar_token:{avatar_session_id} -> token (reverse lookup for /end)
-#   - Same TTL as regular sessions; orphans cleaned by Redis TTL
+#   - Own TTL (avatar_session_ttl_hours, default 8h), independent of
+#     session_ttl_days -- TASK-6 4.3. Orphans cleaned by Redis TTL, but
+#     the real revocation authority is AvatarSession.status in the DB,
+#     re-checked on every request (auth/dependencies.py); Redis expiry
+#     is only the outer bound.
 #
 # SESSION DATA FORMAT:
 #   {
@@ -58,9 +62,13 @@ _SESSION_PREFIX = "session:"
 _AVATAR_TOKEN_PREFIX = "avatar_token:"
 
 
-def _get_session_ttl() -> int:
-    """Return session TTL in seconds from config."""
-    return settings.session_ttl_days * 86400
+def _get_avatar_ttl() -> int:
+    """Return avatar session TTL in seconds from config.
+
+    Independent of session_ttl_days (TASK-6 4.3) -- an impersonation
+    session must not outlive the shift it was opened for.
+    """
+    return settings.avatar_session_ttl_hours * 3600
 
 
 async def _close_avatar_session(
@@ -167,7 +175,7 @@ async def start_avatar(
 
     # Create avatar token in Redis (separate from user ZSET).
     token = secrets.token_urlsafe(48)
-    ttl = _get_session_ttl()
+    ttl = _get_avatar_ttl()
     redis = get_redis()
 
     session_data = json.dumps({

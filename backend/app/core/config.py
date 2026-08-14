@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     secret_key: str = ""
     session_ttl_days: int = 30
     max_concurrent_sessions: int = 5
+    # Avatar sessions (staff impersonating a user) do NOT inherit
+    # session_ttl_days -- TASK-6 4.3, owner-ruled: a working shift, not a
+    # month. Independent knob so changing it never touches ordinary logins.
+    avatar_session_ttl_hours: int = 8
 
     # -- Telegram --
     telegram_bot_token: str = "TEST"

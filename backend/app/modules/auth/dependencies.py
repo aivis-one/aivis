@@ -55,7 +55,7 @@ from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.modules.auth.service import get_session
 from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS, VALID_PERMISSION_KEYS
-from app.modules.staff.models import StaffProfile
+from app.modules.staff.models import AvatarSession, AvatarSessionStatus, StaffProfile
 from app.modules.users.models import User, UserRole
 
 
@@ -86,6 +86,44 @@ def _parse_user_id(session_data: dict) -> UUID:
         return UUID(session_data["user_id"])
     except (KeyError, ValueError, TypeError, AttributeError):
         raise UnauthorizedError("Invalid session data") from None
+
+
+def _parse_avatar_session_id(raw: str) -> UUID:
+    """Parse avatar_session_id from Redis session data.
+
+    Same shape as _parse_user_id: a malformed value is corrupted Redis
+    data, not a server error -- clean 401, not 500.
+    """
+    try:
+        return UUID(raw)
+    except (ValueError, TypeError, AttributeError):
+        raise UnauthorizedError("Invalid session data") from None
+
+
+async def _check_avatar_still_active(
+    avatar_session_id: str,
+    session: AsyncSession,
+) -> None:
+    """Re-check AvatarSession.status in the DB -- TASK-6 4.3.
+
+    Redis alone used to be sole authority for whether an avatar token
+    still works, so ending a session anywhere but the /end endpoint's own
+    Redis-delete path never actually revoked it. This makes the DB row
+    the real authority on every request: an avatar token is only good for
+    as long as its row stays ACTIVE, independent of Redis TTL, which
+    covers a pre-existing session issued under the old (longer) TTL just
+    as well as a new one -- the check only ever reads current status.
+
+    FAIL CLOSED: missing row, wrong status, or a query that raises all
+    refuse the request. Nothing here defaults to allowing.
+    """
+    avatar_id = _parse_avatar_session_id(avatar_session_id)
+    stmt = select(AvatarSession).where(AvatarSession.id == avatar_id)
+    result = await session.execute(stmt)
+    avatar = result.scalar_one_or_none()
+
+    if avatar is None or avatar.status != AvatarSessionStatus.ACTIVE:
+        raise UnauthorizedError("Avatar session has ended")
 
 
 async def _load_user_from_request(
@@ -125,11 +163,17 @@ async def _load_user_from_request(
     if not user.is_active:
         raise ForbiddenError("Account is deactivated")
 
-    # --- Avatar context (Sprint 3.2) ---
-    # If this is an avatar session, bind context for logging + audit.
+    # --- Avatar context (Sprint 3.2, re-checked live -- TASK-6 4.3) ---
+    # If this is an avatar session, the DB row is the real authority: a
+    # Redis token surviving does not mean the avatar session is still
+    # ACTIVE, since ending it from any path only ever deleted Redis keys
+    # here, never re-verified here. Refuse before binding the contextvars
+    # that avatar_guard.py and record_audit() rely on -- fail closed.
     avatar_session_id = session_data.get("avatar_session_id")
     avatar_staff_id = session_data.get("avatar_staff_id")
     if avatar_session_id and avatar_staff_id:
+        await _check_avatar_still_active(avatar_session_id, session)
+
         structlog.contextvars.bind_contextvars(
             avatar_session_id=avatar_session_id,
             avatar_staff_id=avatar_staff_id,
