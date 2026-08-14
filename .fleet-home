@@ -14,6 +14,20 @@ repo paths inside the script was refused because it would go stale by absence th
 born or a repo moves, and nothing would report it. Adoption is opt-in by the home, at its own
 landing, so scope rides the landing cycle instead of arriving as a broadcast.
 
+LANGUAGE, AND THIS PARAGRAPH EXISTS BECAUSE OF A COST THE OWNER ACCEPTED WITH HIS EYES OPEN. Fleet canon
+requires every tracked document to be English, target LITERAL ZERO, including documents inside a product.
+The nine `AIVIS-*.md` design documents in this repository are ~24% Russian — 149,751 characters, measured
+2026-08-14 over the whole tracked tree. **That is RULED, not rot, and it is not a defect to fix.** The
+owner ruled them outside the rule on 2026-08-14 for a reason he set himself: the cost D8 removes is tokens
+paid on EVERY load, and these nine load at no boot — they are opened on demand. He took that ruling knowing
+it leaves the fleet's register with a permanent hole and canon reading one way while this tree reads
+another. **Anyone auditing this repository against the literal-zero bar is reading a real conflict, and the
+answer is that it was decided, not missed.** The full record, with the measurement and the three options it
+was chosen over, is decision 62 in the agent's own home. **Not ruled and still owed per item: the Russian
+in `frontend/src/i18n/locales/ru.json`, `mockups/**`, `backend/scripts/templates/**/ru/**`,
+`frontend/public/legal/ru/**`, and a handful of comments and user-facing strings in source files** — those
+rest on a different test (does converting destroy the function) and each goes to the owner individually.
+
 THIS FILE CARRIES NO LOCAL PATHS AND NO ACCOUNT NAME, DELIBERATELY — AND THE ABSENCE IS RECORDED SO
 NOBODY "RESTORES" IT. **This repository is PUBLIC.** The first version of this file, committed but
 never published, also recorded a harness setting that no repository can commit, together with the
