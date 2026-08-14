@@ -44,6 +44,7 @@ from uuid import UUID
 import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+from fastapi import BackgroundTasks
 from sqlalchemy import BigInteger, cast, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -231,21 +232,25 @@ async def register_email(
     email: str,
     password: str,
     session: AsyncSession,
+    background_tasks: BackgroundTasks,
     *,
     referral_code: str | None = None,
 ) -> User:
     """Register a new user via email + password.
 
     Creates a User with role=investor, stores hashed password and
-    6-digit verification code in credentials JSONB. Sends verification
-    email with the code.
+    6-digit verification code in credentials JSONB. Schedules the
+    verification email to send after the request's transaction commits.
 
     referral_code is resolved FIRST: valid code -> referred_by = agent_id
     AND referred_by_link_id = link.id; invalid/missing -> referred_by =
     platform_id, referred_by_link_id = NULL. Never blocks registration.
 
     Does NOT commit or rollback -- caller (get_db_session) manages
-    the transaction lifecycle (P-01).
+    the transaction lifecycle (P-01). background_tasks defers the email
+    send past that commit -- TASK-6 4.1d: the old code awaited the send
+    while the row was still uncommitted, so a later commit failure would
+    leave someone holding a code for a user that does not exist.
 
     Raises:
         ConflictError: If email is already registered (ix_users_email).
@@ -314,8 +319,12 @@ async def register_email(
         referred_by=str(referred_by),
     )
 
-    # Send verification email (fire-and-forget, errors logged).
-    await _send_verification_email(email_lower, verification_code)
+    # Schedule verification email for AFTER get_db_session commits this
+    # transaction (FastAPI runs background tasks only once the response's
+    # dependency exit stack -- including that commit -- has closed).
+    background_tasks.add_task(
+        _send_verification_email, email_lower, verification_code
+    )
 
     return user
 
@@ -475,8 +484,12 @@ async def verify_email_code(
 async def resend_verification_code(
     user: User,
     session: AsyncSession,
+    background_tasks: BackgroundTasks,
 ) -> None:
     """Regenerate 6-digit code, reset TTL and attempts, resend email.
+
+    Send is scheduled via background_tasks so it runs after the request's
+    transaction commits -- TASK-6 4.1d, same reasoning as register_email.
 
     Raises:
         BadRequestError: If already verified or no email in credentials.
@@ -506,8 +519,8 @@ async def resend_verification_code(
 
     logger.info("verification_code_resent", user_id=str(user.id))
 
-    # Send email (fire-and-forget).
-    await _send_verification_email(email_address, new_code)
+    # Schedule for after commit -- see docstring.
+    background_tasks.add_task(_send_verification_email, email_address, new_code)
 
 
 # ---------------------------------------------------------------------------

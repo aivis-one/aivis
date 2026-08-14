@@ -58,7 +58,7 @@ from app.modules.auth.telegram import (
 )
 from app.modules.users.models import User
 from app.modules.users.schemas import UserResponse
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
@@ -95,6 +95,7 @@ def _get_client_ip(request: Request) -> str:
 async def auth_email_register(
     body: EmailRegisterRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db_session),
 ) -> AuthResponse:
     """Register a new user via email + password."""
@@ -106,6 +107,7 @@ async def auth_email_register(
         body.email,
         body.password,
         session,
+        background_tasks,
         referral_code=body.referral_code,
     )
     token = await create_session(user, auth_method="email")
@@ -163,13 +165,14 @@ async def auth_verify_email(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def auth_resend_verification(
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user_write),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Resend verification code. Rate-limited: 1 per 60 seconds."""
     # Uses default auth rate limit config (5 per 60s). Acceptable for MVP.
     await check_rate_limit(f"email_verify_resend:{user.id}")
-    await resend_verification_code(user, session)
+    await resend_verification_code(user, session, background_tasks)
 
 
 # ---------------------------------------------------------------------------
