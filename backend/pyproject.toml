@@ -2,8 +2,21 @@
 # AIVIS.ONE Backend -- Project Configuration
 # =============================================================================
 #
-# Single source of truth for dependencies and tool configuration.
-# All versions are pinned with upper bounds to prevent breaking changes.
+# Single source of truth for the dependencies this project DECLARES, and for tool
+# configuration.
+#
+# Every direct dependency below carries both a lower floor and an upper cap. Their
+# transitive dependencies carry neither: those are resolved afresh on every image
+# build, and they are the majority of what actually ends up installed. Measured
+# 2026-08-14 against the running container -- most of the installed set is not
+# named in this file, including the framework FastAPI itself is built on.
+#
+# WHAT ACTUALLY INSTALLS is recorded outside this repository, in the project's
+# private agent home. That is deliberate: publishing an exact version manifest of
+# a live deployment is a disclosure this project does not make, and a published
+# manifest would go stale at the next image build and then assert something untrue.
+# Refresh the record read-only, changing nothing:
+#     docker exec aivis-app pip freeze
 # =============================================================================
 
 [project]
