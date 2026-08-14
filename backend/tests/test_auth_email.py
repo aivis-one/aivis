@@ -121,7 +121,7 @@ async def test_login_blocked_user(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    """Login with is_active=False -> 403."""
+    """Login with is_active=False -> 401."""
     email = f"blocked_{uuid.uuid4().hex[:12]}@example.com"
     await register_user(client, email=email)
 

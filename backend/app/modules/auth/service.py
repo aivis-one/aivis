@@ -373,8 +373,9 @@ async def login_email(
     Failed login attempts are recorded in audit_log via a dedicated
     session (SEC-7), scheduled through background_tasks so the write
     happens after the response, not before it -- TASK-6 4.1c. Only
-    recorded when a user exists -- unknown email attempts are logged to
-    structlog only (no user entity to reference).
+    recorded when a user exists -- unknown email attempts raise the same
+    401 with no audit entry and no log call at all (no user entity to
+    reference).
 
     Before this fix, the audit write on the known-email branches ran
     synchronously (open session, INSERT, COMMIT, close) before the 401
