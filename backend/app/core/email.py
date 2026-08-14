@@ -2,7 +2,13 @@
 # AIVIS.ONE Backend -- Core Email (Sprint 9.2)
 # =============================================================================
 #
-# Low-level email sending with SMTP (primary) + Mailgun (fallback).
+# Low-level email sending with Mailgun (primary) + SMTP (fallback).
+#
+# ORDER CORRECTED 2026-08-14: this line read "SMTP (primary) + Mailgun
+# (fallback)" and had the routing backwards, while send_email()'s own
+# docstring 195 lines below stated it correctly -- one file, two opposite
+# claims about the same dispatch. The code is Mailgun-first (:234), SMTP
+# only on failure (:260).
 #
 # EXTRACTED FROM:
 #   notifications/formatters.py (Sprint 8.2) -- EmailFormatter._send_smtp
@@ -196,7 +202,9 @@ async def send_email(
     """Send email using app settings config.
 
     Convenience wrapper for non-notification code (certificates, etc.).
-    Handles Mailgun/SMTP routing and high-secured domain logic.
+    Handles Mailgun/SMTP routing. There is no high-secured-domain logic:
+    this line claimed some until 2026-08-14, and settings.high_secured_domains
+    has no caller anywhere in the application.
 
     Priority: Mailgun HTTP API (primary) → SMTP Postfix (fallback).
 

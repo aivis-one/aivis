@@ -157,10 +157,17 @@ class TelegramFormatter:
 
 
 class EmailFormatter:
-    """Deliver notifications via SMTP (primary) + Mailgun (fallback).
+    """Deliver notifications via Mailgun (primary) + SMTP (fallback).
 
-    High-secured domains (configured in settings) go directly to Mailgun,
-    bypassing SMTP. All other domains try SMTP first, then Mailgun on failure.
+    Mailgun is tried first; SMTP carries the message only when Mailgun
+    declines or fails. Note that send_mailgun() returns False immediately
+    when the API key is empty or "TEST", so on a deployment without a real
+    key SMTP carries everything.
+
+    There is no high-secured-domain routing. This docstring described such
+    logic until 2026-08-14; settings.high_secured_domains exists but has no
+    caller anywhere in the application, and no code branches on the
+    recipient's domain.
 
     Sprint 9.2: low-level sending delegated to app.core.email for reuse.
     __init__ params preserved for test compatibility.
