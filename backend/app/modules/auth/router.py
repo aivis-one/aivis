@@ -125,6 +125,7 @@ async def auth_email_register(
 async def auth_email_login(
     body: EmailLoginRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db_session),
 ) -> AuthResponse:
     """Login via email + password."""
@@ -132,7 +133,7 @@ async def auth_email_login(
     ip = _get_client_ip(request)
     await check_rate_limit(f"email_auth:{ip}")
 
-    user = await login_email(body.email, body.password, session)
+    user = await login_email(body.email, body.password, session, background_tasks)
     token = await create_session(user, auth_method="email")
 
     return AuthResponse(

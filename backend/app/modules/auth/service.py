@@ -12,11 +12,15 @@
 #   verify_email_code()           -- verify 6-digit email code (G1)
 #   resend_verification_code()    -- regenerate + resend code (G1)
 #
-# FAILED LOGIN AUDIT (SEC-7):
+# FAILED LOGIN AUDIT (SEC-7, timing fix TASK-6 4.1c):
 #   login_email() records failed attempts in audit_log via a dedicated
 #   session (_audit_login_failure). Required because the caller's session
 #   is rolled back on exception (P-01), which would discard any audit
-#   entries written to the same session.
+#   entries written to the same session. Scheduled via BackgroundTasks
+#   instead of awaited: an audit INSERT+COMMIT before the response ran
+#   only on the known-email branches, dwarfing the argon2-hash-duration
+#   equalizer the unknown-email branch uses -- moving it off the request
+#   path removes that gap instead of matching it on the other side.
 #
 # REFERRAL (Sprint 7.2, extended Task 1 Block C):
 #   referral_code is resolved FIRST at registration. Valid code ->
@@ -43,7 +47,7 @@ from uuid import UUID
 
 import structlog
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
 from fastapi import BackgroundTasks
 from sqlalchemy import BigInteger, cast, select
 from sqlalchemy.exc import IntegrityError
@@ -88,10 +92,36 @@ async def verify_password(password: str, password_hash: str) -> bool:
     """Verify a password against its argon2 hash.
 
     Off the event loop for the same reason as hash_password() -- TASK-6 4.1b.
+
+    TASK-6 4.1c: an empty or otherwise malformed password_hash (e.g. a
+    user record with an email but no password credential) is not a hash
+    argon2 can parse at all -- _ph.verify raises InvalidHashError, a
+    ValueError subclass, before it ever gets to compare anything. That is
+    a DIFFERENT exception from a genuine mismatch (VerifyMismatchError),
+    and if it escaped here it would surface as an unhandled 500 instead
+    of the 401 a wrong password gets -- a status-code side-channel as
+    real as a timing one. Both cases mean the same thing to a caller:
+    this credential does not authenticate.
+
+    THE RESPONSE IS IDENTICAL FOR BOTH; THE LOG IS NOT, DELIBERATELY. Returning
+    False silently on an unparseable hash would make a corrupted credential
+    store -- a botched migration, a partial restore, a bad import -- look
+    exactly like every user suddenly typing the wrong password, with nothing
+    anywhere to say otherwise. The 500 this replaced was a side-channel, but it
+    was also the only alarm; removing it without replacing it trades a security
+    defect for a blind spot. A log line is not an attacker-visible channel.
     """
     try:
         return await asyncio.to_thread(_ph.verify, password_hash, password)
     except VerifyMismatchError:
+        return False
+    except InvalidHashError:
+        # Never log the hash or the password -- the FACT and its shape only.
+        logger.warning(
+            "password_hash_unparseable",
+            stored_hash_empty=(password_hash == ""),
+            stored_hash_len=len(password_hash or ""),
+        )
         return False
 
 
@@ -333,6 +363,7 @@ async def login_email(
     email: str,
     password: str,
     session: AsyncSession,
+    background_tasks: BackgroundTasks,
 ) -> User:
     """Authenticate a user by email + password.
 
@@ -340,8 +371,18 @@ async def login_email(
     to prevent email enumeration via response time side-channel.
 
     Failed login attempts are recorded in audit_log via a dedicated
-    session (SEC-7). Only recorded when a user exists -- unknown email
-    attempts are logged to structlog only (no user entity to reference).
+    session (SEC-7), scheduled through background_tasks so the write
+    happens after the response, not before it -- TASK-6 4.1c. Only
+    recorded when a user exists -- unknown email attempts are logged to
+    structlog only (no user entity to reference).
+
+    Before this fix, the audit write on the known-email branches ran
+    synchronously (open session, INSERT, COMMIT, close) before the 401
+    was returned, while the unknown-email branch did nothing but hash a
+    dummy password -- a DB round-trip dwarfs the hash-timing difference
+    the dummy exists to erase. Deferring the write removes that cost from
+    every branch's observable response time instead of adding matching
+    cost to the branch that didn't have it.
 
     Raises:
         UnauthorizedError: If email not found, password mismatch, or account deactivated.
@@ -366,15 +407,19 @@ async def login_email(
     stored_hash = email_creds.get("password_hash", "")
 
     if not await verify_password(password, stored_hash):
-        await _audit_login_failure(user.id, "wrong_password")
+        background_tasks.add_task(_audit_login_failure, user.id, "wrong_password")
         raise UnauthorizedError("Invalid email or password")
 
     if user.role == UserRole.PLATFORM:
-        await _audit_login_failure(user.id, "platform_login_blocked")
+        background_tasks.add_task(
+            _audit_login_failure, user.id, "platform_login_blocked"
+        )
         raise UnauthorizedError("Invalid email or password")
 
     if not user.is_active:
-        await _audit_login_failure(user.id, "account_deactivated")
+        background_tasks.add_task(
+            _audit_login_failure, user.id, "account_deactivated"
+        )
         raise UnauthorizedError("Invalid email or password")
 
     await record_audit(
