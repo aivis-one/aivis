@@ -89,7 +89,7 @@ class TemplateMissingError(AivisError):
 
     def __init__(self) -> None:
         super().__init__(
-            message="Договор для этой покупки не сконфигурирован (system error)",
+            message="The agreement for this purchase is not configured (system error)",
             code="agreement_template_missing",
             status_code=500,
         )

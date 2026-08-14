@@ -45,8 +45,8 @@
 #   row exists but template_id is NULL; render_ownership_html raises
 #   the same when the 4-stage fallback finds nothing. Both surface to
 #   the AivisError handler as 500 with code "agreement_template_missing"
-#   and a Russian-language message ("Договор для этой покупки не
-#   сконфигурирован (system error)").
+#   and the message "The agreement for this purchase is not configured
+#   (system error)". Clients match on the CODE, never on the message.
 #
 # COMMIT RULE (P-01):
 #   Read-only endpoints use get_db_reader. POST /email handlers don't
