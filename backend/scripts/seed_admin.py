@@ -93,7 +93,7 @@ async def seed_admin(email: str, password: str) -> None:
                     return
 
             # Create admin user.
-            password_hash = hash_password(password)
+            password_hash = await hash_password(password)
             admin = User(
                 role=UserRole.STAFF,
                 is_active=True,

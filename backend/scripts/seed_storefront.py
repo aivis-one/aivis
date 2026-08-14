@@ -289,7 +289,7 @@ async def _ensure_company_owner(
         credentials={
             "email": {
                 "email": email,
-                "password_hash": hash_password(SEED_PASSWORD),
+                "password_hash": await hash_password(SEED_PASSWORD),
             },
         },
         profile={},

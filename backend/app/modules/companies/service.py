@@ -207,7 +207,7 @@ async def create_company(
     platform_id = await get_platform_user_id(session)
 
     # Create User with role=company.
-    password_hash = hash_password(body.password)
+    password_hash = await hash_password(body.password)
     company_user = User(
         role=UserRole.COMPANY,
         is_active=True,

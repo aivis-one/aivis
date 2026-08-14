@@ -35,6 +35,7 @@
 #   Exception: _audit_login_failure() uses its own session+commit.
 # =============================================================================
 
+import asyncio
 import json
 import secrets
 from datetime import datetime, timedelta, UTC
@@ -72,15 +73,23 @@ _VERIFICATION_MAX_ATTEMPTS = 5
 # ---------------------------------------------------------------------------
 
 
-def hash_password(password: str) -> str:
-    """Hash a password using argon2."""
-    return _ph.hash(password)
+async def hash_password(password: str) -> str:
+    """Hash a password using argon2.
+
+    Argon2 is deliberately slow. Run off the event loop (asyncio.to_thread)
+    so one hash does not stall every other request on this worker for its
+    duration -- TASK-6 4.1b.
+    """
+    return await asyncio.to_thread(_ph.hash, password)
 
 
-def verify_password(password: str, password_hash: str) -> bool:
-    """Verify a password against its argon2 hash."""
+async def verify_password(password: str, password_hash: str) -> bool:
+    """Verify a password against its argon2 hash.
+
+    Off the event loop for the same reason as hash_password() -- TASK-6 4.1b.
+    """
     try:
-        return _ph.verify(password_hash, password)
+        return await asyncio.to_thread(_ph.verify, password_hash, password)
     except VerifyMismatchError:
         return False
 
@@ -242,7 +251,7 @@ async def register_email(
         ConflictError: If email is already registered (ix_users_email).
     """
     email_lower = email.strip().lower()
-    password_hashed = hash_password(password)
+    password_hashed = await hash_password(password)
     verification_code = _generate_verification_code()
     now = datetime.now(UTC)
     expires_at = now + timedelta(minutes=_VERIFICATION_CODE_TTL_MINUTES)
@@ -337,13 +346,17 @@ async def login_email(
     user = result.scalar_one_or_none()
 
     if user is None:
-        _ph.hash("dummy-password-timing-safe")
+        # Same function, same asyncio.to_thread path as the real verify
+        # below -- TASK-6 4.1b. A dummy hash that stayed synchronous while
+        # the real path moved off the event loop would reintroduce the
+        # timing signal this call exists to erase, worse than before.
+        await hash_password("dummy-password-timing-safe")
         raise UnauthorizedError("Invalid email or password")
 
     email_creds = user.credentials.get("email", {})
     stored_hash = email_creds.get("password_hash", "")
 
-    if not verify_password(password, stored_hash):
+    if not await verify_password(password, stored_hash):
         await _audit_login_failure(user.id, "wrong_password")
         raise UnauthorizedError("Invalid email or password")
 

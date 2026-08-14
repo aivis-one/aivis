@@ -294,7 +294,7 @@ async def _reset(session: AsyncSession) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _set_password(user: User, password: str) -> None:
+async def _set_password(user: User, password: str) -> None:
     """Replace the user's email password hash.
 
     Full-dict reassignment (not in-place mutation) so SQLAlchemy's
@@ -302,7 +302,7 @@ def _set_password(user: User, password: str) -> None:
     """
     creds = dict(user.credentials)
     email_creds = dict(creds.get("email", {}))
-    email_creds["password_hash"] = hash_password(password)
+    email_creds["password_hash"] = await hash_password(password)
     creds["email"] = email_creds
     user.credentials = creds
 
@@ -344,7 +344,7 @@ async def _neutralize(session: AsyncSession) -> None:
         user = await _get_user_by_email(session, email)
         if user is None:
             continue
-        _set_password(user, secrets.token_urlsafe(32))
+        await _set_password(user, secrets.token_urlsafe(32))
         user_ids.append(user.id)
         log(f"  Password rotated: {email}")
 
@@ -386,7 +386,7 @@ async def _get_user_by_email(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-def _make_user(
+async def _make_user(
     *,
     email: str,
     role: UserRole,
@@ -406,7 +406,7 @@ def _make_user(
         credentials={
             "email": {
                 "email": email,
-                "password_hash": hash_password(TEST_PASSWORD),
+                "password_hash": await hash_password(TEST_PASSWORD),
                 "verified": True,
             },
         },
@@ -434,10 +434,10 @@ async def _ensure_investor(
     if existing is not None:
         # Heal a possibly neutralized account: seeding declares that
         # this account logs in with seedpass123 -- make it true.
-        _set_password(existing, TEST_PASSWORD)
+        await _set_password(existing, TEST_PASSWORD)
         return existing
 
-    investor = _make_user(
+    investor = await _make_user(
         email=INVESTOR_EMAIL,
         role=UserRole.INVESTOR,
         referred_by=platform_user_id,
@@ -476,10 +476,10 @@ async def _ensure_company_owner(
     """Return the company owner User, creating it if missing."""
     existing = await _get_user_by_email(session, COMPANY_OWNER_EMAIL)
     if existing is not None:
-        _set_password(existing, TEST_PASSWORD)  # heal after --remove-only
+        await _set_password(existing, TEST_PASSWORD)  # heal after --remove-only
         return existing
 
-    owner = _make_user(
+    owner = await _make_user(
         email=COMPANY_OWNER_EMAIL,
         role=UserRole.COMPANY,
         referred_by=platform_user_id,
@@ -674,7 +674,7 @@ async def _ensure_agent(
     existing = await _get_user_by_email(session, AGENT_EMAIL)
     if existing is not None:
         # Heal after --remove-only: password back + links reactivated.
-        _set_password(existing, TEST_PASSWORD)
+        await _set_password(existing, TEST_PASSWORD)
         await session.execute(
             update(ReferralLink)
             .where(ReferralLink.agent_id == existing.id)
@@ -682,7 +682,7 @@ async def _ensure_agent(
         )
         return existing
 
-    agent = _make_user(
+    agent = await _make_user(
         email=AGENT_EMAIL,
         role=UserRole.AGENT,
         referred_by=platform_user_id,
@@ -729,7 +729,7 @@ async def _ensure_staff(
     if existing is not None:
         # Heal after --remove-only: password back + profile re-created
         # (neutralize deletes the StaffProfile to strip permissions).
-        _set_password(existing, TEST_PASSWORD)
+        await _set_password(existing, TEST_PASSWORD)
         profile_stmt = select(StaffProfile).where(
             StaffProfile.user_id == existing.id
         )
@@ -745,7 +745,7 @@ async def _ensure_staff(
             await session.flush()
         return existing
 
-    staff = _make_user(
+    staff = await _make_user(
         email=STAFF_EMAIL,
         role=UserRole.STAFF,
         referred_by=platform_user_id,
