@@ -12,8 +12,12 @@ export default defineConfig({
       manifest: false, // Using public/manifest.json directly
       workbox: {
         // Precache all static assets including self-hosted woff2 fonts.
-        // Fonts are downloaded to public/fonts/ by install_aivis.sh
-        // and served from /fonts/<filename>.woff2 -- no external CDN needed.
+        // Fonts are TRACKED IN THE REPO under public/fonts/ and served from
+        // /fonts/<filename>.woff2 -- no external CDN needed.
+        // (This said "downloaded by install_aivis.sh" until 2026-08-17. That
+        // script contains no font logic: `grep -ic font` -> 0 over 2,113
+        // lines, control `frontend` -> 72. The same false claim sat in
+        // src/styles/fonts.css's own header.)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//],
