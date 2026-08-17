@@ -7,6 +7,80 @@
    ============================================================ */
 
 :root {
+  /* ============================================================
+     AIVIS design-system PRIMITIVES (batch 6a, 2026-08-17)
+     Verbatim from the design system's aivis-tokens.css v0.7.
+
+     NOTHING BELOW THIS BLOCK USES THEM YET, AND THAT IS DELIBERATE
+     (owner-ruled D=B, 2026-08-17). The 12 semantic token names shared
+     with the new system -- --primary, --accent, --radius-sm/md/lg,
+     --text-secondary, --text-tertiary, --bg-subtle, --success,
+     --warning, --danger, --shadow-focus -- KEEP THEIR SHIPPED VALUES
+     here. Re-pointing them at these primitives changes 910 places on
+     screen with no error and no test able to see it, so it happens
+     surface by surface in 6b, each one checked by eye.
+
+     Primitives are theme-independent by design: the dark blocks below
+     re-point SEMANTIC tokens and never redefine a primitive. Add new
+     primitives here only.
+     ============================================================ */
+  --azure-50: #EAF4FC;
+  --azure-100: #ADD9F5;
+  --azure-200: #6DBDED;
+  --azure-300: #37A6E6;
+  --azure-400: #2B8ECB;
+  --azure-500: #217AB6;
+  --azure-600: #16669F;
+  --azure-700: #0B4F86;
+  --azure-800: #083B64;
+  --azure-900: #062A48;
+
+  --emerald-50: #E7F8EF;
+  --emerald-100: #AAEBC9;
+  --emerald-200: #6ADDA0;
+  --emerald-300: #34D17E;
+  --emerald-400: #29B56E;
+  --emerald-500: #21A062;
+  --emerald-600: #188854;
+  --emerald-700: #0E6E45;
+  --emerald-800: #0A4D30;
+  --emerald-900: #06321F;
+
+  --amber-50: #FCF1E4;
+  --amber-100: #F9D0AA;
+  --amber-200: #F5AE6D;
+  --amber-300: #F2913A;
+  --amber-400: #D97B2E;
+  --amber-500: #C66A25;
+  --amber-600: #B1581B;
+  --amber-700: #9A4410;
+  --amber-800: #652C0A;
+  --amber-900: #3A1905;
+
+  --red-50: #FCEBEA;
+  --red-100: #F6C7C4;
+  --red-200: #EE9893;
+  --red-300: #E5645D;
+  --red-400: #D63E37;
+  --red-500: #BE2D27;
+  --red-600: #9C231E;
+  --red-700: #7A1A16;
+  --red-800: #561310;
+  --red-900: #360B09;
+
+  --neutral-0: #FFFFFF;
+  --neutral-50: #F6F8FA;
+  --neutral-100: #EDF1F5;
+  --neutral-200: #DDE4EB;
+  --neutral-300: #C5D0DA;
+  --neutral-400: #9BA8B6;
+  --neutral-500: #6B7785;
+  --neutral-600: #4C5763;
+  --neutral-700: #353E48;
+  --neutral-800: #1F262E;
+  --neutral-900: #11161B;
+  --neutral-950: #070A0E;
+
   /* === Orange Triad === */
   --o-primary: #cc3203;
   --o-accent: #E8651A;
