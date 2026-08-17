@@ -148,13 +148,21 @@ async def test_login_wrong_password_writes_audit_record(
         )
     ).scalar_one()
 
+    # Capture the id as a PLAIN VALUE now, before anything can expire the
+    # instance. `rollback()` below expires every ORM object in the session;
+    # touching `user.id` afterwards would trigger a lazy refresh, and a lazy
+    # refresh is IO -- in async SQLAlchemy that raises MissingGreenlet from
+    # inside a plain attribute access, which reads like a driver fault rather
+    # than what it is. This test hit exactly that on its second attempt.
+    user_id = user.id
+
     # CONTROL: no such row exists yet for this brand-new user. Without it a
     # row left by any earlier test could satisfy the assertion below.
     before = (
         await db_session.execute(
             select(AuditLog).where(
                 AuditLog.event == "user.login_failed",
-                AuditLog.target_id == user.id,
+                AuditLog.target_id == user_id,
             )
         )
     ).scalars().first()
@@ -176,7 +184,7 @@ async def test_login_wrong_password_writes_audit_record(
         await db_session.execute(
             select(AuditLog).where(
                 AuditLog.event == "user.login_failed",
-                AuditLog.target_id == user.id,
+                AuditLog.target_id == user_id,
             )
         )
     ).scalars().first()
