@@ -546,44 +546,68 @@ async def test_avatar_blocked_create_purchase(
 
 
 @pytest.mark.asyncio
-async def test_avatar_allowed_when_restrictions_switched_off(
-    client: AsyncClient, db_session: AsyncSession
+async def test_shipped_default_leaves_avatar_restrictions_off() -> None:
+    """2026-08-17, owner-ruled: the switch ships OFF.
+
+    Pinned on its own so that flipping the default is a visible act with a
+    named failure, not a quiet change of behaviour. Update the ruling and
+    this assertion together, never one of them alone.
+    """
+    assert settings.avatar_restrictions_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_avatar_guard_follows_the_switch_both_ways(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """2026-08-17, owner-ruled: with the switch OFF -- the SHIPPED default --
-    a restricted operation is NOT blocked in avatar mode.
+    """ONE request, ONE token, ONE route -- only the switch differs.
 
-    Deliberately the SAME route as test_avatar_blocked_create_purchase, and
-    the pair is the whole point:
-      switch ON  -> 403, the guard fires before the handler;
-      switch OFF -> 404, the request reaches the handler and the random
-                    product_id is simply not found.
-    A 404 here therefore proves the guard did NOT fire -- it is not a weaker
-    assertion than a 200, it is a sharper one, because the guard's own
-    docstring is that it short-circuits before the handler is ever reached.
+    This is the strongest form available, because the two outcomes are
+    separated by nothing except the setting under test. Anything else that
+    could explain the difference is held identical by construction.
 
-    This test takes NO avatar_restrictions_on fixture on purpose. It is the
-    one test in this file that runs against the real shipped default, and if
-    someone flips that default back the failure lands here, loudly, instead
-    of the suite silently proving a configuration nobody runs.
+    ⚠ ITS FIRST DRAFT ASSERTED 404 AND FAILED AT 400, and the reason is
+    worth keeping: it assumed an unknown product_id would fall through to a
+    404 lookup, but the endpoint validates the request BODY first, and this
+    test posts `{}` -- the same empty body the blocked-case test posts,
+    which never reaches validation because the guard short-circuits it.
+    So the handler's own status code was never the point and guessing it
+    was the error. What the test actually needs to prove is narrower and
+    exact: THE GUARD DID NOT FIRE. 403-with-the-guard's-own-message is that
+    signal, and its absence is the assertion.
     """
     from uuid import uuid4
 
-    assert settings.avatar_restrictions_enabled is False, (
-        "the shipped default changed -- this test pins it, so update the "
-        "ruling and this assertion together, never one of them alone"
-    )
-
     avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+    product_id = uuid4()
 
-    resp = await client.post(
-        f"/api/v1/products/{uuid4()}/purchase",
-        json={},
-        headers=auth_headers(avatar_token),
+    async def attempt():
+        return await client.post(
+            f"/api/v1/products/{product_id}/purchase",
+            json={},
+            headers=auth_headers(avatar_token),
+        )
+
+    # -- switch ON: the guard fires --
+    monkeypatch.setattr(settings, "avatar_restrictions_enabled", True)
+    blocked = await attempt()
+    assert blocked.status_code == 403, (
+        f"with restrictions ON the guard must block; got {blocked.status_code}"
     )
-    assert resp.status_code == 404, (
-        f"expected the handler to be reached (404 for an unknown product); "
-        f"got {resp.status_code} -- a 403 here means the avatar guard fired "
-        f"while the restriction switch is off"
+    assert "avatar" in blocked.json()["message"].lower()
+
+    # -- switch OFF (the shipped default): the guard does not fire --
+    monkeypatch.setattr(settings, "avatar_restrictions_enabled", False)
+    allowed = await attempt()
+    assert allowed.status_code != 403, (
+        f"with restrictions OFF the guard must NOT block; got "
+        f"{allowed.status_code}. The owner ruled avatar mode fully open "
+        f"2026-08-17 (decision 76)."
+    )
+    assert "not allowed in avatar mode" not in allowed.text, (
+        "the guard's own refusal reached the client while the switch is off"
     )
 
 

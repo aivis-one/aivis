@@ -133,8 +133,19 @@ async def test_login_wrong_password_writes_audit_record(
     email = f"auditfail_{uuid.uuid4().hex[:12]}@example.com"
     await register_user(client, email=email)
 
+    # `User.email` is a plain Python PROPERTY reading credentials["email"]["email"]
+    # (users/models.py:198) -- it is NOT a column. Used in a `where`, it evaluates
+    # on the CLASS to None, the predicate becomes false, and the query returns
+    # nothing with no error at all. The first draft of this test did exactly that
+    # and failed on `.scalar_one()` as if the USER were missing.
+    # The JSONB path below is the idiom the rest of this suite already uses
+    # (helpers.py:238, and eleven lines further down in this same file).
     user = (
-        await db_session.execute(select(User).where(User.email == email))
+        await db_session.execute(
+            select(User).where(
+                User.credentials["email"]["email"].as_string() == email
+            )
+        )
     ).scalar_one()
 
     # CONTROL: no such row exists yet for this brand-new user. Without it a
