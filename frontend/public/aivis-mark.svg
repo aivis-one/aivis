@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg role="img" aria-label="AIVIS mark" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="259 358 75 86">
+<defs>
+    <style>
+      .st0 {
+        fill: #a2e45e;
+      }
+
+      .st1 {
+        fill: url(#aivis-grad-197);
+      }
+
+      .st2 {
+        fill: url(#aivis-grad-173);
+      }
+
+      .st3 {
+        fill: #ee8c4b;
+      }
+
+      .st4 {
+        fill: url(#aivis-grad-33);
+      }
+
+      .st5 {
+        fill: url(#aivis-grad-58);
+      }
+
+      .st6 {
+        fill: none;
+      }
+
+      .st7 {
+        fill: url(#aivis-grad-280);
+      }
+
+      .st8 {
+        fill: url(#aivis-grad-292);
+      }
+
+      .st9 {
+        fill: #6ec8ea;
+      }
+
+      .st10 {
+        fill: url(#aivis-grad-268);
+      }
+
+      .st11 {
+        fill: url(#aivis-grad-304);
+      }
+
+      .st12 {
+        fill: url(#aivis-grad-185);
+      }
+
+      .st13 {
+        fill: url(#aivis-grad-113);
+      }
+
+      .st14 {
+        fill: url(#aivis-grad-209);
+      }
+
+      .st15 {
+        fill: url(#aivis-grad-86);
+      }
+    </style>
+    <linearGradient id="aivis-grad-304" x1="315.5" y1="428.31" x2="296.93" y2="434.43" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f2913a"/>
+      <stop offset="1" stop-color="#9a4410"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-113" x1="262.57" y1="401.27" x2="269.38" y2="384.38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34d17e"/>
+      <stop offset="1" stop-color="#0e6e45"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-173" x1="314.41" y1="372.6" x2="326.06" y2="385.63" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#37a6e6"/>
+      <stop offset="1" stop-color="#0b4f86"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-268" x1="304.88" y1="437.7" x2="282.07" y2="408.66" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f2913a"/>
+      <stop offset="1" stop-color="#9a4410"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-280" x1="280.05" y1="392.86" x2="270.57" y2="418.63" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f2913a"/>
+      <stop offset="1" stop-color="#9a4410"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-292" x1="270.99" y1="420.9" x2="289.66" y2="444.31" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f2913a"/>
+      <stop offset="1" stop-color="#9a4410"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-86" x1="264.16" y1="376.37" x2="315.86" y2="386.89" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34d17e"/>
+      <stop offset="1" stop-color="#0e6e45"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-33" x1="293.01" y1="364.8" x2="309.9" y2="393.54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34d17e"/>
+      <stop offset="1" stop-color="#0e6e45"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-58" x1="261.92" y1="373.08" x2="293.92" y2="370.12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0e6e45"/>
+      <stop offset="1" stop-color="#34d17e"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-185" x1="338.15" y1="383.34" x2="327.88" y2="413.37" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#37a6e6"/>
+      <stop offset="1" stop-color="#0b4f86"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-197" x1="321.79" y1="381.03" x2="311.72" y2="412.04" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#37a6e6"/>
+      <stop offset="1" stop-color="#0b4f86"/>
+    </linearGradient>
+    <linearGradient id="aivis-grad-209" x1="299.28" y1="423.08" x2="327.33" y2="416.36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b4f86"/>
+      <stop offset="1" stop-color="#37a6e6"/>
+    </linearGradient>
+  </defs>
+  <polygon class="st11" points="297.51 442.3 315.05 432.17 292.5 427.83 297.51 442.3"/>
+  <polygon class="st13" points="262.43 381.54 262.43 401.79 277.46 384.43 262.43 381.54"/>
+  <polygon class="st2" points="332.59 381.54 315.05 371.41 322.57 393.11 332.59 381.54"/>
+  <polygon class="st6" points="262.43 422.05 262.43 422.05 262.43 422.05 262.43 422.05"/>
+  <polygon class="st6" points="332.59 422.05 332.59 422.05 332.59 422.05 332.59 422.05"/>
+  <polygon class="st10" points="277.83 417.6 297.51 442.3 279.97 391.67 277.83 417.6"/>
+  <polygon class="st7" points="279.97 391.67 262.43 422.05 277.83 417.6 279.97 391.67"/>
+  <polygon class="st8" points="262.43 422.05 262.43 422.05 262.43 422.05 297.51 442.3 277.83 417.6 262.43 422.05"/>
+  <polygon class="st15" points="293.66 376.85 262.43 381.54 315.05 391.67 293.66 376.85"/>
+  <polygon class="st4" points="314.99 391.67 297.45 361.28 293.6 376.85 314.99 391.67"/>
+  <polygon class="st5" points="297.51 361.28 262.43 381.54 293.66 376.85 297.51 361.28"/>
+  <polygon class="st12" points="332.59 422.05 332.59 381.54 321.03 410.93 332.59 422.05 332.59 422.05 332.59 422.05"/>
+  <polygon class="st1" points="332.59 381.54 297.51 422.05 321.03 410.93 332.59 381.54"/>
+  <polygon class="st14" points="297.51 422.05 332.59 422.05 321.03 410.93 297.51 422.05"/>
+  <polygon class="st9" points="332.59 381.54 321.03 410.93 297.51 422.05 320.5 410.55 332.59 381.54"/>
+  <polygon class="st3" points="297.51 442.3 277.83 417.6 279.97 391.67 278.41 417.47 297.51 442.3"/>
+  <polygon class="st0" points="262.43 381.54 293.66 376.85 315.05 391.67 293.49 377.63 262.43 381.54"/>
+</svg>

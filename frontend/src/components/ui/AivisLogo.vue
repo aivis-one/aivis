@@ -1,5 +1,12 @@
 <script setup lang="ts">
-// AIVIS.ONE logo — SVG icon + text, configurable height.
+// AIVIS.ONE logo — the real brand mark + text, configurable height.
+//
+// The mark is /aivis-mark.svg (public/), not an inline SVG: it carries 12
+// gradients whose ids would leak into the host document and can collide with
+// another inline SVG's ids. As a file its ids are scoped to itself.
+//
+// It replaced a rounded rect with the letter "C" — the OLD brand's initial,
+// still on screen four weeks after the cbshome -> aivis rename (batch 6a).
 
 withDefaults(
   defineProps<{
@@ -15,25 +22,12 @@ withDefaults(
 
 <template>
   <span class="aivis-logo">
-    <svg
+    <img
       class="aivis-logo-icon"
-      viewBox="0 0 100 100"
-      xmlns="http://www.w3.org/2000/svg"
+      src="/aivis-mark.svg"
+      alt="AIVIS"
       :style="{ width: height + 'px', height: height + 'px' }"
-    >
-      <rect width="100" height="100" rx="16" fill="var(--accent)" />
-      <text
-        x="50"
-        y="72"
-        font-size="60"
-        font-weight="800"
-        font-family="Montserrat, Arial, sans-serif"
-        fill="white"
-        text-anchor="middle"
-      >
-        C
-      </text>
-    </svg>
+    />
     <span v-if="showText" class="aivis-logo-text">AIVIS.ONE</span>
   </span>
 </template>
