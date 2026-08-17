@@ -124,6 +124,7 @@ from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 
 import structlog
+from app.core.background import publish_background_tasks
 from app.core.config import APP_VERSION, settings
 from app.core.database import dispose_engine, get_engine
 from app.core.exceptions import AivisError, RateLimitError
@@ -201,7 +202,7 @@ from app.modules.transactions.router import router as transactions_router
 from app.modules.users.router import router as users_router
 from app.modules.withdrawals.router import router as withdrawals_router
 from app.modules.withdrawals.staff_router import router as staff_withdrawals_router
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -417,6 +418,16 @@ app = FastAPI(
     description="Investment platform",
     version=APP_VERSION,
     lifespan=lifespan,
+    # STAGE-III finding 20: a background task queued before a `raise` was
+    # silently discarded, because FastAPI attaches them to the response built
+    # from the endpoint's RETURN and an exception handler builds its own.
+    # This publishes the instance on request.state so aivis_error_handler can
+    # carry it. App-wide on purpose: per-route opt-in would leave the trap
+    # armed for whoever adds the next task-before-raise, and that is a
+    # symptomless hole -- it cost this project its whole failed-login audit
+    # trail, 0 rows on the live database. Endpoints are untouched; they keep
+    # their plain `background_tasks: BackgroundTasks` parameter.
+    dependencies=[Depends(publish_background_tasks)],
 )
 
 
@@ -523,10 +534,20 @@ async def aivis_error_handler(request: Request, exc: AivisError) -> JSONResponse
     ):
         headers = {"Retry-After": str(exc.retry_after_seconds)}
 
+    # STAGE-III finding 20: background tasks queued before a raise were lost
+    # here. FastAPI attaches them to the response built from the endpoint's
+    # RETURN, and an endpoint that raises never builds one -- this handler
+    # did, with no `background` at all. That silently discarded the entire
+    # failed-login audit trail (0 rows on the live database, whole lifetime).
+    # Routes opt in via Depends(surviving_background_tasks), which publishes
+    # the instance on request.state; getattr's default keeps every other
+    # route behaving exactly as before. Only one response is produced per
+    # request, so a task can never run twice.
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.code, "message": exc.message},
         headers=headers,
+        background=getattr(request.state, "background_tasks", None),
     )
 
 

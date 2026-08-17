@@ -21,6 +21,16 @@
 #   only on the known-email branches, dwarfing the argon2-hash-duration
 #   equalizer the unknown-email branch uses -- moving it off the request
 #   path removes that gap instead of matching it on the other side.
+#   ⚠ AND FOR THE WHOLE LIFE OF THAT DESIGN IT NEVER RAN (STAGE-III finding
+#   20, fixed 2026-08-17). All three add_task calls below are followed
+#   immediately by a `raise`, and FastAPI attaches BackgroundTasks to the
+#   response built from the endpoint's RETURN -- so every one of them was
+#   queued onto a response that was thrown away. Measured on the LIVE
+#   database: `select count(*) from audit_log where event =
+#   'user.login_failed'` -> 0, over the entire deployment. Repaired in
+#   app/core/background.py, which is where the mechanism is explained;
+#   DO NOT "simplify" these three calls into awaits -- that trades this
+#   hole for the 4.1c timing oracle described above.
 #
 # REFERRAL (Sprint 7.2, extended Task 1 Block C):
 #   referral_code is resolved FIRST at registration. Valid code ->
