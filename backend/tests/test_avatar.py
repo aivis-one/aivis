@@ -631,6 +631,76 @@ async def test_avatar_may_rewrite_payout_details(
     assert read_back.json()["payout_details"] == new_destination
 
 
+# ---------------------------------------------------------------------------
+# TASK-22 / finding 16 -- the ENDED-while-Redis-alive state (2026-08-17)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_avatar_token_refused_when_row_ended_but_redis_key_lives(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An AvatarSession row set to ENDED must revoke the token immediately,
+    even though its Redis key is untouched and unexpired.
+
+    THIS IS THE STATE TASK-6 4.3 WAS BUILT FOR AND NOTHING COVERED IT.
+    Measured 2026-08-16: `_check_avatar_still_active` had ZERO hits across
+    the whole test suite, control fired -- the very mechanism decision 64
+    added, with no test on it. Before 4.3, Redis was sole authority, so
+    ending a session by any route other than the /end endpoint's own
+    Redis-delete path did not actually revoke anything.
+
+    The test deliberately does NOT call /staff/avatar/end: that path deletes
+    the Redis key, which would make the token fail for the OLD reason and
+    prove nothing about the DB check. It ends the row directly, leaving the
+    key alive -- which is exactly the shape an admin-side revocation, a
+    background expiry, or a support action produces.
+
+    dependencies.py:125 is the line under test; UnauthorizedError -> 401.
+    """
+    from sqlalchemy import select
+
+    from app.modules.staff.models import AvatarSession, AvatarSessionStatus
+
+    admin_token = await _admin_token(client, db_session)
+    investor_id, _ = await _investor_id_and_token(client)
+
+    start = await client.post(
+        "/api/v1/staff/avatar/start",
+        json={"target_user_id": investor_id},
+        headers=auth_headers(admin_token),
+    )
+    assert start.status_code == 200
+    avatar_token = start.json()["session_token"]
+    avatar_session_id = start.json()["avatar_session_id"]
+
+    # CONTROL, and it is the half that makes the assertion below mean
+    # anything: the token works right now. Without it, a token that was
+    # never valid would produce the same 401 and the test would pass for
+    # the wrong reason.
+    alive = await client.get("/api/v1/users/me", headers=auth_headers(avatar_token))
+    assert alive.status_code == 200, (
+        "the avatar token must work BEFORE the row is ended -- otherwise "
+        "the 401 below proves nothing"
+    )
+    assert alive.json()["id"] == investor_id
+
+    # End the ROW only. Redis is left exactly as it was.
+    row = (
+        await db_session.execute(
+            select(AvatarSession).where(AvatarSession.id == uuid.UUID(avatar_session_id))
+        )
+    ).scalar_one()
+    row.status = AvatarSessionStatus.ENDED
+    await db_session.commit()
+
+    dead = await client.get("/api/v1/users/me", headers=auth_headers(avatar_token))
+    assert dead.status_code == 401, (
+        f"an ENDED AvatarSession row must revoke the token on the next "
+        f"request regardless of Redis; got {dead.status_code}"
+    )
+
+
 def test_every_restricted_operation_endpoint_carries_guard() -> None:
     """R50: the avatar guard is self-checking (reviewer R50-3.1).
 

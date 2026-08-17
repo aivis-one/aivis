@@ -107,6 +107,74 @@ async def test_login_wrong_password(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_login_wrong_password_writes_audit_record(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A failed login must leave a `user.login_failed` row in audit_log.
+
+    TASK-22: this is shipped behaviour that NO test covered. The 401 above
+    proves the login was refused; it says nothing about whether the attempt
+    was RECORDED -- and the recording is the entire security value, because
+    an unrecorded failed login is invisible to any later investigation.
+
+    The write is unusual and that is why it deserves its own test rather
+    than an extra assertion on the 401: `_record_login_failure`
+    (auth/service.py:222-251) opens its OWN session and commits it, because
+    the caller's session is rolled back on the exception that produces the
+    401. It also swallows its own errors by design -- "errors are logged but
+    do not block auth flow" -- so if that write ever breaks, NOTHING fails
+    and NOTHING 500s. The row simply stops appearing.
+
+    Assertion is on event + target_id, not on the row count: other tests in
+    this file also fail logins, and a count would couple this test to them.
+    """
+    from app.core.audit import AuditLog
+
+    email = f"auditfail_{uuid.uuid4().hex[:12]}@example.com"
+    await register_user(client, email=email)
+
+    user = (
+        await db_session.execute(select(User).where(User.email == email))
+    ).scalar_one()
+
+    # CONTROL: no such row exists yet for this brand-new user. Without it a
+    # row left by any earlier test could satisfy the assertion below.
+    before = (
+        await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.event == "user.login_failed",
+                AuditLog.target_id == user.id,
+            )
+        )
+    ).scalars().first()
+    assert before is None, "fresh user must have no prior login_failed row"
+
+    resp = await client.post(
+        "/api/v1/auth/email/login",
+        json={"email": email, "password": "definitely-not-the-password"},
+    )
+    assert resp.status_code == 401
+
+    # The helper committed on its own session, so a fresh read is required --
+    # this session never saw that transaction.
+    db_session.expire_all()
+    after = (
+        await db_session.execute(
+            select(AuditLog).where(
+                AuditLog.event == "user.login_failed",
+                AuditLog.target_id == user.id,
+            )
+        )
+    ).scalars().first()
+    assert after is not None, (
+        "a failed login must write user.login_failed to audit_log -- "
+        "_record_login_failure swallows its own errors, so a silent "
+        "regression here produces no other symptom"
+    )
+    assert after.data.get("reason")
+
+
+@pytest.mark.asyncio
 async def test_login_nonexistent_email(client: AsyncClient) -> None:
     """Login with email that doesn't exist -> 401."""
     resp = await client.post(
