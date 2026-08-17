@@ -117,17 +117,23 @@ async def test_login_wrong_password_writes_audit_record(
     was RECORDED -- and the recording is the entire security value, because
     an unrecorded failed login is invisible to any later investigation.
 
-    The write is unusual and that is why it deserves its own test rather
-    than an extra assertion on the 401: `_record_login_failure`
-    (auth/service.py:222-251) opens its OWN session and commits it, because
-    the caller's session is rolled back on the exception that produces the
-    401. It also swallows its own errors by design -- "errors are logged but
-    do not block auth flow" -- so if that write ever breaks, NOTHING fails
-    and NOTHING 500s. The row simply stops appearing.
+    THE WRITE IS FIRE-AND-FORGET, AND THAT IS THE WHOLE REASON THIS TEST
+    EXISTS. `_audit_login_failure` (auth/service.py:220) is dispatched via
+    `background_tasks.add_task(...)` at service.py:411 -- it runs AFTER the
+    response is returned, on its OWN session, with its own commit, and it
+    catches and logs every exception rather than raising. So if that write
+    ever breaks: the login still 401s, nothing fails, nothing 500s, and the
+    row simply stops appearing. There is no other symptom to notice.
+
+    Because it is a background task, the assertion has to WAIT for it. The
+    poll below is not a sleep-until-green: it is the correct way to observe
+    a write the framework deliberately performs after the response, and it
+    is bounded so a genuine regression still fails rather than hangs.
 
     Assertion is on event + target_id, not on the row count: other tests in
     this file also fail logins, and a count would couple this test to them.
     """
+    import asyncio
     from app.core.audit import AuditLog
 
     email = f"auditfail_{uuid.uuid4().hex[:12]}@example.com"
@@ -174,26 +180,32 @@ async def test_login_wrong_password_writes_audit_record(
     )
     assert resp.status_code == 401
 
-    # The helper committed on its OWN session. Rolling back here ends the
-    # read transaction the "before" query opened, so the next statement is
-    # guaranteed to see that commit under any isolation level. The fixture
-    # is a plain session on the shared engine -- it wraps nothing, so this
-    # discards no test state.
-    await db_session.rollback()
-    after = (
-        await db_session.execute(
-            select(AuditLog).where(
-                AuditLog.event == "user.login_failed",
-                AuditLog.target_id == user_id,
+    # The background task runs after the response and commits on its OWN
+    # session, so poll for it. `rollback()` each round ends the previous read
+    # transaction -- without it a snapshot taken before the commit would be
+    # re-used and the row would stay invisible however long we waited.
+    # Bounded at ~2s: a real regression fails the assertion, it does not hang.
+    after = None
+    for _ in range(40):
+        await db_session.rollback()
+        after = (
+            await db_session.execute(
+                select(AuditLog).where(
+                    AuditLog.event == "user.login_failed",
+                    AuditLog.target_id == user_id,
+                )
             )
-        )
-    ).scalars().first()
+        ).scalars().first()
+        if after is not None:
+            break
+        await asyncio.sleep(0.05)
+
     assert after is not None, (
         "a failed login must write user.login_failed to audit_log -- "
-        "_record_login_failure swallows its own errors, so a silent "
-        "regression here produces no other symptom"
+        "_audit_login_failure is a background task that swallows its own "
+        "errors, so a silent regression here produces no other symptom"
     )
-    assert after.data.get("reason")
+    assert after.data.get("reason") == "wrong_password"
 
 
 @pytest.mark.asyncio
