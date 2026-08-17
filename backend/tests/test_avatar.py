@@ -21,6 +21,17 @@
 #   16: R50 -- route-walk: every restricted operation with a live
 #       endpoint carries its forbid_avatar_* dependency (the guard
 #       is self-checking: removing one from a route fails the suite)
+#   17: 2026-08-17 -- with the switch OFF (the shipped default), a
+#       restricted operation is NOT blocked in avatar mode
+#
+# THE SWITCH, owner-ruled 2026-08-17 -- read this before editing tests 10-15.
+#   settings.avatar_restrictions_enabled defaults to False, so an admin in
+#   avatar mode may do everything. Tests 10-15 exist to prove the guard STILL
+#   WORKS when the switch is on, so each one turns it on explicitly via the
+#   avatar_restrictions_on fixture. They do NOT rely on a default -- and the
+#   default they used to rely on is now the opposite of what they assert.
+#   Test 17 is the other half: it pins the SHIPPED behaviour, and without it
+#   the suite would prove only the state nobody currently runs in.
 #
 # Email prefix: "s32_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -30,11 +41,23 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from tests.helpers import (
     auth_headers,
     create_admin_user,
     register_user,
 )
+
+
+@pytest.fixture
+def avatar_restrictions_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Turn the avatar restriction switch ON for the duration of one test.
+
+    The shipped default is OFF (owner-ruled 2026-08-17). A guard test that
+    asserts 403 must therefore set the switch itself; monkeypatch restores
+    the real value afterwards, so no test leaks state into the next.
+    """
+    monkeypatch.setattr(settings, "avatar_restrictions_enabled", True)
 
 
 
@@ -337,7 +360,9 @@ async def test_restart_avatar_closes_previous(
 
 @pytest.mark.asyncio
 async def test_avatar_guard_blocks_in_avatar_mode(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
 ) -> None:
     """forbid_avatar dependency blocks restricted operations (R49: was
     the require_not_avatar decorator; this test pins the migration).
@@ -414,7 +439,9 @@ async def _avatar_token_for_fresh_investor(
 
 @pytest.mark.asyncio
 async def test_avatar_blocked_create_withdrawal(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
 ) -> None:
     """R49: POST /withdrawals in avatar mode -> 403 (forbid_avatar)."""
     avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
@@ -430,7 +457,9 @@ async def test_avatar_blocked_create_withdrawal(
 
 @pytest.mark.asyncio
 async def test_avatar_blocked_create_payment(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
 ) -> None:
     """R49: POST /payments/crypto-address in avatar mode -> 403."""
     avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
@@ -446,7 +475,9 @@ async def test_avatar_blocked_create_payment(
 
 @pytest.mark.asyncio
 async def test_avatar_blocked_create_installment(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
 ) -> None:
     """R49: POST /products/{id}/installment in avatar mode -> 403.
 
@@ -468,7 +499,9 @@ async def test_avatar_blocked_create_installment(
 
 @pytest.mark.asyncio
 async def test_avatar_blocked_modify_kyc(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
 ) -> None:
     """R49: POST /kyc/submit in avatar mode -> 403.
 
@@ -487,7 +520,9 @@ async def test_avatar_blocked_modify_kyc(
 
 @pytest.mark.asyncio
 async def test_avatar_blocked_create_purchase(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
 ) -> None:
     """R50: POST /products/{id}/purchase in avatar mode -> 403.
 
@@ -508,6 +543,92 @@ async def test_avatar_blocked_create_purchase(
     )
     assert resp.status_code == 403
     assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_allowed_when_restrictions_switched_off(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """2026-08-17, owner-ruled: with the switch OFF -- the SHIPPED default --
+    a restricted operation is NOT blocked in avatar mode.
+
+    Deliberately the SAME route as test_avatar_blocked_create_purchase, and
+    the pair is the whole point:
+      switch ON  -> 403, the guard fires before the handler;
+      switch OFF -> 404, the request reaches the handler and the random
+                    product_id is simply not found.
+    A 404 here therefore proves the guard did NOT fire -- it is not a weaker
+    assertion than a 200, it is a sharper one, because the guard's own
+    docstring is that it short-circuits before the handler is ever reached.
+
+    This test takes NO avatar_restrictions_on fixture on purpose. It is the
+    one test in this file that runs against the real shipped default, and if
+    someone flips that default back the failure lands here, loudly, instead
+    of the suite silently proving a configuration nobody runs.
+    """
+    from uuid import uuid4
+
+    assert settings.avatar_restrictions_enabled is False, (
+        "the shipped default changed -- this test pins it, so update the "
+        "ruling and this assertion together, never one of them alone"
+    )
+
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        f"/api/v1/products/{uuid4()}/purchase",
+        json={},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 404, (
+        f"expected the handler to be reached (404 for an unknown product); "
+        f"got {resp.status_code} -- a 403 here means the avatar guard fired "
+        f"while the restriction switch is off"
+    )
+
+
+@pytest.mark.asyncio
+async def test_avatar_may_rewrite_payout_details(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """STAGE-III finding 17, owner-ruled 2026-08-17: an avatar CAN rewrite
+    the target's payout destination, and that is now ACCEPTED behaviour.
+
+    This test does not defend the behaviour -- it PINS it. The finding is
+    real and was traced end to end: the value written here is snapshotted
+    into the withdrawal at creation and is what a payment_review operator
+    reads and pays to by hand. The owner ruled it acceptable for now because
+    he is testing the whole product through the admin account, and named his
+    own trigger for revisiting it: real users and real money.
+
+    So the point of the test is that the day the ruling is reversed, this
+    test fails and says so, instead of the behaviour changing under a plan
+    that still assumes it. PUT /me/payout-details carries no forbid_avatar
+    guard at all -- it is not one of the six -- so this passes whether the
+    switch is on or off. That is deliberate: it pins the ROUTE's exposure,
+    which the switch does not currently cover.
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    new_destination = {"method": "crypto", "address": "TAvatarRewroteThis"}
+    resp = await client.put(
+        "/api/v1/users/me/payout-details",
+        json={"payout_details": new_destination},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 200, (
+        f"expected the avatar to be able to rewrite payout details "
+        f"(owner-ruled 2026-08-17); got {resp.status_code}"
+    )
+    assert resp.json()["payout_details"] == new_destination
+
+    # And it really landed on the TARGET user, not somewhere else.
+    read_back = await client.get(
+        "/api/v1/users/me/payout-details",
+        headers=auth_headers(avatar_token),
+    )
+    assert read_back.status_code == 200
+    assert read_back.json()["payout_details"] == new_destination
 
 
 def test_every_restricted_operation_endpoint_carries_guard() -> None:

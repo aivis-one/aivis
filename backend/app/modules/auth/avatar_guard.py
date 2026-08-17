@@ -3,7 +3,18 @@
 # =============================================================================
 #
 # Blocks certain operations when Staff is in avatar mode (logged in as
-# another user via Sprint 3.2 avataring).
+# another user via Sprint 3.2 avataring) -- BUT ONLY WHILE THE SWITCH IS ON,
+# and as of 2026-08-17 it is OFF by default.
+#
+# THE SWITCH (settings.avatar_restrictions_enabled, owner-ruled 2026-08-17):
+#   False (default) -- every operation below is ALLOWED in avatar mode. The
+#     product is being tested single-handedly through the admin account, and
+#     a guard that blocks the tester tests nothing.
+#   True -- the behaviour described in the rest of this header applies.
+#   The route wiring is deliberately NOT removed. Turning the switch on
+#   restores all six guards at once, and the planned per-operation toggle
+#   extends this dependency rather than rebuilding the plumbing. The division
+#   there is by CAPABILITY, not by role -- his words.
 #
 # HOW IT WORKS:
 #   _load_user_from_request() (auth/dependencies.py) binds
@@ -51,6 +62,7 @@ from typing import Callable
 import structlog
 from fastapi import Depends
 
+from app.core.config import settings
 from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import get_current_user_write
 from app.modules.users.models import User
@@ -111,6 +123,11 @@ def forbid_avatar(operation: str) -> Callable:
     async def _dependency(
         user: User = Depends(get_current_user_write),
     ) -> None:
+        # Owner-ruled 2026-08-17: the whole restriction set is OFF by
+        # default. Read at request time, not at import time, so the switch
+        # can be flipped without a redeploy and so tests can drive it.
+        if not settings.avatar_restrictions_enabled:
+            return
         if _get_avatar_session_id() is not None:
             raise ForbiddenError(
                 f"Operation '{operation}' is not allowed in avatar mode"

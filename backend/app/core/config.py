@@ -72,6 +72,18 @@ class Settings(BaseSettings):
     # session_ttl_days -- TASK-6 4.3, owner-ruled: a working shift, not a
     # month. Independent knob so changing it never touches ordinary logins.
     avatar_session_ttl_hours: int = 8
+    # THE AVATAR RESTRICTION SWITCH -- owner-ruled 2026-08-17.
+    # Default False: an admin in avatar mode may do EVERYTHING, because the
+    # product is being tested single-handedly through the admin account and
+    # a restriction that blocks the tester tests nothing. Set to True to put
+    # every RESTRICTED_OPERATIONS guard back on at once.
+    # This is step ONE of a two-step ruling: the second step replaces this
+    # single flag with a per-operation toggle, and the division there is by
+    # CAPABILITY, never by role (his words, 2026-08-17). The route wiring is
+    # deliberately left in place so that step is an extension, not a rebuild.
+    # The trigger he named for turning it back on is his own: real users and
+    # real money.
+    avatar_restrictions_enabled: bool = False
 
     # -- Telegram --
     telegram_bot_token: str = "TEST"
