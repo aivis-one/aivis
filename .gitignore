@@ -40,3 +40,10 @@ dist/
 # -- OS --
 .DS_Store
 Thumbs.db
+
+# -- Design system SOURCE (owner-supplied, working copy, never published) --
+# Upstream lives outside this repo, on the owner's drive. This folder is a COPY
+# kept beside the frontend so the token set and the marks can be worked against.
+# It is the SOURCE we translate FROM; what the product ships is the tracked
+# frontend under frontend/src. Owner-instructed 2026-08-16.
+_design-source/
