@@ -155,9 +155,12 @@ async def test_login_wrong_password_writes_audit_record(
     )
     assert resp.status_code == 401
 
-    # The helper committed on its own session, so a fresh read is required --
-    # this session never saw that transaction.
-    db_session.expire_all()
+    # The helper committed on its OWN session. Rolling back here ends the
+    # read transaction the "before" query opened, so the next statement is
+    # guaranteed to see that commit under any isolation level. The fixture
+    # is a plain session on the shared engine -- it wraps nothing, so this
+    # discards no test state.
+    await db_session.rollback()
     after = (
         await db_session.execute(
             select(AuditLog).where(
