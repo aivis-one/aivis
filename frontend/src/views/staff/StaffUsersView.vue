@@ -668,7 +668,7 @@ onMounted(loadUsers)
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
   font-family: inherit;
 }
-.filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+.filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 
 /* Subtle visual distinction for KYC chips so the user can tell which
    row is which at a glance without reading. The kyc chips share the

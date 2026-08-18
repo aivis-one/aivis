@@ -199,7 +199,7 @@ onMounted(loadPayments)
   background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
 }
-.filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+.filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 
 .staff-pay__center {
   display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: 16px;

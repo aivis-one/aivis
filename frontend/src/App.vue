@@ -156,7 +156,10 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: white;
+  /* An inverse chip ON the accent banner. Was `white`, which is identical in
+     light but puts light-amber text on white in dark. --on-accent tracks the
+     banner, so the pair inverts together. */
+  background: var(--on-accent);
   color: var(--accent);
   border: none;
   border-radius: var(--radius-sm, 6px);
@@ -201,8 +204,13 @@ onMounted(() => {
 .auth-error-retry {
   padding: 12px 24px;
   border-radius: var(--radius-md, 8px);
-  background: var(--accent);
-  color: var(--on-accent);
+  /* --primary, not --accent: this is the screen's PRIMARY action. The owner
+     found eight of these and they were fixed; the sweep found this one
+     outside that pass's scope. `background: var(--accent)` resolves
+     perfectly, so no token audit can ever see it -- only reading the
+     selector name against the token name does. */
+  background: var(--primary);
+  color: var(--on-primary);
   font-weight: 600;
   font-size: 15px;
   border: none;

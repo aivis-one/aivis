@@ -187,12 +187,12 @@ onMounted(loadQueue)
 .app-btn {
   width: 32px; height: 32px; border-radius: var(--radius-sm); border: none;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
-  transition: opacity 0.2s; color: white;
+  transition: opacity 0.2s;
 }
 .app-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.app-btn--approve { background: var(--success); }
+.app-btn--approve { background: var(--success); color: var(--on-success); }
 .app-btn--approve:hover:not(:disabled) { opacity: 0.9; }
-.app-btn--reject { background: var(--danger); }
+.app-btn--reject { background: var(--danger); color: var(--on-danger); }
 .app-btn--reject:hover:not(:disabled) { opacity: 0.9; }
 
 .reject__title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }

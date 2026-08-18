@@ -27,7 +27,9 @@ const { toastState } = useToast()
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%) translateY(100px);
-  color: white;
+  /* info/success/danger backgrounds all INVERT between themes; warning
+     overrides this below because amber needs dark text in both. */
+  color: var(--on-primary);
   padding: 12px 24px;
   border-radius: var(--radius-md);
   font-size: 14px;
@@ -47,8 +49,8 @@ const { toastState } = useToast()
   opacity: 1;
 }
 
-.c-toast--info { background: var(--primary); }
-.c-toast--success { background: var(--success); }
-.c-toast--error { background: var(--danger); }
+.c-toast--info { background: var(--primary); color: var(--on-primary); }
+.c-toast--success { background: var(--success); color: var(--on-success); }
+.c-toast--error { background: var(--danger); color: var(--on-danger); }
 .c-toast--warning { background: var(--warning); color: var(--text-primary); }
 </style>

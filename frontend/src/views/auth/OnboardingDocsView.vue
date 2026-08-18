@@ -353,7 +353,7 @@ async function handleSignAll(): Promise<void> {
   border: 2px solid var(--border-default); border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; margin-top: 2px;
-  font-size: 13px; color: white;
+  font-size: 13px; color: var(--on-primary);
 }
 .doc-checkbox.checked {
   background: var(--primary); border-color: var(--primary);
@@ -397,8 +397,11 @@ async function handleSignAll(): Promise<void> {
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-spinner {
-  width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white; border-radius: 50%;
+  /* currentColor, not white: the spinner sits inside a primary button whose
+     colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
+     A white ring on the dark theme's light-azure button is near-invisible. */
+  width: 18px; height: 18px; border: 2px solid currentColor; opacity: 0.35;
+  border-top-color: currentColor; border-radius: 50%;
   animation: spin 0.6s linear infinite;
   display: inline-block;
 }

@@ -55,8 +55,13 @@ function goHome(): void {
 .not-found__btn {
   padding: 12px 32px;
   border-radius: var(--radius-md, 8px);
-  background: var(--accent);
-  color: var(--on-accent);
+  /* --primary, not --accent: this is the screen's PRIMARY action. The owner
+     found eight of these and they were fixed; the sweep found this one
+     outside that pass's scope. `background: var(--accent)` resolves
+     perfectly, so no token audit can ever see it -- only reading the
+     selector name against the token name does. */
+  background: var(--primary);
+  color: var(--on-primary);
   font-weight: 600;
   font-size: 15px;
   border: none;

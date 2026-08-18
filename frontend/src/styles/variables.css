@@ -100,6 +100,14 @@
   --on-primary: #FFFFFF;
   --on-danger: #FFFFFF;
   --on-accent: #FFFFFF;
+  /* SYNC-ADDITION (2026-08-18): --on-success is NOT in the design-system source.
+     Its three siblings are, and --success inverts exactly as they do
+     (emerald-700 -> emerald-300), so `color: white` on a success surface is
+     right in light and ~1.9:1 in dark. Built on the sibling pattern:
+     --on-danger's dark value IS --red-900, so this is --emerald-900.
+     A regeneration from source will DROP this line -- same hazard as the
+     prefers-color-scheme block below. */
+  --on-success: #FFFFFF;
   --shadow-1: 0 1px 2px rgba(11,79,134,.06),0 1px 3px rgba(17,22,27,.05);
   --shadow-2: 0 4px 8px rgba(11,79,134,.06),0 8px 24px rgba(17,22,27,.07);
   --shadow-3: 0 12px 24px rgba(11,79,134,.08),0 24px 56px rgba(17,22,27,.12);
@@ -170,6 +178,7 @@
   --on-primary: #04243E;
   --on-danger: #360B09;
   --on-accent: #3A1905;
+  --on-success: #06321F; /* SYNC-ADDITION, see :root */
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 6px 18px rgba(0,0,0,.45);
   --shadow-3: 0 16px 40px rgba(0,0,0,.55);
@@ -205,6 +214,7 @@
     --on-primary: #04243E;
     --on-danger: #360B09;
     --on-accent: #3A1905;
+    --on-success: #06321F; /* SYNC-ADDITION, see :root */
     --shadow-1: 0 1px 2px rgba(0,0,0,.4);
     --shadow-2: 0 6px 18px rgba(0,0,0,.45);
     --shadow-3: 0 16px 40px rgba(0,0,0,.55);
