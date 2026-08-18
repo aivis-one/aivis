@@ -381,9 +381,9 @@ function onRoadmapPostClick(_postId: string): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-4);
   min-height: 320px;
-  padding: var(--space-md);
+  padding: var(--space-4);
 }
 
 /* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
@@ -392,15 +392,15 @@ function onRoadmapPostClick(_postId: string): void {
    started. */
 .co__back-row {
   display: flex;
-  margin: var(--space-md, 16px) var(--space-md, 16px) 0;
+  margin: var(--space-4, 16px) var(--space-4, 16px) 0;
 }
 
 .co__main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
-  padding: var(--space-md);
+  gap: var(--space-7);
+  padding: var(--space-4);
   /* Bottom padding must clear two stacked layers above the content:
      the floating .co__cta (--cta-bar-height, pinned via min-height
      down in the .co__cta block) and the CTabBar (--tab-bar-height
@@ -409,7 +409,7 @@ function onRoadmapPostClick(_postId: string): void {
      --space-xl is breathing room so the last item doesn't visually
      kiss the CTA shadow. */
   padding-bottom: calc(
-    var(--space-xl)
+    var(--space-7)
     + var(--cta-bar-height)
     + var(--tab-bar-height)
     + env(safe-area-inset-bottom, 0px)
@@ -421,7 +421,7 @@ function onRoadmapPostClick(_postId: string): void {
 .co__hero {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .co__hero-cover {
@@ -441,31 +441,31 @@ function onRoadmapPostClick(_postId: string): void {
   background-image: linear-gradient(
     135deg,
     var(--bg-subtle) 0%,
-    var(--bg-elevated) 100%
+    var(--bg-surface) 100%
   );
 }
 
 .co__hero-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 .co__hero-status {
   align-self: flex-start;
-  padding: 2px var(--space-sm);
+  padding: 2px var(--space-2);
   font-size: 11px;
   font-weight: 500;
   color: var(--success);
-  background: var(--success-dim);
-  border-radius: var(--radius-full);
+  background: var(--success-subtle);
+  border-radius: var(--radius-pill);
 }
 
 .co__hero-name {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   line-height: 1.25;
 }
 
@@ -483,7 +483,7 @@ function onRoadmapPostClick(_postId: string): void {
 .co__stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 /* On tablet+ widen to 4 columns for a single-row layout. */
@@ -498,14 +498,14 @@ function onRoadmapPostClick(_postId: string): void {
 .co__section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .co__section-title {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 /* ---------- Floating CTA ----------
@@ -525,12 +525,12 @@ function onRoadmapPostClick(_postId: string): void {
    otherwise sneak between them. */
 .co__cta {
   position: fixed;
-  left: var(--space-md);
-  right: var(--space-md);
+  left: var(--space-4);
+  right: var(--space-4);
   bottom: calc(
     var(--tab-bar-height)
     + env(safe-area-inset-bottom, 0px)
-    + var(--space-sm)
+    + var(--space-2)
   );
   /* min-height (not height) pins the visible strip to --cta-bar-height
      so the token is the real source of truth that .co__main's
@@ -543,11 +543,11 @@ function onRoadmapPostClick(_postId: string): void {
   display: flex;
   align-items: center;
   z-index: 100;
-  padding: var(--space-sm);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  padding: var(--space-2);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-3);
 }
 
 .co__cta :deep(.c-button) {

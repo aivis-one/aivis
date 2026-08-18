@@ -281,7 +281,7 @@ onMounted(() => {
 
 .dash__widget {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md, 12px);
   padding: 14px;
   display: flex;
@@ -297,7 +297,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
 }
 
 .dash__widget-icon--accent {
@@ -354,7 +354,7 @@ onMounted(() => {
 
 .dash__action {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md, 12px);
   padding: 14px;
   display: flex;
@@ -368,6 +368,6 @@ onMounted(() => {
 }
 
 .dash__action:active {
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
 }
 </style>

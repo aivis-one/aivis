@@ -265,7 +265,7 @@ onMounted(load)
 .dv__page-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -350,7 +350,7 @@ onMounted(load)
   border-radius: var(--radius-sm);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-primary);
   word-break: break-all;
   text-align: center;
   user-select: all;
@@ -365,7 +365,7 @@ onMounted(load)
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: var(--warning-dim);
+  background: var(--warning-subtle);
   border: 1px solid var(--warning);
 }
 
@@ -379,6 +379,6 @@ onMounted(load)
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--text);
+  color: var(--text-primary);
 }
 </style>

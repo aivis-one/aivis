@@ -49,20 +49,20 @@ withDefaults(
 /* Primary (accent orange) */
 .c-btn--primary { background: var(--accent); color: white; }
 .c-btn--primary:hover:not(:disabled) {
-  background: var(--accent-dark);
+  background: var(--accent-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(232, 101, 26, 0.3);
 }
 .c-btn--primary:active:not(:disabled) { transform: scale(0.98); }
-.c-btn--primary:disabled { background: var(--border); color: var(--text-tertiary); }
+.c-btn--primary:disabled { background: var(--border-default); color: var(--text-tertiary); }
 
 /* Secondary (outlined teal) */
-.c-btn--secondary { background: var(--bg); color: var(--primary); border: 2px solid var(--primary); }
+.c-btn--secondary { background: var(--bg-page); color: var(--primary); border: 2px solid var(--primary); }
 .c-btn--secondary:hover:not(:disabled) { background: var(--primary); color: white; transform: translateY(-2px); }
 .c-btn--secondary:active:not(:disabled) { transform: scale(0.98); }
 
 /* Outline (neutral) */
-.c-btn--outline { background: transparent; color: var(--text-secondary); border: 2px solid var(--border); }
+.c-btn--outline { background: transparent; color: var(--text-secondary); border: 2px solid var(--border-default); }
 .c-btn--outline:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
 
 /* Danger */

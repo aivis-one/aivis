@@ -297,7 +297,7 @@ onMounted(loadAttachments)
 </template>
 
 <style scoped>
-.scd { padding: var(--space-md, 16px); }
+.scd { padding: var(--space-4, 16px); }
 
 .scd__center {
   display: flex; flex-direction: column; align-items: center;
@@ -319,13 +319,13 @@ onMounted(loadAttachments)
 .doc-list { display: flex; flex-direction: column; }
 .doc-item {
   display: flex; align-items: flex-start; gap: 10px; padding: 12px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
 }
 .doc-item__reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
 .doc-item__move {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 24px; border: 1px solid var(--border);
-  background: var(--bg); color: var(--text-secondary); cursor: pointer;
+  width: 28px; height: 24px; border: 1px solid var(--border-default);
+  background: var(--bg-page); color: var(--text-secondary); cursor: pointer;
   border-radius: var(--radius-sm);
 }
 .doc-item__move:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -334,7 +334,7 @@ onMounted(loadAttachments)
 .doc-item__info { flex: 1; min-width: 0; }
 .doc-item__top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
 .doc-item__lang { font-size: 11px; color: var(--text-tertiary); font-weight: 600; }
-.doc-item__title { font-size: 14px; font-weight: 600; color: var(--text); }
+.doc-item__title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .doc-item__meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 .doc-item__storage {
   display: block; font-size: 11px; font-family: monospace; color: var(--text-secondary);
@@ -350,8 +350,8 @@ onMounted(loadAttachments)
 }
 .doc-item__delete:hover { background: var(--bg-subtle); color: var(--danger); }
 
-.scd__modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+.scd__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
 .scd__modal-text { font-size: 14px; color: var(--text-secondary); margin: 0 0 8px; }
-.scd__modal-target { font-size: 15px; font-weight: 600; color: var(--text); margin: 0 0 16px; word-break: break-all; }
+.scd__modal-target { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; word-break: break-all; }
 .scd__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 </style>

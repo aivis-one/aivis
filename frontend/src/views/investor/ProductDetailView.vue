@@ -322,7 +322,7 @@ onMounted(loadProduct)
    button sits where the hero would have started. */
 .pd__back-row {
   display: flex;
-  margin: var(--space-md, 16px) var(--space-md, 16px) 0;
+  margin: var(--space-4, 16px) var(--space-4, 16px) 0;
 }
 
 /* Hero with cover image */
@@ -363,7 +363,7 @@ onMounted(loadProduct)
 }
 .pd__hero--fallback .pd__hero-content {
   text-align: center;
-  color: var(--text);
+  color: var(--text-primary);
   padding: 0 20px 20px;
 }
 .pd__hero-company {
@@ -406,7 +406,7 @@ onMounted(loadProduct)
 }
 .pd__stat-value {
   font-size: 18px; font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .pd__stat-value--price { color: var(--primary); }
 .pd__stat-unit {
@@ -418,7 +418,7 @@ onMounted(loadProduct)
 .pd__section { display: flex; flex-direction: column; gap: 10px; }
 .pd__section-title {
   font-size: 14px; font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -462,8 +462,8 @@ onMounted(loadProduct)
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
@@ -487,7 +487,7 @@ onMounted(loadProduct)
   opacity: 0.55;
 }
 .pd__plan--disabled:hover {
-  border-color: var(--border);
+  border-color: var(--border-default);
 }
 .pd__plan--disabled:active {
   transform: none;
@@ -496,7 +496,7 @@ onMounted(loadProduct)
 .pd__plan-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .pd__plan-bonus {
   font-size: 12px;

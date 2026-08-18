@@ -15,13 +15,13 @@ withDefaults(
 
 <style scoped>
 .c-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   transition: all 0.2s;
 }
 .c-card--hover:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-2);
 }
 </style>

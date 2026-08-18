@@ -442,7 +442,7 @@ onMounted(load)
 }
 .pv__hero--fallback .pv__hero-content {
   text-align: center;
-  color: var(--text);
+  color: var(--text-primary);
   padding: 0 20px 16px;
 }
 .pv__hero-company {
@@ -494,7 +494,7 @@ onMounted(load)
 .pv__row--total {
   margin-top: 6px;
   padding-top: 12px;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
 }
 .pv__row-label {
   font-size: 14px;
@@ -503,7 +503,7 @@ onMounted(load)
 .pv__row-value {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .pv__row-value--total {
   font-size: 20px;
@@ -514,7 +514,7 @@ onMounted(load)
 .pv__balance {
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .pv__balance--warn {
   color: var(--danger);

@@ -286,7 +286,7 @@ function onRetry(): void {
 .pps {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .pps__head {
@@ -299,7 +299,7 @@ function onRetry(): void {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .pps__center {
@@ -307,14 +307,14 @@ function onRetry(): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-sm);
+  gap: var(--space-2);
   min-height: 120px;
 }
 
 .pps__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 /* Two-column grid at narrow tablet breakpoint, three at wider --
@@ -336,6 +336,6 @@ function onRetry(): void {
 .pps__cta {
   display: flex;
   justify-content: center;
-  padding-top: var(--space-sm);
+  padding-top: var(--space-2);
 }
 </style>

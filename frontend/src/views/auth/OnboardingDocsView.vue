@@ -299,7 +299,7 @@ async function handleSignAll(): Promise<void> {
 .auth-screen {
   display: flex; flex-direction: column;
   min-height: 100vh; min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
@@ -311,7 +311,7 @@ async function handleSignAll(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text);
+  font-size: 24px; font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
@@ -339,16 +339,16 @@ async function handleSignAll(): Promise<void> {
 }
 .doc-item {
   display: flex; align-items: flex-start; gap: 14px; padding: 16px;
-  background: var(--bg); border: 1px solid var(--border);
+  background: var(--bg-page); border: 1px solid var(--border-default);
   border-radius: var(--radius-md); cursor: pointer;
   transition: all 0.2s;
 }
-.doc-item:hover { border-color: var(--primary-light); background: var(--bg-elevated); }
+.doc-item:hover { border-color: var(--primary-hover); background: var(--bg-surface); }
 .doc-item.signed { cursor: default; }
 
 .doc-checkbox {
   width: 22px; height: 22px; min-width: 22px;
-  border: 2px solid var(--border); border-radius: var(--radius-sm);
+  border: 2px solid var(--border-default); border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; margin-top: 2px;
   font-size: 13px; color: white;
@@ -362,7 +362,7 @@ async function handleSignAll(): Promise<void> {
 
 .doc-info { flex: 1; }
 .doc-title {
-  font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px;
+  font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
 }
 .doc-meta { display: flex; gap: 8px; }
 .doc-required {
@@ -404,13 +404,13 @@ async function handleSignAll(): Promise<void> {
 
 /* --- Document preview modal --- */
 .doc-modal__title {
-  font-size: 18px; font-weight: 700; color: var(--text);
+  font-size: 18px; font-weight: 700; color: var(--text-primary);
   margin: 0 0 12px; padding-right: 24px;  /* room for close button */
 }
 .doc-modal__body {
   min-height: 120px; max-height: 60vh; overflow-y: auto;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 16px; background: var(--bg-subtle, var(--bg));
+  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+  padding: 16px; background: var(--bg-subtle, var(--bg-page));
   margin-bottom: 16px;
 }
 .doc-modal__center {
@@ -418,7 +418,7 @@ async function handleSignAll(): Promise<void> {
   min-height: 120px;
 }
 .doc-modal__content {
-  font-size: 14px; color: var(--text); line-height: 1.6;
+  font-size: 14px; color: var(--text-primary); line-height: 1.6;
 }
 .doc-modal__content :deep(h1) { font-size: 20px; margin: 0 0 12px; }
 .doc-modal__content :deep(h2) { font-size: 16px; margin: 16px 0 8px; }

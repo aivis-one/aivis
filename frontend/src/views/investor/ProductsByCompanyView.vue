@@ -281,15 +281,15 @@ function goBack(): void {
 .pbc__page-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 
 .pbc__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-md);
-  padding: var(--space-md);
+  gap: var(--space-4);
+  padding: var(--space-4);
 }
 
 /* Two-column grid for wider viewports -- matches MarketView's old
@@ -312,15 +312,15 @@ function goBack(): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-4);
   min-height: 320px;
-  padding: var(--space-md);
+  padding: var(--space-4);
 }
 
 .pbc__sentinel {
   display: flex;
   justify-content: center;
-  padding: var(--space-md) 0 0;
+  padding: var(--space-4) 0 0;
   min-height: 32px;
 }
 </style>

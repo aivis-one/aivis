@@ -47,7 +47,7 @@ withDefaults(
 .aivis-logo-text {
   font-size: 16px;
   font-weight: 700;
-  color: var(--primary-dark);
+  color: var(--primary-active);
   letter-spacing: 0.5px;
 }
 </style>

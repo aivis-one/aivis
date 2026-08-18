@@ -28,6 +28,6 @@ const canManageContent = canDo('content_manage')
 <style scoped>
 .staff-events { padding: 16px; }
 .staff-events__title {
-  font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 12px;
+  font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px;
 }
 </style>

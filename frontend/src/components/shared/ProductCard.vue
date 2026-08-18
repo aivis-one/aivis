@@ -97,8 +97,8 @@ const available = computed(() => props.product.available_packages)
 
 <style scoped>
 .product-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
@@ -106,7 +106,7 @@ const available = computed(() => props.product.available_packages)
 }
 .product-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-3);
 }
 
 .product-card__img {
@@ -150,7 +150,7 @@ const available = computed(() => props.product.available_packages)
 
 .product-card__name {
   font-size: 16px; font-weight: 700;
-  color: var(--text); margin-bottom: 4px;
+  color: var(--text-primary); margin-bottom: 4px;
 }
 
 .product-card__desc {

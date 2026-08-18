@@ -221,14 +221,14 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md, 12px);
   padding: 12px 14px;
 }
 
 .lb__row--me {
   border-color: var(--primary);
-  background: var(--primary-dim, var(--bg-elevated));
+  background: var(--primary-dim, var(--bg-surface));
 }
 
 .lb__rank {

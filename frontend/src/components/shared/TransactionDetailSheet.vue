@@ -267,7 +267,7 @@ function onClose(): void {
 .tds__amount {
   font-size: 28px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   line-height: 1.1;
   word-break: break-word;
 }
@@ -287,7 +287,7 @@ function onClose(): void {
   display: flex;
   flex-direction: column;
   gap: 0;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
 }
 .tds__row {
   display: flex;
@@ -295,7 +295,7 @@ function onClose(): void {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.06));
   font-size: 13px;
 }
 .tds__key {
@@ -304,7 +304,7 @@ function onClose(): void {
   flex-shrink: 0;
 }
 .tds__value {
-  color: var(--text);
+  color: var(--text-primary);
   text-align: end;
   font-family: inherit;
   word-break: break-word;
@@ -318,7 +318,7 @@ function onClose(): void {
 .tds__hash {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-primary);
   user-select: all;
 }
 

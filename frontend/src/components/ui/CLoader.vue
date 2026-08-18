@@ -10,7 +10,7 @@ withDefaults(defineProps<{ size?: number }>(), { size: 32 })
 
 <style scoped>
 .c-loader {
-  border: 3px solid var(--border);
+  border: 3px solid var(--border-default);
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: c-spin 0.8s linear infinite;

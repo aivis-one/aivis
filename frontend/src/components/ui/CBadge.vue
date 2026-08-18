@@ -16,10 +16,10 @@ defineProps<{
   font-size: 11px; font-weight: 600; padding: 3px 8px;
   border-radius: var(--radius-sm); display: inline-block; white-space: nowrap;
 }
-.c-badge--success { background: var(--success-dim); color: var(--success); }
-.c-badge--warning { background: var(--warning-dim); color: var(--warning); }
-.c-badge--danger { background: var(--danger-dim); color: var(--danger); }
-.c-badge--primary { background: var(--t-tint-8); color: var(--primary); }
+.c-badge--success { background: var(--success-subtle); color: var(--success); }
+.c-badge--warning { background: var(--warning-subtle); color: var(--warning); }
+.c-badge--danger { background: var(--danger-subtle); color: var(--danger); }
+.c-badge--primary { background: var(--primary-subtle); color: var(--primary); }
 .c-badge--accent { background: var(--o-tint-8); color: var(--accent); }
 .c-badge--neutral { background: var(--bg-subtle); color: var(--text-secondary); }
 </style>

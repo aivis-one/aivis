@@ -522,7 +522,7 @@ onUnmounted(() => {
 .cp__page-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -537,7 +537,7 @@ onUnmounted(() => {
 .cp__aggregate {
   padding: 18px;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: var(--on-primary, #fff);
   display: flex;
   flex-direction: column;
@@ -570,7 +570,7 @@ onUnmounted(() => {
 .cp__section-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 8px 0 10px;
 }
 
@@ -589,8 +589,8 @@ onUnmounted(() => {
   gap: 12px;
   padding: 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
 }
 
 .cp__item-icon {
@@ -607,11 +607,11 @@ onUnmounted(() => {
   color: var(--primary);
 }
 .cp__item-icon--gift {
-  background: var(--success-dim, var(--bg-subtle));
+  background: var(--success-subtle, var(--bg-subtle));
   color: var(--success);
 }
 .cp__item-icon--installment {
-  background: var(--warning-dim, var(--bg-subtle));
+  background: var(--warning-subtle, var(--bg-subtle));
   color: var(--warning, var(--accent));
 }
 
@@ -631,7 +631,7 @@ onUnmounted(() => {
 }
 .cp__item-kind {
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .cp__item-date {
   color: var(--text-tertiary);
@@ -676,7 +676,7 @@ onUnmounted(() => {
   margin-top: 12px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--danger-dim);
+  background: var(--danger-subtle);
   color: var(--danger);
   font-size: 13px;
 }

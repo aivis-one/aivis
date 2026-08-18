@@ -16,7 +16,7 @@ defineProps<{ text?: string }>()
   margin: 24px 0; width: 100%;
 }
 .c-divider::before, .c-divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
+  content: ''; flex: 1; height: 1px; background: var(--border-default);
 }
 /* Hide pseudo-elements when no text — show single line */
 .c-divider:not(:has(.c-divider__text))::after { display: none; }

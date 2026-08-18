@@ -45,5 +45,5 @@ const fixedOwner = computed<{ type: 'company'; id: string }>(() => ({
 </template>
 
 <style scoped>
-.scps { padding: var(--space-md, 16px); }
+.scps { padding: var(--space-4, 16px); }
 </style>

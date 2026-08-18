@@ -256,7 +256,7 @@ async function handleLogin(): Promise<void> {
 .auth-screen {
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
   display: flex;
   flex-direction: column;
 }
@@ -265,9 +265,9 @@ async function handleLogin(): Promise<void> {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--bg);
+  background: var(--bg-page);
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -294,7 +294,7 @@ async function handleLogin(): Promise<void> {
 .auth-title {
   font-size: 24px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin-bottom: 8px;
   text-align: center;
 }
@@ -320,17 +320,17 @@ async function handleLogin(): Promise<void> {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   margin-bottom: 6px;
 }
 
 .form-input {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--border-default);
   border-radius: var(--radius-md, 8px);
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-size: 15px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -372,10 +372,10 @@ async function handleLogin(): Promise<void> {
 
 .auth-error {
   padding: 12px 16px;
-  background: var(--error-dim);
-  border: 1px solid var(--error);
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger);
   border-radius: var(--radius-md, 8px);
-  color: var(--error);
+  color: var(--danger);
   font-size: 13px;
   margin-bottom: 16px;
   line-height: 1.5;

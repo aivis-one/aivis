@@ -109,7 +109,7 @@ function goAvatar(): void {
   text-align: center; padding: 20px 0; margin-bottom: 16px;
 }
 .staff-more__name {
-  font-size: 18px; font-weight: 700; color: var(--text); margin-top: 12px;
+  font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 12px;
 }
 .staff-more__email {
   font-size: 13px; color: var(--text-secondary); margin-top: 4px;
@@ -119,7 +119,7 @@ function goAvatar(): void {
 }
 
 .staff-more__section {
-  border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;
+  border-top: 1px solid var(--border-default); padding-top: 16px; margin-top: 16px;
 }
 .staff-more__section-label {
   font-size: 12px; font-weight: 700; color: var(--text-tertiary);
@@ -128,8 +128,8 @@ function goAvatar(): void {
 
 .staff-more__nav-item {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer;
-  font-size: 14px; color: var(--text);
+  padding: 14px 0; border-bottom: 1px solid var(--border-default); cursor: pointer;
+  font-size: 14px; color: var(--text-primary);
 }
 .staff-more__nav-item:hover { opacity: 0.8; }
 .staff-more__nav-item--accent { color: var(--accent); font-weight: 600; }
@@ -139,7 +139,7 @@ function goAvatar(): void {
 
 .staff-more__info-row {
   display: flex; justify-content: space-between; padding: 14px 0;
-  border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text);
+  border-bottom: 1px solid var(--border-default); font-size: 14px; color: var(--text-primary);
 }
 .staff-more__info-val { font-size: 13px; color: var(--text-tertiary); }
 </style>

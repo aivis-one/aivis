@@ -132,7 +132,7 @@ function openTile(tile: Tile): void {
 .more__title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 .more__subtitle {
@@ -157,9 +157,9 @@ function openTile(tile: Tile): void {
   gap: 14px;
   padding: 16px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-primary);
   text-align: left;
   font-family: inherit;
   cursor: pointer;
@@ -167,9 +167,9 @@ function openTile(tile: Tile): void {
   min-height: 72px;
 }
 .more__tile:hover {
-  border-color: var(--primary-light);
+  border-color: var(--primary-hover);
   background: var(--bg-subtle);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-1);
 }
 .more__tile:active {
   transform: translateY(1px);
@@ -197,7 +197,7 @@ function openTile(tile: Tile): void {
 .more__tile-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .more__tile-desc {
   font-size: 12px;

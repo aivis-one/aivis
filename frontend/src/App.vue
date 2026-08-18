@@ -189,8 +189,8 @@ onMounted(() => {
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg);
-  gap: var(--space-md, 16px);
+  background: var(--bg-page);
+  gap: var(--space-4, 16px);
   padding: 24px;
 }
 .auth-error-text {

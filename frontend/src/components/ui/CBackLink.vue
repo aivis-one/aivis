@@ -81,7 +81,7 @@ defineProps<{
 
 .c-back-link:hover {
   background: var(--bg-subtle);
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 /* R32 A11Y-32-01: keyboard focus ring. `:focus-visible` shows only

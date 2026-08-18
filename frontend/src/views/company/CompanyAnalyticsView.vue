@@ -430,7 +430,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__title {
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 .canl__subtitle {
@@ -465,7 +465,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   background: linear-gradient(
     135deg,
     var(--primary),
-    var(--primary-dark, var(--primary))
+    var(--primary-active, var(--primary))
   );
   color: #fff;
 }
@@ -517,7 +517,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__chart-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 .canl__chart-range {
@@ -532,8 +532,8 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   margin: 0;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px dashed var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px dashed var(--border-default);
   text-align: center;
 }
 
@@ -541,8 +541,8 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__chart {
   padding: 16px 12px 8px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
 }
 
 .canl__chart-bars {
@@ -621,8 +621,8 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
 }
 
 .canl__row-body {
@@ -636,7 +636,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__row-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -650,7 +650,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__row-revenue {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   flex-shrink: 0;
   white-space: nowrap;
 }

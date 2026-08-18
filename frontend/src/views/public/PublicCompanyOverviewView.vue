@@ -318,23 +318,23 @@ function onRoadmapPostClick(_postId: string): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-4);
   min-height: 320px;
-  padding: var(--space-md);
+  padding: var(--space-4);
 }
 
 .co__main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
-  padding: var(--space-md);
+  gap: var(--space-7);
+  padding: var(--space-4);
   /* No bottom padding for a sticky/floating CTA -- the public view
      does not have one. The investor side reserves space for both
      a floating .co__cta and the CTabBar; the public shell has neither,
      so the natural bottom padding from .co__main's last child is
      enough. */
-  padding-bottom: var(--space-xl);
+  padding-bottom: var(--space-7);
 }
 
 /* ---------- Hero ---------- */
@@ -342,7 +342,7 @@ function onRoadmapPostClick(_postId: string): void {
 .co__hero {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .co__hero-cover {
@@ -362,31 +362,31 @@ function onRoadmapPostClick(_postId: string): void {
   background-image: linear-gradient(
     135deg,
     var(--bg-subtle) 0%,
-    var(--bg-elevated) 100%
+    var(--bg-surface) 100%
   );
 }
 
 .co__hero-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 .co__hero-status {
   align-self: flex-start;
-  padding: 2px var(--space-sm);
+  padding: 2px var(--space-2);
   font-size: 11px;
   font-weight: 500;
   color: var(--success);
-  background: var(--success-dim);
-  border-radius: var(--radius-full);
+  background: var(--success-subtle);
+  border-radius: var(--radius-pill);
 }
 
 .co__hero-name {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   line-height: 1.25;
 }
 
@@ -403,7 +403,7 @@ function onRoadmapPostClick(_postId: string): void {
 .co__stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 @media (min-width: 640px) {
@@ -417,13 +417,13 @@ function onRoadmapPostClick(_postId: string): void {
 .co__section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .co__section-title {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 </style>

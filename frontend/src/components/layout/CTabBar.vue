@@ -64,7 +64,7 @@ function navigate(tab: TabItem): void {
 .c-tabbar {
   position: sticky; bottom: 0; left: 0; right: 0;
   display: flex; justify-content: space-around;
-  background: var(--bg); border-top: 1px solid var(--border);
+  background: var(--bg-page); border-top: 1px solid var(--border-default);
   /* iter 2.5 cta-fix: height is the source-of-truth via
      --tab-bar-height; sub-route floating CTAs reference the same
      token to stay pinned above the bar. The token measures the
@@ -82,7 +82,7 @@ function navigate(tab: TabItem): void {
   border: none; background: none; font-family: inherit;
   position: relative;
 }
-.c-tabbar__item:hover { color: var(--primary-light); }
+.c-tabbar__item:hover { color: var(--primary-hover); }
 .c-tabbar__item--active { color: var(--primary); }
 .c-tabbar__item--active::after {
   content: ''; position: absolute;

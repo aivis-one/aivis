@@ -677,7 +677,7 @@ onMounted(() => {
 .cbal__header { display: flex; flex-direction: column; gap: 4px; }
 .cbal__title {
   font-size: 20px; font-weight: 700;
-  color: var(--text); margin: 0;
+  color: var(--text-primary); margin: 0;
 }
 .cbal__subtitle {
   font-size: 13px; color: var(--text-secondary); margin: 0;
@@ -696,8 +696,8 @@ onMounted(() => {
 .cbal__card {
   padding: 16px 18px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
 }
 
 .cbal__balance { display: flex; flex-direction: column; gap: 6px; }
@@ -709,7 +709,7 @@ onMounted(() => {
 }
 .cbal__balance-value {
   font-size: 28px; font-weight: 700;
-  color: var(--text); line-height: 1.1;
+  color: var(--text-primary); line-height: 1.1;
 }
 .cbal__balance-frozen {
   font-size: 12px;
@@ -729,14 +729,14 @@ onMounted(() => {
 .cbal__section { display: flex; flex-direction: column; gap: 8px; }
 .cbal__section-title {
   font-size: 14px; font-weight: 700;
-  color: var(--text); margin: 4px 0 0;
+  color: var(--text-primary); margin: 4px 0 0;
 }
 
 .cbal__empty {
   font-size: 13px; color: var(--text-secondary); margin: 0;
   padding: 16px; border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px dashed var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px dashed var(--border-default);
   text-align: center;
 }
 
@@ -748,14 +748,14 @@ onMounted(() => {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
 }
 .cbal__item-icon {
   display: flex; align-items: center; justify-content: center;
   width: 32px; height: 32px;
   border-radius: var(--radius-sm);
-  background: var(--bg);
+  background: var(--bg-page);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
@@ -770,7 +770,7 @@ onMounted(() => {
   font-size: 11px; color: var(--text-tertiary);
 }
 .cbal__item-amount {
-  font-size: 14px; font-weight: 700; color: var(--text);
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
 }
 .cbal__item-date { white-space: nowrap; }
 .cbal__item-reason {
@@ -784,29 +784,29 @@ onMounted(() => {
   display: inline-block;
   font-size: 10px; font-weight: 700;
   padding: 3px 8px;
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-pill, 999px);
   text-transform: uppercase; letter-spacing: 0.05em;
   flex-shrink: 0;
 }
 .cbal__badge--success {
-  background: var(--bg);
+  background: var(--bg-page);
   color: var(--success, var(--primary));
   border: 1px solid var(--success, var(--primary));
 }
 .cbal__badge--warning {
-  background: var(--bg);
+  background: var(--bg-page);
   color: var(--warning, var(--text-secondary));
-  border: 1px solid var(--warning, var(--border));
+  border: 1px solid var(--warning, var(--border-default));
 }
 .cbal__badge--danger {
-  background: var(--bg);
+  background: var(--bg-page);
   color: var(--danger, #DC2626);
   border: 1px solid var(--danger, #DC2626);
 }
 .cbal__badge--neutral {
-  background: var(--bg);
+  background: var(--bg-page);
   color: var(--text-secondary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
 }
 
 .cbal__sentinel {
@@ -817,8 +817,8 @@ onMounted(() => {
 .cbal__json {
   margin: 0;
   padding: 12px 14px;
-  background: var(--bg-subtle, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-subtle, var(--bg-page));
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
@@ -844,9 +844,9 @@ onMounted(() => {
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-size: 16px;
   font-family: inherit;
   transition: border-color 0.15s;
@@ -858,9 +858,9 @@ onMounted(() => {
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   line-height: 1.5;
@@ -876,13 +876,13 @@ onMounted(() => {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  background: var(--danger-dim, rgba(220, 38, 38, 0.08));
+  background: var(--danger-subtle, rgba(220, 38, 38, 0.08));
   border: 1px solid var(--danger, #DC2626);
   color: var(--danger, #DC2626);
 }
 .cbal__form-error--soft {
   background: transparent;
-  border: 1px solid var(--warning, var(--border));
+  border: 1px solid var(--warning, var(--border-default));
   color: var(--warning, var(--text-secondary));
 }
 

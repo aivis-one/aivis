@@ -182,14 +182,14 @@ onMounted(loadCompanies)
 
 <style scoped>
 .scl { padding: 16px; }
-.scl__title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 12px; }
+.scl__title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
 
 .scl__filters {
   display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px;
 }
 .filter-chip {
-  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--bg); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
+  background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
 }
 .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
@@ -202,12 +202,12 @@ onMounted(loadCompanies)
 .company-list { display: flex; flex-direction: column; }
 .company-item {
   display: flex; align-items: center; gap: 12px; padding: 14px 0;
-  border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s;
+  border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;
 }
 .company-item:hover { background: var(--bg-subtle); }
 .company-item__info { flex: 1; min-width: 0; }
 .company-item__name {
-  font-size: 14px; font-weight: 600; color: var(--text);
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .company-item__detail { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }

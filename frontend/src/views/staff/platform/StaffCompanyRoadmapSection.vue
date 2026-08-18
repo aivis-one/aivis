@@ -994,7 +994,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.scr { padding: var(--space-md, 16px); }
+.scr { padding: var(--space-4, 16px); }
 
 .scr__center {
   display: flex; flex-direction: column; align-items: center;
@@ -1019,8 +1019,8 @@ onMounted(() => {
 }
 .rm-item__move {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 24px; border: 1px solid var(--border);
-  border-radius: var(--radius-sm); background: var(--bg);
+  width: 28px; height: 24px; border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm); background: var(--bg-page);
   color: var(--text-secondary); cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
 }
@@ -1035,7 +1035,7 @@ onMounted(() => {
 
 .rm-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .rm-item__badges { display: flex; gap: 6px; flex-wrap: wrap; }
-.rm-item__title { font-size: 15px; font-weight: 700; color: var(--text); }
+.rm-item__title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .rm-item__dates {
   display: flex; gap: 12px; flex-wrap: wrap;
   font-size: 12px; color: var(--text-secondary);
@@ -1057,10 +1057,10 @@ onMounted(() => {
   color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
   transition: color 0.2s, background 0.2s;
 }
-.rm-item__action:hover { color: var(--text); background: var(--bg); }
+.rm-item__action:hover { color: var(--text-primary); background: var(--bg-page); }
 
 /* -- Modal -- */
-.scr__modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+.scr__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
 .scr__modal-hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
 .scr__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 
@@ -1068,12 +1068,12 @@ onMounted(() => {
 
 /* Kind tab strip */
 .scr__kind { margin-bottom: 16px; }
-.scr__kind-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.scr__kind-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
 .scr__kind-hint { font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.4; }
 .scr__kind-tabs { display: flex; gap: 6px; }
 .scr__kind-tab {
-  flex: 1; padding: 10px 8px; border: 2px solid var(--border);
-  border-radius: var(--radius-md); background: var(--bg);
+  flex: 1; padding: 10px 8px; border: 2px solid var(--border-default);
+  border-radius: var(--radius-md); background: var(--bg-page);
   font-size: 13px; font-weight: 600; color: var(--text-secondary);
   cursor: pointer; transition: all 0.2s;
 }
@@ -1081,11 +1081,11 @@ onMounted(() => {
 
 /* Native date field (no CDatePicker in the kit) */
 .scr__field { margin-bottom: 16px; }
-.scr__field-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.scr__field-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
 .scr__date {
-  width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+  width: 100%; padding: 14px 16px; border: 2px solid var(--border-default);
   border-radius: var(--radius-md); font-size: 15px; font-family: inherit;
-  background: var(--bg); color: var(--text);
+  background: var(--bg-page); color: var(--text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .scr__date:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }

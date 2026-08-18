@@ -316,7 +316,7 @@ async function onEmail(): Promise<void> {
   width: 100%;
   height: 60vh;
   height: 60dvh;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: #fff; /* document HTML expects a white canvas */
 }

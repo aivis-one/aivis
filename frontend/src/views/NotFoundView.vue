@@ -33,7 +33,7 @@ function goHome(): void {
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
   padding: 24px;
   text-align: center;
 }

@@ -32,7 +32,7 @@ const { toastState } = useToast()
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 500;
-  font-family: var(--font);
+  font-family: var(--font-body);
   opacity: 0;
   transition: all 0.3s ease;
   z-index: 2000;
@@ -50,5 +50,5 @@ const { toastState } = useToast()
 .c-toast--info { background: var(--primary); }
 .c-toast--success { background: var(--success); }
 .c-toast--error { background: var(--danger); }
-.c-toast--warning { background: var(--warning); color: var(--text); }
+.c-toast--warning { background: var(--warning); color: var(--text-primary); }
 </style>

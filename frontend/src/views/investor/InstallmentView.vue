@@ -573,7 +573,7 @@ onMounted(load)
    above the hero. Button shape lives in CBackLink. */
 .iv__back-row {
   display: flex;
-  margin: var(--space-md, 16px) var(--space-md, 16px) 0;
+  margin: var(--space-4, 16px) var(--space-4, 16px) 0;
 }
 
 /* Hero with cover */
@@ -619,7 +619,7 @@ onMounted(load)
 }
 .iv__hero--fallback .iv__hero-content {
   text-align: center;
-  color: var(--text);
+  color: var(--text-primary);
   padding: 0 20px 16px;
 }
 .iv__hero-company {
@@ -689,8 +689,8 @@ onMounted(load)
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
@@ -726,7 +726,7 @@ onMounted(load)
 .iv__plan-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .iv__plan-bonus {
   font-size: 12px;
@@ -750,7 +750,7 @@ onMounted(load)
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
 }
 .iv__tranche:last-child {
   border-bottom: none;
@@ -763,7 +763,7 @@ onMounted(load)
 .iv__tranche-amount {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   text-align: right;
 }
 .iv__tranche-units {
@@ -788,7 +788,7 @@ onMounted(load)
 .iv__row-value {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .iv__row-value--accent {
   font-size: 18px;

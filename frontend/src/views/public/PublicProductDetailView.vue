@@ -401,9 +401,9 @@ function onBuyClick(): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-4);
   min-height: 320px;
-  padding: var(--space-md);
+  padding: var(--space-4);
 }
 
 /* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
@@ -411,7 +411,7 @@ function onBuyClick(): void {
    this row only owns the margin. */
 .ppd__back-row {
   display: flex;
-  margin: var(--space-md) var(--space-md) 0;
+  margin: var(--space-4) var(--space-4) 0;
 }
 
 /* Hero with cover image -- proportions mirror auth-flow
@@ -464,7 +464,7 @@ function onBuyClick(): void {
 
 .ppd__hero--fallback .ppd__hero-content {
   text-align: center;
-  color: var(--text);
+  color: var(--text-primary);
   padding: 0 20px 20px;
 }
 
@@ -515,7 +515,7 @@ function onBuyClick(): void {
 .ppd__stat-value {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .ppd__stat-value--price {
@@ -537,7 +537,7 @@ function onBuyClick(): void {
 .ppd__section-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -580,15 +580,15 @@ function onBuyClick(): void {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
 }
 
 .ppd__plan-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .ppd__plan-bonus {

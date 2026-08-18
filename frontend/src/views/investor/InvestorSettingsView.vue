@@ -540,7 +540,7 @@ onMounted(() => {
 .sett__page-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 .sett__page-subtitle {
@@ -567,7 +567,7 @@ onMounted(() => {
 .sett__name {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin-top: 6px;
 }
 .sett__email {
@@ -581,7 +581,7 @@ onMounted(() => {
   font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
   color: var(--primary);
   text-transform: capitalize;
 }
@@ -613,7 +613,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
   min-height: 48px;
 }
 .sett__row:last-child {
@@ -623,7 +623,7 @@ button.sett__row {
   width: 100%;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -653,7 +653,7 @@ button.sett__row:last-child {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .sett__row-label--accent {
   color: var(--primary);
@@ -684,8 +684,8 @@ button.sett__row:last-child {
   gap: 4px;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
@@ -694,8 +694,8 @@ button.sett__row:last-child {
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .sett__chip:hover {
-  border-color: var(--primary-light);
-  color: var(--text);
+  border-color: var(--primary-hover);
+  color: var(--text-primary);
 }
 .sett__chip--active {
   background: var(--primary);
@@ -707,7 +707,7 @@ button.sett__row:last-child {
 .sett__toggle {
   width: 44px;
   height: 24px;
-  background: var(--border);
+  background: var(--border-default);
   border-radius: 12px;
   position: relative;
   cursor: pointer;

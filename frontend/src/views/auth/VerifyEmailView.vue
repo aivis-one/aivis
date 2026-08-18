@@ -222,7 +222,7 @@ async function handleResend(): Promise<void> {
 .auth-screen {
   display: flex; flex-direction: column;
   min-height: 100vh; min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
@@ -234,7 +234,7 @@ async function handleResend(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text);
+  font-size: 24px; font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
@@ -250,7 +250,7 @@ async function handleResend(): Promise<void> {
 .verify-icon {
   display: flex; justify-content: center; margin-bottom: 24px;
 }
-.verify-email { color: var(--text); }
+.verify-email { color: var(--text-primary); }
 
 .code-inputs {
   display: flex; gap: 12px; margin-bottom: 24px;
@@ -258,8 +258,8 @@ async function handleResend(): Promise<void> {
 .code-input {
   width: 48px; height: 56px; text-align: center;
   font-size: 24px; font-weight: 700;
-  border: 2px solid var(--border); border-radius: var(--radius-md);
-  background: var(--bg); color: var(--text);
+  border: 2px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--bg-page); color: var(--text-primary);
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s;
 }

@@ -187,7 +187,7 @@ onMounted(loadPayments)
 
 .staff-pay__hint {
   display: flex; align-items: center; gap: 8px;
-  padding: 12px; background: var(--bg-elevated, var(--bg-subtle)); border-radius: var(--radius-md);
+  padding: 12px; background: var(--bg-surface, var(--bg-subtle)); border-radius: var(--radius-md);
   margin-bottom: 16px; font-size: 12px; color: var(--text-secondary);
 }
 
@@ -195,8 +195,8 @@ onMounted(loadPayments)
   display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px;
 }
 .filter-chip {
-  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--bg); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
+  background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
 }
 .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
@@ -208,10 +208,10 @@ onMounted(loadPayments)
 .pay-list { display: flex; flex-direction: column; }
 .pay-item {
   display: flex; align-items: center; gap: 12px; padding: 14px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
 }
 .pay-item__info { flex: 1; min-width: 0; }
-.pay-item__amount { font-size: 14px; font-weight: 700; color: var(--text); }
+.pay-item__amount { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .pay-item__detail { font-size: 12px; color: var(--text-tertiary); }
 .pay-item__user { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; font-family: monospace; }
 .pay-item__right { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
@@ -225,7 +225,7 @@ onMounted(loadPayments)
 }
 .staff-pay__page { font-size: 13px; color: var(--text-secondary); }
 
-.modal__title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+.modal__title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
 .modal__text { font-size: 14px; color: var(--text-secondary); margin: 0 0 8px; }
 .modal__amount { font-size: 16px; font-weight: 700; color: var(--danger); margin: 0 0 16px; }
 .modal__actions { display: flex; gap: 8px; margin-top: 16px; }

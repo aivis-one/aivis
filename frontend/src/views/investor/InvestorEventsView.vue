@@ -212,14 +212,14 @@ onMounted(() => {
 .iev {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md, 16px);
-  padding: var(--space-md, 16px);
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
 }
 .iev__header { display: flex; flex-direction: column; gap: 4px; }
 .iev__title {
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 .iev__filters { display: flex; gap: 8px; }
@@ -245,8 +245,8 @@ onMounted(() => {
   gap: 12px;
   padding: 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
 }
 .iev__retry-text { font-size: 13px; color: var(--text-secondary); }
 
@@ -254,8 +254,8 @@ onMounted(() => {
 .filter-chip {
   padding: 8px 14px;
   border-radius: var(--radius-pill, 999px);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);

@@ -191,21 +191,21 @@ async function retryLoadMore(): Promise<void> {
 .cl {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-md);
+  gap: var(--space-4);
+  padding: var(--space-4);
 }
 
 .cl__header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-1);
 }
 
 .cl__title {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .cl__subtitle {
@@ -219,7 +219,7 @@ async function retryLoadMore(): Promise<void> {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-4);
   min-height: 240px;
 }
 
@@ -228,7 +228,7 @@ async function retryLoadMore(): Promise<void> {
      so tablet / desktop don't look painfully sparse. */
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 @media (min-width: 640px) {
@@ -249,10 +249,10 @@ async function retryLoadMore(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-md);
+  gap: var(--space-2);
+  padding: var(--space-4);
   background: var(--bg-subtle);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
 }
 

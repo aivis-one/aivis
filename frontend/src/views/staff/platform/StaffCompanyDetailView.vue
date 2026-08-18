@@ -197,12 +197,12 @@ onMounted(loadCompany)
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: var(--space-md, 16px);
+  padding: var(--space-4, 16px);
 }
 .scd__page-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.3;
 }
@@ -213,12 +213,12 @@ onMounted(loadCompany)
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 0 var(--space-md, 16px) 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 0 var(--space-4, 16px) 12px;
+  border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;
   z-index: 9;
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .scd__tabs::-webkit-scrollbar { display: none; }
 .scd__tabs { scrollbar-width: none; }
@@ -226,8 +226,8 @@ onMounted(loadCompany)
 .scd__tab {
   padding: 8px 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;

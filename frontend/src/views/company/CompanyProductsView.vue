@@ -206,7 +206,7 @@ function onCardClick(): void {
 .cprods__header { margin-bottom: 16px; }
 .cprods__title {
   font-size: 20px; font-weight: 700;
-  color: var(--text); margin: 0 0 4px;
+  color: var(--text-primary); margin: 0 0 4px;
 }
 .cprods__subtitle {
   font-size: 14px; color: var(--text-secondary);

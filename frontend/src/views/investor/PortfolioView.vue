@@ -314,7 +314,7 @@ onMounted(() => {
 .pv__header { display: flex; flex-direction: column; gap: 4px; }
 .pv__title {
   font-size: 20px; font-weight: 700;
-  color: var(--text); margin: 0;
+  color: var(--text-primary); margin: 0;
 }
 .pv__subtitle {
   font-size: 14px; color: var(--text-secondary); margin: 0;
@@ -332,7 +332,7 @@ onMounted(() => {
 .pv__hero {
   padding: 20px;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: var(--on-primary, #fff);
   display: flex;
   flex-direction: column;
@@ -376,8 +376,8 @@ onMounted(() => {
 .pv__item {
   padding: 14px 16px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -396,7 +396,7 @@ onMounted(() => {
   align-items: center;
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .pv__item-company {
   display: inline-flex;
@@ -430,7 +430,7 @@ onMounted(() => {
 .pv__item-stat-value {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 /* Profit chip */

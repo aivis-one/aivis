@@ -262,13 +262,13 @@ onMounted(loadTemplates)
 </template>
 
 <style scoped>
-.sct { padding: var(--space-md, 16px); }
+.sct { padding: var(--space-4, 16px); }
 
 .sct__filters { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .sct__filter-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .filter-chip {
-  padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--bg); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
+  background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
   cursor: pointer; white-space: nowrap;
 }
 .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
@@ -282,18 +282,18 @@ onMounted(loadTemplates)
 .tpl-list { display: flex; flex-direction: column; }
 .tpl-item {
   display: flex; align-items: center; gap: 12px; padding: 14px 0;
-  border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s;
+  border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;
 }
 .tpl-item:hover { background: var(--bg-subtle); }
 .tpl-item__info { flex: 1; min-width: 0; }
 .tpl-item__top { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 .tpl-item__title {
-  font-size: 14px; font-weight: 600; color: var(--text);
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .tpl-item__meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 
-.sct__modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+.sct__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
 .sct__detail-meta {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;
@@ -305,7 +305,7 @@ onMounted(loadTemplates)
   text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
 }
 .sct__storage-value {
-  font-size: 12px; font-family: monospace; color: var(--text);
+  font-size: 12px; font-family: monospace; color: var(--text-primary);
   background: var(--bg-subtle); padding: 4px 8px; border-radius: var(--radius-sm);
   word-break: break-all;
 }
@@ -314,7 +314,7 @@ onMounted(loadTemplates)
 
 .sct__html { margin-bottom: 8px; }
 .sct__html-pre {
-  font-size: 12px; font-family: monospace; color: var(--text);
+  font-size: 12px; font-family: monospace; color: var(--text-primary);
   background: var(--bg-subtle); border-radius: var(--radius-sm);
   padding: 12px; overflow: auto; max-height: 360px; margin: 0;
   white-space: pre-wrap; word-break: break-word;

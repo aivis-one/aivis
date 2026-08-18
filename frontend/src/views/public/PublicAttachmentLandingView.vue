@@ -279,16 +279,16 @@ async function onDownload(): Promise<void> {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-4);
   min-height: 320px;
-  padding: var(--space-md);
+  padding: var(--space-4);
 }
 
 .atl__main {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
-  padding: var(--space-md);
+  gap: var(--space-6);
+  padding: var(--space-4);
 }
 
 .atl__back {
@@ -309,15 +309,15 @@ async function onDownload(): Promise<void> {
 
 .atl__back:hover {
   background: var(--bg-subtle);
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .atl__hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-lg) var(--space-md);
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-lg);
 }
@@ -328,7 +328,7 @@ async function onDownload(): Promise<void> {
   justify-content: center;
   width: 96px;
   height: 96px;
-  background: var(--bg);
+  background: var(--bg-page);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
 }
@@ -337,7 +337,7 @@ async function onDownload(): Promise<void> {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   text-align: center;
   line-height: 1.3;
   /* Long titles are allowed to wrap; no clamp -- the landing page

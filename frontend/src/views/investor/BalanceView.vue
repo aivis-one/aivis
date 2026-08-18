@@ -346,7 +346,7 @@ watch(
 .bv__title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -395,7 +395,7 @@ watch(
   gap: 12px;
   padding-top: 8px;
   margin-top: 4px;
-  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
   font-size: 13px;
   color: var(--text-secondary);
 }
@@ -417,7 +417,7 @@ watch(
   margin-top: 12px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--danger-dim);
+  background: var(--danger-subtle);
   color: var(--danger);
   font-size: 12px;
 }
@@ -460,7 +460,7 @@ watch(
   padding: 12px 14px;
   background: var(--bg-secondary, var(--surface));
   border-radius: var(--radius-md);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.06));
 }
 
 .bv__item-icon {
@@ -497,7 +497,7 @@ watch(
 .bv__item-type {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   text-transform: capitalize;
 }
 .bv__item-amount {

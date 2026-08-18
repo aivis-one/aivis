@@ -289,8 +289,8 @@ const endMarkerLabel = computed<string>(() =>
   /* Fixed-width axis column + flexible content. 32px fits the dot
      (12px) centered with room for breathing space. */
   grid-template-columns: 32px 1fr;
-  gap: var(--space-md);
-  padding-bottom: var(--space-lg);
+  gap: var(--space-4);
+  padding-bottom: var(--space-6);
 }
 
 .roadmap__axis {
@@ -305,9 +305,9 @@ const endMarkerLabel = computed<string>(() =>
   /* Bleed the axis line into the gap below so consecutive items share
      a continuous visual axis. calc() because plain `-var()` is invalid
      in CSS syntax. */
-  bottom: calc(-1 * var(--space-lg));
+  bottom: calc(-1 * var(--space-6));
   width: 2px;
-  background: var(--border);
+  background: var(--border-default);
 }
 
 .roadmap__dot {
@@ -315,18 +315,18 @@ const endMarkerLabel = computed<string>(() =>
   width: 12px;
   height: 12px;
   margin-top: 6px; /* align with the card's first line of text */
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-pill);
   background: var(--primary);
-  box-shadow: 0 0 0 4px var(--bg);
+  box-shadow: 0 0 0 4px var(--bg-page);
   z-index: 1;
 }
 
 .roadmap__card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  gap: var(--space-2);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
@@ -343,22 +343,22 @@ const endMarkerLabel = computed<string>(() =>
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-md) 0;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) 0;
 }
 
 .roadmap__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  gap: var(--space-1);
 }
 
 .rti__chip {
   display: inline-block;
-  padding: 2px var(--space-sm);
+  padding: 2px var(--space-2);
   font-size: 11px;
   font-weight: 500;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -369,7 +369,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .rti__chip--success {
   color: var(--success);
-  background: var(--success-dim);
+  background: var(--success-subtle);
 }
 
 .rti__chip--accent {
@@ -379,7 +379,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .rti__chip--danger {
   color: var(--danger);
-  background: var(--danger-dim);
+  background: var(--danger-subtle);
 }
 
 .roadmap__date {
@@ -391,16 +391,16 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__title {
   margin: 0;
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-4);
   font-size: 15px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   line-height: 1.35;
 }
 
 .roadmap__description {
   margin: 0;
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-4);
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-secondary);
@@ -408,11 +408,11 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__post {
   display: flex;
-  gap: var(--space-sm);
-  margin: 0 var(--space-md);
-  padding: var(--space-sm);
+  gap: var(--space-2);
+  margin: 0 var(--space-4);
+  padding: var(--space-2);
   background: var(--bg-subtle);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
@@ -423,7 +423,7 @@ const endMarkerLabel = computed<string>(() =>
 }
 
 .roadmap__post:hover {
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
 }
 
 .roadmap__post-cover {
@@ -432,7 +432,7 @@ const endMarkerLabel = computed<string>(() =>
   aspect-ratio: 1 / 1;
   background-size: cover;
   background-position: center;
-  background-color: var(--bg-elevated);
+  background-color: var(--bg-surface);
   border-radius: var(--radius-sm);
 }
 
@@ -448,7 +448,7 @@ const endMarkerLabel = computed<string>(() =>
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -477,14 +477,14 @@ const endMarkerLabel = computed<string>(() =>
 .roadmap__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
-  padding: 0 var(--space-md) var(--space-md);
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 .roadmap__action {
   flex: 1;
   min-width: 0;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-2) var(--space-4);
   font-size: 13px;
   font-weight: 500;
   border-radius: var(--radius-sm);
@@ -494,13 +494,13 @@ const endMarkerLabel = computed<string>(() =>
 }
 
 .roadmap__action--primary {
-  color: var(--bg);
+  color: var(--bg-page);
   background: var(--primary);
   border: 1px solid var(--primary);
 }
 
 .roadmap__action--primary:hover {
-  background: var(--primary-dark);
+  background: var(--primary-active);
 }
 
 .roadmap__action--outline {
@@ -510,7 +510,7 @@ const endMarkerLabel = computed<string>(() =>
 }
 
 .roadmap__action--outline:hover {
-  background: var(--t-tint-8);
+  background: var(--primary-subtle);
 }
 
 /* ---------- Terminal block (end-marker) ---------- */
@@ -518,7 +518,7 @@ const endMarkerLabel = computed<string>(() =>
 .roadmap__terminal {
   display: grid;
   grid-template-columns: 32px 1fr;
-  gap: var(--space-md);
+  gap: var(--space-4);
   align-items: center;
 }
 
@@ -535,7 +535,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__dot--terminal {
   margin-top: 8px;
-  background: var(--border); /* terminal dot is muted vs progress dots */
+  background: var(--border-default); /* terminal dot is muted vs progress dots */
 }
 
 .roadmap__terminal-label {

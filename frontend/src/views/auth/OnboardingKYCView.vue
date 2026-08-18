@@ -294,7 +294,7 @@ async function handleRetry(): Promise<void> {
 .auth-screen {
   display: flex; flex-direction: column;
   min-height: 100vh; min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
@@ -306,7 +306,7 @@ async function handleRetry(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text);
+  font-size: 24px; font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
@@ -325,13 +325,13 @@ async function handleRetry(): Promise<void> {
   padding: 32px 24px; text-align: center; margin-bottom: 24px;
 }
 .kyc-status-card.pending {
-  background: var(--warning-dim); border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--warning-subtle); border: 1px solid rgba(245, 158, 11, 0.3);
 }
 .kyc-status-card.approved {
-  background: var(--success-dim); border: 1px solid rgba(34, 197, 94, 0.3);
+  background: var(--success-subtle); border: 1px solid rgba(34, 197, 94, 0.3);
 }
 .kyc-status-card.rejected {
-  background: var(--danger-dim); border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--danger-subtle); border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .kyc-card-icon { display: flex; justify-content: center; margin-bottom: 16px; }
@@ -342,11 +342,11 @@ async function handleRetry(): Promise<void> {
 
 .kyc-statuses {
   margin-top: 32px; width: 100%; max-width: 360px;
-  padding: 16px; background: var(--bg-elevated);
+  padding: 16px; background: var(--bg-surface);
   border-radius: var(--radius-md);
 }
 .kyc-statuses-title {
-  font-size: 13px; font-weight: 600; color: var(--text);
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
   margin-bottom: 8px;
 }
 .kyc-status-item {

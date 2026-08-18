@@ -450,8 +450,8 @@ onMounted(loadEvents)
 }
 .evd__filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .filter-chip {
-  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--bg); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
+  background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
   cursor: pointer; white-space: nowrap;
 }
 .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
@@ -464,12 +464,12 @@ onMounted(loadEvents)
 .event-list { display: flex; flex-direction: column; }
 .event-item {
   display: flex; align-items: center; gap: 12px; padding: 14px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
 }
 .event-item__info { flex: 1; min-width: 0; }
 .event-item__top { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 .event-item__title {
-  font-size: 14px; font-weight: 600; color: var(--text);
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .event-item__date { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
@@ -490,20 +490,20 @@ onMounted(loadEvents)
 }
 .evd__page { font-size: 13px; color: var(--text-secondary); }
 
-.evd__modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 16px; }
+.evd__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
 .evd__modal-text { font-size: 14px; color: var(--text-secondary); margin: 0 0 8px; }
-.evd__modal-target { font-size: 15px; font-weight: 600; color: var(--text); margin: 0 0 16px; }
+.evd__modal-target { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; }
 .evd__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 
 .evd__field { margin-bottom: 16px; }
 .evd__label {
   display: block; font-size: 13px; font-weight: 600;
-  color: var(--text); margin-bottom: 6px;
+  color: var(--text-primary); margin-bottom: 6px;
 }
 .evd__datetime {
-  width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+  width: 100%; padding: 14px 16px; border: 2px solid var(--border-default);
   border-radius: var(--radius-md); font-size: 15px; font-family: inherit;
-  background: var(--bg); color: var(--text);
+  background: var(--bg-page); color: var(--text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .evd__datetime:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }

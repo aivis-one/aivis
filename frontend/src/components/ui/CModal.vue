@@ -41,10 +41,10 @@ function onOverlay(): void {
   align-items: center; justify-content: center; padding: 24px;
 }
 .c-modal-dialog {
-  background: var(--bg); border-radius: var(--radius-lg);
+  background: var(--bg-page); border-radius: var(--radius-lg);
   padding: 24px; width: 100%; max-width: 420px;
   max-height: 90vh; overflow-y: auto; position: relative;
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-deep);
 }
 .c-modal-close {
   position: absolute; top: 12px; right: 12px;
@@ -52,7 +52,7 @@ function onOverlay(): void {
   color: var(--text-tertiary); padding: 4px;
   display: flex; align-items: center;
 }
-.c-modal-close:hover { color: var(--text); }
+.c-modal-close:hover { color: var(--text-primary); }
 
 /* Transition */
 .c-modal-enter-active, .c-modal-leave-active { transition: opacity 0.2s; }

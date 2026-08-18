@@ -401,7 +401,7 @@ function metaLabel(doc: DocumentResponse): string {
 .docs__page-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -429,13 +429,13 @@ function metaLabel(doc: DocumentResponse): string {
   align-items: center;
   gap: 12px;
   padding: 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
 }
 .docs__item:hover {
-  border-color: var(--primary-light);
+  border-color: var(--primary-hover);
   background: var(--bg-subtle);
 }
 
@@ -458,7 +458,7 @@ function metaLabel(doc: DocumentResponse): string {
 .docs__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .docs__meta {
   font-size: 12px;
@@ -475,11 +475,11 @@ function metaLabel(doc: DocumentResponse): string {
   flex-shrink: 0;
 }
 .docs__status--signed {
-  background: var(--success-dim, rgba(34, 197, 94, 0.14));
+  background: var(--success-subtle, rgba(34, 197, 94, 0.14));
   color: var(--success, #22c55e);
 }
 .docs__status--pending {
-  background: var(--warning-dim, rgba(245, 158, 11, 0.14));
+  background: var(--warning-subtle, rgba(245, 158, 11, 0.14));
   color: var(--warning, #f59e0b);
 }
 
@@ -487,7 +487,7 @@ function metaLabel(doc: DocumentResponse): string {
 .docs-modal__title {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0 0 16px;
   padding-right: 32px;
 }
@@ -509,7 +509,7 @@ function metaLabel(doc: DocumentResponse): string {
   width: 100%;
   height: 55vh;
   height: 55dvh;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: #fff;
 }
@@ -520,6 +520,6 @@ function metaLabel(doc: DocumentResponse): string {
   gap: 8px;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-default);
 }
 </style>

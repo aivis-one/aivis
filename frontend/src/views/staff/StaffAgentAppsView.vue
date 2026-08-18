@@ -165,7 +165,7 @@ onMounted(loadQueue)
 
 .staff-apps__hint {
   display: flex; align-items: center; gap: 8px;
-  padding: 12px; background: var(--bg-elevated, var(--bg-subtle)); border-radius: var(--radius-md);
+  padding: 12px; background: var(--bg-surface, var(--bg-subtle)); border-radius: var(--radius-md);
   margin-bottom: 16px; font-size: 12px; color: var(--text-secondary);
 }
 
@@ -177,10 +177,10 @@ onMounted(loadQueue)
 .apps-list { display: flex; flex-direction: column; }
 .app-item {
   display: flex; align-items: center; gap: 12px; padding: 14px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
 }
 .app-item__info { flex: 1; min-width: 0; }
-.app-item__name { font-size: 14px; font-weight: 600; color: var(--text); font-family: monospace; }
+.app-item__name { font-size: 14px; font-weight: 600; color: var(--text-primary); font-family: monospace; }
 .app-item__detail { font-size: 12px; color: var(--text-tertiary); text-transform: capitalize; }
 .app-item__actions { display: flex; gap: 4px; flex-shrink: 0; }
 
@@ -195,6 +195,6 @@ onMounted(loadQueue)
 .app-btn--reject { background: var(--danger); }
 .app-btn--reject:hover:not(:disabled) { opacity: 0.9; }
 
-.reject__title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 16px; }
+.reject__title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
 .reject__actions { display: flex; gap: 8px; margin-top: 16px; }
 </style>

@@ -25,7 +25,7 @@ import { INVESTOR_TABS } from '@/router/tabs'
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .shell__content {
   flex: 1;

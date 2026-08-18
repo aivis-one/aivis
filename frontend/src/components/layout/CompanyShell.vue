@@ -19,6 +19,6 @@ import { COMPANY_TABS } from '@/router/tabs'
 </template>
 
 <style scoped>
-.shell { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--bg); }
+.shell { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--bg-page); }
 .shell__content { flex: 1; overflow-y: auto; }
 </style>

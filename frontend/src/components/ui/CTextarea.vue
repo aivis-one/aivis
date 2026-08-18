@@ -36,12 +36,12 @@ function onInput(e: Event): void {
 
 <style scoped>
 .c-input-group { margin-bottom: 16px; }
-.c-input-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.c-input-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
 
 .c-textarea {
-  width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+  width: 100%; padding: 14px 16px; border: 2px solid var(--border-default);
   border-radius: var(--radius-md); font-size: 15px; font-family: inherit;
-  background: var(--bg); color: var(--text); resize: vertical;
+  background: var(--bg-page); color: var(--text-primary); resize: vertical;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .c-textarea:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }

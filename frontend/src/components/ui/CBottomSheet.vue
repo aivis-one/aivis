@@ -61,30 +61,30 @@ function onOverlay(): void {
 }
 
 .c-sheet-dialog {
-  background: var(--bg);
+  background: var(--bg-page);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%; max-width: 520px;
   max-height: 85vh; max-height: 85dvh;
   display: flex; flex-direction: column;
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-deep);
 }
 
 .c-sheet-handle {
   width: 40px; height: 4px;
-  background: var(--border); border-radius: 2px;
+  background: var(--border-default); border-radius: 2px;
   margin: 8px auto 4px;
   flex-shrink: 0;
 }
 
 .c-sheet-header {
   padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
   flex-shrink: 0;
 }
 
 .c-sheet-title {
   font-size: 16px; font-weight: 700;
-  color: var(--text); margin: 0;
+  color: var(--text-primary); margin: 0;
 }
 
 .c-sheet-body {

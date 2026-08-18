@@ -80,8 +80,8 @@ function go(path: string): void {
   gap: 8px;
   overflow-x: auto;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-page);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -92,8 +92,8 @@ function go(path: string): void {
 .platform__chip {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;

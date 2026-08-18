@@ -404,7 +404,7 @@ onMounted(() => {
 .sett__page-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 8px 0 0;
 }
 .sett__page-subtitle {
@@ -431,7 +431,7 @@ onMounted(() => {
 .sett__name {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin-top: 6px;
 }
 .sett__email {
@@ -445,7 +445,7 @@ onMounted(() => {
   font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
   color: var(--primary);
   text-transform: capitalize;
 }
@@ -479,16 +479,16 @@ onMounted(() => {
   margin: 0;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px dashed var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px dashed var(--border-default);
   text-align: center;
 }
 
 .sett__json {
   margin: 0;
   padding: 12px 14px;
-  background: var(--bg-subtle, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-subtle, var(--bg-page));
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
@@ -511,11 +511,11 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   min-height: 48px;
   width: 100%;
-  background: var(--bg-elevated, var(--bg));
+  background: var(--bg-surface, var(--bg-page));
   font: inherit;
   color: inherit;
   text-align: left;
@@ -534,7 +534,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .sett__row-label--danger {
   color: var(--danger, #dc2626);
@@ -560,9 +560,9 @@ onMounted(() => {
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   line-height: 1.5;
@@ -578,13 +578,13 @@ onMounted(() => {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  background: var(--danger-dim, rgba(220, 38, 38, 0.08));
+  background: var(--danger-subtle, rgba(220, 38, 38, 0.08));
   border: 1px solid var(--danger, #dc2626);
   color: var(--danger, #dc2626);
 }
 .sett__form-error--soft {
   background: transparent;
-  border: 1px solid var(--warning, var(--border));
+  border: 1px solid var(--warning, var(--border-default));
   color: var(--warning, var(--text-secondary));
 }
 

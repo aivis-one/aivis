@@ -168,7 +168,7 @@ async function handleSubmit(): Promise<void> {
 .auth-screen {
   display: flex; flex-direction: column;
   min-height: 100vh; min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
@@ -180,7 +180,7 @@ async function handleSubmit(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text);
+  font-size: 24px; font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
@@ -197,13 +197,13 @@ async function handleSubmit(): Promise<void> {
   width: 100%; max-width: 400px;
 }
 .role-card {
-  background: var(--bg); border: 2px solid var(--border);
+  background: var(--bg-page); border: 2px solid var(--border-default);
   border-radius: var(--radius-lg); padding: 20px;
   cursor: pointer; transition: all 0.2s; position: relative;
 }
 .role-card:hover {
-  transform: translateY(-2px); box-shadow: var(--shadow-lg);
-  border-color: var(--primary-light);
+  transform: translateY(-2px); box-shadow: var(--shadow-3);
+  border-color: var(--primary-hover);
 }
 .role-card.selected {
   border-color: var(--accent);
@@ -214,7 +214,7 @@ async function handleSubmit(): Promise<void> {
 .role-card-check {
   position: absolute; top: 16px; right: 16px;
   width: 24px; height: 24px; border-radius: 50%;
-  border: 2px solid var(--border);
+  border: 2px solid var(--border-default);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; font-size: 14px; color: white;
 }
@@ -226,7 +226,7 @@ async function handleSubmit(): Promise<void> {
   display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
 }
 .role-card-icon { font-size: 24px; }
-.role-card-title { font-size: 18px; font-weight: 700; color: var(--text); }
+.role-card-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .role-card-desc {
   font-size: 13px; color: var(--text-secondary);
   line-height: 1.5; margin-bottom: 12px;
@@ -237,7 +237,7 @@ async function handleSubmit(): Promise<void> {
 }
 .role-feature {
   font-size: 11px; font-weight: 500; padding: 4px 10px;
-  border-radius: var(--radius-sm); background: var(--bg-elevated);
+  border-radius: var(--radius-sm); background: var(--bg-surface);
   color: var(--primary);
 }
 .role-card.selected .role-feature {

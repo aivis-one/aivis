@@ -395,21 +395,21 @@ function formatBytes(bytes: number): string {
 .ats {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .ats__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 .ats__title {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .ats__filter {
@@ -423,20 +423,20 @@ function formatBytes(bytes: number): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-sm);
+  gap: var(--space-2);
   min-height: 120px;
 }
 
 .ats__groups {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-6);
 }
 
 .ats__group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 .ats__group-title {
@@ -454,16 +454,16 @@ function formatBytes(bytes: number): string {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 .ats__item {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-md);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.12s ease, transform 0.12s ease;
@@ -502,7 +502,7 @@ function formatBytes(bytes: number): string {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   /* Truncate long titles instead of pushing the download icon off. */
   overflow: hidden;
   text-overflow: ellipsis;

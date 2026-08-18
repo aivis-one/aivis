@@ -28,7 +28,7 @@ const initials = computed(() => {
 <style scoped>
 .c-avatar {
   border-radius: 50%; object-fit: cover; flex-shrink: 0;
-  border: 2px solid var(--primary-light);
+  border: 2px solid var(--primary-hover);
 }
 .c-avatar--initials {
   background: var(--primary); color: white;

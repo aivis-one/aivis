@@ -299,7 +299,7 @@ onMounted(() => {
 .tv__title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 .tv__subtitle {
@@ -324,8 +324,8 @@ onMounted(() => {
   flex-shrink: 0;
   padding: 8px 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
@@ -336,10 +336,10 @@ onMounted(() => {
 }
 .tv__tab:hover {
   border-color: var(--primary);
-  color: var(--text);
+  color: var(--text-primary);
 }
 .tv__tab--active {
-  background: var(--t-tint-8, var(--bg-subtle));
+  background: var(--primary-subtle, var(--bg-subtle));
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -371,7 +371,7 @@ onMounted(() => {
   padding: 12px 14px;
   background: var(--bg-secondary, var(--surface));
   border-radius: var(--radius-md);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.06));
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -415,7 +415,7 @@ onMounted(() => {
 .tv__item-type {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -455,7 +455,7 @@ onMounted(() => {
   margin: 12px 16px 0;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--danger-dim);
+  background: var(--danger-subtle);
   color: var(--danger);
   font-size: 13px;
 }

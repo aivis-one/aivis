@@ -19,11 +19,11 @@ const pct = computed(() => Math.min(100, Math.max(0, (props.value / props.max) *
 
 <style scoped>
 .c-progress {
-  width: 100%; height: 6px; background: var(--border);
-  border-radius: var(--radius-full); overflow: hidden;
+  width: 100%; height: 6px; background: var(--border-default);
+  border-radius: var(--radius-pill); overflow: hidden;
 }
 .c-progress__fill {
-  height: 100%; border-radius: var(--radius-full);
+  height: 100%; border-radius: var(--radius-pill);
   transition: width 0.3s ease;
 }
 </style>

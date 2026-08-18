@@ -205,7 +205,7 @@ onMounted(loadStats)
 .staff-dash__name {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 4px 0 8px;
 }
 
@@ -225,7 +225,7 @@ onMounted(loadStats)
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: var(--warning-dim);
+  background: var(--warning-subtle);
   border-radius: var(--radius-md);
   margin-bottom: 16px;
   font-size: 13px;
@@ -259,13 +259,13 @@ onMounted(loadStats)
 
 .staff-dash__role-count {
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .staff-dash__section-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin-bottom: 12px;
 }
 

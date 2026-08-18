@@ -167,7 +167,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--bg-subtle);
-  color: var(--accent, var(--text));
+  color: var(--accent, var(--text-primary));
 }
 .event-card__day { font-size: 18px; font-weight: 700; line-height: 1; }
 .event-card__mon {
@@ -185,7 +185,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 .event-card__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -236,8 +236,8 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   width: 100%;
   padding: 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
   text-align: left;
   cursor: pointer;
 }
@@ -251,8 +251,8 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 .event-card--full {
   display: flex;
   flex-direction: column;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
@@ -260,7 +260,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 }
 .event-card--full:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-2);
 }
 .event-card--full:active { transform: translateY(0); }
 .event-card__cover {
@@ -279,7 +279,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   background-image: linear-gradient(
     135deg,
     var(--bg-subtle) 0%,
-    var(--bg-elevated) 100%
+    var(--bg-surface) 100%
   );
 }
 .event-card__cover-badge {
@@ -288,8 +288,8 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   left: 8px;
   width: 44px;
   height: 44px;
-  background: var(--bg);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-page);
+  box-shadow: var(--shadow-1);
 }
-.event-card--full .event-card__body { padding: var(--space-md, 12px); }
+.event-card--full .event-card__body { padding: var(--space-4, 12px); }
 </style>

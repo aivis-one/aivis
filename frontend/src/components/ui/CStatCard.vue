@@ -22,14 +22,14 @@ defineProps<{
 
 <style scoped>
 .c-stat {
-  background: var(--bg); box-shadow: var(--shadow-sm);
+  background: var(--bg-page); box-shadow: var(--shadow-1);
   border-radius: var(--radius-lg); padding: 16px;
   transition: all 0.2s;
 }
-.c-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.c-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
 .c-stat__icon { margin-bottom: 8px; }
 .c-stat__label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
-.c-stat__value { font-size: 22px; font-weight: 700; color: var(--text); }
+.c-stat__value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
 .c-stat__change { font-size: 12px; font-weight: 600; margin-top: 4px; }
 .c-stat__change--up { color: var(--success); }
 .c-stat__change--down { color: var(--danger); }

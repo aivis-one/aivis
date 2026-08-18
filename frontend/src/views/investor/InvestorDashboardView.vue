@@ -476,7 +476,7 @@ onBeforeUnmount(() => {
 .dash__header { display: flex; flex-direction: column; gap: 4px; }
 .dash__title {
   font-size: 22px; font-weight: 700;
-  color: var(--text); margin: 0;
+  color: var(--text-primary); margin: 0;
 }
 .dash__subtitle {
   font-size: 13px; color: var(--text-secondary); margin: 0;
@@ -489,7 +489,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   padding: 18px;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: var(--on-primary, #fff);
   border: none;
   cursor: pointer;
@@ -560,9 +560,9 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
   cursor: pointer;
   text-align: left;
   font-family: inherit;
@@ -584,7 +584,7 @@ onBeforeUnmount(() => {
 .dash__balance-value {
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .dash__balance-frozen {
   font-size: 12px;
@@ -604,9 +604,9 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -623,7 +623,7 @@ onBeforeUnmount(() => {
 .dash__posts-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 4px 0 0;
 }
 .dash__posts-center {
@@ -646,8 +646,8 @@ onBeforeUnmount(() => {
   gap: 12px;
   padding: 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
 }
 .dash__post-cover {
   width: 56px; height: 56px;
@@ -665,7 +665,7 @@ onBeforeUnmount(() => {
 .dash__post-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   /* Two-line clamp so long titles don't blow up the card height. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -682,7 +682,7 @@ onBeforeUnmount(() => {
 .dash__events-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 4px 0 0;
 }
 .dash__events-center {

@@ -48,8 +48,8 @@ function goBack(): void {
 
 <style scoped>
 .c-header {
-  position: sticky; top: 0; z-index: 100; background: var(--bg);
-  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100; background: var(--bg-page);
+  padding: 12px 16px; border-bottom: 1px solid var(--border-default);
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px;
 }
@@ -62,7 +62,7 @@ function goBack(): void {
   overflow: hidden;
 }
 .c-header__title {
-  font-size: 16px; font-weight: 700; color: var(--primary-dark);
+  font-size: 16px; font-weight: 700; color: var(--primary-active);
   /* Truncate long titles with ellipsis rather than push the right
      slot off the edge. */
   min-width: 0;
@@ -71,7 +71,7 @@ function goBack(): void {
   white-space: nowrap;
 }
 .c-header__back {
-  background: none; border: none; cursor: pointer; color: var(--text);
+  background: none; border: none; cursor: pointer; color: var(--text-primary);
   padding: 4px; display: flex; align-items: center; margin-left: -4px;
   flex-shrink: 0;
 }

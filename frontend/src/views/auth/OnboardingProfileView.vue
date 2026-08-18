@@ -188,7 +188,7 @@ async function handleSubmit(): Promise<void> {
 .auth-screen {
   display: flex; flex-direction: column;
   min-height: 100vh; min-height: 100dvh;
-  background: var(--bg);
+  background: var(--bg-page);
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
@@ -200,7 +200,7 @@ async function handleSubmit(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text);
+  font-size: 24px; font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
@@ -221,14 +221,14 @@ async function handleSubmit(): Promise<void> {
 .form-group { margin-bottom: 16px; }
 .form-label {
   display: block; font-size: 13px; font-weight: 600;
-  color: var(--text); margin-bottom: 6px;
+  color: var(--text-primary); margin-bottom: 6px;
 }
 .form-input,
 .form-select {
   width: 100%; padding: 14px 16px;
-  border: 2px solid var(--border); border-radius: var(--radius-md);
+  border: 2px solid var(--border-default); border-radius: var(--radius-md);
   font-size: 15px; font-family: inherit;
-  background: var(--bg); color: var(--text);
+  background: var(--bg-page); color: var(--text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .form-input:focus,

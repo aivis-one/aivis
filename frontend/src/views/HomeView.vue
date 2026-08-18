@@ -22,8 +22,8 @@ const { t } = useI18n()
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg);
-  gap: var(--space-md);
+  background: var(--bg-page);
+  gap: var(--space-4);
 }
 
 .home-logo img {
@@ -34,7 +34,7 @@ const { t } = useI18n()
 .home-title {
   font-size: 28px;
   font-weight: 800;
-  color: var(--text);
+  color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 

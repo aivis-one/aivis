@@ -478,7 +478,7 @@ onMounted(() => {
 .dash__title {
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0;
 }
 .dash__subtitle {
@@ -494,8 +494,8 @@ onMounted(() => {
   gap: 14px;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
 }
 .dash__hero-logo {
   width: 56px;
@@ -503,8 +503,8 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -529,7 +529,7 @@ onMounted(() => {
 .dash__hero-name {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   word-break: break-word;
 }
 
@@ -540,9 +540,9 @@ onMounted(() => {
   gap: 6px;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
 }
 .dash__balance-head {
   font-size: 12px;
@@ -557,7 +557,7 @@ onMounted(() => {
 .dash__balance-value {
   font-size: 22px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .dash__balance-frozen {
   font-size: 12px;
@@ -571,8 +571,8 @@ onMounted(() => {
   gap: 10px;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
 }
 .dash__pool-head {
   display: flex;
@@ -623,7 +623,7 @@ onMounted(() => {
 .dash__recent-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 4px 0 0 0;
 }
 .dash__recent-empty {
@@ -632,8 +632,8 @@ onMounted(() => {
   margin: 0;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px dashed var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px dashed var(--border-default);
   text-align: center;
 }
 
@@ -652,8 +652,8 @@ onMounted(() => {
   gap: 12px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated, var(--bg));
-  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--border-default);
 }
 .dash__tx-icon {
   display: flex;
@@ -662,7 +662,7 @@ onMounted(() => {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: var(--bg);
+  background: var(--bg-page);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
@@ -682,7 +682,7 @@ onMounted(() => {
 .dash__tx-type {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -690,11 +690,11 @@ onMounted(() => {
 .dash__tx-amount {
   font-size: 13px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 .dash__tx-amount--credit { color: var(--success, var(--primary)); }
-.dash__tx-amount--debit  { color: var(--danger,  var(--text)); }
+.dash__tx-amount--debit  { color: var(--danger,  var(--text-primary)); }
 .dash__tx-date {
   font-size: 11px;
   color: var(--text-secondary);

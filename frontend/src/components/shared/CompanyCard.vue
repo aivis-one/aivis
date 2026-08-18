@@ -99,8 +99,8 @@ const coverImage = computed(() =>
 .company-card {
   display: flex;
   flex-direction: column;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
@@ -109,7 +109,7 @@ const coverImage = computed(() =>
 
 .company-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-2);
 }
 
 .company-card:active {
@@ -134,22 +134,22 @@ const coverImage = computed(() =>
   background-image: linear-gradient(
     135deg,
     var(--bg-subtle) 0%,
-    var(--bg-elevated) 100%
+    var(--bg-surface) 100%
   );
 }
 
 .company-card__body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-md);
+  gap: var(--space-2);
+  padding: var(--space-4);
 }
 
 .company-card__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 .company-card__name {
@@ -157,7 +157,7 @@ const coverImage = computed(() =>
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   line-height: 1.3;
   /* 2-line clamp for long company names. */
   display: -webkit-box;
@@ -168,12 +168,12 @@ const coverImage = computed(() =>
 
 .company-card__chip {
   flex-shrink: 0;
-  padding: 2px var(--space-sm);
+  padding: 2px var(--space-2);
   font-size: 11px;
   font-weight: 500;
   color: var(--success);
-  background: var(--success-dim);
-  border-radius: var(--radius-full);
+  background: var(--success-subtle);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 

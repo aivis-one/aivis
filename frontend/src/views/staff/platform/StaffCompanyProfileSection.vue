@@ -144,7 +144,7 @@ const distributionJson = computed<string>(() => {
 </template>
 
 <style scoped>
-.scp { padding: var(--space-md, 16px); }
+.scp { padding: var(--space-4, 16px); }
 
 .scp__center {
   display: flex; flex-direction: column; align-items: center;
@@ -159,14 +159,14 @@ const distributionJson = computed<string>(() => {
 
 .scp__row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 0; border-bottom: 1px solid var(--border);
+  padding: 10px 0; border-bottom: 1px solid var(--border-default);
 }
 .scp__label { font-size: 13px; color: var(--text-secondary); }
-.scp__value { font-size: 14px; font-weight: 600; color: var(--text); }
+.scp__value { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 
 .scp__section { margin-top: 20px; }
 .scp__section-title {
-  font-size: 14px; font-weight: 700; color: var(--text); margin: 0 0 8px;
+  font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px;
 }
 .scp__description {
   font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin: 0;
@@ -176,7 +176,7 @@ const distributionJson = computed<string>(() => {
 .scp__links a { font-size: 13px; color: var(--primary); text-decoration: underline; word-break: break-all; }
 
 .scp__json {
-  font-size: 12px; font-family: monospace; color: var(--text);
+  font-size: 12px; font-family: monospace; color: var(--text-primary);
   background: var(--bg-subtle); border-radius: var(--radius-sm);
   padding: 12px; overflow-x: auto; margin: 0; white-space: pre;
 }
