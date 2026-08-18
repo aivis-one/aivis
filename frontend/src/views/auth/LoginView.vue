@@ -158,18 +158,8 @@ async function handleLogin(): Promise<void> {
     </header>
 
     <div class="auth-content">
-      <div class="auth-icon">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--primary)"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
+      <div class="auth-brand">
+        <AivisLogo :height="64" />
       </div>
 
       <h1 class="auth-title">{{ t('auth.login.title') }}</h1>
@@ -282,13 +272,12 @@ async function handleLogin(): Promise<void> {
   overflow-y: auto;
 }
 
-.auth-icon {
+/* The entry screen leads with the BRAND, not a generic padlock glyph: the mark
+   plus the drawn wordmark, at 64px. This is the first thing a user sees. */
+.auth-brand {
   margin-bottom: 24px;
-}
-
-.auth-icon svg {
-  width: 48px;
-  height: 48px;
+  display: flex;
+  justify-content: center;
 }
 
 .auth-title {
