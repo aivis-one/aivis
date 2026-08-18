@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
   padding: 18px;
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: var(--on-primary, #fff);
+  color: var(--on-primary);
   border: none;
   cursor: pointer;
   text-align: left;
@@ -560,7 +560,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
   cursor: pointer;
@@ -588,7 +588,7 @@ onBeforeUnmount(() => {
 }
 .dash__balance-frozen {
   font-size: 12px;
-  color: var(--warning, var(--text-secondary));
+  color: var(--warning);
 }
 
 /* Quick actions row */

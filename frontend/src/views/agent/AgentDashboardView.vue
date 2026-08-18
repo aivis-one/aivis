@@ -282,7 +282,7 @@ onMounted(() => {
 .dash__widget {
   background: var(--surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -293,7 +293,7 @@ onMounted(() => {
 .dash__widget-icon {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -301,11 +301,11 @@ onMounted(() => {
 }
 
 .dash__widget-icon--accent {
-  color: var(--accent, var(--primary));
+  color: var(--accent);
 }
 
 .dash__widget-icon--gold {
-  color: var(--warning, var(--primary));
+  color: var(--warning);
 }
 
 .dash__widget-icon--primary {
@@ -355,7 +355,7 @@ onMounted(() => {
 .dash__action {
   background: var(--surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
   flex-direction: column;

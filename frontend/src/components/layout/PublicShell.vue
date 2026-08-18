@@ -117,7 +117,7 @@ function goToLogin(): void {
 .shell__login {
   padding: 6px 14px;
   border: none;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   /* --primary, not --accent: this is the screen's PRIMARY action. The owner
      found eight of these and they were fixed; the sweep found this one
      outside that pass's scope. `background: var(--accent)` resolves

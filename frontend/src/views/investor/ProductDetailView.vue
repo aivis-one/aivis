@@ -322,7 +322,7 @@ onMounted(loadProduct)
    button sits where the hero would have started. */
 .pd__back-row {
   display: flex;
-  margin: var(--space-4, 16px) var(--space-4, 16px) 0;
+  margin: var(--space-4) var(--space-4) 0;
 }
 
 /* Hero with cover image */

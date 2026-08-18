@@ -54,7 +54,7 @@ function goHome(): void {
 
 .not-found__btn {
   padding: 12px 32px;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   /* --primary, not --accent: this is the screen's PRIMARY action. The owner
      found eight of these and they were fixed; the sweep found this one
      outside that pass's scope. `background: var(--accent)` resolves

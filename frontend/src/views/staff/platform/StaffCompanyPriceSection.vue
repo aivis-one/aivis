@@ -273,7 +273,7 @@ onMounted(reload)
 </template>
 
 <style scoped>
-.scpr { padding: var(--space-4, 16px); }
+.scpr { padding: var(--space-4); }
 
 .scpr__current {
   display: flex; align-items: center; justify-content: space-between;

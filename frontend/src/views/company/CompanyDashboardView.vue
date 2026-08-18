@@ -494,7 +494,7 @@ onMounted(() => {
   gap: 14px;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 .dash__hero-logo {
@@ -540,7 +540,7 @@ onMounted(() => {
   gap: 6px;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
 }
@@ -561,7 +561,7 @@ onMounted(() => {
 }
 .dash__balance-frozen {
   font-size: 12px;
-  color: var(--warning, var(--text-secondary));
+  color: var(--warning);
 }
 
 /* Pool widget (B3) */
@@ -571,7 +571,7 @@ onMounted(() => {
   gap: 10px;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 .dash__pool-head {
@@ -632,7 +632,7 @@ onMounted(() => {
   margin: 0;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
 }
@@ -652,7 +652,7 @@ onMounted(() => {
   gap: 12px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 .dash__tx-icon {
@@ -693,8 +693,8 @@ onMounted(() => {
   color: var(--text-primary);
   flex-shrink: 0;
 }
-.dash__tx-amount--credit { color: var(--success, var(--primary)); }
-.dash__tx-amount--debit  { color: var(--danger,  var(--text-primary)); }
+.dash__tx-amount--credit { color: var(--success); }
+.dash__tx-amount--debit  { color: var(--danger); }
 .dash__tx-date {
   font-size: 11px;
   color: var(--text-secondary);

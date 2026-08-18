@@ -465,7 +465,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   background: linear-gradient(
     135deg,
     var(--primary),
-    var(--primary-active, var(--primary))
+    var(--primary-active)
   );
   color: var(--on-primary);
 }
@@ -532,7 +532,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   margin: 0;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
 }
@@ -541,7 +541,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__chart {
   padding: 16px 12px 8px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 
@@ -621,7 +621,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 

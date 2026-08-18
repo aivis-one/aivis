@@ -435,7 +435,7 @@ onMounted(() => {
   padding: 16px;
   margin: 0 16px 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 .cset__hero-logo {
@@ -481,17 +481,17 @@ onMounted(() => {
   text-transform: capitalize;
 }
 .cset__status--success {
-  background: var(--bg-surface, var(--bg-page));
-  color: var(--success, var(--primary));
-  border: 1px solid var(--success, var(--primary));
+  background: var(--bg-surface);
+  color: var(--success);
+  border: 1px solid var(--success);
 }
 .cset__status--warning {
-  background: var(--bg-surface, var(--bg-page));
-  color: var(--warning, var(--text-secondary));
-  border: 1px solid var(--warning, var(--border-default));
+  background: var(--bg-surface);
+  color: var(--warning);
+  border: 1px solid var(--warning);
 }
 .cset__status--neutral {
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   color: var(--text-secondary);
   border: 1px solid var(--border-default);
 }
@@ -540,7 +540,7 @@ button.cset__row:last-child { border-bottom: none; }
   flex-direction: column;
 }
 .cset__row--clickable { transition: background 0.15s; }
-.cset__row--clickable:hover { background: var(--bg-subtle, var(--bg-surface)); }
+.cset__row--clickable:hover { background: var(--bg-subtle); }
 .cset__row--disabled {
   opacity: 0.6;
   pointer-events: none;
@@ -561,7 +561,7 @@ button.cset__row:last-child { border-bottom: none; }
   color: var(--text-secondary);
 }
 .cset__row-label--danger {
-  color: var(--danger, #DC2626);
+  color: var(--danger);
   font-weight: 600;
 }
 .cset__row-value {
@@ -583,7 +583,7 @@ button.cset__row:last-child { border-bottom: none; }
 .cset__json {
   margin: 0;
   padding: 12px 14px;
-  background: var(--bg-subtle, var(--bg-page));
+  background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

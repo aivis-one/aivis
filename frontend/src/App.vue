@@ -162,7 +162,7 @@ onMounted(() => {
   background: var(--on-accent);
   color: var(--accent);
   border: none;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -193,7 +193,7 @@ onMounted(() => {
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-page);
-  gap: var(--space-4, 16px);
+  gap: var(--space-4);
   padding: 24px;
 }
 .auth-error-text {
@@ -203,7 +203,7 @@ onMounted(() => {
 }
 .auth-error-retry {
   padding: 12px 24px;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   /* --primary, not --accent: this is the screen's PRIMARY action. The owner
      found eight of these and they were fixed; the sweep found this one
      outside that pass's scope. `background: var(--accent)` resolves

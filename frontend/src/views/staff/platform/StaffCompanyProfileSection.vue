@@ -144,7 +144,7 @@ const distributionJson = computed<string>(() => {
 </template>
 
 <style scoped>
-.scp { padding: var(--space-4, 16px); }
+.scp { padding: var(--space-4); }
 
 .scp__center {
   display: flex; flex-direction: column; align-items: center;

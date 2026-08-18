@@ -187,7 +187,7 @@ onMounted(loadPayments)
 
 .staff-pay__hint {
   display: flex; align-items: center; gap: 8px;
-  padding: 12px; background: var(--bg-surface, var(--bg-subtle)); border-radius: var(--radius-md);
+  padding: 12px; background: var(--bg-surface); border-radius: var(--radius-md);
   margin-bottom: 16px; font-size: 12px; color: var(--text-secondary);
 }
 

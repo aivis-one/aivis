@@ -471,8 +471,8 @@ onMounted(load)
 /* Generic card */
 .pv__card {
   padding: 16px;
-  border-radius: var(--radius-md, 12px);
-  background: var(--bg-secondary, var(--surface));
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
 }
 .pv__card-title {
   font-size: 11px;
@@ -494,7 +494,7 @@ onMounted(load)
 .pv__row--total {
   margin-top: 6px;
   padding-top: 12px;
-  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border-default);
 }
 .pv__row-label {
   font-size: 14px;

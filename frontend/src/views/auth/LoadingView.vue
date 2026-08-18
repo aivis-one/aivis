@@ -24,7 +24,7 @@ const { t } = useI18n()
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-page);
-  gap: var(--space-4, 16px);
+  gap: var(--space-4);
 }
 
 .loading-spinner {

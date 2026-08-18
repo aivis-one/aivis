@@ -262,7 +262,7 @@ onMounted(loadTemplates)
 </template>
 
 <style scoped>
-.sct { padding: var(--space-4, 16px); }
+.sct { padding: var(--space-4); }
 
 .sct__filters { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .sct__filter-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }

@@ -319,7 +319,7 @@ async function handleLogin(): Promise<void> {
   width: 100%;
   padding: 12px 16px;
   border: 2px solid var(--border-default);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   background: var(--bg-page);
   color: var(--text-primary);
   font-size: 15px;
@@ -365,7 +365,7 @@ async function handleLogin(): Promise<void> {
   padding: 12px 16px;
   background: var(--danger-subtle);
   border: 1px solid var(--danger);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   color: var(--danger);
   font-size: 13px;
   margin-bottom: 16px;
@@ -375,7 +375,7 @@ async function handleLogin(): Promise<void> {
 .btn {
   width: 100%;
   padding: 14px;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   font-size: 15px;
   font-weight: 600;
   border: none;

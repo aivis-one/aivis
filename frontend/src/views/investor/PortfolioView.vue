@@ -333,7 +333,7 @@ onMounted(() => {
   padding: 20px;
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: var(--on-primary, #fff);
+  color: var(--on-primary);
   display: flex;
   flex-direction: column;
   gap: 12px;

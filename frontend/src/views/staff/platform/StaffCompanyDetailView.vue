@@ -197,7 +197,7 @@ onMounted(loadCompany)
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: var(--space-4, 16px);
+  padding: var(--space-4);
 }
 .scd__page-title {
   font-size: 20px;
@@ -213,7 +213,7 @@ onMounted(loadCompany)
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 0 var(--space-4, 16px) 12px;
+  padding: 0 var(--space-4) 12px;
   border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;

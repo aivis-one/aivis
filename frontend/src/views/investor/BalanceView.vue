@@ -353,8 +353,8 @@ watch(
 /* Card base */
 .bv__card {
   padding: 20px;
-  background: var(--bg-secondary, var(--surface));
-  border-radius: var(--radius-md, 12px);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
   margin: 16px 16px 0;
 }
 
@@ -395,7 +395,7 @@ watch(
   gap: 12px;
   padding-top: 8px;
   margin-top: 4px;
-  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border-default);
   font-size: 13px;
   color: var(--text-secondary);
 }
@@ -458,9 +458,9 @@ watch(
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: var(--bg-secondary, var(--surface));
+  background: var(--bg-secondary);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-default);
 }
 
 .bv__item-icon {

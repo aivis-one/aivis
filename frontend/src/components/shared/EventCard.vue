@@ -167,7 +167,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--bg-subtle);
-  color: var(--accent, var(--text-primary));
+  color: var(--accent);
 }
 .event-card__day { font-size: 18px; font-weight: 700; line-height: 1; }
 .event-card__mon {
@@ -223,7 +223,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   margin-top: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent, var(--primary));
+  color: var(--accent);
   text-decoration: none;
   width: fit-content;
 }
@@ -291,5 +291,5 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   background: var(--bg-page);
   box-shadow: var(--shadow-1);
 }
-.event-card--full .event-card__body { padding: var(--space-4, 12px); }
+.event-card--full .event-card__body { padding: var(--space-4); }
 </style>

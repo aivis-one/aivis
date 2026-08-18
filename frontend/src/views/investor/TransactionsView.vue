@@ -339,7 +339,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 .tv__tab--active {
-  background: var(--primary-subtle, var(--bg-subtle));
+  background: var(--primary-subtle);
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -369,9 +369,9 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: var(--bg-secondary, var(--surface));
+  background: var(--bg-secondary);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-default);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }

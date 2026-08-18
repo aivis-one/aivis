@@ -222,13 +222,13 @@ onMounted(() => {
   gap: 12px;
   background: var(--surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   padding: 12px 14px;
 }
 
 .lb__row--me {
   border-color: var(--primary);
-  background: var(--primary-dim, var(--bg-surface));
+  background: var(--primary-dim);
 }
 
 .lb__rank {
@@ -257,7 +257,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 600;
   padding: 2px 7px;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   background: var(--primary);
   color: var(--on-primary);
 }

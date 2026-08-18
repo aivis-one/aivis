@@ -349,7 +349,7 @@ onMounted(() => {
 .hub__stats {
   background: var(--surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   padding: 16px;
 }
 
@@ -401,7 +401,7 @@ onMounted(() => {
 .hub__card {
   background: var(--surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -418,7 +418,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
@@ -432,11 +432,11 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
 }
 
 .hub__card-state--active {
-  background: var(--success-subtle, var(--bg-surface));
+  background: var(--success-subtle);
   color: var(--success);
 }
 
@@ -450,7 +450,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   background: var(--bg-surface);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
 }
 

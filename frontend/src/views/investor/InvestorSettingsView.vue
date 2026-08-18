@@ -663,7 +663,7 @@ button.sett__row:last-child {
   color: var(--text-secondary);
 }
 .sett__row-label--danger {
-  color: var(--danger, #DC2626);
+  color: var(--danger);
   font-weight: 600;
 }
 .sett__row-value {

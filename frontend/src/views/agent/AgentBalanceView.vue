@@ -565,7 +565,7 @@ onMounted(() => {
 .abal__card {
   padding: 16px 18px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 
@@ -588,7 +588,7 @@ onMounted(() => {
 }
 .abal__balance-frozen {
   font-size: 12px;
-  color: var(--warning, var(--text-secondary));
+  color: var(--warning);
 }
 
 .abal__cta-row {
@@ -618,7 +618,7 @@ onMounted(() => {
   margin: 0;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
 }
@@ -637,7 +637,7 @@ onMounted(() => {
   gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 .abal__item-icon {
@@ -675,7 +675,7 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--danger, var(--text-secondary));
+  color: var(--danger);
   font-style: italic;
   text-align: right;
   max-width: 60%;
@@ -686,25 +686,25 @@ onMounted(() => {
   font-size: 10px;
   font-weight: 700;
   padding: 3px 8px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   flex-shrink: 0;
 }
 .abal__badge--success {
   background: var(--bg-page);
-  color: var(--success, var(--primary));
-  border: 1px solid var(--success, var(--primary));
+  color: var(--success);
+  border: 1px solid var(--success);
 }
 .abal__badge--warning {
   background: var(--bg-page);
-  color: var(--warning, var(--text-secondary));
-  border: 1px solid var(--warning, var(--border-default));
+  color: var(--warning);
+  border: 1px solid var(--warning);
 }
 .abal__badge--danger {
   background: var(--bg-page);
-  color: var(--danger, #dc2626);
-  border: 1px solid var(--danger, #dc2626);
+  color: var(--danger);
+  border: 1px solid var(--danger);
 }
 .abal__badge--neutral {
   background: var(--bg-page);
@@ -729,7 +729,7 @@ onMounted(() => {
   margin-top: 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   font-size: 12px;
   color: var(--text-secondary);
   text-align: center;
@@ -769,14 +769,14 @@ onMounted(() => {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  background: var(--danger-subtle, rgba(220, 38, 38, 0.08));
-  border: 1px solid var(--danger, #dc2626);
-  color: var(--danger, #dc2626);
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger);
+  color: var(--danger);
 }
 .abal__form-error--soft {
   background: transparent;
-  border: 1px solid var(--warning, var(--border-default));
-  color: var(--warning, var(--text-secondary));
+  border: 1px solid var(--warning);
+  color: var(--warning);
 }
 
 .abal__form-actions {

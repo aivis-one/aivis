@@ -35,8 +35,8 @@ const { t } = useI18n()
 
 .view-stub__badge {
   padding: 6px 14px;
-  border-radius: var(--radius-sm, 6px);
-  background: var(--bg-secondary, var(--surface));
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
   color: var(--text-tertiary);
   font-size: 12px;
   font-weight: 600;

@@ -538,7 +538,7 @@ onUnmounted(() => {
   padding: 18px;
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: var(--on-primary, #fff);
+  color: var(--on-primary);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -603,16 +603,16 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .cp__item-icon--sale {
-  background: var(--primary-dim, var(--bg-subtle));
+  background: var(--primary-dim);
   color: var(--primary);
 }
 .cp__item-icon--gift {
-  background: var(--success-subtle, var(--bg-subtle));
+  background: var(--success-subtle);
   color: var(--success);
 }
 .cp__item-icon--installment {
-  background: var(--warning-subtle, var(--bg-subtle));
-  color: var(--warning, var(--accent));
+  background: var(--warning-subtle);
+  color: var(--warning);
 }
 
 .cp__item-body {

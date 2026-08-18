@@ -279,8 +279,8 @@ onMounted(load)
 /* Card base */
 .dv__card {
   padding: 16px;
-  background: var(--bg-secondary, var(--surface));
-  border-radius: var(--radius-md, 12px);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
 }
 
 /* Network row */
@@ -301,7 +301,7 @@ onMounted(load)
   font-size: 14px;
   font-weight: 700;
   color: var(--accent);
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-family: var(--font-mono);
 }
 
 .dv__hint {
@@ -348,7 +348,7 @@ onMounted(load)
   padding: 12px;
   background: var(--bg-subtle);
   border-radius: var(--radius-sm);
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-family: var(--font-mono);
   font-size: 13px;
   color: var(--text-primary);
   word-break: break-all;

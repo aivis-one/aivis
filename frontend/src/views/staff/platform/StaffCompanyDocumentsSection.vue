@@ -297,7 +297,7 @@ onMounted(loadAttachments)
 </template>
 
 <style scoped>
-.scd { padding: var(--space-4, 16px); }
+.scd { padding: var(--space-4); }
 
 .scd__center {
   display: flex; flex-direction: column; align-items: center;

@@ -303,7 +303,7 @@ async function onDownload(): Promise<void> {
   font-family: inherit;
   font-size: 14px;
   cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   transition: background 0.12s ease, color 0.12s ease;
 }
 

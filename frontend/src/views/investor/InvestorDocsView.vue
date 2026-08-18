@@ -475,12 +475,12 @@ function metaLabel(doc: DocumentResponse): string {
   flex-shrink: 0;
 }
 .docs__status--signed {
-  background: var(--success-subtle, rgba(34, 197, 94, 0.14));
-  color: var(--success, #22c55e);
+  background: var(--success-subtle);
+  color: var(--success);
 }
 .docs__status--pending {
-  background: var(--warning-subtle, rgba(245, 158, 11, 0.14));
-  color: var(--warning, #f59e0b);
+  background: var(--warning-subtle);
+  color: var(--warning);
 }
 
 /* Modal */

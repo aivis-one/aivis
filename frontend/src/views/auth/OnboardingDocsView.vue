@@ -415,7 +415,7 @@ async function handleSignAll(): Promise<void> {
 .doc-modal__body {
   min-height: 120px; max-height: 60vh; overflow-y: auto;
   border: 1px solid var(--border-default); border-radius: var(--radius-sm);
-  padding: 16px; background: var(--bg-subtle, var(--bg-page));
+  padding: 16px; background: var(--bg-subtle);
   margin-bottom: 16px;
 }
 .doc-modal__center {

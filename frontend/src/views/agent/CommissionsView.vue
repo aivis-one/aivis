@@ -278,7 +278,7 @@ onMounted(() => {
 .comm__card {
   background: var(--surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -351,7 +351,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-secondary);
 }
@@ -365,8 +365,8 @@ onMounted(() => {
 }
 
 .comm__status--danger {
-  color: var(--danger, #c0392b);
-  background: var(--danger-subtle, var(--bg-surface));
+  color: var(--danger);
+  background: var(--danger-subtle);
 }
 
 .comm__status--neutral {

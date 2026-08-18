@@ -392,7 +392,7 @@ function onRoadmapPostClick(_postId: string): void {
    started. */
 .co__back-row {
   display: flex;
-  margin: var(--space-4, 16px) var(--space-4, 16px) 0;
+  margin: var(--space-4) var(--space-4) 0;
 }
 
 .co__main {

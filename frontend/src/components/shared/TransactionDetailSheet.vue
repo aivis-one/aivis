@@ -287,7 +287,7 @@ function onClose(): void {
   display: flex;
   flex-direction: column;
   gap: 0;
-  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--border-default);
 }
 .tds__row {
   display: flex;
@@ -295,7 +295,7 @@ function onClose(): void {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.06));
+  border-bottom: 1px solid var(--border-default);
   font-size: 13px;
 }
 .tds__key {
@@ -316,7 +316,7 @@ function onClose(): void {
 }
 
 .tds__hash {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-primary);
   user-select: all;

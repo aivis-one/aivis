@@ -479,7 +479,7 @@ onMounted(() => {
   margin: 0;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
 }
@@ -487,7 +487,7 @@ onMounted(() => {
 .sett__json {
   margin: 0;
   padding: 12px 14px;
-  background: var(--bg-subtle, var(--bg-page));
+  background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -515,7 +515,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   min-height: 48px;
   width: 100%;
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -537,7 +537,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 .sett__row-label--danger {
-  color: var(--danger, #dc2626);
+  color: var(--danger);
   font-weight: 600;
 }
 
@@ -578,14 +578,14 @@ onMounted(() => {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  background: var(--danger-subtle, rgba(220, 38, 38, 0.08));
-  border: 1px solid var(--danger, #dc2626);
-  color: var(--danger, #dc2626);
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger);
+  color: var(--danger);
 }
 .sett__form-error--soft {
   background: transparent;
-  border: 1px solid var(--warning, var(--border-default));
-  color: var(--warning, var(--text-secondary));
+  border: 1px solid var(--warning);
+  color: var(--warning);
 }
 
 .sett__form-actions {

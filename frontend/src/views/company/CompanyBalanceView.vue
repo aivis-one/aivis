@@ -696,7 +696,7 @@ onMounted(() => {
 .cbal__card {
   padding: 16px 18px;
   border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 
@@ -713,7 +713,7 @@ onMounted(() => {
 }
 .cbal__balance-frozen {
   font-size: 12px;
-  color: var(--warning, var(--text-secondary));
+  color: var(--warning);
 }
 
 .cbal__cta-row {
@@ -735,7 +735,7 @@ onMounted(() => {
 .cbal__empty {
   font-size: 13px; color: var(--text-secondary); margin: 0;
   padding: 16px; border-radius: var(--radius);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
 }
@@ -748,7 +748,7 @@ onMounted(() => {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-surface, var(--bg-page));
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 .cbal__item-icon {
@@ -775,7 +775,7 @@ onMounted(() => {
 .cbal__item-date { white-space: nowrap; }
 .cbal__item-reason {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--danger, var(--text-secondary));
+  color: var(--danger);
   font-style: italic; text-align: right;
   max-width: 60%;
 }
@@ -784,24 +784,24 @@ onMounted(() => {
   display: inline-block;
   font-size: 10px; font-weight: 700;
   padding: 3px 8px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   text-transform: uppercase; letter-spacing: 0.05em;
   flex-shrink: 0;
 }
 .cbal__badge--success {
   background: var(--bg-page);
-  color: var(--success, var(--primary));
-  border: 1px solid var(--success, var(--primary));
+  color: var(--success);
+  border: 1px solid var(--success);
 }
 .cbal__badge--warning {
   background: var(--bg-page);
-  color: var(--warning, var(--text-secondary));
-  border: 1px solid var(--warning, var(--border-default));
+  color: var(--warning);
+  border: 1px solid var(--warning);
 }
 .cbal__badge--danger {
   background: var(--bg-page);
-  color: var(--danger, #DC2626);
-  border: 1px solid var(--danger, #DC2626);
+  color: var(--danger);
+  border: 1px solid var(--danger);
 }
 .cbal__badge--neutral {
   background: var(--bg-page);
@@ -817,7 +817,7 @@ onMounted(() => {
 .cbal__json {
   margin: 0;
   padding: 12px 14px;
-  background: var(--bg-subtle, var(--bg-page));
+  background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -876,14 +876,14 @@ onMounted(() => {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  background: var(--danger-subtle, rgba(220, 38, 38, 0.08));
-  border: 1px solid var(--danger, #DC2626);
-  color: var(--danger, #DC2626);
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger);
+  color: var(--danger);
 }
 .cbal__form-error--soft {
   background: transparent;
-  border: 1px solid var(--warning, var(--border-default));
-  color: var(--warning, var(--text-secondary));
+  border: 1px solid var(--warning);
+  color: var(--warning);
 }
 
 .cbal__form-actions {

@@ -573,7 +573,7 @@ onMounted(load)
    above the hero. Button shape lives in CBackLink. */
 .iv__back-row {
   display: flex;
-  margin: var(--space-4, 16px) var(--space-4, 16px) 0;
+  margin: var(--space-4) var(--space-4) 0;
 }
 
 /* Hero with cover */
@@ -649,8 +649,8 @@ onMounted(load)
 /* Card container */
 .iv__card {
   padding: 16px;
-  border-radius: var(--radius-md, 12px);
-  background: var(--bg-secondary, var(--surface));
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
 }
 .iv__card-title {
   font-size: 11px;
@@ -750,7 +750,7 @@ onMounted(load)
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--border-default);
 }
 .iv__tranche:last-child {
   border-bottom: none;

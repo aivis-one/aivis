@@ -212,8 +212,8 @@ onMounted(() => {
 .iev {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 16px);
-  padding: var(--space-4, 16px);
+  gap: var(--space-4);
+  padding: var(--space-4);
 }
 .iev__header { display: flex; flex-direction: column; gap: 4px; }
 .iev__title {
@@ -253,7 +253,7 @@ onMounted(() => {
 /* Filter chip -- same pattern as EventEditor / TemplatesSection. */
 .filter-chip {
   padding: 8px 14px;
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   font-size: 13px;
@@ -263,8 +263,8 @@ onMounted(() => {
   transition: all 0.15s ease;
 }
 .filter-chip.active {
-  border-color: var(--accent, var(--primary));
-  color: var(--accent, var(--primary));
+  border-color: var(--accent);
+  color: var(--accent);
   background: var(--bg-subtle);
 }
 </style>

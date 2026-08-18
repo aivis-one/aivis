@@ -994,7 +994,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.scr { padding: var(--space-4, 16px); }
+.scr { padding: var(--space-4); }
 
 .scr__center {
   display: flex; flex-direction: column; align-items: center;
