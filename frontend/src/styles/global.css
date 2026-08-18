@@ -65,10 +65,13 @@ ol {
 
 /* === RTL === */
 [dir="rtl"] {
-  /* Arabic first, then the design system's body stack -- NOT the retired
-     Montserrat, which this rule still named after batch 6 swapped the rest of
-     the app to Manrope. Arabic text would have rendered in a different typeface
-     from every other locale. */
+  /* Arabic first, then the design system's body stack. This rule used to name
+     the retired brand's typeface directly, after batch 6 had swapped the rest
+     of the app to Manrope -- Arabic would have rendered in a different face
+     from every other locale.
+     The retired name is deliberately NOT spelled here: this file ships, and a
+     dead family name left in source makes every future "is it gone yet" grep
+     hit its own documentation. */
   font-family: 'Noto Sans Arabic', var(--font-body);
 }
 
