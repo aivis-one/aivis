@@ -5,10 +5,22 @@
 // F4.1.4 polish: left section now truncates long titles with
 // ellipsis instead of bleeding into the right slot. Defensive CSS --
 // any title passed from any view stays inside the header strip.
+//
+// LANGUAGE + THEME (2026-08-18). The controls live HERE, not in each shell,
+// because this component is the single header for all five shells -- every
+// view that once rendered its own <CHeader> has since removed it (the comments
+// in those files record the doubled top bar that caused). One placement,
+// four cabinets plus the storefront.
+//
+// The owner found this himself: both mechanisms worked and neither had any UI
+// once signed in. The earlier fix put them on `views/auth/` only and reported
+// "every signed-out screen" -- the authenticated app, where a user spends all
+// of their time, had never been inside the denominator of that check.
 
 import { useRouter } from 'vue-router'
 import { ChevronLeft } from 'lucide-vue-next'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
+import CAppControls from '@/components/ui/CAppControls.vue'
 import { safeNavigate } from '@/composables/safeNavigate'
 
 withDefaults(
@@ -41,6 +53,7 @@ function goBack(): void {
       <span v-if="title" class="c-header__title">{{ title }}</span>
     </div>
     <div class="c-header__right">
+      <CAppControls />
       <slot name="right" />
     </div>
   </header>

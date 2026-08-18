@@ -125,9 +125,12 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  height: 32px;
-  padding: 0 8px;
+  /* 44px minimum in BOTH axes. These shipped at 40x32 on 2026-08-18 and the
+     measurement pass caught it the same day -- a control added to fix an
+     accessibility-adjacent gap that was itself below the touch-target floor. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
@@ -170,7 +173,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 8px;
+  padding: 10px 8px;
+  min-height: 44px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;

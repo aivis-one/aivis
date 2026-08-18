@@ -28,12 +28,12 @@
 //   CHeader prop defaults (showBack=false, showLogo=true) match what
 //   InvestorShell uses -- no overrides needed.
 //
-// LANGUAGE + THEME CONTROLS (2026-08-18).
-//   <CAppControls> was added to `views/auth/*` for "every signed-out screen"
-//   and this shell was outside that scope -- so the four /public/* views had
-//   neither control. That is the WORST surface to miss: `/r/:code` redirects a
-//   referred first-time visitor straight to /public/companies, so the very
-//   first screen a prospect sees offered no way to change language.
+// LANGUAGE + THEME CONTROLS.
+//   Added here 2026-08-18 when the four /public/* views turned out to have
+//   neither -- the worst surface to miss, since `/r/:code` lands a referred
+//   first-time visitor on /public/companies before they ever see /login.
+//   MOVED into CHeader the same day: the four cabinets were missing them too,
+//   and one header serves every shell.
 //
 // NO BACK BUTTON IN THE HEADER.
 //   Public views do not pass `:show-back="true"` either. Browser back
@@ -54,7 +54,6 @@ import { useI18n } from 'vue-i18n'
 
 import CHeader from '@/components/layout/CHeader.vue'
 import CToast from '@/components/ui/CToast.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -85,16 +84,13 @@ function goToLogin(): void {
   <div class="shell">
     <CHeader>
       <template #right>
-        <div class="shell__controls">
-          <CAppControls />
-          <button
-            type="button"
-            class="shell__login"
-            @click="goToLogin"
-          >
-            {{ t('public.shell.loginButton') }}
-          </button>
-        </div>
+        <button
+          type="button"
+          class="shell__login"
+          @click="goToLogin"
+        >
+          {{ t('public.shell.loginButton') }}
+        </button>
       </template>
     </CHeader>
     <main class="shell__content">
@@ -116,12 +112,6 @@ function goToLogin(): void {
 .shell__content {
   flex: 1;
   overflow-y: auto;
-}
-
-.shell__controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .shell__login {
