@@ -122,6 +122,13 @@
   --space-4: 1rem;
   --space-6: 2rem;
   --space-7: 3rem;
+  /* The design system defines THREE type roles; the product shipped TWO, so every
+     heading rendered in the body face. Owner-ruled 2026-08-18: wire it and drop
+     the retired family in one go.
+     'Noto Sans Arabic' is NON-NEGOTIABLE in every stack: `ar` is a shipped locale
+     and the design system's three families carry ZERO Arabic glyphs. It has bitten
+     this repo once already, when the RTL rule still named the retired face. */
+  --font-display: 'Plus Jakarta Sans', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Manrope', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Noto Sans Arabic', ui-monospace, SFMono-Regular, Menlo, monospace;
 

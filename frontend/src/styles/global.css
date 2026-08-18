@@ -63,6 +63,16 @@ ol {
   list-style: none;
 }
 
+/* === HEADINGS ===
+   The display face, per the design system's own assignment (Display/H1-H4 to
+   Plus Jakarta Sans). Weight and size are deliberately NOT set here: the product
+   already sets those per view, and taking them over in one sweep would change
+   every screen's rhythm at the same moment as the typeface. This changes the
+   LETTERFORMS only. */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+}
+
 /* === RTL === */
 [dir="rtl"] {
   /* Arabic first, then the design system's body stack. This rule used to name
