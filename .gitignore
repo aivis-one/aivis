@@ -47,3 +47,8 @@ Thumbs.db
 # It is the SOURCE we translate FROM; what the product ships is the tracked
 # frontend under frontend/src. Owner-instructed 2026-08-16.
 _design-source/
+
+# Claude Code harness config. Tool state, not product code -- the repo has
+# never tracked it, and leaving it untracked makes every `git status` read
+# as a dirty tree.
+.claude/
