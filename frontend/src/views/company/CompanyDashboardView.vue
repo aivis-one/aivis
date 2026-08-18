@@ -476,13 +476,13 @@ onMounted(() => {
 /* Header */
 .dash__header { display: flex; flex-direction: column; gap: 4px; }
 .dash__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 .dash__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -515,7 +515,7 @@ onMounted(() => {
   object-fit: cover;
 }
 .dash__hero-logo-fallback {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--primary);
   letter-spacing: 0.5px;
@@ -527,7 +527,7 @@ onMounted(() => {
   min-width: 0;
 }
 .dash__hero-name {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
   word-break: break-word;
@@ -545,7 +545,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 .dash__balance-head {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   font-weight: 600;
 }
@@ -555,12 +555,12 @@ onMounted(() => {
   gap: 6px;
 }
 .dash__balance-value {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
 }
 .dash__balance-frozen {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--warning);
 }
 
@@ -584,12 +584,12 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
 .dash__pool-equity {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   font-weight: 600;
 }
@@ -598,7 +598,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
@@ -621,13 +621,13 @@ onMounted(() => {
   gap: 10px;
 }
 .dash__recent-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 4px 0 0 0;
 }
 .dash__recent-empty {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
   padding: 16px;
@@ -680,7 +680,7 @@ onMounted(() => {
   gap: 8px;
 }
 .dash__tx-type {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -688,7 +688,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 .dash__tx-amount {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 700;
   color: var(--text-primary);
   flex-shrink: 0;
@@ -696,7 +696,7 @@ onMounted(() => {
 .dash__tx-amount--credit { color: var(--success); }
 .dash__tx-amount--debit  { color: var(--danger); }
 .dash__tx-date {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 </style>

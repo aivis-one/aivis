@@ -263,7 +263,7 @@ onMounted(load)
   padding: 12px 16px 8px;
 }
 .dv__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -291,14 +291,14 @@ onMounted(load)
   gap: 12px;
 }
 .dv__network-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .dv__network-value {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--accent);
   font-family: var(--font-mono);
@@ -306,7 +306,7 @@ onMounted(load)
 
 .dv__hint {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -338,7 +338,7 @@ onMounted(load)
 
 .dv__qr--fallback {
   color: #333;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   text-align: center;
   padding: 40px 24px;
 }
@@ -349,7 +349,7 @@ onMounted(load)
   background: var(--bg-subtle);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-primary);
   word-break: break-all;
   text-align: center;
@@ -377,7 +377,7 @@ onMounted(load)
 
 .dv__warning-text {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   line-height: 1.5;
   color: var(--text-primary);
 }

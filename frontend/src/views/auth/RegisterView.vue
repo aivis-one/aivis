@@ -290,7 +290,7 @@ async function handleRegister(): Promise<void> {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
 .btn-back svg {
@@ -308,7 +308,7 @@ async function handleRegister(): Promise<void> {
 }
 
 .auth-title {
-  font-size: 24px;
+  font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 8px;
@@ -316,7 +316,7 @@ async function handleRegister(): Promise<void> {
 }
 
 .auth-subtitle {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: 32px;
   text-align: center;
@@ -334,7 +334,7 @@ async function handleRegister(): Promise<void> {
 
 .form-label {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 6px;
@@ -347,7 +347,7 @@ async function handleRegister(): Promise<void> {
   border-radius: var(--radius-md);
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--fs-sm);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -362,7 +362,7 @@ async function handleRegister(): Promise<void> {
 }
 
 .form-hint {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   margin-top: 4px;
 }
@@ -398,7 +398,7 @@ async function handleRegister(): Promise<void> {
   border: 1px solid var(--danger);
   border-radius: var(--radius-md);
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   margin-bottom: 16px;
   line-height: 1.5;
 }
@@ -407,7 +407,7 @@ async function handleRegister(): Promise<void> {
   width: 100%;
   padding: 14px;
   border-radius: var(--radius-md);
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -456,7 +456,7 @@ async function handleRegister(): Promise<void> {
   border: none;
   color: var(--primary);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   padding: 0;
 }
@@ -471,7 +471,7 @@ async function handleRegister(): Promise<void> {
 }
 
 .auth-footer-text {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-right: 4px;
 }

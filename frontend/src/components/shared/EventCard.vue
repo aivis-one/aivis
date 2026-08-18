@@ -169,9 +169,9 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   background: var(--bg-subtle);
   color: var(--accent);
 }
-.event-card__day { font-size: 18px; font-weight: 700; line-height: 1; }
+.event-card__day { font-size: var(--fs-h4); font-weight: 700; line-height: 1; }
 .event-card__mon {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -183,7 +183,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   flex: 1;
 }
 .event-card__title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   display: -webkit-box;
@@ -191,13 +191,13 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.event-card__title--full { font-size: 16px; }
+.event-card__title--full { font-size: var(--fs-body); }
 .event-card__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 .event-card__loc {
@@ -208,7 +208,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 }
 .event-card__desc {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   line-height: 1.4;
   display: -webkit-box;
@@ -221,7 +221,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   align-items: center;
   gap: 4px;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--accent);
   text-decoration: none;

@@ -503,10 +503,10 @@ onMounted(loadPosts)
 .post-item__info { flex: 1; min-width: 0; }
 .post-item__top { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 .post-item__title {
-  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.post-item__date { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.post-item__date { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; }
 .post-item__actions { display: flex; gap: 4px; flex-shrink: 0; }
 .post-item__icon-btn {
   display: flex; align-items: center; justify-content: center;
@@ -521,15 +521,15 @@ onMounted(loadPosts)
   display: flex; align-items: center; justify-content: center;
   gap: 12px; margin-top: 16px;
 }
-.ple__page { font-size: 13px; color: var(--text-secondary); }
+.ple__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 
-.ple__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
-.ple__modal-text { font-size: 14px; color: var(--text-secondary); margin: 0 0 8px; }
-.ple__modal-target { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; }
+.ple__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
+.ple__modal-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 8px; }
+.ple__modal-target { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin: 0 0 16px; }
 .ple__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 
 .ple__label {
-  display: block; font-size: 13px; font-weight: 600;
+  display: block; font-size: var(--fs-xs-lg); font-weight: 600;
   color: var(--text-primary); margin-bottom: 6px;
 }
 .ple__tags-group { margin-bottom: 16px; }
@@ -537,7 +537,7 @@ onMounted(loadPosts)
 .ple__chip {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 8px; border-radius: var(--radius-sm);
-  background: var(--bg-subtle); color: var(--text-primary); font-size: 12px; font-weight: 500;
+  background: var(--bg-subtle); color: var(--text-primary); font-size: var(--fs-xs); font-weight: 500;
 }
 .ple__chip-x {
   display: flex; align-items: center; border: none; background: none;

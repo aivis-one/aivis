@@ -179,14 +179,14 @@ onMounted(() => {
 }
 
 .lb__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 8px 0 0;
 }
 
 .lb__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -200,7 +200,7 @@ onMounted(() => {
 }
 
 .lb__period {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   margin: 0;
 }
@@ -232,7 +232,7 @@ onMounted(() => {
 }
 
 .lb__rank {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-secondary);
   min-width: 36px;
@@ -244,7 +244,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -262,7 +262,7 @@ onMounted(() => {
 
 .lb__you {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 2px 7px;
   border-radius: var(--radius-sm);
@@ -271,7 +271,7 @@ onMounted(() => {
 }
 
 .lb__volume {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   flex-shrink: 0;

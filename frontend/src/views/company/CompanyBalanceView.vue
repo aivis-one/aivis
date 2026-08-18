@@ -676,11 +676,11 @@ onMounted(() => {
 
 .cbal__header { display: flex; flex-direction: column; gap: 4px; }
 .cbal__title {
-  font-size: 20px; font-weight: 700;
+  font-size: var(--fs-lg); font-weight: 700;
   color: var(--text-primary); margin: 0;
 }
 .cbal__subtitle {
-  font-size: 13px; color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0;
 }
 
 .cbal__center {
@@ -703,16 +703,16 @@ onMounted(() => {
 .cbal__balance { display: flex; flex-direction: column; gap: 6px; }
 .cbal__balance-head {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 600;
+  font-size: var(--fs-xs); font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 .cbal__balance-value {
-  font-size: 28px; font-weight: 700;
+  font-size: var(--fs-2xl); font-weight: 700;
   color: var(--text-primary); line-height: 1.1;
 }
 .cbal__balance-frozen {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--warning);
 }
 
@@ -721,19 +721,19 @@ onMounted(() => {
   margin-top: 12px; flex-wrap: wrap;
 }
 .cbal__cta-hint {
-  font-size: 11px; font-style: italic;
+  font-size: var(--fs-xs); font-style: italic;
   color: var(--text-tertiary);
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 
 .cbal__section { display: flex; flex-direction: column; gap: 8px; }
 .cbal__section-title {
-  font-size: 14px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;
   color: var(--text-primary); margin: 4px 0 0;
 }
 
 .cbal__empty {
-  font-size: 13px; color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0;
   padding: 16px; border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
@@ -767,10 +767,10 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .cbal__item-line--sub {
-  font-size: 11px; color: var(--text-tertiary);
+  font-size: var(--fs-xs); color: var(--text-tertiary);
 }
 .cbal__item-amount {
-  font-size: 14px; font-weight: 700; color: var(--text-primary);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary);
 }
 .cbal__item-date { white-space: nowrap; }
 .cbal__item-reason {
@@ -782,7 +782,7 @@ onMounted(() => {
 
 .cbal__badge {
   display: inline-block;
-  font-size: 10px; font-weight: 700;
+  font-size: var(--fs-3xs); font-weight: 700;
   padding: 3px 8px;
   border-radius: var(--radius-pill);
   text-transform: uppercase; letter-spacing: 0.05em;
@@ -821,7 +821,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow-x: auto;
   white-space: pre;
@@ -831,12 +831,12 @@ onMounted(() => {
 .cbal__form { display: flex; flex-direction: column; gap: 14px; }
 .cbal__field { display: flex; flex-direction: column; gap: 6px; }
 .cbal__field-label {
-  font-size: 12px; font-weight: 600;
+  font-size: var(--fs-xs); font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 .cbal__field-hint {
-  font-size: 11px; color: var(--text-tertiary);
+  font-size: var(--fs-xs); color: var(--text-tertiary);
   line-height: 1.4;
 }
 
@@ -847,7 +847,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-family: inherit;
   transition: border-color 0.15s;
 }
@@ -861,7 +861,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   line-height: 1.5;
   resize: vertical;
@@ -875,7 +875,7 @@ onMounted(() => {
   margin: 0;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   background: var(--danger-subtle);
   border: 1px solid var(--danger);
   color: var(--danger);

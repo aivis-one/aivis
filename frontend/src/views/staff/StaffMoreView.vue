@@ -109,10 +109,10 @@ function goAvatar(): void {
   text-align: center; padding: 20px 0; margin-bottom: 16px;
 }
 .staff-more__name {
-  font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 12px;
+  font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin-top: 12px;
 }
 .staff-more__email {
-  font-size: 13px; color: var(--text-secondary); margin-top: 4px;
+  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin-top: 4px;
 }
 .staff-more__badges {
   display: inline-flex; gap: 8px; margin-top: 8px;
@@ -122,24 +122,24 @@ function goAvatar(): void {
   border-top: 1px solid var(--border-default); padding-top: 16px; margin-top: 16px;
 }
 .staff-more__section-label {
-  font-size: 12px; font-weight: 700; color: var(--text-tertiary);
+  font-size: var(--fs-xs); font-weight: 700; color: var(--text-tertiary);
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
 }
 
 .staff-more__nav-item {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 0; border-bottom: 1px solid var(--border-default); cursor: pointer;
-  font-size: 14px; color: var(--text-primary);
+  font-size: var(--fs-sm); color: var(--text-primary);
 }
 .staff-more__nav-item:hover { opacity: 0.8; }
 .staff-more__nav-item--accent { color: var(--accent); font-weight: 600; }
 .staff-more__nav-item--danger { color: var(--danger); border-bottom: none; }
 .staff-more__nav-left { display: flex; align-items: center; gap: 8px; }
-.staff-more__nav-right { font-size: 13px; color: var(--text-tertiary); }
+.staff-more__nav-right { font-size: var(--fs-xs-lg); color: var(--text-tertiary); }
 
 .staff-more__info-row {
   display: flex; justify-content: space-between; padding: 14px 0;
-  border-bottom: 1px solid var(--border-default); font-size: 14px; color: var(--text-primary);
+  border-bottom: 1px solid var(--border-default); font-size: var(--fs-sm); color: var(--text-primary);
 }
-.staff-more__info-val { font-size: 13px; color: var(--text-tertiary); }
+.staff-more__info-val { font-size: var(--fs-xs-lg); color: var(--text-tertiary); }
 </style>

@@ -297,7 +297,7 @@ function onRetry(): void {
 
 .pps__title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }

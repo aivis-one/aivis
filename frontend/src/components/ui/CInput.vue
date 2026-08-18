@@ -58,7 +58,7 @@ function onInput(e: Event): void {
 
 .c-input-label {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 6px;
@@ -69,7 +69,7 @@ function onInput(e: Event): void {
   padding: 14px 16px;
   border: 2px solid var(--border-default);
   border-radius: var(--radius-md);
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-family: inherit;
   background: var(--bg-page);
   color: var(--text-primary);
@@ -107,7 +107,7 @@ function onInput(e: Event): void {
 }
 
 .c-input-error {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--danger);
   margin-top: 4px;
 }

@@ -32,7 +32,7 @@ const { toastState } = useToast()
   color: var(--on-primary);
   padding: 12px 24px;
   border-radius: var(--radius-md);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   font-family: var(--font-body);
   opacity: 0;

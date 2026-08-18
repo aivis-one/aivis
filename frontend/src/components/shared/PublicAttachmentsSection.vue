@@ -392,7 +392,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -425,7 +425,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__group-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -484,7 +484,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__item-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -494,7 +494,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__item-desc {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   color: var(--text-secondary);
   display: -webkit-box;
@@ -505,7 +505,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__item-meta {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;

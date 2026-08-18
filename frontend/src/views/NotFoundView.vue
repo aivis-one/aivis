@@ -39,7 +39,7 @@ function goHome(): void {
 }
 
 .not-found__code {
-  font-size: 72px;
+  font-size: var(--fs-hero);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -47,7 +47,7 @@ function goHome(): void {
 }
 
 .not-found__text {
-  font-size: 16px;
+  font-size: var(--fs-body);
   color: var(--text-secondary);
   margin: 16px 0 32px;
 }
@@ -63,7 +63,7 @@ function goHome(): void {
   background: var(--primary);
   color: var(--on-primary);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-sm);
   border: none;
   cursor: pointer;
   font-family: inherit;

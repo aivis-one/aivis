@@ -126,7 +126,7 @@ function goToLogin(): void {
   background: var(--primary);
   color: var(--on-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s;

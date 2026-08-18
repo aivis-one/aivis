@@ -44,12 +44,12 @@ function onChange(e: Event): void {
 
 <style scoped>
 .c-input-group { margin-bottom: 16px; }
-.c-input-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.c-input-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
 
 .c-select {
   width: 100%; padding: 14px 16px; padding-right: 40px;
   border: 2px solid var(--border-default); border-radius: var(--radius-md);
-  font-size: 15px; font-family: inherit;
+  font-size: var(--fs-sm); font-family: inherit;
   background: var(--bg-page); color: var(--text-primary); cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23525252' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
@@ -59,5 +59,5 @@ function onChange(e: Event): void {
 }
 .c-select:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
 .c-select--error { border-color: var(--danger); }
-.c-input-error { font-size: 12px; color: var(--danger); margin-top: 4px; }
+.c-input-error { font-size: var(--fs-xs); color: var(--danger); margin-top: 4px; }
 </style>

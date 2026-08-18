@@ -200,7 +200,7 @@ onMounted(loadCompany)
   padding: var(--space-4);
 }
 .scd__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -229,7 +229,7 @@ onMounted(loadCompany)
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;

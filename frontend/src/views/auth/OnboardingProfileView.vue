@@ -202,16 +202,16 @@ async function handleSubmit(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text-primary);
+  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
-  font-size: 14px; color: var(--text-secondary);
+  font-size: var(--fs-sm); color: var(--text-secondary);
   margin-bottom: 32px; text-align: center; line-height: 1.5;
 }
 .auth-form { width: 100%; max-width: 360px; }
 .auth-error {
-  font-size: 13px; color: var(--danger); text-align: center;
+  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
   margin-bottom: 16px;
 }
 
@@ -222,14 +222,14 @@ async function handleSubmit(): Promise<void> {
 
 .form-group { margin-bottom: 16px; }
 .form-label {
-  display: block; font-size: 13px; font-weight: 600;
+  display: block; font-size: var(--fs-xs-lg); font-weight: 600;
   color: var(--text-primary); margin-bottom: 6px;
 }
 .form-input,
 .form-select {
   width: 100%; padding: 14px 16px;
   border: 2px solid var(--border-default); border-radius: var(--radius-md);
-  font-size: 15px; font-family: inherit;
+  font-size: var(--fs-sm); font-family: inherit;
   background: var(--bg-page); color: var(--text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -251,7 +251,7 @@ async function handleSubmit(): Promise<void> {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px; border-radius: var(--radius-md);
   background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: 15px; font-family: inherit;
+  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
   border: none; cursor: pointer;
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }

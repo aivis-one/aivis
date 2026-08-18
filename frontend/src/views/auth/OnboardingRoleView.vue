@@ -182,15 +182,15 @@ async function handleSubmit(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text-primary);
+  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
-  font-size: 14px; color: var(--text-secondary);
+  font-size: var(--fs-sm); color: var(--text-secondary);
   margin-bottom: 32px; text-align: center; line-height: 1.5;
 }
 .auth-error {
-  font-size: 13px; color: var(--danger); text-align: center;
+  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
   margin: 16px 0; max-width: 400px;
 }
 
@@ -218,7 +218,7 @@ async function handleSubmit(): Promise<void> {
   width: 24px; height: 24px; border-radius: 50%;
   border: 2px solid var(--border-default);
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s; font-size: 14px; color: var(--on-accent);
+  transition: all 0.2s; font-size: var(--fs-sm); color: var(--on-accent);
 }
 .role-card.selected .role-card-check {
   background: var(--accent); border-color: var(--accent);
@@ -227,10 +227,10 @@ async function handleSubmit(): Promise<void> {
 .role-card-header {
   display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
 }
-.role-card-icon { font-size: 24px; }
-.role-card-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.role-card-icon { font-size: var(--fs-h3); }
+.role-card-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); }
 .role-card-desc {
-  font-size: 13px; color: var(--text-secondary);
+  font-size: var(--fs-xs-lg); color: var(--text-secondary);
   line-height: 1.5; margin-bottom: 12px;
 }
 
@@ -238,7 +238,7 @@ async function handleSubmit(): Promise<void> {
   display: flex; flex-wrap: wrap; gap: 6px;
 }
 .role-feature {
-  font-size: 11px; font-weight: 500; padding: 4px 10px;
+  font-size: var(--fs-xs); font-weight: 500; padding: 4px 10px;
   border-radius: var(--radius-sm); background: var(--bg-surface);
   color: var(--primary);
 }
@@ -254,7 +254,7 @@ async function handleSubmit(): Promise<void> {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px; border-radius: var(--radius-md);
   background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: 15px; font-family: inherit;
+  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
   border: none; cursor: pointer;
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }

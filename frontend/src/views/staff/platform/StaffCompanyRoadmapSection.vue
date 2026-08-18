@@ -1035,18 +1035,18 @@ onMounted(() => {
 
 .rm-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .rm-item__badges { display: flex; gap: 6px; flex-wrap: wrap; }
-.rm-item__title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.rm-item__title { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
 .rm-item__dates {
   display: flex; gap: 12px; flex-wrap: wrap;
-  font-size: 12px; color: var(--text-secondary);
+  font-size: var(--fs-xs); color: var(--text-secondary);
 }
-.rm-item__desc { font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.4; }
+.rm-item__desc { font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0; line-height: 1.4; }
 .rm-item__link {
-  font-size: 13px; color: var(--primary); word-break: break-all;
+  font-size: var(--fs-xs-lg); color: var(--primary); word-break: break-all;
   text-decoration: none;
 }
 .rm-item__link:hover { text-decoration: underline; }
-.rm-item__rel { font-size: 12px; color: var(--text-tertiary); }
+.rm-item__rel { font-size: var(--fs-xs); color: var(--text-tertiary); }
 
 .rm-item__actions {
   display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto;
@@ -1060,36 +1060,36 @@ onMounted(() => {
 .rm-item__action:hover { color: var(--text-primary); background: var(--bg-page); }
 
 /* -- Modal -- */
-.scr__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
-.scr__modal-hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+.scr__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
+.scr__modal-hint { font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0 0 16px; }
 .scr__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 
-.scr__hint { font-size: 12px; color: var(--text-secondary); margin: 0 0 16px; line-height: 1.4; }
+.scr__hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 0 0 16px; line-height: 1.4; }
 
 /* Kind tab strip */
 .scr__kind { margin-bottom: 16px; }
-.scr__kind-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
-.scr__kind-hint { font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.4; }
+.scr__kind-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.scr__kind-hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 6px 0 0; line-height: 1.4; }
 .scr__kind-tabs { display: flex; gap: 6px; }
 .scr__kind-tab {
   flex: 1; padding: 10px 8px; border: 2px solid var(--border-default);
   border-radius: var(--radius-md); background: var(--bg-page);
-  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-secondary);
   cursor: pointer; transition: all 0.2s;
 }
 .scr__kind-tab--active { border-color: var(--primary); color: var(--primary); background: var(--bg-subtle); }
 
 /* Native date field (no CDatePicker in the kit) */
 .scr__field { margin-bottom: 16px; }
-.scr__field-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.scr__field-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
 .scr__date {
   width: 100%; padding: 14px 16px; border: 2px solid var(--border-default);
-  border-radius: var(--radius-md); font-size: 15px; font-family: inherit;
+  border-radius: var(--radius-md); font-size: var(--fs-sm); font-family: inherit;
   background: var(--bg-page); color: var(--text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .scr__date:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
-.scr__field-error { font-size: 12px; color: var(--danger); margin-top: 4px; }
+.scr__field-error { font-size: var(--fs-xs); color: var(--danger); margin-top: 4px; }
 
 /* Cover block (D2) */
 .scr__cover { margin-bottom: 16px; }

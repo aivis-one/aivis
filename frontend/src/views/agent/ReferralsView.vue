@@ -245,14 +245,14 @@ onMounted(() => {
 }
 
 .ref__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 8px 0 0;
 }
 
 .ref__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -268,7 +268,7 @@ onMounted(() => {
 /* -- Section -- */
 
 .ref__section-title {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 10px;
@@ -303,7 +303,7 @@ onMounted(() => {
 }
 
 .ref__card-name {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -313,7 +313,7 @@ onMounted(() => {
 
 .ref__level {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   padding: 3px 8px;
   border-radius: var(--radius-sm);
@@ -352,18 +352,18 @@ onMounted(() => {
 }
 
 .ref__metric-value {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .ref__metric-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
 .ref__joined {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 </style>

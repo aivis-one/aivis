@@ -259,14 +259,14 @@ onMounted(() => {
 }
 
 .dash__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 
 .dash__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -323,13 +323,13 @@ onMounted(() => {
 }
 
 .dash__widget-value {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .dash__widget-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
@@ -340,7 +340,7 @@ onMounted(() => {
 /* -- Quick actions -- */
 
 .dash__actions-title {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 10px;
@@ -361,7 +361,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;

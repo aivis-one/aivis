@@ -623,7 +623,7 @@ onMounted(load)
   padding: 0 20px 16px;
 }
 .iv__hero-company {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
   margin-bottom: 4px;
@@ -631,7 +631,7 @@ onMounted(load)
   letter-spacing: 0.05em;
 }
 .iv__hero-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   margin: 0;
   line-height: 1.3;
@@ -653,7 +653,7 @@ onMounted(load)
   background: var(--bg-secondary);
 }
 .iv__card-title {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   margin: 0 0 12px;
   color: var(--text-tertiary);
@@ -661,14 +661,14 @@ onMounted(load)
   letter-spacing: 0.08em;
 }
 .iv__hint {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: -4px 0 12px;
   line-height: 1.4;
 }
 .iv__note {
   margin: 10px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   line-height: 1.4;
 }
@@ -724,12 +724,12 @@ onMounted(load)
 }
 
 .iv__plan-name {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .iv__plan-bonus {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--success);
   white-space: nowrap;
@@ -756,18 +756,18 @@ onMounted(load)
   border-bottom: none;
 }
 .iv__tranche-num {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-secondary);
 }
 .iv__tranche-amount {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   text-align: right;
 }
 .iv__tranche-units {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   text-align: right;
   white-space: nowrap;
@@ -782,16 +782,16 @@ onMounted(load)
   padding: 6px 0;
 }
 .iv__row-label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .iv__row-value {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .iv__row-value--accent {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   color: var(--primary);
 }
 .iv__row-value--warn {
@@ -799,7 +799,7 @@ onMounted(load)
 }
 .iv__balance-hint {
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--danger);
 }
 

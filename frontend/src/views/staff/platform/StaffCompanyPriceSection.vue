@@ -281,10 +281,10 @@ onMounted(reload)
   margin-bottom: 20px;
 }
 .scpr__current-info { display: flex; flex-direction: column; gap: 4px; }
-.scpr__current-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
-.scpr__current-value { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+.scpr__current-label { font-size: var(--fs-xs); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.scpr__current-value { font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary); }
 
-.scpr__history-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
+.scpr__history-title { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
 
 .scpr__center {
   display: flex; flex-direction: column; align-items: center;
@@ -294,12 +294,12 @@ onMounted(reload)
 .price-history { display: flex; flex-direction: column; }
 .price-history__head {
   display: flex; padding: 8px 0; border-bottom: 2px solid var(--border-default);
-  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  font-size: var(--fs-xs); font-weight: 600; color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .price-history__row {
   display: flex; padding: 12px 0; border-bottom: 1px solid var(--border-default);
-  font-size: 14px; color: var(--text-primary);
+  font-size: var(--fs-sm); color: var(--text-primary);
 }
 .price-history__col-price { flex: 0 0 40%; font-weight: 600; }
 .price-history__col-date { flex: 1; color: var(--text-secondary); }
@@ -308,9 +308,9 @@ onMounted(reload)
   display: flex; align-items: center; justify-content: center;
   gap: 12px; margin-top: 16px;
 }
-.scpr__page { font-size: 13px; color: var(--text-secondary); }
+.scpr__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 
-.scpr__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
-.scpr__modal-hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+.scpr__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
+.scpr__modal-hint { font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0 0 16px; }
 .scpr__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 </style>

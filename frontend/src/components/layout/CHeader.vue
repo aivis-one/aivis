@@ -75,7 +75,7 @@ function goBack(): void {
   overflow: hidden;
 }
 .c-header__title {
-  font-size: 16px; font-weight: 700; color: var(--primary-active);
+  font-size: var(--fs-body); font-weight: 700; color: var(--primary-active);
   /* Truncate long titles with ellipsis rather than push the right
      slot off the edge. */
   min-width: 0;

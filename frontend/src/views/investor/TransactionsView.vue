@@ -297,13 +297,13 @@ onMounted(() => {
   padding: 16px 16px 8px;
 }
 .tv__title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px;
 }
 .tv__subtitle {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -327,7 +327,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -408,12 +408,12 @@ onMounted(() => {
   gap: 8px;
 }
 .tv__item-line--sub {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 
 .tv__item-type {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -425,7 +425,7 @@ onMounted(() => {
 }
 
 .tv__amount {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -457,7 +457,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
 }
 .tv__loadmore-error-text {
   flex: 1;

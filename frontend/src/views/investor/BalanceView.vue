@@ -344,7 +344,7 @@ watch(
   padding: 16px 16px 0;
 }
 .bv__title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -359,7 +359,7 @@ watch(
 }
 
 .bv__card-title {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   margin: 0 0 12px;
   color: var(--text-tertiary);
@@ -380,7 +380,7 @@ watch(
 }
 
 .bv__balance-main {
-  font-size: 32px;
+  font-size: var(--fs-4xl);
   font-weight: 700;
   color: var(--accent);
   line-height: 1.1;
@@ -396,7 +396,7 @@ watch(
   padding-top: 8px;
   margin-top: 4px;
   border-top: 1px solid var(--border-default);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
 }
 .bv__balance-frozen-label {
@@ -419,7 +419,7 @@ watch(
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .bv__deposit {
@@ -490,18 +490,18 @@ watch(
   gap: 8px;
 }
 .bv__item-line--sub {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 
 .bv__item-type {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   text-transform: capitalize;
 }
 .bv__item-amount {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--success);
   white-space: nowrap;

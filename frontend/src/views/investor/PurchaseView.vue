@@ -446,7 +446,7 @@ onMounted(load)
   padding: 0 20px 16px;
 }
 .pv__hero-company {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
   margin-bottom: 4px;
@@ -454,7 +454,7 @@ onMounted(load)
   letter-spacing: 0.05em;
 }
 .pv__hero-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   margin: 0;
   line-height: 1.3;
@@ -475,7 +475,7 @@ onMounted(load)
   background: var(--bg-secondary);
 }
 .pv__card-title {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   margin: 0 0 12px;
   color: var(--text-tertiary);
@@ -497,22 +497,22 @@ onMounted(load)
   border-top: 1px solid var(--border-default);
 }
 .pv__row-label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .pv__row-value {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .pv__row-value--total {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   color: var(--primary);
 }
 
 /* Balance */
 .pv__balance {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -521,7 +521,7 @@ onMounted(load)
 }
 .pv__balance-hint {
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--danger);
 }
 

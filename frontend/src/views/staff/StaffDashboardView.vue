@@ -198,12 +198,12 @@ onMounted(loadStats)
 }
 
 .staff-dash__label {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
 .staff-dash__name {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 4px 0 8px;
@@ -228,7 +228,7 @@ onMounted(loadStats)
   background: var(--warning-subtle);
   border-radius: var(--radius-md);
   margin-bottom: 16px;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--warning);
   cursor: pointer;
@@ -248,7 +248,7 @@ onMounted(loadStats)
   padding: 6px 12px;
   border-radius: var(--radius-sm);
   background: var(--bg-subtle);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
@@ -263,7 +263,7 @@ onMounted(loadStats)
 }
 
 .staff-dash__section-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 12px;
@@ -283,7 +283,7 @@ onMounted(loadStats)
 }
 
 .staff-dash__error {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--danger);
 }
 </style>

@@ -664,7 +664,7 @@ onMounted(loadUsers)
 }
 .filter-chip {
   padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
   font-family: inherit;
 }
@@ -684,31 +684,31 @@ onMounted(loadUsers)
 }
 .user-item:hover { background: var(--bg-subtle); }
 .user-item__info { flex: 1; min-width: 0; }
-.user-item__name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.user-item__detail { font-size: 12px; color: var(--text-tertiary); text-transform: capitalize; }
+.user-item__name { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
+.user-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); text-transform: capitalize; }
 .user-item__right { text-align: right; flex-shrink: 0; }
 .user-item__blocked { margin-top: 4px; }
 
 .staff-users__pagination {
   display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px;
 }
-.staff-users__page { font-size: 13px; color: var(--text-secondary); }
+.staff-users__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 
 .staff-users__center {
   display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: 16px;
 }
 
 /* Detail modal */
-.detail__title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
-.detail__subtitle { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 16px 0 8px; }
+.detail__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
+.detail__subtitle { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: 16px 0 8px; }
 .detail__row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-default); }
-.detail__label { font-size: 13px; color: var(--text-secondary); }
-.detail__value { font-size: 13px; color: var(--text-primary); }
+.detail__label { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.detail__value { font-size: var(--fs-xs-lg); color: var(--text-primary); }
 .detail__section { margin-top: 12px; }
 .detail__perm { padding: 4px 0; }
-.detail__perm-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer; }
+.detail__perm-label { display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs-lg); color: var(--text-primary); cursor: pointer; }
 .detail__actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-.detail__confirm-text { font-size: 14px; color: var(--text-secondary); margin: 0 0 12px; }
+.detail__confirm-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 12px; }
 
 /* KYC history timeline (iter 2.7 A5). */
 .kyc-history {
@@ -718,7 +718,7 @@ onMounted(loadUsers)
   border-radius: var(--radius-sm);
 }
 .kyc-history__title {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 8px;
@@ -737,11 +737,11 @@ onMounted(loadUsers)
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-primary);
 }
 .kyc-history__date {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 </style>

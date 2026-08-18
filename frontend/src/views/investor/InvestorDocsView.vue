@@ -399,7 +399,7 @@ function metaLabel(doc: DocumentResponse): string {
   padding: 16px 16px 8px;
 }
 .docs__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -456,18 +456,18 @@ function metaLabel(doc: DocumentResponse): string {
   min-width: 0;
 }
 .docs__title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .docs__meta {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   margin-top: 2px;
 }
 
 .docs__status {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 4px 8px;
   border-radius: var(--radius-sm);
@@ -485,7 +485,7 @@ function metaLabel(doc: DocumentResponse): string {
 
 /* Modal */
 .docs-modal__title {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 16px;
@@ -501,7 +501,7 @@ function metaLabel(doc: DocumentResponse): string {
   padding: 16px 0;
 }
 .docs-modal__hint {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-tertiary);
 }
 

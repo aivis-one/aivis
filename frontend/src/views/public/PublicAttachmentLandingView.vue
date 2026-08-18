@@ -301,7 +301,7 @@ async function onDownload(): Promise<void> {
   border: none;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: background 0.12s ease, color 0.12s ease;
@@ -335,7 +335,7 @@ async function onDownload(): Promise<void> {
 
 .atl__title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   text-align: center;
@@ -346,7 +346,7 @@ async function onDownload(): Promise<void> {
 
 .atl__description {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   text-align: center;
@@ -356,7 +356,7 @@ async function onDownload(): Promise<void> {
 
 .atl__meta {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   text-align: center;
 }

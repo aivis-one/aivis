@@ -182,14 +182,14 @@ onMounted(loadCompanies)
 
 <style scoped>
 .scl { padding: 16px; }
-.scl__title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+.scl__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
 
 .scl__filters {
   display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px;
 }
 .filter-chip {
   padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
 }
 .filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
@@ -207,14 +207,14 @@ onMounted(loadCompanies)
 .company-item:hover { background: var(--bg-subtle); }
 .company-item__info { flex: 1; min-width: 0; }
 .company-item__name {
-  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.company-item__detail { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.company-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; }
 
 .scl__pagination {
   display: flex; align-items: center; justify-content: center;
   gap: 12px; margin-top: 16px;
 }
-.scl__page { font-size: 13px; color: var(--text-secondary); }
+.scl__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 </style>

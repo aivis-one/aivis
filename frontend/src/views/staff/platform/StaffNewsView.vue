@@ -32,6 +32,6 @@ const canManageContent = canDo('content_manage')
 <style scoped>
 .staff-news { padding: 16px; }
 .staff-news__title {
-  font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px;
+  font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 12px;
 }
 </style>

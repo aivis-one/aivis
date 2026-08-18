@@ -237,14 +237,14 @@ onMounted(() => {
 }
 
 .comm__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 
 .comm__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -259,7 +259,7 @@ onMounted(() => {
 
 .comm__loadmore-error {
   margin: 8px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-align: center;
 }
@@ -297,7 +297,7 @@ onMounted(() => {
 }
 
 .comm__type {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -305,7 +305,7 @@ onMounted(() => {
 }
 
 .comm__amount {
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -318,7 +318,7 @@ onMounted(() => {
 }
 
 .comm__detail-main {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -330,7 +330,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 
@@ -348,7 +348,7 @@ onMounted(() => {
 }
 
 .comm__status {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 3px 8px;
   border-radius: var(--radius-sm);
@@ -374,7 +374,7 @@ onMounted(() => {
 }
 
 .comm__date {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 

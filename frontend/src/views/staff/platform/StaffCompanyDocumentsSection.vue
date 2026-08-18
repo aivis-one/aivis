@@ -305,13 +305,13 @@ onMounted(loadAttachments)
 }
 
 .scd__hint {
-  font-size: 12px; color: var(--text-tertiary); margin: 0 0 16px;
+  font-size: var(--fs-xs); color: var(--text-tertiary); margin: 0 0 16px;
   padding: 10px 12px; background: var(--bg-subtle); border-radius: var(--radius-sm);
 }
 
 .scd__group { margin-bottom: 24px; }
 .scd__group-title {
-  font-size: 13px; font-weight: 700; color: var(--text-secondary);
+  font-size: var(--fs-xs-lg); font-weight: 700; color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px;
   word-break: break-all;
 }
@@ -333,11 +333,11 @@ onMounted(loadAttachments)
 
 .doc-item__info { flex: 1; min-width: 0; }
 .doc-item__top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
-.doc-item__lang { font-size: 11px; color: var(--text-tertiary); font-weight: 600; }
-.doc-item__title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.doc-item__meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.doc-item__lang { font-size: var(--fs-xs); color: var(--text-tertiary); font-weight: 600; }
+.doc-item__title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
+.doc-item__meta { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; }
 .doc-item__storage {
-  display: block; font-size: 11px; font-family: monospace; color: var(--text-secondary);
+  display: block; font-size: var(--fs-xs); font-family: monospace; color: var(--text-secondary);
   background: var(--bg-subtle); padding: 3px 6px; border-radius: var(--radius-sm);
   margin-top: 6px; word-break: break-all;
 }
@@ -350,8 +350,8 @@ onMounted(loadAttachments)
 }
 .doc-item__delete:hover { background: var(--bg-subtle); color: var(--danger); }
 
-.scd__modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
-.scd__modal-text { font-size: 14px; color: var(--text-secondary); margin: 0 0 8px; }
-.scd__modal-target { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; word-break: break-all; }
+.scd__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
+.scd__modal-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 8px; }
+.scd__modal-target { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin: 0 0 16px; word-break: break-all; }
 .scd__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 </style>

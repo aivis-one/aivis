@@ -161,22 +161,22 @@ const distributionJson = computed<string>(() => {
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px 0; border-bottom: 1px solid var(--border-default);
 }
-.scp__label { font-size: 13px; color: var(--text-secondary); }
-.scp__value { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.scp__label { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.scp__value { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
 
 .scp__section { margin-top: 20px; }
 .scp__section-title {
-  font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px;
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 8px;
 }
 .scp__description {
-  font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin: 0;
+  font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; margin: 0;
   white-space: pre-wrap;
 }
 .scp__links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.scp__links a { font-size: 13px; color: var(--primary); text-decoration: underline; word-break: break-all; }
+.scp__links a { font-size: var(--fs-xs-lg); color: var(--primary); text-decoration: underline; word-break: break-all; }
 
 .scp__json {
-  font-size: 12px; font-family: monospace; color: var(--text-primary);
+  font-size: var(--fs-xs); font-family: monospace; color: var(--text-primary);
   background: var(--bg-subtle); border-radius: var(--radius-sm);
   padding: 12px; overflow-x: auto; margin: 0; white-space: pre;
 }

@@ -83,7 +83,7 @@ function onOverlay(): void {
 }
 
 .c-sheet-title {
-  font-size: 16px; font-weight: 700;
+  font-size: var(--fs-body); font-weight: 700;
   color: var(--text-primary); margin: 0;
 }
 

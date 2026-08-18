@@ -403,13 +403,13 @@ onMounted(() => {
 /* Header */
 .cset__header { padding: 16px 16px 0; }
 .cset__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px;
 }
 .cset__page-subtitle {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 16px;
 }
@@ -452,7 +452,7 @@ onMounted(() => {
 }
 .cset__hero-logo-img { width: 100%; height: 100%; object-fit: cover; }
 .cset__hero-logo-fallback {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--primary);
   letter-spacing: 0.5px;
@@ -464,7 +464,7 @@ onMounted(() => {
   min-width: 0;
 }
 .cset__hero-name {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
   word-break: break-word;
@@ -474,7 +474,7 @@ onMounted(() => {
 .cset__status-badge {
   display: inline-block;
   align-self: flex-start;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 3px 10px;
   border-radius: var(--radius-sm);
@@ -499,7 +499,7 @@ onMounted(() => {
 /* Section */
 .cset__section { padding: 0 16px; margin-bottom: 20px; }
 .cset__section-title {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -550,7 +550,7 @@ button.cset__row:last-child { border-bottom: none; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 .cset__row-label--accent {
@@ -565,13 +565,13 @@ button.cset__row:last-child { border-bottom: none; }
   font-weight: 600;
 }
 .cset__row-value {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-tertiary);
   text-align: right;
   word-break: break-word;
 }
 .cset__row-multiline {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 4px 0 0;
   line-height: 1.5;
@@ -587,7 +587,7 @@ button.cset__row:last-child { border-bottom: none; }
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow-x: auto;
   white-space: pre;
@@ -596,7 +596,7 @@ button.cset__row:last-child { border-bottom: none; }
 
 /* Static support hint */
 .cset__hint {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   margin: 0 16px 16px;
   padding: 0 4px;

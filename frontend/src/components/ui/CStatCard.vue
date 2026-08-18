@@ -28,10 +28,10 @@ defineProps<{
 }
 .c-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
 .c-stat__icon { margin-bottom: 8px; }
-.c-stat__label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
-.c-stat__value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
-.c-stat__change { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.c-stat__label { font-size: var(--fs-xs); color: var(--text-secondary); margin-bottom: 4px; }
+.c-stat__value { font-size: var(--fs-xl); font-weight: 700; color: var(--text-primary); }
+.c-stat__change { font-size: var(--fs-xs); font-weight: 600; margin-top: 4px; }
 .c-stat__change--up { color: var(--success); }
 .c-stat__change--down { color: var(--danger); }
-.c-stat__sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+.c-stat__sub { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; }
 </style>

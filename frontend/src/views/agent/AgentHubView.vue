@@ -326,14 +326,14 @@ onMounted(() => {
 }
 
 .hub__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 
 .hub__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -364,13 +364,13 @@ onMounted(() => {
 }
 
 .hub__stat-value {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .hub__stat-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
@@ -383,7 +383,7 @@ onMounted(() => {
 /* -- Links list -- */
 
 .hub__links-title {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 10px;
@@ -419,7 +419,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -429,7 +429,7 @@ onMounted(() => {
 }
 
 .hub__card-state {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 3px 8px;
   border-radius: var(--radius-sm);
@@ -456,7 +456,7 @@ onMounted(() => {
 
 .hub__card-url {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -484,18 +484,18 @@ onMounted(() => {
 }
 
 .hub__counter-value {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .hub__counter-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
 .hub__card-meta {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 

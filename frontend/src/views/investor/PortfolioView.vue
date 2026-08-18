@@ -313,11 +313,11 @@ onMounted(() => {
 
 .pv__header { display: flex; flex-direction: column; gap: 4px; }
 .pv__title {
-  font-size: 20px; font-weight: 700;
+  font-size: var(--fs-lg); font-weight: 700;
   color: var(--text-primary); margin: 0;
 }
 .pv__subtitle {
-  font-size: 14px; color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-sm); color: var(--text-secondary); margin: 0;
 }
 
 .pv__center {
@@ -339,11 +339,11 @@ onMounted(() => {
   gap: 12px;
 }
 .pv__hero-label {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   opacity: 0.9;
 }
 .pv__hero-value {
-  font-size: 30px;
+  font-size: var(--fs-3xl);
   font-weight: 700;
   line-height: 1.1;
 }
@@ -353,14 +353,14 @@ onMounted(() => {
   margin-top: 4px;
 }
 .pv__hero-stat-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   opacity: 0.8;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-bottom: 2px;
 }
 .pv__hero-stat-value {
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-weight: 700;
 }
 
@@ -394,7 +394,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -421,21 +421,21 @@ onMounted(() => {
   gap: 12px;
 }
 .pv__item-stat-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 2px;
 }
 .pv__item-stat-value {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 /* Profit chip */
 .pv__profit {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 .pv__profit--up { color: var(--success); }

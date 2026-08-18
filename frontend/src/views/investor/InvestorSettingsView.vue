@@ -538,13 +538,13 @@ onMounted(() => {
   padding: 16px 16px 0;
 }
 .sett__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px;
 }
 .sett__page-subtitle {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 16px;
 }
@@ -565,19 +565,19 @@ onMounted(() => {
   gap: 6px;
 }
 .sett__name {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
   margin-top: 6px;
 }
 .sett__email {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
 }
 .sett__role-badge {
   display: inline-block;
   margin-top: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
@@ -592,7 +592,7 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 .sett__section-title {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -652,7 +652,7 @@ button.sett__row:last-child {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 .sett__row-label--accent {
@@ -667,7 +667,7 @@ button.sett__row:last-child {
   font-weight: 600;
 }
 .sett__row-value {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-tertiary);
   text-align: right;
 }
@@ -687,7 +687,7 @@ button.sett__row:last-child {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;

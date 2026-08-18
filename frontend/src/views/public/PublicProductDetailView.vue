@@ -469,7 +469,7 @@ function onBuyClick(): void {
 }
 
 .ppd__hero-company {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
   margin-bottom: 4px;
@@ -478,7 +478,7 @@ function onBuyClick(): void {
 }
 
 .ppd__hero-title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   margin: 0;
   line-height: 1.3;
@@ -505,7 +505,7 @@ function onBuyClick(): void {
 }
 
 .ppd__stat-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -513,7 +513,7 @@ function onBuyClick(): void {
 }
 
 .ppd__stat-value {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -523,7 +523,7 @@ function onBuyClick(): void {
 }
 
 .ppd__stat-unit {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   margin-top: 2px;
 }
@@ -535,7 +535,7 @@ function onBuyClick(): void {
 }
 
 .ppd__section-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -544,7 +544,7 @@ function onBuyClick(): void {
 }
 
 .ppd__description {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.5;
   margin: 0;
@@ -556,7 +556,7 @@ function onBuyClick(): void {
   padding: 14px;
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-tertiary);
   text-align: center;
 }
@@ -586,13 +586,13 @@ function onBuyClick(): void {
 }
 
 .ppd__plan-name {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .ppd__plan-bonus {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--success);
   white-space: nowrap;

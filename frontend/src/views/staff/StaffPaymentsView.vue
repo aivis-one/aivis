@@ -188,7 +188,7 @@ onMounted(loadPayments)
 .staff-pay__hint {
   display: flex; align-items: center; gap: 8px;
   padding: 12px; background: var(--bg-surface); border-radius: var(--radius-md);
-  margin-bottom: 16px; font-size: 12px; color: var(--text-secondary);
+  margin-bottom: 16px; font-size: var(--fs-xs); color: var(--text-secondary);
 }
 
 .staff-pay__filters {
@@ -196,7 +196,7 @@ onMounted(loadPayments)
 }
 .filter-chip {
   padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
 }
 .filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
@@ -211,22 +211,22 @@ onMounted(loadPayments)
   border-bottom: 1px solid var(--border-default);
 }
 .pay-item__info { flex: 1; min-width: 0; }
-.pay-item__amount { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-.pay-item__detail { font-size: 12px; color: var(--text-tertiary); }
-.pay-item__user { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; font-family: monospace; }
+.pay-item__amount { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
+.pay-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.pay-item__user { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; font-family: monospace; }
 .pay-item__right { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
 .pay-item__reverse {
-  font-size: 11px; font-weight: 600; color: var(--danger); background: none; border: none;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--danger); background: none; border: none;
   cursor: pointer; padding: 2px 0; text-decoration: underline;
 }
 
 .staff-pay__pagination {
   display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px;
 }
-.staff-pay__page { font-size: 13px; color: var(--text-secondary); }
+.staff-pay__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 
-.modal__title { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
-.modal__text { font-size: 14px; color: var(--text-secondary); margin: 0 0 8px; }
-.modal__amount { font-size: 16px; font-weight: 700; color: var(--danger); margin: 0 0 16px; }
+.modal__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
+.modal__text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 8px; }
+.modal__amount { font-size: var(--fs-body); font-weight: 700; color: var(--danger); margin: 0 0 16px; }
 .modal__actions { display: flex; gap: 8px; margin-top: 16px; }
 </style>

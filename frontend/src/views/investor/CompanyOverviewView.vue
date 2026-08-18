@@ -454,7 +454,7 @@ function onRoadmapPostClick(_postId: string): void {
 .co__hero-status {
   align-self: flex-start;
   padding: 2px var(--space-2);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--success);
   background: var(--success-subtle);
@@ -463,7 +463,7 @@ function onRoadmapPostClick(_postId: string): void {
 
 .co__hero-name {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.25;
@@ -471,7 +471,7 @@ function onRoadmapPostClick(_postId: string): void {
 
 .co__hero-description {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
   /* Full description on overview -- no clamp. */
@@ -503,7 +503,7 @@ function onRoadmapPostClick(_postId: string): void {
 
 .co__section-title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }

@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
   background: var(--bg-surface);
   color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -180,7 +180,7 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   cursor: pointer;
 }
@@ -195,7 +195,7 @@ onBeforeUnmount(() => {
 }
 
 .app-controls__flag {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   line-height: 1;
 }
 

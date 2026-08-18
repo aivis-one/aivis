@@ -279,7 +279,7 @@ function goBack(): void {
   padding: 12px 16px 8px;
 }
 .pbc__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;

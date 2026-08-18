@@ -32,7 +32,7 @@ withDefaults(
   padding: 14px 28px;
   border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   border: none;
   transition: all 0.2s;
@@ -96,7 +96,7 @@ withDefaults(
 .c-btn--link {
   background: none;
   color: var(--primary);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   padding: 8px;
   width: auto;
@@ -104,7 +104,7 @@ withDefaults(
 .c-btn--link:hover:not(:disabled) { text-decoration: underline; }
 
 /* Size: small */
-.c-btn--sm { padding: 10px 16px; font-size: 13px; }
+.c-btn--sm { padding: 10px 16px; font-size: var(--fs-xs-lg); }
 
 /* Spinner */
 .c-btn__spinner {

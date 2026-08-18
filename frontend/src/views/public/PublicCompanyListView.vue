@@ -185,14 +185,14 @@ async function retryLoadMore(): Promise<void> {
 
 .cl__title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .cl__subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -234,7 +234,7 @@ async function retryLoadMore(): Promise<void> {
 }
 
 .cl__retry-text {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
 }
 </style>

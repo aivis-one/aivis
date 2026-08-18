@@ -367,14 +367,14 @@ onMounted(loadProduct)
   padding: 0 20px 20px;
 }
 .pd__hero-company {
-  font-size: 12px; font-weight: 600;
+  font-size: var(--fs-xs); font-weight: 600;
   opacity: 0.85;
   margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .pd__hero-title {
-  font-size: 22px; font-weight: 700;
+  font-size: var(--fs-xl); font-weight: 700;
   margin: 0;
   line-height: 1.3;
 }
@@ -398,26 +398,26 @@ onMounted(loadProduct)
   text-align: center;
 }
 .pd__stat-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 6px;
 }
 .pd__stat-value {
-  font-size: 18px; font-weight: 700;
+  font-size: var(--fs-h4); font-weight: 700;
   color: var(--text-primary);
 }
 .pd__stat-value--price { color: var(--primary); }
 .pd__stat-unit {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   margin-top: 2px;
 }
 
 .pd__section { display: flex; flex-direction: column; gap: 10px; }
 .pd__section-title {
-  font-size: 14px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;
   color: var(--text-primary);
   margin: 0;
   text-transform: uppercase;
@@ -425,7 +425,7 @@ onMounted(loadProduct)
 }
 
 .pd__description {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.5;
   margin: 0;
@@ -439,7 +439,7 @@ onMounted(loadProduct)
   padding: 14px;
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-tertiary);
   text-align: center;
 }
@@ -494,12 +494,12 @@ onMounted(loadProduct)
 }
 
 .pd__plan-name {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .pd__plan-bonus {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--success);
   white-space: nowrap;

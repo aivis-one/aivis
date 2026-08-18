@@ -27,7 +27,7 @@ const { t } = useI18n()
 }
 
 .view-stub__title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 16px;
@@ -38,7 +38,7 @@ const { t } = useI18n()
   border-radius: var(--radius-sm);
   background: var(--bg-secondary);
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.05em;
 }

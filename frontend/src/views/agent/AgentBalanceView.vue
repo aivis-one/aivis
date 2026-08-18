@@ -539,13 +539,13 @@ onMounted(() => {
 
 .abal__header { display: flex; flex-direction: column; gap: 4px; }
 .abal__title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 .abal__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -574,20 +574,20 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .abal__balance-value {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.1;
 }
 .abal__balance-frozen {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--warning);
 }
 
@@ -599,21 +599,21 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 .abal__cta-hint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-style: italic;
   color: var(--text-tertiary);
 }
 
 .abal__section { display: flex; flex-direction: column; gap: 8px; }
 .abal__section-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 4px 0 0;
 }
 
 .abal__empty {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
   padding: 16px;
@@ -664,9 +664,9 @@ onMounted(() => {
   justify-content: space-between;
   gap: 8px;
 }
-.abal__item-line--sub { font-size: 11px; color: var(--text-tertiary); }
+.abal__item-line--sub { font-size: var(--fs-xs); color: var(--text-tertiary); }
 .abal__item-amount {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -683,7 +683,7 @@ onMounted(() => {
 
 .abal__badge {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: 700;
   padding: 3px 8px;
   border-radius: var(--radius-pill);
@@ -730,7 +730,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-surface);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-align: center;
 }
@@ -738,14 +738,14 @@ onMounted(() => {
 .abal__form { display: flex; flex-direction: column; gap: 14px; }
 .abal__field { display: flex; flex-direction: column; gap: 6px; }
 .abal__field-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .abal__field-hint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   line-height: 1.4;
 }
@@ -757,7 +757,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-family: inherit;
   transition: border-color 0.15s;
 }
@@ -768,7 +768,7 @@ onMounted(() => {
   margin: 0;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   background: var(--danger-subtle);
   border: 1px solid var(--danger);
   color: var(--danger);

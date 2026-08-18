@@ -217,7 +217,7 @@ onMounted(() => {
 }
 .iev__header { display: flex; flex-direction: column; gap: 4px; }
 .iev__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -248,7 +248,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
 }
-.iev__retry-text { font-size: 13px; color: var(--text-secondary); }
+.iev__retry-text { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 
 /* Filter chip -- same pattern as EventEditor / TemplatesSection. */
 .filter-chip {
@@ -256,7 +256,7 @@ onMounted(() => {
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;

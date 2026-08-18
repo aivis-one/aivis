@@ -137,7 +137,7 @@ const available = computed(() => props.product.available_packages)
 
 .product-card__company {
   position: absolute; top: 8px; left: 8px; z-index: 2;
-  font-size: 11px; font-weight: 600;
+  font-size: var(--fs-xs); font-weight: 600;
   padding: 3px 8px;
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.45);
@@ -149,12 +149,12 @@ const available = computed(() => props.product.available_packages)
 .product-card__body { padding: 14px; }
 
 .product-card__name {
-  font-size: 16px; font-weight: 700;
+  font-size: var(--fs-body); font-weight: 700;
   color: var(--text-primary); margin-bottom: 4px;
 }
 
 .product-card__desc {
-  font-size: 13px; color: var(--text-secondary);
+  font-size: var(--fs-xs-lg); color: var(--text-secondary);
   margin-bottom: 10px; line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -180,11 +180,11 @@ const available = computed(() => props.product.available_packages)
 }
 
 .product-card__price {
-  font-size: 18px; font-weight: 700;
+  font-size: var(--fs-h4); font-weight: 700;
   color: var(--primary);
 }
 .product-card__unit {
-  font-size: 12px; font-weight: 500;
+  font-size: var(--fs-xs); font-weight: 500;
   color: var(--text-secondary);
 }
 
@@ -192,12 +192,12 @@ const available = computed(() => props.product.available_packages)
    reference. Quiet typography so it does not compete with the
    primary pack price. */
 .product-card__price-secondary {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 
 .product-card__units {
-  font-size: 12px; color: var(--text-tertiary);
+  font-size: var(--fs-xs); color: var(--text-tertiary);
   text-align: end;
   white-space: nowrap;
   /* Sprint 4.4: align with the top of the bigger pack price line above

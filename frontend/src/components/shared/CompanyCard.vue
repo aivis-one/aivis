@@ -155,7 +155,7 @@ const coverImage = computed(() =>
 .company-card__name {
   flex: 1;
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
@@ -169,7 +169,7 @@ const coverImage = computed(() =>
 .company-card__chip {
   flex-shrink: 0;
   padding: 2px var(--space-2);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--success);
   background: var(--success-subtle);
@@ -179,7 +179,7 @@ const coverImage = computed(() =>
 
 .company-card__description {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   line-height: 1.45;
   color: var(--text-secondary);
   /* Reserve 3 lines of height even when empty -- equal-height cards

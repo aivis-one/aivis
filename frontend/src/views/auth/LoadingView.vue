@@ -44,7 +44,7 @@ const { t } = useI18n()
 }
 
 .loading-text {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-tertiary);
   margin-top: 8px;
 }

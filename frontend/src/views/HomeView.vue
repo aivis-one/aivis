@@ -32,14 +32,14 @@ const { t } = useI18n()
 }
 
 .home-title {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
 .home-version {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-tertiary);
 }
 </style>

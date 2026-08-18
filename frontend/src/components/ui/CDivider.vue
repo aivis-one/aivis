@@ -20,5 +20,5 @@ defineProps<{ text?: string }>()
 }
 /* Hide pseudo-elements when no text — show single line */
 .c-divider:not(:has(.c-divider__text))::after { display: none; }
-.c-divider__text { font-size: 13px; color: var(--text-tertiary); white-space: nowrap; }
+.c-divider__text { font-size: var(--fs-xs-lg); color: var(--text-tertiary); white-space: nowrap; }
 </style>

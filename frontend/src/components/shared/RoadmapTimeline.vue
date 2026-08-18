@@ -356,7 +356,7 @@ const endMarkerLabel = computed<string>(() =>
 .rti__chip {
   display: inline-block;
   padding: 2px var(--space-2);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   border-radius: var(--radius-pill);
   white-space: nowrap;
@@ -384,7 +384,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__date {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   white-space: nowrap;
 }
@@ -392,7 +392,7 @@ const endMarkerLabel = computed<string>(() =>
 .roadmap__title {
   margin: 0;
   padding: 0 var(--space-4);
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.35;
@@ -401,7 +401,7 @@ const endMarkerLabel = computed<string>(() =>
 .roadmap__description {
   margin: 0;
   padding: 0 var(--space-4);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -446,7 +446,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__post-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
@@ -458,7 +458,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__post-excerpt {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   line-height: 1.4;
   display: -webkit-box;
@@ -469,7 +469,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__post-link {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--primary);
 }
@@ -485,7 +485,7 @@ const endMarkerLabel = computed<string>(() =>
   flex: 1;
   min-width: 0;
   padding: var(--space-2) var(--space-4);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 500;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -539,7 +539,7 @@ const endMarkerLabel = computed<string>(() =>
 }
 
 .roadmap__terminal-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   font-style: italic;
 }

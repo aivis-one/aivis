@@ -475,11 +475,11 @@ onBeforeUnmount(() => {
 /* Header */
 .dash__header { display: flex; flex-direction: column; gap: 4px; }
 .dash__title {
-  font-size: 22px; font-weight: 700;
+  font-size: var(--fs-xl); font-weight: 700;
   color: var(--text-primary); margin: 0;
 }
 .dash__subtitle {
-  font-size: 13px; color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0;
 }
 
 /* Portfolio hero */
@@ -504,7 +504,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   opacity: 0.9;
 }
@@ -514,7 +514,7 @@ onBeforeUnmount(() => {
 .dash__portfolio-chev { opacity: 0.8; }
 
 .dash__portfolio-value {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   line-height: 1.1;
 }
@@ -523,14 +523,14 @@ onBeforeUnmount(() => {
   gap: 24px;
 }
 .dash__portfolio-stat-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   opacity: 0.8;
   margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 .dash__portfolio-stat-value {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -540,7 +540,7 @@ onBeforeUnmount(() => {
      for future tweaks (lighter gradient, etc.). */
 }
 .dash__portfolio-empty {
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-weight: 600;
   opacity: 0.95;
 }
@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   opacity: 0.9;
 }
@@ -574,7 +574,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   font-weight: 600;
 }
@@ -582,12 +582,12 @@ onBeforeUnmount(() => {
   display: inline-flex; align-items: center; gap: 6px;
 }
 .dash__balance-value {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
 }
 .dash__balance-frozen {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--warning);
 }
 
@@ -608,7 +608,7 @@ onBeforeUnmount(() => {
   background: var(--bg-page);
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
@@ -621,7 +621,7 @@ onBeforeUnmount(() => {
 /* Posts */
 .dash__posts { display: flex; flex-direction: column; gap: 10px; }
 .dash__posts-title {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 4px 0 0;
@@ -663,7 +663,7 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 .dash__post-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   /* Two-line clamp so long titles don't blow up the card height. */
@@ -673,14 +673,14 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .dash__post-date {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
 /* Upcoming events widget */
 .dash__events { display: flex; flex-direction: column; gap: 10px; }
 .dash__events-title {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 4px 0 0;

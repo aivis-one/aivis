@@ -77,7 +77,7 @@ function navigate(tab: TabItem): void {
 .c-tabbar__item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 6px 12px; min-width: 56px; min-height: 44px;
-  color: var(--text-tertiary); font-size: 10px; font-weight: 500;
+  color: var(--text-tertiary); font-size: var(--fs-3xs); font-weight: 500;
   cursor: pointer; transition: color 0.2s;
   border: none; background: none; font-family: inherit;
   position: relative;

@@ -520,7 +520,7 @@ onUnmounted(() => {
   padding: 12px 16px 8px;
 }
 .cp__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -545,7 +545,7 @@ onUnmounted(() => {
   margin-top: 12px;
 }
 .cp__agg-value {
-  font-size: 30px;
+  font-size: var(--fs-3xl);
   font-weight: 700;
   line-height: 1.1;
 }
@@ -555,20 +555,20 @@ onUnmounted(() => {
   gap: 10px 16px;
 }
 .cp__agg-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   opacity: 0.85;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-bottom: 2px;
 }
 .cp__agg-val {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
 /* Purchases list */
 .cp__section-title {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 8px 0 10px;
@@ -627,7 +627,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
 }
 .cp__item-kind {
   font-weight: 700;
@@ -635,13 +635,13 @@ onUnmounted(() => {
 }
 .cp__item-date {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .cp__item-stats {
   display: flex;
   gap: 12px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .cp__item-actions {
@@ -678,7 +678,7 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
 }
 .cp__loadmore-error-text {
   flex: 1;

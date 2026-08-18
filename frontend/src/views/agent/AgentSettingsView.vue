@@ -402,13 +402,13 @@ onMounted(() => {
   padding: 16px 16px 0;
 }
 .sett__page-title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 8px 0 0;
 }
 .sett__page-subtitle {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -429,19 +429,19 @@ onMounted(() => {
   gap: 6px;
 }
 .sett__name {
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
   margin-top: 6px;
 }
 .sett__email {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
 }
 .sett__role-badge {
   display: inline-block;
   margin-top: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
@@ -459,7 +459,7 @@ onMounted(() => {
   gap: 8px;
 }
 .sett__section-title {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -467,14 +467,14 @@ onMounted(() => {
   padding: 0 4px;
 }
 .sett__section-desc {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin: 0;
   padding: 0 4px;
 }
 
 .sett__empty {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
   padding: 16px;
@@ -491,7 +491,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow-x: auto;
   white-space: pre;
@@ -533,7 +533,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
 }
 .sett__row-label--danger {
@@ -545,14 +545,14 @@ onMounted(() => {
 .sett__form { display: flex; flex-direction: column; gap: 14px; }
 .sett__field { display: flex; flex-direction: column; gap: 6px; }
 .sett__field-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .sett__field-hint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   line-height: 1.4;
 }
@@ -563,7 +563,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   line-height: 1.5;
   resize: vertical;
@@ -577,7 +577,7 @@ onMounted(() => {
   margin: 0;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   background: var(--danger-subtle);
   border: 1px solid var(--danger);
   color: var(--danger);

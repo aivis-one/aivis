@@ -151,6 +151,25 @@
   --fs-sm: 0.875rem;
   --fs-xs: 0.75rem;
 
+  /* APP TIER — entered into the system 2026-08-18 on the owner's ruling that
+     everything we use goes through the design system FIRST. These are the sizes
+     the cabinets actually use that fall BETWEEN the system's steps. 89% of the
+     product's 538 hardcoded sizes already landed on a system step within 1px;
+     these are the other 11%, plus one tie.
+     --fs-xs-lg is 13px, the single most-used size in the product (114 places).
+     It sits EXACTLY between --fs-xs (12) and --fs-sm (14) — a TIE, and this
+     home's own rule from the B-2 icon pass is: never snap on a tie. Collapsing
+     12/13/14 into one step is a real design decision, and once every site reads
+     a token it becomes a ONE-FILE decision instead of a 331-site edit. */
+  --fs-3xs: 0.625rem;    /* 10px */
+  --fs-xs-lg: 0.8125rem; /* 13px — between xs and sm; tie, deliberately unsnapped */
+  --fs-lg: 1.25rem;      /* 20px */
+  --fs-xl: 1.375rem;     /* 22px */
+  --fs-2xl: 1.75rem;     /* 28px */
+  --fs-3xl: 1.875rem;    /* 30px */
+  --fs-4xl: 2rem;        /* 32px */
+  --fs-hero: 4.5rem;     /* 72px */
+
   /* CONTAINER MEASURE — the system's two widths, referenced ZERO times by the
      product until now, which is why `main` ran to viewport-minus-10px at every
      width and text lines reached 1248px against a readable 600-700.

@@ -116,13 +116,13 @@ function openTile(tile: Tile): void {
   gap: 4px;
 }
 .more__title {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px;
 }
 .more__subtitle {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -177,12 +177,12 @@ function openTile(tile: Tile): void {
   gap: 2px;
 }
 .more__tile-title {
-  font-size: 15px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
 }
 .more__tile-desc {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 

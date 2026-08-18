@@ -407,7 +407,7 @@ function formatBytes(bytes: number): string {
 
 .ats__title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -441,7 +441,7 @@ function formatBytes(bytes: number): string {
 
 .ats__group-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -500,7 +500,7 @@ function formatBytes(bytes: number): string {
 
 .ats__item-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   /* Truncate long titles instead of pushing the download icon off. */
@@ -511,7 +511,7 @@ function formatBytes(bytes: number): string {
 
 .ats__item-desc {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   color: var(--text-secondary);
   /* 2-line clamp -- description is optional and may be long. */
@@ -523,7 +523,7 @@ function formatBytes(bytes: number): string {
 
 .ats__item-meta {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;

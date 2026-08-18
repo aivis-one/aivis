@@ -258,14 +258,14 @@ function onClose(): void {
   padding: 4px 0 8px;
 }
 .tds__type {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .tds__amount {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.1;
@@ -278,7 +278,7 @@ function onClose(): void {
   color: var(--danger);
 }
 .tds__date {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 
@@ -296,7 +296,7 @@ function onClose(): void {
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-default);
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
 }
 .tds__key {
   color: var(--text-secondary);
@@ -317,7 +317,7 @@ function onClose(): void {
 
 .tds__hash {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-primary);
   user-select: all;
 }

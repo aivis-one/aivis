@@ -18,6 +18,6 @@ defineProps<{ title?: string; description?: string }>()
   padding: 48px 24px; text-align: center;
 }
 .c-empty__icon { margin-bottom: 16px; color: var(--text-tertiary); }
-.c-empty__title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
-.c-empty__desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; max-width: 280px; }
+.c-empty__title { font-size: var(--fs-body); font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.c-empty__desc { font-size: var(--fs-xs-lg); color: var(--text-secondary); line-height: 1.5; max-width: 280px; }
 </style>

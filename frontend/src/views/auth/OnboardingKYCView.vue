@@ -308,15 +308,15 @@ async function handleRetry(): Promise<void> {
   padding: 24px; overflow-y: auto;
 }
 .auth-title {
-  font-size: 24px; font-weight: 700; color: var(--text-primary);
+  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
   margin-bottom: 8px; text-align: center;
 }
 .auth-subtitle {
-  font-size: 14px; color: var(--text-secondary);
+  font-size: var(--fs-sm); color: var(--text-secondary);
   margin-bottom: 32px; text-align: center; line-height: 1.5;
 }
 .auth-error {
-  font-size: 13px; color: var(--danger); text-align: center;
+  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
   margin-bottom: 16px; max-width: 360px;
 }
 
@@ -337,8 +337,8 @@ async function handleRetry(): Promise<void> {
 }
 
 .kyc-card-icon { display: flex; justify-content: center; margin-bottom: 16px; }
-.kyc-card-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-.kyc-card-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+.kyc-card-title { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 8px; }
+.kyc-card-text { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; }
 
 .kyc-actions { width: 100%; max-width: 360px; }
 
@@ -348,12 +348,12 @@ async function handleRetry(): Promise<void> {
   border-radius: var(--radius-md);
 }
 .kyc-statuses-title {
-  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary);
   margin-bottom: 8px;
 }
 .kyc-status-item {
   display: flex; align-items: center; gap: 8px;
-  font-size: 13px; color: var(--text-secondary);
+  font-size: var(--fs-xs-lg); color: var(--text-secondary);
   margin-bottom: 6px;
 }
 .kyc-status-item:last-child { margin-bottom: 0; }
@@ -370,7 +370,7 @@ async function handleRetry(): Promise<void> {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px; border-radius: var(--radius-md);
   background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: 15px; font-family: inherit;
+  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
   border: none; cursor: pointer;
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }

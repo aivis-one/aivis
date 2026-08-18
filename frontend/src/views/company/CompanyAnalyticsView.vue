@@ -428,13 +428,13 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   gap: 4px;
 }
 .canl__title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 .canl__subtitle {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -470,7 +470,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   color: var(--on-primary);
 }
 .canl__metrics-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
   text-transform: uppercase;
@@ -478,7 +478,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   margin-bottom: 6px;
 }
 .canl__metrics-value {
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   line-height: 1.1;
 }
@@ -490,7 +490,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   margin-top: 14px;
 }
 .canl__metrics-sub-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.8;
   text-transform: uppercase;
@@ -498,7 +498,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   margin-bottom: 2px;
 }
 .canl__metrics-sub-value {
-  font-size: 16px;
+  font-size: var(--fs-body);
   font-weight: 700;
 }
 
@@ -515,19 +515,19 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   gap: 8px;
 }
 .canl__chart-title {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
 .canl__chart-range {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .canl__chart-empty {
-  font-size: 13px;
+  font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
   padding: 16px;
@@ -587,7 +587,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 }
 
 .canl__chart-month {
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   color: var(--text-tertiary);
   text-align: center;
   font-weight: 600;
@@ -634,7 +634,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 }
 
 .canl__row-name {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -643,12 +643,12 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 }
 
 .canl__row-sub {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 
 .canl__row-revenue {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   flex-shrink: 0;
