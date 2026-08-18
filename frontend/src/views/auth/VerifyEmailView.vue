@@ -228,34 +228,34 @@ async function handleResend(): Promise<void> {
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
-  padding: 16px 24px;
+  padding: var(--space-4) var(--space-5);
 }
 .auth-content {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 24px; overflow-y: auto;
+  padding: var(--space-5); overflow-y: auto;
 }
 .auth-title {
   font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: 8px; text-align: center;
+  margin-bottom: var(--space-2); text-align: center;
 }
 .auth-subtitle {
   font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: 32px; text-align: center; line-height: 1.5;
+  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
 .auth-form { width: 100%; max-width: 360px; }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin-bottom: 16px; max-width: 360px;
+  margin-bottom: var(--space-4); max-width: 360px;
 }
 
 .verify-icon {
-  display: flex; justify-content: center; margin-bottom: 24px;
+  display: flex; justify-content: center; margin-bottom: var(--space-5);
 }
 .verify-email { color: var(--text-primary); }
 
 .code-inputs {
-  display: flex; gap: 12px; margin-bottom: 24px;
+  display: flex; gap: var(--space-3); margin-bottom: var(--space-5);
 }
 .code-input {
   width: 48px; height: 56px; text-align: center;
@@ -272,8 +272,8 @@ async function handleResend(): Promise<void> {
 
 .btn { width: 100%; }
 .btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 14px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--space-4); border-radius: var(--radius-md);
   background: var(--primary); color: var(--on-primary);
   font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
   border: none; cursor: pointer;
@@ -290,8 +290,8 @@ async function handleResend(): Promise<void> {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .resend-section {
-  text-align: center; margin-top: 20px;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  text-align: center; margin-top: var(--space-4-lg);
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
 }
 .resend-label { font-size: var(--fs-sm); color: var(--text-secondary); }
 .resend-timer { font-size: var(--fs-sm); color: var(--text-tertiary); }

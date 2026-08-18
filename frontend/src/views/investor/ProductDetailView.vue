@@ -310,10 +310,10 @@ onMounted(loadProduct)
 .pd__center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 /* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
@@ -346,7 +346,7 @@ onMounted(loadProduct)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .pd__hero--fallback::after { display: none; }
 
@@ -358,18 +358,18 @@ onMounted(loadProduct)
 
 .pd__hero-content {
   position: relative; z-index: 2;
-  padding: 20px;
+  padding: var(--space-4-lg);
   width: 100%;
 }
 .pd__hero--fallback .pd__hero-content {
   text-align: center;
   color: var(--text-primary);
-  padding: 0 20px 20px;
+  padding: 0 var(--space-4-lg) var(--space-4-lg);
 }
 .pd__hero-company {
   font-size: var(--fs-xs); font-weight: 600;
   opacity: 0.85;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -381,18 +381,18 @@ onMounted(loadProduct)
 
 /* Body */
 .pd__body {
-  padding: 20px;
+  padding: var(--space-4-lg);
   display: flex; flex-direction: column;
-  gap: 24px;
+  gap: var(--space-5);
 }
 
 .pd__stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .pd__stat {
-  padding: 14px;
+  padding: var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
   text-align: center;
@@ -402,7 +402,7 @@ onMounted(loadProduct)
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 .pd__stat-value {
   font-size: var(--fs-h4); font-weight: 700;
@@ -412,10 +412,10 @@ onMounted(loadProduct)
 .pd__stat-unit {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 
-.pd__section { display: flex; flex-direction: column; gap: 10px; }
+.pd__section { display: flex; flex-direction: column; gap: var(--space-3); }
 .pd__section-title {
   font-size: var(--fs-sm); font-weight: 700;
   color: var(--text-primary);
@@ -436,7 +436,7 @@ onMounted(loadProduct)
 }
 
 .pd__empty {
-  padding: 14px;
+  padding: var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
   font-size: var(--fs-xs-lg);
@@ -450,7 +450,7 @@ onMounted(loadProduct)
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* Plan card is now a tappable button (F4.2). Role=button + tabindex
@@ -460,8 +460,8 @@ onMounted(loadProduct)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-page);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -508,8 +508,8 @@ onMounted(loadProduct)
 .pd__actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-top: 8px;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
 }
 @media (min-width: 520px) {
   .pd__actions { flex-direction: row; }

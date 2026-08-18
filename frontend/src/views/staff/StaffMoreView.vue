@@ -103,42 +103,42 @@ function goAvatar(): void {
 </template>
 
 <style scoped>
-.staff-more { padding: 16px; }
+.staff-more { padding: var(--space-4); }
 
 .staff-more__profile {
-  text-align: center; padding: 20px 0; margin-bottom: 16px;
+  text-align: center; padding: var(--space-4-lg) 0; margin-bottom: var(--space-4);
 }
 .staff-more__name {
-  font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin-top: 12px;
+  font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin-top: var(--space-3);
 }
 .staff-more__email {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin-top: 4px;
+  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin-top: var(--space-1);
 }
 .staff-more__badges {
-  display: inline-flex; gap: 8px; margin-top: 8px;
+  display: inline-flex; gap: var(--space-2); margin-top: var(--space-2);
 }
 
 .staff-more__section {
-  border-top: 1px solid var(--border-default); padding-top: 16px; margin-top: 16px;
+  border-top: 1px solid var(--border-default); padding-top: var(--space-4); margin-top: var(--space-4);
 }
 .staff-more__section-label {
   font-size: var(--fs-xs); font-weight: 700; color: var(--text-tertiary);
-  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-3);
 }
 
 .staff-more__nav-item {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 0; border-bottom: 1px solid var(--border-default); cursor: pointer;
+  padding: var(--space-4) 0; border-bottom: 1px solid var(--border-default); cursor: pointer;
   font-size: var(--fs-sm); color: var(--text-primary);
 }
 .staff-more__nav-item:hover { opacity: 0.8; }
 .staff-more__nav-item--accent { color: var(--accent); font-weight: 600; }
 .staff-more__nav-item--danger { color: var(--danger); border-bottom: none; }
-.staff-more__nav-left { display: flex; align-items: center; gap: 8px; }
+.staff-more__nav-left { display: flex; align-items: center; gap: var(--space-2); }
 .staff-more__nav-right { font-size: var(--fs-xs-lg); color: var(--text-tertiary); }
 
 .staff-more__info-row {
-  display: flex; justify-content: space-between; padding: 14px 0;
+  display: flex; justify-content: space-between; padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default); font-size: var(--fs-sm); color: var(--text-primary);
 }
 .staff-more__info-val { font-size: var(--fs-xs-lg); color: var(--text-tertiary); }

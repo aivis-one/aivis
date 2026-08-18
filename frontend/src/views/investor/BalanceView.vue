@@ -336,12 +336,12 @@ watch(
 .bv {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 /* Page header (inline, not CHeader -- shell already renders CHeader) */
 .bv__header {
-  padding: 16px 16px 0;
+  padding: var(--space-4) var(--space-4) 0;
 }
 .bv__title {
   font-size: var(--fs-lg);
@@ -352,16 +352,16 @@ watch(
 
 /* Card base */
 .bv__card {
-  padding: 20px;
+  padding: var(--space-4-lg);
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
-  margin: 16px 16px 0;
+  margin: var(--space-4) var(--space-4) 0;
 }
 
 .bv__card-title {
   font-size: var(--fs-xs);
   font-weight: 700;
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -376,7 +376,7 @@ watch(
 .bv__balance-loading {
   display: flex;
   justify-content: center;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .bv__balance-main {
@@ -384,7 +384,7 @@ watch(
   font-weight: 700;
   color: var(--accent);
   line-height: 1.1;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   word-break: break-word;
 }
 
@@ -392,9 +392,9 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding-top: 8px;
-  margin-top: 4px;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  margin-top: var(--space-1);
   border-top: 1px solid var(--border-default);
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
@@ -413,9 +413,9 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);
@@ -423,16 +423,16 @@ watch(
 }
 
 .bv__deposit {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 /* History */
 .bv__history {
-  padding: 20px 16px 0;
+  padding: var(--space-4-lg) var(--space-4) 0;
 }
 
 .bv__history-title {
-  padding: 0 4px;
+  padding: 0 var(--space-1);
 }
 
 .bv__history-center {
@@ -440,8 +440,8 @@ watch(
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 32px 16px;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
 }
 
 .bv__list {
@@ -450,14 +450,14 @@ watch(
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .bv__item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
@@ -480,14 +480,14 @@ watch(
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .bv__item-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .bv__item-line--sub {
   font-size: var(--fs-xs);
@@ -513,7 +513,7 @@ watch(
 .bv__sentinel {
   display: flex;
   justify-content: center;
-  padding: 16px 0 0;
+  padding: var(--space-4) 0 0;
   min-height: 32px;
 }
 </style>

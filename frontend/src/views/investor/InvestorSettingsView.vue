@@ -530,30 +530,30 @@ onMounted(() => {
 .sett {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 /* Inline page header -- MarketView pattern */
 .sett__header {
-  padding: 16px 16px 0;
+  padding: var(--space-4) var(--space-4) 0;
 }
 .sett__page-title {
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-1);
 }
 .sett__page-subtitle {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
 }
 
 .sett__center {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: var(--space-4-lg);
 }
 
 /* Profile card */
@@ -561,14 +561,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 16px 24px;
-  gap: 6px;
+  padding: var(--space-4-lg) var(--space-4) var(--space-5);
+  gap: var(--space-2);
 }
 .sett__name {
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 .sett__email {
   font-size: var(--fs-xs-lg);
@@ -576,10 +576,10 @@ onMounted(() => {
 }
 .sett__role-badge {
   display: inline-block;
-  margin-top: 6px;
+  margin-top: var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 600;
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--primary);
@@ -588,8 +588,8 @@ onMounted(() => {
 
 /* Section */
 .sett__section {
-  padding: 0 16px;
-  margin-bottom: 20px;
+  padding: 0 var(--space-4);
+  margin-bottom: var(--space-4-lg);
 }
 .sett__section-title {
   font-size: var(--fs-xs);
@@ -597,8 +597,8 @@ onMounted(() => {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: var(--space-2);
+  padding: 0 var(--space-1);
 }
 
 /*
@@ -611,8 +611,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-default);
   min-height: 48px;
 }
@@ -651,7 +651,7 @@ button.sett__row:last-child {
 .sett__row-label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-sm);
   color: var(--text-primary);
 }
@@ -675,14 +675,14 @@ button.sett__row:last-child {
 /* Theme chips */
 .sett__chips {
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 .sett__chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);

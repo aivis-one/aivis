@@ -397,21 +397,21 @@ onMounted(() => {
 .cset {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 /* Header */
-.cset__header { padding: 16px 16px 0; }
+.cset__header { padding: var(--space-4) var(--space-4) 0; }
 .cset__page-title {
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-1);
 }
 .cset__page-subtitle {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
 }
 
 /* Whole-screen states (loading / error) */
@@ -420,10 +420,10 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: calc(100vh - 280px);
   min-height: calc(100dvh - 280px);
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
@@ -431,9 +431,9 @@ onMounted(() => {
 .cset__hero {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
-  margin: 0 16px 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  margin: 0 var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -460,7 +460,7 @@ onMounted(() => {
 .cset__hero-text {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 .cset__hero-name {
@@ -476,7 +476,7 @@ onMounted(() => {
   align-self: flex-start;
   font-size: var(--fs-xs);
   font-weight: 600;
-  padding: 3px 10px;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
   text-transform: capitalize;
 }
@@ -497,15 +497,15 @@ onMounted(() => {
 }
 
 /* Section */
-.cset__section { padding: 0 16px; margin-bottom: 20px; }
+.cset__section { padding: 0 var(--space-4); margin-bottom: var(--space-4-lg); }
 .cset__section-title {
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: var(--space-2);
+  padding: 0 var(--space-1);
 }
 
 /* Row -- shared between <div> and <a>/<button> variants */
@@ -513,8 +513,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-default);
   min-height: 48px;
 }
@@ -549,7 +549,7 @@ button.cset__row:last-child { border-bottom: none; }
 .cset__row-label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-sm);
   color: var(--text-primary);
 }
@@ -573,7 +573,7 @@ button.cset__row:last-child { border-bottom: none; }
 .cset__row-multiline {
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -582,7 +582,7 @@ button.cset__row:last-child { border-bottom: none; }
 /* JSON view -- monospace, scrollable on overflow */
 .cset__json {
   margin: 0;
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -598,8 +598,8 @@ button.cset__row:last-child { border-bottom: none; }
 .cset__hint {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin: 0 16px 16px;
-  padding: 0 4px;
+  margin: 0 var(--space-4) var(--space-4);
+  padding: 0 var(--space-1);
   font-style: italic;
 }
 </style>

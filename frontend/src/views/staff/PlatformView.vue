@@ -77,9 +77,9 @@ function go(path: string): void {
 
 .platform__nav {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   overflow-x: auto;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-default);
   background: var(--bg-page);
   position: sticky;
@@ -90,7 +90,7 @@ function go(path: string): void {
 .platform__nav { scrollbar-width: none; }
 
 .platform__chip {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);

@@ -12,8 +12,8 @@ defineProps<{ text?: string }>()
 
 <style scoped>
 .c-divider {
-  display: flex; align-items: center; gap: 16px;
-  margin: 24px 0; width: 100%;
+  display: flex; align-items: center; gap: var(--space-4);
+  margin: var(--space-5) 0; width: 100%;
 }
 .c-divider::before, .c-divider::after {
   content: ''; flex: 1; height: 1px; background: var(--border-default);

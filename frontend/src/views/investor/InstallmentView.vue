@@ -563,10 +563,10 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 /* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
@@ -600,7 +600,7 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .iv__hero--fallback::after {
   display: none;
@@ -614,19 +614,19 @@ onMounted(load)
 .iv__hero-content {
   position: relative;
   z-index: 2;
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-4-lg);
   width: 100%;
 }
 .iv__hero--fallback .iv__hero-content {
   text-align: center;
   color: var(--text-primary);
-  padding: 0 20px 16px;
+  padding: 0 var(--space-4-lg) var(--space-4);
 }
 .iv__hero-company {
   font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -640,22 +640,22 @@ onMounted(load)
 
 /* Body */
 .iv__body {
-  padding: 20px;
+  padding: var(--space-4-lg);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* Card container */
 .iv__card {
-  padding: 16px;
+  padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
 }
 .iv__card-title {
   font-size: var(--fs-xs);
   font-weight: 700;
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -663,11 +663,11 @@ onMounted(load)
 .iv__hint {
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
-  margin: -4px 0 12px;
+  margin: -4px 0 var(--space-3);
   line-height: 1.4;
 }
 .iv__note {
-  margin: 10px 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
   line-height: 1.4;
@@ -680,15 +680,15 @@ onMounted(load)
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .iv__plan {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-page);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -748,8 +748,8 @@ onMounted(load)
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border-default);
 }
 .iv__tranche:last-child {
@@ -778,8 +778,8 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
 }
 .iv__row-label {
   font-size: var(--fs-sm);
@@ -798,7 +798,7 @@ onMounted(load)
   color: var(--danger);
 }
 .iv__balance-hint {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
   font-size: var(--fs-xs-lg);
   color: var(--danger);
 }
@@ -807,7 +807,7 @@ onMounted(load)
 .iv__actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 </style>

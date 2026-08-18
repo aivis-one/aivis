@@ -178,7 +178,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 .event-card__body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
   flex: 1;
 }
@@ -196,18 +196,18 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 .event-card__loc {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-1);
   min-width: 0;
 }
 .event-card__desc {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   line-height: 1.4;
@@ -219,8 +219,8 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 .event-card__link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 6px;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
   font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--accent);
@@ -232,9 +232,9 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 .event-card--compact {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
-  padding: 10px;
+  padding: var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);

@@ -54,19 +54,19 @@ function onInput(e: Event): void {
 </template>
 
 <style scoped>
-.c-input-group { margin-bottom: 16px; }
+.c-input-group { margin-bottom: var(--space-4); }
 
 .c-input-label {
   display: block;
   font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 
 .c-input {
   width: 100%;
-  padding: 14px 16px;
+  padding: var(--space-4) var(--space-4);
   border: 2px solid var(--border-default);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
@@ -90,14 +90,14 @@ function onInput(e: Event): void {
 }
 
 .c-input-wrapper { position: relative; }
-.c-input-wrapper .c-input { padding-right: 48px; }
+.c-input-wrapper .c-input { padding-right: var(--space-7); }
 
 .c-input-toggle {
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  padding: 4px;
+  padding: var(--space-1);
   color: var(--text-tertiary);
   background: none;
   border: none;
@@ -109,7 +109,7 @@ function onInput(e: Event): void {
 .c-input-error {
   font-size: var(--fs-xs);
   color: var(--danger);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 @keyframes c-shake {

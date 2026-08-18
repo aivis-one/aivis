@@ -305,42 +305,42 @@ async function handleSignAll(): Promise<void> {
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
-  padding: 16px 24px;
+  padding: var(--space-4) var(--space-5);
 }
 .auth-content {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 24px; overflow-y: auto;
+  padding: var(--space-5); overflow-y: auto;
 }
 .auth-title {
   font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: 8px; text-align: center;
+  margin-bottom: var(--space-2); text-align: center;
 }
 .auth-subtitle {
   font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: 32px; text-align: center; line-height: 1.5;
+  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin-bottom: 16px; max-width: 400px;
+  margin-bottom: var(--space-4); max-width: 400px;
 }
 
 .docs-loading {
-  display: flex; justify-content: center; padding: 40px;
+  display: flex; justify-content: center; padding: var(--space-6-lg);
 }
 
 .no-docs {
   font-size: var(--fs-sm); color: var(--text-secondary);
-  text-align: center; margin-bottom: 24px;
+  text-align: center; margin-bottom: var(--space-5);
 }
 
 .doc-list {
   width: 100%; max-width: 400px;
-  display: flex; flex-direction: column; gap: 12px;
-  margin-bottom: 16px;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 .doc-item {
-  display: flex; align-items: flex-start; gap: 14px; padding: 16px;
+  display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-4);
   background: var(--bg-page); border: 1px solid var(--border-default);
   border-radius: var(--radius-md); cursor: pointer;
   transition: all 0.2s;
@@ -352,7 +352,7 @@ async function handleSignAll(): Promise<void> {
   width: 22px; height: 22px; min-width: 22px;
   border: 2px solid var(--border-default); border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s; margin-top: 2px;
+  transition: all 0.2s; margin-top: var(--space-1);
   font-size: var(--fs-xs-lg); color: var(--on-primary);
 }
 .doc-checkbox.checked {
@@ -364,17 +364,17 @@ async function handleSignAll(): Promise<void> {
 
 .doc-info { flex: 1; }
 .doc-title {
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-1);
 }
-.doc-meta { display: flex; gap: 8px; }
+.doc-meta { display: flex; gap: var(--space-2); }
 .doc-required {
   font-size: var(--fs-xs); color: var(--danger); font-weight: 500;
 }
 
 .doc-link {
-  display: inline-flex; align-items: center; gap: 6px;
-  color: var(--text-tertiary); margin-top: 2px;
-  background: none; border: none; padding: 2px 4px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  color: var(--text-tertiary); margin-top: var(--space-1);
+  background: none; border: none; padding: var(--space-1) var(--space-1); cursor: pointer;
   font-family: inherit; font-size: var(--fs-xs);
   transition: color 0.2s;
 }
@@ -382,15 +382,15 @@ async function handleSignAll(): Promise<void> {
 
 .doc-counter {
   font-size: var(--fs-xs-lg); color: var(--text-secondary);
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .doc-actions { width: 100%; max-width: 400px; }
 
 .btn { width: 100%; }
 .btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 14px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--space-4); border-radius: var(--radius-md);
   background: var(--primary); color: var(--on-primary);
   font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
   border: none; cursor: pointer;
@@ -410,13 +410,13 @@ async function handleSignAll(): Promise<void> {
 /* --- Document preview modal --- */
 .doc-modal__title {
   font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary);
-  margin: 0 0 12px; padding-right: 24px;  /* room for close button */
+  margin: 0 0 var(--space-3); padding-right: var(--space-5);  /* room for close button */
 }
 .doc-modal__body {
   min-height: 120px; max-height: 60vh; overflow-y: auto;
   border: 1px solid var(--border-default); border-radius: var(--radius-sm);
-  padding: 16px; background: var(--bg-subtle);
-  margin-bottom: 16px;
+  padding: var(--space-4); background: var(--bg-subtle);
+  margin-bottom: var(--space-4);
 }
 .doc-modal__center {
   display: flex; align-items: center; justify-content: center;
@@ -425,12 +425,12 @@ async function handleSignAll(): Promise<void> {
 .doc-modal__content {
   font-size: var(--fs-sm); color: var(--text-primary); line-height: 1.6;
 }
-.doc-modal__content :deep(h1) { font-size: var(--fs-lg); margin: 0 0 12px; }
-.doc-modal__content :deep(h2) { font-size: var(--fs-body); margin: 16px 0 8px; }
-.doc-modal__content :deep(p) { margin: 0 0 12px; }
+.doc-modal__content :deep(h1) { font-size: var(--fs-lg); margin: 0 0 var(--space-3); }
+.doc-modal__content :deep(h2) { font-size: var(--fs-body); margin: var(--space-4) 0 var(--space-2); }
+.doc-modal__content :deep(p) { margin: 0 0 var(--space-3); }
 .doc-modal__content :deep(ul),
-.doc-modal__content :deep(ol) { margin: 0 0 12px; padding-left: 20px; }
-.doc-modal__content :deep(li) { margin-bottom: 4px; }
+.doc-modal__content :deep(ol) { margin: 0 0 var(--space-3); padding-left: var(--space-4-lg); }
+.doc-modal__content :deep(li) { margin-bottom: var(--space-1); }
 
 .doc-modal__actions {
   display: flex; justify-content: flex-end;

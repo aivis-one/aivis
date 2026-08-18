@@ -34,7 +34,7 @@ function goHome(): void {
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-page);
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
@@ -49,11 +49,11 @@ function goHome(): void {
 .not-found__text {
   font-size: var(--fs-body);
   color: var(--text-secondary);
-  margin: 16px 0 32px;
+  margin: var(--space-4) 0 var(--space-6);
 }
 
 .not-found__btn {
-  padding: 12px 32px;
+  padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-md);
   /* --primary, not --accent: this is the screen's PRIMARY action. The owner
      found eight of these and they were fixed; the sweep found this one

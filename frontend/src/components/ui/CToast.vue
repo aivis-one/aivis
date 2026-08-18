@@ -30,7 +30,7 @@ const { toastState } = useToast()
   /* info/success/danger backgrounds all INVERT between themes; warning
      overrides this below because amber needs dark text in both. */
   color: var(--on-primary);
-  padding: 12px 24px;
+  padding: var(--space-3) var(--space-5);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
   font-weight: 500;

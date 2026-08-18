@@ -196,7 +196,7 @@ onMounted(loadCompany)
 .scd__page-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   padding: var(--space-4);
 }
 .scd__page-title {
@@ -211,7 +211,7 @@ onMounted(loadCompany)
    viewport six labels won't fit; user swipes horizontally. */
 .scd__tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   overflow-x: auto;
   padding: 0 var(--space-4) 12px;
   border-bottom: 1px solid var(--border-default);
@@ -224,7 +224,7 @@ onMounted(loadCompany)
 .scd__tabs { scrollbar-width: none; }
 
 .scd__tab {
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);

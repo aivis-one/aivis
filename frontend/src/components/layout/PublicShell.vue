@@ -115,7 +115,7 @@ function goToLogin(): void {
 }
 
 .shell__login {
-  padding: 6px 14px;
+  padding: var(--space-2) var(--space-4);
   border: none;
   border-radius: var(--radius-md);
   /* --primary, not --accent: this is the screen's PRIMARY action. The owner

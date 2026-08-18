@@ -22,7 +22,7 @@ const { t } = useI18n()
   justify-content: center;
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
@@ -30,11 +30,11 @@ const { t } = useI18n()
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
 }
 
 .view-stub__badge {
-  padding: 6px 14px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-secondary);
   color: var(--text-tertiary);

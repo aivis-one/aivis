@@ -479,7 +479,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .ats__item-title {

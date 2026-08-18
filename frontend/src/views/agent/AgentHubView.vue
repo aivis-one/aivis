@@ -313,16 +313,16 @@ onMounted(() => {
 
 <style scoped>
 .hub {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .hub__header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .hub__title {
@@ -341,7 +341,7 @@ onMounted(() => {
 .hub__center {
   display: flex;
   justify-content: center;
-  padding: 24px 0;
+  padding: var(--space-5) 0;
 }
 
 /* -- Stats card -- */
@@ -350,13 +350,13 @@ onMounted(() => {
   background: var(--surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .hub__stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .hub__stat--wide {
@@ -386,7 +386,7 @@ onMounted(() => {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-3);
 }
 
 .hub__list {
@@ -395,17 +395,17 @@ onMounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .hub__card {
   background: var(--surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .hub__card-head {
@@ -417,7 +417,7 @@ onMounted(() => {
 .hub__card-code {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -431,7 +431,7 @@ onMounted(() => {
 .hub__card-state {
   font-size: var(--fs-xs);
   font-weight: 600;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
 }
 
@@ -448,10 +448,10 @@ onMounted(() => {
 .hub__card-share {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   background: var(--bg-surface);
   border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .hub__card-url {
@@ -466,7 +466,7 @@ onMounted(() => {
 .hub__card-copy {
   background: none;
   border: none;
-  padding: 4px;
+  padding: var(--space-1);
   color: var(--primary);
   cursor: pointer;
   display: inline-flex;
@@ -475,7 +475,7 @@ onMounted(() => {
 .hub__card-counters {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .hub__counter {
@@ -502,6 +502,6 @@ onMounted(() => {
 .hub__more {
   display: flex;
   justify-content: center;
-  margin-top: 12px;
+  margin-top: var(--space-3);
 }
 </style>

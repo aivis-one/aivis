@@ -239,13 +239,13 @@ function onClose(): void {
 .tds {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-4-lg);
 }
 
 .tds__center {
   display: flex;
   justify-content: center;
-  padding: 24px 0;
+  padding: var(--space-5) 0;
 }
 
 /* Summary */
@@ -253,9 +253,9 @@ function onClose(): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   text-align: center;
-  padding: 4px 0 8px;
+  padding: var(--space-1) 0 var(--space-2);
 }
 .tds__type {
   font-size: var(--fs-xs-lg);
@@ -293,8 +293,8 @@ function onClose(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border-default);
   font-size: var(--fs-xs-lg);
 }
@@ -311,7 +311,7 @@ function onClose(): void {
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: flex-end;
 }
 
@@ -325,7 +325,7 @@ function onClose(): void {
 .tds__copy {
   background: none;
   border: none;
-  padding: 4px;
+  padding: var(--space-1);
   color: var(--text-tertiary);
   cursor: pointer;
   display: inline-flex;

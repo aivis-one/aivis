@@ -181,14 +181,14 @@ onMounted(loadCompanies)
 </template>
 
 <style scoped>
-.scl { padding: 16px; }
-.scl__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+.scl { padding: var(--space-4); }
+.scl__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-3); }
 
 .scl__filters {
-  display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px;
+  display: flex; gap: var(--space-2); overflow-x: auto; margin-bottom: var(--space-3); padding-bottom: var(--space-1);
 }
 .filter-chip {
-  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
   background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;
 }
@@ -196,12 +196,12 @@ onMounted(loadCompanies)
 
 .scl__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 200px; gap: 16px;
+  justify-content: center; min-height: 200px; gap: var(--space-4);
 }
 
 .company-list { display: flex; flex-direction: column; }
 .company-item {
-  display: flex; align-items: center; gap: 12px; padding: 14px 0;
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;
 }
 .company-item:hover { background: var(--bg-subtle); }
@@ -210,11 +210,11 @@ onMounted(loadCompanies)
   font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.company-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; }
+.company-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
 
 .scl__pagination {
   display: flex; align-items: center; justify-content: center;
-  gap: 12px; margin-top: 16px;
+  gap: var(--space-3); margin-top: var(--space-4);
 }
 .scl__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 </style>

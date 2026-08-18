@@ -13,7 +13,7 @@ defineProps<{
 
 <style scoped>
 .c-badge {
-  font-size: var(--fs-xs); font-weight: 600; padding: 3px 8px;
+  font-size: var(--fs-xs); font-weight: 600; padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm); display: inline-block; white-space: nowrap;
 }
 .c-badge--success { background: var(--success-subtle); color: var(--success); }

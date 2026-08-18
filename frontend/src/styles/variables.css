@@ -133,6 +133,15 @@
   --space-8: 4rem;
   --space-9: 6rem;
 
+  /* APP TIER — entered 2026-08-18 under the owner's ruling. The system declares a
+     4px grid (4/8/12/16/24/32/48/64/96); these are the three sizes the cabinets
+     use that sit MORE than 2px from any step, so snapping them would be a design
+     change rather than a cleanup. 96% of the product's 1,122 raw spacing values
+     land on a system step within 2px; these are the other 4%. */
+  --space-4-lg: 1.25rem; /* 20px, between --space-4 (16) and --space-5 (24) */
+  --space-5-lg: 1.75rem; /* 28px, between --space-5 (24) and --space-6 (32) */
+  --space-6-lg: 2.5rem;  /* 40px, between --space-6 (32) and --space-7 (48) */
+
   /* TYPE SCALE — imported 2026-08-18, and DELIBERATELY UNREFERENCED for now.
      The product had ZERO of the system's eight steps against 538 hardcoded
      font sizes, which is why type cannot yet adapt per tier. Declared here so

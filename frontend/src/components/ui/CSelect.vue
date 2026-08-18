@@ -43,11 +43,11 @@ function onChange(e: Event): void {
 </template>
 
 <style scoped>
-.c-input-group { margin-bottom: 16px; }
-.c-input-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.c-input-group { margin-bottom: var(--space-4); }
+.c-input-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
 
 .c-select {
-  width: 100%; padding: 14px 16px; padding-right: 40px;
+  width: 100%; padding: var(--space-4) var(--space-4); padding-right: var(--space-6-lg);
   border: 2px solid var(--border-default); border-radius: var(--radius-md);
   font-size: var(--fs-sm); font-family: inherit;
   background: var(--bg-page); color: var(--text-primary); cursor: pointer;
@@ -59,5 +59,5 @@ function onChange(e: Event): void {
 }
 .c-select:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
 .c-select--error { border-color: var(--danger); }
-.c-input-error { font-size: var(--fs-xs); color: var(--danger); margin-top: 4px; }
+.c-input-error { font-size: var(--fs-xs); color: var(--danger); margin-top: var(--space-1); }
 </style>

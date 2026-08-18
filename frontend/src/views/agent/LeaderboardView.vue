@@ -166,23 +166,23 @@ onMounted(() => {
 
 <style scoped>
 .lb {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .lb__page-header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .lb__title {
   font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
 }
 
 .lb__subtitle {
@@ -195,8 +195,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 24px 0;
+  gap: var(--space-3);
+  padding: var(--space-5) 0;
 }
 
 .lb__period {
@@ -213,17 +213,17 @@ onMounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .lb__row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
 }
 
 .lb__row--me {
@@ -243,7 +243,7 @@ onMounted(() => {
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
@@ -264,7 +264,7 @@ onMounted(() => {
   flex-shrink: 0;
   font-size: var(--fs-xs);
   font-weight: 600;
-  padding: 2px 7px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--primary);
   color: var(--on-primary);

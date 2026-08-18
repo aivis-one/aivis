@@ -392,20 +392,20 @@ onMounted(() => {
 .sett {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 .sett__page-header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 16px 16px 0;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) 0;
 }
 .sett__page-title {
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
 }
 .sett__page-subtitle {
   font-size: var(--fs-sm);
@@ -417,7 +417,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: var(--space-4-lg);
 }
 
 /* Profile card */
@@ -425,14 +425,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 16px 24px;
-  gap: 6px;
+  padding: var(--space-4-lg) var(--space-4) var(--space-5);
+  gap: var(--space-2);
 }
 .sett__name {
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 .sett__email {
   font-size: var(--fs-xs-lg);
@@ -440,10 +440,10 @@ onMounted(() => {
 }
 .sett__role-badge {
   display: inline-block;
-  margin-top: 6px;
+  margin-top: var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 600;
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--primary);
@@ -452,11 +452,11 @@ onMounted(() => {
 
 /* Section */
 .sett__section {
-  padding: 0 16px;
-  margin-bottom: 20px;
+  padding: 0 var(--space-4);
+  margin-bottom: var(--space-4-lg);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .sett__section-title {
   font-size: var(--fs-xs);
@@ -464,20 +464,20 @@ onMounted(() => {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
 }
 .sett__section-desc {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin: 0;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
 }
 
 .sett__empty {
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
-  padding: 16px;
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
@@ -486,7 +486,7 @@ onMounted(() => {
 
 .sett__json {
   margin: 0;
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -501,7 +501,7 @@ onMounted(() => {
 .sett__cta-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 /* Row (clickable button) */
@@ -509,8 +509,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   min-height: 48px;
@@ -532,7 +532,7 @@ onMounted(() => {
 .sett__row-label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-sm);
   color: var(--text-primary);
 }
@@ -542,8 +542,8 @@ onMounted(() => {
 }
 
 /* Payout form */
-.sett__form { display: flex; flex-direction: column; gap: 14px; }
-.sett__field { display: flex; flex-direction: column; gap: 6px; }
+.sett__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.sett__field { display: flex; flex-direction: column; gap: var(--space-2); }
 .sett__field-label {
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -558,7 +558,7 @@ onMounted(() => {
 }
 .sett__textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -575,7 +575,7 @@ onMounted(() => {
 
 .sett__form-error {
   margin: 0;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--fs-xs);
   background: var(--danger-subtle);
@@ -590,8 +590,8 @@ onMounted(() => {
 
 .sett__form-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: flex-end;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 </style>

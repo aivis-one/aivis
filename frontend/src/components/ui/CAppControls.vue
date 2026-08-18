@@ -114,7 +114,7 @@ onBeforeUnmount(() => {
 .app-controls {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .app-controls__lang {
@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
      accessibility-adjacent gap that was itself below the touch-target floor. */
   min-width: 44px;
   min-height: 44px;
-  padding: 0 10px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
@@ -159,7 +159,7 @@ onBeforeUnmount(() => {
   right: 0;
   z-index: 200;
   min-width: 84px;
-  padding: 4px;
+  padding: var(--space-1);
   margin: 0;
   list-style: none;
   background: var(--bg-surface);
@@ -171,9 +171,9 @@ onBeforeUnmount(() => {
 .app-controls__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 10px 8px;
+  padding: var(--space-3) var(--space-2);
   min-height: 44px;
   border: 0;
   border-radius: var(--radius-sm);

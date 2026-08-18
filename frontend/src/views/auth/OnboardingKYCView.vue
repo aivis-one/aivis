@@ -300,31 +300,31 @@ async function handleRetry(): Promise<void> {
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
-  padding: 16px 24px;
+  padding: var(--space-4) var(--space-5);
 }
 .auth-content {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 24px; overflow-y: auto;
+  padding: var(--space-5); overflow-y: auto;
 }
 .auth-title {
   font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: 8px; text-align: center;
+  margin-bottom: var(--space-2); text-align: center;
 }
 .auth-subtitle {
   font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: 32px; text-align: center; line-height: 1.5;
+  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin-bottom: 16px; max-width: 360px;
+  margin-bottom: var(--space-4); max-width: 360px;
 }
 
-.kyc-icon { display: flex; justify-content: center; margin-bottom: 32px; }
+.kyc-icon { display: flex; justify-content: center; margin-bottom: var(--space-6); }
 
 .kyc-status-card {
   width: 100%; max-width: 360px; border-radius: var(--radius-lg);
-  padding: 32px 24px; text-align: center; margin-bottom: 24px;
+  padding: var(--space-6) var(--space-5); text-align: center; margin-bottom: var(--space-5);
 }
 .kyc-status-card.pending {
   background: var(--warning-subtle); border: 1px solid rgba(245, 158, 11, 0.3);
@@ -336,25 +336,25 @@ async function handleRetry(): Promise<void> {
   background: var(--danger-subtle); border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.kyc-card-icon { display: flex; justify-content: center; margin-bottom: 16px; }
-.kyc-card-title { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 8px; }
+.kyc-card-icon { display: flex; justify-content: center; margin-bottom: var(--space-4); }
+.kyc-card-title { font-size: var(--fs-lg); font-weight: 700; margin-bottom: var(--space-2); }
 .kyc-card-text { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; }
 
 .kyc-actions { width: 100%; max-width: 360px; }
 
 .kyc-statuses {
-  margin-top: 32px; width: 100%; max-width: 360px;
-  padding: 16px; background: var(--bg-surface);
+  margin-top: var(--space-6); width: 100%; max-width: 360px;
+  padding: var(--space-4); background: var(--bg-surface);
   border-radius: var(--radius-md);
 }
 .kyc-statuses-title {
   font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 .kyc-status-item {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: var(--space-2);
   font-size: var(--fs-xs-lg); color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 .kyc-status-item:last-child { margin-bottom: 0; }
 .kyc-status-dot {
@@ -367,8 +367,8 @@ async function handleRetry(): Promise<void> {
 
 .btn { width: 100%; }
 .btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 14px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--space-4); border-radius: var(--radius-md);
   background: var(--primary); color: var(--on-primary);
   font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
   border: none; cursor: pointer;

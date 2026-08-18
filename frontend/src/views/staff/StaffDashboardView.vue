@@ -190,11 +190,11 @@ onMounted(loadStats)
 
 <style scoped>
 .staff-dash {
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .staff-dash__greeting {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-4-lg);
 }
 
 .staff-dash__label {
@@ -206,14 +206,14 @@ onMounted(loadStats)
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 4px 0 8px;
+  margin: var(--space-1) 0 var(--space-2);
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .stats-grid .c-stat {
@@ -223,11 +223,11 @@ onMounted(loadStats)
 .staff-dash__alert {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   background: var(--warning-subtle);
   border-radius: var(--radius-md);
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--warning);
@@ -237,15 +237,15 @@ onMounted(loadStats)
 .staff-dash__roles {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4-lg);
 }
 
 .staff-dash__role-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--bg-subtle);
   font-size: var(--fs-xs);
@@ -266,11 +266,11 @@ onMounted(loadStats)
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .staff-dash__action {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .staff-dash__center {
@@ -279,7 +279,7 @@ onMounted(loadStats)
   align-items: center;
   justify-content: center;
   min-height: 200px;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .staff-dash__error {

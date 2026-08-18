@@ -279,7 +279,7 @@ async function handleRegister(): Promise<void> {
   top: 0;
   z-index: 100;
   background: var(--bg-page);
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-4-lg);
   border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
@@ -289,7 +289,7 @@ async function handleRegister(): Promise<void> {
 .btn-back {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: var(--fs-sm);
 }
 
@@ -303,7 +303,7 @@ async function handleRegister(): Promise<void> {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32px 24px;
+  padding: var(--space-6) var(--space-5);
   overflow-y: auto;
 }
 
@@ -311,14 +311,14 @@ async function handleRegister(): Promise<void> {
   font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   text-align: center;
 }
 
 .auth-subtitle {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-bottom: 32px;
+  margin-bottom: var(--space-6);
   text-align: center;
   line-height: 1.5;
 }
@@ -329,7 +329,7 @@ async function handleRegister(): Promise<void> {
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .form-label {
@@ -337,12 +337,12 @@ async function handleRegister(): Promise<void> {
   font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 
 .form-input {
   width: 100%;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   border: 2px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-page);
@@ -364,7 +364,7 @@ async function handleRegister(): Promise<void> {
 .form-hint {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .input-wrapper {
@@ -372,7 +372,7 @@ async function handleRegister(): Promise<void> {
 }
 
 .input-wrapper .form-input {
-  padding-right: 48px;
+  padding-right: var(--space-7);
 }
 
 .toggle-password {
@@ -380,7 +380,7 @@ async function handleRegister(): Promise<void> {
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  padding: 4px;
+  padding: var(--space-1);
   color: var(--text-tertiary);
   background: none;
   border: none;
@@ -393,19 +393,19 @@ async function handleRegister(): Promise<void> {
 }
 
 .auth-error {
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   background: var(--danger-subtle);
   border: 1px solid var(--danger);
   border-radius: var(--radius-md);
   color: var(--danger);
   font-size: var(--fs-xs-lg);
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   line-height: 1.5;
 }
 
 .btn {
   width: 100%;
-  padding: 14px;
+  padding: var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -414,7 +414,7 @@ async function handleRegister(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   transition: opacity 0.2s;
 }
 
@@ -467,12 +467,12 @@ async function handleRegister(): Promise<void> {
 
 .auth-footer {
   text-align: center;
-  margin-top: 24px;
+  margin-top: var(--space-5);
 }
 
 .auth-footer-text {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-right: 4px;
+  margin-right: var(--space-1);
 }
 </style>

@@ -289,18 +289,18 @@ onMounted(() => {
 .tv {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 /* Page header */
 .tv__header {
-  padding: 16px 16px 8px;
+  padding: var(--space-4) var(--space-4) var(--space-2);
 }
 .tv__title {
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-1);
 }
 .tv__subtitle {
   font-size: var(--fs-sm);
@@ -311,8 +311,8 @@ onMounted(() => {
 /* Tabs row */
 .tv__tabs {
   display: flex;
-  gap: 8px;
-  padding: 8px 16px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-3);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -322,7 +322,7 @@ onMounted(() => {
 
 .tv__tab {
   flex-shrink: 0;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -350,25 +350,25 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 32px 16px;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
 }
 
 /* List */
 .tv__list {
   list-style: none;
   margin: 0;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .tv__item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
@@ -398,14 +398,14 @@ onMounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .tv__item-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .tv__item-line--sub {
   font-size: var(--fs-xs);
@@ -439,7 +439,7 @@ onMounted(() => {
 .tv__sentinel {
   display: flex;
   justify-content: center;
-  padding: 16px 0 0;
+  padding: var(--space-4) 0 0;
   min-height: 32px;
 }
 
@@ -451,9 +451,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin: 12px 16px 0;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);

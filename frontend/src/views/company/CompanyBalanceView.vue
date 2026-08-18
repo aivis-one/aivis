@@ -669,12 +669,12 @@ onMounted(() => {
 .cbal {
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 16px;
-  padding-bottom: 24px;
+  padding: var(--space-4);
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
 }
 
-.cbal__header { display: flex; flex-direction: column; gap: 4px; }
+.cbal__header { display: flex; flex-direction: column; gap: var(--space-1); }
 .cbal__title {
   font-size: var(--fs-lg); font-weight: 700;
   color: var(--text-primary); margin: 0;
@@ -686,23 +686,23 @@ onMounted(() => {
 .cbal__center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: calc(100vh - 240px);
   min-height: calc(100dvh - 240px);
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
 .cbal__card {
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 
-.cbal__balance { display: flex; flex-direction: column; gap: 6px; }
+.cbal__balance { display: flex; flex-direction: column; gap: var(--space-2); }
 .cbal__balance-head {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--space-2);
   font-size: var(--fs-xs); font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.05em;
@@ -717,8 +717,8 @@ onMounted(() => {
 }
 
 .cbal__cta-row {
-  display: flex; align-items: center; gap: 10px;
-  margin-top: 12px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: var(--space-3);
+  margin-top: var(--space-3); flex-wrap: wrap;
 }
 .cbal__cta-hint {
   font-size: var(--fs-xs); font-style: italic;
@@ -726,15 +726,15 @@ onMounted(() => {
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 
-.cbal__section { display: flex; flex-direction: column; gap: 8px; }
+.cbal__section { display: flex; flex-direction: column; gap: var(--space-2); }
 .cbal__section-title {
   font-size: var(--fs-sm); font-weight: 700;
-  color: var(--text-primary); margin: 4px 0 0;
+  color: var(--text-primary); margin: var(--space-1) 0 0;
 }
 
 .cbal__empty {
   font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0;
-  padding: 16px; border-radius: var(--radius);
+  padding: var(--space-4); border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
@@ -742,11 +742,11 @@ onMounted(() => {
 
 .cbal__list {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: var(--space-2);
 }
 .cbal__item {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -761,10 +761,10 @@ onMounted(() => {
 }
 .cbal__item-body {
   flex: 1; min-width: 0;
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: var(--space-1);
 }
 .cbal__item-line {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
 }
 .cbal__item-line--sub {
   font-size: var(--fs-xs); color: var(--text-tertiary);
@@ -783,7 +783,7 @@ onMounted(() => {
 .cbal__badge {
   display: inline-block;
   font-size: var(--fs-3xs); font-weight: 700;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
   text-transform: uppercase; letter-spacing: 0.05em;
   flex-shrink: 0;
@@ -811,12 +811,12 @@ onMounted(() => {
 
 .cbal__sentinel {
   display: flex; align-items: center; justify-content: center;
-  padding: 16px 0 0; min-height: 32px;
+  padding: var(--space-4) 0 0; min-height: 32px;
 }
 
 .cbal__json {
   margin: 0;
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -828,8 +828,8 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-.cbal__form { display: flex; flex-direction: column; gap: 14px; }
-.cbal__field { display: flex; flex-direction: column; gap: 6px; }
+.cbal__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.cbal__field { display: flex; flex-direction: column; gap: var(--space-2); }
 .cbal__field-label {
   font-size: var(--fs-xs); font-weight: 600;
   color: var(--text-secondary);
@@ -842,7 +842,7 @@ onMounted(() => {
 
 .cbal__input {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -856,7 +856,7 @@ onMounted(() => {
 
 .cbal__textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -873,7 +873,7 @@ onMounted(() => {
 
 .cbal__form-error {
   margin: 0;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--fs-xs);
   background: var(--danger-subtle);
@@ -887,8 +887,8 @@ onMounted(() => {
 }
 
 .cbal__form-actions {
-  display: flex; gap: 8px;
+  display: flex; gap: var(--space-2);
   justify-content: flex-end;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 </style>

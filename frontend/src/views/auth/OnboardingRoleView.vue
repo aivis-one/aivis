@@ -174,33 +174,33 @@ async function handleSubmit(): Promise<void> {
 }
 .auth-header {
   display: flex; align-items: center; justify-content: center;
-  padding: 16px 24px;
+  padding: var(--space-4) var(--space-5);
 }
 .auth-content {
   flex: 1; display: flex; flex-direction: column;
   align-items: center;
-  padding: 24px; overflow-y: auto;
+  padding: var(--space-5); overflow-y: auto;
 }
 .auth-title {
   font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: 8px; text-align: center;
+  margin-bottom: var(--space-2); text-align: center;
 }
 .auth-subtitle {
   font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: 32px; text-align: center; line-height: 1.5;
+  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin: 16px 0; max-width: 400px;
+  margin: var(--space-4) 0; max-width: 400px;
 }
 
 .role-cards {
-  display: flex; flex-direction: column; gap: 16px;
+  display: flex; flex-direction: column; gap: var(--space-4);
   width: 100%; max-width: 400px;
 }
 .role-card {
   background: var(--bg-page); border: 2px solid var(--border-default);
-  border-radius: var(--radius-lg); padding: 20px;
+  border-radius: var(--radius-lg); padding: var(--space-4-lg);
   cursor: pointer; transition: all 0.2s; position: relative;
 }
 .role-card:hover {
@@ -225,20 +225,20 @@ async function handleSubmit(): Promise<void> {
 }
 
 .role-card-header {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);
 }
 .role-card-icon { font-size: var(--fs-h3); }
 .role-card-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); }
 .role-card-desc {
   font-size: var(--fs-xs-lg); color: var(--text-secondary);
-  line-height: 1.5; margin-bottom: 12px;
+  line-height: 1.5; margin-bottom: var(--space-3);
 }
 
 .role-card-features {
-  display: flex; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
 }
 .role-feature {
-  font-size: var(--fs-xs); font-weight: 500; padding: 4px 10px;
+  font-size: var(--fs-xs); font-weight: 500; padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm); background: var(--bg-surface);
   color: var(--primary);
 }
@@ -247,12 +247,12 @@ async function handleSubmit(): Promise<void> {
 }
 
 .role-submit {
-  width: 100%; max-width: 400px; margin-top: 24px;
+  width: 100%; max-width: 400px; margin-top: var(--space-5);
 }
 .btn { width: 100%; }
 .btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 14px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--space-4); border-radius: var(--radius-md);
   background: var(--primary); color: var(--on-primary);
   font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
   border: none; cursor: pointer;

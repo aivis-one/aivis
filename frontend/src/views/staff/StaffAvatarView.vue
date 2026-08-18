@@ -73,14 +73,14 @@ async function handleStart(): Promise<void> {
 </template>
 
 <style scoped>
-.staff-avatar { padding: 16px; }
+.staff-avatar { padding: var(--space-4); }
 
 .avatar-header {
-  padding: 20px;
+  padding: var(--space-4-lg);
   background: var(--accent);
   color: var(--on-accent);
   border-radius: var(--radius-lg);
-  margin-bottom: 20px;
+  margin-bottom: var(--space-4-lg);
   text-align: center;
 }
 .avatar-header__title {
@@ -89,18 +89,18 @@ async function handleStart(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .avatar-header__sub {
   font-size: var(--fs-xs-lg);
   opacity: 0.9;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
-.avatar-form { margin-bottom: 24px; }
+.avatar-form { margin-bottom: var(--space-5); }
 
 .avatar-restrictions {
-  padding: 16px;
+  padding: var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
 }
@@ -110,8 +110,8 @@ async function handleStart(): Promise<void> {
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 .avatar-restrictions__list {
   list-style: none;
@@ -121,8 +121,8 @@ async function handleStart(): Promise<void> {
 .avatar-restrictions__item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
 }

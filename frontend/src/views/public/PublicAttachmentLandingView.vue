@@ -295,8 +295,8 @@ async function onDownload(): Promise<void> {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px 6px 6px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
   background: none;
   border: none;
   color: var(--text-secondary);

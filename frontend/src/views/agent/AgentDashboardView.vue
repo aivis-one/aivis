@@ -246,16 +246,16 @@ onMounted(() => {
 
 <style scoped>
 .dash {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .dash__header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .dash__title {
@@ -276,17 +276,17 @@ onMounted(() => {
 .dash__widgets {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .dash__widget {
   background: var(--surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
   min-height: 92px;
 }
 
@@ -343,24 +343,24 @@ onMounted(() => {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-3);
 }
 
 .dash__actions-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .dash__action {
   background: var(--surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-xs-lg);
   font-weight: 600;
   color: var(--text-primary);

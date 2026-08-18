@@ -35,11 +35,11 @@ function onInput(e: Event): void {
 </template>
 
 <style scoped>
-.c-input-group { margin-bottom: 16px; }
-.c-input-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.c-input-group { margin-bottom: var(--space-4); }
+.c-input-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
 
 .c-textarea {
-  width: 100%; padding: 14px 16px; border: 2px solid var(--border-default);
+  width: 100%; padding: var(--space-4) var(--space-4); border: 2px solid var(--border-default);
   border-radius: var(--radius-md); font-size: var(--fs-sm); font-family: inherit;
   background: var(--bg-page); color: var(--text-primary); resize: vertical;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -47,5 +47,5 @@ function onInput(e: Event): void {
 .c-textarea:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
 .c-textarea::placeholder { color: var(--text-tertiary); }
 .c-textarea--error { border-color: var(--danger); }
-.c-input-error { font-size: var(--fs-xs); color: var(--danger); margin-top: 4px; }
+.c-input-error { font-size: var(--fs-xs); color: var(--danger); margin-top: var(--space-1); }
 </style>

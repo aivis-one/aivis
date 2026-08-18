@@ -487,27 +487,27 @@ onMounted(loadPosts)
 .ple__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .ple__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 200px; gap: 16px;
+  justify-content: center; min-height: 200px; gap: var(--space-4);
 }
 
 .post-list { display: flex; flex-direction: column; }
 .post-item {
-  display: flex; align-items: center; gap: 12px; padding: 14px 0;
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default);
 }
 .post-item__info { flex: 1; min-width: 0; }
-.post-item__top { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.post-item__top { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
 .post-item__title {
   font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.post-item__date { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; }
-.post-item__actions { display: flex; gap: 4px; flex-shrink: 0; }
+.post-item__date { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
+.post-item__actions { display: flex; gap: var(--space-1); flex-shrink: 0; }
 .post-item__icon-btn {
   display: flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; border: none; background: none;
@@ -519,24 +519,24 @@ onMounted(loadPosts)
 
 .ple__pagination {
   display: flex; align-items: center; justify-content: center;
-  gap: 12px; margin-top: 16px;
+  gap: var(--space-3); margin-top: var(--space-4);
 }
 .ple__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 
-.ple__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
-.ple__modal-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 8px; }
-.ple__modal-target { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin: 0 0 16px; }
-.ple__modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+.ple__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
+.ple__modal-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-2); }
+.ple__modal-target { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-4); }
+.ple__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
 
 .ple__label {
   display: block; font-size: var(--fs-xs-lg); font-weight: 600;
-  color: var(--text-primary); margin-bottom: 6px;
+  color: var(--text-primary); margin-bottom: var(--space-2);
 }
-.ple__tags-group { margin-bottom: 16px; }
-.ple__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ple__tags-group { margin-bottom: var(--space-4); }
+.ple__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
 .ple__chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 8px; border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
   background: var(--bg-subtle); color: var(--text-primary); font-size: var(--fs-xs); font-weight: 500;
 }
 .ple__chip-x {
@@ -545,5 +545,5 @@ onMounted(loadPosts)
 }
 .ple__chip-x:hover { color: var(--danger); }
 
-.ple__toggles { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+.ple__toggles { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-2); }
 </style>

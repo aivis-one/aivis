@@ -215,35 +215,35 @@ onMounted(() => {
   gap: var(--space-4);
   padding: var(--space-4);
 }
-.iev__header { display: flex; flex-direction: column; gap: 4px; }
+.iev__header { display: flex; flex-direction: column; gap: var(--space-1); }
 .iev__title {
   font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
-.iev__filters { display: flex; gap: 8px; }
+.iev__filters { display: flex; gap: var(--space-2); }
 .iev__center {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 200px;
-  padding: 24px 8px;
+  padding: var(--space-5) var(--space-2);
 }
 .iev__list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .iev__sentinel { height: 1px; }
 .iev__retry {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -252,7 +252,7 @@ onMounted(() => {
 
 /* Filter chip -- same pattern as EventEditor / TemplatesSection. */
 .filter-chip {
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-default);
   background: var(--bg-page);

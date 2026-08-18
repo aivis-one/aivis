@@ -72,12 +72,12 @@ function onOverlay(): void {
 .c-sheet-handle {
   width: 40px; height: 4px;
   background: var(--border-default); border-radius: 2px;
-  margin: 8px auto 4px;
+  margin: var(--space-2) auto var(--space-1);
   flex-shrink: 0;
 }
 
 .c-sheet-header {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-4-lg);
   border-bottom: 1px solid var(--border-default);
   flex-shrink: 0;
 }
@@ -88,7 +88,7 @@ function onOverlay(): void {
 }
 
 .c-sheet-body {
-  padding: 16px 20px 20px;
+  padding: var(--space-4) var(--space-4-lg) var(--space-4-lg);
   overflow-y: auto;
   flex: 1;
 }

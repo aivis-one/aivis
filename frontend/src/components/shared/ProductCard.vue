@@ -138,7 +138,7 @@ const available = computed(() => props.product.available_packages)
 .product-card__company {
   position: absolute; top: 8px; left: 8px; z-index: 2;
   font-size: var(--fs-xs); font-weight: 600;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
@@ -146,16 +146,16 @@ const available = computed(() => props.product.available_packages)
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-.product-card__body { padding: 14px; }
+.product-card__body { padding: var(--space-4); }
 
 .product-card__name {
   font-size: var(--fs-body); font-weight: 700;
-  color: var(--text-primary); margin-bottom: 4px;
+  color: var(--text-primary); margin-bottom: var(--space-1);
 }
 
 .product-card__desc {
   font-size: var(--fs-xs-lg); color: var(--text-secondary);
-  margin-bottom: 10px; line-height: 1.4;
+  margin-bottom: var(--space-3); line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -169,13 +169,13 @@ const available = computed(() => props.product.available_packages)
    the price block, lining up with the bigger pack price. */
 .product-card__meta {
   display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .product-card__price-block {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 0;
 }
 

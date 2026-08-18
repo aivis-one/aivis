@@ -493,7 +493,7 @@ onUnmounted(() => {
 .cp {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 .cp__center {
@@ -501,13 +501,13 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 240px;
-  padding: 24px;
+  padding: var(--space-5);
 }
 .cp__center--small {
   min-height: 120px;
-  padding: 12px;
+  padding: var(--space-3);
 }
 
 /* iter 2.7 batch B2 -- inline page-header (back-link + title) replaces
@@ -516,8 +516,8 @@ onUnmounted(() => {
 .cp__page-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px 8px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-2);
 }
 .cp__page-title {
   font-size: var(--fs-lg);
@@ -529,20 +529,20 @@ onUnmounted(() => {
 .cp__body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 0 16px;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
 }
 
 /* Aggregate block */
 .cp__aggregate {
-  padding: 18px;
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: var(--on-primary);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 12px;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
 }
 .cp__agg-value {
   font-size: var(--fs-3xl);
@@ -552,14 +552,14 @@ onUnmounted(() => {
 .cp__agg-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px 16px;
+  gap: var(--space-3) var(--space-4);
 }
 .cp__agg-label {
   font-size: var(--fs-xs);
   opacity: 0.85;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
 }
 .cp__agg-val {
   font-size: var(--fs-sm);
@@ -571,7 +571,7 @@ onUnmounted(() => {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 8px 0 10px;
+  margin: var(--space-2) 0 var(--space-3);
 }
 
 .cp__list {
@@ -580,14 +580,14 @@ onUnmounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .cp__item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -620,13 +620,13 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .cp__item-line {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-xs-lg);
 }
 .cp__item-kind {
@@ -639,7 +639,7 @@ onUnmounted(() => {
 }
 .cp__item-stats {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
 }
@@ -656,14 +656,14 @@ onUnmounted(() => {
  */
 .cp__ownership-actions {
   display: flex;
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 /* Sentinel */
 .cp__sentinel {
   display: flex;
   justify-content: center;
-  padding: 16px 0 0;
+  padding: var(--space-4) 0 0;
   min-height: 32px;
 }
 
@@ -672,9 +672,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);

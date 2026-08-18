@@ -294,7 +294,7 @@ async function onEmail(): Promise<void> {
 .ags {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 320px;
 }
 
@@ -303,7 +303,7 @@ async function onEmail(): Promise<void> {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 260px;
 }
 
@@ -324,6 +324,6 @@ async function onEmail(): Promise<void> {
 .ags__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
 }
 </style>

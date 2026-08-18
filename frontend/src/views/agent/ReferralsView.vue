@@ -232,23 +232,23 @@ onMounted(() => {
 
 <style scoped>
 .ref {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .ref__page-header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .ref__title {
   font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
 }
 
 .ref__subtitle {
@@ -261,8 +261,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 24px 0;
+  gap: var(--space-3);
+  padding: var(--space-5) 0;
 }
 
 /* -- Section -- */
@@ -271,7 +271,7 @@ onMounted(() => {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-3);
 }
 
 .ref__list {
@@ -280,7 +280,7 @@ onMounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 /* -- Card -- */
@@ -289,17 +289,17 @@ onMounted(() => {
   background: var(--surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .ref__card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .ref__card-name {
@@ -315,7 +315,7 @@ onMounted(() => {
   flex-shrink: 0;
   font-size: var(--fs-xs);
   font-weight: 700;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-secondary);
@@ -337,13 +337,13 @@ onMounted(() => {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .ref__card-counters {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .ref__metric {

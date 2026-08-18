@@ -415,17 +415,17 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 
 <style scoped>
 .canl {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* Page header */
 .canl__header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .canl__title {
   font-size: var(--fs-xl);
@@ -445,10 +445,10 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: calc(100vh - 240px);
   min-height: calc(100dvh - 240px);
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
@@ -460,7 +460,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
  * only define one tone still render.
  */
 .canl__metrics {
-  padding: 18px 18px 16px;
+  padding: var(--space-4) var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: linear-gradient(
     135deg,
@@ -475,7 +475,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   opacity: 0.85;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 .canl__metrics-value {
   font-size: var(--fs-2xl);
@@ -486,8 +486,8 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 14px;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 .canl__metrics-sub-label {
   font-size: var(--fs-xs);
@@ -495,7 +495,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   opacity: 0.8;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
 }
 .canl__metrics-sub-value {
   font-size: var(--fs-body);
@@ -506,13 +506,13 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__chart-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .canl__chart-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .canl__chart-title {
   font-size: var(--fs-sm);
@@ -530,7 +530,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
-  padding: 16px;
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
@@ -539,7 +539,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 
 /* Chart container */
 .canl__chart {
-  padding: 16px 12px 8px;
+  padding: var(--space-4) var(--space-3) var(--space-2);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -548,7 +548,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__chart-bars {
   display: flex;
   align-items: stretch;
-  gap: 6px;
+  gap: var(--space-2);
   height: 160px;
 }
 
@@ -563,7 +563,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -602,7 +602,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__table-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .canl__table {
@@ -611,15 +611,15 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .canl__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -630,7 +630,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .canl__row-name {

@@ -383,7 +383,7 @@ function metaLabel(doc: DocumentResponse): string {
 .docs {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 /* iter 2.7 batch B2 -- inline page-header replaces the previous
@@ -395,8 +395,8 @@ function metaLabel(doc: DocumentResponse): string {
 .docs__page-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px 16px 8px;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-2);
 }
 .docs__page-title {
   font-size: var(--fs-lg);
@@ -410,16 +410,16 @@ function metaLabel(doc: DocumentResponse): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 240px;
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 .docs__list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   list-style: none;
   margin: 0;
 }
@@ -427,8 +427,8 @@ function metaLabel(doc: DocumentResponse): string {
 .docs__item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  gap: var(--space-3);
+  padding: var(--space-4);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -463,13 +463,13 @@ function metaLabel(doc: DocumentResponse): string {
 .docs__meta {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 
 .docs__status {
   font-size: var(--fs-xs);
   font-weight: 600;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   white-space: nowrap;
   flex-shrink: 0;
@@ -488,17 +488,17 @@ function metaLabel(doc: DocumentResponse): string {
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 16px;
-  padding-right: 32px;
+  margin: 0 0 var(--space-4);
+  padding-right: var(--space-6);
 }
 
 .docs-modal__center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 160px;
-  padding: 16px 0;
+  padding: var(--space-4) 0;
 }
 .docs-modal__hint {
   font-size: var(--fs-xs-lg);
@@ -517,9 +517,9 @@ function metaLabel(doc: DocumentResponse): string {
 .docs-modal__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--border-default);
 }
 </style>

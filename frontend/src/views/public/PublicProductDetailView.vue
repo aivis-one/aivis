@@ -441,7 +441,7 @@ function onBuyClick(): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .ppd__hero--fallback::after {
@@ -458,21 +458,21 @@ function onBuyClick(): void {
 .ppd__hero-content {
   position: relative;
   z-index: 2;
-  padding: 20px;
+  padding: var(--space-4-lg);
   width: 100%;
 }
 
 .ppd__hero--fallback .ppd__hero-content {
   text-align: center;
   color: var(--text-primary);
-  padding: 0 20px 20px;
+  padding: 0 var(--space-4-lg) var(--space-4-lg);
 }
 
 .ppd__hero-company {
   font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -485,20 +485,20 @@ function onBuyClick(): void {
 }
 
 .ppd__body {
-  padding: 20px;
+  padding: var(--space-4-lg);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-5);
 }
 
 .ppd__stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .ppd__stat {
-  padding: 14px;
+  padding: var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
   text-align: center;
@@ -509,7 +509,7 @@ function onBuyClick(): void {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 
 .ppd__stat-value {
@@ -525,13 +525,13 @@ function onBuyClick(): void {
 .ppd__stat-unit {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 
 .ppd__section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .ppd__section-title {
@@ -553,7 +553,7 @@ function onBuyClick(): void {
 }
 
 .ppd__empty {
-  padding: 14px;
+  padding: var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
   font-size: var(--fs-xs-lg);
@@ -567,7 +567,7 @@ function onBuyClick(): void {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* Plan row is NON-interactive in the public flow. Auth-flow renders
@@ -578,8 +578,8 @@ function onBuyClick(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-page);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -601,8 +601,8 @@ function onBuyClick(): void {
 .ppd__actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-top: 8px;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
 }
 
 @media (min-width: 520px) {

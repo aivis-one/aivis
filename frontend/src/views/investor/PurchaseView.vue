@@ -393,10 +393,10 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 /* Hero with cover */
@@ -423,7 +423,7 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .pv__hero--fallback::after {
   display: none;
@@ -437,19 +437,19 @@ onMounted(load)
 .pv__hero-content {
   position: relative;
   z-index: 2;
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-4-lg);
   width: 100%;
 }
 .pv__hero--fallback .pv__hero-content {
   text-align: center;
   color: var(--text-primary);
-  padding: 0 20px 16px;
+  padding: 0 var(--space-4-lg) var(--space-4);
 }
 .pv__hero-company {
   font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -462,22 +462,22 @@ onMounted(load)
 }
 
 .pv__body {
-  padding: 20px;
+  padding: var(--space-4-lg);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* Generic card */
 .pv__card {
-  padding: 16px;
+  padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
 }
 .pv__card-title {
   font-size: var(--fs-xs);
   font-weight: 700;
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -488,12 +488,12 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
 }
 .pv__row--total {
-  margin-top: 6px;
-  padding-top: 12px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--border-default);
 }
 .pv__row-label {
@@ -520,7 +520,7 @@ onMounted(load)
   color: var(--danger);
 }
 .pv__balance-hint {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
   font-size: var(--fs-xs-lg);
   color: var(--danger);
 }
@@ -529,7 +529,7 @@ onMounted(load)
 .pv__actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 </style>

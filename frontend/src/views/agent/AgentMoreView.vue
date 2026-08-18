@@ -104,22 +104,22 @@ function openTile(tile: Tile): void {
 
 <style scoped>
 .more {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .more__header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .more__title {
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-1);
 }
 .more__subtitle {
   font-size: var(--fs-sm);
@@ -130,14 +130,14 @@ function openTile(tile: Tile): void {
 .more__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .more__tile {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -174,7 +174,7 @@ function openTile(tile: Tile): void {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 .more__tile-title {
   font-size: var(--fs-sm);

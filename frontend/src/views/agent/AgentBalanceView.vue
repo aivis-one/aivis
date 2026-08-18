@@ -532,12 +532,12 @@ onMounted(() => {
 .abal {
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 16px;
-  padding-bottom: 24px;
+  padding: var(--space-4);
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
 }
 
-.abal__header { display: flex; flex-direction: column; gap: 4px; }
+.abal__header { display: flex; flex-direction: column; gap: var(--space-1); }
 .abal__title {
   font-size: var(--fs-lg);
   font-weight: 700;
@@ -555,25 +555,25 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: calc(100vh - 240px);
   min-height: calc(100dvh - 240px);
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
 .abal__card {
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 
-.abal__balance { display: flex; flex-direction: column; gap: 6px; }
+.abal__balance { display: flex; flex-direction: column; gap: var(--space-2); }
 .abal__balance-head {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
@@ -594,8 +594,8 @@ onMounted(() => {
 .abal__cta-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 12px;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
   flex-wrap: wrap;
 }
 .abal__cta-hint {
@@ -604,19 +604,19 @@ onMounted(() => {
   color: var(--text-tertiary);
 }
 
-.abal__section { display: flex; flex-direction: column; gap: 8px; }
+.abal__section { display: flex; flex-direction: column; gap: var(--space-2); }
 .abal__section-title {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
 }
 
 .abal__empty {
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
-  padding: 16px;
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
@@ -629,13 +629,13 @@ onMounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .abal__item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -656,13 +656,13 @@ onMounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .abal__item-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .abal__item-line--sub { font-size: var(--fs-xs); color: var(--text-tertiary); }
 .abal__item-amount {
@@ -685,7 +685,7 @@ onMounted(() => {
   display: inline-block;
   font-size: var(--fs-3xs);
   font-weight: 700;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -716,7 +716,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 0 0;
+  padding: var(--space-4) 0 0;
   min-height: 32px;
 }
 
@@ -724,9 +724,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-top: var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-surface);
@@ -735,8 +735,8 @@ onMounted(() => {
   text-align: center;
 }
 
-.abal__form { display: flex; flex-direction: column; gap: 14px; }
-.abal__field { display: flex; flex-direction: column; gap: 6px; }
+.abal__form { display: flex; flex-direction: column; gap: var(--space-4); }
+.abal__field { display: flex; flex-direction: column; gap: var(--space-2); }
 .abal__field-label {
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -752,7 +752,7 @@ onMounted(() => {
 
 .abal__input {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -766,7 +766,7 @@ onMounted(() => {
 
 .abal__form-error {
   margin: 0;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--fs-xs);
   background: var(--danger-subtle);
@@ -781,8 +781,8 @@ onMounted(() => {
 
 .abal__form-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: flex-end;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 </style>

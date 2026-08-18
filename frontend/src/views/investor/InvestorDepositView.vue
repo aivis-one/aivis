@@ -234,7 +234,7 @@ onMounted(load)
 .dv {
   display: flex;
   flex-direction: column;
-  padding-bottom: 24px;
+  padding-bottom: var(--space-5);
 }
 
 .dv__center {
@@ -242,15 +242,15 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 .dv__error-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* iter 2.7 batch B2 -- inline page-header (back-link + title) replaces
@@ -259,8 +259,8 @@ onMounted(load)
 .dv__page-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px 8px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-2);
 }
 .dv__page-title {
   font-size: var(--fs-lg);
@@ -272,13 +272,13 @@ onMounted(load)
 .dv__body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
 
 /* Card base */
 .dv__card {
-  padding: 16px;
+  padding: var(--space-4);
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
 }
@@ -288,7 +288,7 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .dv__network-label {
   font-size: var(--fs-xs);
@@ -305,7 +305,7 @@ onMounted(load)
 }
 
 .dv__hint {
-  margin: 10px 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   line-height: 1.4;
@@ -316,11 +316,11 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .dv__qr {
-  padding: 16px;
+  padding: var(--space-4);
   background: #ffffff;
   border-radius: var(--radius-md);
   display: flex;
@@ -340,12 +340,12 @@ onMounted(load)
   color: #333;
   font-size: var(--fs-xs);
   text-align: center;
-  padding: 40px 24px;
+  padding: var(--space-6-lg) var(--space-5);
 }
 
 .dv__address {
   width: 100%;
-  padding: 12px;
+  padding: var(--space-3);
   background: var(--bg-subtle);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
@@ -364,7 +364,7 @@ onMounted(load)
 .dv__warning {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
   background: var(--warning-subtle);
   border: 1px solid var(--warning);
 }
@@ -372,7 +372,7 @@ onMounted(load)
 .dv__warning-icon {
   flex-shrink: 0;
   color: var(--warning);
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 
 .dv__warning-text {

@@ -62,12 +62,12 @@ function goBack(): void {
 <style scoped>
 .c-header {
   position: sticky; top: 0; z-index: 100; background: var(--bg-page);
-  padding: 12px 16px; border-bottom: 1px solid var(--border-default);
+  padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-default);
   display: flex; align-items: center; justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .c-header__left {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: var(--space-3);
   /* Claim the remaining width and allow the title child to shrink
      below its intrinsic content size (needed for ellipsis). */
   flex: 1;
@@ -85,11 +85,11 @@ function goBack(): void {
 }
 .c-header__back {
   background: none; border: none; cursor: pointer; color: var(--text-primary);
-  padding: 4px; display: flex; align-items: center; margin-left: -4px;
+  padding: var(--space-1); display: flex; align-items: center; margin-left: -4px;
   flex-shrink: 0;
 }
 .c-header__right {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: var(--space-2);
   /* Right slot must never shrink -- if someone adds action buttons
      they should stay full size; the title absorbs the space loss. */
   flex-shrink: 0;

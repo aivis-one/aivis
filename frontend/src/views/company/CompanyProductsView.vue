@@ -201,12 +201,12 @@ function onCardClick(): void {
 </template>
 
 <style scoped>
-.cprods { padding: 16px; }
+.cprods { padding: var(--space-4); }
 
-.cprods__header { margin-bottom: 16px; }
+.cprods__header { margin-bottom: var(--space-4); }
 .cprods__title {
   font-size: var(--fs-lg); font-weight: 700;
-  color: var(--text-primary); margin: 0 0 4px;
+  color: var(--text-primary); margin: 0 0 var(--space-1);
 }
 .cprods__subtitle {
   font-size: var(--fs-sm); color: var(--text-secondary);
@@ -216,9 +216,9 @@ function onCardClick(): void {
 .cprods__center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 240px;
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
@@ -226,7 +226,7 @@ function onCardClick(): void {
 .cprods__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: var(--space-3);
 }
 @media (min-width: 520px) {
   .cprods__grid { grid-template-columns: repeat(2, 1fr); }
@@ -237,7 +237,7 @@ function onCardClick(): void {
 
 .cprods__sentinel {
   display: flex; align-items: center; justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
   min-height: 40px;
 }
 </style>

@@ -314,7 +314,7 @@ const endMarkerLabel = computed<string>(() =>
   position: relative;
   width: 12px;
   height: 12px;
-  margin-top: 6px; /* align with the card's first line of text */
+  margin-top: var(--space-2); /* align with the card's first line of text */
   border-radius: var(--radius-pill);
   background: var(--primary);
   box-shadow: 0 0 0 4px var(--bg-page);
@@ -440,7 +440,7 @@ const endMarkerLabel = computed<string>(() =>
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 0; /* allow text truncation to work inside flex */
 }
 
@@ -468,7 +468,7 @@ const endMarkerLabel = computed<string>(() =>
 }
 
 .roadmap__post-link {
-  margin-top: 2px;
+  margin-top: var(--space-1);
   font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--primary);
@@ -534,7 +534,7 @@ const endMarkerLabel = computed<string>(() =>
 }
 
 .roadmap__dot--terminal {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   background: var(--border-default); /* terminal dot is muted vs progress dots */
 }
 

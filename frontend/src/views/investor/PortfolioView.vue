@@ -305,13 +305,13 @@ onMounted(() => {
 
 <style scoped>
 .pv {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
-.pv__header { display: flex; flex-direction: column; gap: 4px; }
+.pv__header { display: flex; flex-direction: column; gap: var(--space-1); }
 .pv__title {
   font-size: var(--fs-lg); font-weight: 700;
   color: var(--text-primary); margin: 0;
@@ -323,20 +323,20 @@ onMounted(() => {
 .pv__center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 240px;
-  padding: 24px;
+  padding: var(--space-5);
 }
 
 /* Hero card */
 .pv__hero {
-  padding: 20px;
+  padding: var(--space-4-lg);
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: var(--on-primary);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .pv__hero-label {
   font-size: var(--fs-xs-lg);
@@ -349,15 +349,15 @@ onMounted(() => {
 }
 .pv__hero-row {
   display: flex;
-  gap: 24px;
-  margin-top: 4px;
+  gap: var(--space-5);
+  margin-top: var(--space-1);
 }
 .pv__hero-stat-label {
   font-size: var(--fs-xs);
   opacity: 0.8;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
 }
 .pv__hero-stat-value {
   font-size: var(--fs-body);
@@ -371,17 +371,17 @@ onMounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .pv__item {
-  padding: 14px 16px;
+  padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
   transition: border-color 0.15s;
 }
 .pv__item:hover { border-color: var(--primary); }
@@ -401,7 +401,7 @@ onMounted(() => {
 .pv__item-company {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -410,7 +410,7 @@ onMounted(() => {
 .pv__item-head-right {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 .pv__item-chev { color: var(--text-tertiary); }
@@ -418,14 +418,14 @@ onMounted(() => {
 .pv__item-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: var(--space-3);
 }
 .pv__item-stat-label {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
 }
 .pv__item-stat-value {
   font-size: var(--fs-sm);

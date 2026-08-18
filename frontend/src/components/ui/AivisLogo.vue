@@ -62,7 +62,7 @@ withDefaults(
 .aivis-logo {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   text-decoration: none;
 }
 

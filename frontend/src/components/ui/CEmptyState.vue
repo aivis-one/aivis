@@ -15,9 +15,9 @@ defineProps<{ title?: string; description?: string }>()
 <style scoped>
 .c-empty {
   display: flex; flex-direction: column; align-items: center;
-  padding: 48px 24px; text-align: center;
+  padding: var(--space-7) var(--space-5); text-align: center;
 }
-.c-empty__icon { margin-bottom: 16px; color: var(--text-tertiary); }
-.c-empty__title { font-size: var(--fs-body); font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.c-empty__icon { margin-bottom: var(--space-4); color: var(--text-tertiary); }
+.c-empty__title { font-size: var(--fs-body); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
 .c-empty__desc { font-size: var(--fs-xs-lg); color: var(--text-secondary); line-height: 1.5; max-width: 280px; }
 </style>

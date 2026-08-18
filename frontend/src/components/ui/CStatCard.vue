@@ -23,15 +23,15 @@ defineProps<{
 <style scoped>
 .c-stat {
   background: var(--bg-page); box-shadow: var(--shadow-1);
-  border-radius: var(--radius-lg); padding: 16px;
+  border-radius: var(--radius-lg); padding: var(--space-4);
   transition: all 0.2s;
 }
 .c-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
-.c-stat__icon { margin-bottom: 8px; }
-.c-stat__label { font-size: var(--fs-xs); color: var(--text-secondary); margin-bottom: 4px; }
+.c-stat__icon { margin-bottom: var(--space-2); }
+.c-stat__label { font-size: var(--fs-xs); color: var(--text-secondary); margin-bottom: var(--space-1); }
 .c-stat__value { font-size: var(--fs-xl); font-weight: 700; color: var(--text-primary); }
-.c-stat__change { font-size: var(--fs-xs); font-weight: 600; margin-top: 4px; }
+.c-stat__change { font-size: var(--fs-xs); font-weight: 600; margin-top: var(--space-1); }
 .c-stat__change--up { color: var(--success); }
 .c-stat__change--down { color: var(--danger); }
-.c-stat__sub { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: 2px; }
+.c-stat__sub { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
 </style>

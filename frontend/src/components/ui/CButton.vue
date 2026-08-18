@@ -28,8 +28,8 @@ withDefaults(
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px 28px;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5-lg);
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: var(--fs-sm);
@@ -98,13 +98,13 @@ withDefaults(
   color: var(--primary);
   font-size: var(--fs-sm);
   font-weight: 500;
-  padding: 8px;
+  padding: var(--space-2);
   width: auto;
 }
 .c-btn--link:hover:not(:disabled) { text-decoration: underline; }
 
 /* Size: small */
-.c-btn--sm { padding: 10px 16px; font-size: var(--fs-xs-lg); }
+.c-btn--sm { padding: var(--space-3) var(--space-4); font-size: var(--fs-xs-lg); }
 
 /* Spinner */
 .c-btn__spinner {

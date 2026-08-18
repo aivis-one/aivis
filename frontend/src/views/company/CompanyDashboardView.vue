@@ -454,10 +454,10 @@ onMounted(() => {
 
 <style scoped>
 .dash {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* Whole-screen states (loading / error) */
@@ -466,15 +466,15 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: calc(100vh - 200px);
   min-height: calc(100dvh - 200px);
-  padding: 24px;
+  padding: var(--space-5);
   text-align: center;
 }
 
 /* Header */
-.dash__header { display: flex; flex-direction: column; gap: 4px; }
+.dash__header { display: flex; flex-direction: column; gap: var(--space-1); }
 .dash__title {
   font-size: var(--fs-xl);
   font-weight: 700;
@@ -491,8 +491,8 @@ onMounted(() => {
 .dash__hero {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -523,7 +523,7 @@ onMounted(() => {
 .dash__hero-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 0;
 }
 .dash__hero-name {
@@ -537,8 +537,8 @@ onMounted(() => {
 .dash__balance {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -552,7 +552,7 @@ onMounted(() => {
 .dash__balance-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .dash__balance-value {
   font-size: var(--fs-xl);
@@ -568,8 +568,8 @@ onMounted(() => {
 .dash__pool {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -578,12 +578,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .dash__pool-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
@@ -597,7 +597,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
@@ -606,7 +606,7 @@ onMounted(() => {
 .dash__metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: var(--space-3);
 }
 @media (max-width: 480px) {
   .dash__metrics {
@@ -618,19 +618,19 @@ onMounted(() => {
 .dash__recent {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .dash__recent-title {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 4px 0 0 0;
+  margin: var(--space-1) 0 0 0;
 }
 .dash__recent-empty {
   font-size: var(--fs-xs-lg);
   color: var(--text-secondary);
   margin: 0;
-  padding: 16px;
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
@@ -644,13 +644,13 @@ onMounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .dash__tx-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -671,13 +671,13 @@ onMounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 .dash__tx-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .dash__tx-type {
   font-size: var(--fs-xs-lg);

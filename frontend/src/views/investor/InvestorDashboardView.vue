@@ -466,14 +466,14 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .dash {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* Header */
-.dash__header { display: flex; flex-direction: column; gap: 4px; }
+.dash__header { display: flex; flex-direction: column; gap: var(--space-1); }
 .dash__title {
   font-size: var(--fs-xl); font-weight: 700;
   color: var(--text-primary); margin: 0;
@@ -486,8 +486,8 @@ onBeforeUnmount(() => {
 .dash__portfolio {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px;
+  gap: var(--space-3);
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: var(--on-primary);
@@ -509,7 +509,7 @@ onBeforeUnmount(() => {
   opacity: 0.9;
 }
 .dash__portfolio-label {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--space-2);
 }
 .dash__portfolio-chev { opacity: 0.8; }
 
@@ -520,12 +520,12 @@ onBeforeUnmount(() => {
 }
 .dash__portfolio-stats {
   display: flex;
-  gap: 24px;
+  gap: var(--space-5);
 }
 .dash__portfolio-stat-label {
   font-size: var(--fs-xs);
   opacity: 0.8;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -547,7 +547,7 @@ onBeforeUnmount(() => {
 .dash__portfolio-empty-cta {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: var(--fs-xs-lg);
   font-weight: 600;
   opacity: 0.9;
@@ -557,8 +557,8 @@ onBeforeUnmount(() => {
 .dash__balance {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -579,7 +579,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 .dash__balance-label {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--space-2);
 }
 .dash__balance-value {
   font-size: var(--fs-xl);
@@ -595,14 +595,14 @@ onBeforeUnmount(() => {
 .dash__actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .dash__action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -619,19 +619,19 @@ onBeforeUnmount(() => {
 }
 
 /* Posts */
-.dash__posts { display: flex; flex-direction: column; gap: 10px; }
+.dash__posts { display: flex; flex-direction: column; gap: var(--space-3); }
 .dash__posts-title {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
 }
 .dash__posts-center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 10px;
+  gap: var(--space-3);
   min-height: 80px;
-  padding: 16px 8px;
+  padding: var(--space-4) var(--space-2);
 }
 .dash__posts-list {
   list-style: none;
@@ -639,12 +639,12 @@ onBeforeUnmount(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .dash__post {
   display: flex;
-  gap: 12px;
-  padding: 10px;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
@@ -658,7 +658,7 @@ onBeforeUnmount(() => {
 .dash__post-body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
   flex: 1;
 }
@@ -678,19 +678,19 @@ onBeforeUnmount(() => {
 }
 
 /* Upcoming events widget */
-.dash__events { display: flex; flex-direction: column; gap: 10px; }
+.dash__events { display: flex; flex-direction: column; gap: var(--space-3); }
 .dash__events-title {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
 }
 .dash__events-center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 10px;
+  gap: var(--space-3);
   min-height: 80px;
-  padding: 16px 8px;
+  padding: var(--space-4) var(--space-2);
 }
 .dash__events-list {
   list-style: none;
@@ -698,6 +698,6 @@ onBeforeUnmount(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 </style>

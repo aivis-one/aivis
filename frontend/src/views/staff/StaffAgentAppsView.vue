@@ -161,28 +161,28 @@ onMounted(loadQueue)
 </template>
 
 <style scoped>
-.staff-apps { padding: 16px; }
+.staff-apps { padding: var(--space-4); }
 
 .staff-apps__hint {
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px; background: var(--bg-surface); border-radius: var(--radius-md);
-  margin-bottom: 16px; font-size: var(--fs-xs); color: var(--text-secondary);
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3); background: var(--bg-surface); border-radius: var(--radius-md);
+  margin-bottom: var(--space-4); font-size: var(--fs-xs); color: var(--text-secondary);
 }
 
 .staff-apps__center {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 200px; gap: 16px;
+  min-height: 200px; gap: var(--space-4);
 }
 
 .apps-list { display: flex; flex-direction: column; }
 .app-item {
-  display: flex; align-items: center; gap: 12px; padding: 14px 0;
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default);
 }
 .app-item__info { flex: 1; min-width: 0; }
 .app-item__name { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); font-family: monospace; }
 .app-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); text-transform: capitalize; }
-.app-item__actions { display: flex; gap: 4px; flex-shrink: 0; }
+.app-item__actions { display: flex; gap: var(--space-1); flex-shrink: 0; }
 
 .app-btn {
   width: 32px; height: 32px; border-radius: var(--radius-sm); border: none;
@@ -195,6 +195,6 @@ onMounted(loadQueue)
 .app-btn--reject { background: var(--danger); color: var(--on-danger); }
 .app-btn--reject:hover:not(:disabled) { opacity: 0.9; }
 
-.reject__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 16px; }
-.reject__actions { display: flex; gap: 8px; margin-top: 16px; }
+.reject__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
+.reject__actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
 </style>

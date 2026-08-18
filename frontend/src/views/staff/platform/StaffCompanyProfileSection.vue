@@ -148,10 +148,10 @@ const distributionJson = computed<string>(() => {
 
 .scp__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 160px; gap: 16px;
+  justify-content: center; min-height: 160px; gap: var(--space-4);
 }
 
-.scp__cover { margin-bottom: 16px; }
+.scp__cover { margin-bottom: var(--space-4); }
 .scp__cover-img {
   width: 100%; max-height: 180px; object-fit: cover;
   border-radius: var(--radius-md); display: block;
@@ -159,25 +159,25 @@ const distributionJson = computed<string>(() => {
 
 .scp__row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 0; border-bottom: 1px solid var(--border-default);
+  padding: var(--space-3) 0; border-bottom: 1px solid var(--border-default);
 }
 .scp__label { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 .scp__value { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
 
-.scp__section { margin-top: 20px; }
+.scp__section { margin-top: var(--space-4-lg); }
 .scp__section-title {
-  font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 8px;
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2);
 }
 .scp__description {
   font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; margin: 0;
   white-space: pre-wrap;
 }
-.scp__links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.scp__links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .scp__links a { font-size: var(--fs-xs-lg); color: var(--primary); text-decoration: underline; word-break: break-all; }
 
 .scp__json {
   font-size: var(--fs-xs); font-family: monospace; color: var(--text-primary);
   background: var(--bg-subtle); border-radius: var(--radius-sm);
-  padding: 12px; overflow-x: auto; margin: 0; white-space: pre;
+  padding: var(--space-3); overflow-x: auto; margin: 0; white-space: pre;
 }
 </style>

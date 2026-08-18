@@ -34,7 +34,7 @@ const { t } = useI18n()
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin-top: 24px;
+  margin-top: var(--space-5);
 }
 
 @keyframes spin {
@@ -46,6 +46,6 @@ const { t } = useI18n()
 .loading-text {
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 </style>

@@ -71,12 +71,12 @@ function navigate(tab: TabItem): void {
      interactive strip; bottom safe-area inset is added on top so
      touch targets keep their full size on notched devices. */
   height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
-  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-2) 0 calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
   z-index: 100;
 }
 .c-tabbar__item {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 6px 12px; min-width: 56px; min-height: 44px;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  padding: var(--space-2) var(--space-3); min-width: 56px; min-height: 44px;
   color: var(--text-tertiary); font-size: var(--fs-3xs); font-weight: 500;
   cursor: pointer; transition: color 0.2s;
   border: none; background: none; font-family: inherit;

@@ -275,8 +275,8 @@ function goBack(): void {
 .pbc__page-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px 8px;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-2);
 }
 .pbc__page-title {
   font-size: var(--fs-lg);
