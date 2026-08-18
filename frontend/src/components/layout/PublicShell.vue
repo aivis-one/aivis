@@ -94,7 +94,9 @@ function goToLogin(): void {
       </template>
     </CHeader>
     <main class="shell__content">
-      <RouterView />
+      <div class="shell__measure">
+        <RouterView />
+      </div>
     </main>
     <CToast />
   </div>
@@ -138,5 +140,19 @@ function goToLogin(): void {
 
 .shell__login:active {
   opacity: 0.8;
+}
+
+/* CONTENT MEASURE — the design system's own widths, finally referenced. Before
+   this, `main` ran to the full viewport at every width, so a text line reached
+   1248px against a readable 600-700 (measured by the B-1 harness).
+
+   Measure and centring ONLY, deliberately no gutter: 40 of the 62 views set
+   their own padding on their root rule, so a gutter here would double up and
+   cost 48px of a 390px phone. `.wrap` / `.wrap-wide` in global.css keep the
+   gutter for content that does NOT pad itself. */
+.shell__measure {
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
 }
 </style>
