@@ -65,7 +65,11 @@ ol {
 
 /* === RTL === */
 [dir="rtl"] {
-  font-family: 'Noto Sans Arabic', 'Montserrat', sans-serif;
+  /* Arabic first, then the design system's body stack -- NOT the retired
+     Montserrat, which this rule still named after batch 6 swapped the rest of
+     the app to Manrope. Arabic text would have rendered in a different typeface
+     from every other locale. */
+  font-family: 'Noto Sans Arabic', var(--font-body);
 }
 
 [dir="rtl"] .ml-auto {
