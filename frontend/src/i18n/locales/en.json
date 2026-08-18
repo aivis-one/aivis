@@ -19,7 +19,8 @@
     "yes": "Yes",
     "no": "No",
     "all": "All",
-    "statusActive": "Active"
+    "statusActive": "Active",
+    "primaryNav": "Main navigation"
   },
   "error": {
     "pageNotFound": "Page not found"

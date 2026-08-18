@@ -18,7 +18,8 @@
     "noResults": "Keine Ergebnisse gefunden",
     "yes": "Ja",
     "no": "Nein",
-    "all": "Alle"
+    "all": "Alle",
+    "primaryNav": "Hauptnavigation"
   },
   "error": {
     "pageNotFound": "Seite nicht gefunden"
