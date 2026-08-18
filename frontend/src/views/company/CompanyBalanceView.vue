@@ -437,7 +437,7 @@ onMounted(() => {
       <!-- Balance card -->
       <section class="cbal__card cbal__balance">
         <div class="cbal__balance-head">
-          <Wallet :size="14" />
+          <Wallet :size="16" />
           <span>{{ t('comp.balance.card.title') }}</span>
         </div>
         <div class="cbal__balance-value">
@@ -478,7 +478,7 @@ onMounted(() => {
         <ul v-else class="cbal__list">
           <li v-for="w in withdrawals" :key="w.id" class="cbal__item">
             <div class="cbal__item-icon">
-              <CreditCard :size="18" />
+              <CreditCard :size="16" />
             </div>
             <div class="cbal__item-body">
               <div class="cbal__item-line">
@@ -528,9 +528,9 @@ onMounted(() => {
 
         <div class="cbal__cta-row">
           <CButton variant="outline" size="sm" @click="openPayoutSheet">
-            <Pencil :size="14" />
+            <Pencil :size="16" />
             {{ t('comp.balance.payout.editButton') }}
-            <ChevronRight :size="14" />
+            <ChevronRight :size="16" />
           </CButton>
         </div>
       </section>

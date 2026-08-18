@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
     >
       <div class="dash__portfolio-head">
         <span class="dash__portfolio-label">
-          <Briefcase :size="14" />
+          <Briefcase :size="16" />
           {{ t('inv.dashboard.portfolio.title') }}
         </span>
         <ChevronRight :size="16" class="dash__portfolio-chev" />
@@ -310,7 +310,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="dash__portfolio-empty-cta">
           {{ t('inv.dashboard.portfolio.emptyCta') }}
-          <ChevronRight :size="14" />
+          <ChevronRight :size="16" />
         </div>
       </template>
 
@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
     <button type="button" class="dash__balance" @click="goBalance">
       <div class="dash__balance-head">
         <span class="dash__balance-label">
-          <Wallet :size="14" />
+          <Wallet :size="16" />
           {{ t('inv.dashboard.balance.title') }}
         </span>
         <ChevronRight :size="16" />
@@ -360,11 +360,11 @@ onBeforeUnmount(() => {
     <!-- Quick actions row -->
     <div class="dash__actions">
       <button type="button" class="dash__action" @click="goDeposit">
-        <ArrowDownToLine :size="18" />
+        <ArrowDownToLine :size="16" />
         <span>{{ t('inv.dashboard.actions.deposit') }}</span>
       </button>
       <button type="button" class="dash__action" @click="goMarket">
-        <Store :size="18" />
+        <Store :size="16" />
         <span>{{ t('inv.dashboard.actions.market') }}</span>
       </button>
     </div>

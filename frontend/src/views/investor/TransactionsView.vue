@@ -233,7 +233,7 @@ onMounted(() => {
         @keyup.space.prevent="openDetail(item)"
       >
         <div class="tv__item-icon">
-          <component :is="iconFor(item.type)" :size="18" />
+          <component :is="iconFor(item.type)" :size="16" />
         </div>
         <div class="tv__item-body">
           <div class="tv__item-line">

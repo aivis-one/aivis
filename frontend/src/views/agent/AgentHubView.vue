@@ -234,7 +234,7 @@ onMounted(() => {
         >
           <div class="hub__card-head">
             <span class="hub__card-code">
-              <Link2 :size="14" class="hub__card-code-icon" />
+              <Link2 :size="16" class="hub__card-code-icon" />
               {{ link.code }}
             </span>
             <span

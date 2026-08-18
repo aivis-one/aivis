@@ -367,7 +367,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
               </p>
             </div>
             <span class="ats__item-download" aria-hidden="true">
-              <Download :size="18" />
+              <Download :size="16" />
             </span>
           </li>
         </ul>

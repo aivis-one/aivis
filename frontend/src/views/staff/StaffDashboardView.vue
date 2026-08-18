@@ -117,7 +117,7 @@ onMounted(loadStats)
           @click="goUsers"
         >
           <template #icon>
-            <CIconBox variant="teal"><Users :size="22" /></CIconBox>
+            <CIconBox variant="primary"><Users :size="24" /></CIconBox>
           </template>
         </CStatCard>
 
@@ -128,7 +128,7 @@ onMounted(loadStats)
           @click="goKyc"
         >
           <template #icon>
-            <CIconBox variant="yellow"><ShieldAlert :size="22" /></CIconBox>
+            <CIconBox variant="warning"><ShieldAlert :size="24" /></CIconBox>
           </template>
         </CStatCard>
 
@@ -139,7 +139,7 @@ onMounted(loadStats)
           @click="goPayments"
         >
           <template #icon>
-            <CIconBox variant="green"><CreditCard :size="22" /></CIconBox>
+            <CIconBox variant="success"><CreditCard :size="24" /></CIconBox>
           </template>
         </CStatCard>
 
@@ -150,7 +150,7 @@ onMounted(loadStats)
           @click="goAgentApps"
         >
           <template #icon>
-            <CIconBox variant="orange"><UserCheck :size="22" /></CIconBox>
+            <CIconBox variant="accent"><UserCheck :size="24" /></CIconBox>
           </template>
         </CStatCard>
       </div>
@@ -176,13 +176,13 @@ onMounted(loadStats)
       <!-- Quick actions -->
       <div class="staff-dash__section-title">{{ t('staff.quickActions') }}</div>
       <CButton variant="primary" size="sm" class="staff-dash__action" @click="goKyc">
-        <ShieldCheck :size="14" /> {{ t('staff.processKyc') }}
+        <ShieldCheck :size="16" /> {{ t('staff.processKyc') }}
       </CButton>
       <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goPayments">
-        <CreditCard :size="14" /> {{ t('staff.checkPayments') }}
+        <CreditCard :size="16" /> {{ t('staff.checkPayments') }}
       </CButton>
       <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goAvatar">
-        <Ghost :size="14" /> Avatar Mode
+        <Ghost :size="16" /> Avatar Mode
       </CButton>
     </template>
   </div>

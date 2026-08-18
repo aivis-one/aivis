@@ -18,7 +18,7 @@ function toggle(): void {
 <template>
   <div class="c-checkbox" @click="toggle">
     <div class="c-checkbox__box" :class="{ 'c-checkbox__box--checked': modelValue }">
-      <Check v-if="modelValue" :size="14" />
+      <Check v-if="modelValue" :size="16" />
     </div>
     <span v-if="label" class="c-checkbox__label">{{ label }}</span>
     <span v-else class="c-checkbox__label"><slot /></span>

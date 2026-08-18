@@ -93,7 +93,7 @@ onMounted(() => {
       :disabled="avatarLoading"
       @click="endAvatarSession"
     >
-      <Shield :size="14" />
+      <Shield :size="16" />
       {{ t('staff.avatar.return') }}
     </button>
   </div>

@@ -155,7 +155,7 @@ onMounted(load)
         />
         <div class="dv__error-actions">
           <CButton variant="outline" size="sm" @click="goBack">
-            <ArrowLeft :size="14" />
+            <ArrowLeft :size="16" />
             {{ t('inv.deposit.backToBalance') }}
           </CButton>
           <CButton variant="primary" size="sm" @click="load">
@@ -222,7 +222,7 @@ onMounted(load)
 
         <!-- Security warning -->
         <section class="dv__card dv__warning">
-          <ShieldAlert :size="18" class="dv__warning-icon" />
+          <ShieldAlert :size="16" class="dv__warning-icon" />
           <p class="dv__warning-text">{{ t('inv.deposit.warning') }}</p>
         </section>
       </div>

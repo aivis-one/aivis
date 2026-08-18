@@ -353,7 +353,7 @@ onMounted(loadProduct)
 .pd__hero-icon {
   position: relative; z-index: 1;
   color: var(--text-tertiary);
-  stroke-width: 1.5;
+  stroke-width: 2;
 }
 
 .pd__hero-content {

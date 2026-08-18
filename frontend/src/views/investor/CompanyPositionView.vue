@@ -358,7 +358,7 @@ onUnmounted(() => {
               size="sm"
               @click="openOwnership"
             >
-              <FileSignature :size="14" />
+              <FileSignature :size="16" />
               {{ t('inv.companyPosition.ownership.viewCertificate') }}
             </CButton>
           </div>
@@ -420,7 +420,7 @@ onUnmounted(() => {
                   size="sm"
                   @click="openCertificate(p)"
                 >
-                  <FileText :size="14" />
+                  <FileText :size="16" />
                   {{ viewLabelForLegalBasis(p.legal_basis) }}
                 </CButton>
               </div>

@@ -97,7 +97,7 @@ onMounted(loadPayments)
   <div class="staff-pay">
     <!-- Hint -->
     <div class="staff-pay__hint">
-      <CreditCard :size="12" />
+      <CreditCard :size="16" />
       {{ t('staff.payments.hint') }}
     </div>
 

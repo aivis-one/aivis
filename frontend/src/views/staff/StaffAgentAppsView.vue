@@ -86,7 +86,7 @@ onMounted(loadQueue)
   <div class="staff-apps">
     <!-- Hint -->
     <div class="staff-apps__hint">
-      <FileText :size="12" />
+      <FileText :size="16" />
       {{ t('staff.agentApps2.hint') }}
     </div>
 
@@ -126,14 +126,14 @@ onMounted(loadQueue)
             :disabled="processingIds.has(item.id)"
             @click.stop="handleApprove(item)"
           >
-            <Check :size="12" />
+            <Check :size="16" />
           </button>
           <button
             class="app-btn app-btn--reject"
             :disabled="processingIds.has(item.id)"
             @click.stop="openReject(item)"
           >
-            <X :size="12" />
+            <X :size="16" />
           </button>
         </div>
       </div>

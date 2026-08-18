@@ -392,9 +392,9 @@ onMounted(() => {
             :class="{ 'sett__chip--active': themeCurrent === mode }"
             @click="setTheme(mode)"
           >
-            <Monitor v-if="mode === 'auto'" :size="14" />
-            <Sun v-else-if="mode === 'light'" :size="14" />
-            <Moon v-else :size="14" />
+            <Monitor v-if="mode === 'auto'" :size="16" />
+            <Sun v-else-if="mode === 'light'" :size="16" />
+            <Moon v-else :size="16" />
             {{ t(`inv.settings.prefs.themeValue.${mode}`) }}
           </button>
         </div>

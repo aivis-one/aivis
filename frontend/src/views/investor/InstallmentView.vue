@@ -609,7 +609,7 @@ onMounted(load)
   position: relative;
   z-index: 1;
   color: var(--text-tertiary);
-  stroke-width: 1.5;
+  stroke-width: 2;
 }
 .iv__hero-content {
   position: relative;

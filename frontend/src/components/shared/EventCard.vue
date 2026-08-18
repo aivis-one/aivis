@@ -99,7 +99,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
       <div class="event-card__meta">
         <span class="event-card__time">{{ time }}</span>
         <span v-if="event.location" class="event-card__loc">
-          <MapPin :size="12" />
+          <MapPin :size="16" />
           {{ event.location }}
         </span>
       </div>
@@ -133,7 +133,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
       <div class="event-card__meta">
         <span class="event-card__time">{{ time }}</span>
         <span v-if="event.location" class="event-card__loc">
-          <MapPin :size="12" />
+          <MapPin :size="16" />
           {{ event.location }}
         </span>
       </div>
@@ -150,7 +150,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
         class="event-card__link"
         @click.stop
       >
-        <ExternalLink :size="14" />
+        <ExternalLink :size="16" />
         {{ t('inv.events.eventCard.openUrl') }}
       </a>
     </div>

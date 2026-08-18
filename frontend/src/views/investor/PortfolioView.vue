@@ -198,7 +198,7 @@ onMounted(() => {
         :description="t('inv.portfolio.empty.description')"
       />
       <CButton variant="primary" size="sm" @click="goMarket">
-        <Store :size="14" />
+        <Store :size="16" />
         {{ t('inv.portfolio.empty.cta') }}
       </CButton>
     </div>
@@ -258,7 +258,7 @@ onMounted(() => {
         >
           <div class="pv__item-head">
             <span class="pv__item-company">
-              <Building :size="14" />
+              <Building :size="16" />
               {{ p.company_name }}
             </span>
             <span class="pv__item-head-right">
@@ -268,7 +268,7 @@ onMounted(() => {
               >
                 {{ formatProfitPercent(positionProfitPercent(p)) }}
               </span>
-              <ChevronRight :size="14" class="pv__item-chev" />
+              <ChevronRight :size="16" class="pv__item-chev" />
             </span>
           </div>
           <div class="pv__item-stats">

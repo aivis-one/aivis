@@ -336,7 +336,7 @@ onMounted(() => {
       <div class="dash__balance">
         <div class="dash__balance-head">
           <span class="dash__balance-label">
-            <Wallet :size="14" />
+            <Wallet :size="16" />
             {{ t('comp.dashboard.balance.title') }}
           </span>
         </div>
@@ -353,7 +353,7 @@ onMounted(() => {
       <div v-if="pool" class="dash__pool">
         <div class="dash__pool-head">
           <span class="dash__pool-label">
-            <Layers :size="14" />
+            <Layers :size="16" />
             {{ t('comp.dashboard.pool.title') }}
           </span>
           <span class="dash__pool-equity">
@@ -427,7 +427,7 @@ onMounted(() => {
             class="dash__tx-item"
           >
             <div class="dash__tx-icon">
-              <component :is="iconForType(tx.type)" :size="18" />
+              <component :is="iconForType(tx.type)" :size="16" />
             </div>
             <div class="dash__tx-body">
               <div class="dash__tx-line">

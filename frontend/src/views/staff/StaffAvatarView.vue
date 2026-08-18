@@ -53,18 +53,18 @@ async function handleStart(): Promise<void> {
         style="margin-top: 12px"
         @click="handleStart"
       >
-        <Ghost :size="14" /> {{ t('staff.avatar.start') }}
+        <Ghost :size="16" /> {{ t('staff.avatar.start') }}
       </CButton>
     </div>
 
     <!-- Restrictions -->
     <div class="avatar-restrictions">
       <div class="avatar-restrictions__title">
-        <Ban :size="14" /> {{ t('staff.avatar.restrictions') }}
+        <Ban :size="16" /> {{ t('staff.avatar.restrictions') }}
       </div>
       <ul class="avatar-restrictions__list">
         <li v-for="key in restrictions" :key="key" class="avatar-restrictions__item">
-          <Ban :size="14" class="avatar-restrictions__icon" />
+          <Ban :size="16" class="avatar-restrictions__icon" />
           {{ t(key) }}
         </li>
       </ul>

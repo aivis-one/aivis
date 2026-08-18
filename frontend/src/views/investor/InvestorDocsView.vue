@@ -307,7 +307,7 @@ function metaLabel(doc: DocumentResponse): string {
         @click="openDoc(doc)"
       >
         <div class="docs__icon">
-          <FileText :size="18" />
+          <FileText :size="16" />
         </div>
         <div class="docs__body">
           <div class="docs__title">{{ doc.title }}</div>

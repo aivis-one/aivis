@@ -132,7 +132,7 @@ const available = computed(() => props.product.available_packages)
 .product-card__icon {
   position: relative; z-index: 1;
   color: var(--text-tertiary);
-  stroke-width: 1.5;
+  stroke-width: 2;
 }
 
 .product-card__company {

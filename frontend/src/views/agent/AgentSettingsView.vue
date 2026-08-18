@@ -300,13 +300,13 @@ onMounted(() => {
 
         <div class="sett__cta-row">
           <CButton variant="outline" size="sm" @click="openPayoutSheet">
-            <component :is="hasPayoutDetails ? Pencil : CreditCard" :size="14" />
+            <component :is="hasPayoutDetails ? Pencil : CreditCard" :size="16" />
             {{
               hasPayoutDetails
                 ? t('agent.settings.payout.editButton')
                 : t('agent.settings.payout.addButton')
             }}
-            <ChevronRight :size="14" />
+            <ChevronRight :size="16" />
           </CButton>
         </div>
       </template>

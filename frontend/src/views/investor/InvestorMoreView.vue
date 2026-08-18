@@ -103,13 +103,13 @@ function openTile(tile: Tile): void {
         @click="openTile(tile)"
       >
         <div class="more__tile-icon">
-          <component :is="tile.icon" :size="22" />
+          <component :is="tile.icon" :size="24" />
         </div>
         <div class="more__tile-body">
           <div class="more__tile-title">{{ t(tile.labelKey) }}</div>
           <div class="more__tile-desc">{{ t(tile.descKey) }}</div>
         </div>
-        <ChevronRight :size="18" class="more__tile-chev" />
+        <ChevronRight :size="16" class="more__tile-chev" />
       </button>
     </div>
   </div>

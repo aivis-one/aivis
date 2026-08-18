@@ -222,7 +222,7 @@ function onClose(): void {
                 :aria-label="t('inv.transactions.detail.copy')"
                 @click="copyValue(value)"
               >
-                <Copy :size="14" />
+                <Copy :size="16" />
               </button>
             </template>
             <template v-else>

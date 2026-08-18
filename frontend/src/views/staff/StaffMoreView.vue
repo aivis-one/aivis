@@ -65,14 +65,14 @@ function goAvatar(): void {
 
       <div class="staff-more__nav-item" @click="goAgentApps">
         <span class="staff-more__nav-left">
-          <FileText :size="14" /> {{ t('staff.agentApps2.title') }}
+          <FileText :size="16" /> {{ t('staff.agentApps2.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </div>
 
       <div class="staff-more__nav-item staff-more__nav-item--accent" @click="goAvatar">
         <span class="staff-more__nav-left">
-          <Ghost :size="14" /> Avatar Mode
+          <Ghost :size="16" /> Avatar Mode
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </div>
@@ -94,7 +94,7 @@ function goAvatar(): void {
 
       <div class="staff-more__nav-item staff-more__nav-item--danger" @click="handleLogout">
         <span class="staff-more__nav-left">
-          <LogOut :size="14" /> {{ t('staff.settings.logout') }}
+          <LogOut :size="16" /> {{ t('staff.settings.logout') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </div>

@@ -432,7 +432,7 @@ onMounted(loadPosts)
           <span v-for="tag in form.tags" :key="tag" class="ple__chip">
             {{ tag }}
             <button type="button" class="ple__chip-x" @click="removeTag(tag)">
-              <X :size="12" />
+              <X :size="16" />
             </button>
           </span>
         </div>

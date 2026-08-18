@@ -358,7 +358,7 @@ onMounted(() => {
       <!-- Balance card -->
       <section class="abal__card abal__balance">
         <div class="abal__balance-head">
-          <Wallet :size="14" />
+          <Wallet :size="16" />
           <span>{{ t('agent.balance.card.title') }}</span>
         </div>
         <div class="abal__balance-value">{{ formatPrice(passiveConfirmed) }}</div>
@@ -410,7 +410,7 @@ onMounted(() => {
         <ul v-else class="abal__list">
           <li v-for="w in withdrawals" :key="w.id" class="abal__item">
             <div class="abal__item-icon">
-              <CreditCard :size="18" />
+              <CreditCard :size="16" />
             </div>
             <div class="abal__item-body">
               <div class="abal__item-line">

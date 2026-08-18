@@ -296,7 +296,7 @@ watch(
           class="bv__item"
         >
           <div class="bv__item-icon">
-            <CreditCard :size="18" />
+            <CreditCard :size="16" />
           </div>
           <div class="bv__item-body">
             <div class="bv__item-line">

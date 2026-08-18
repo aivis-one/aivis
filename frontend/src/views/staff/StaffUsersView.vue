@@ -480,7 +480,7 @@ onMounted(loadUsers)
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.registered') }}</span>
           <span class="detail__value">
-            <Clock :size="12" style="vertical-align:-1px" />
+            <Clock :size="16" style="vertical-align:-1px" />
             {{ formatDate(detailUser.created_at) }}
           </span>
         </div>

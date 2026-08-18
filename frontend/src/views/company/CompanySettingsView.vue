@@ -361,7 +361,7 @@ onMounted(() => {
           </span>
           <span class="cset__row-label cset__row-label--accent">
             {{ t('comp.settings.links.open') }}
-            <ExternalLink :size="14" />
+            <ExternalLink :size="16" />
           </span>
         </a>
       </section>

@@ -123,7 +123,7 @@ onMounted(() => {
           <Gem :size="16" />
         </div>
         <div v-if="agentStore.commissionSummaryLoading" class="dash__widget-loader">
-          <CLoader :size="18" />
+          <CLoader :size="16" />
         </div>
         <template v-else>
           <div class="dash__widget-value">
@@ -148,7 +148,7 @@ onMounted(() => {
           <Trophy :size="16" />
         </div>
         <div v-if="agentStore.leaderboardLoading" class="dash__widget-loader">
-          <CLoader :size="18" />
+          <CLoader :size="16" />
         </div>
         <template v-else>
           <div class="dash__widget-value">
@@ -171,7 +171,7 @@ onMounted(() => {
           <Wallet :size="16" />
         </div>
         <div v-if="dashboardStore.loading" class="dash__widget-loader">
-          <CLoader :size="18" />
+          <CLoader :size="16" />
         </div>
         <template v-else>
           <div class="dash__widget-value">
@@ -201,7 +201,7 @@ onMounted(() => {
           <UserPlus :size="16" />
         </div>
         <div v-if="agentStore.statsLoading" class="dash__widget-loader">
-          <CLoader :size="18" />
+          <CLoader :size="16" />
         </div>
         <template v-else>
           <div class="dash__widget-value">
@@ -232,11 +232,11 @@ onMounted(() => {
       </h2>
       <div class="dash__actions-row">
         <button type="button" class="dash__action" @click="goHub">
-          <Link2 :size="18" />
+          <Link2 :size="16" />
           <span>{{ t('agent.dashboard.actions.createLink') }}</span>
         </button>
         <button type="button" class="dash__action" @click="goCommissions">
-          <Gem :size="18" />
+          <Gem :size="16" />
           <span>{{ t('agent.dashboard.actions.myCommissions') }}</span>
         </button>
       </div>
