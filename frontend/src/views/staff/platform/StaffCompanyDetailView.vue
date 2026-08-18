@@ -241,7 +241,7 @@ onMounted(loadCompany)
 }
 .scd__tab--active {
   background: var(--primary);
-  color: white;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 

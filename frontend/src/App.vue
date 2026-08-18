@@ -132,7 +132,7 @@ onMounted(() => {
   justify-content: space-between;
   padding: 8px 16px;
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   font-size: 13px;
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -202,7 +202,7 @@ onMounted(() => {
   padding: 12px 24px;
   border-radius: var(--radius-md, 8px);
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   font-weight: 600;
   font-size: 15px;
   border: none;

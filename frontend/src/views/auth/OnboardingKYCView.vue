@@ -367,7 +367,7 @@ async function handleRetry(): Promise<void> {
 .btn-primary {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px; border-radius: var(--radius-md);
-  background: var(--accent); color: white;
+  background: var(--accent); color: var(--on-accent);
   font-weight: 600; font-size: 15px; font-family: inherit;
   border: none; cursor: pointer;
 }

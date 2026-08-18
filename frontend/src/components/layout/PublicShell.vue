@@ -112,7 +112,7 @@ function goToLogin(): void {
   border: none;
   border-radius: var(--radius-md, 8px);
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;

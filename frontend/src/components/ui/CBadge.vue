@@ -20,6 +20,6 @@ defineProps<{
 .c-badge--warning { background: var(--warning-subtle); color: var(--warning); }
 .c-badge--danger { background: var(--danger-subtle); color: var(--danger); }
 .c-badge--primary { background: var(--primary-subtle); color: var(--primary); }
-.c-badge--accent { background: var(--o-tint-8); color: var(--accent); }
+.c-badge--accent { background: var(--accent-subtle); color: var(--accent); }
 .c-badge--neutral { background: var(--bg-subtle); color: var(--text-secondary); }
 </style>

@@ -207,7 +207,7 @@ async function handleSubmit(): Promise<void> {
 }
 .role-card.selected {
   border-color: var(--accent);
-  background: rgba(232, 101, 26, 0.04);
+  background: var(--accent-subtle);
   box-shadow: var(--shadow-accent-focus);
 }
 
@@ -241,7 +241,7 @@ async function handleSubmit(): Promise<void> {
   color: var(--primary);
 }
 .role-card.selected .role-feature {
-  background: rgba(232, 101, 26, 0.1); color: var(--accent);
+  background: var(--accent-subtle); color: var(--accent);
 }
 
 .role-submit {
@@ -251,7 +251,7 @@ async function handleSubmit(): Promise<void> {
 .btn-primary {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px; border-radius: var(--radius-md);
-  background: var(--accent); color: white;
+  background: var(--accent); color: var(--on-accent);
   font-weight: 600; font-size: 15px; font-family: inherit;
   border: none; cursor: pointer;
 }

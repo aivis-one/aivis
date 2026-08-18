@@ -107,7 +107,7 @@ function go(path: string): void {
 }
 .platform__chip--active {
   background: var(--primary);
-  color: white;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 

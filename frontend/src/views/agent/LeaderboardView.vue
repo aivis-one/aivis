@@ -259,7 +259,7 @@ onMounted(() => {
   padding: 2px 7px;
   border-radius: var(--radius-sm, 6px);
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .lb__volume {

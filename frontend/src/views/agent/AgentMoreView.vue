@@ -164,7 +164,7 @@ function openTile(tile: Tile): void {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-sm);
-  background: var(--primary-tint, rgba(26, 107, 106, 0.12));
+  background: var(--primary-subtle);
   color: var(--primary);
   flex-shrink: 0;
 }

@@ -56,7 +56,7 @@ function goHome(): void {
   padding: 12px 32px;
   border-radius: var(--radius-md, 8px);
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   font-weight: 600;
   font-size: 15px;
   border: none;

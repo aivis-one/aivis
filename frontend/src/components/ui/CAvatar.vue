@@ -31,7 +31,7 @@ const initials = computed(() => {
   border: 2px solid var(--primary-hover);
 }
 .c-avatar--initials {
-  background: var(--primary); color: white;
+  background: var(--primary); color: var(--on-primary);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; border: none;
 }

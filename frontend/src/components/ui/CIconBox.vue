@@ -30,7 +30,7 @@ defineProps<{
 }
 
 .c-icon-box--teal { background: var(--primary-subtle); color: var(--primary); }
-.c-icon-box--orange { background: var(--o-tint-15); color: var(--accent); }
+.c-icon-box--orange { background: var(--accent-subtle); color: var(--accent); }
 .c-icon-box--green { background: var(--success-subtle); color: var(--success); }
 .c-icon-box--yellow { background: var(--warning-subtle); color: var(--warning); }
 .c-icon-box--red { background: var(--danger-subtle); color: var(--danger); }

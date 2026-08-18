@@ -446,7 +446,7 @@ function metaLabel(doc: DocumentResponse): string {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: var(--primary-tint, rgba(26, 107, 106, 0.12));
+  background: var(--primary-subtle);
   color: var(--primary);
   flex-shrink: 0;
 }

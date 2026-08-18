@@ -78,7 +78,7 @@ async function handleStart(): Promise<void> {
 .avatar-header {
   padding: 20px;
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   border-radius: var(--radius-lg);
   margin-bottom: 20px;
   text-align: center;

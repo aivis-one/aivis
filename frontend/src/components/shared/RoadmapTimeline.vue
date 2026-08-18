@@ -374,7 +374,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .rti__chip--accent {
   color: var(--accent);
-  background: var(--o-tint-15);
+  background: var(--accent-subtle);
 }
 
 .rti__chip--danger {

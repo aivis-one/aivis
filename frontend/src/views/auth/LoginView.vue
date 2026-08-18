@@ -403,7 +403,7 @@ async function handleLogin(): Promise<void> {
 
 .btn-primary {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
 }
 
 .btn-primary:hover:not(:disabled) {

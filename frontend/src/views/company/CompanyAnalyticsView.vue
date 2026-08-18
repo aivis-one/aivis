@@ -467,7 +467,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
     var(--primary),
     var(--primary-active, var(--primary))
   );
-  color: #fff;
+  color: var(--on-primary);
 }
 .canl__metrics-label {
   font-size: 12px;

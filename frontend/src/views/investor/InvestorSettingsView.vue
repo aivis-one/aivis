@@ -700,7 +700,7 @@ button.sett__row:last-child {
 .sett__chip--active {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 /* Toggle switch */

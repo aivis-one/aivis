@@ -26,7 +26,7 @@ export const telegramPlatform: Platform = {
     const wa = getWebApp()
     wa.ready()
     wa.expand()
-    wa.setHeaderColor('#1A6B6A')
+    wa.setHeaderColor('#0B4F86')
     wa.setBackgroundColor('#F5F5F5')
   },
 
