@@ -5,7 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#1A6B6A" />
+  <!-- THEME-COLOUR paints the browser/OS chrome, not the page, so nothing that
+       measures the document can see it -- which is how the RETIRED brand teal
+       survived the whole batch-6 repaint here while manifest.json (the same
+       fact, declared twice) was correctly moved to azure. The old value is
+       deliberately NOT quoted: this comment ships, and naming the literal
+       would make every future zero-claim grep hit its own documentation.
+       Values are
+       --bg-page resolved per theme; theme-init.js and useTheme keep them in
+       step with an EXPLICIT in-app choice, which no media query can see. -->
+  <meta name="theme-color" content="#F6F8FA" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#070A0E" media="(prefers-color-scheme: dark)" />
   <link rel="manifest" href="/manifest.json" />
   <!-- PNG first: every browser understands it, and the tab is where the old
        brand survived longest. The SVG stays for browsers that prefer it. -->

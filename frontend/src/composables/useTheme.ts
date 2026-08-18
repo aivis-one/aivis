@@ -73,8 +73,27 @@ if (_isBrowser()) {
   })
 }
 
+/**
+ * Keep <meta name="theme-color"> in step with the choice.
+ *
+ * The tags are media-scoped in index.html so they still work with JS off, but
+ * a media query cannot see an EXPLICIT in-app choice -- pick dark while the OS
+ * is light and the browser chrome stays light while the page goes dark. The
+ * helper lives in public/theme-init.js because that file must already know the
+ * colours to paint before Vue mounts, and a second copy of the literals here
+ * is exactly how index.html and manifest.json came to disagree.
+ */
+function _syncThemeColour(mode: ThemeMode): void {
+  if (!_isBrowser()) return
+  const sync = (window as unknown as {
+    __aivisSyncThemeColour?: (explicit: EffectiveTheme | null) => void
+  }).__aivisSyncThemeColour
+  sync?.(mode === 'auto' ? null : mode)
+}
+
 function _apply(mode: ThemeMode): void {
   if (!_isBrowser()) return
+  _syncThemeColour(mode)
   const html = document.documentElement
   if (mode === 'auto') {
     try {
