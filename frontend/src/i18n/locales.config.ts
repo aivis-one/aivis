@@ -19,15 +19,21 @@ export interface LocaleConfig {
   code: string
   /** Native name, shown in the profile language picker. */
   label: string
+  /** Two-letter code as the UI shows it, e.g. 'EN'. */
+  short: string
+  /** Flag emoji, shown ONLY while the picker is open -- never in the
+      collapsed control, which is the two letters alone. Escaped rather than
+      literal so this file stays ASCII. */
+  flag: string
   /** Text direction applied to <html dir>. */
   dir: 'ltr' | 'rtl'
 }
 
 export const SUPPORTED_LOCALES = [
-  { code: 'en', label: 'English', dir: 'ltr' },
-  { code: 'ru', label: 'Русский', dir: 'ltr' },
-  { code: 'de', label: 'Deutsch',  dir: 'ltr' },
-  { code: 'ar', label: 'العربية',  dir: 'rtl' },
+  { code: 'en', label: 'English', short: 'EN', flag: '\u{1F1EC}\u{1F1E7}', dir: 'ltr' },
+  { code: 'ru', label: 'Русский', short: 'RU', flag: '\u{1F1F7}\u{1F1FA}', dir: 'ltr' },
+  { code: 'de', label: 'Deutsch', short: 'DE', flag: '\u{1F1E9}\u{1F1EA}', dir: 'ltr' },
+  { code: 'ar', label: 'العربية', short: 'AR', flag: '\u{1F1E6}\u{1F1EA}', dir: 'rtl' },
 ] as const satisfies readonly LocaleConfig[]
 
 export type SupportedLocale = typeof SUPPORTED_LOCALES[number]['code']

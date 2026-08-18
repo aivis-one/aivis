@@ -12,6 +12,7 @@ import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/c
 import { safeNavigate } from '@/composables/safeNavigate'
 import type { UserResponse } from '@/api/types'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
+import CAppControls from '@/components/ui/CAppControls.vue'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -143,6 +144,7 @@ async function handleResend(): Promise<void> {
   <div class="auth-screen">
     <header class="auth-header">
       <AivisLogo :height="28" />
+      <CAppControls />
     </header>
 
     <div class="auth-content">
@@ -272,7 +274,7 @@ async function handleResend(): Promise<void> {
 .btn-primary {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px; border-radius: var(--radius-md);
-  background: var(--accent); color: var(--on-accent);
+  background: var(--primary); color: var(--on-primary);
   font-weight: 600; font-size: 15px; font-family: inherit;
   border: none; cursor: pointer;
 }

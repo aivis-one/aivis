@@ -3,7 +3,7 @@
 
 withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'telegram' | 'link'
+    variant?: 'primary' | 'accent' | 'secondary' | 'outline' | 'danger' | 'telegram' | 'link'
     size?: 'default' | 'sm'
     disabled?: boolean
     loading?: boolean
@@ -46,15 +46,30 @@ withDefaults(
   box-shadow: none !important;
 }
 
-/* Primary (accent orange) */
-.c-btn--primary { background: var(--accent); color: var(--on-accent); }
+/* Primary === --primary (azure), per the design system.
+   This read `background: var(--accent)` -- named primary, painted with the
+   ACCENT -- so every primary CTA in the product, Sign In included, came out
+   amber. The design system defines .btn-primary as --primary/--on-primary and
+   .btn-accent as --accent/--on-accent, in three of its own files. The accent
+   variant below is the one that keeps amber, for a deliberate second action. */
+.c-btn--primary { background: var(--primary); color: var(--on-primary); }
 .c-btn--primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+.c-btn--primary:active:not(:disabled) { background: var(--primary-active); transform: scale(0.98); }
+.c-btn--primary:disabled { background: var(--border-default); color: var(--text-tertiary); }
+
+/* Accent (amber) -- the design system's .btn-accent */
+.c-btn--accent { background: var(--accent); color: var(--on-accent); }
+.c-btn--accent:hover:not(:disabled) {
   background: var(--accent-hover);
   transform: translateY(-2px);
   box-shadow: var(--shadow-2);
 }
-.c-btn--primary:active:not(:disabled) { transform: scale(0.98); }
-.c-btn--primary:disabled { background: var(--border-default); color: var(--text-tertiary); }
+.c-btn--accent:active:not(:disabled) { transform: scale(0.98); }
+.c-btn--accent:disabled { background: var(--border-default); color: var(--text-tertiary); }
 
 /* Secondary (outlined teal) */
 .c-btn--secondary { background: var(--bg-page); color: var(--primary); border: 2px solid var(--primary); }

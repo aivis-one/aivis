@@ -61,6 +61,7 @@ import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
+import CAppControls from '@/components/ui/CAppControls.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -155,6 +156,7 @@ async function handleLogin(): Promise<void> {
   <div class="auth-screen">
     <header class="auth-header">
       <AivisLogo :height="28" />
+      <CAppControls />
     </header>
 
     <div class="auth-content">
@@ -391,8 +393,8 @@ async function handleLogin(): Promise<void> {
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 .btn-primary:hover:not(:disabled) {
