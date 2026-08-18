@@ -28,6 +28,13 @@
 //   CHeader prop defaults (showBack=false, showLogo=true) match what
 //   InvestorShell uses -- no overrides needed.
 //
+// LANGUAGE + THEME CONTROLS (2026-08-18).
+//   <CAppControls> was added to `views/auth/*` for "every signed-out screen"
+//   and this shell was outside that scope -- so the four /public/* views had
+//   neither control. That is the WORST surface to miss: `/r/:code` redirects a
+//   referred first-time visitor straight to /public/companies, so the very
+//   first screen a prospect sees offered no way to change language.
+//
 // NO BACK BUTTON IN THE HEADER.
 //   Public views do not pass `:show-back="true"` either. Browser back
 //   handles the list <-> overview navigation. A deep-linked visitor
@@ -47,6 +54,7 @@ import { useI18n } from 'vue-i18n'
 
 import CHeader from '@/components/layout/CHeader.vue'
 import CToast from '@/components/ui/CToast.vue'
+import CAppControls from '@/components/ui/CAppControls.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -77,13 +85,16 @@ function goToLogin(): void {
   <div class="shell">
     <CHeader>
       <template #right>
-        <button
-          type="button"
-          class="shell__login"
-          @click="goToLogin"
-        >
-          {{ t('public.shell.loginButton') }}
-        </button>
+        <div class="shell__controls">
+          <CAppControls />
+          <button
+            type="button"
+            class="shell__login"
+            @click="goToLogin"
+          >
+            {{ t('public.shell.loginButton') }}
+          </button>
+        </div>
       </template>
     </CHeader>
     <main class="shell__content">
@@ -107,12 +118,23 @@ function goToLogin(): void {
   overflow-y: auto;
 }
 
+.shell__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .shell__login {
   padding: 6px 14px;
   border: none;
   border-radius: var(--radius-md, 8px);
-  background: var(--accent);
-  color: var(--on-accent);
+  /* --primary, not --accent: this is the screen's PRIMARY action. The owner
+     found eight of these and they were fixed; the sweep found this one
+     outside that pass's scope. `background: var(--accent)` resolves
+     perfectly, so no token audit can ever see it -- only reading the
+     selector name against the token name does. */
+  background: var(--primary);
+  color: var(--on-primary);
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
