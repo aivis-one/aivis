@@ -38,7 +38,7 @@ from sqlalchemy import select
 
 from app.core.database import dispose_engine, get_session_factory
 from app.core.logging import setup_logging
-from app.modules.auth.service import hash_password
+from app.modules.auth.service import get_platform_user_id, hash_password
 from app.modules.staff.constants import VALID_PERMISSION_KEYS, is_admin
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
@@ -93,12 +93,24 @@ async def seed_admin(email: str, password: str) -> None:
                     return
 
             # Create admin user.
+            #
+            # referred_by is NOT NULL BY DESIGN -- "every user has a
+            # referrer, the Platform user references itself" (migration
+            # 0014, users/models.py). Omitting it raises
+            # NotNullViolationError at flush, which is exactly what this
+            # script did on every run until 2026-08-18. It was never
+            # caught because nothing runs it: it is wired into neither
+            # the `aivis` CLI nor the installer, so the only way to
+            # execute it is by hand. seed_test_accounts.py has always
+            # passed referred_by=platform_user_id; this now matches.
+            platform_user_id = await get_platform_user_id(session)
             password_hash = await hash_password(password)
             admin = User(
                 role=UserRole.STAFF,
                 is_active=True,
                 onboarding_step=OnboardingStep.ROLE_SELECTED,
                 kyc_status=KYCStatus.APPROVED,
+                referred_by=platform_user_id,
                 credentials={
                     "email": {
                         "email": email,
