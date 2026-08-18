@@ -152,7 +152,7 @@ onMounted(() => {
         >
           <span class="lb__rank">#{{ entry.rank }}</span>
           <span class="lb__name">
-            {{ entry.agent_name }}
+            <span class="lb__nametext">{{ entry.agent_name }}</span>
             <span v-if="entry.is_me" class="lb__you">
               {{ t('agent.leaderboard.you') }}
             </span>
@@ -247,6 +247,14 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* The ellipsis belongs to the NAME TEXT, not to the flex container. On the
+   container it was inert (text-overflow acts on inline content in a block,
+   not on a flex container's anonymous text item) and its overflow:hidden ate
+   the adjacent flex-shrink:0 badge instead of trimming the name. */
+.lb__nametext {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

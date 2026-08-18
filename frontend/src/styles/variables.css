@@ -117,11 +117,50 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-pill: 999px;
+  /* SPACE SCALE — completed 2026-08-18. The product carried FIVE of the design
+     system's NINE steps (3, 5, 8 and 9 were missing). That is not cosmetic: the
+     system's own container primitive is `padding: 0 var(--space-5)`, so copying
+     `.wrap` across while --space-5 did not exist would have resolved the gutter
+     to nothing — silently, with no error and no failed build. Values are the
+     system's own, verbatim from `_design-source/aivis-tokens.css`. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
+  --space-3: 0.75rem;
   --space-4: 1rem;
+  --space-5: 1.5rem;
   --space-6: 2rem;
   --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+
+  /* TYPE SCALE — imported 2026-08-18, and DELIBERATELY UNREFERENCED for now.
+     The product had ZERO of the system's eight steps against 538 hardcoded
+     font sizes, which is why type cannot yet adapt per tier. Declared here so
+     the scale EXISTS to build against; existing headings are NOT repointed in
+     this step, because --fs-display reaches 4.2rem and re-sizing 62 screens is
+     a value change no build and no test can see (decision 78's lesson, applied
+     rather than re-learned). Screens move onto the scale deliberately, in the
+     per-tier pass. */
+  --fs-display: clamp(2.8rem, 5vw, 4.2rem);
+  --fs-h1: clamp(2.2rem, 3.5vw, 3rem);
+  --fs-h2: clamp(1.75rem, 2.6vw, 2.2rem);
+  --fs-h3: 1.5rem;
+  --fs-h4: 1.125rem;
+  --fs-body-lg: 1.0625rem;
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.75rem;
+
+  /* CONTAINER MEASURE — the system's two widths, referenced ZERO times by the
+     product until now, which is why `main` ran to viewport-minus-10px at every
+     width and text lines reached 1248px against a readable 600-700.
+     --maxw / --maxw-wide are the system's own values. --maxw-prose is the ONE
+     number the system does not carry: it caps running text at a comfortable
+     measure INSIDE a wider container, because 1080 minus gutters still leaves a
+     ~1040px line. Owner-ruled 2026-08-18 (option B). */
+  --maxw: 1080px;
+  --maxw-wide: 1240px;
+  --maxw-prose: 680px;
   /* The design system defines THREE type roles; the product shipped TWO, so every
      heading rendered in the body face. Owner-ruled 2026-08-18: wire it and drop
      the retired family in one go.
