@@ -8,17 +8,29 @@
 #
 # USAGE:
 #   ADMIN_PASSWORD=secret python scripts/seed_admin.py --email admin@aivis.one
-#   python scripts/seed_admin.py --email admin@aivis.one  (prompts for password)
+#   python scripts/seed_admin.py --email admin@aivis.one  (prompts twice)
+#   python scripts/seed_admin.py --email admin@aivis.one --reset-password
 #
 # SECURITY:
 #   Password read from ADMIN_PASSWORD env var (preferred for automation)
 #   or interactive getpass prompt. Never passed as CLI argument to avoid
 #   exposure in ps aux, shell history, and docker logs.
 #
+# WHY THE PROMPT ASKS TWICE (2026-08-18).
+#   It asked ONCE, blind, with no confirmation, and the very first human
+#   ever to run this script mistyped it. The hash was written silently and
+#   there was no way back: the create path refuses when an admin already
+#   exists, the flag set was --email ONLY, and email carries a UNIQUE
+#   index -- so re-running, and running with another address, both failed.
+#   A tool that can mint a credential and cannot reset it is not
+#   idempotent, it is ONE-WAY. Hence --reset-password.
+#
 # RULES:
 #   - Idempotent: skips if any admin (all-True permissions) exists
+#   - --reset-password: sets a new hash on the EXISTING admin at --email
 #   - Creates User (role=staff) + StaffProfile (all permissions True)
-#   - Called by install_aivis.sh after seed_platform.py
+#   - NOT called by install_aivis.sh or the aivis CLI -- nothing runs this
+#     file, which is why two bugs lived in it until it was first executed
 # =============================================================================
 
 import argparse
@@ -67,21 +79,91 @@ def err(msg: str) -> None:
     print(f"{R}[ERROR]{N} {msg}")
 
 
-def _get_password() -> str:
-    """Read password from ADMIN_PASSWORD env var or interactive prompt."""
+def _get_password(confirm_label: str = "Admin password") -> str:
+    """Read the password from ADMIN_PASSWORD, else prompt twice and compare.
+
+    The env var path is unconfirmed on purpose: it is the automation route,
+    the value is already fixed by the caller, and there is nothing to typo
+    interactively. The INTERACTIVE path is the one that locked an owner out.
+    """
     password = os.environ.get("ADMIN_PASSWORD", "").strip()
     if password:
         return password
-    return getpass.getpass("Admin password: ")
+
+    for _ in range(3):
+        first = getpass.getpass(f"{confirm_label}: ")
+        if not first:
+            err("Password is required")
+            continue
+        second = getpass.getpass(f"{confirm_label} (again): ")
+        if first == second:
+            return first
+        err("Passwords do not match -- try again.")
+    err("Too many mismatched attempts.")
+    sys.exit(1)
 
 
-async def seed_admin(email: str, password: str) -> None:
-    """Create admin user if no admin exists yet."""
+async def _reset_password(session, email: str, password: str) -> bool:
+    """Set a new password hash on the existing admin at `email`.
+
+    Scoped by email rather than "the first admin found" so the operation
+    names its target. Returns False (and explains) when there is nothing
+    to reset -- an unknown address, or an address that is not an admin.
+    """
+    email_lower = email.strip().lower()
+    stmt = select(User).where(
+        User.credentials["email"]["email"].as_string() == email_lower
+    )
+    user = (await session.execute(stmt)).scalar_one_or_none()
+    if user is None:
+        err(f"No user with email {email_lower}")
+        return False
+
+    profile = (
+        await session.execute(
+            select(StaffProfile).where(StaffProfile.user_id == user.id)
+        )
+    ).scalar_one_or_none()
+    if profile is None or not is_admin(profile.permissions):
+        err(f"{email_lower} exists but is not an admin -- refusing to touch it")
+        return False
+
+    # credentials is a JSON column; mutating the dict in place does not mark
+    # the attribute dirty, so rebuild and reassign it.
+    creds = dict(user.credentials or {})
+    email_creds = dict(creds.get("email", {}))
+    email_creds["password_hash"] = await hash_password(password)
+    email_creds["verified"] = True
+    creds["email"] = email_creds
+    user.credentials = creds
+
+    # An admin minted by a seeder has no onboarding funnel to walk. Left at
+    # ROLE_SELECTED the router guard bounces every sign-in to /onboarding/kyc
+    # (guards.ts ONBOARDING_REDIRECTS has no role exemption), so the cabinet
+    # is reachable only through the KYC + docs screens.
+    user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
+
+    await session.commit()
+    log(f"Password reset for admin {email_lower} (user_id={user.id})")
+    logger.info("admin_password_reset", user_id=str(user.id), email=email_lower)
+    return True
+
+
+async def seed_admin(email: str, password: str, reset: bool = False) -> bool:
+    """Create the admin user, or reset the existing one's password.
+
+    Returns True on success. The exit code is applied by main() rather than
+    here: raising SystemExit inside the try/finally would unwind through the
+    session teardown for a case that is an ordinary refusal, not an error.
+    """
     setup_logging()
     factory = get_session_factory()
 
     async with factory() as session:
         try:
+            if reset:
+                return await _reset_password(session, email, password)
+
             # Check if any admin already exists.
             stmt = select(StaffProfile)
             result = await session.execute(stmt)
@@ -90,7 +172,8 @@ async def seed_admin(email: str, password: str) -> None:
             for profile in profiles:
                 if is_admin(profile.permissions):
                     warn(f"Admin already exists: user_id={profile.user_id}")
-                    return
+                    warn("To set a new password on it, re-run with --reset-password")
+                    return True
 
             # Create admin user.
             #
@@ -108,12 +191,27 @@ async def seed_admin(email: str, password: str) -> None:
             admin = User(
                 role=UserRole.STAFF,
                 is_active=True,
-                onboarding_step=OnboardingStep.ROLE_SELECTED,
+                # ONBOARDING_COMPLETE, not ROLE_SELECTED: guards.ts redirects
+                # any step present in ONBOARDING_REDIRECTS and exempts no
+                # role, so ROLE_SELECTED sends every admin sign-in to
+                # /onboarding/kyc. A seeded admin has no funnel to walk.
+                # This is a DELIBERATE divergence from seed_test_accounts.py,
+                # which sets ROLE_SELECTED for its staff account and reaches
+                # the cabinet only via the idempotent /kyc/advance hotfix.
+                onboarding_step=OnboardingStep.ONBOARDING_COMPLETE,
                 kyc_status=KYCStatus.APPROVED,
                 referred_by=platform_user_id,
                 credentials={
                     "email": {
                         "email": email,
+                        # Nothing on the LOGIN path reads `verified`
+                        # (auth/service.py login_email checks existence,
+                        # password, role != PLATFORM, is_active -- measured).
+                        # It is set because the verify/resend endpoints raise
+                        # "Email is already verified" off it, so an unset flag
+                        # leaves a seeded admin able to be nagged to verify an
+                        # address nobody will ever send mail to.
+                        "verified": True,
                         "password_hash": password_hash,
                     },
                 },
@@ -139,6 +237,7 @@ async def seed_admin(email: str, password: str) -> None:
                 user_id=str(admin.id),
                 email=email,
             )
+            return True
 
         except Exception as exc:
             await session.rollback()
@@ -151,14 +250,21 @@ async def seed_admin(email: str, password: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed admin user")
     parser.add_argument("--email", required=True, help="Admin email")
+    parser.add_argument(
+        "--reset-password",
+        action="store_true",
+        help="Set a new password on the EXISTING admin at --email",
+    )
     args = parser.parse_args()
 
-    password = _get_password()
+    label = "New admin password" if args.reset_password else "Admin password"
+    password = _get_password(label)
     if not password:
         err("Password is required")
         sys.exit(1)
 
-    asyncio.run(seed_admin(args.email, password))
+    if not asyncio.run(seed_admin(args.email, password, reset=args.reset_password)):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
