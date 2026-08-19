@@ -183,8 +183,13 @@ const coverImage = computed(() =>
   line-height: 1.45;
   color: var(--text-secondary);
   /* Reserve 3 lines of height even when empty -- equal-height cards
-     in the grid regardless of description fill. */
-  min-height: calc(13px * 1.45 * 3);
+     in the grid regardless of description fill.
+     Derived from the SAME token the text is set in. It read `13px` -- the
+     retired step this element no longer uses -- so it reserved 56.55px for
+     three lines that occupy 60.9px, and the equal-height guarantee this rule
+     exists for did not hold. A literal inside a calc is invisible to a scan
+     that looks at font-size declarations. */
+  min-height: calc(var(--fs-sm) * 1.45 * 3);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;

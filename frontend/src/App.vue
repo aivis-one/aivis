@@ -130,18 +130,27 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  /* The banner is FIXED and `.app--avatar-active` offsets content by exactly
+     its height. These were two independent literals and they did NOT agree:
+     measured in the browser, HEAD's banner stood 46px against a 40px offset,
+     so the bar overlapped content by 6px. They now share ONE token, and the
+     vertical padding is --space-1 so the tallest child (the 26px button) plus
+     padding stays inside that reserve -- measured 40px against 40px. */
+  padding: var(--space-1) var(--space-4);
+  min-height: var(--space-6-lg);
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 13px;
+  /* Was 13px -- the retired step. Moved to --fs-sm, the size this kind of
+     text uses elsewhere, per the same rule the 115-site collapse applied. */
+  font-size: var(--fs-sm);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-2);
 }
 
 .avatar-banner__left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -154,8 +163,11 @@ onMounted(() => {
 .avatar-banner__btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  /* --space-1 vertical, not --space-2: the button must fit inside the banner's
+     --space-6-lg (40px) reserve. 4+4 padding + a 12px line clears it; 8+8 does
+     not, and the overflow would show up as the fixed bar overlapping content. */
+  padding: var(--space-1) var(--space-3);
   /* An inverse chip ON the accent banner. Was `white`, which is identical in
      light but puts light-amber text on white in dark. --on-accent tracks the
      banner, so the pair inverts together. */
@@ -163,7 +175,7 @@ onMounted(() => {
   color: var(--accent);
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -181,7 +193,8 @@ onMounted(() => {
 
 /* Push content down when avatar banner is visible */
 .app--avatar-active {
-  padding-top: 40px;
+  /* Same token as the banner's min-height above -- see the note there. */
+  padding-top: var(--space-6-lg);
 }
 
 /* Auth error screen */
@@ -194,15 +207,15 @@ onMounted(() => {
   min-height: 100dvh;
   background: var(--bg-page);
   gap: var(--space-4);
-  padding: 24px;
+  padding: var(--space-5);
 }
 .auth-error-text {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--danger);
   text-align: center;
 }
 .auth-error-retry {
-  padding: 12px 24px;
+  padding: var(--space-3) var(--space-5);
   border-radius: var(--radius-md);
   /* --primary, not --accent: this is the screen's PRIMARY action. The owner
      found eight of these and they were fixed; the sweep found this one
@@ -212,7 +225,7 @@ onMounted(() => {
   background: var(--primary);
   color: var(--on-primary);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-sm);
   border: none;
   cursor: pointer;
 }
