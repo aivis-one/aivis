@@ -189,6 +189,15 @@
   --maxw: 1080px;
   --maxw-wide: 1240px;
   --maxw-prose: 680px;
+
+  /* TILE MEASURE — the ceiling a card in a filling grid may reach. A grid
+     authored `repeat(N, 1fr)` keeps N columns at every width, so on a 1016px
+     desktop it stretches its contents to fill: measured, a stat tile reached
+     316px and an ACTION BUTTON reached 497px. Past a point the extra room
+     should become whitespace, not wider furniture. --tile-min is the floor at
+     which a track still earns its place. */
+  --tile-min: 150px;
+  --tile-max: 280px;
   /* The design system defines THREE type roles; the product shipped TWO, so every
      heading rendered in the body face. Owner-ruled 2026-08-18: wire it and drop
      the retired family in one go.

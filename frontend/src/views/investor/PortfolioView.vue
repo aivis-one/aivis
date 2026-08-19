@@ -440,4 +440,18 @@ onMounted(() => {
 }
 .pv__profit--up { color: var(--success); }
 .pv__profit--down { color: var(--danger); }
+
+/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
+   width, so on a 1016px desktop it stretches its contents to fill: measured,
+   a stat tile reached 316px and an action button 497px. Past a point the extra
+   room should be whitespace, not wider furniture.
+
+   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
+   nothing reflows and no set of related figures can wrap into a ragged 2+1.
+   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
+   of room, was what pushed the third tile onto its own line. Mobile-first, so
+   this is a min-width and the phone is untouched. */
+@media (min-width: 820px) {
+  .pv__item-stats { max-width: calc(3 * var(--tile-max)); }
+}
 </style>
