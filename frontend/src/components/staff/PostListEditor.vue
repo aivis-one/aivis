@@ -367,10 +367,12 @@ onMounted(loadPosts)
             <div class="post-item__date">{{ formatDate(post.created_at) }}</div>
           </div>
           <div v-if="canEdit" class="post-item__actions">
-            <button class="post-item__icon-btn" @click="openEdit(post)">
+            <button
+            :aria-label="t('common.edit')" class="post-item__icon-btn" @click="openEdit(post)">
               <Pencil :size="16" />
             </button>
-            <button class="post-item__icon-btn post-item__icon-btn--danger" @click="openDelete(post)">
+            <button
+            :aria-label="t('common.delete')" class="post-item__icon-btn post-item__icon-btn--danger" @click="openDelete(post)">
               <Trash2 :size="16" />
             </button>
           </div>

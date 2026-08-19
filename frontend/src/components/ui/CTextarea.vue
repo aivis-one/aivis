@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useId } from 'vue'
 // Multi-line text input with label and error state.
 
 withDefaults(
@@ -17,12 +18,19 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 function onInput(e: Event): void {
   emit('update:modelValue', (e.target as HTMLTextAreaElement).value)
 }
+
+// A4: a visible label is not an accessible name unless it is ASSOCIATED. This
+// carried <label> with no `for` and the control with no `id`, so a screen
+// reader saw an unlabelled field beside some loose text. useId() (Vue 3.5)
+// pairs them and stays unique across every instance on the page.
+const fieldId = useId()
 </script>
 
 <template>
   <div class="c-input-group">
-    <label v-if="label" class="c-input-label">{{ label }}</label>
+    <label v-if="label" :for="fieldId" class="c-input-label">{{ label }}</label>
     <textarea
+      :id="fieldId"
       class="c-textarea"
       :class="{ 'c-textarea--error': !!error }"
       :value="modelValue"

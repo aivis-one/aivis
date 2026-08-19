@@ -336,10 +336,12 @@ onMounted(loadEvents)
             <div v-if="ev.location" class="event-item__loc">{{ ev.location }}</div>
           </div>
           <div v-if="canEdit" class="event-item__actions">
-            <button class="event-item__icon-btn" @click="openEdit(ev)">
+            <button
+            :aria-label="t('common.edit')" class="event-item__icon-btn" @click="openEdit(ev)">
               <Pencil :size="16" />
             </button>
-            <button class="event-item__icon-btn event-item__icon-btn--danger" @click="openDelete(ev)">
+            <button
+            :aria-label="t('common.delete')" class="event-item__icon-btn event-item__icon-btn--danger" @click="openDelete(ev)">
               <Trash2 :size="16" />
             </button>
           </div>
@@ -377,11 +379,13 @@ onMounted(loadEvents)
       <!-- Native datetime-local inputs (no UI-kit date picker exists). -->
       <div class="evd__field">
         <label class="evd__label">{{ t('staff.platform.event.fieldStartsAt') }}</label>
-        <input v-model="form.starts_at" type="datetime-local" class="evd__datetime" />
+        <input
+          :aria-label="t('staff.platform.event.fieldStartsAt')" v-model="form.starts_at" type="datetime-local" class="evd__datetime" />
       </div>
       <div class="evd__field">
         <label class="evd__label">{{ t('staff.platform.event.fieldEndsAt') }}</label>
-        <input v-model="form.ends_at" type="datetime-local" class="evd__datetime" />
+        <input
+          :aria-label="t('staff.platform.event.fieldEndsAt')" v-model="form.ends_at" type="datetime-local" class="evd__datetime" />
         <p
           v-if="form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)"
           class="evd__field-error"

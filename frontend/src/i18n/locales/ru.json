@@ -19,7 +19,14 @@
     "yes": "Да",
     "no": "Нет",
     "all": "Все",
-    "primaryNav": "Основная навигация"
+    "primaryNav": "Основная навигация",
+    "moveUp": "Переместить вверх",
+    "moveDown": "Переместить вниз",
+    "showPassword": "Показать пароль",
+    "hidePassword": "Скрыть пароль",
+    "statusActive": "Активна",
+    "codeDigit": "Цифра {n} из {total}",
+    "codeGroup": "Код подтверждения"
   },
   "error": {
     "pageNotFound": "Страница не найдена"

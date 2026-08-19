@@ -19,7 +19,14 @@
     "yes": "نعم",
     "no": "لا",
     "all": "الكل",
-    "primaryNav": "التنقل الرئيسي"
+    "primaryNav": "التنقل الرئيسي",
+    "moveUp": "تحريك لأعلى",
+    "moveDown": "تحريك لأسفل",
+    "showPassword": "إظهار كلمة المرور",
+    "hidePassword": "إخفاء كلمة المرور",
+    "statusActive": "نشط",
+    "codeDigit": "الرقم {n} من {total}",
+    "codeGroup": "رمز التحقق"
   },
   "error": {
     "pageNotFound": "الصفحة غير موجودة"

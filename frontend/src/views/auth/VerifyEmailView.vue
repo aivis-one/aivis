@@ -181,6 +181,7 @@ async function handleResend(): Promise<void> {
           inputmode="numeric"
           maxlength="6"
           class="code-input"
+          :aria-label="t('common.codeDigit', { n: index + 1, total: CODE_LENGTH })"
           :value="digits[index]"
           @input="handleInput(index, $event)"
           @keydown="handleKeydown(index, $event)"

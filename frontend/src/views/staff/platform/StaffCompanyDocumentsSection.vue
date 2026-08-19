@@ -229,6 +229,7 @@ onMounted(loadAttachments)
             <!-- Reorder buttons (FP-23: only with company_manage) -->
             <div v-if="canManage" class="doc-item__reorder">
               <button
+            :aria-label="t('common.moveUp')"
                 class="doc-item__move"
                 :disabled="idx === 0 || reordering"
                 @click="move(group.category, group.rows, idx, -1)"
@@ -236,6 +237,7 @@ onMounted(loadAttachments)
                 <ChevronUp :size="16" />
               </button>
               <button
+            :aria-label="t('common.moveDown')"
                 class="doc-item__move"
                 :disabled="idx === group.rows.length - 1 || reordering"
                 @click="move(group.category, group.rows, idx, 1)"
@@ -268,6 +270,7 @@ onMounted(loadAttachments)
 
             <!-- Delete (FP-23) -->
             <button
+            :aria-label="t('common.delete')"
               v-if="canManage"
               class="doc-item__delete"
               @click="openDelete(att)"

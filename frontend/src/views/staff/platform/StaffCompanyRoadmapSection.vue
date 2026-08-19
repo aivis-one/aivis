@@ -712,6 +712,7 @@ onMounted(() => {
           <!-- Reorder (FP-23) -->
           <div v-if="canManage" class="rm-item__reorder">
             <button
+            :aria-label="t('common.moveUp')"
               class="rm-item__move"
               :disabled="idx === 0 || reordering"
               @click="move(idx, -1)"
@@ -719,6 +720,7 @@ onMounted(() => {
               <ChevronUp :size="16" />
             </button>
             <button
+            :aria-label="t('common.moveDown')"
               class="rm-item__move"
               :disabled="idx === items.length - 1 || reordering"
               @click="move(idx, 1)"
@@ -779,10 +781,12 @@ onMounted(() => {
 
           <!-- Row actions (FP-23) -->
           <div v-if="canManage" class="rm-item__actions">
-            <button class="rm-item__action" @click="openEdit(item)">
+            <button
+            :aria-label="t('common.edit')" class="rm-item__action" @click="openEdit(item)">
               <Pencil :size="16" />
             </button>
-            <button class="rm-item__action" @click="openDelete(item)">
+            <button
+            :aria-label="t('common.delete')" class="rm-item__action" @click="openDelete(item)">
               <Trash2 :size="16" />
             </button>
           </div>
@@ -839,6 +843,7 @@ onMounted(() => {
       <div v-if="showTargetDate" class="scr__field">
         <label class="scr__field-label">{{ t('staff.platform.roadmap.fieldTargetDate') }}</label>
         <input
+          :aria-label="t('staff.platform.roadmap.fieldTargetDate')"
           v-model="draftTargetDate"
           type="date"
           class="scr__date"
@@ -849,6 +854,7 @@ onMounted(() => {
       <div v-if="showValidUntil" class="scr__field">
         <label class="scr__field-label">{{ t('staff.platform.roadmap.fieldValidUntil') }}</label>
         <input
+          :aria-label="t('staff.platform.roadmap.fieldValidUntil')"
           v-model="draftValidUntil"
           type="date"
           class="scr__date"
@@ -929,6 +935,7 @@ onMounted(() => {
 
           <!-- Hidden native picker (no CFileInput in the kit). -->
           <input
+          :aria-label="t('staff.platform.roadmap.cover.remove')"
             ref="coverInputEl"
             type="file"
             accept="image/png,image/jpeg,image/webp"

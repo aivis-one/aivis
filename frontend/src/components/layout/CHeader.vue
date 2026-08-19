@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 // App header — sticky top bar from mockups/css/components.css .app-header.
 // Shows logo + title on the left, optional back button, right slot.
 //
@@ -41,12 +42,21 @@ function goBack(): void {
     void safeNavigate(router.push('/'), '[CHeader] to home')
   }
 }
+
+// A1: the back control is an icon with no text, so its accessible name has to
+// come from an aria-label. This component had no i18n binding at all.
+const { t } = useI18n()
 </script>
 
 <template>
   <header class="c-header">
     <div class="c-header__left">
-      <button v-if="showBack" class="c-header__back" @click="goBack">
+      <button
+      v-if="showBack"
+      :aria-label="t('common.back')"
+      class="c-header__back"
+      @click="goBack"
+    >
         <ChevronLeft :size="24" />
       </button>
       <AivisLogo v-if="showLogo && !showBack" :height="28" :show-text="false" />

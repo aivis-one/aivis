@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 // Text input with label, error state, and optional password toggle.
 
-import { ref } from 'vue'
+import { ref, useId } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
 
 const props = withDefaults(
@@ -24,13 +25,25 @@ const isPassword = props.type === 'password'
 function onInput(e: Event): void {
   emit('update:modelValue', (e.target as HTMLInputElement).value)
 }
+
+// A4: a visible label is not an accessible name unless it is ASSOCIATED.
+// These carried <label> with no `for` and the control with no `id`, so a screen
+// reader saw an unlabelled field beside some loose text. useId() (Vue 3.5) pairs
+// them and stays unique across every instance on the page.
+const fieldId = useId()
+
+// A1: the reveal control is an icon with no text, and its NAME changes with
+// state -- announcing "show password" while the password is already visible is
+// worse than no label at all.
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="c-input-group">
-    <label v-if="label" class="c-input-label">{{ label }}</label>
+    <label v-if="label" :for="fieldId" class="c-input-label">{{ label }}</label>
     <div class="c-input-wrapper">
       <input
+        :id="fieldId"
         class="c-input"
         :class="{ 'c-input--error': !!error }"
         :type="isPassword && showPassword ? 'text' : type"
@@ -43,6 +56,7 @@ function onInput(e: Event): void {
         v-if="isPassword"
         type="button"
         class="c-input-toggle"
+        :aria-label="showPassword ? t('common.hidePassword') : t('common.showPassword')"
         @click="showPassword = !showPassword"
       >
         <EyeOff v-if="showPassword" :size="20" />

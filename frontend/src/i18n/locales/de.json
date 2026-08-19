@@ -19,7 +19,14 @@
     "yes": "Ja",
     "no": "Nein",
     "all": "Alle",
-    "primaryNav": "Hauptnavigation"
+    "primaryNav": "Hauptnavigation",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "statusActive": "Aktiv",
+    "codeDigit": "Ziffer {n} von {total}",
+    "codeGroup": "Bestätigungscode"
   },
   "error": {
     "pageNotFound": "Seite nicht gefunden"

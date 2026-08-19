@@ -3,7 +3,7 @@
 // PATCH /api/v1/users/me { profile: {...}, language }
 // After success: fetchMe() → router.push('/') → guard redirects.
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -94,6 +94,13 @@ async function handleSubmit(): Promise<void> {
     loading.value = false
   }
 }
+
+// A4: these screens carried a visible field caption with no association, and
+// controls with no id. A visible caption is not an accessible name unless it
+// is paired -- a screen reader saw unlabelled fields on the two most important
+// forms in the product. One useId() root, suffixed per field, so the ids stay
+// unique even if a form is ever mounted twice on one page.
+const fid = useId()
 </script>
 
 <template>
@@ -110,8 +117,9 @@ async function handleSubmit(): Promise<void> {
       <div class="auth-form">
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">{{ t('auth.profile.firstName') }}</label>
+            <label :for="`${fid}-firstName`" class="form-label">{{ t('auth.profile.firstName') }}</label>
             <input
+            :id="`${fid}-firstName`"
               v-model="firstName"
               type="text"
               class="form-input"
@@ -120,8 +128,9 @@ async function handleSubmit(): Promise<void> {
             />
           </div>
           <div class="form-group">
-            <label class="form-label">{{ t('auth.profile.lastName') }}</label>
+            <label :for="`${fid}-lastName`" class="form-label">{{ t('auth.profile.lastName') }}</label>
             <input
+            :id="`${fid}-lastName`"
               v-model="lastName"
               type="text"
               class="form-input"
@@ -132,8 +141,9 @@ async function handleSubmit(): Promise<void> {
         </div>
 
         <div class="form-group">
-          <label class="form-label">{{ t('auth.profile.phone') }}</label>
+          <label :for="`${fid}-phone`" class="form-label">{{ t('auth.profile.phone') }}</label>
           <input
+            :id="`${fid}-phone`"
             v-model="phone"
             type="tel"
             class="form-input"
@@ -144,8 +154,9 @@ async function handleSubmit(): Promise<void> {
         </div>
 
         <div class="form-group">
-          <label class="form-label">{{ t('auth.profile.country') }}</label>
-          <select v-model="country" class="form-select">
+          <label :for="`${fid}-country`" class="form-label">{{ t('auth.profile.country') }}</label>
+          <select
+            :id="`${fid}-country`" v-model="country" class="form-select">
             <option value="" disabled>—</option>
             <option
               v-for="c in countries"
@@ -158,8 +169,9 @@ async function handleSubmit(): Promise<void> {
         </div>
 
         <div class="form-group">
-          <label class="form-label">{{ t('auth.profile.language') }}</label>
-          <select v-model="language" class="form-select">
+          <label :for="`${fid}-language`" class="form-label">{{ t('auth.profile.language') }}</label>
+          <select
+            :id="`${fid}-language`" v-model="language" class="form-select">
             <option
               v-for="l in languages"
               :key="l.value"

@@ -37,7 +37,7 @@
 //   across all router.push() call-sites that branch on user action.
 // =============================================================================
 
-import { ref } from 'vue'
+import { ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
@@ -119,6 +119,13 @@ async function handleRegister(): Promise<void> {
     }
   }
 }
+
+// A4: these screens carried a visible field caption with no association, and
+// controls with no id. A visible caption is not an accessible name unless it
+// is paired -- a screen reader saw unlabelled fields on the two most important
+// forms in the product. One useId() root, suffixed per field, so the ids stay
+// unique even if a form is ever mounted twice on one page.
+const fid = useId()
 </script>
 
 <template>
@@ -147,8 +154,9 @@ async function handleRegister(): Promise<void> {
 
       <div class="auth-form">
         <div class="form-group">
-          <label class="form-label">{{ t('auth.register.email') }}</label>
+          <label :for="`${fid}-email`" class="form-label">{{ t('auth.register.email') }}</label>
           <input
+            :id="`${fid}-email`"
             v-model="email"
             type="email"
             class="form-input"
@@ -159,9 +167,10 @@ async function handleRegister(): Promise<void> {
         </div>
 
         <div class="form-group">
-          <label class="form-label">{{ t('auth.register.password') }}</label>
+          <label :for="`${fid}-password`" class="form-label">{{ t('auth.register.password') }}</label>
           <div class="input-wrapper">
             <input
+            :id="`${fid}-password`"
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
               class="form-input"
@@ -202,9 +211,10 @@ async function handleRegister(): Promise<void> {
         </div>
 
         <div class="form-group">
-          <label class="form-label">{{ t('auth.register.confirmPassword') }}</label>
+          <label :for="`${fid}-confirmPassword`" class="form-label">{{ t('auth.register.confirmPassword') }}</label>
           <div class="input-wrapper">
             <input
+            :id="`${fid}-confirmPassword`"
               v-model="confirmPassword"
               :type="showConfirmPassword ? 'text' : 'password'"
               class="form-input"

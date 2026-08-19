@@ -122,6 +122,7 @@ onMounted(loadQueue)
         </div>
         <div class="app-item__actions">
           <button
+            :aria-label="t('staff.agentApps2.approve')"
             class="app-btn app-btn--approve"
             :disabled="processingIds.has(item.id)"
             @click.stop="handleApprove(item)"
