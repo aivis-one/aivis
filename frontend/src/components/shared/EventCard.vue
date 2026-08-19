@@ -208,7 +208,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 }
 .event-card__desc {
   margin: var(--space-1) 0 0;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   line-height: 1.4;
   display: -webkit-box;
@@ -221,7 +221,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   align-items: center;
   gap: var(--space-1);
   margin-top: var(--space-2);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--accent);
   text-decoration: none;

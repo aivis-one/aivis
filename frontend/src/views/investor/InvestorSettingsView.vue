@@ -571,7 +571,7 @@ onMounted(() => {
   margin-top: var(--space-2);
 }
 .sett__email {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .sett__role-badge {
@@ -667,7 +667,7 @@ button.sett__row:last-child {
   font-weight: 600;
 }
 .sett__row-value {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-tertiary);
   text-align: right;
 }

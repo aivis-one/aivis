@@ -95,7 +95,7 @@ function go(path: string): void {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;

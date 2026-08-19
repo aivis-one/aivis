@@ -627,7 +627,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
 }
 .cp__item-kind {
   font-weight: 700;
@@ -678,7 +678,7 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
 }
 .cp__loadmore-error-text {
   flex: 1;

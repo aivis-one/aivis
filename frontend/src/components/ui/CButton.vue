@@ -106,7 +106,7 @@ withDefaults(
 .c-btn--link:hover:not(:disabled) { text-decoration: underline; }
 
 /* Size: small */
-.c-btn--sm { padding: var(--space-3) var(--space-4); font-size: var(--fs-xs-lg); }
+.c-btn--sm { padding: var(--space-3) var(--space-4); font-size: var(--fs-xs); }
 
 /* Spinner */
 .c-btn__spinner {

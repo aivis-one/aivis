@@ -694,7 +694,7 @@ onMounted(loadUsers)
 .staff-users__pagination {
   display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin-top: var(--space-4);
 }
-.staff-users__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.staff-users__page { font-size: var(--fs-xs); color: var(--text-secondary); }
 
 .staff-users__center {
   display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: var(--center-md); gap: var(--space-4);
@@ -704,11 +704,11 @@ onMounted(loadUsers)
 .detail__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
 .detail__subtitle { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: var(--space-4) 0 var(--space-2); }
 .detail__row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-2) 0; border-bottom: 1px solid var(--border-default); }
-.detail__label { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
-.detail__value { font-size: var(--fs-xs-lg); color: var(--text-primary); }
+.detail__label { font-size: var(--fs-xs); color: var(--text-secondary); }
+.detail__value { font-size: var(--fs-sm); color: var(--text-primary); }
 .detail__section { margin-top: var(--space-3); }
 .detail__perm { padding: var(--space-1) 0; }
-.detail__perm-label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-xs-lg); color: var(--text-primary); cursor: pointer; }
+.detail__perm-label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-xs); color: var(--text-primary); cursor: pointer; }
 .detail__actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
 .detail__confirm-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-3); }
 
@@ -739,7 +739,7 @@ onMounted(loadUsers)
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-primary);
 }
 .kyc-history__date {

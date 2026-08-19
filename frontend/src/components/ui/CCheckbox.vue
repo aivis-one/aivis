@@ -33,5 +33,5 @@ function toggle(): void {
   transition: all 0.2s; color: var(--on-primary); margin-top: var(--space-1);
 }
 .c-checkbox__box--checked { background: var(--primary); border-color: var(--primary); }
-.c-checkbox__label { font-size: var(--fs-xs-lg); color: var(--text-secondary); line-height: 1.4; }
+.c-checkbox__label { font-size: var(--fs-xs); color: var(--text-secondary); line-height: 1.4; }
 </style>

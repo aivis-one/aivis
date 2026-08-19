@@ -435,7 +435,7 @@ onMounted(() => {
   margin-top: var(--space-2);
 }
 .sett__email {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .sett__role-badge {
@@ -474,7 +474,7 @@ onMounted(() => {
 }
 
 .sett__empty {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin: 0;
   padding: var(--space-4);
@@ -563,7 +563,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-family: var(--font-mono);
   line-height: 1.5;
   resize: vertical;

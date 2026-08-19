@@ -327,7 +327,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -460,7 +460,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
   color: var(--danger);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
 }
 .tv__loadmore-error-text {
   flex: 1;

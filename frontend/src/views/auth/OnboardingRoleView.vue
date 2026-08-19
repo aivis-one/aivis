@@ -190,7 +190,7 @@ async function handleSubmit(): Promise<void> {
   margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
 .auth-error {
-  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
+  font-size: var(--fs-xs); color: var(--danger); text-align: center;
   margin: var(--space-4) 0; max-width: var(--maxw-form-wide);
 }
 
@@ -230,7 +230,7 @@ async function handleSubmit(): Promise<void> {
 .role-card-icon { font-size: var(--fs-h3); }
 .role-card-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); }
 .role-card-desc {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary);
+  font-size: var(--fs-sm); color: var(--text-secondary);
   line-height: 1.5; margin-bottom: var(--space-3);
 }
 

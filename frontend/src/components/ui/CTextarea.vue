@@ -44,7 +44,7 @@ const fieldId = useId()
 
 <style scoped>
 .c-input-group { margin-bottom: var(--space-4); }
-.c-input-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
+.c-input-label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
 
 .c-textarea {
   width: 100%; padding: var(--space-4) var(--space-4); border: 2px solid var(--border-default);

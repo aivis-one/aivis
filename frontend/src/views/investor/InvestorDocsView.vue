@@ -501,7 +501,7 @@ function metaLabel(doc: DocumentResponse): string {
   padding: var(--space-4) 0;
 }
 .docs-modal__hint {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
 

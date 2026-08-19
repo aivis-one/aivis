@@ -308,9 +308,9 @@ onMounted(reload)
   display: flex; align-items: center; justify-content: center;
   gap: var(--space-3); margin-top: var(--space-4);
 }
-.scpr__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.scpr__page { font-size: var(--fs-xs); color: var(--text-secondary); }
 
 .scpr__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
-.scpr__modal-hint { font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0 0 var(--space-4); }
+.scpr__modal-hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 0 0 var(--space-4); }
 .scpr__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
 </style>

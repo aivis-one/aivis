@@ -565,13 +565,13 @@ button.cset__row:last-child { border-bottom: none; }
   font-weight: 600;
 }
 .cset__row-value {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-tertiary);
   text-align: right;
   word-break: break-word;
 }
 .cset__row-multiline {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: var(--space-1) 0 0;
   line-height: 1.5;

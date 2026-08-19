@@ -314,7 +314,7 @@ onMounted(loadAttachments)
 
 .scd__group { margin-bottom: var(--space-5); }
 .scd__group-title {
-  font-size: var(--fs-xs-lg); font-weight: 700; color: var(--text-secondary);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 var(--space-2);
   word-break: break-all;
 }

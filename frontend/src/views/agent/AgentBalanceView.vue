@@ -545,7 +545,7 @@ onMounted(() => {
   margin: 0;
 }
 .abal__subtitle {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -613,7 +613,7 @@ onMounted(() => {
 }
 
 .abal__empty {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin: 0;
   padding: var(--space-4);

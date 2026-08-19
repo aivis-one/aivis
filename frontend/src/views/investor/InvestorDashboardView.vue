@@ -479,7 +479,7 @@ onBeforeUnmount(() => {
   color: var(--text-primary); margin: 0;
 }
 .dash__subtitle {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-sm); color: var(--text-secondary); margin: 0;
 }
 
 /* Portfolio hero */
@@ -504,7 +504,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   opacity: 0.9;
 }
@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   opacity: 0.9;
 }
@@ -608,7 +608,7 @@ onBeforeUnmount(() => {
   background: var(--bg-page);
   color: var(--text-primary);
   font-family: inherit;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;

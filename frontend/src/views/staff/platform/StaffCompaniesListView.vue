@@ -216,5 +216,5 @@ onMounted(loadCompanies)
   display: flex; align-items: center; justify-content: center;
   gap: var(--space-3); margin-top: var(--space-4);
 }
-.scl__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.scl__page { font-size: var(--fs-xs); color: var(--text-secondary); }
 </style>

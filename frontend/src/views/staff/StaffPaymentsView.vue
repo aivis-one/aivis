@@ -225,7 +225,7 @@ onMounted(loadPayments)
 .staff-pay__pagination {
   display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin-top: var(--space-4);
 }
-.staff-pay__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.staff-pay__page { font-size: var(--fs-xs); color: var(--text-secondary); }
 
 .modal__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
 .modal__text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-2); }

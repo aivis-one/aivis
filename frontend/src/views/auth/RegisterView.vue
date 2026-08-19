@@ -344,7 +344,7 @@ const fid = useId()
 
 .form-label {
   display: block;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: var(--space-2);
@@ -408,7 +408,7 @@ const fid = useId()
   border: 1px solid var(--danger);
   border-radius: var(--radius-md);
   color: var(--danger);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   margin-bottom: var(--space-4);
   line-height: 1.5;
 }

@@ -248,7 +248,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
 }
-.iev__retry-text { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.iev__retry-text { font-size: var(--fs-sm); color: var(--text-secondary); }
 
 /* Filter chip -- same pattern as EventEditor / TemplatesSection. */
 .filter-chip {
@@ -256,7 +256,7 @@ onMounted(() => {
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-default);
   background: var(--bg-page);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;

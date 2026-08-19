@@ -92,7 +92,7 @@ async function handleStart(): Promise<void> {
   gap: var(--space-2);
 }
 .avatar-header__sub {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   opacity: 0.9;
   margin-top: var(--space-1);
 }
@@ -105,7 +105,7 @@ async function handleStart(): Promise<void> {
   border-radius: var(--radius-md);
 }
 .avatar-restrictions__title {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-secondary);
   display: flex;
@@ -123,7 +123,7 @@ async function handleStart(): Promise<void> {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 .avatar-restrictions__icon {

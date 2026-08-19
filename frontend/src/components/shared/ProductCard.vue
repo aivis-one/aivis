@@ -154,7 +154,7 @@ const available = computed(() => props.product.available_packages)
 }
 
 .product-card__desc {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary);
+  font-size: var(--fs-sm); color: var(--text-secondary);
   margin-bottom: var(--space-3); line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;

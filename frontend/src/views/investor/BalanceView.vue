@@ -396,7 +396,7 @@ watch(
   padding-top: var(--space-2);
   margin-top: var(--space-1);
   border-top: 1px solid var(--border-default);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 .bv__balance-frozen-label {

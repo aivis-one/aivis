@@ -258,7 +258,7 @@ function onClose(): void {
   padding: var(--space-1) 0 var(--space-2);
 }
 .tds__type {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -296,7 +296,7 @@ function onClose(): void {
   gap: var(--space-3);
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border-default);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
 }
 .tds__key {
   color: var(--text-secondary);

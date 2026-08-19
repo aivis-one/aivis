@@ -1047,9 +1047,9 @@ onMounted(() => {
   display: flex; gap: var(--space-3); flex-wrap: wrap;
   font-size: var(--fs-xs); color: var(--text-secondary);
 }
-.rm-item__desc { font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0; line-height: 1.4; }
+.rm-item__desc { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0; line-height: 1.4; }
 .rm-item__link {
-  font-size: var(--fs-xs-lg); color: var(--primary); word-break: break-all;
+  font-size: var(--fs-sm); color: var(--primary); word-break: break-all;
   text-decoration: none;
 }
 .rm-item__link:hover { text-decoration: underline; }
@@ -1068,27 +1068,27 @@ onMounted(() => {
 
 /* -- Modal -- */
 .scr__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
-.scr__modal-hint { font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0 0 var(--space-4); }
+.scr__modal-hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 0 0 var(--space-4); }
 .scr__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
 
 .scr__hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 0 0 var(--space-4); line-height: 1.4; }
 
 /* Kind tab strip */
 .scr__kind { margin-bottom: var(--space-4); }
-.scr__kind-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
+.scr__kind-label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
 .scr__kind-hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: var(--space-2) 0 0; line-height: 1.4; }
 .scr__kind-tabs { display: flex; gap: var(--space-2); }
 .scr__kind-tab {
   flex: 1; padding: var(--space-3) var(--space-2); border: 2px solid var(--border-default);
   border-radius: var(--radius-md); background: var(--bg-page);
-  font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-secondary);
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary);
   cursor: pointer; transition: all 0.2s;
 }
 .scr__kind-tab--active { border-color: var(--primary); color: var(--primary); background: var(--bg-subtle); }
 
 /* Native date field (no CDatePicker in the kit) */
 .scr__field { margin-bottom: var(--space-4); }
-.scr__field-label { display: block; font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
+.scr__field-label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
 .scr__date {
   width: 100%; padding: var(--space-4) var(--space-4); border: 2px solid var(--border-default);
   border-radius: var(--radius-md); font-size: var(--fs-sm); font-family: inherit;

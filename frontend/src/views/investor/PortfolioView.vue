@@ -339,7 +339,7 @@ onMounted(() => {
   gap: var(--space-3);
 }
 .pv__hero-label {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   opacity: 0.9;
 }
 .pv__hero-value {

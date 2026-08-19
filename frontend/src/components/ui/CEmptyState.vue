@@ -19,7 +19,7 @@ defineProps<{ title?: string; description?: string }>()
 }
 .c-empty__icon { margin-bottom: var(--space-4); color: var(--text-tertiary); }
 .c-empty__title { font-size: var(--fs-body); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
-.c-empty__desc { font-size: var(--fs-xs-lg); color: var(--text-secondary); line-height: 1.5; max-width: 280px; }
+.c-empty__desc { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; max-width: 280px; }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
    so this rule cannot bind until the container is already wider than a

@@ -321,7 +321,7 @@ async function handleSignAll(): Promise<void> {
   margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
 .auth-error {
-  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
+  font-size: var(--fs-xs); color: var(--danger); text-align: center;
   margin-bottom: var(--space-4); max-width: var(--maxw-form-wide);
 }
 
@@ -353,7 +353,7 @@ async function handleSignAll(): Promise<void> {
   border: 2px solid var(--border-default); border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; margin-top: var(--space-1);
-  font-size: var(--fs-xs-lg); color: var(--on-primary);
+  font-size: var(--fs-xs); color: var(--on-primary);
 }
 .doc-checkbox.checked {
   background: var(--primary); border-color: var(--primary);
@@ -381,7 +381,7 @@ async function handleSignAll(): Promise<void> {
 .doc-link:hover { color: var(--primary); }
 
 .doc-counter {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary);
+  font-size: var(--fs-xs); color: var(--text-secondary);
   margin-bottom: var(--space-4);
 }
 

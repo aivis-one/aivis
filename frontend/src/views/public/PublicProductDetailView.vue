@@ -556,7 +556,7 @@ function onBuyClick(): void {
   padding: var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-tertiary);
   text-align: center;
 }

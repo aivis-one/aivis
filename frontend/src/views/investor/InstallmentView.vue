@@ -661,7 +661,7 @@ onMounted(load)
   letter-spacing: 0.08em;
 }
 .iv__hint {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin: -4px 0 var(--space-3);
   line-height: 1.4;
@@ -756,7 +756,7 @@ onMounted(load)
   border-bottom: none;
 }
 .iv__tranche-num {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -799,7 +799,7 @@ onMounted(load)
 }
 .iv__balance-hint {
   margin: var(--space-2) 0 0;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--danger);
 }
 

@@ -246,7 +246,7 @@ async function handleResend(): Promise<void> {
 }
 .auth-form { width: 100%; max-width: var(--maxw-form); }
 .auth-error {
-  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
+  font-size: var(--fs-xs); color: var(--danger); text-align: center;
   margin-bottom: var(--space-4); max-width: var(--maxw-form);
 }
 

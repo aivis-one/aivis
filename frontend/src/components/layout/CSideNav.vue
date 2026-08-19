@@ -99,7 +99,7 @@ function navigate(tab: TabItem): void {
     background: none;
     color: var(--text-tertiary);
     font-family: inherit;
-    font-size: var(--fs-xs-lg);
+    font-size: var(--fs-sm);
     font-weight: 500;
     cursor: pointer;
     transition: color 0.2s, background-color 0.2s;

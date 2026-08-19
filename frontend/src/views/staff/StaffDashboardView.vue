@@ -228,7 +228,7 @@ onMounted(loadStats)
   background: var(--warning-subtle);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-4);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--warning);
   cursor: pointer;

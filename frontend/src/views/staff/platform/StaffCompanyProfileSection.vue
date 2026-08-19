@@ -161,7 +161,7 @@ const distributionJson = computed<string>(() => {
   display: flex; justify-content: space-between; align-items: center;
   padding: var(--space-3) 0; border-bottom: 1px solid var(--border-default);
 }
-.scp__label { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.scp__label { font-size: var(--fs-xs); color: var(--text-secondary); }
 .scp__value { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
 
 .scp__section { margin-top: var(--space-4-lg); }
@@ -173,7 +173,7 @@ const distributionJson = computed<string>(() => {
   white-space: pre-wrap;
 }
 .scp__links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.scp__links a { font-size: var(--fs-xs-lg); color: var(--primary); text-decoration: underline; word-break: break-all; }
+.scp__links a { font-size: var(--fs-sm); color: var(--primary); text-decoration: underline; word-break: break-all; }
 
 .scp__json {
   font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-primary);

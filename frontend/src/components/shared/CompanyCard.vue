@@ -179,7 +179,7 @@ const coverImage = computed(() =>
 
 .company-card__description {
   margin: 0;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
   /* Reserve 3 lines of height even when empty -- equal-height cards

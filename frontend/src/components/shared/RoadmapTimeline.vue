@@ -401,7 +401,7 @@ const endMarkerLabel = computed<string>(() =>
 .roadmap__description {
   margin: 0;
   padding: 0 var(--space-4);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -446,7 +446,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .roadmap__post-title {
   margin: 0;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
@@ -485,7 +485,7 @@ const endMarkerLabel = computed<string>(() =>
   flex: 1;
   min-width: 0;
   padding: var(--space-2) var(--space-4);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 500;
   border-radius: var(--radius-sm);
   cursor: pointer;

@@ -308,7 +308,7 @@ async function onEmail(): Promise<void> {
 }
 
 .ags__loading-hint {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 

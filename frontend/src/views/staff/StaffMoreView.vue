@@ -112,7 +112,7 @@ function goAvatar(): void {
   font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin-top: var(--space-3);
 }
 .staff-more__email {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin-top: var(--space-1);
+  font-size: var(--fs-sm); color: var(--text-secondary); margin-top: var(--space-1);
 }
 .staff-more__badges {
   display: inline-flex; gap: var(--space-2); margin-top: var(--space-2);
@@ -135,11 +135,11 @@ function goAvatar(): void {
 .staff-more__nav-item--accent { color: var(--accent); font-weight: 600; }
 .staff-more__nav-item--danger { color: var(--danger); border-bottom: none; }
 .staff-more__nav-left { display: flex; align-items: center; gap: var(--space-2); }
-.staff-more__nav-right { font-size: var(--fs-xs-lg); color: var(--text-tertiary); }
+.staff-more__nav-right { font-size: var(--fs-xs); color: var(--text-tertiary); }
 
 .staff-more__info-row {
   display: flex; justify-content: space-between; padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default); font-size: var(--fs-sm); color: var(--text-primary);
 }
-.staff-more__info-val { font-size: var(--fs-xs-lg); color: var(--text-tertiary); }
+.staff-more__info-val { font-size: var(--fs-sm); color: var(--text-tertiary); }
 </style>

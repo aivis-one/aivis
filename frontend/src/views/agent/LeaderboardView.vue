@@ -186,7 +186,7 @@ onMounted(() => {
 }
 
 .lb__subtitle {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
 }

@@ -266,7 +266,7 @@ onMounted(() => {
 }
 
 .dash__subtitle {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -361,7 +361,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;

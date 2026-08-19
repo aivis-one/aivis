@@ -72,7 +72,7 @@ const { t } = useI18n()
 
 .c-input-label {
   display: block;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: var(--space-2);

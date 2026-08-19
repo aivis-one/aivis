@@ -306,7 +306,7 @@ onMounted(load)
 
 .dv__hint {
   margin: var(--space-3) 0 0;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -349,7 +349,7 @@ onMounted(load)
   background: var(--bg-subtle);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   word-break: break-all;
   text-align: center;
@@ -377,7 +377,7 @@ onMounted(load)
 
 .dv__warning-text {
   margin: 0;
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-primary);
 }

@@ -492,7 +492,7 @@ onMounted(loadEvents)
   display: flex; align-items: center; justify-content: center;
   gap: var(--space-3); margin-top: var(--space-4);
 }
-.evd__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
+.evd__page { font-size: var(--fs-xs); color: var(--text-secondary); }
 
 .evd__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
 .evd__modal-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-2); }
@@ -501,7 +501,7 @@ onMounted(loadEvents)
 
 .evd__field { margin-bottom: var(--space-4); }
 .evd__label {
-  display: block; font-size: var(--fs-xs-lg); font-weight: 600;
+  display: block; font-size: var(--fs-xs); font-weight: 600;
   color: var(--text-primary); margin-bottom: var(--space-2);
 }
 .evd__datetime {

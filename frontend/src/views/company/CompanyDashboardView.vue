@@ -482,7 +482,7 @@ onMounted(() => {
   margin: 0;
 }
 .dash__subtitle {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
 }
@@ -627,7 +627,7 @@ onMounted(() => {
   margin: var(--space-1) 0 0 0;
 }
 .dash__recent-empty {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin: 0;
   padding: var(--space-4);
@@ -680,7 +680,7 @@ onMounted(() => {
   gap: var(--space-2);
 }
 .dash__tx-type {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -688,7 +688,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 .dash__tx-amount {
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   flex-shrink: 0;

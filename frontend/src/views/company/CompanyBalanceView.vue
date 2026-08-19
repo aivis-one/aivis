@@ -680,7 +680,7 @@ onMounted(() => {
   color: var(--text-primary); margin: 0;
 }
 .cbal__subtitle {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-sm); color: var(--text-secondary); margin: 0;
 }
 
 .cbal__center {
@@ -733,7 +733,7 @@ onMounted(() => {
 }
 
 .cbal__empty {
-  font-size: var(--fs-xs-lg); color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-xs); color: var(--text-secondary); margin: 0;
   padding: var(--space-4); border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
@@ -861,7 +861,7 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
-  font-size: var(--fs-xs-lg);
+  font-size: var(--fs-sm);
   font-family: var(--font-mono);
   line-height: 1.5;
   resize: vertical;

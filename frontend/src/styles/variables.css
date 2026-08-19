@@ -1,3 +1,15 @@
+/* SYNC-ADDITION ROLL-CALL -- grep this file for `SYNC-ADDITION` and you get all of
+   them. Everything listed here exists ONLY in this file and has NO counterpart in
+   `_design-source/aivis-tokens.css`; a regeneration from source drops it silently,
+   with no error and no failed build. Added 2026-08-19 because until today the two
+   most damaging entries carried prose notes and no greppable marker, so the grep
+   returned 3 and the true count was 6.
+     1. --on-success (3 declarations)      -- the fourth --on-* colour
+     2. 'Noto Sans Arabic' in the THREE font stacks -- the product's ONLY Arabic
+     3. the @media (prefers-color-scheme: dark) block -- system dark mode entire
+   The product-owned block near the bottom is a different thing: it is declared
+   product-owned in place and the design system is deliberately silent on it.
+   ============================================================ */
 /* ============================================================
    AIVIS design tokens — the design system, adopted whole (batch 6b-2)
    Source: _design-source/aivis-tokens.css v0.7, values verbatim.
@@ -164,14 +176,18 @@
      everything we use goes through the design system FIRST. These are the sizes
      the cabinets actually use that fall BETWEEN the system's steps. 89% of the
      product's 538 hardcoded sizes already landed on a system step within 1px;
-     these are the other 11%, plus one tie.
-     --fs-xs-lg is 13px, the single most-used size in the product (114 places).
-     It sits EXACTLY between --fs-xs (12) and --fs-sm (14) — a TIE, and this
-     home's own rule from the B-2 icon pass is: never snap on a tie. Collapsing
-     12/13/14 into one step is a real design decision, and once every site reads
-     a token it becomes a ONE-FILE decision instead of a 331-site edit. */
+     these are the other 11%.
+     THE 13px STEP IS GONE — owner-ruled 2026-08-19, option C. It was kept as a
+     deliberate tie between 12 and 14, on the rule that you never snap on a tie.
+     What settled it was not a preference but a measurement: its 115 sites were
+     classified by JOB, and 13px turned out to own NO job of its own — 12 leads
+     labels, badges and table cells, 14 leads names, values and controls, and the
+     only bucket 13 led was empty/loading states. So the tie was never a tie: it
+     was the middle of the old 2px grid that the rest of the product had left.
+     Each site moved toward the step its own kind of element already sat on —
+     57 up to --fs-sm, 58 down to --fs-xs — rather than the whole block moving
+     one way. Ambiguous sites went UP: 12px is already the low end of readable. */
   --fs-3xs: 0.625rem;    /* 10px */
-  --fs-xs-lg: 0.8125rem; /* 13px — between xs and sm; tie, deliberately unsnapped */
   --fs-lg: 1.25rem;      /* 20px */
   --fs-xl: 1.375rem;     /* 22px */
   --fs-2xl: 1.75rem;     /* 28px */
@@ -239,9 +255,12 @@
   /* The design system defines THREE type roles; the product shipped TWO, so every
      heading rendered in the body face. Owner-ruled 2026-08-18: wire it and drop
      the retired family in one go.
-     'Noto Sans Arabic' is NON-NEGOTIABLE in every stack: `ar` is a shipped locale
-     and the design system's three families carry ZERO Arabic glyphs. It has bitten
-     this repo once already, when the RTL rule still named the retired face. */
+     SYNC-ADDITION: 'Noto Sans Arabic' is NON-NEGOTIABLE in all THREE stacks below
+     and is NOT in the design-system source. `ar` is a shipped locale and the
+     system's families carry ZERO Arabic glyphs, so a regeneration from source
+     leaves Arabic users with no font at all. It has bitten this repo once already,
+     when the RTL rule still named the retired face. The TOKENS are native to the
+     system; what is additive is the Arabic family inside each stack. */
   --font-display: 'Plus Jakarta Sans', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Manrope', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Noto Sans Arabic', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -326,8 +345,12 @@
 }
 
 /* === the OS is dark and the user has not chosen ===
-   SYNC: keep identical with [data-theme="dark"] above.
-   WRITTEN BY HAND -- the design system has no prefers-color-scheme block. */
+   SYNC-ADDITION: this ENTIRE block is written by hand and has NO counterpart in
+   the design-system source, which carries `:root` + `[data-theme="dark"]` only.
+   Regenerate from source and system dark mode disappears for every user who never
+   touched the theme control -- which is most of them. Keep identical with
+   [data-theme="dark"] above; the guard `:root:not([data-theme])` is what lets an
+   explicit in-app choice still win, and it is load-bearing. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --bg-page: var(--neutral-950);

@@ -316,7 +316,7 @@ async function handleRetry(): Promise<void> {
   margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
 .auth-error {
-  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
+  font-size: var(--fs-xs); color: var(--danger); text-align: center;
   margin-bottom: var(--space-4); max-width: var(--maxw-form);
 }
 
@@ -348,12 +348,12 @@ async function handleRetry(): Promise<void> {
   border-radius: var(--radius-md);
 }
 .kyc-statuses-title {
-  font-size: var(--fs-xs-lg); font-weight: 600; color: var(--text-primary);
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
   margin-bottom: var(--space-2);
 }
 .kyc-status-item {
   display: flex; align-items: center; gap: var(--space-2);
-  font-size: var(--fs-xs-lg); color: var(--text-secondary);
+  font-size: var(--fs-xs); color: var(--text-secondary);
   margin-bottom: var(--space-2);
 }
 .kyc-status-item:last-child { margin-bottom: 0; }

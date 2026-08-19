@@ -223,7 +223,7 @@ const fid = useId()
 }
 .auth-form { width: 100%; max-width: var(--maxw-form); }
 .auth-error {
-  font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
+  font-size: var(--fs-xs); color: var(--danger); text-align: center;
   margin-bottom: var(--space-4);
 }
 
@@ -234,7 +234,7 @@ const fid = useId()
 
 .form-group { margin-bottom: var(--space-4); }
 .form-label {
-  display: block; font-size: var(--fs-xs-lg); font-weight: 600;
+  display: block; font-size: var(--fs-xs); font-weight: 600;
   color: var(--text-primary); margin-bottom: var(--space-2);
 }
 .form-input,
