@@ -528,4 +528,21 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .hub__subtitle { max-width: var(--maxw-prose); }
+
+/* A5: this control is deliberately 24px to sit right in its row, so the PAINTED
+   box stays and the HIT AREA is expanded past it instead. The overlay is
+   invisible, centred, and never smaller than the tap floor; clicks land on the
+   button because the pseudo-element belongs to it. */
+.hub__card-copy {
+  position: relative;
+}
+.hub__card-copy::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  transform: translate(-50%, -50%);
+}
 </style>

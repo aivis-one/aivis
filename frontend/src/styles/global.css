@@ -159,3 +159,21 @@ body {
 .wrap-prose {
   max-width: var(--maxw-prose);
 }
+
+/* === Keyboard focus =======================================================
+   A7. Measured before writing this: most inputs already REPLACE the outline
+   with a box-shadow ring, which is a valid indicator -- but buttons, links,
+   chips, tabs and cards had no focus treatment at all.
+
+   :where() carries ZERO specificity deliberately, so a component that defines
+   its own ring still wins and only the untreated controls pick this up. The
+   companion rule keeps the ring off mouse clicks, which is the whole reason
+   :focus-visible exists. */
+:where(a[href], button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}

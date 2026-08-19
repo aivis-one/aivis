@@ -433,7 +433,8 @@ onMounted(loadPosts)
         <div class="ple__chips">
           <span v-for="tag in form.tags" :key="tag" class="ple__chip">
             {{ tag }}
-            <button type="button" class="ple__chip-x" @click="removeTag(tag)">
+            <button
+        :aria-label="t('common.close')" type="button" class="ple__chip-x" @click="removeTag(tag)">
               <X :size="16" />
             </button>
           </span>

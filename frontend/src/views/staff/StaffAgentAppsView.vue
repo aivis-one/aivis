@@ -131,6 +131,7 @@ onMounted(loadQueue)
           </button>
           <button
             class="app-btn app-btn--reject"
+            :aria-label="t('staff.agentApps2.reject')"
             :disabled="processingIds.has(item.id)"
             @click.stop="openReject(item)"
           >
@@ -183,7 +184,12 @@ onMounted(loadQueue)
 .app-item__info { flex: 1; min-width: 0; }
 .app-item__name { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); font-family: monospace; }
 .app-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); text-transform: capitalize; }
-.app-item__actions { display: flex; gap: var(--space-1); flex-shrink: 0; }
+/* A5: the gap is 12px, not 4, and the reason is arithmetic rather than taste.
+   These buttons are painted 32px and carry a 44px hit overlay; at a 4px gap
+   the pitch was 36 and ADJACENT OVERLAYS OVERLAPPED BY 8px, so the upper one
+   swallowed its neighbour's edge and half the row still failed a hit test.
+   32 + 12 = 44 makes each target own its full area with nothing to spare. */
+.app-item__actions { display: flex; gap: var(--space-3); flex-shrink: 0; }
 
 .app-btn {
   width: 32px; height: 32px; border-radius: var(--radius-sm); border: none;
@@ -207,4 +213,21 @@ onMounted(loadQueue)
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .staff-apps__hint { max-width: var(--maxw-prose); }
+
+/* A5: this control is deliberately 32px to sit right in its row, so the PAINTED
+   box stays and the HIT AREA is expanded past it instead. The overlay is
+   invisible, centred, and never smaller than the tap floor; clicks land on the
+   button because the pseudo-element belongs to it. */
+.app-btn {
+  position: relative;
+}
+.app-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  transform: translate(-50%, -50%);
+}
 </style>

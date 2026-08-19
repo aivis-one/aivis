@@ -25,6 +25,8 @@ withDefaults(
 
 <style scoped>
 .c-btn {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   display: inline-flex;
   align-items: center;
   justify-content: center;

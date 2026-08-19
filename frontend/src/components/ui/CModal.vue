@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 // Modal overlay. Closes on overlay click (if allowed) or close button.
 
 import { X } from 'lucide-vue-next'
@@ -17,6 +18,10 @@ const emit = defineEmits<{ close: [] }>()
 function onOverlay(): void {
   if (props.closeOnOverlay) emit('close')
 }
+
+// A1: the close control is an icon with no text; its name must come from an
+// aria-label. This component had no i18n binding.
+const { t } = useI18n()
 </script>
 
 <template>
@@ -24,7 +29,8 @@ function onOverlay(): void {
     <Transition name="c-modal">
       <div v-if="open" class="c-modal-overlay" @click.self="onOverlay">
         <div class="c-modal-dialog">
-          <button v-if="showClose" class="c-modal-close" @click="emit('close')">
+          <button
+        :aria-label="t('common.close')" v-if="showClose" class="c-modal-close" @click="emit('close')">
             <X :size="20" />
           </button>
           <slot />

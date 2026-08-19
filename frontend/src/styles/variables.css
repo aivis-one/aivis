@@ -196,6 +196,12 @@
      316px and an ACTION BUTTON reached 497px. Past a point the extra room
      should become whitespace, not wider furniture. --tile-min is the floor at
      which a track still earns its place. */
+  /* TAP FLOOR — the smallest a pointer target may be. Some controls are
+     deliberately small to look right in a dense row; for those the HIT AREA is
+     expanded past the painted box instead of the box being grown, so the rule
+     is satisfied without redesigning the screen. */
+  --tap-min: 44px;
+
   --tile-min: 150px;
   --tile-max: 280px;
   /* The design system defines THREE type roles; the product shipped TWO, so every

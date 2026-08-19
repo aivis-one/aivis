@@ -64,6 +64,8 @@ defineProps<{
 
 <style scoped>
 .c-back-link {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   align-self: flex-start;
   display: inline-flex;
   align-items: center;

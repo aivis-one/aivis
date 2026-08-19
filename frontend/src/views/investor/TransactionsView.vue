@@ -378,8 +378,11 @@ onMounted(() => {
 .tv__item:hover,
 .tv__item:focus-visible {
   border-color: var(--primary);
-  outline: none;
 }
+
+/* A7: `outline: none` was removed here. The only indicator this row had was a
+   border colour it SHARES with :hover, so keyboard focus looked exactly like
+   the mouse passing over it. The global ring now applies. */
 
 .tv__item-icon {
   flex-shrink: 0;
