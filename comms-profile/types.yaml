@@ -1,0 +1,95 @@
+# =============================================================================
+# AIVIS -- comms product profile: notification type dictionary
+# =============================================================================
+#
+# The comms service carries NO product vocabulary: notification types and
+# their preference categories are a per-product artifact living in the
+# PRODUCT repo (comms/deploy/INTEGRATION.md section 3). The comms stack
+# bind-mounts this directory read-only and reads it at startup.
+#
+# Format (comms app/profile/loader.py, _parse_types): a MAPPING
+# {type_key: {category: str}}, never a list -- a list could not carry
+# per-type fields. Unknown spec keys are tolerated (additive contract).
+# Widths from comms app/core/constants.py: a type key is <= 50 chars
+# (MAX_TYPE_KEY_LEN), a category <= 50 chars (MAX_CATEGORY_LEN).
+#
+# WHY ONLY THREE TYPES, AND WHY THEY CANNOT WAIT
+# ----------------------------------------------
+# aivis product types (bookings, wallet, verification and the rest of the
+# domain dictionary) arrive in phase 2, together with the emitters that
+# raise them. Nothing emits them yet, so declaring them now would describe
+# behaviour that does not exist.
+#
+# These three are different: they are not aivis types at all. comms emits
+# them ITSELF, unconditionally -- chat is a core capability of the service,
+# not a feature of the product wired to it. Its loader enforces that in
+# _require_msg_type_categories, which runs before templates are even
+# parsed: every one of MSG_TYPE_KEYS must be declared here WITH a non-empty
+# category, or the profile is rejected and comms does not start. The reason
+# is mechanical, not stylistic -- a type with no category bypasses the mute
+# gate, so a forgotten category would make chat notifications impossible to
+# silence. So the three must be here from the first commit that hands comms
+# a profile, phase 2 or no phase 2.
+#
+# HOW THE CATEGORIES ARE SPLIT: BY ADDRESSEE SIDE, NOT BY THREAD KIND
+# -------------------------------------------------------------------
+# Established from the bodies of two comms functions in app/notifier.py
+# (named without line numbers on purpose -- a function name survives a
+# commit in a repository we do not control, a line number does not):
+#
+#   notify_new_message
+#     - emits msg.participant_message to thread.client, and only when the
+#       sender is NOT the client -- i.e. the staff side wrote to the person
+#       who opened the conversation;
+#     - emits msg.support_message to thread.assignee, the operator the
+#       thread is assigned to.
+#
+#   _emit_close_notification
+#     - emits msg.thread_closed to thread.client. Its docstring records
+#       that only section threads are ever flagged for this notice, so it
+#       can only ever mean "the request you opened was closed".
+#
+# So two of the three land on the person who opened the request and one
+# lands on the staff member handling it. Grouping the client-facing pair
+# is not a choice between two defensible layouts: they are the same
+# conversation with support seen by the same person, and a mute that
+# silenced the replies while letting the closing notice through would be a
+# defect, not a preference.
+#
+#   support_messages -- reaches the person who opened the request
+#   staff_messages   -- reaches the staff member handling it
+#
+# THE OTHER PRODUCT'S NAMES WERE DELIBERATELY NOT TAKEN
+# -----------------------------------------------------
+# velo maps the same three keys onto msg_participants / msg_support. Those
+# names describe velo's shape, where a thread can run between two ordinary
+# participants. aivis has no participant threads -- every thread is a
+# support request between a person and staff -- so a preference toggle
+# labelled "participant messages" would name something the user can never
+# receive. Copying the names would have cost nothing today and misled every
+# reader of the preferences screen from phase 3 onward.
+#
+# EDITING THIS FILE
+# -----------------
+# A type key declared TWICE is resolved to the LAST occurrence silently by
+# the loader -- no error, no warning -- so a duplicate that carries a
+# category passes validation and quietly drifts.
+#
+# No external domain literals anywhere in this file, comments included.
+# The comms startup fence rejects them in the data, but it never sees
+# comments (the YAML parser drops them before the check runs), so in the
+# comments this rule holds by authorship alone.
+# =============================================================================
+
+# -- Reaches the person who opened the support request --
+
+msg.participant_message:
+  category: support_messages
+
+msg.thread_closed:
+  category: support_messages
+
+# -- Reaches the staff member the request is assigned to --
+
+msg.support_message:
+  category: staff_messages

@@ -37,6 +37,15 @@ services:
       retries: 3
       start_period: 15s
     restart: unless-stopped
+    # The backend is the ONLY aivis service that talks to comms (the comms
+    # API is internal -- no published port, no nginx route -- and resolves
+    # by service name on aivis-shared only).
+    # `default` is listed explicitly: the moment a service carries a
+    # `networks:` key, compose stops attaching it to the default network
+    # implicitly, and app would lose postgres / redis / minio.
+    networks:
+      - default        # intra-aivis traffic, unchanged
+      - aivis-shared   # reach comms-app / comms-redis by name
 
   frontend:
     build: ./frontend
@@ -197,3 +206,18 @@ volumes:
   aivis_postgres_data:
   aivis_redis_data:
   aivis_minio_data:
+
+networks:
+  # Shared bus between the aivis stack and the comms stack. The comms stack
+  # is its OWN compose project out of the comms repository -- none of its
+  # five containers is described here, and none ever will be.
+  #
+  # EXTERNAL: compose requires this network to EXIST before `up`; it does
+  # not create it. Whoever creates it first wins -- either side is fine,
+  # the result is identical. It survives `docker compose down` (it is not
+  # this project's network to remove).
+  #
+  # frontend / postgres / redis / minio / minio-init stay on the implicit
+  # default network only; app is the only member (see its `networks:` key).
+  aivis-shared:
+    external: true
