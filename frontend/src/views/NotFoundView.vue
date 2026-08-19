@@ -6,6 +6,7 @@
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { CButton } from '@/components/ui'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -19,9 +20,9 @@ function goHome(): void {
   <div class="not-found">
     <h1 class="not-found__code">404</h1>
     <p class="not-found__text">{{ t('error.pageNotFound') }}</p>
-    <button class="not-found__btn" @click="goHome">
+    <CButton inline @click="goHome">
       {{ t('common.back') }}
-    </button>
+    </CButton>
   </div>
 </template>
 
@@ -50,23 +51,6 @@ function goHome(): void {
   font-size: var(--fs-body);
   color: var(--text-secondary);
   margin: var(--space-4) 0 var(--space-6);
-}
-
-.not-found__btn {
-  padding: var(--space-3) var(--space-6);
-  border-radius: var(--radius-md);
-  /* --primary, not --accent: this is the screen's PRIMARY action. The owner
-     found eight of these and they were fixed; the sweep found this one
-     outside that pass's scope. `background: var(--accent)` resolves
-     perfectly, so no token audit can ever see it -- only reading the
-     selector name against the token name does. */
-  background: var(--primary);
-  color: var(--on-primary);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,

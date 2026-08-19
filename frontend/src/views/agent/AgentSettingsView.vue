@@ -37,13 +37,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight, CreditCard, LogOut, Pencil } from 'lucide-vue-next'
 
-import {
-  CAvatar,
-  CBackLink,
-  CBottomSheet,
-  CButton,
-  CLoader,
-} from '@/components/ui'
+import { CAvatar, CBackLink, CBottomSheet, CButton, CLoader, CTextarea } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useToast } from '@/composables/useToast'
@@ -343,14 +337,16 @@ onMounted(() => {
           <span class="sett__field-label">
             {{ t('agent.settings.payout.form.label') }}
           </span>
-          <textarea
+          <CTextarea
             v-model="payoutEditInput"
-            class="sett__textarea"
-            rows="8"
+            class="sett__control"
+            size="compact"
+            mono
+            :rows="8"
             spellcheck="false"
             :placeholder="t('agent.settings.payout.form.placeholder')"
             :disabled="payoutSubmitting"
-          ></textarea>
+          />
           <span class="sett__field-hint">
             {{ t('agent.settings.payout.form.hint') }}
           </span>
@@ -544,6 +540,9 @@ onMounted(() => {
 /* Payout form */
 .sett__form { display: flex; flex-direction: column; gap: var(--space-4); }
 .sett__field { display: flex; flex-direction: column; gap: var(--space-2); }
+/* See CompanyBalanceView: the flex gap is the field's rhythm. */
+.sett__control { margin-bottom: 0; }
+.sett__control :deep(.c-textarea) { min-height: 160px; }
 .sett__field-label {
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -556,22 +555,6 @@ onMounted(() => {
   color: var(--text-tertiary);
   line-height: 1.4;
 }
-.sett__textarea {
-  width: 100%;
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-size: var(--fs-sm);
-  font-family: var(--font-mono);
-  line-height: 1.5;
-  resize: vertical;
-  min-height: 160px;
-  transition: border-color 0.15s;
-}
-.sett__textarea:focus { outline: none; border-color: var(--primary); }
-.sett__textarea:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .sett__form-error {
   margin: 0;

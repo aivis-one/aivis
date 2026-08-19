@@ -38,7 +38,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowUpFromLine, CreditCard, Wallet } from 'lucide-vue-next'
 
-import { CBottomSheet, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBottomSheet, CButton, CEmptyState, CLoader, CInput } from '@/components/ui'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
 import { getPayoutDetails } from '@/api/users'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -469,13 +469,14 @@ onMounted(() => {
           <span class="abal__field-label">
             {{ t('agent.balance.withdrawals.form.amountLabel') }}
           </span>
-          <input
+          <CInput
             v-model="withdrawAmountInput"
+            class="abal__control"
+            size="compact"
             type="number"
             inputmode="decimal"
             step="0.01"
             min="0"
-            class="abal__input"
             :placeholder="t('agent.balance.withdrawals.form.amountPlaceholder')"
             :disabled="withdrawSubmitting"
           />
@@ -737,6 +738,8 @@ onMounted(() => {
 
 .abal__form { display: flex; flex-direction: column; gap: var(--space-4); }
 .abal__field { display: flex; flex-direction: column; gap: var(--space-2); }
+/* See CompanyBalanceView: the flex gap is the field's rhythm. */
+.abal__control { margin-bottom: 0; }
 .abal__field-label {
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -750,19 +753,6 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.abal__input {
-  width: 100%;
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-size: var(--fs-body);
-  font-family: inherit;
-  transition: border-color 0.15s;
-}
-.abal__input:focus { outline: none; border-color: var(--primary); }
-.abal__input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .abal__form-error {
   margin: 0;

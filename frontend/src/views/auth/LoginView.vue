@@ -54,7 +54,7 @@
 //   PublicShell / RegisterView / useAuthWall.
 // =============================================================================
 
-import { ref, useId } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
@@ -62,6 +62,7 @@ import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client
 import { safeNavigate } from '@/composables/safeNavigate'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
+import { CInput } from '@/components/ui'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -70,7 +71,6 @@ const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
-const showPassword = ref(false)
 const error = ref('')
 
 /**
@@ -151,12 +151,6 @@ async function handleLogin(): Promise<void> {
   }
 }
 
-// A4: these screens carried a visible field caption with no association, and
-// controls with no id. A visible caption is not an accessible name unless it
-// is paired -- a screen reader saw unlabelled fields on the two most important
-// forms in the product. One useId() root, suffixed per field, so the ids stay
-// unique even if a form is ever mounted twice on one page.
-const fid = useId()
 </script>
 
 <template>
@@ -175,61 +169,23 @@ const fid = useId()
       <p class="auth-subtitle">{{ t('auth.login.subtitle') }}</p>
 
       <div class="auth-form">
-        <div class="form-group">
-          <label :for="`${fid}-email`" class="form-label">{{ t('auth.login.email') }}</label>
-          <input
-            :id="`${fid}-email`"
-            v-model="email"
-            type="email"
-            class="form-input"
-            placeholder="name@example.com"
-            autocomplete="email"
-            @keydown.enter="handleLogin"
-          />
-        </div>
+        <CInput
+          v-model="email"
+          :label="t('auth.login.email')"
+          type="email"
+          placeholder="name@example.com"
+          autocomplete="email"
+          @keydown.enter="handleLogin"
+        />
 
-        <div class="form-group">
-          <label :for="`${fid}-password`" class="form-label">{{ t('auth.login.password') }}</label>
-          <div class="input-wrapper">
-            <input
-            :id="`${fid}-password`"
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              class="form-input"
-              :placeholder="t('auth.login.passPlaceholder')"
-              autocomplete="current-password"
-              @keydown.enter="handleLogin"
-            />
-            <button
-              type="button"
-              class="toggle-password"
-              @click="showPassword = !showPassword"
-            >
-              <svg
-                v-if="!showPassword"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              <svg
-                v-else
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        <CInput
+          v-model="password"
+          :label="t('auth.login.password')"
+          type="password"
+          :placeholder="t('auth.login.passPlaceholder')"
+          autocomplete="current-password"
+          @keydown.enter="handleLogin"
+        />
 
         <div v-if="error" class="auth-error">{{ error }}</div>
 
@@ -310,64 +266,6 @@ const fid = useId()
 .auth-form {
   width: 100%;
   max-width: var(--maxw-form);
-}
-
-.form-group {
-  margin-bottom: var(--space-4);
-}
-
-.form-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.form-input {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 2px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-size: var(--fs-sm);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: var(--shadow-focus);
-}
-
-.form-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.input-wrapper {
-  position: relative;
-}
-
-.input-wrapper .form-input {
-  padding-right: var(--space-7);
-}
-
-.toggle-password {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: var(--space-1);
-  color: var(--text-tertiary);
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.toggle-password svg {
-  width: var(--size-2xs);
-  height: var(--size-2xs);
 }
 
 .auth-error {

@@ -29,12 +29,7 @@ import {
   Wallet,
 } from 'lucide-vue-next'
 
-import {
-  CBottomSheet,
-  CButton,
-  CEmptyState,
-  CLoader,
-} from '@/components/ui'
+import { CBottomSheet, CButton, CEmptyState, CLoader, CInput, CTextarea } from '@/components/ui'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
@@ -547,13 +542,14 @@ onMounted(() => {
           <span class="cbal__field-label">
             {{ t('comp.balance.withdrawals.form.amountLabel') }}
           </span>
-          <input
+          <CInput
             v-model="withdrawAmountInput"
+            class="cbal__control"
+            size="compact"
             type="number"
             inputmode="decimal"
             step="0.01"
             min="0"
-            class="cbal__input"
             :placeholder="t('comp.balance.withdrawals.form.amountPlaceholder')"
             :disabled="withdrawSubmitting"
             autofocus
@@ -618,12 +614,14 @@ onMounted(() => {
           <span class="cbal__field-label">
             {{ t('comp.balance.payout.form.label') }}
           </span>
-          <textarea
+          <CTextarea
             v-model="payoutEditInput"
-            class="cbal__textarea"
+            class="cbal__control cbal__control--payout"
+            size="compact"
+            mono
             :placeholder="t('comp.balance.payout.form.placeholder')"
             :disabled="payoutSubmitting"
-            rows="10"
+            :rows="10"
             spellcheck="false"
           />
           <span class="cbal__field-hint">
@@ -830,6 +828,11 @@ onMounted(() => {
 
 .cbal__form { display: flex; flex-direction: column; gap: var(--space-4); }
 .cbal__field { display: flex; flex-direction: column; gap: var(--space-2); }
+/* The field's own rhythm is the flex gap above; the kit group's bottom margin
+   would add a second, larger one inside it. The payout box keeps the height it
+   was given -- :deep() because that height belongs to the control, not the group. */
+.cbal__control { margin-bottom: 0; }
+.cbal__control--payout :deep(.c-textarea) { min-height: 160px; }
 .cbal__field-label {
   font-size: var(--fs-xs); font-weight: 600;
   color: var(--text-secondary);
@@ -840,36 +843,7 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.cbal__input {
-  width: 100%;
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-size: var(--fs-body);
-  font-family: inherit;
-  transition: border-color 0.15s;
-}
-.cbal__input:focus { outline: none; border-color: var(--primary); }
-.cbal__input:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.cbal__textarea {
-  width: 100%;
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-size: var(--fs-sm);
-  font-family: var(--font-mono);
-  line-height: 1.5;
-  resize: vertical;
-  min-height: 160px;
-  transition: border-color 0.15s;
-}
-.cbal__textarea:focus { outline: none; border-color: var(--primary); }
-.cbal__textarea:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .cbal__form-error {
   margin: 0;

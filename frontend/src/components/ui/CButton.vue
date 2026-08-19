@@ -7,15 +7,19 @@ withDefaults(
     size?: 'default' | 'sm'
     disabled?: boolean
     loading?: boolean
+    // The button is full-width by default because that is what every existing
+    // call site expects. `inline` sizes it to its own content, for the screens
+    // where a stretched CTA reads as a mistake -- a 404, an empty state.
+    inline?: boolean
   }>(),
-  { variant: 'primary', size: 'default', disabled: false, loading: false },
+  { variant: 'primary', size: 'default', disabled: false, loading: false, inline: false },
 )
 </script>
 
 <template>
   <button
     class="c-btn"
-    :class="['c-btn--' + variant, size === 'sm' && 'c-btn--sm']"
+    :class="['c-btn--' + variant, size === 'sm' && 'c-btn--sm', inline && 'c-btn--inline']"
     :disabled="disabled || loading"
   >
     <span v-if="loading" class="c-btn__spinner" />
@@ -104,6 +108,9 @@ withDefaults(
   width: auto;
 }
 .c-btn--link:hover:not(:disabled) { text-decoration: underline; }
+
+/* Width: content-sized rather than full-bleed. */
+.c-btn--inline { width: auto; }
 
 /* Size: small */
 .c-btn--sm { padding: var(--space-3) var(--space-4); font-size: var(--fs-xs); }
