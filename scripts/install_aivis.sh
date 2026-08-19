@@ -551,13 +551,13 @@ prompt_secret() {
     local VALUE
 
     while true; do
-        # -s: hidden input, so a secret typed here never lands in terminal
-        # scrollback. -s suppresses the terminal's own echo of the Enter
-        # keystroke too, so the explicit `echo` below is what moves the
-        # cursor to a new line -- without it, the next warn/success line
-        # would run together with the prompt on the same line.
-        read -rsp "  $LABEL: " VALUE < /dev/tty
-        echo
+        # Echo intentionally left ON: the operator wants to see what was
+        # typed while typing it, not after. Trade-off accepted -- typed
+        # values land in the terminal's own scrollback, and in any session
+        # recording (script/asciinema/tmux capture) if one is running. No
+        # explicit `echo` needed here: with echo on, the terminal itself
+        # advances the cursor to a new line on Enter.
+        read -rp "  $LABEL: " VALUE < /dev/tty
         if [ -z "$VALUE" ]; then
             warn "  $LABEL: keeping current value"
             return 0
