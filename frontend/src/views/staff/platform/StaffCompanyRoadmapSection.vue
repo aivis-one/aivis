@@ -1005,7 +1005,7 @@ onMounted(() => {
 
 .scr__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 140px; gap: var(--space-4);
+  justify-content: center; min-height: var(--center-sm); gap: var(--space-4);
 }
 
 .scr__toolbar {
@@ -1026,7 +1026,7 @@ onMounted(() => {
 }
 .rm-item__move {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 24px; border: 1px solid var(--border-default);
+  width: var(--size-sm); height: var(--size-xs); border: 1px solid var(--border-default);
   border-radius: var(--radius-sm); background: var(--bg-page);
   color: var(--text-secondary); cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
@@ -1036,7 +1036,7 @@ onMounted(() => {
 
 .rm-item__cover { flex: 0 0 auto; }
 .rm-item__cover-img {
-  width: 56px; height: 56px; object-fit: cover;
+  width: var(--size-4xl); height: var(--size-4xl); object-fit: cover;
   border-radius: var(--radius-sm); display: block;
 }
 
@@ -1060,7 +1060,7 @@ onMounted(() => {
 }
 .rm-item__action {
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 28px; border: none; background: transparent;
+  width: var(--size-md); height: var(--size-sm); border: none; background: transparent;
   color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
   transition: color 0.2s, background 0.2s;
 }

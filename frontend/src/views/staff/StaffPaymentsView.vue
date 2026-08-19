@@ -204,7 +204,7 @@ onMounted(loadPayments)
 .filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 
 .staff-pay__center {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: var(--space-4);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: var(--center-md); gap: var(--space-4);
 }
 
 .pay-list { display: flex; flex-direction: column; }

@@ -28,7 +28,7 @@ function toggle(): void {
 <style scoped>
 .c-checkbox { display: flex; align-items: flex-start; gap: var(--space-3); cursor: pointer; user-select: none; }
 .c-checkbox__box {
-  width: 20px; height: 20px; min-width: 20px; border: 2px solid var(--border-default);
+  width: var(--size-2xs); height: var(--size-2xs); min-width: var(--size-2xs); border: 2px solid var(--border-default);
   border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; color: var(--on-primary); margin-top: var(--space-1);
 }

@@ -324,7 +324,7 @@ onMounted(() => {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--space-4);
-  min-height: 240px;
+  min-height: var(--center-md);
   padding: var(--space-5);
 }
 

@@ -148,7 +148,7 @@ const distributionJson = computed<string>(() => {
 
 .scp__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 160px; gap: var(--space-4);
+  justify-content: center; min-height: var(--center-md); gap: var(--space-4);
 }
 
 .scp__cover { margin-bottom: var(--space-4); }

@@ -502,11 +502,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: 240px;
+  min-height: var(--center-md);
   padding: var(--space-5);
 }
 .cp__center--small {
-  min-height: 120px;
+  min-height: var(--center-sm);
   padding: var(--space-3);
 }
 
@@ -597,8 +597,8 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--size-md);
+  height: var(--size-md);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -664,7 +664,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: 32px;
+  min-height: var(--size-md);
 }
 
 /* loadMore error banner */

@@ -217,7 +217,7 @@ function onCardClick(): void {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--space-4);
-  min-height: 240px;
+  min-height: var(--center-md);
   padding: var(--space-5);
   text-align: center;
 }
@@ -238,7 +238,7 @@ function onCardClick(): void {
 .cprods__sentinel {
   display: flex; align-items: center; justify-content: center;
   padding: var(--space-4);
-  min-height: 40px;
+  min-height: var(--size-xl);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,

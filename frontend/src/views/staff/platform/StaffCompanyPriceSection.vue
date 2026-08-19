@@ -288,7 +288,7 @@ onMounted(reload)
 
 .scpr__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 140px; gap: var(--space-4);
+  justify-content: center; min-height: var(--center-sm); gap: var(--space-4);
 }
 
 .price-history { display: flex; flex-direction: column; }

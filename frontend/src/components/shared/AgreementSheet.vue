@@ -304,7 +304,7 @@ async function onEmail(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: 260px;
+  min-height: var(--center-lg);
 }
 
 .ags__loading-hint {

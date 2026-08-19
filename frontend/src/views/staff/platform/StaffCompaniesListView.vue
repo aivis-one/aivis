@@ -196,7 +196,7 @@ onMounted(loadCompanies)
 
 .scl__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 200px; gap: var(--space-4);
+  justify-content: center; min-height: var(--center-md); gap: var(--space-4);
 }
 
 .company-list { display: flex; flex-direction: column; }

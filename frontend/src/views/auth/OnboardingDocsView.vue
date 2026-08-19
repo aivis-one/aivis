@@ -349,7 +349,7 @@ async function handleSignAll(): Promise<void> {
 .doc-item.signed { cursor: default; }
 
 .doc-checkbox {
-  width: 22px; height: 22px; min-width: 22px;
+  width: var(--size-xs); height: var(--size-xs); min-width: var(--size-xs);
   border: 2px solid var(--border-default); border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; margin-top: var(--space-1);
@@ -400,7 +400,7 @@ async function handleSignAll(): Promise<void> {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: 18px; height: 18px; border: 2px solid currentColor; opacity: 0.35;
+  width: var(--size-2xs); height: var(--size-2xs); border: 2px solid currentColor; opacity: 0.35;
   border-top-color: currentColor; border-radius: 50%;
   animation: spin 0.6s linear infinite;
   display: inline-block;
@@ -420,7 +420,7 @@ async function handleSignAll(): Promise<void> {
 }
 .doc-modal__center {
   display: flex; align-items: center; justify-content: center;
-  min-height: 120px;
+  min-height: var(--center-sm);
 }
 .doc-modal__content {
   font-size: var(--fs-sm); color: var(--text-primary); line-height: 1.6;

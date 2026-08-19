@@ -173,7 +173,7 @@ onMounted(loadQueue)
 
 .staff-apps__center {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 200px; gap: var(--space-4);
+  min-height: var(--center-md); gap: var(--space-4);
 }
 
 .apps-list { display: flex; flex-direction: column; }
@@ -192,7 +192,7 @@ onMounted(loadQueue)
 .app-item__actions { display: flex; gap: var(--space-3); flex-shrink: 0; }
 
 .app-btn {
-  width: 32px; height: 32px; border-radius: var(--radius-sm); border: none;
+  width: var(--size-md); height: var(--size-md); border-radius: var(--radius-sm); border: none;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   transition: opacity 0.2s;
 }

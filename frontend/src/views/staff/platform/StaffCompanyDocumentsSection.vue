@@ -304,7 +304,7 @@ onMounted(loadAttachments)
 
 .scd__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 140px; gap: var(--space-4);
+  justify-content: center; min-height: var(--center-sm); gap: var(--space-4);
 }
 
 .scd__hint {
@@ -327,7 +327,7 @@ onMounted(loadAttachments)
 .doc-item__reorder { display: flex; flex-direction: column; gap: var(--space-1); flex-shrink: 0; }
 .doc-item__move {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 24px; border: 1px solid var(--border-default);
+  width: var(--size-sm); height: var(--size-xs); border: 1px solid var(--border-default);
   background: var(--bg-page); color: var(--text-secondary); cursor: pointer;
   border-radius: var(--radius-sm);
 }
@@ -347,7 +347,7 @@ onMounted(loadAttachments)
 
 .doc-item__delete {
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border: none; background: none;
+  width: var(--size-md); height: var(--size-md); border: none; background: none;
   color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
   flex-shrink: 0;
 }

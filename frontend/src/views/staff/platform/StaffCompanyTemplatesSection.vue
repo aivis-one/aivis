@@ -275,7 +275,7 @@ onMounted(loadTemplates)
 
 .sct__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 140px; gap: var(--space-4);
+  justify-content: center; min-height: var(--center-sm); gap: var(--space-4);
 }
 .sct__detail-error { font-size: var(--fs-sm); color: var(--danger); text-align: center; }
 

@@ -202,6 +202,29 @@
      is satisfied without redesigning the screen. */
   --tap-min: 44px;
 
+  /* CONTROL LADDER — the box sizes icons, avatars, spinners, toggles and small
+     buttons actually come in. Measured first: the product used eleven values
+     across 128 declarations; 18 and 22 are snapped up by 2px so the ladder
+     lands on the same 4px grid as the spacing scale. --size-2xl is the tap
+     floor by construction, not by coincidence. */
+  --size-2xs: 20px;
+  --size-xs: 24px;
+  --size-sm: 28px;
+  --size-md: 32px;
+  --size-lg: 36px;
+  --size-xl: 40px;
+  --size-2xl: 44px;
+  --size-3xl: 48px;
+  --size-4xl: 56px;
+
+  /* EMPTY / LOADING BLOCK — one concept that carried EIGHT different heights
+     across 37 declarations (80, 120, 140, 160, 200, 240, 260, 320). Three tiers
+     keep the real distinction — an inline block, a section, a whole page — and
+     drop the rest, which was drift rather than intent. */
+  --center-sm: 120px;
+  --center-md: 200px;
+  --center-lg: 320px;
+
   --tile-min: 150px;
   --tile-max: 280px;
   /* The design system defines THREE type roles; the product shipped TWO, so every

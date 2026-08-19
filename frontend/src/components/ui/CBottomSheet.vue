@@ -70,8 +70,8 @@ function onOverlay(): void {
 }
 
 .c-sheet-handle {
-  width: 40px; height: 4px;
-  background: var(--border-default); border-radius: 2px;
+  width: var(--size-xl); height: 4px;
+  background: var(--border-default); border-radius: var(--radius-pill);
   margin: var(--space-2) auto var(--space-1);
   flex-shrink: 0;
 }

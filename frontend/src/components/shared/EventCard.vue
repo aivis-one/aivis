@@ -242,8 +242,8 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   cursor: pointer;
 }
 .event-card--compact .event-card__badge {
-  width: 48px;
-  height: 48px;
+  width: var(--size-3xl);
+  height: var(--size-3xl);
 }
 .event-card__chev { color: var(--text-secondary); flex-shrink: 0; }
 
@@ -286,8 +286,8 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   position: absolute;
   top: 8px;
   left: 8px;
-  width: 44px;
-  height: 44px;
+  width: var(--size-2xl);
+  height: var(--size-2xl);
   background: var(--bg-page);
   box-shadow: var(--shadow-1);
 }

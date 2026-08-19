@@ -495,7 +495,7 @@ onMounted(loadPosts)
 
 .ple__center {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 200px; gap: var(--space-4);
+  justify-content: center; min-height: var(--center-md); gap: var(--space-4);
 }
 
 .post-list { display: flex; flex-direction: column; }
@@ -513,7 +513,7 @@ onMounted(loadPosts)
 .post-item__actions { display: flex; gap: var(--space-1); flex-shrink: 0; }
 .post-item__icon-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border: none; background: none;
+  width: var(--size-md); height: var(--size-md); border: none; background: none;
   color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
   transition: background 0.15s, color 0.15s;
 }

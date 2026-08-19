@@ -168,7 +168,7 @@ const coverImage = computed(() =>
 
 .company-card__chip {
   flex-shrink: 0;
-  padding: 2px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--success);

@@ -614,7 +614,7 @@ onMounted(() => {
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-default);
-  min-height: 48px;
+  min-height: var(--size-3xl);
 }
 .sett__row:last-child {
   border-bottom: none;
@@ -705,10 +705,10 @@ button.sett__row:last-child {
 
 /* Toggle switch */
 .sett__toggle {
-  width: 44px;
-  height: 24px;
+  width: var(--size-2xl);
+  height: var(--size-xs);
   background: var(--border-default);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   position: relative;
   cursor: pointer;
   transition: background 0.2s, opacity 0.2s;
@@ -719,8 +719,8 @@ button.sett__row:last-child {
 .sett__toggle::after {
   content: '';
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: var(--size-2xs);
+  height: var(--size-2xs);
   background: #fff;
   border-radius: 50%;
   top: 2px;

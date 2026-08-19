@@ -697,7 +697,7 @@ onMounted(loadUsers)
 .staff-users__page { font-size: var(--fs-xs-lg); color: var(--text-secondary); }
 
 .staff-users__center {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: var(--space-4);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: var(--center-md); gap: var(--space-4);
 }
 
 /* Detail modal */

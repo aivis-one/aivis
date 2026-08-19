@@ -28,8 +28,8 @@ const { t } = useI18n()
 }
 
 .loading-spinner {
-  width: 32px;
-  height: 32px;
+  width: var(--size-md);
+  height: var(--size-md);
   border: 3px solid var(--border-default);
   border-top-color: var(--primary);
   border-radius: 50%;

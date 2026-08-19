@@ -259,7 +259,7 @@ async function handleResend(): Promise<void> {
   display: flex; gap: var(--space-3); margin-bottom: var(--space-5);
 }
 .code-input {
-  width: 48px; height: 56px; text-align: center;
+  width: var(--size-3xl); height: var(--size-4xl); text-align: center;
   font-size: var(--fs-h3); font-weight: 700;
   border: 2px solid var(--border-default); border-radius: var(--radius-md);
   background: var(--bg-page); color: var(--text-primary);
@@ -284,7 +284,7 @@ async function handleResend(): Promise<void> {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: 18px; height: 18px; border: 2px solid currentColor; opacity: 0.35;
+  width: var(--size-2xs); height: var(--size-2xs); border: 2px solid currentColor; opacity: 0.35;
   border-top-color: currentColor; border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

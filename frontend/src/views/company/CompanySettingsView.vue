@@ -439,8 +439,8 @@ onMounted(() => {
   border: 1px solid var(--border-default);
 }
 .cset__hero-logo {
-  width: 56px;
-  height: 56px;
+  width: var(--size-4xl);
+  height: var(--size-4xl);
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
@@ -516,7 +516,7 @@ onMounted(() => {
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-default);
-  min-height: 48px;
+  min-height: var(--size-3xl);
 }
 .cset__row:last-child { border-bottom: none; }
 a.cset__row,

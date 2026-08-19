@@ -355,7 +355,7 @@ const endMarkerLabel = computed<string>(() =>
 
 .rti__chip {
   display: inline-block;
-  padding: 2px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 500;
   border-radius: var(--radius-pill);
@@ -523,7 +523,7 @@ const endMarkerLabel = computed<string>(() =>
 }
 
 .roadmap__axis--terminal {
-  height: 28px; /* compact -- no card to anchor against */
+  height: var(--size-sm); /* compact -- no card to anchor against */
 }
 
 .roadmap__line--terminal {

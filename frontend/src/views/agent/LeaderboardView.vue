@@ -235,7 +235,7 @@ onMounted(() => {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-secondary);
-  min-width: 36px;
+  min-width: var(--size-lg);
 }
 
 .lb__name {

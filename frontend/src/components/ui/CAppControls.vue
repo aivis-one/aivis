@@ -128,8 +128,8 @@ onBeforeUnmount(() => {
   /* 44px minimum in BOTH axes. These shipped at 40x32 on 2026-08-18 and the
      measurement pass caught it the same day -- a control added to fix an
      accessibility-adjacent gap that was itself below the touch-target floor. */
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--size-2xl);
+  min-height: var(--size-2xl);
   padding: 0 var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -174,7 +174,7 @@ onBeforeUnmount(() => {
   gap: var(--space-2);
   width: 100%;
   padding: var(--space-3) var(--space-2);
-  min-height: 44px;
+  min-height: var(--size-2xl);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;

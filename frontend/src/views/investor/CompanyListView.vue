@@ -220,7 +220,7 @@ async function retryLoadMore(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: 240px;
+  min-height: var(--center-md);
 }
 
 .cl__grid {

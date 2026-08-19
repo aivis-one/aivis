@@ -308,7 +308,7 @@ function onRetry(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 120px;
+  min-height: var(--center-sm);
 }
 
 .pps__grid {

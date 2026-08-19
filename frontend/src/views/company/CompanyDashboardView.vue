@@ -498,8 +498,8 @@ onMounted(() => {
   border: 1px solid var(--border-default);
 }
 .dash__hero-logo {
-  width: 56px;
-  height: 56px;
+  width: var(--size-4xl);
+  height: var(--size-4xl);
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
@@ -659,8 +659,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--size-md);
+  height: var(--size-md);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);

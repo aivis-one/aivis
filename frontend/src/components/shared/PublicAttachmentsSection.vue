@@ -408,7 +408,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 120px;
+  min-height: var(--center-sm);
 }
 
 .ats__groups {
@@ -467,8 +467,8 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: var(--size-xl);
+  height: var(--size-xl);
   background: var(--bg-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
@@ -517,8 +517,8 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--size-md);
+  height: var(--size-md);
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
 }

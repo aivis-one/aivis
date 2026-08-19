@@ -291,8 +291,8 @@ onMounted(() => {
 }
 
 .dash__widget-icon {
-  width: 28px;
-  height: 28px;
+  width: var(--size-sm);
+  height: var(--size-sm);
   border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;

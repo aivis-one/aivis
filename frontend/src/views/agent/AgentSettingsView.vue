@@ -513,7 +513,7 @@ onMounted(() => {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
-  min-height: 48px;
+  min-height: var(--size-3xl);
   width: 100%;
   background: var(--bg-surface);
   font: inherit;

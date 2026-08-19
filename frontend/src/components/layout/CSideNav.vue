@@ -92,7 +92,7 @@ function navigate(tab: TabItem): void {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    min-height: 44px;
+    min-height: var(--size-2xl);
     padding: var(--space-2);
     border: none;
     border-radius: var(--radius-md);

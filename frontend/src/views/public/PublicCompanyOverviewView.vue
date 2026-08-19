@@ -319,7 +319,7 @@ function onRoadmapPostClick(_postId: string): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: 320px;
+  min-height: var(--center-lg);
   padding: var(--space-4);
 }
 
@@ -374,7 +374,7 @@ function onRoadmapPostClick(_postId: string): void {
 
 .co__hero-status {
   align-self: flex-start;
-  padding: 2px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--success);

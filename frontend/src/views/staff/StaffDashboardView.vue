@@ -280,7 +280,7 @@ onMounted(loadStats)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  min-height: var(--center-md);
   gap: var(--space-4);
 }
 

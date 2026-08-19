@@ -213,7 +213,7 @@ onMounted(loadCompany)
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  padding: 0 var(--space-4) 12px;
+  padding: 0 var(--space-4) var(--space-3);
   border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;

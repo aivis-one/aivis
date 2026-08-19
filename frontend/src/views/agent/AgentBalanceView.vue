@@ -644,8 +644,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--size-md);
+  height: var(--size-md);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);
@@ -717,7 +717,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: 32px;
+  min-height: var(--size-md);
 }
 
 .abal__loadmore-error {

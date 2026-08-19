@@ -753,7 +753,7 @@ onMounted(() => {
 }
 .cbal__item-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px;
+  width: var(--size-md); height: var(--size-md);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);
@@ -811,7 +811,7 @@ onMounted(() => {
 
 .cbal__sentinel {
   display: flex; align-items: center; justify-content: center;
-  padding: var(--space-4) 0 0; min-height: 32px;
+  padding: var(--space-4) 0 0; min-height: var(--size-md);
 }
 
 .cbal__json {

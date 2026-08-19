@@ -179,8 +179,8 @@ function openTile(tile: Tile): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--size-2xl);
+  height: var(--size-2xl);
   border-radius: var(--radius-sm);
   background: var(--primary-subtle);
   color: var(--primary);

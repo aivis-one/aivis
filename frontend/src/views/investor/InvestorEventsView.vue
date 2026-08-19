@@ -229,7 +229,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: 200px;
+  min-height: var(--center-md);
   padding: var(--space-5) var(--space-2);
 }
 .iev__list {

@@ -630,7 +630,7 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--space-3);
-  min-height: 80px;
+  min-height: var(--center-sm);
   padding: var(--space-4) var(--space-2);
 }
 .dash__posts-list {
@@ -650,7 +650,7 @@ onBeforeUnmount(() => {
   background: var(--bg-page);
 }
 .dash__post-cover {
-  width: 56px; height: 56px;
+  width: var(--size-4xl); height: var(--size-4xl);
   object-fit: cover;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
@@ -689,7 +689,7 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--space-3);
-  min-height: 80px;
+  min-height: var(--center-sm);
   padding: var(--space-4) var(--space-2);
 }
 .dash__events-list {

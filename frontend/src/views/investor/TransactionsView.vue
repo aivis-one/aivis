@@ -386,8 +386,8 @@ onMounted(() => {
 
 .tv__item-icon {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: var(--size-lg);
+  height: var(--size-lg);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -443,7 +443,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: 32px;
+  min-height: var(--size-md);
 }
 
 /* loadMore error banner -- shown under the sentinel when page > 1

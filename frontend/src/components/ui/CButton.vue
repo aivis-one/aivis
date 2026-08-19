@@ -110,8 +110,8 @@ withDefaults(
 
 /* Spinner */
 .c-btn__spinner {
-  width: 20px;
-  height: 20px;
+  width: var(--size-2xs);
+  height: var(--size-2xs);
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */

@@ -24,8 +24,8 @@ defineProps<{
 
 <style scoped>
 .c-icon-box {
-  width: 44px;
-  height: 44px;
+  width: var(--size-2xl);
+  height: var(--size-2xl);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -34,8 +34,8 @@ defineProps<{
 }
 
 .c-icon-box :deep(svg) {
-  width: 22px;
-  height: 22px;
+  width: var(--size-xs);
+  height: var(--size-xs);
 }
 
 .c-icon-box--primary { background: var(--primary-subtle); color: var(--primary); }

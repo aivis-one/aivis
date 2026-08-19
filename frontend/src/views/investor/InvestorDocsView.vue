@@ -411,7 +411,7 @@ function metaLabel(doc: DocumentResponse): string {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: 240px;
+  min-height: var(--center-md);
   padding: var(--space-5);
 }
 
@@ -443,8 +443,8 @@ function metaLabel(doc: DocumentResponse): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--size-lg);
+  height: var(--size-lg);
   border-radius: var(--radius-sm);
   background: var(--primary-subtle);
   color: var(--primary);
@@ -497,7 +497,7 @@ function metaLabel(doc: DocumentResponse): string {
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  min-height: 160px;
+  min-height: var(--center-md);
   padding: var(--space-4) 0;
 }
 .docs-modal__hint {
