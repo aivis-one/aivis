@@ -340,7 +340,7 @@ onMounted(loadAttachments)
 .doc-item__title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
 .doc-item__meta { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
 .doc-item__storage {
-  display: block; font-size: var(--fs-xs); font-family: monospace; color: var(--text-secondary);
+  display: block; font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-secondary);
   background: var(--bg-subtle); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
   margin-top: var(--space-2); word-break: break-all;
 }

@@ -703,11 +703,15 @@ button.sett__row:last-child {
   color: var(--on-primary);
 }
 
-/* Toggle switch */
+/* Toggle switch. The track is tokenised and the knob was a raw #fff, so the
+   track followed the theme and the knob could not: measured 1.57:1 knob-vs-track
+   in LIGHT against 11.6:1 in dark, i.e. the affordance was carried by its drop
+   shadow alone. Both sides now read --toggle-* and the pair is 4.57:1 in BOTH
+   themes. See variables.css for the values and for what moves on screen. */
 .sett__toggle {
   width: var(--size-2xl);
   height: var(--size-xs);
-  background: var(--border-default);
+  background: var(--toggle-track);
   border-radius: var(--radius-md);
   position: relative;
   cursor: pointer;
@@ -721,7 +725,7 @@ button.sett__row:last-child {
   position: absolute;
   width: var(--size-2xs);
   height: var(--size-2xs);
-  background: #fff;
+  background: var(--toggle-knob);
   border-radius: 50%;
   top: 2px;
   left: 2px;

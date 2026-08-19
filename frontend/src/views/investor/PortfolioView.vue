@@ -258,8 +258,8 @@ onMounted(() => {
         >
           <div class="pv__item-head">
             <span class="pv__item-company">
-              <Building :size="16" />
-              {{ p.company_name }}
+              <Building :size="16" class="pv__item-company-icon" />
+              <span class="pv__item-company-name">{{ p.company_name }}</span>
             </span>
             <span class="pv__item-head-right">
               <span
@@ -398,10 +398,24 @@ onMounted(() => {
   font-weight: 700;
   color: var(--text-primary);
 }
+/* The ellipsis belongs to the NAME TEXT, never to this flex container. On the
+   container it is INERT -- text-overflow acts on inline content in a BLOCK, not
+   on a flex container's anonymous text item -- so at 390 the name was cut dead
+   at 263px with 283px hidden and NO ellipsis, while overflow:hidden crushed the
+   non-shrinking icon to zero width instead. Identical mechanism and identical
+   repair to .lb__nametext in LeaderboardView, whose fix landed on one file and
+   left this twin untouched. Found by the 2026-08-19 sweep; renders in BOTH the
+   investor and agent cabinets, phone tier only. */
 .pv__item-company {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
+}
+.pv__item-company-icon {
+  flex-shrink: 0;
+}
+.pv__item-company-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

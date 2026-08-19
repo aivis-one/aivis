@@ -191,12 +191,12 @@ async function handleSubmit(): Promise<void> {
 }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin: var(--space-4) 0; max-width: 400px;
+  margin: var(--space-4) 0; max-width: var(--maxw-form-wide);
 }
 
 .role-cards {
   display: flex; flex-direction: column; gap: var(--space-4);
-  width: 100%; max-width: 400px;
+  width: 100%; max-width: var(--maxw-form-wide);
 }
 .role-card {
   background: var(--bg-page); border: 2px solid var(--border-default);
@@ -247,7 +247,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 .role-submit {
-  width: 100%; max-width: 400px; margin-top: var(--space-5);
+  width: 100%; max-width: var(--maxw-form-wide); margin-top: var(--space-5);
 }
 .btn { width: 100%; }
 .btn-primary {

@@ -244,10 +244,10 @@ async function handleResend(): Promise<void> {
   font-size: var(--fs-sm); color: var(--text-secondary);
   margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
 }
-.auth-form { width: 100%; max-width: 360px; }
+.auth-form { width: 100%; max-width: var(--maxw-form); }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin-bottom: var(--space-4); max-width: 360px;
+  margin-bottom: var(--space-4); max-width: var(--maxw-form);
 }
 
 .verify-icon {

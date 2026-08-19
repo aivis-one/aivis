@@ -176,7 +176,7 @@ const distributionJson = computed<string>(() => {
 .scp__links a { font-size: var(--fs-xs-lg); color: var(--primary); text-decoration: underline; word-break: break-all; }
 
 .scp__json {
-  font-size: var(--fs-xs); font-family: monospace; color: var(--text-primary);
+  font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-primary);
   background: var(--bg-subtle); border-radius: var(--radius-sm);
   padding: var(--space-3); overflow-x: auto; margin: 0; white-space: pre;
 }

@@ -586,7 +586,7 @@ button.cset__row:last-child { border-bottom: none; }
   background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow-x: auto;

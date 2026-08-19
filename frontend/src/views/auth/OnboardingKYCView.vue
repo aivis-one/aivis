@@ -317,13 +317,13 @@ async function handleRetry(): Promise<void> {
 }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin-bottom: var(--space-4); max-width: 360px;
+  margin-bottom: var(--space-4); max-width: var(--maxw-form);
 }
 
 .kyc-icon { display: flex; justify-content: center; margin-bottom: var(--space-6); }
 
 .kyc-status-card {
-  width: 100%; max-width: 360px; border-radius: var(--radius-lg);
+  width: 100%; max-width: var(--maxw-form); border-radius: var(--radius-lg);
   padding: var(--space-6) var(--space-5); text-align: center; margin-bottom: var(--space-5);
 }
 .kyc-status-card.pending {
@@ -340,10 +340,10 @@ async function handleRetry(): Promise<void> {
 .kyc-card-title { font-size: var(--fs-lg); font-weight: 700; margin-bottom: var(--space-2); }
 .kyc-card-text { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; }
 
-.kyc-actions { width: 100%; max-width: 360px; }
+.kyc-actions { width: 100%; max-width: var(--maxw-form); }
 
 .kyc-statuses {
-  margin-top: var(--space-6); width: 100%; max-width: 360px;
+  margin-top: var(--space-6); width: 100%; max-width: var(--maxw-form);
   padding: var(--space-4); background: var(--bg-surface);
   border-radius: var(--radius-md);
 }

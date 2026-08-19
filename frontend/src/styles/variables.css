@@ -189,6 +189,15 @@
   --maxw: 1080px;
   --maxw-wide: 1240px;
   --maxw-prose: 680px;
+  /* FORM MEASURE -- the auth and onboarding screens are the one surface OUTSIDE
+     the five-shell measure system: they have no <main> and no .shell__measure,
+     so they capped their own column by hand. Measured 2026-08-19: 15 raw
+     max-width declarations across 7 files, on exactly TWO values. Both are
+     entered rather than collapsed -- 360 and 400 are a real distinction (a
+     field column against a card/action column) and merging them would move
+     six screens for no reason. */
+  --maxw-form: 360px;
+  --maxw-form-wide: 400px;
 
   /* TILE MEASURE — the ceiling a card in a filling grid may reach. A grid
      authored `repeat(N, 1fr)` keeps N columns at every width, so on a 1016px
@@ -262,6 +271,24 @@
   /* Telegram's own brand colours. Not ours to restyle. */
   --telegram: #2AABEE;
   --telegram-dark: #229ED9;
+  /* --on-telegram completes the --on-* family: every other accent colour has
+     one and this did not, so CButton spelled it `color: white` -- the exact
+     SPELLING the 2026-08-18 contrast audit was blind to. --telegram is declared
+     ONCE and does not invert, so one value serves both themes.
+     MEASURED: white on #2AABEE is 2.57:1. That is below 4.5 and it STAYS --
+     the line above is the ruling: Telegram's brand is not ours to restyle.
+     Recorded here so the next audit meets the number instead of the defect. */
+  --on-telegram: #FFFFFF;
+  /* TOGGLE. The knob was a raw #fff while its track was tokenised, so the track
+     followed the theme and the knob could not. MEASURED 2026-08-19: knob vs
+     track 1.57:1 in LIGHT (white on --border-default #C5D0DA) against 11.6:1 in
+     dark -- a control affordance carried by its drop shadow alone. The track now
+     takes an existing ramp step, --neutral-500, which is theme-invariant like
+     --telegram and reads against BOTH page grounds (4.16:1 light, 4.20:1 dark).
+     Knob vs track becomes 4.57:1 in both themes. NOTE: this makes the OFF state
+     visibly darker in light mode -- a deliberate, reversible one-line change. */
+  --toggle-track: var(--neutral-500);
+  --toggle-knob: var(--neutral-0);
 }
 
 /* === the user explicitly chose dark ===

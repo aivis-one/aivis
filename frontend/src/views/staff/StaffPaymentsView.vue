@@ -215,7 +215,7 @@ onMounted(loadPayments)
 .pay-item__info { flex: 1; min-width: 0; }
 .pay-item__amount { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
 .pay-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); }
-.pay-item__user { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); font-family: monospace; }
+.pay-item__user { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); font-family: var(--font-mono); }
 .pay-item__right { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-end; }
 .pay-item__reverse {
   font-size: var(--fs-xs); font-weight: 600; color: var(--danger); background: none; border: none;

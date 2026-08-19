@@ -820,7 +820,7 @@ onMounted(() => {
   background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   overflow-x: auto;
@@ -862,7 +862,7 @@ onMounted(() => {
   background: var(--bg-page);
   color: var(--text-primary);
   font-size: var(--fs-xs-lg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   line-height: 1.5;
   resize: vertical;
   min-height: 160px;

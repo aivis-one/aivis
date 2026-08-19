@@ -87,7 +87,7 @@ withDefaults(
 .c-btn--danger:hover:not(:disabled) { opacity: 0.9; transform: translateY(-2px); }
 
 /* Telegram */
-.c-btn--telegram { background: var(--telegram); color: white; }
+.c-btn--telegram { background: var(--telegram); color: var(--on-telegram); }
 .c-btn--telegram:hover:not(:disabled) {
   background: var(--telegram-dark);
   transform: translateY(-2px);

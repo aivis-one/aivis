@@ -182,7 +182,7 @@ onMounted(loadQueue)
   border-bottom: 1px solid var(--border-default);
 }
 .app-item__info { flex: 1; min-width: 0; }
-.app-item__name { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); font-family: monospace; }
+.app-item__name { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); }
 .app-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); text-transform: capitalize; }
 /* A5: the gap is 12px, not 4, and the reason is arithmetic rather than taste.
    These buttons are painted 32px and carry a 44px hit overlay; at a 4px gap

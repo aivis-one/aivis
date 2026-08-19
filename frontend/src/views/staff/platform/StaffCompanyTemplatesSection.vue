@@ -305,16 +305,16 @@ onMounted(loadTemplates)
   text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-2);
 }
 .sct__storage-value {
-  font-size: var(--fs-xs); font-family: monospace; color: var(--text-primary);
+  font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-primary);
   background: var(--bg-subtle); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
   word-break: break-all;
 }
 .sct__assets-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.sct__assets-list li { font-size: var(--fs-xs); font-family: monospace; color: var(--text-secondary); }
+.sct__assets-list li { font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-secondary); }
 
 .sct__html { margin-bottom: var(--space-2); }
 .sct__html-pre {
-  font-size: var(--fs-xs); font-family: monospace; color: var(--text-primary);
+  font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-primary);
   background: var(--bg-subtle); border-radius: var(--radius-sm);
   padding: var(--space-3); overflow: auto; max-height: 360px; margin: 0;
   white-space: pre-wrap; word-break: break-word;

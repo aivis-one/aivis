@@ -335,7 +335,7 @@ const fid = useId()
 
 .auth-form {
   width: 100%;
-  max-width: 360px;
+  max-width: var(--maxw-form);
 }
 
 .form-group {

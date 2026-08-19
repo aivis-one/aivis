@@ -322,7 +322,7 @@ async function handleSignAll(): Promise<void> {
 }
 .auth-error {
   font-size: var(--fs-xs-lg); color: var(--danger); text-align: center;
-  margin-bottom: var(--space-4); max-width: 400px;
+  margin-bottom: var(--space-4); max-width: var(--maxw-form-wide);
 }
 
 .docs-loading {
@@ -335,7 +335,7 @@ async function handleSignAll(): Promise<void> {
 }
 
 .doc-list {
-  width: 100%; max-width: 400px;
+  width: 100%; max-width: var(--maxw-form-wide);
   display: flex; flex-direction: column; gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
@@ -385,7 +385,7 @@ async function handleSignAll(): Promise<void> {
   margin-bottom: var(--space-4);
 }
 
-.doc-actions { width: 100%; max-width: 400px; }
+.doc-actions { width: 100%; max-width: var(--maxw-form-wide); }
 
 .btn { width: 100%; }
 .btn-primary {
