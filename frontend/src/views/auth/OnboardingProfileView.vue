@@ -3,7 +3,7 @@
 // PATCH /api/v1/users/me { profile: {...}, language }
 // After success: fetchMe() → router.push('/') → guard redirects.
 
-import { ref, onMounted, useId } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -13,6 +13,7 @@ import type { UserResponse } from '@/api/types'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
+import { CInput, CSelect } from '@/components/ui'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -95,12 +96,6 @@ async function handleSubmit(): Promise<void> {
   }
 }
 
-// A4: these screens carried a visible field caption with no association, and
-// controls with no id. A visible caption is not an accessible name unless it
-// is paired -- a screen reader saw unlabelled fields on the two most important
-// forms in the product. One useId() root, suffixed per field, so the ids stay
-// unique even if a form is ever mounted twice on one page.
-const fid = useId()
 </script>
 
 <template>
@@ -116,71 +111,45 @@ const fid = useId()
 
       <div class="auth-form">
         <div class="form-row">
-          <div class="form-group">
-            <label :for="`${fid}-firstName`" class="form-label">{{ t('auth.profile.firstName') }}</label>
-            <input
-            :id="`${fid}-firstName`"
-              v-model="firstName"
-              type="text"
-              class="form-input"
-              autocomplete="given-name"
-              @keydown.enter="handleSubmit"
-            />
-          </div>
-          <div class="form-group">
-            <label :for="`${fid}-lastName`" class="form-label">{{ t('auth.profile.lastName') }}</label>
-            <input
-            :id="`${fid}-lastName`"
-              v-model="lastName"
-              type="text"
-              class="form-input"
-              autocomplete="family-name"
-              @keydown.enter="handleSubmit"
-            />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label :for="`${fid}-phone`" class="form-label">{{ t('auth.profile.phone') }}</label>
-          <input
-            :id="`${fid}-phone`"
-            v-model="phone"
-            type="tel"
-            class="form-input"
-            placeholder="+49 XXX XXXXXXXX"
-            autocomplete="tel"
+          <CInput
+            v-model="firstName"
+            class="form-row__col"
+            :label="t('auth.profile.firstName')"
+            type="text"
+            autocomplete="given-name"
+            @keydown.enter="handleSubmit"
+          />
+          <CInput
+            v-model="lastName"
+            class="form-row__col"
+            :label="t('auth.profile.lastName')"
+            type="text"
+            autocomplete="family-name"
             @keydown.enter="handleSubmit"
           />
         </div>
 
-        <div class="form-group">
-          <label :for="`${fid}-country`" class="form-label">{{ t('auth.profile.country') }}</label>
-          <select
-            :id="`${fid}-country`" v-model="country" class="form-select">
-            <option value="" disabled>—</option>
-            <option
-              v-for="c in countries"
-              :key="c.value"
-              :value="c.value"
-            >
-              {{ c.label }}
-            </option>
-          </select>
-        </div>
+        <CInput
+          v-model="phone"
+          :label="t('auth.profile.phone')"
+          type="tel"
+          placeholder="+49 XXX XXXXXXXX"
+          autocomplete="tel"
+          @keydown.enter="handleSubmit"
+        />
 
-        <div class="form-group">
-          <label :for="`${fid}-language`" class="form-label">{{ t('auth.profile.language') }}</label>
-          <select
-            :id="`${fid}-language`" v-model="language" class="form-select">
-            <option
-              v-for="l in languages"
-              :key="l.value"
-              :value="l.value"
-            >
-              {{ l.label }}
-            </option>
-          </select>
-        </div>
+        <CSelect
+          v-model="country"
+          :label="t('auth.profile.country')"
+          :options="countries"
+          placeholder="—"
+        />
+
+        <CSelect
+          v-model="language"
+          :label="t('auth.profile.language')"
+          :options="languages"
+        />
 
         <div v-if="error" class="auth-error">{{ error }}</div>
 
@@ -230,33 +199,10 @@ const fid = useId()
 .form-row {
   display: flex; gap: var(--space-3);
 }
-.form-row .form-group { flex: 1; }
-
-.form-group { margin-bottom: var(--space-4); }
-.form-label {
-  display: block; font-size: var(--fs-xs); font-weight: 600;
-  color: var(--text-primary); margin-bottom: var(--space-2);
-}
-.form-input,
-.form-select {
-  width: 100%; padding: var(--space-4) var(--space-4);
-  border: 2px solid var(--border-default); border-radius: var(--radius-md);
-  font-size: var(--fs-sm); font-family: inherit;
-  background: var(--bg-page); color: var(--text-primary);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.form-input:focus,
-.form-select:focus {
-  outline: none; border-color: var(--primary);
-  box-shadow: var(--shadow-focus);
-}
-.form-select {
-  appearance: none; cursor: pointer;
-  padding-right: var(--space-6-lg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23525252' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-}
+/* The two name fields share the row equally. This targeted `.form-group`,
+   the class the raw markup carried; the CInput root is `.c-input-group`, so
+   the rule needed its own hook rather than a class the components do not use. */
+.form-row__col { flex: 1; }
 
 .btn { width: 100%; }
 .btn-primary {

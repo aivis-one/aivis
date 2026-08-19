@@ -10,7 +10,7 @@
 // false; handlers bail with console.warn defensively.
 //
 // Datetime handling. The backend serialises starts_at / ends_at as
-// ISO-8601 strings. The UI uses a native <input type="datetime-local">,
+// ISO-8601 strings. The UI uses CInput with type="datetime-local",
 // whose value is a "YYYY-MM-DDTHH:mm" local-time string with no zone.
 // We bridge in two helpers:
 //   isoToLocalInput(iso)  -- ISO -> datetime-local value (for edit
@@ -376,21 +376,24 @@ onMounted(loadEvents)
         :rows="4"
       />
 
-      <!-- Native datetime-local inputs (no UI-kit date picker exists). -->
-      <div class="evd__field">
-        <label class="evd__label">{{ t('staff.platform.event.fieldStartsAt') }}</label>
-        <input
-          :aria-label="t('staff.platform.event.fieldStartsAt')" v-model="form.starts_at" type="datetime-local" class="evd__datetime" />
-      </div>
-      <div class="evd__field">
-        <label class="evd__label">{{ t('staff.platform.event.fieldEndsAt') }}</label>
-        <input
-          :aria-label="t('staff.platform.event.fieldEndsAt')" v-model="form.ends_at" type="datetime-local" class="evd__datetime" />
-        <p
-          v-if="form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)"
-          class="evd__field-error"
-        >{{ t('staff.platform.event.endsAfterStartsError') }}</p>
-      </div>
+      <!-- datetime-local: no UI-kit date picker exists, so CInput carries the
+           native type through. It also pairs label and control by id, which the
+           hand-rolled markup could only approximate with aria-label. -->
+      <CInput
+        v-model="form.starts_at"
+        :label="t('staff.platform.event.fieldStartsAt')"
+        type="datetime-local"
+      />
+      <CInput
+        v-model="form.ends_at"
+        :label="t('staff.platform.event.fieldEndsAt')"
+        type="datetime-local"
+        :error="
+          form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)
+            ? t('staff.platform.event.endsAfterStartsError')
+            : ''
+        "
+      />
 
       <CInput
         v-model="form.location"
@@ -499,19 +502,6 @@ onMounted(loadEvents)
 .evd__modal-target { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-4); }
 .evd__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
 
-.evd__field { margin-bottom: var(--space-4); }
-.evd__label {
-  display: block; font-size: var(--fs-xs); font-weight: 600;
-  color: var(--text-primary); margin-bottom: var(--space-2);
-}
-.evd__datetime {
-  width: 100%; padding: var(--space-4) var(--space-4); border: 2px solid var(--border-default);
-  border-radius: var(--radius-md); font-size: var(--fs-sm); font-family: inherit;
-  background: var(--bg-page); color: var(--text-primary);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.evd__datetime:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
-.evd__field-error { font-size: var(--fs-xs); color: var(--danger); margin-top: var(--space-1); }
 
 .evd__toggles { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-2); }
 </style>

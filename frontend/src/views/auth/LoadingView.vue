@@ -3,6 +3,7 @@
 
 import { useI18n } from 'vue-i18n'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
+import CLoader from '@/components/ui/CLoader.vue'
 
 const { t } = useI18n()
 </script>
@@ -10,7 +11,7 @@ const { t } = useI18n()
 <template>
   <div class="loading-view">
     <AivisLogo :height="64" />
-    <div class="loading-spinner" />
+    <CLoader class="loading-spinner" />
     <p class="loading-text">{{ t('common.loading') }}</p>
   </div>
 </template>
@@ -28,19 +29,7 @@ const { t } = useI18n()
 }
 
 .loading-spinner {
-  width: var(--size-md);
-  height: var(--size-md);
-  border: 3px solid var(--border-default);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
   margin-top: var(--space-5);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .loading-text {

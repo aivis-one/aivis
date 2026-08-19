@@ -840,32 +840,25 @@ onMounted(() => {
       </p>
 
       <!-- Target date (milestone optional, event required) -->
-      <div v-if="showTargetDate" class="scr__field">
-        <label class="scr__field-label">{{ t('staff.platform.roadmap.fieldTargetDate') }}</label>
-        <input
-          :aria-label="t('staff.platform.roadmap.fieldTargetDate')"
-          v-model="draftTargetDate"
-          type="date"
-          class="scr__date"
-        />
-      </div>
+      <CInput
+        v-if="showTargetDate"
+        v-model="draftTargetDate"
+        :label="t('staff.platform.roadmap.fieldTargetDate')"
+        type="date"
+      />
 
       <!-- Valid until (event only, required) -->
-      <div v-if="showValidUntil" class="scr__field">
-        <label class="scr__field-label">{{ t('staff.platform.roadmap.fieldValidUntil') }}</label>
-        <input
-          :aria-label="t('staff.platform.roadmap.fieldValidUntil')"
-          v-model="draftValidUntil"
-          type="date"
-          class="scr__date"
-        />
-        <div
-          v-if="draftTargetDate && draftValidUntil && !eventDatesValid"
-          class="scr__field-error"
-        >
-          {{ t('staff.platform.roadmap.validUntilAfterTargetError') }}
-        </div>
-      </div>
+      <CInput
+        v-if="showValidUntil"
+        v-model="draftValidUntil"
+        :label="t('staff.platform.roadmap.fieldValidUntil')"
+        type="date"
+        :error="
+          draftTargetDate && draftValidUntil && !eventDatesValid
+            ? t('staff.platform.roadmap.validUntilAfterTargetError')
+            : ''
+        "
+      />
 
       <!-- Status (milestone only). A completed milestone is terminal
            (R1 §5.6): the select is replaced by a read-only badge + hint
@@ -1089,13 +1082,6 @@ onMounted(() => {
 /* Native date field (no CDatePicker in the kit) */
 .scr__field { margin-bottom: var(--space-4); }
 .scr__field-label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
-.scr__date {
-  width: 100%; padding: var(--space-4) var(--space-4); border: 2px solid var(--border-default);
-  border-radius: var(--radius-md); font-size: var(--fs-sm); font-family: inherit;
-  background: var(--bg-page); color: var(--text-primary);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.scr__date:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
 .scr__field-error { font-size: var(--fs-xs); color: var(--danger); margin-top: var(--space-1); }
 
 /* Cover block (D2) */
