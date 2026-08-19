@@ -522,4 +522,13 @@ function metaLabel(doc: DocumentResponse): string {
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-default);
 }
+
+/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
+   so this rule cannot bind until the container is already wider than a
+   comfortable line: on a phone it does nothing at all, which is why it needs
+   no media query. Measured at 1280 before applying: `event-card__desc` ran to
+   932px and `staff-dash__role-count` to 901. Names, figures and table cells
+   are deliberately NOT capped — a name is not prose, and capping it would only
+   leave dead space in its row. */
+.docs-modal__hint { max-width: var(--maxw-prose); }
 </style>

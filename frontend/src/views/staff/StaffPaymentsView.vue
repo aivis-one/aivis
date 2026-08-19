@@ -229,4 +229,14 @@ onMounted(loadPayments)
 .modal__text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-2); }
 .modal__amount { font-size: var(--fs-body); font-weight: 700; color: var(--danger); margin: 0 0 var(--space-4); }
 .modal__actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
+
+/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
+   so this rule cannot bind until the container is already wider than a
+   comfortable line: on a phone it does nothing at all, which is why it needs
+   no media query. Measured at 1280 before applying: `event-card__desc` ran to
+   932px and `staff-dash__role-count` to 901. Names, figures and table cells
+   are deliberately NOT capped — a name is not prose, and capping it would only
+   leave dead space in its row. */
+.modal__text { max-width: var(--maxw-prose); }
+.staff-pay__hint { max-width: var(--maxw-prose); }
 </style>

@@ -258,6 +258,8 @@ onMounted(loadStats)
 }
 
 .staff-dash__role-count {
+  /* Reading measure: this ran to 901px at 1280. See the prose block below. */
+  max-width: var(--maxw-prose);
   font-weight: 700;
   color: var(--text-primary);
 }
