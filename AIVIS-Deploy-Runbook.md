@@ -415,9 +415,10 @@ is a real next step, not a formality. The points listed above are the ones commo
 consequential enough, to walk through individually; any *other* command failing anywhere in the
 script's roughly two thousand lines aborts exactly the same way, even though it isn't named here.
 
-**The permanently-installed `/opt/aivis/aivis` management script (Part Two) does not work this way.**
-Unlike the installer, it has no equivalent blanket protection — each of its commands only stops on a
-failure if that specific line explicitly checks for one. This is why, for example, `aivis db restore`
+**The permanently-installed management script, `/opt/aivis/repo/scripts/aivis-manage.sh` (Part Two),
+does not work this way.** Unlike the installer, it has no equivalent blanket protection — each of its
+commands only stops on a failure if that specific line explicitly checks for one. This is why, for
+example, `aivis db restore`
 (§11) can print "✓ Database restored" even after a restore that partly failed: the installer would have
 caught and stopped on that kind of failure; the management script it leaves behind does not.
 
@@ -433,10 +434,12 @@ certificate is not trusted by real browsers and §6's acceptance check will not 
 **PART TWO — OPERATING THE BOX AFTER INSTALL**
 
 Everything from here on is a different moment in time from Part One, not a different reader. It
-documents `/opt/aivis/aivis` (symlinked to `/usr/local/bin/aivis`) — the management script the install
-leaves permanently on the box — and what its commands actually do once the box is live. You do not
-need any of this to install the product; come back to it when you're about to run one of these
-commands, not before.
+documents `aivis` — the management command the install leaves permanently on the box, and what its
+commands actually do once the box is live. `/usr/local/bin/aivis` is a symlink to a small shim at
+`/opt/aivis/scripts/manage.sh` (written once, never rewritten), which in turn execs the real script —
+`/opt/aivis/repo/scripts/aivis-manage.sh`, tracked in the repo and updated by `aivis update` like any
+other file. You do not need any of this to install the product; come back to it when you're about to
+run one of these commands, not before.
 
 ## 9. `aivis update` — the command you will run for the rest of this product's life
 
