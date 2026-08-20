@@ -360,21 +360,25 @@ github_probe() {
 # if absent, then TEST -- and only interrupt the operator if the test
 # fails.
 #
-# ORDER IS THE POINT. Printing the key and blocking on ENTER
-# unconditionally makes a reinstall of a box whose keys GitHub already
-# knows stop and ask for something already done, once per repository.
-# Test first, and a reinstall is silent.
+# THE BLOCK IS UNCONDITIONAL, and there is exactly one of it per registry
+# record. Every record prints its key and waits for ENTER, whether or not
+# GitHub already holds that key: two records means two prompts, twelve
+# means twelve. The operator counts them against the registry, so no
+# branch may skip a prompt because the key exists or because the probe
+# would have passed -- a run that silently skipped the keys already added
+# is indistinguishable from a run that broke before reaching them.
 #
 # WHY A KEY PER REPOSITORY AT ALL: GitHub refuses the same public key as a
 # deploy key on two repositories. One key cannot reach both aivis and
 # comms, so each service gets its own, with its own `Host github.com-<name>`
 # alias -- that alias is how git picks the right identity.
 #
-# WHY THE PROBE USUALLY PASSES, worth knowing before "cleaning up" after a
-# wipe: the wipe removes /opt/* and the docker state and does NOT touch
-# /root/.ssh. The keys survive it, GitHub still holds the public halves.
-# Delete /root/.ssh as part of a wipe and every reinstall goes back to
-# asking for one GitHub step by hand per repository.
+# WHY A REINSTALL USUALLY NEEDS NOTHING DONE ON GITHUB, even though it
+# still asks: the wipe removes /opt/* and the docker state and does NOT
+# touch /root/.ssh. The keys survive it and GitHub still holds the public
+# halves, so the answer to every one of these prompts is a bare ENTER --
+# the key on screen is the same one already added. Delete /root/.ssh as
+# part of a wipe and each prompt becomes real work again.
 #
 #   $1 name    service id (key file and host alias are named after it)
 #   $2 repo    owner/repo, for the URL printed to the operator
@@ -385,6 +389,16 @@ provision_deploy_key() {
     local name="$1" repo="$2" access="$3"
     local key="/root/.ssh/id_ed25519_${name}_deploy"
     local host_alias="github.com-${name}"
+
+    # An undeclared privilege is a stop, not a default. Guessing "read"
+    # would print the wrong instruction to the operator and the failure
+    # would surface days later, as a push that cannot. The check lives
+    # HERE, where the key is created, so it covers the bootstrap's product
+    # call as well as every service the loop passes in -- there is no
+    # second pass to do it in.
+    if [ "$access" != "read" ] && [ "$access" != "write" ]; then
+        error "Service '$name' declares access='$access' -- expected 'read' or 'write'. Refusing to guess which instruction to give the operator."
+    fi
 
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
@@ -397,8 +411,9 @@ provision_deploy_key() {
         success "Deploy key generated for $name"
     fi
 
-    # The alias has to exist before the probe below runs -- which is why
-    # the config block is written here and not after the interactive step.
+    # The alias has to exist before the probe below runs, and the probe
+    # runs after the prompt -- so the config block is written here, before
+    # either.
     if ! grep -q "Host ${host_alias}\b" /root/.ssh/config 2>/dev/null; then
         cat >> /root/.ssh/config << SSH_CONFIG_EOF
 
@@ -412,11 +427,12 @@ SSH_CONFIG_EOF
         chmod 600 /root/.ssh/config
     fi
 
-    if github_probe "$host_alias"; then
-        success "GitHub connection OK ($name)"
-        return 0
-    fi
-
+    # ALWAYS PRINTED, ALWAYS ASKED, working key or not. One registry
+    # record, one key block and one pause: two services means two keys,
+    # nineteen means nineteen. That count is what the operator checks the
+    # run against, so nothing about it may depend on whether GitHub
+    # already knows the key -- a silent run and a broken run would look
+    # identical, and the operator would have no way to tell them apart.
     echo ""
     echo -e "${CYAN}===============================================${NC}"
     echo -e "${CYAN}  GitHub Deploy Key -- ${name} repo${NC}"
@@ -433,9 +449,14 @@ SSH_CONFIG_EOF
         echo -e "${GREEN}READ-ONLY is enough: do NOT tick 'Allow write access'.${NC}"
         echo -e "${YELLOW}(nothing on this box ever pushes to ${repo}.)${NC}"
     fi
+    echo -e "${YELLOW}Already added from an earlier install? Press ENTER, it is a no-op.${NC}"
     echo ""
     read -r -p "Press ENTER after adding the deploy key to GitHub..." < /dev/tty
 
+    # The probe runs HERE and nowhere else: it verifies what the operator
+    # just did. Testing before the prompt would let a key GitHub already
+    # knows skip the block entirely, which is exactly the output that went
+    # missing.
     if github_probe "$host_alias"; then
         success "GitHub connection OK ($name)"
         return 0
@@ -444,41 +465,52 @@ SSH_CONFIG_EOF
     error "Cannot connect to GitHub with the ${name} deploy key. Add it at https://github.com/${repo}/settings/keys"
 }
 
-# Provision a GitHub deploy key for EVERY service the registry declares,
+# Provision a GitHub deploy key for every service the registry declares,
 # except the product itself -- its key is the bootstrap below that made
-# the registry readable in the first place.
+# the registry readable in the first place, and a second pass over it
+# would ask the operator twice about one key.
 #
-# This is what the registry buys: a third service is one record in
-# services.conf and zero lines here. The product record is not filtered
-# out by name -- it is skipped by its "internal" lifecycle.
+# This is what the registry buys: an N-th service is one record in
+# services.conf and zero lines here. Eleven services plus the product is
+# twelve records, twelve keys and twelve prompts.
+#
+# The privilege of EVERY record is checked here, including the product's,
+# which this loop then skips. provision_deploy_key checks the value it is
+# handed -- but the product's value reaches it from the bootstrap as a
+# literal, so a services.conf whose product record lost its access field
+# would otherwise be caught by nothing at all.
 #
 # DEFINED ABOVE ITS CALL ON PURPOSE: bash executes top to bottom, and a
 # definition placed below the call site does not exist when the call runs.
 provision_service_keys() {
     local record name repo access
     for record in "${AIVIS_SERVICES[@]}"; do
-        [ "$(svc_field "$record" 5)" = "internal" ] && continue
         name=$(svc_field "$record" 1)
         repo=$(svc_field "$record" 2)
         access=$(svc_field "$record" 7)
 
-        # An undeclared privilege is a stop, not a default. Guessing
-        # "read" would print the wrong instruction to the operator, and the
-        # failure would surface days later as a push that cannot.
         if [ "$access" != "read" ] && [ "$access" != "write" ]; then
             error "Service '$name' declares access='$access' in services.conf -- expected 'read' or 'write'. Refusing to guess which instruction to give the operator."
         fi
+
+        [ "$(svc_field "$record" 5)" = "internal" ] && continue
 
         provision_deploy_key "$name" "$repo" "$access"
     done
 }
 
 # BOOTSTRAP, and the one service that cannot come from the registry:
-# scripts/services.conf lives INSIDE this repo, so it cannot be read
-# before the product is cloned, and the product cannot be cloned without
-# this key.
-provision_deploy_key "aivis" "$GITHUB_REPO" "write"
-REPO_URL="git@github.com-aivis:${GITHUB_REPO}.git"
+# services.conf lives INSIDE the aivis repo, so it cannot be read before
+# aivis is cloned, and aivis cannot be cloned without this key. Every
+# OTHER service is provisioned by the loop after the clone -- see
+# provision_service_keys().
+setup_ssh() {
+    log "Setting up SSH for GitHub..."
+    provision_deploy_key "aivis" "$GITHUB_REPO" "write" || return 1
+    REPO_URL="git@github.com-aivis:$GITHUB_REPO.git"
+}
+
+setup_ssh
 
 # Clone repository
 mkdir -p "$INSTALL_BASE"
