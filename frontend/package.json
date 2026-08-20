@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint --fix . && prettier --write .",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "docs:ds": "node scripts/gen-design-system.mjs"
   },
   "dependencies": {
     "lucide-vue-next": "^0.460",
