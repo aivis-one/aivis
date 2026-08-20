@@ -60,7 +60,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Clock } from 'lucide-vue-next'
-import { CAvatar, CBadge, CLoader, CButton, CModal, CEmptyState, CInput } from '@/components/ui'
+import { CAvatar, CBadge, CLoader, CButton, CModal, CEmptyState, CInput, CCheckbox } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import {
@@ -271,11 +271,15 @@ async function handlePromote(): Promise<void> {
   }
 }
 
-async function togglePermission(key: PermissionKey, current: boolean): Promise<void> {
+// Takes the NEW value rather than the old one. The raw checkbox reported only
+// that it had changed, so the caller passed the CURRENT value and this function
+// inverted it; CCheckbox emits the value it moved to, which removes that
+// round-trip and the double negation that came with it.
+async function setPermission(key: PermissionKey, value: boolean): Promise<void> {
   if (!detailUser.value?.staff_profile) return
   try {
     const updated = await updatePermissions(detailUser.value.staff_profile.id, {
-      [key]: !current,
+      [key]: value,
     })
     detailUser.value.staff_profile = updated
     showToast(t('staff.userDetail.permissionsUpdated'), 'success')
@@ -569,14 +573,12 @@ onMounted(loadUsers)
             :key="key"
             class="detail__perm"
           >
-            <label class="detail__perm-label">
-              <input
-                type="checkbox"
-                :checked="!!detailUser.staff_profile.permissions[key]"
-                @change="togglePermission(key, !!detailUser.staff_profile.permissions[key])"
-              />
+            <CCheckbox
+              :model-value="!!detailUser.staff_profile.permissions[key]"
+              @update:model-value="(v: boolean) => setPermission(key, v)"
+            >
               {{ key }}
-            </label>
+            </CCheckbox>
           </div>
         </div>
 
@@ -708,7 +710,6 @@ onMounted(loadUsers)
 .detail__value { font-size: var(--fs-sm); color: var(--text-primary); }
 .detail__section { margin-top: var(--space-3); }
 .detail__perm { padding: var(--space-1) 0; }
-.detail__perm-label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-xs); color: var(--text-primary); cursor: pointer; }
 .detail__actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
 .detail__confirm-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-3); }
 

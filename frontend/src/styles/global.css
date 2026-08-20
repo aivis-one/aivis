@@ -23,7 +23,16 @@ html {
 
 body {
   font-family: var(--font-body);
-  font-size: 15px;
+  /* The last raw font-size in the app. It was 15px, a value no token carries and
+     that sat between --fs-sm (14) and --fs-body (16); it is the INHERITED base,
+     so it governs only text that sets no size of its own.
+     Measured before the change, live, across every reachable route: ZERO text
+     elements rendered at 15px -- all 529 font-size declarations in 89 of 103
+     files set their own, and the three remaining raw form controls do too. So
+     this is the design system's base size taking a seat that was, in practice,
+     already empty. `rem` is unaffected: it resolves against <html>, which sets
+     no font-size, so --fs-body is 16px regardless of this line. */
+  font-size: var(--fs-body);
   line-height: 1.5;
   color: var(--text-primary);
   background: var(--bg-page);
