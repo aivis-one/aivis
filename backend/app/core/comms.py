@@ -313,6 +313,7 @@ async def comms_request(
     *,
     params: dict[str, Any] | None = None,
     json: dict[str, Any] | None = None,
+    forward_403: bool = False,
 ) -> Any:
     """One request to comms on a path a PERSON is waiting on.
 
@@ -334,6 +335,15 @@ async def comms_request(
         path: comms API path starting with "/".
         params: optional query parameters.
         json: optional JSON body.
+        forward_403: treat a comms 403 as a real answer about THIS
+            request instead of an infrastructure fault. Default False,
+            and it must stay the default: on every other path a 403 can
+            only mean our service token is wrong. The exception is comms'
+            write-authz on a section thread (can_post_message admits the
+            client or the ASSIGNEE, with no supervisor bypass), where a
+            403 is a genuine, per-request business answer -- "you have
+            not claimed this conversation" -- and swallowing it into 502
+            would hide the one state the operator side needs to show.
 
     Returns:
         The response body, parsed as JSON.
@@ -344,7 +354,8 @@ async def comms_request(
             an auth fault of OUR service token, an unmodeled 4xx, or a
             body that is not JSON (502).
         CommsRejectedError: comms answered with a status it models --
-            400 / 404 / 409 / 422 -- forwarded as that status.
+            400 / 404 / 409 / 422, plus 403 where the caller opted in --
+            forwarded as that status.
     """
     result = await _call(method, path, params=params, json=json)
 
@@ -376,17 +387,19 @@ async def comms_request(
         logger.warning("comms_upstream_error", path=path, status=status)
         raise CommsUnavailableError()
 
-    if status in (401, 403):
+    if status == 401 or (status == 403 and not forward_403):
         # OUR service token, never this user's session. Forwarding the
         # status verbatim would be read by the frontend as "your
         # session expired" and log out everyone who opened support
-        # while the token was wrong.
+        # while the token was wrong. 403 leaves this branch only for a
+        # call site that asked for it -- see the docstring.
         logger.error("comms_auth_error", path=path, status=status)
         raise CommsUnavailableError()
 
     if status >= 400:
         detail = _refusal_detail(response)
-        if status not in _FORWARDABLE_4XX:
+        forwardable = _FORWARDABLE_4XX | ({403} if forward_403 else set())
+        if status not in forwardable:
             logger.warning(
                 "comms_unexpected_4xx",
                 path=path,

@@ -45,8 +45,8 @@ from fastapi import APIRouter, Body, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
-from app.core.exceptions import BadRequestError
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
+from app.modules.support.dependencies import reject_actor_override
 from app.modules.support.schemas import EmptyBodyIn, SendMessageIn
 from app.modules.support.service import (
     get_support_messages,
@@ -59,32 +59,12 @@ from app.modules.users.models import User
 
 router = APIRouter(prefix="/api/v1/support", tags=["support"])
 
-# Every name comms treats as a trusted actor. Listed in full rather than
-# per-endpoint: the set is a property of comms' trust model, not of any
-# one route, and a name missing from here is a name that would pass.
-_ACTOR_PARAMS = (
-    "client",
-    "sender",
-    "participant",
-    "operator",
-    "assignee",
-    "is_supervisor",
-)
-
-
-def _reject_actor_override(request: Request) -> None:
-    """400 if the query string carries an actor name.
-
-    Refuses rather than ignores, and names the offender: an attempt to
-    act as somebody else should leave a trace in the logs of the person
-    who made it, not vanish.
-    """
-    for name in _ACTOR_PARAMS:
-        if name in request.query_params:
-            raise BadRequestError(
-                f"{name} is derived from the session and cannot be supplied",
-                code="actor_override_rejected",
-            )
+# The actor-name guard MOVED to support/dependencies.py in T-66, when the
+# operator side needed the same refusal: one tuple and one function serve
+# both routers, because two copies of this list would mean the newer one
+# eventually forgets a name. The name kept below is a local alias, so
+# every call site in this file reads exactly as it did before.
+_reject_actor_override = reject_actor_override
 
 
 @router.post("/threads")

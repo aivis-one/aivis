@@ -61,6 +61,8 @@
 #                                (Refactor 2 iter 2.4)
 #   support_router            -> /api/v1/support/* (T-65, user side of the
 #                                support request channel; proxies comms)
+#   staff_support_router      -> /api/v1/staff/support/* (T-66, operator
+#                                side: queue, claim, reply, close)
 #
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - +staff_pools_router for POST/PATCH /staff/companies/{id}/pool.
@@ -202,6 +204,7 @@ from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.consistency.router import router as consistency_router
 from app.modules.staff.router import router as staff_users_router
 from app.modules.support.router import router as support_router
+from app.modules.support.staff_router import router as staff_support_router
 from app.modules.transactions.router import router as transactions_router
 from app.modules.users.router import router as users_router
 from app.modules.withdrawals.router import router as withdrawals_router
@@ -549,6 +552,11 @@ app.include_router(ownership_router)
 # the conversation lives there; what lives here is who the caller is and
 # which threads are theirs.
 app.include_router(support_router)
+
+# T-66: the operator side of the same channel -- the queue, claim, reply,
+# close. Wired next to its user-side twin so the two halves of one
+# conversation sit together in the OpenAPI document.
+app.include_router(staff_support_router)
 
 
 # ---------------------------------------------------------------------------

@@ -75,7 +75,8 @@ from app.core.comms import (
     CommsUnavailableError,
     comms_request,
 )
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
+from app.modules.support.dependencies import SupportOperator
 from app.modules.support.models import SupportThread
 from app.modules.users.models import User
 
@@ -427,4 +428,217 @@ async def mark_support_thread_read(
         "POST",
         f"{_THREADS_PATH}/{thread_id}/read",
         json={"participant": str(user.id)},
+    )
+
+
+# ---------------------------------------------------------------------------
+# The operator side (T-66)
+# ---------------------------------------------------------------------------
+#
+# WHERE THE TWO SIDES DIFFER, AND WHY.
+#
+# The user side reads its list from the LOCAL POINTER because comms
+# cannot answer "which threads are this client's". The operator side does
+# the opposite and reads from comms, because that question -- "what is in
+# my queue" -- is exactly what comms' list endpoint answers, and the
+# answer depends on live state (who claimed what) that this product does
+# not hold.
+#
+# WHAT EACH OPERATOR SEES is decided by list_visible_threads in comms
+# (messaging/operators.py), not here:
+#
+#   visible(me) = assignee == me OR (section thread AND unassigned)
+#
+# so a plain operator gets the unclaimed pool plus their own claimed
+# threads, and a thread claimed by a colleague disappears from their list
+# entirely. is_supervisor=true skips that filter and returns every
+# thread there is. Which is why is_supervisor is computed in
+# support/dependencies.py from the staff profile and can never arrive
+# from a request.
+#
+# WHAT COMMS DOES NOT ENFORCE, AND WE DO NOT EITHER (recorded because the
+# opposite is the natural assumption): can_operate admits ANY operator on
+# a SECTION thread -- v1 section membership is trivial, every agent
+# serves every section -- so comms will let any operator change the
+# status of any support thread, claimed by them or not. Closing is
+# therefore open to every active support operator, and this module adds
+# no check of its own. Enforcing "only the claimer closes" would need the
+# thread's assignee, which comms exposes only through the list or the
+# claim response; getting it would mean either mirroring assignee locally
+# (a second copy of somebody else's state, stale after a comms rebuild)
+# or calling create-or-get on a read path (which silently CREATES a
+# thread against a rebuilt comms -- rejected on the user side in T-65 for
+# that reason). The exposure is small: a plain operator never sees a
+# colleague's claimed thread, so they have no id to aim at. Messages are
+# a different matter and ARE gated -- by comms itself, see
+# reply_to_support_thread.
+
+
+async def _require_known_thread(
+    session: AsyncSession, thread_id: UUID
+) -> SupportThread:
+    """Resolve a thread id from the wire to a KNOWN support thread, or 404.
+
+    The operator boundary, and the reason it is not the same function as
+    the user side's: an operator serves everybody, so ownership is not
+    the question -- existence in OUR pointer table is. Rows land there
+    only through open_support_thread, so a row here is proof the id names
+    a support conversation this product created, and a guessed or
+    foreign id never reaches comms at all.
+    """
+    result = await session.execute(
+        select(SupportThread).where(
+            SupportThread.comms_thread_id == thread_id
+        )
+    )
+    pointer = result.scalar_one_or_none()
+    if pointer is None:
+        raise NotFoundError("Support thread not found")
+    return pointer
+
+
+async def list_operator_threads(
+    *, operator: SupportOperator, limit: int, cursor: str | None
+) -> dict[str, Any]:
+    """The operator's queue, straight from comms.
+
+    Both trusted parameters are stamped here: `operator` is the session's
+    id and `is_supervisor` is what the staff profile resolved to. Neither
+    is a function argument a router could pass through from a request.
+
+    with_unread is asked for so a rendered list costs one call instead of
+    one per row. POOL ROWS WILL NOT CARRY IT, ever: comms attaches the
+    count only to threads the operator takes part in, and an unclaimed
+    section thread belongs to nobody -- assignee empty, operator_value a
+    section id. So "no unread key" on a pool row is the normal state and
+    not a gap to fill with a zero.
+    """
+    params: dict[str, Any] = {
+        "operator": str(operator.id),
+        "is_supervisor": operator.is_supervisor,
+        "with_unread": True,
+        "limit": limit,
+    }
+    if cursor is not None:
+        params["cursor"] = cursor
+    return await comms_request("GET", _THREADS_PATH, params=params)
+
+
+async def claim_support_thread(
+    session: AsyncSession, *, operator: SupportOperator, thread_id: UUID
+) -> dict[str, Any]:
+    """Take an unclaimed conversation, or say who already has it.
+
+    comms answers {claimed, thread}: `claimed` is True only for the call
+    that won the conditional UPDATE (assignee IS NULL), so a repeat by
+    the SAME operator comes back False with themselves as assignee --
+    that is idempotence, not failure, and it returns 200. A False with
+    somebody else's assignee is a real conflict and returns 409 rather
+    than a bare 500 or a misleading success.
+
+    The two cases are told apart by the assignee comms returns, so no
+    local copy of who-owns-what is needed. A claimed=False with no
+    assignee at all falls into the conflict branch too, on purpose: there
+    is no state comms can produce where the thread is unowned AND the
+    claim failed, and inventing a branch for it would document a state
+    that cannot happen.
+    """
+    await _require_known_thread(session, thread_id)
+
+    payload = await comms_request(
+        "POST",
+        f"{_THREADS_PATH}/{thread_id}/claim",
+        json={"operator": str(operator.id)},
+    )
+    thread = payload.get("thread") if isinstance(payload, dict) else None
+    if not isinstance(thread, dict):
+        logger.error("comms_payload_malformed", what="claim", key="thread")
+        raise CommsUnavailableError()
+
+    if bool(payload.get("claimed")):
+        logger.info(
+            "support_thread_claimed",
+            thread_id=str(thread_id),
+            operator_id=str(operator.id),
+        )
+        return thread
+
+    if str(thread.get("assignee")) == str(operator.id):
+        return thread
+
+    raise ConflictError(
+        "This request has already been taken by another operator",
+        code="support_thread_already_claimed",
+    )
+
+
+async def reply_to_support_thread(
+    session: AsyncSession,
+    *,
+    operator: SupportOperator,
+    thread_id: UUID,
+    body: str,
+) -> dict[str, Any]:
+    """Answer as this operator.
+
+    WRITE-AUTHZ IS NOT OURS TO GRANT and is not re-implemented here:
+    comms' can_post_message admits the thread's client or its ASSIGNEE
+    and nobody else -- there is no supervisor bypass -- so an operator
+    who has not claimed the conversation is refused by comms with a 403.
+    That 403 is forwarded into this module (forward_403) instead of being
+    mapped to "service unavailable", and turned into a 409 that says what
+    to do about it: claim first.
+
+    409 rather than 403 because the caller's ROLE is fine -- it is the
+    state that is wrong, and the same person becomes allowed the moment
+    they claim. A 403 would read as "not for people like you".
+
+    A closed thread does NOT reopen on this message: comms revives a
+    thread only for a message from the CLIENT.
+    """
+    await _require_known_thread(session, thread_id)
+
+    try:
+        return await comms_request(
+            "POST",
+            f"{_THREADS_PATH}/{thread_id}/messages",
+            json={"sender": str(operator.id), "body": body},
+            forward_403=True,
+        )
+    except CommsRejectedError as exc:
+        if exc.status_code == 403:
+            raise ConflictError(
+                "Claim this request before replying to it",
+                code="support_thread_not_claimed",
+            ) from exc
+        raise
+
+
+async def set_support_thread_status(
+    session: AsyncSession,
+    *,
+    operator: SupportOperator,
+    thread_id: UUID,
+    status: str,
+) -> dict[str, Any]:
+    """Move a conversation along the status matrix.
+
+    THE TRANSITION IS COMMS' TO VALIDATE, and the request is a target
+    state rather than a written field: set_status walks the D5 matrix --
+    open -> resolved, open -> closed, resolved -> closed, and X -> X as a
+    successful no-op. Everything else is refused with a 422, including
+    every backward move: a MANUAL reopen does not exist at all. Only a
+    message from the client reopens a thread, which is why our schema
+    does not offer `open` as a target -- see schemas.SetStatusIn.
+
+    Reaching `closed` on a section thread also arms comms' close notice
+    to the client (msg.thread_closed). That is the price of the pooled
+    form chosen in T-65, paid here.
+    """
+    await _require_known_thread(session, thread_id)
+
+    return await comms_request(
+        "POST",
+        f"{_THREADS_PATH}/{thread_id}/status",
+        json={"operator": str(operator.id), "status": status},
     )
