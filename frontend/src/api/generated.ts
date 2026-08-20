@@ -497,6 +497,10 @@ export interface EmailRegisterRequest {
   referral_code?: string | null
 }
 
+/** A body with no fields at all, for the two verbs that need none. Opening a request and marking it read are fully determined by the session: there is nothing to say beyond the verb itself. The model exists ONLY so that a body carrying an actor field is refused instead of ignored -- a handler with no body model at all would accept and discard it without a word. */
+export interface EmptyBodyIn {
+}
+
 /** Paginated event list. */
 export interface EventListResponse {
   items: EventResponse[]
@@ -1066,6 +1070,11 @@ export interface SemaphoreResult {
   status: string
   severity: string
   details?: Record<string, unknown> | null
+}
+
+/** One message into the caller's own conversation. `body` is the whole request. There is no thread id: the caller has exactly one conversation and it is resolved from the local pointer, never from the wire. */
+export interface SendMessageIn {
+  body: string
 }
 
 /** Attachment as seen by staff: includes operational fields hidden from auth/public flows. The model column is `created_by` (UUID NOT NULL today, FK ondelete=RESTRICT); we expose it as `created_by_id` at the API boundary for naming clarity and type it as Optional to leave room for a future ondelete=SET NULL. `validation_alias="created_by"` lets Pydantic populate this field from the ORM attribute without renaming the column. */
