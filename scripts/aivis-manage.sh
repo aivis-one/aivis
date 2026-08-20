@@ -666,8 +666,15 @@ update_product() {
     fi
     echo ""
 
-    # Fix git safe directory (git 2.35+ security requirement).
-    git config --global --add safe.directory "$COMPOSE_DIR" 2>/dev/null || true
+    # NOTE: there is deliberately no `git config --global --add
+    # safe.directory` here any more. It used to sit at exactly this spot
+    # and it worked only by accident -- it happened to precede the first
+    # git command by two lines, and stopped working the moment the fetch
+    # moved into svc_sync_checkout, several hundred lines earlier. The
+    # mismatch it papered over is gone: the installer now leaves the
+    # checkout owned by root, which is who runs every git command here.
+    # Re-adding a safe.directory call would document an ownership state
+    # this product no longer produces.
 
     # Save current state. The branch comes from AIVIS_PRODUCT_BRANCH,
     # resolved from the registry by update_service and already applied to

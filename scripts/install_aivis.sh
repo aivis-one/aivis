@@ -517,7 +517,24 @@ mkdir -p "$INSTALL_BASE"
 cd "$INSTALL_BASE"
 git clone "$REPO_URL" repo
 success "Repository cloned to $INSTALL_BASE/repo"
-chown -R "$DEPLOY_USER:$DEPLOY_USER" "$INSTALL_BASE/repo"
+# root:root, NOT the deploy user. Everything that ever touches this
+# checkout runs as root -- the installer, the `aivis` CLI (a root shim),
+# every `docker compose` call -- and git 2.35+ refuses to operate on a
+# repository owned by somebody other than the caller ("detected dubious
+# ownership"), which is a HARD failure, not a warning: `aivis update`
+# dies on its first fetch.
+#
+# The deploy user still exists and is still in the docker group; it is
+# simply not the owner of the code. Nothing in either script runs as it
+# -- checked by form: no sudo -u, no su -, no runuser, no systemd User=.
+# Giving it the checkout bought nothing and cost the update cycle.
+#
+# The alternative -- teaching the CLI `git config --global --add
+# safe.directory` -- was rejected: it is a plaster over an ownership
+# mismatch that has no reason to exist, it has to be repeated in front
+# of every git command anyone ever adds, and the donor installer does
+# not have it precisely because it chowns to root here.
+chown -R root:root "$INSTALL_BASE/repo"
 
 # Only now can the registry be read -- it ships inside the checkout the
 # clone above just made. Everything after this point is registry-driven:
