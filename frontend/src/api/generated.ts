@@ -1072,9 +1072,14 @@ export interface SemaphoreResult {
   details?: Record<string, unknown> | null
 }
 
-/** One message into the caller's own conversation. `body` is the whole request. There is no thread id: the caller has exactly one conversation and it is resolved from the local pointer, never from the wire. */
+/** One message into the caller's own conversation. `body` is the whole request. There is no thread id: the caller has exactly one conversation and it is resolved from the local pointer, never from the wire. T-66: the operator side reuses this model for its reply. Same field, same ceiling, and a second model would be a second place to change the limit in. */
 export interface SendMessageIn {
   body: string
+}
+
+/** An operator moving a conversation along (T-66). `open` IS NOT AN OPTION, and its absence is the point. comms allows no manual reopen whatsoever -- `closed` has an empty set of allowed manual transitions, and a thread comes back to life only when the CLIENT writes into it. Offering `open` here would be a field that always yields a 422 from comms: an endpoint documenting a state change that cannot be made. */
+export interface SetStatusIn {
+  status: 'resolved' | 'closed'
 }
 
 /** Attachment as seen by staff: includes operational fields hidden from auth/public flows. The model column is `created_by` (UUID NOT NULL today, FK ondelete=RESTRICT); we expose it as `created_by_id` at the API boundary for naming clarity and type it as Optional to leave room for a future ondelete=SET NULL. `validation_alias="created_by"` lets Pydantic populate this field from the ORM attribute without renaming the column. */
