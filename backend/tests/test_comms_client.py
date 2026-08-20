@@ -40,6 +40,7 @@ from app.core.comms import comms_configured, upsert_recipient, user_snapshot
 from app.core.comms_sync import ensure_recipient
 from app.core.config import settings
 from app.core.events.models import OutboxEvent
+from app.modules.auth.service import get_platform_user_id
 from app.modules.users.models import User, UserRole
 from tests.helpers import register_user
 
@@ -105,15 +106,29 @@ def comms_configured_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "comms_service_token", _TOKEN)
 
 
-def _make_user(**overrides: Any) -> User:
-    """An unsaved user with the attributes the snapshot reads."""
+async def _make_user(session: AsyncSession, **overrides: Any) -> User:
+    """A flushed user, built the way registration builds one.
+
+    referred_by is NOT NULL with a foreign key, and production never
+    leaves it unset: _resolve_referrer falls back to the platform user
+    for organic sign-ups. A builder that skipped it produced a user
+    this database refuses -- which is exactly what the first run of
+    this suite found.
+
+    One builder rather than a saved and an unsaved variant: an object
+    that looks like a user but cannot be flushed is a trap for whoever
+    writes the next test here.
+    """
     user = User(
         role=UserRole.INVESTOR,
+        referred_by=await get_platform_user_id(session),
         credentials=overrides.pop("credentials", {}),
         language=overrides.pop("language", "en"),
     )
     for key, value in overrides.items():
         setattr(user, key, value)
+    session.add(user)
+    await session.flush()
     return user
 
 
@@ -147,7 +162,9 @@ async def _rows_added_since(
 
 
 @pytest.mark.asyncio
-async def test_snapshot_is_complete_for_every_user_shape() -> None:
+async def test_snapshot_is_complete_for_every_user_shape(
+    db_session: AsyncSession,
+) -> None:
     """Snapshot, not patch: all five fields present in every shape.
 
     comms overwrites what it holds with exactly this document, so a key
@@ -156,11 +173,13 @@ async def test_snapshot_is_complete_for_every_user_shape() -> None:
     value. timezone is always present and always None: this product
     does not track one.
     """
-    telegram_user = _make_user(credentials={"telegram": {"id": 92180}}, language="ru")
-    email_user = _make_user(
-        credentials={"email": {"email": "a@example.test"}}, language="en"
+    telegram_user = await _make_user(
+        db_session, credentials={"telegram": {"id": 92180}}, language="ru"
     )
-    bare_user = _make_user(credentials={})
+    email_user = await _make_user(
+        db_session, credentials={"email": {"email": "a@example.test"}}, language="en"
+    )
+    bare_user = await _make_user(db_session, credentials={})
 
     expected_keys = {"telegram_id", "email", "locale", "timezone", "active"}
     for user in (telegram_user, email_user, bare_user):
@@ -173,6 +192,8 @@ async def test_snapshot_is_complete_for_every_user_shape() -> None:
     assert user_snapshot(email_user)["telegram_id"] is None
     assert user_snapshot(email_user)["email"] == "a@example.test"
     assert user_snapshot(bare_user)["telegram_id"] is None
+
+    await db_session.rollback()
 
 
 # ---------------------------------------------------------------------------
@@ -205,9 +226,9 @@ async def test_empty_url_emits_no_outbox_row(
     monkeypatch.setattr(settings, "comms_api_url", "")
     before = await _outbox_ids(db_session)
 
-    user = _make_user(credentials={"email": {"email": "b@example.test"}})
-    db_session.add(user)
-    await db_session.flush()
+    user = await _make_user(
+        db_session, credentials={"email": {"email": "b@example.test"}}
+    )
 
     assert await ensure_recipient(db_session, user) is False
     assert await _rows_added_since(db_session, before) == []
@@ -229,9 +250,9 @@ async def test_success_sends_the_snapshot_and_skips_the_outbox(
     calls = _fake_httpx(monkeypatch, 200)
     before = await _outbox_ids(db_session)
 
-    user = _make_user(credentials={"telegram": {"id": 92181}}, language="de")
-    db_session.add(user)
-    await db_session.flush()
+    user = await _make_user(
+        db_session, credentials={"telegram": {"id": 92181}}, language="de"
+    )
 
     assert await ensure_recipient(db_session, user) is True
 
@@ -293,9 +314,9 @@ async def test_failure_defers_the_recipient_to_the_outbox(
     _fake_httpx(monkeypatch, httpx.ConnectError("comms is down"))
     before = await _outbox_ids(db_session)
 
-    user = _make_user(credentials={"telegram": {"id": 92182}}, language="fr")
-    db_session.add(user)
-    await db_session.flush()
+    user = await _make_user(
+        db_session, credentials={"telegram": {"id": 92182}}, language="fr"
+    )
 
     assert await ensure_recipient(db_session, user) is False
 
