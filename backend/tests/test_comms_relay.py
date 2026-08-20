@@ -127,6 +127,20 @@ async def _synth_rows(session: AsyncSession) -> list[OutboxEvent]:
     ]
 
 
+async def _rows_by_id(session: AsyncSession, ids: list[int]) -> dict[int, OutboxEvent]:
+    """Rows read back by primary key, keyed by id.
+
+    Deliberately NOT _synth_rows: that helper recognises this suite's
+    rows by the SYNTH prefix inside payload, which is fine everywhere
+    payload is inert -- and wrong in the redaction test, whose whole
+    subject is payload being overwritten. A redacted row stops looking
+    like ours the moment the code under test succeeds, so the identity
+    marker cannot live in the field being tested.
+    """
+    result = await session.execute(select(OutboxEvent).where(OutboxEvent.id.in_(ids)))
+    return {row.id: row for row in result.scalars().all()}
+
+
 def _recipients(entries: list) -> list[str]:
     """recipient_id of every stream entry, in stream order."""
     return [json.loads(fields[b"data"])["recipient_id"] for _, fields in entries]
@@ -397,14 +411,19 @@ async def test_redaction_touches_only_rows_shipped_past_the_window(
     assert await redact_published_payloads(session=db_session) == 1
 
     # The bulk UPDATE does not synchronise the identity map on purpose,
-    # so read the rows back rather than trusting the objects in hand.
+    # so read the rows back rather than trusting the objects in hand --
+    # by id, for the reason spelled out in _rows_by_id.
     db_session.expire_all()
-    rows = {row.id: row for row in await _synth_rows(db_session)}
+    rows = await _rows_by_id(db_session, [victim_id, *sorted(spared_ids)])
+    assert set(rows) == {victim_id, *spared_ids}
 
     assert rows[victim_id].payload == REDACTED_PAYLOAD
     assert rows[victim_id].published_at is not None, "the skeleton is kept"
+    assert rows[victim_id].event_type == EVENT_GROUP_CHANGED, "and so is the type"
     for spared_id in spared_ids:
-        assert rows[spared_id].payload["recipient_id"].startswith(SYNTH)
+        spared = rows[spared_id]
+        assert spared.payload != REDACTED_PAYLOAD
+        assert spared.payload["recipient_id"].startswith(SYNTH)
 
     # Repeat axis: a redacted row no longer matches the predicate, which
     # is the same fact as it having left the partial index.
