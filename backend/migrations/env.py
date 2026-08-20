@@ -77,6 +77,12 @@ from app.modules.posts.models import Post, PostDismiss, Event  # noqa: F401
 # Refactor 2 iter 2.2: Company Attachments
 from app.modules.companies.models import CompanyAttachment  # noqa: F401
 
+# T-62: transactional outbox. Lives under core/, not modules/ -- it is
+# infrastructure, not a domain. Without this line the table exists in the
+# database but not in Base.metadata, and the next --autogenerate reads
+# that difference as "a table nobody declares" and proposes dropping it.
+from app.core.events.models import OutboxEvent  # noqa: F401
+
 # ---------------------------------------------------------------------------
 
 config = context.config
