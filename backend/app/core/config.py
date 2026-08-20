@@ -171,6 +171,58 @@ class Settings(BaseSettings):
     # (an oversized limit degrades to this value, not a 422).
     events_upcoming_max_limit: int = 50
 
+    # -- Comms integration: outbox relay (T-63) --
+    # The transactional-outbox relay (core/events/relay.py) ships rows of
+    # outbox_events to the comms Redis Stream.
+    #
+    # NOTE: comms_redis_url is NOT redis_url above. redis_url is this
+    # application's own cache/rate-limit instance; comms_redis_url points
+    # at the COMMS stack's Redis, a different server on the shared docker
+    # network. They are never the same value on a real box.
+    #
+    # COMMS_REDIS_URL is written into backend/.env by the installer
+    # hand-over (scripts/install_aivis.sh, setup_comms); an EMPTY url
+    # means "there is no relay" -- it disables the background task with a
+    # log line instead of failing to start. Local dev has no comms stack.
+    comms_redis_url: str = ""
+    # Stream name the relay XADDs into. The default MIRRORS the comms
+    # consumer's own default (comms app/core/config.py:66
+    # `comms_events_stream: str = "comms:events"`, verified against that
+    # code for this delivery): a name mismatch means events land in a
+    # stream nobody reads, silently. Override ONLY in lockstep with the
+    # comms .env.
+    comms_events_stream: str = "comms:events"
+    # Relay tick interval (seconds between passes over the outbox).
+    comms_relay_interval_seconds: float = 2.0
+    # Rows claimed per pass (the FOR UPDATE SKIP LOCKED batch).
+    comms_relay_batch_size: int = 100
+    # A poison row logs WARNING every N failed attempts and INFO in
+    # between -- loud enough for the operator, quiet enough not to drown
+    # the log. Never a drop limit: outbox rows are not discarded.
+    comms_relay_warn_every_attempts: int = 10
+    # Exponential backoff for poison rows: delay = min(base * 2**attempts,
+    # cap), computed from the POST-increment attempts (first failure ->
+    # base * 2). Infrastructure failures never assign a backoff.
+    comms_relay_backoff_base_seconds: float = 2.0
+    comms_relay_backoff_cap_seconds: float = 300.0
+    # Dead-letter ceiling: at this many failed attempts the row gets
+    # dead_lettered_at, ONE error log, and leaves the relay's select.
+    # With base 2.0 / cap 300 the pure-backoff path to death is
+    # 4+8+16+32+64+128+256 + 4x300 ~= 28-35 min plus pass ticks.
+    comms_relay_max_attempts: int = 12
+    # Socket timeouts for the relay's Redis connection -- a hung TCP
+    # connection must not stall the loop forever. A timeout surfaces as
+    # redis TimeoutError, which the relay classifies as INFRASTRUCTURE
+    # (pass aborted, attempts untouched).
+    comms_relay_socket_connect_timeout_seconds: float = 5.0
+    comms_relay_socket_timeout_seconds: float = 5.0
+    # Operator switch for the background relay. True by default: on a box
+    # where the installer has filled COMMS_REDIS_URL the relay is meant to
+    # run. It is NOT a test toggle -- tests never start the lifespan
+    # (ASGITransport fires no startup event) and dev has an empty url, so
+    # both are already covered by the url gate.
+    comms_relay_enabled: bool = True
+
     # -- Computed properties --
 
     @property

@@ -127,6 +127,7 @@ import structlog
 from app.core.background import publish_background_tasks
 from app.core.config import APP_VERSION, settings
 from app.core.database import dispose_engine, get_engine
+from app.core.events.relay import run_relay
 from app.core.exceptions import AivisError, RateLimitError
 from app.core.logging import setup_logging
 from app.core.middleware import TraceIdMiddleware
@@ -363,6 +364,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     await init_redis()
 
+    # Start the comms outbox relay (T-63). Unlike the daemons below it
+    # is GATED, and by two things at once: the operator switch, and a
+    # configured COMMS_REDIS_URL. An empty url means "this box has no
+    # comms stack" -- the correct answer there is a relay that does not
+    # run, not an application that will not start. The reason is logged
+    # with both inputs, because a background task that silently never
+    # existed is the kind of absence nobody notices for months.
+    relay_task: asyncio.Task[None] | None = None
+    if settings.comms_relay_enabled and settings.comms_redis_url:
+        relay_task = asyncio.create_task(
+            run_relay(),
+            name="comms_outbox_relay",
+        )
+    else:
+        logger.info(
+            "comms_outbox_relay_disabled",
+            enabled=settings.comms_relay_enabled,
+            redis_url_configured=bool(settings.comms_redis_url),
+        )
+
     # Start background daemons.
     confirmation_task = asyncio.create_task(
         _payment_confirmation_worker(),
@@ -389,6 +410,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     yield
+
+    # Stop the comms outbox relay (T-63). Conditional because the task
+    # may never have been created; awaited like the others so shutdown
+    # does not return while the loop still holds its Redis connection.
+    if relay_task is not None:
+        relay_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await relay_task
 
     # Stop background daemons.
     confirmation_task.cancel()
