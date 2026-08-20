@@ -223,6 +223,23 @@ class Settings(BaseSettings):
     # both are already covered by the url gate.
     comms_relay_enabled: bool = True
 
+    # -- Comms integration: HTTP API (T-64) --
+    # The synchronous door into comms: the product creates a recipient
+    # before its first message to that user, because a message to an
+    # unknown recipient resolves to nothing and is dropped terminally on
+    # the comms side (SKIPPED, no delivery row, no retry).
+    #
+    # Both values are written into backend/.env by the installer
+    # hand-over, exactly like COMMS_REDIS_URL above; until this delivery
+    # nothing read them. An EMPTY url means "this box has no comms
+    # stack": no client is built and no call is made.
+    comms_api_url: str = ""
+    comms_service_token: str = ""
+    # Per-request timeout. Deliberately short: this call sits inside the
+    # registration transaction, so its ceiling is how long a registering
+    # user waits when comms is unreachable.
+    comms_http_timeout_seconds: float = 5.0
+
     # -- Computed properties --
 
     @property
@@ -347,6 +364,35 @@ class Settings(BaseSettings):
                 self.minio_secret_key = "minioadmin"
             else:
                 raise ValueError("MINIO_SECRET_KEY is required in production.")
+
+        # -- Comms API pairing (T-64) --
+        # A url without a token sends "Authorization: Bearer " and comms
+        # answers 401 to every call: recipients would silently stop being
+        # created, and the first symptom would be users who never receive
+        # a notification. A token without a url is the same
+        # half-configuration seen from the other side.
+        #
+        # Gated on "comms is INTENDED on this box" -- i.e. at least one of
+        # the two is set -- rather than on their absence: a box with no
+        # comms at all is a supported configuration (see the empty-url
+        # note above), and demanding these keys everywhere would stop
+        # every comms-less deployment from starting, including in-place
+        # upgrades whose .env has no COMMS_* yet. Dev stays optional so a
+        # laptop needs no comms stack.
+        if not is_dev and (self.comms_api_url or self.comms_service_token):
+            if self.comms_api_url and not self.comms_service_token:
+                raise ValueError(
+                    "COMMS_API_URL is set but COMMS_SERVICE_TOKEN is "
+                    "empty: comms would reject every call with 401 and "
+                    "recipients would never be created. Set the token or "
+                    "clear the URL."
+                )
+            if self.comms_service_token and not self.comms_api_url:
+                raise ValueError(
+                    "COMMS_SERVICE_TOKEN is set but COMMS_API_URL is "
+                    "empty: half-configured comms client. Set the URL or "
+                    "clear the token."
+                )
 
         return self
 

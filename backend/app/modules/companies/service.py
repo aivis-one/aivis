@@ -132,6 +132,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms_sync import ensure_recipient
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.redis import get_redis
 from app.core.storage import (
@@ -231,6 +232,11 @@ async def create_company(
         if "ix_users_email" in str(exc.orig):
             raise ConflictError("Email already registered")
         raise
+
+    # A company user is a recipient like any other -- comms must know
+    # them before the first message (T-64). Never raises; a failure
+    # defers the recipient to the outbox.
+    await ensure_recipient(session, company_user)
 
     # Create CompanyProfile.
     profile = CompanyProfile(

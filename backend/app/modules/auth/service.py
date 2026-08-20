@@ -64,6 +64,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms_sync import ensure_recipient
 from app.core.config import settings
 from app.core.database import get_session_factory
 from app.core.exceptions import BadRequestError, ConflictError, UnauthorizedError
@@ -334,6 +335,12 @@ async def register_email(
         if "ix_users_email" in str(exc.orig):
             raise ConflictError("Email is already registered")
         raise
+
+    # The recipient must exist in comms before this product sends that
+    # user anything -- the verification e-mail below is the first thing
+    # in line. Never raises; a failure defers the recipient to the
+    # outbox and registration continues either way (T-64).
+    await ensure_recipient(session, user)
 
     await record_audit(
         session=session,
@@ -727,6 +734,12 @@ async def upsert_telegram_user(
         raise
 
     await session.refresh(new_user)
+
+    # Same rule as the e-mail path: comms learns the recipient before
+    # the product has anything to say to them (T-64). Deliberately NOT
+    # in the race branch above -- that branch resolved to an EXISTING
+    # user, who already got their upsert when they were created.
+    await ensure_recipient(session, new_user)
 
     await record_audit(
         session=session,
