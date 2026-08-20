@@ -83,6 +83,10 @@ from app.modules.companies.models import CompanyAttachment  # noqa: F401
 # that difference as "a table nobody declares" and proposes dropping it.
 from app.core.events.models import OutboxEvent  # noqa: F401
 
+# T-65: support thread pointer. Same reason as the line above -- an
+# unimported model is a table --autogenerate proposes to drop.
+from app.modules.support.models import SupportThread  # noqa: F401
+
 # ---------------------------------------------------------------------------
 
 config = context.config

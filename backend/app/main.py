@@ -59,6 +59,8 @@
 #   agreement_router          -> /api/v1/purchases/{id}/agreement (Refactor 2 iter 2.4)
 #   ownership_router          -> /api/v1/companies/{id}/ownership-certificate
 #                                (Refactor 2 iter 2.4)
+#   support_router            -> /api/v1/support/* (T-65, user side of the
+#                                support request channel; proxies comms)
 #
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - +staff_pools_router for POST/PATCH /staff/companies/{id}/pool.
@@ -199,6 +201,7 @@ from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.consistency.router import router as consistency_router
 from app.modules.staff.router import router as staff_users_router
+from app.modules.support.router import router as support_router
 from app.modules.transactions.router import router as transactions_router
 from app.modules.users.router import router as users_router
 from app.modules.withdrawals.router import router as withdrawals_router
@@ -541,6 +544,11 @@ app.include_router(portfolio_router)
 # certificate. Replaces certificate_router (BREAKING -- no redirect).
 app.include_router(agreement_router)
 app.include_router(ownership_router)
+
+# T-65: the user side of the support request channel. A proxy to comms --
+# the conversation lives there; what lives here is who the caller is and
+# which threads are theirs.
+app.include_router(support_router)
 
 
 # ---------------------------------------------------------------------------

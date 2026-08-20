@@ -63,7 +63,18 @@ def _fake_httpx(monkeypatch: pytest.MonkeyPatch, outcome: Any) -> list[dict]:
     """Replace app.core.comms's httpx client. Returns the call log.
 
     `outcome` is either a status code to answer with, or an exception
-    instance to raise from put().
+    instance to raise from request().
+
+    T-65: the fake speaks `request(method, url, ...)`, not `put(url,
+    ...)`. Not a loosening -- the opposite. Every comms call in this
+    product now goes through ONE function (app.core.comms._call), which
+    exists so a second caller cannot pick its own address, token or
+    timeout, and that function dispatches by method. A fake that only
+    answered .put() would have been mimicking a client this code no
+    longer has, and would have gone on passing while the real recipient
+    upsert took an untested path. The method is recorded and asserted
+    below for the same reason: it used to be pinned by the fake's own
+    name, and something has to keep pinning it.
     """
     calls: list[dict] = []
 
@@ -77,15 +88,19 @@ def _fake_httpx(monkeypatch: pytest.MonkeyPatch, outcome: Any) -> list[dict]:
         async def __aexit__(self, *exc_info: Any) -> bool:
             return False
 
-        async def put(
+        async def request(
             self,
+            method: str,
             url: str,
+            params: dict | None = None,
             json: dict | None = None,
             headers: dict | None = None,
         ) -> _FakeResponse:
             calls.append(
                 {
+                    "method": method,
                     "url": url,
+                    "params": params,
                     "json": json,
                     "headers": headers,
                     "timeout": self.kwargs.get("timeout"),
@@ -258,6 +273,10 @@ async def test_success_sends_the_snapshot_and_skips_the_outbox(
 
     assert len(calls) == 1
     call = calls[0]
+    # PUT is pinned here because the fake no longer pins it: the client
+    # dispatches by method now, and a recipient upsert sent as anything
+    # else would create nothing in comms.
+    assert call["method"] == "PUT"
     assert call["url"] == f"{_URL}/api/v1/recipients/{user.id}"
     assert call["headers"]["Authorization"] == f"Bearer {_TOKEN}"
     assert call["timeout"] == settings.comms_http_timeout_seconds
