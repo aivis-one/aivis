@@ -64,9 +64,15 @@ class LedgerReason:
 
     # ------------------------------------------------------------------
     # Gifts -- all free unit allocations (passive_ledger: +0 entries)
-    # type: bundle_bonus | airdrop | welcome | campaign |
-    #        installment_tranche | installment_completion |
-    #        installment_completion_agent
+    # Values of the {type} placeholder below:
+    #   bundle_bonus | airdrop | welcome | campaign |
+    #   installment_tranche | installment_completion |
+    #   installment_completion_agent
+    # NOT written as "# type: ...": a comment that STARTS with `# type:`
+    # is a PEP 484 type comment, and mypy stops with "Invalid syntax" on
+    # failing to parse this list as one. It does not merely skip the
+    # line -- it abandons the file, and with it every module that
+    # imports this one, so the whole tree silently loses type checking.
     # ------------------------------------------------------------------
     GIFT: str = "gift:{type}:{reference_id}"
 
