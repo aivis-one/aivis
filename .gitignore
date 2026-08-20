@@ -4,6 +4,13 @@
 
 # -- Secrets --
 .env
+# ...and every projection of it. scripts/env-render.sh generates
+# backend/.env.db and backend/.env.minio on every install and every
+# update; untracked, they would show up in `git status --porcelain`, and
+# the update cycle reads that to decide whether the tree is dirty -- so
+# without this line every `aivis update` would stop and ask a human
+# whether to discard two files it had just written itself.
+.env.*
 *.pem
 *.key
 

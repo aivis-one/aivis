@@ -345,45 +345,160 @@ success "User '$DEPLOY_USER' in docker group"
 
 section "SSH Deploy Key & Repository"
 
-DEPLOY_KEY="/root/.ssh/id_ed25519_aivis_deploy"
-mkdir -p /root/.ssh
-chmod 700 /root/.ssh
+# `ssh -T` against GitHub exits 1 even on SUCCESS ("does not provide shell
+# access"), and this script runs under `set -o pipefail`, so the obvious
+# `ssh | grep -q` form propagates that 1 through a MATCHING grep -- the
+# test fails on a perfectly good key, every time. Capture the banner
+# instead; `|| true` keeps the assignment from tripping the ERR trap.
+github_probe() {
+    local alias="$1" banner
+    banner=$(ssh -T "git@${alias}" 2>&1 || true)
+    echo "$banner" | grep -q "successfully authenticated"
+}
 
-if ! grep -q "github.com" /root/.ssh/known_hosts 2>/dev/null; then
-    ssh-keyscan -H github.com >> /root/.ssh/known_hosts 2>/dev/null
-fi
+# Provision ONE GitHub deploy key: generate if absent, add the host alias
+# if absent, then TEST -- and only interrupt the operator if the test
+# fails.
+#
+# ORDER IS THE POINT. Printing the key and blocking on ENTER
+# unconditionally makes a reinstall of a box whose keys GitHub already
+# knows stop and ask for something already done, once per repository.
+# Test first, and a reinstall is silent.
+#
+# WHY A KEY PER REPOSITORY AT ALL: GitHub refuses the same public key as a
+# deploy key on two repositories. One key cannot reach both aivis and
+# comms, so each service gets its own, with its own `Host github.com-<name>`
+# alias -- that alias is how git picks the right identity.
+#
+# WHY THE PROBE USUALLY PASSES, worth knowing before "cleaning up" after a
+# wipe: the wipe removes /opt/* and the docker state and does NOT touch
+# /root/.ssh. The keys survive it, GitHub still holds the public halves.
+# Delete /root/.ssh as part of a wipe and every reinstall goes back to
+# asking for one GitHub step by hand per repository.
+#
+#   $1 name    service id (key file and host alias are named after it)
+#   $2 repo    owner/repo, for the URL printed to the operator
+#   $3 access  "write" or "read" -- from the registry, never guessed: the
+#              instruction differs materially and a claim about privilege
+#              belongs where it can be reviewed.
+provision_deploy_key() {
+    local name="$1" repo="$2" access="$3"
+    local key="/root/.ssh/id_ed25519_${name}_deploy"
+    local host_alias="github.com-${name}"
 
-if [ ! -f "$DEPLOY_KEY" ]; then
-    ssh-keygen -t ed25519 -C "aivis-deploy@$(hostname)" \
-        -f "$DEPLOY_KEY" -N "" > /dev/null 2>&1
-    success "Deploy key generated"
-fi
+    mkdir -p /root/.ssh
+    chmod 700 /root/.ssh
+    if ! grep -q "github.com" /root/.ssh/known_hosts 2>/dev/null; then
+        ssh-keyscan -H github.com >> /root/.ssh/known_hosts 2>/dev/null
+    fi
 
-echo ""
-echo -e "${YELLOW}${BOLD}ACTION REQUIRED:${NC}"
-echo "Add this deploy key to GitHub -> $GITHUB_REPO -> Settings -> Deploy keys:"
-echo ""
-echo -e "${CYAN}"
-cat "${DEPLOY_KEY}.pub"
-echo -e "${NC}"
-echo "Press ENTER after adding the deploy key to GitHub..."
-read -r < /dev/tty
+    if [ ! -f "$key" ]; then
+        ssh-keygen -t ed25519 -C "${name}-deploy@$(hostname)" -f "$key" -N "" > /dev/null 2>&1
+        success "Deploy key generated for $name"
+    fi
 
-# Test SSH connection
-if ssh -i "$DEPLOY_KEY" -o StrictHostKeyChecking=no \
-    git@github.com 2>&1 | grep -q "successfully authenticated"; then
-    success "GitHub SSH connection verified"
-else
-    warn "Could not verify GitHub SSH connection. Proceeding anyway."
-fi
+    # The alias has to exist before the probe below runs -- which is why
+    # the config block is written here and not after the interactive step.
+    if ! grep -q "Host ${host_alias}\b" /root/.ssh/config 2>/dev/null; then
+        cat >> /root/.ssh/config << SSH_CONFIG_EOF
+
+# ${name} deploy key (${access})
+Host ${host_alias}
+    HostName github.com
+    User git
+    IdentityFile ${key}
+    IdentitiesOnly yes
+SSH_CONFIG_EOF
+        chmod 600 /root/.ssh/config
+    fi
+
+    if github_probe "$host_alias"; then
+        success "GitHub connection OK ($name)"
+        return 0
+    fi
+
+    echo ""
+    echo -e "${CYAN}===============================================${NC}"
+    echo -e "${CYAN}  GitHub Deploy Key -- ${name} repo${NC}"
+    echo -e "${CYAN}===============================================${NC}"
+    echo ""
+    cat "${key}.pub"
+    echo ""
+    echo -e "${YELLOW}Go to: https://github.com/${repo}/settings/keys${NC}"
+    echo -e "${YELLOW}Click 'Add deploy key', paste the key above.${NC}"
+    if [ "$access" = "write" ]; then
+        echo -e "${RED}IMPORTANT: tick 'Allow write access'.${NC}"
+        echo -e "${YELLOW}('aivis update' pushes regenerated API types back to this repo.)${NC}"
+    else
+        echo -e "${GREEN}READ-ONLY is enough: do NOT tick 'Allow write access'.${NC}"
+        echo -e "${YELLOW}(nothing on this box ever pushes to ${repo}.)${NC}"
+    fi
+    echo ""
+    read -r -p "Press ENTER after adding the deploy key to GitHub..." < /dev/tty
+
+    if github_probe "$host_alias"; then
+        success "GitHub connection OK ($name)"
+        return 0
+    fi
+
+    error "Cannot connect to GitHub with the ${name} deploy key. Add it at https://github.com/${repo}/settings/keys"
+}
+
+# Provision a GitHub deploy key for EVERY service the registry declares,
+# except the product itself -- its key is the bootstrap below that made
+# the registry readable in the first place.
+#
+# This is what the registry buys: a third service is one record in
+# services.conf and zero lines here. The product record is not filtered
+# out by name -- it is skipped by its "internal" lifecycle.
+#
+# DEFINED ABOVE ITS CALL ON PURPOSE: bash executes top to bottom, and a
+# definition placed below the call site does not exist when the call runs.
+provision_service_keys() {
+    local record name repo access
+    for record in "${AIVIS_SERVICES[@]}"; do
+        [ "$(svc_field "$record" 5)" = "internal" ] && continue
+        name=$(svc_field "$record" 1)
+        repo=$(svc_field "$record" 2)
+        access=$(svc_field "$record" 7)
+
+        # An undeclared privilege is a stop, not a default. Guessing
+        # "read" would print the wrong instruction to the operator, and the
+        # failure would surface days later as a push that cannot.
+        if [ "$access" != "read" ] && [ "$access" != "write" ]; then
+            error "Service '$name' declares access='$access' in services.conf -- expected 'read' or 'write'. Refusing to guess which instruction to give the operator."
+        fi
+
+        provision_deploy_key "$name" "$repo" "$access"
+    done
+}
+
+# BOOTSTRAP, and the one service that cannot come from the registry:
+# scripts/services.conf lives INSIDE this repo, so it cannot be read
+# before the product is cloned, and the product cannot be cloned without
+# this key.
+provision_deploy_key "aivis" "$GITHUB_REPO" "write"
+REPO_URL="git@github.com-aivis:${GITHUB_REPO}.git"
 
 # Clone repository
 mkdir -p "$INSTALL_BASE"
 cd "$INSTALL_BASE"
-GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY" \
-    git clone "git@github.com:${GITHUB_REPO}.git" repo
+git clone "$REPO_URL" repo
 success "Repository cloned to $INSTALL_BASE/repo"
 chown -R "$DEPLOY_USER:$DEPLOY_USER" "$INSTALL_BASE/repo"
+
+# Only now can the registry be read -- it ships inside the checkout the
+# clone above just made. Everything after this point is registry-driven:
+# the same file scripts/aivis-manage.sh sources, so install and update can
+# never disagree about a branch or a path.
+SERVICES_CONF="$INSTALL_BASE/repo/scripts/services.conf"
+if [ ! -f "$SERVICES_CONF" ]; then
+    error "Service registry not found at $SERVICES_CONF -- this checkout cannot say which services this server runs."
+fi
+# shellcheck source=/dev/null
+source "$SERVICES_CONF"
+
+provision_service_keys
 
 # ------------------------------------------------------------------------
 # Install-specific config for the management script, and make the tracked
@@ -497,6 +612,13 @@ MAX_CONCURRENT_SESSIONS=5
 
 # -- Telegram --
 TELEGRAM_BOT_TOKEN=PLACEHOLDER
+# Derived from the token by the installer (Telegram getMe), never typed.
+# The backend does not read it -- Settings has no such field and drops it
+# (extra="ignore"). It lives here because backend/.env is the SINGLE
+# source the comms hand-over reads from: comms builds every deep-link
+# button from it, and a value invented in two places is a value that can
+# disagree with itself.
+TELEGRAM_BOT_URL=PLACEHOLDER
 
 # -- Telegram Auth Security --
 AUTH_RATE_LIMIT_MAX_REQUESTS=5
@@ -572,7 +694,64 @@ prompt_secret() {
     done
 }
 
-prompt_secret "TELEGRAM_BOT_TOKEN" "Telegram Bot Token"
+# -- Telegram: ask for the token, DERIVE the URL ------------------------------
+# The bot URL is not a second question. It is built from the username
+# Telegram itself answers with FOR THIS TOKEN, so the two can never name
+# different bots -- a hand-typed URL can, and the result is a comms stack
+# in real mode sending working buttons that point at somebody else's bot.
+# Both values are non-empty, so no validator downstream would catch it.
+#
+# The link domain is a constant here rather than a literal further down:
+# domains live at the edge, in one named place, and comms refuses profile
+# data that carries one at all.
+TELEGRAM_LINK_DOMAIN="telegram.me"
+
+prompt_telegram_bot() {
+    local token username getme current
+    current=$(grep -E '^TELEGRAM_BOT_TOKEN=' "$ENV_FILE" | tail -n 1 | cut -d= -f2-)
+
+    while true; do
+        read -rp "  Telegram Bot Token: " token < /dev/tty
+        if [ -z "$token" ]; then
+            # ENTER means "this run has nothing to say". If a real token is
+            # already on file that is fine; if the placeholder is still
+            # there, say what it costs rather than passing silently -- the
+            # comms hand-over further down refuses to deliver a placeholder,
+            # and the backend refuses to authenticate anyone with one.
+            if [ "$current" = "PLACEHOLDER" ] || [ "$current" = "TEST" ] || [ -z "$current" ]; then
+                warn "  Telegram Bot Token: still unset -- Telegram login will not work,"
+                warn "  and comms will be left in stub mode (nothing gets delivered)."
+            else
+                warn "  Telegram Bot Token: keeping current value"
+            fi
+            return 0
+        fi
+
+        # Verify the token by using it. A typo, a revoked token or a
+        # placeholder dies HERE, in front of the person who can fix it,
+        # instead of as a silent auth failure on the first real login.
+        # Parsed with grep/sed to avoid a jq dependency.
+        log "  Verifying token with Telegram (getMe)..."
+        getme=$(curl -s --max-time 15 "https://api.telegram.org/bot${token}/getMe" || true)
+        if ! echo "$getme" | grep -q '"ok":true'; then
+            warn "  Telegram rejected that token (getMe failed). Try again, or press ENTER to skip."
+            warn "  Response: ${getme:-<empty>}"
+            continue
+        fi
+        username=$(echo "$getme" | grep -o '"username":"[^"]*"' | head -1 | sed 's/"username":"//; s/"//' || true)
+        if [ -z "$username" ]; then
+            warn "  Could not read the bot username out of the getMe response. Try again."
+            continue
+        fi
+
+        sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${token}|" "$ENV_FILE"
+        sed -i "s|^TELEGRAM_BOT_URL=.*|TELEGRAM_BOT_URL=https://${TELEGRAM_LINK_DOMAIN}/${username}|" "$ENV_FILE"
+        success "  Telegram bot: @${username}"
+        return 0
+    done
+}
+
+prompt_telegram_bot
 prompt_secret "SUMSUB_API_KEY"     "SumSub API Key (optional)"
 prompt_secret "SUMSUB_SECRET_KEY"  "SumSub Secret Key (optional)"
 prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (optional)"
@@ -831,6 +1010,334 @@ success "SSL configured for $STORAGE_DOMAIN"
 # ==============================================================================
 # START DOCKER STACK
 # ==============================================================================
+
+# ==============================================================================
+# NARROW ENV PROJECTIONS
+# ==============================================================================
+# postgres/redis read backend/.env.db and minio/minio-init read
+# backend/.env.minio instead of the full backend/.env, so a compromise
+# there no longer exposes the application's payment, telegram, session and
+# comms-service secrets. Runs BEFORE any `docker compose` invocation --
+# compose fails outright on a missing env_file, and it parses the whole
+# file, so every compose command from here on depends on both existing.
+
+# shellcheck source=/dev/null
+source "$INSTALL_BASE/repo/scripts/env-render.sh"
+
+if ! write_db_env "$INSTALL_BASE/repo/backend/.env" "$INSTALL_BASE/repo/backend/.env.db"; then
+    error "Could not write backend/.env.db -- postgres/redis would start without their credentials."
+fi
+success "backend/.env.db written (narrow db env for postgres/redis)"
+
+if ! write_minio_env "$INSTALL_BASE/repo/backend/.env" "$INSTALL_BASE/repo/backend/.env.minio"; then
+    error "Could not write backend/.env.minio -- object storage would start on empty root credentials."
+fi
+success "backend/.env.minio written (narrow env for minio/minio-init)"
+
+# ==============================================================================
+# SHARED DOCKER NETWORK
+# ==============================================================================
+# aivis and comms are separate stacks joined by ONE external network;
+# compose requires it to EXIST before either `up`. Idempotent, and
+# comms-deploy.sh carries the same guard on its side -- either may win the
+# race, the result is identical. Runs before setup_comms AND before the
+# product stack: both join it.
+
+SHARED_NETWORK="aivis-shared"
+
+ensure_shared_network() {
+    if docker network inspect "$SHARED_NETWORK" > /dev/null 2>&1; then
+        success "Docker network '$SHARED_NETWORK' already exists"
+        return 0
+    fi
+    if ! docker network create "$SHARED_NETWORK" > /dev/null; then
+        error "Failed to create docker network '$SHARED_NETWORK'"
+    fi
+    success "Docker network '$SHARED_NETWORK' created"
+}
+
+ensure_shared_network
+
+# ==============================================================================
+# COMMS STACK (orchestration only)
+# ==============================================================================
+section "Comms Stack"
+
+# This installer does NOT deploy comms itself: it clones the comms repo
+# and calls the deploy CLI that ships INSIDE it. comms/deploy/ is the
+# single source of the comms deploy mechanics -- nothing of it is
+# duplicated here, and the path and branch come from the registry rather
+# than from constants in this file.
+#
+# TOKEN SEAM -- the documented two-pass flow from comms/deploy/INTEGRATION.md:
+#   pass 1:  mints comms secrets, seeds its generic smoke profile and
+#            brings the comms stack up (PRODUCT_ENV_PATH is empty on a
+#            fresh install, so the COMMS_* block is only printed);
+#   knob:    PRODUCT_ENV_PATH=<aivis backend .env> is written into
+#            /opt/comms/.env. Per-product CONFIG, not deploy logic;
+#   pass 2:  install re-runs (idempotent: secrets and profile are
+#            guarded, `up -d --build` is a cached no-op) and the hand-over
+#            upserts COMMS_SERVICE_TOKEN / COMMS_API_URL / COMMS_REDIS_URL
+#            into backend/.env.
+# PRODUCT_ENV_PATH can NOT be passed as a process variable: the CLI
+# SOURCES /opt/comms/.env, which overrides the environment. Hence two passes.
+#
+# Placed immediately before the product stack on purpose: aivis then
+# starts with COMMS_* already in its env_file -- no backend restart -- and
+# a comms failure stops the install before anything product-side is up.
+
+# Read one KEY's value out of an env file. `grep`, deliberately not
+# `source`: these files carry secrets and operator input, and sourcing
+# executes whatever a value happens to look like.
+read_env_value() {
+    local file="$1" key="$2"
+    [ -f "$file" ] || return 1
+    # `tail -n 1`, not `grep -m1`: an env file resolves a repeated key to
+    # the LAST assignment, exactly as a shell would. First-match would
+    # hand the caller a stale value nothing else on the box agrees with.
+    grep -E "^${key}=" "$file" 2>/dev/null | tail -n 1 | cut -d= -f2-
+}
+
+# Idempotent KEY=VALUE write into an env file: update in place when the
+# key exists, append when it does not.
+upsert_env_var() {
+    local file="$1" key="$2" value="$3"
+    if grep -q "^${key}=" "$file"; then
+        if ! sed -i "s|^${key}=.*|${key}=${value}|" "$file"; then
+            error "Failed to update ${key} in ${file}"
+        fi
+    else
+        if ! printf '%s=%s\n' "$key" "$value" >> "$file"; then
+            error "Failed to append ${key} to ${file}"
+        fi
+    fi
+}
+
+# Gate on every value we push into ANOTHER stack's env file.
+#
+# WHITELIST, not blacklist: we deliver exactly three shapes -- a bot
+# token, a hostname-bearing URL and an absolute path -- and this set
+# covers them with room to spare, so the guarantee is structural instead
+# of a list of characters someone remembered to ban.
+#
+# What it actually catches: a NEWLINE in an operator-supplied value. The
+# comms CLI *sources* its env file, so one newline in a delivered value
+# writes an extra KEY=VALUE line into a file that is then executed as
+# shell assignments. `[[ =~ ]]` and not `grep -Eq '^...$'` for exactly
+# that reason -- grep anchors PER LINE and would pass a multi-line value
+# whose every line is clean. Bash anchors the whole string. The '|' in
+# the rejected set matters too: it is the sed delimiter in upsert_env_var
+# above.
+validate_deliverable() {
+    local key="$1" value="$2"
+    if [ -z "$value" ]; then
+        error "Refusing to deliver an empty value for $key."
+    fi
+    if ! [[ "$value" =~ ^[A-Za-z0-9:._/-]+$ ]]; then
+        error "Refusing to deliver $key: value contains characters outside the allowed set [A-Za-z0-9:._/-] (spaces, quotes, \$, backticks, '|' and newlines are rejected -- they would break the env file the comms CLI sources)."
+    fi
+}
+
+# The product profile reaches comms by BIND, not by a copy: PROFILE_DIR
+# points straight at comms-profile/ inside the checkout cloned above.
+# Consequences, all wanted -- `aivis update` pulls the repo and the new
+# dictionary is already on the path comms reads, with no second copy to
+# keep in step.
+#
+# comms-deploy.sh needs no change for this: its own seed step only fills
+# an EMPTY directory, and this one is never empty -- it carries the
+# profile from git.
+#
+# NOTE, and this is where aivis differs from the donor: only types.yaml is
+# required. The donor installer also demands a templates/ directory; that
+# is the donor's rule, not the comms loader's. The loader treats a missing
+# templates/ as an empty template set and starts normally -- verified in
+# its body -- and aivis has no product notification types to write
+# templates for until the emitters land.
+deliver_comms_profile() {
+    local comms_env="$1"
+    local profile_dir="$INSTALL_BASE/repo/comms-profile"
+
+    # Fail FAST and by name. Without this the failure still happens --
+    # comms-app refuses to start without a valid profile -- but it arrives
+    # as an opaque container health timeout minutes later, with the real
+    # cause buried in another stack's logs.
+    if [ ! -d "$profile_dir" ]; then
+        error "Product profile not found at $profile_dir. The aivis checkout must carry comms-profile/types.yaml -- comms will not start without a valid profile."
+    fi
+    if [ ! -s "$profile_dir/types.yaml" ]; then
+        error "Profile at $profile_dir has no (or an empty) types.yaml. comms validates the profile at startup and refuses to boot without the built-in chat types."
+    fi
+
+    validate_deliverable "PROFILE_DIR" "$profile_dir"
+    upsert_env_var "$comms_env" "PROFILE_DIR" "$profile_dir"
+    success "PROFILE_DIR=$profile_dir (bind: comms reads the profile from the aivis checkout)"
+}
+
+# The bot credentials and the channel mode reach comms from the ONE place
+# they were ever entered: this installer's own prompt.
+#
+# Both values are read back OUT of backend/.env rather than rebuilt from
+# shell variables, for two load-bearing reasons: byte-equality with what
+# aivis itself uses becomes a property of the code rather than a
+# coincidence of two formulas staying in step, and the .env generation
+# above is a no-op when the file already exists, so on a re-run over a
+# live box the prompt never happens and those shell variables do not exist.
+#
+# THE GUARD -- both or neither, and a PLACEHOLDER counts as neither. A
+# re-run without the prompt would otherwise push a sentinel into comms and
+# flip it to real mode, where every send fails and every button is built
+# from a fake base. Note the sentinel set: this installer writes
+# PLACEHOLDER, the committed .env.example carries TEST, and the backend's
+# own config treats "" and TEST as absent. All three mean "nothing was
+# said"; only a real value is a value.
+deliver_comms_telegram() {
+    local comms_env="$1" aivis_env="$2"
+    local token url
+
+    token=$(read_env_value "$aivis_env" "TELEGRAM_BOT_TOKEN" || true)
+    url=$(read_env_value "$aivis_env" "TELEGRAM_BOT_URL" || true)
+
+    case "${token:-}" in ""|PLACEHOLDER|TEST) token="" ;; esac
+    case "${url:-}" in ""|PLACEHOLDER|TEST) url="" ;; esac
+
+    if [ -z "$token" ] || [ -z "$url" ]; then
+        warn "Telegram credentials NOT delivered to comms on this run."
+        warn "backend/.env carries no real bot token, so pushing what is there"
+        warn "would put comms into real mode with a placeholder -- where every"
+        warn "delivery fails instead of being quietly stubbed."
+        warn "CHANNELS_MODE in $comms_env is left as it is (stub, unless a"
+        warn "previous run set it), and so are any existing credentials."
+        warn "A clean delivery is a WIPE + fresh install -- never a hand edit"
+        warn "of either .env (the installer is the deliverable; a server edited"
+        warn "by hand is a server nobody can reproduce)."
+        COMMS_TELEGRAM_DELIVERED=0
+        return 0
+    fi
+
+    # Both or neither: the URL carries the username Telegram answered with
+    # for THAT token, so moving one without the other is meaningless. And
+    # real mode validates BOTH at startup -- comms refuses to boot on an
+    # empty bot URL, because every deep-link button is built from it.
+    validate_deliverable "TELEGRAM_BOT_TOKEN" "$token"
+    validate_deliverable "TELEGRAM_BOT_URL" "$url"
+
+    upsert_env_var "$comms_env" "TELEGRAM_BOT_TOKEN" "$token"
+    upsert_env_var "$comms_env" "TELEGRAM_BOT_URL" "$url"
+    # comms-deploy.sh writes CHANNELS_MODE=stub when it mints its env, and
+    # in stub mode EVERY channel resolves to the stub -- nothing is ever
+    # delivered. Flipping it is the point of delivering credentials at all.
+    upsert_env_var "$comms_env" "CHANNELS_MODE" "real"
+    COMMS_TELEGRAM_DELIVERED=1
+    success "Telegram credentials delivered to comms; CHANNELS_MODE=real"
+}
+
+# Set by deliver_comms_telegram, read by the verification below.
+COMMS_TELEGRAM_DELIVERED=0
+
+setup_comms() {
+    log "Setting up the comms stack (orchestrated)..."
+
+    # Path, branch and repo slug all come from the registry -- the same
+    # file `aivis update` reads, so the install and every later update can
+    # never disagree about what this server tracks.
+    local record comms_dir comms_branch comms_slug comms_lifecycle
+    record=""
+    local r
+    for r in "${AIVIS_SERVICES[@]}"; do
+        [ "$(svc_field "$r" 1)" = "comms" ] && record="$r" && break
+    done
+    if [ -z "$record" ]; then
+        error "No 'comms' record in scripts/services.conf -- nothing to orchestrate."
+    fi
+    comms_slug=$(svc_field "$record" 2)
+    comms_dir=$(svc_field "$record" 3)
+    comms_branch=$(svc_branch "$(svc_field "$record" 4)" comms) || exit 1
+    comms_lifecycle=$(svc_field "$record" 5)
+
+    local comms_deploy="$comms_dir/$comms_lifecycle"
+    local aivis_env="$INSTALL_BASE/repo/backend/.env"
+    # A service's env sits NEXT TO its checkout, outside it, so that a
+    # `git pull` in the checkout can never touch secrets. Derived from the
+    # registry's path rather than written out again here -- the update
+    # cycle derives it exactly the same way, and a second spelling of the
+    # same location is a second thing to keep in step.
+    local comms_env
+    comms_env="$(dirname "$comms_dir")/.env"
+
+    # -- 1. Clone the comms repo through its own read-only deploy key -----
+    if [ -d "$comms_dir" ]; then
+        warn "comms checkout already present at $comms_dir -- reusing it"
+    else
+        mkdir -p "$(dirname "$comms_dir")"
+        if ! git clone -b "$comms_branch" "git@github.com-comms:${comms_slug}.git" "$comms_dir"; then
+            error "Failed to clone $comms_slug (branch: $comms_branch)"
+        fi
+        success "comms cloned to $comms_dir (branch: $comms_branch)"
+    fi
+
+    if [ ! -f "$comms_deploy" ]; then
+        error "comms deploy CLI not found at $comms_deploy -- does branch '$comms_branch' carry deploy/?"
+    fi
+
+    # -- 2. Pass 1: mint secrets, seed the smoke profile, bring the stack up
+    # Every failure below is a HARD abort: a "successful" install that
+    # brought up aivis without a linked comms would be hidden breakage.
+    log "comms-deploy install, pass 1 (secrets + profile + bring-up)..."
+    if ! bash "$comms_deploy" install; then
+        error "comms-deploy.sh install (pass 1) FAILED. Logs: bash $comms_deploy logs"
+    fi
+
+    # -- 3. Point the token hand-over at the aivis backend .env -----------
+    if [ ! -f "$comms_env" ]; then
+        error "$comms_env not found after pass 1 -- the comms install did not mint its env, so there is nowhere to write the seam."
+    fi
+    validate_deliverable "PRODUCT_ENV_PATH" "$aivis_env"
+    upsert_env_var "$comms_env" "PRODUCT_ENV_PATH" "$aivis_env"
+    success "PRODUCT_ENV_PATH=$aivis_env written into $comms_env"
+
+    # -- 3b. Deliver the product profile and the bot credentials ----------
+    # Deliberately done from THIS side and not by teaching comms-deploy.sh
+    # about products: comms is one deploy body for several products, and
+    # everything product-specific -- which profile, which bot -- is ours to
+    # supply. comms stays agnostic; this installer is the only artifact
+    # that knows about aivis.
+    deliver_comms_profile "$comms_env"
+    deliver_comms_telegram "$comms_env" "$aivis_env"
+
+    # -- 4. Pass 2: idempotent re-run -- executes the hand-over -----------
+    log "comms-deploy install, pass 2 (COMMS_* hand-over into backend/.env)..."
+    if ! bash "$comms_deploy" install; then
+        error "comms-deploy.sh install (pass 2) FAILED."
+    fi
+
+    # -- 5. Verify the seam actually closed -------------------------------
+    # The hand-over deliberately degrades to PRINTING the block when its
+    # target is unusable, and returns SUCCESS while doing so. Fine for a
+    # manual flow; for orchestration that is a silent failure -- aivis
+    # would start unlinked while this installer reports success. So: every
+    # key present AND non-empty, or the install dies here. `.+` is the
+    # whole point of the pattern; `^KEY=` alone would pass an empty value.
+    local key
+    for key in COMMS_SERVICE_TOKEN COMMS_API_URL COMMS_REDIS_URL; do
+        if ! grep -Eq "^${key}=.+" "$aivis_env"; then
+            error "$key missing (or empty) in $aivis_env after the hand-over. The token seam did not close -- aivis would start unlinked."
+        fi
+    done
+    success "COMMS_* variables verified in $aivis_env"
+
+    if [ "$COMMS_TELEGRAM_DELIVERED" -eq 1 ]; then
+        if ! grep -Eq "^CHANNELS_MODE=real$" "$comms_env"; then
+            error "CHANNELS_MODE is not 'real' in $comms_env after delivering credentials -- comms would run in stub mode and deliver nothing."
+        fi
+        success "comms channels: real (bot credentials delivered by this installer)"
+    else
+        warn "comms channels: stub -- nothing will be delivered. See the note above."
+    fi
+    success "comms stack is up and linked (profile: $INSTALL_BASE/repo/comms-profile)"
+}
+
+setup_comms
 
 section "Docker Stack"
 

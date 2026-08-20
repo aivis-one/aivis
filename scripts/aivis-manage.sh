@@ -34,6 +34,21 @@ fi
 # shellcheck source=/dev/null
 source "$CONF_FILE"
 
+# -- Service registry ---------------------------------------------------------
+# What this box runs, and where each piece comes from. Tracked in the repo
+# and read by the installer too, so the two can never disagree about a
+# branch or a path. Sourced AFTER aivis.conf: a `conf:` branch expression
+# resolves against the values that file just put in scope.
+SERVICES_CONF="$COMPOSE_DIR/scripts/services.conf"
+if [ ! -f "$SERVICES_CONF" ]; then
+    echo "FATAL: $SERVICES_CONF not found." >&2
+    echo "The service registry ships in this repo; a checkout without it" >&2
+    echo "cannot say which services this server runs. Re-run the installer." >&2
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$SERVICES_CONF"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -47,7 +62,7 @@ NC='\033[0m'
 # this file would silently REPLACE this one, and whichever path only that
 # other trap knew about would leak on abort, with no error printed anywhere.
 # There is exactly one consumer of this today (the self-update snapshot in
-# case_update, below); the registry exists now, before a second consumer
+# update_all, below); the registry exists now, before a second consumer
 # ever gets a chance to collide with a lone trap, so the next one added is
 # safe by construction rather than by whoever adds it having read this
 # comment first.
@@ -62,6 +77,25 @@ trap 'rm -f $AIVIS_CLEANUP_PATHS' EXIT
 
 cd_compose() {
     cd "$COMPOSE_DIR" || { echo -e "${RED}ERROR: $COMPOSE_DIR not found${NC}"; exit 1; }
+}
+
+# Make sure the shared external docker network exists before any `up`.
+# docker-compose.yml declares `aivis-shared` as EXTERNAL (the comms stack
+# joins the same network) -- compose never creates external networks, it
+# requires them. Without this guard the update cycle runs `docker compose
+# down` and then dies on the `up`, leaving the stand OFF rather than
+# merely un-updated.
+#
+# Idempotent, and quiet on the happy path: it runs before every `up`, and
+# a line printed on each of those would be noise that teaches people to
+# skip the output. The same guard lives in the installer and in
+# comms-deploy.sh -- any of the three may create it first, the result is
+# identical. The network survives `docker compose down` (it is not this
+# project's to remove) but not `docker network prune`, which is why the
+# guard is a standing check and not a one-off install step.
+ensure_shared_network() {
+    docker network inspect aivis-shared > /dev/null 2>&1 && return 0
+    docker network create aivis-shared > /dev/null
 }
 
 # ==============================================================================
@@ -284,15 +318,234 @@ case_lint() {
 # UPDATE
 # ==============================================================================
 
-case_update() {
+# -- Registry-driven update ---------------------------------------------------
+# `aivis update` is no longer one function: the box runs more than one
+# service now, and they are updated in registry order, top to bottom,
+# with the product LAST -- a service's code must be current before the
+# product that calls it.
+
+# Bring one checkout to the branch the registry records for it, and
+# report (through SVC_CHANGED) whether anything actually moved.
+#
+# The old cycle took the product branch from `git branch --show-current`,
+# i.e. from whatever happened to be checked out. That is the drift this
+# replaces: the recorded branch wins, and a checkout that wandered off it
+# is realigned out loud.
+SVC_CHANGED=0
+svc_sync_checkout() {
+    local dir="$1" want="$2" name="$3"
+    SVC_CHANGED=0
+
+    cd "$dir" || { echo -e "${RED}✗ $name: $dir is not reachable${NC}"; return 1; }
+
+    if ! git fetch origin --quiet; then
+        echo -e "${RED}✗ $name: git fetch failed -- nothing touched${NC}"
+        return 1
+    fi
+
+    if ! git rev-parse --verify --quiet "origin/$want" > /dev/null; then
+        echo -e "${RED}✗ $name: branch '$want' does not exist on origin${NC}"
+        echo "  The registry says this service tracks '$want' (scripts/services.conf)."
+        return 1
+    fi
+
+    local current ahead
+    current=$(git branch --show-current)
+
+    if [ "$current" = "$want" ]; then
+        # Local commits that never reached origin. Realigning the branch
+        # would erase them silently -- exactly what a failed types-push
+        # leaves behind. Try to push them home; if that fails, STOP.
+        # Losing a commit quietly is worse than a red update.
+        ahead=$(git rev-list --count "origin/$want..HEAD" 2>/dev/null || echo 0)
+        if [ "$ahead" -gt 0 ]; then
+            echo -e "${YELLOW}⚠ $name: $ahead local commit(s) not on origin/$want -- pushing${NC}"
+            if ! GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_${name}_deploy" \
+                 git push origin "$want"; then
+                echo -e "${RED}✗ $name: cannot push local commits to origin/$want${NC}"
+                echo "  Refusing to realign the checkout: that would destroy them."
+                echo "  Inspect: cd $dir && git log origin/$want..HEAD"
+                return 1
+            fi
+        fi
+    else
+        # The checkout drifted off its recorded branch. Local commits on a
+        # FOREIGN branch are a double violation with no safe automatic
+        # answer -- neither pushing them somewhere they do not belong nor
+        # deleting them is ours to decide.
+        if [ -n "$current" ] && git rev-parse --verify --quiet "origin/$current" > /dev/null; then
+            ahead=$(git rev-list --count "origin/$current..HEAD" 2>/dev/null || echo 0)
+            if [ "$ahead" -gt 0 ]; then
+                echo -e "${RED}✗ $name: on branch '$current' (expected '$want') with $ahead unpushed commit(s)${NC}"
+                echo "  Refusing to switch branches over them."
+                echo "  Inspect: cd $dir && git log origin/$current..HEAD"
+                return 1
+            fi
+        fi
+        echo -e "${CYAN}↻ $name: checkout '${current:-detached}' -> '$want' (recorded branch wins)${NC}"
+        if ! git checkout -B "$want" "origin/$want"; then
+            echo -e "${RED}✗ $name: could not switch to '$want'${NC}"
+            return 1
+        fi
+        # A branch switch replaces the code wholesale: always redeploy,
+        # even though HEAD now equals origin (nothing left to pull).
+        SVC_CHANGED=1
+    fi
+
+    # A service pinned to a non-main branch is allowed but never free:
+    # warn (do not refuse) when main is not its ancestor -- that is the
+    # moment a fix on main stops reaching this server.
+    if [ "$want" != "main" ] && git rev-parse --verify --quiet origin/main > /dev/null; then
+        if ! git merge-base --is-ancestor origin/main "origin/$want" 2>/dev/null; then
+            echo -e "${YELLOW}⚠ $name: origin/$want is NOT a descendant of origin/main${NC}"
+            echo "    Fixes landing on main do not reach this server until it is merged."
+        fi
+    fi
+
+    if [ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/$want")" ]; then
+        SVC_CHANGED=1
+    fi
+    return 0
+}
+
+# Update ONE registry record.
+update_service() {
+    local record="$1"; shift
+    local name dir branch_expr lifecycle updater want
+    name=$(svc_field "$record" 1)
+    dir=$(svc_field "$record" 3)
+    branch_expr=$(svc_field "$record" 4)
+    lifecycle=$(svc_field "$record" 5)
+    updater=$(svc_field "$record" 6)
+
+    # Presence: a service that is not on this box is a legitimate
+    # configuration (a comms-less server exists -- that is every server
+    # installed before comms orchestration did), not an error.
+    if [ "$lifecycle" != "internal" ] && { [ ! -d "$dir/.git" ] || [ ! -f "$dir/$lifecycle" ]; }; then
+        echo -e "${YELLOW}⊘ $name: not installed, skipped${NC}"
+        echo ""
+        return 0
+    fi
+
+    want=$(svc_branch "$branch_expr" "$name") || return 1
+    echo -e "${CYAN}=== $name ($want) ===${NC}"
+
+    svc_sync_checkout "$dir" "$want" "$name" || return 1
+
+    if [ "$lifecycle" = "internal" ]; then
+        # The product runs its own full cycle (build, migrate, tests,
+        # types, health) and decides for itself whether there is anything
+        # to do. It gets the branch the registry resolved, so it never has
+        # to ask the checkout what it is.
+        AIVIS_PRODUCT_BRANCH="$want" "$updater" "$@" || return 1
+        return 0
+    fi
+
+    if [ "$SVC_CHANGED" -eq 0 ]; then
+        echo -e "${GREEN}✓ $name: already up to date${NC}"
+        echo ""
+        return 0
+    fi
+
+    # Its own script, its own mechanics -- we only tell it to go.
+    if ! bash "$dir/$lifecycle" "$updater"; then
+        echo -e "${RED}✗ $name: update failed${NC}"
+        return 1
+    fi
+    echo ""
+    return 0
+}
+
+# Restart one registry service whose PROFILE is bind-mounted out of this
+# product's checkout, so that the dictionary and templates the product
+# just pulled are the ones being served.
+#
+# UNCONDITIONAL -- deliberately not gated on "did comms-profile/ change in
+# this pull". A diff gate would save one restart per update and lose the
+# only thing that repairs a mismatch which did NOT arrive through a pull:
+# a hand edit on the box, a half-finished previous run, a rollback. Those
+# leave the running service on a profile nobody chose, and nothing else
+# would ever notice.
+#
+# Everything is derived from the registry record. Silence is the correct
+# answer in every "not applicable" case (no service env, profile kept
+# elsewhere, comms-less box) -- this is an addition to `aivis update`, and
+# an addition may not invent new ways for it to fail.
+reload_bound_profile() {
+    local record="$1"
+    local name dir cli env_file profile_dir
+
+    name=$(svc_field "$record" 1)
+    dir=$(svc_field "$record" 3)
+    cli=$(svc_field "$record" 5)
+
+    # The service's own env sits next to its checkout, outside it -- the
+    # layout every service CLI here uses, so that `update` never touches
+    # secrets.
+    env_file="$(dirname "$dir")/.env"
+    [ -f "$env_file" ] || return 0
+
+    # grep, not source: that file is full of secrets and this is a read
+    # of exactly one key. `tail -n 1`, not `grep -m1`: the file is read
+    # the way a shell reads assignments, so a repeated key resolves to
+    # the LAST one -- first-match would act on a stale path while the
+    # service used the current one.
+    profile_dir=$(grep -E '^PROFILE_DIR=' "$env_file" 2>/dev/null | tail -n 1 | cut -d= -f2-)
+    [ -n "$profile_dir" ] || return 0
+
+    # Not bound into our checkout -> the pull changed nothing it reads.
+    case "$profile_dir" in
+        "$COMPOSE_DIR"/*) ;;
+        *) return 0 ;;
+    esac
+
+    echo ""
+    echo -e "${CYAN}Reloading $name -- its profile is bound to $profile_dir${NC}"
+    if [ ! -f "$dir/$cli" ]; then
+        echo -e "${YELLOW}⊘ $name: $dir/$cli not found -- skipping profile reload${NC}"
+        return 0
+    fi
+
+    if bash "$dir/$cli" restart; then
+        echo -e "${GREEN}✓ $name restarted on the profile from this checkout${NC}"
+        return 0
+    fi
+
+    # The service validates its profile at startup and refuses to boot on
+    # a bad one -- so by far the likeliest cause of a failure HERE is the
+    # profile commit that just arrived, and the operator is looking at a
+    # crash-looping service. Give them the way out, not just the verdict.
+    echo -e "${RED}✗ $name did not come back after the profile reload${NC}"
+    echo ""
+    echo -e "${YELLOW}Most likely cause: the profile that just arrived in this pull.${NC}"
+    echo "  $name refuses to start on a profile it cannot validate"
+    echo "  (malformed types.yaml, a type declared without a category, a"
+    echo "  broken template placeholder)."
+    echo ""
+    echo "  Inspect:  bash $dir/$cli logs"
+    echo "  Recover:  revert the profile commit and roll out again --"
+    echo "    cd $COMPOSE_DIR && git revert <commit touching comms-profile/>"
+    echo "    git push && aivis update"
+    echo ""
+    return 1
+}
+
+# `aivis update` -- the whole box, in registry order.
+update_all() {
     # Self-update guard -- this file is executed straight from the repo
     # checkout (via the shim at $INSTALL_BASE/scripts/manage.sh), and this
     # very call is about to `git pull` that same checkout below. Bash reads
     # a script incrementally by byte offset, so a mid-run rewrite of this
     # file can drop the interpreter into the middle of a different line.
-    # Run the rest of this function from a snapshot instead: the copy is
+    # Run the rest of the cycle from a snapshot instead: the copy is
     # immune to the pull that follows, and the next invocation of `aivis`
     # already picks up the new file on its own.
+    #
+    # CONSEQUENCE, and it is not a defect: logic arriving in THIS pull
+    # does not run in THIS pass. On a box whose shared network does not
+    # exist yet, the first `aivis update` after this lands still executes
+    # the OLD script -- it will `down` and then fail on `up`. The second
+    # `aivis update` runs the new one and comes back. One command, twice.
     if [ "${AIVIS_UPDATE_SNAPSHOT:-0}" != "1" ]; then
         local snapshot
         snapshot=$(mktemp /tmp/aivis-manage-snapshot.XXXXXX) || {
@@ -300,15 +553,79 @@ case_update() {
         cp "${BASH_SOURCE[0]}" "$snapshot" || {
             echo -e "${RED}✗ Could not snapshot ${BASH_SOURCE[0]}${NC}"; exit 1; }
         export AIVIS_UPDATE_SNAPSHOT=1 AIVIS_SNAPSHOT_PATH="$snapshot"
-        # The main dispatcher below already shifted "update"/"deploy" off
-        # $@ before calling this function, so a bare "$@" here would
-        # re-launch the snapshot with only the flags -- it needs the
-        # command name put back explicitly to land in this branch again.
+        # The dispatcher shifted "update"/"deploy" off $@ before calling
+        # this function, so a bare "$@" here would re-launch the snapshot
+        # with only the flags -- the command name is put back explicitly
+        # so the re-exec lands in this branch again.
         exec bash "$snapshot" update "$@"
     fi
     # Running from the snapshot now: register its cleanup with the shared
     # trap at the top of this file instead of setting a trap of our own.
     aivis_cleanup_register "$AIVIS_SNAPSHOT_PATH"
+
+    # Read-only pre-scan: --frontend-only is a deliberate narrow fast path
+    # for iterating on the frontend, so it skips the service half
+    # entirely. The flags themselves are parsed inside update_product.
+    local frontend_only=0 arg
+    for arg in "$@"; do
+        [ "$arg" = "--frontend-only" ] && frontend_only=1
+    done
+
+    local registry_before=""
+    [ -f "$SERVICES_CONF" ] && registry_before=$(md5sum "$SERVICES_CONF" 2>/dev/null)
+
+    local record lifecycle
+    for record in "${AIVIS_SERVICES[@]}"; do
+        lifecycle=$(svc_field "$record" 5)
+        if [ "$lifecycle" != "internal" ] && [ "$frontend_only" -eq 1 ]; then
+            echo -e "${YELLOW}⊘ $(svc_field "$record" 1): services skipped (--frontend-only)${NC}"
+            echo ""
+            continue
+        fi
+        if ! update_service "$record" "$@"; then
+            echo -e "${RED}✗ Update stopped at '$(svc_field "$record" 1)' -- nothing after it was touched${NC}"
+            exit 1
+        fi
+    done
+
+    # -- Bound profiles: the SECOND restart ---------------------------------
+    # The registry order is "services -> product", and it stays that way:
+    # a service's CODE must be current before the product that calls it.
+    # But a service whose PROFILE is bind-mounted out of the product's
+    # checkout has a second dependency pointing the other way -- the data
+    # only arrived a moment ago, in update_product's pull, long after that
+    # service restarted. Without this pass a profile edit would land on
+    # disk now and reach the running service one update LATER.
+    #
+    # Runs in frontend-only mode too. comms is a separate stack, its
+    # profile is data rather than backend code, and the mode's guard does
+    # not watch comms-profile/ -- so a commit touching only the profile
+    # passes as frontend-only, and skipping the reload here would let it
+    # silently never arrive.
+    for record in "${AIVIS_SERVICES[@]}"; do
+        [ "$(svc_field "$record" 5)" = "internal" ] && continue
+        reload_bound_profile "$record" || exit 1
+    done
+
+    # A registry change arrives WITH the product update, but the list was
+    # read before that -- so a newly declared service starts being managed
+    # on the next run. Say so instead of letting it look like a no-op.
+    if [ -n "$registry_before" ] && [ -f "$SERVICES_CONF" ]; then
+        if [ "$registry_before" != "$(md5sum "$SERVICES_CONF" 2>/dev/null)" ]; then
+            echo ""
+            echo -e "${CYAN}ℹ The service registry changed in this update.${NC}"
+            echo "  Run 'aivis update' once more to apply it."
+        fi
+    fi
+}
+
+# The product's own cycle. Reached through update_service (the "internal"
+# record), which has already realigned this checkout to the recorded
+# branch -- the fetch and pull below are what brings the commits in.
+update_product() {
+    # The snapshot guard that used to live here moved to update_all: the
+    # whole cycle, services included, has to run from the copy.
+
 
     cd_compose
 
@@ -352,9 +669,14 @@ case_update() {
     # Fix git safe directory (git 2.35+ security requirement).
     git config --global --add safe.directory "$COMPOSE_DIR" 2>/dev/null || true
 
-    # Save current state.
+    # Save current state. The branch comes from AIVIS_PRODUCT_BRANCH,
+    # resolved from the registry by update_service and already applied to
+    # this checkout by svc_sync_checkout -- NOT from `git branch
+    # --show-current`, which is what this used to read and which made
+    # "the branch this server tracks" mean "whatever someone last checked
+    # out here". The fallback keeps the function runnable on its own.
     CURRENT_COMMIT=$(git rev-parse --short HEAD)
-    BRANCH=$(git branch --show-current)
+    BRANCH="${AIVIS_PRODUCT_BRANCH:-$(git branch --show-current)}"
     echo "Current: $CURRENT_COMMIT ($BRANCH)"
 
     # Check for uncommitted local changes.
@@ -394,6 +716,57 @@ case_update() {
     echo "Updated: $CURRENT_COMMIT -> $NEW_COMMIT"
     echo ""
 
+    # -- Narrow env projections, BEFORE any compose command ------------------
+    # postgres/redis read backend/.env.db and minio/minio-init read
+    # backend/.env.minio; both are generated from backend/.env and both
+    # are gitignored, so the pull above never brings them. Compose fails
+    # outright on a missing env_file -- and it parses the WHOLE file, so
+    # even a frontend-only run dies on it. Regenerate here, before the
+    # first compose invocation of this cycle.
+    ENV_RENDER_LIB="$COMPOSE_DIR/scripts/env-render.sh"
+    if [ ! -f "$ENV_RENDER_LIB" ]; then
+        # Two very different states, and the compose file is the witness
+        # that tells them apart. If it points at the projections and the
+        # library that makes them is absent, this checkout is INCOMPLETE
+        # -- the commit that brought the compose did not bring the
+        # library -- and every compose command below would fail several
+        # steps from the cause. If it does not point at them, this is
+        # simply a checkout from before the projections existed, and
+        # there is genuinely nothing to do.
+        if grep -qE 'backend/\.env\.(db|minio)' "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null; then
+            echo -e "${RED}✗ Incomplete deployment: scripts/env-render.sh is missing${NC}"
+            echo "  docker-compose.yml points postgres/redis/minio at backend/.env.db"
+            echo "  and backend/.env.minio, and those files are generated by"
+            echo "  scripts/env-render.sh -- which is not in this checkout."
+            echo ""
+            echo "  Expected at: $ENV_RENDER_LIB"
+            echo "  Commit the missing file, then re-run: aivis update"
+            echo ""
+            echo "  The stack is untouched -- the containers still running are"
+            echo "  the ones from before this update."
+            return 1
+        fi
+        echo -e "${YELLOW}⊘ scripts/env-render.sh absent and not required by this compose -- skipping${NC}"
+        echo ""
+    else
+        # shellcheck source=/dev/null
+        source "$ENV_RENDER_LIB"
+        if ! write_db_env "$COMPOSE_DIR/backend/.env" "$COMPOSE_DIR/backend/.env.db"; then
+            echo -e "${RED}✗ Could not write backend/.env.db${NC}"
+            echo "  postgres and redis read it as their env_file -- the stack"
+            echo "  would come up without database credentials."
+            return 1
+        fi
+        if ! write_minio_env "$COMPOSE_DIR/backend/.env" "$COMPOSE_DIR/backend/.env.minio"; then
+            echo -e "${RED}✗ Could not write backend/.env.minio${NC}"
+            echo "  minio and minio-init read it as their env_file -- object"
+            echo "  storage would come up on empty root credentials."
+            return 1
+        fi
+        echo -e "${GREEN}✓ backend/.env.db and backend/.env.minio projected from backend/.env${NC}"
+        echo ""
+    fi
+
     # Fool-proof guard for --frontend-only: if anything backend-side
     # changed between CURRENT_COMMIT and NEW_COMMIT, refuse hard.
     # Watched paths:
@@ -427,7 +800,18 @@ case_update() {
     # Restart stack: drop everything, bring up backend + infra first.
     # Frontend stays down until after gen-types so its build picks up the
     # freshly generated types.
+    #
+    # ensure_shared_network runs BEFORE the `down`, not between down and
+    # up: `up` needs the external network, and if it is missing the stack
+    # is already off by the time compose says so. Guarding first means the
+    # worst case is "nothing happened", not "the stand is down".
     echo "Restarting backend + infra (frontend deferred)..."
+    ensure_shared_network || {
+        echo -e "${RED}✗ Cannot create docker network aivis-shared${NC}"
+        echo "  compose needs it to exist -- it never creates an external"
+        echo "  network. Nothing has been stopped."
+        return 1
+    }
     docker compose down
     docker compose up -d app postgres redis minio
 
@@ -634,6 +1018,12 @@ Triggered by aivis update on commit $NEW_COMMIT" || {
     echo ""
     echo "Building frontend with fresh types..."
     docker compose build frontend
+    # Second `up` of this cycle, and the only one a --frontend-only run
+    # reaches -- it needs the same guard as the first.
+    ensure_shared_network || {
+        echo -e "${RED}✗ Cannot create docker network aivis-shared${NC}"
+        return 1
+    }
     docker compose up -d frontend
 
     # Final health check.
@@ -1269,7 +1659,7 @@ case "$CMD" in
     logs)           case_logs "$@" ;;
     test)           case_test "$@" ;;
     lint)           case_lint ;;
-    update|deploy)  case_update "$@" ;;
+    update|deploy)  update_all "$@" ;;
     gen-types)      case_gen_types ;;
     restart)        case_restart "$@" ;;
     backup)         case_backup ;;

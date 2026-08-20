@@ -52,10 +52,14 @@ What to have ready either way:
 
 - **The Telegram bot token** (`AIVIS-Server/CREDENTIALS.md` §2, the target `@aivisonebot` row) —
   you'll type this in during the install, once.
-- **A browser tab open on GitHub → `aivis-one/aivis` → Settings → Deploy keys**, logged in as
-  someone with admin rights on the repo. On a clean-box install you'll paste a key here mid-install
-  and the script will wait for you; on a re-install you likely won't need to touch this tab at all
-  (§4 item 2).
+- **Two browser tabs open on GitHub → Settings → Deploy keys**, logged in as someone with admin
+  rights: one on `aivis-one/aivis`, one on `aivis-one/comms`. **There are two repositories on this
+  box now**, each with its own key — GitHub refuses the same public key as a deploy key on two
+  repos, so one key cannot cover both. On a clean-box install you'll paste a key into each tab
+  mid-install and the script will wait for you; on a re-install you will most likely not touch
+  either tab (§4 item 2).
+- **The comms stack** is cloned and brought up by this same installer — there is no second script
+  to run and no manual step afterwards. You do not need credentials for it: it mints its own.
 - **The Mailgun API key** (`CREDENTIALS.md` §3), if you want it in `.env` now rather than editing
   the file by hand later. Optional — mail is out of scope for this product as currently run (see §7).
 - Root SSH access to the target box (`CREDENTIALS.md` §1).
@@ -124,8 +128,13 @@ and a stale value will read as a tampered download even when nothing is wrong.
 
 ## 4. Every prompt, in the order you will actually meet them
 
-The script pauses **nine times on a clean-box install** — **ten** on a re-install, where prompt 1
-below also fires. Each one is listed here in execution order, with the exact answer.
+**The number of pauses is no longer fixed, and that is deliberate.** On a clean box you will meet
+ten: the wipe prompt does not fire, but **two** deploy-key prompts do, one per repository. On a
+re-install of a box whose keys GitHub already holds you may meet as few as eight — the key prompts
+test the connection FIRST and stay silent when it works, so neither of them appears. Do not count
+prompts to decide whether the run is going correctly; read them.
+
+Each one is listed here in execution order, with the exact answer.
 
 1. **`Remove existing installation and start fresh? (y/n)`** — only appears on a **RE-INSTALL**
    (§1); skip straight to item 2 on a clean-box install.
@@ -144,31 +153,39 @@ below also fires. Each one is listed here in execution order, with the exact ans
    Docker volumes left behind and still consuming disk, and nothing the script prints tells you
    which of the two outcomes you got. If in doubt, check yourself afterward: `docker volume ls |
    grep aivis`.
-2. **`Press ENTER after adding the deploy key to GitHub...`**
-   - **CLEAN-BOX:** the script generates a fresh SSH keypair and prints the public half to your
-     terminal just before this prompt. Copy it, go to the GitHub tab you opened in §1, add it as a
-     Deploy Key with **Read/write access checked** (`update` later commits and pushes a regenerated
-     file — a read-only key breaks that later, and loudly, not silently: the push fails with a printed
-     error and recovery steps, but only whenever `update` first needs to push, which may be long after
-     this key was added). **Only press ENTER once the key is
-     visibly saved on GitHub's page**, not right after pasting it — the very next thing the script
-     does is `git clone` using that key, and it fails if the key hasn't actually landed yet.
-   - **RE-INSTALL:** the script does **not** generate a new key if one already exists on the box at
-     `/root/.ssh/id_ed25519_aivis_deploy` — it just reprints the same public key you already added
-     to GitHub during a previous install. Adding it again is a no-op at best and a rejected duplicate
-     at worst. **Correct action: press ENTER immediately.** Waiting for the key to "become visibly
-     saved" describes something that will never happen here, because it already is.
-   - **Either path:** the line the script prints right after this ("GitHub SSH connection verified"
-     / "Could not verify GitHub SSH connection. Proceeding anyway.") does not gate anything — its
-     failure branch only warns and lets the script continue, so neither outcome tells you anything
-     reliable. **The real check is the `git clone` immediately after it**: if the key genuinely isn't
-     on GitHub, or lacks write access, that step fails outright and stops the script (see §8).
+2. **`Press ENTER after adding the deploy key to GitHub...`** — **this prompt can now fire twice,
+   once per repository**, and the block above it names which one (`GitHub Deploy Key -- aivis repo`
+   / `-- comms repo`). They are separate keys with separate GitHub pages; adding one does not cover
+   the other.
+   - **It only fires when the connection actually fails.** The script generates the key if absent,
+     writes its SSH host alias, and then TESTS the connection. A key GitHub already knows passes the
+     test and the prompt never appears — which is why a re-install of this box is usually silent
+     here. **A prompt appearing is information: it means that key does not currently authenticate.**
+   - **The privilege differs per repository, and the script prints which one it wants.** For
+     `aivis` it says to tick **Allow write access** — `update` later commits and pushes a
+     regenerated types file. For `comms` it says **read-only is enough, do NOT tick write** —
+     nothing on this box ever pushes there. Follow what it prints; the two instructions are not
+     interchangeable.
+   - **Only press ENTER once the key is visibly saved on GitHub's page**, not right after pasting
+     it. The script re-tests immediately, and **this time the test is a gate**: if it still fails,
+     the install stops here with the URL to add the key to. That is a change from earlier versions
+     of this runbook, which said the SSH check only warns and lets the run continue — it no longer
+     does, and an install that used to limp past a missing key now refuses to.
+   - **RE-INSTALL:** keys live in `/root/.ssh/` and the wipe does not touch that directory, so they
+     survive. If a prompt does appear on a re-install, the honest reading is not "press ENTER, it's
+     already there" — it is "this key stopped working"; look at the GitHub page before answering.
+
 3. **Telegram Bot Token** — type the value from `CREDENTIALS.md` §2 (the `@aivisonebot` row).
-   **This prompt, and every secret prompt through item 9 below, uses hidden input: the terminal
-   shows nothing as you type, not even asterisks.** That's deliberate — a secret typed here never
-   lands in your terminal scrollback — but if you don't expect it, typing a long token into total
-   silence reads exactly like a frozen terminal. It isn't: type the full value and press Enter;
-   nothing appears on screen until you do.
+   **The script now verifies the token by using it**: it calls Telegram's `getMe`, and a typo, a
+   revoked token or a placeholder is rejected on the spot with Telegram's own answer printed. A
+   rejected token re-asks rather than aborting — you can press ENTER to skip past it — so a run that
+   continues past this prompt is not proof a token was accepted; the `✓ Telegram bot: @name` line is.
+   **You are not asked for the bot's URL, and you must not look for that prompt.** It is derived
+   from the username Telegram answers with for the token you just typed, which is the only way the
+   two can never name different bots. comms builds every deep-link button from that URL.
+   **Pressing ENTER here has a cost worth knowing:** the token stays unset, Telegram login does not
+   work, and comms is left in stub mode — where it accepts everything and delivers nothing. The
+   script warns in those words when it happens.
 4. **SumSub API Key (optional)** — press **ENTER**. No KYC integration exists in this project.
    **Pressing ENTER does not leave this field empty** — it keeps whatever `.env` already holds
    (`SUMSUB_API_KEY=PLACEHOLDER` on a fresh install), a non-empty placeholder string, not a blank
@@ -205,8 +222,36 @@ below also fires. Each one is listed here in execution order, with the exact ans
 ```
 docker ps
 ```
-Expect five `aivis-*` containers (`aivis-app`, `aivis-frontend`, `aivis-postgres`, `aivis-redis`,
-`aivis-minio`), all `Up ... (healthy)`.
+Expect **ten** containers, not five — this box runs two stacks.
+
+- Five `aivis-*` (`aivis-app`, `aivis-frontend`, `aivis-postgres`, `aivis-redis`, `aivis-minio`),
+  all `Up ... (healthy)`. `aivis-minio-init` is a one-shot: it exits 0 after creating the buckets
+  and does not appear here. That is correct, not a failure.
+- Five `comms-*` (`comms-app`, `comms-worker`, `comms-consumer`, `comms-postgres`, `comms-redis`).
+  The comms API is **internal by design**: no published port, no nginx route, no public URL. It is
+  reachable only from `aivis-app` over the shared docker network, which is why nothing in §6's
+  browser check touches it.
+
+**The two stacks are joined by exactly two things**, and both are worth being able to name:
+
+```
+docker network inspect aivis-shared --format '{{range .Containers}}{{.Name}} {{end}}'
+```
+Expect `aivis-app` and the five `comms-*`. Only the aivis BACKEND is on that network — the
+frontend, database, Redis and MinIO have no business talking to comms. That is the first join.
+
+The second is the profile: comms reads its notification dictionary straight out of this checkout,
+at `/opt/aivis/repo/comms-profile/`, by bind-mount. There is no second copy on the comms side.
+Editing that directory is a commit in this repo followed by a roll-out — never a hand edit on the
+box.
+
+```
+grep -c '^COMMS_' /opt/aivis/repo/backend/.env
+```
+Expect `3` (`COMMS_SERVICE_TOKEN`, `COMMS_API_URL`, `COMMS_REDIS_URL`). The installer verifies this
+itself and refuses to finish without it, so a completed install cannot have got this wrong — the
+command is here so you can recognise the three names later, not because the install might have
+skipped them.
 
 ```
 sudo certbot certificates
@@ -443,7 +488,27 @@ run one of these commands, not before.
 
 ## 9. `aivis update` — the command you will run for the rest of this product's life
 
-The single most important thing to know before you ever run it: **a plain `aivis update` takes the
+**Read this paragraph before your first update after this change lands, or you will conclude the box
+is broken when it is not.**
+
+`aivis update` copies the management script to `/tmp` and finishes the run from that copy. It has to:
+the very next thing it does is pull the file it is currently executing, and bash reads a script by
+byte offset, so a mid-run rewrite drops the interpreter into the middle of a different line. The
+consequence is exact and easy to miss: **logic that arrives in a pull does not run during that same
+pull.** It runs on the next one.
+
+So on a box that does not yet have the shared docker network, **the first `aivis update` after this
+change will fail, and will leave the stand down.** The old script is what executes: it stops the
+stack, then tries to start it, and the start needs a network only the new script knows how to create.
+**The fix is to run the same command a second time.** The second run executes the new script, creates
+the network, brings comms up and returns the stack. One command, twice — not a recovery procedure,
+just the shape of a self-updating script.
+
+This is also why this change is delivered by a **reinstall**, not by an update: the code that creates
+the network and installs comms lives in the installer, and the installer does not run on a live box
+at all.
+
+The single most important thing to know once you are past that: **a plain `aivis update` takes the
 whole site offline for the entire run, not just the backend.** `docker compose down` with no service
 name stops every container, frontend included; only the backend, database, Redis, and MinIO come back
 immediately after. The frontend does not return until the very end — after the backend image rebuilds,
@@ -478,6 +543,21 @@ fix, a config tweak), it is gone the moment you answer `y` here. Untracked new f
 only edits to files git already knows about. If you don't recognize the changes it's warning you about,
 stop and look at them (`git -C /opt/aivis/repo status`) before answering — the prompt itself does not
 tell you what the changes are, only that they exist.
+
+**`aivis update` now updates comms too, and in a fixed order.** It walks the service registry
+(`scripts/services.conf`) top to bottom: comms first, the product last — a service's code has to be
+current before the product that calls it. comms is updated by its own CLI, not by anything in this
+repo. A box without comms is not an error: that service is reported as skipped and the run continues.
+After the product's pull, comms is restarted once more, unconditionally, so the notification
+dictionary that just arrived in this checkout is the one being served. **If that restart fails, the
+likeliest cause is the profile commit you just pulled** — comms validates its profile at startup and
+refuses to boot on a bad one. The command prints the recovery path (revert that commit, roll out
+again) rather than only the verdict.
+
+**The branch is now taken from the registry, not from whatever is checked out.** If someone left
+`/opt/aivis/repo` on another branch, `update` says so and puts it back, instead of quietly treating
+that branch as what this server tracks. It refuses to do so if there are unpushed commits on the
+branch it would leave — those are not the script's to discard.
 
 **"✓ Update complete" is not the same assurance §6 asks you to get after an install.** The command's own
 final check is a single local `curl` to the backend's health endpoint, checked only for the word
