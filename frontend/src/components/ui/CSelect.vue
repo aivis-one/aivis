@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useId } from 'vue'
+import { computed, useAttrs, useId } from 'vue'
 // Dropdown select with label and error state. Custom arrow via CSS.
 
 export interface SelectOption {
@@ -20,6 +20,20 @@ withDefaults(
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
+// ATTRIBUTE PASS-THROUGH -- the same arrangement CInput and CTextarea already
+// carry. Without it every fallthrough attribute lands on the outer <div>, where
+// it does nothing: an `aria-label` written on <CSelect> named the wrapper, not
+// the control, so the one remedy a reader would reach for was a silent no-op.
+// class/style stay on the root so a consumer can still position the group;
+// everything else, listeners included, goes to the <select>.
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
+const rootAttrs = computed(() => ({ class: attrs.class, style: attrs.style }))
+const controlAttrs = computed(() => {
+  const { class: _c, style: _s, ...rest } = attrs
+  return rest
+})
+
 function onChange(e: Event): void {
   emit('update:modelValue', (e.target as HTMLSelectElement).value)
 }
@@ -32,13 +46,14 @@ const fieldId = useId()
 </script>
 
 <template>
-  <div class="c-input-group">
+  <div class="c-input-group" v-bind="rootAttrs">
     <label v-if="label" :for="fieldId" class="c-input-label">{{ label }}</label>
     <select
       :id="fieldId"
       class="c-select"
       :class="{ 'c-select--error': !!error }"
       :value="modelValue"
+      v-bind="controlAttrs"
       @change="onChange"
     >
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
