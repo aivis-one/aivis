@@ -43,6 +43,7 @@ import { useCompanyProfileStore } from '@/stores/companyProfile'
 import { useDashboardStore } from '@/stores/dashboard'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useProductsStore } from '@/stores/products'
+import { useSupportStore } from '@/stores/support'
 import { useTransactionsStore } from '@/stores/transactions'
 
 /**
@@ -66,6 +67,12 @@ import { useTransactionsStore } from '@/stores/transactions'
  * Task 2 Block A (F6.1): +useAgentStore (AgentHubView referral links
  * and stats, AgentDashboardView rank/commission widgets). Without
  * this line the agent's links and earnings would survive logout.
+ *
+ * Ф-1: +useSupportStore (user's own request thread, operator queue).
+ * A staff member's queue and claim state, or a user's own thread,
+ * left unreset would survive into the next session behind the same
+ * tab -- exactly the class of bug this file exists to close, one line
+ * to add rather than a store quietly missing from the list.
  */
 export function resetAllDataStores(): void {
   useDashboardStore().reset()
@@ -77,4 +84,5 @@ export function resetAllDataStores(): void {
   useCompanyProfileStore().reset()
   useCompanyDashboardStore().reset()
   useAgentStore().reset()
+  useSupportStore().reset()
 }
