@@ -112,11 +112,19 @@
   --primary-hover: var(--azure-800);
   --primary-active: var(--azure-900);
   --primary-subtle: var(--azure-50);
-  /* A6: --accent is used as a TEXT colour in 14 places and had the same
+  /* A6: --accent is used as a TEXT colour in 12 places and had the same
      surface-dependent shape --text-tertiary had: --amber-600 (#B1581B)
      cleared 4.5 on --bg-page (4.61) and on white (4.91) and FAILED on a
-     card (--bg-subtle #EDF1F5, 4.32). Two sites were measured failing.
-     Moving the token fixes all fourteen at once instead of patching each.
+     card (--bg-subtle #EDF1F5, 4.32). Two of the twelve were measured
+     failing and were patched individually before the token moved.
+     Moving the token fixes all twelve at once instead of patching each.
+     This said 14 until 2026-08-21, and the cause is worth naming because
+     it is easy to repeat: the counting pattern also matched
+     `border-color:` and `background-color:`. Counted BY PROPERTY,
+     `color: var(--accent)` returns 12 at 1701c9a, dips to 10 while two
+     sites sit on --accent-hover, and is 12 again at f922e74 where they
+     are reverted. Control: the same pattern on --primary returns 43.
+     The ruling is unchanged -- the same surfaces failed either way.
      --amber-700 as text: 6.15 / 5.77 / 6.55 -- passes on every surface.
      As a BACKGROUND under --on-accent (#FFFFFF) it improves, 4.91 -> 6.55.
      The hover step moves with it so the pair keeps its separation, and the
