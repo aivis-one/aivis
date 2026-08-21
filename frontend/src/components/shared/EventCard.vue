@@ -217,6 +217,13 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   overflow: hidden;
 }
 .event-card__link {
+  /* A5: 81.8 x 21 measured -- a 21px-tall touch target. The painted link must
+     stay inline with the card text, so the HIT AREA is expanded past it.
+     ⚠ NEITHER SWEEP CAUGHT THIS. Reaching /investor/events by router.push does
+     not render the event cards, so the sweep measured a page with no cards on
+     it; a direct page load shows eight of these failing. A route visited by
+     client-side navigation is not always the page a user loads. */
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -226,6 +233,16 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   color: var(--accent);
   text-decoration: none;
   width: fit-content;
+}
+
+.event-card__link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 
 /* Compact variant: single clickable row. */
