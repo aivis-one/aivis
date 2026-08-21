@@ -29,13 +29,16 @@
 # attempt would leave no trace and the guarantee would rest on nobody
 # ever adding the parameter later.
 #
-# STAFF HAVE NO DOOR HERE. The pool side -- claim, reply, close -- is a
-# later delivery, and one consequence is visible from this one: a request
-# opened today reaches nobody's screen by push. comms' own notifier
-# carries the full account of why (KNOWN CEILING, pool-push deferred:
-# it cannot resolve the agents of a section without membership); this is
-# a pointer to it, not a second copy, so that fixing one does not leave
-# the other saying something else.
+# STAFF WORK THE OTHER SIDE THROUGH staff_router.py (T-66): the queue,
+# claim, reply, close.
+#
+# A request opened here DOES reach the operators now (T-67): comms pings
+# every operator declared as serving the support section, and this
+# product declares them -- see service.emit_support_membership. The
+# pointer that used to stand at this spot, at comms' deferred pool-push
+# marker, was removed when that marker was: a reference to a resolved
+# ceiling is worse than none, because it tells the next reader to go
+# looking for a limitation that is no longer there.
 # =============================================================================
 
 from typing import Any

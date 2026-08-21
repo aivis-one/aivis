@@ -642,3 +642,79 @@ async def set_support_thread_status(
         f"{_THREADS_PATH}/{thread_id}/status",
         json={"operator": str(operator.id), "status": status},
     )
+
+
+# ---------------------------------------------------------------------------
+# Section membership (T-67)
+# ---------------------------------------------------------------------------
+
+
+async def emit_support_membership(
+    session: AsyncSession, *, user_id: UUID, member: bool = True
+) -> None:
+    """Tell comms that this person does (or no longer does) support work.
+
+    Sent through the OUTBOX, in the caller's transaction, so the fact
+    and its announcement commit together: a staff member who exists
+    without a membership event would be invisible to the queue until
+    somebody noticed.
+
+    THE SECTION TRAVELS AS A KEY, never as an id -- the same rule that
+    made get_support_section_id an in-process cache. The label rides
+    along because this event can be the FIRST mention of the section:
+    operators are appointed before anybody writes in, and comms
+    create-or-finds by key on arrival.
+
+    WHY THIS MATTERS EVEN WHEN IT SEEMS NOT TO: a section with NO
+    declared members is served by every operator, which is exactly the
+    behaviour that existed before membership. The moment ONE member is
+    declared, everybody else stops serving it. So partial declaration is
+    worse than none, and that is why the backfill (migration 0042) emits
+    for every active staff profile in a single transaction rather than
+    one at a time.
+
+    # KNOWN CEILING (nobody is ever undeclared; acknowledged by design):
+    #   1. Mechanics: `member=False` is a real half of this contract on
+    #      the comms side, and this product never sends it. Nothing in
+    #      this tree deactivates a StaffProfile -- is_active is written
+    #      exactly once, True, at creation (staff/service.create_staff)
+    #      -- and block_user refuses staff outright. So a person who
+    #      stops doing support keeps serving the section, keeps seeing
+    #      its queue and keeps being pinged for it. Their SESSION is
+    #      what actually gates the operator routes today, so the loss is
+    #      pings and roster membership, not access.
+    #   2. Status: acknowledged by design.
+    #   3. Backlog ref: none -- there is no deactivation path to hook
+    #      into, so the task is that path, not this call.
+    #   4. Promotion trigger: any path appears that deactivates a staff
+    #      profile or demotes a staff user (a "revoke staff" endpoint,
+    #      or block_user learning to accept staff).
+    #   5. Agreed fix: that path calls this function with member=False,
+    #      in its own transaction -- the argument already exists and is
+    #      exercised by comms' own tests.
+    #   6. Rejected: inferring departure at read time (emitting
+    #      member=False from get_support_operator when a profile looks
+    #      inactive). It is a write on a read path, it fires on every
+    #      request rather than on the event, and the read path runs on a
+    #      reader session that cannot emit at all.
+    """
+    from app.core.events.service import (
+        EVENT_SECTION_MEMBERSHIP_CHANGED,
+        emit_event,
+    )
+
+    await emit_event(
+        session,
+        EVENT_SECTION_MEMBERSHIP_CHANGED,
+        {
+            "section_key": _SUPPORT_SECTION_KEY,
+            "section_label": _SUPPORT_SECTION_LABEL,
+            "operator_id": str(user_id),
+            "member": member,
+        },
+    )
+    logger.info(
+        "support_membership_emitted",
+        user_id=str(user_id),
+        member=member,
+    )

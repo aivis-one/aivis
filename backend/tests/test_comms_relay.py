@@ -34,16 +34,21 @@
 # test's own transaction, which is rolled back at the end -- the same
 # discipline as tests/test_outbox_events.py (T-62).
 #
-# WHY THERE IS NO "PARK THE FOREIGN ROWS" HELPER HERE. The reference
-# implementation shields its relay tests from rows other suites commit,
-# because over there a live relay and real emitters share one outbox. In
-# this tree no product code calls emit_event yet and the test client
-# (ASGITransport) never fires the lifespan, so no relay runs and no other
-# suite writes to outbox_events. Tests 1-2 assert exact counts, which
-# means a foreign committed row would fail them loudly rather than
-# quietly change what they measure. THE FIRST DELIVERY THAT ADDS A
-# PRODUCT EMITTER should re-read this paragraph: from that point the
-# shielding is needed.
+# THE FOREIGN ROWS ARE PARKED (T-67 -- and this paragraph is the answer
+# to the instruction that used to stand in its place). It said: there is
+# no shielding here because no product code calls emit_event yet, and
+# THE FIRST DELIVERY THAT ADDS A PRODUCT EMITTER must re-read this. That
+# delivery is T-67: promoting a staff member now emits a
+# section_membership_changed row and COMMITS it, so sibling suites that
+# create staff leave pending rows in the outbox this suite counts.
+#
+# The exact-count assertions are KEPT, not relaxed -- they are the point
+# of tests 1-2. What changed is the baseline they count from: the autouse
+# fixture below marks every row already pending at test start as
+# published, inside this test's own transaction, so the relay's select
+# sees only the rows the test itself emitted. Nothing is committed, so
+# the parking disappears with the rollback and the foreign rows are
+# untouched in the database.
 #
 # Redis is not faked. The relay's client is passed in explicitly, so
 # these tests use the application's own test Redis with a throwaway
@@ -61,7 +66,7 @@ import pytest
 from redis import asyncio as aioredis
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import ResponseError as RedisResponseError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -86,6 +91,25 @@ SYNTH = "t63-relay-"
 # default: a mistake in the fixture must not spill test events into the
 # stream a real comms consumer reads.
 TEST_STREAM = "test:comms:events:t63"
+
+
+@pytest.fixture(autouse=True)
+async def park_foreign_rows(db_session: AsyncSession) -> None:
+    """Hide rows other suites committed, for the length of one test.
+
+    Marks everything currently pending as published INSIDE this test's
+    transaction (rolled back at the end, so no row is really changed).
+    The relay selects on published_at IS NULL, so after this only the
+    rows the test emits itself are in its way -- which is what makes an
+    exact count an honest measurement rather than a hostage to whichever
+    suite ran first.
+    """
+    await db_session.execute(
+        update(OutboxEvent)
+        .where(OutboxEvent.published_at.is_(None))
+        .values(published_at=datetime.now(UTC))
+    )
+    await db_session.flush()
 
 
 @pytest.fixture

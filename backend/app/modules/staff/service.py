@@ -121,6 +121,20 @@ async def create_staff(
         data={"permissions": dict(DEFAULT_STAFF_PERMISSIONS)},
     )
 
+    # Imported HERE, not at module scope: support/dependencies.py asks
+    # this module who the staff are (get_staff_profile,
+    # get_effective_permissions), so a top-level import back into
+    # support closes a cycle and breaks the app at startup. The one-way
+    # dependency stays support -> staff; this call is the one place the
+    # arrow points back, and it points from inside a function.
+    from app.modules.support.service import emit_support_membership
+
+    # T-67: a new staff member joins the support section's roster. In
+    # the SAME transaction as the promotion -- a profile that exists
+    # without its membership event would silently not serve the queue,
+    # and the two facts have no reason to be able to disagree.
+    await emit_support_membership(session, user_id=target_user_id)
+
     logger.info(
         "staff_created",
         target_user_id=str(target_user_id),

@@ -56,6 +56,11 @@ EVENT_NOTIFICATION_REQUEST = "notification_request"
 EVENT_USER_UPSERTED = "user_upserted"
 EVENT_GROUP_CHANGED = "group_changed"
 EVENT_REMINDER_CANCEL = "reminder_cancel"
+# T-67: one operator declared (or undeclared) as serving one comms
+# section. The section travels as a KEY -- its id lives in the comms
+# database and does not survive a rebuild there, which is why this
+# product deliberately stores it nowhere (see modules/support/service).
+EVENT_SECTION_MEMBERSHIP_CHANGED = "section_membership_changed"
 
 KNOWN_EVENT_TYPES = frozenset(
     {
@@ -63,6 +68,7 @@ KNOWN_EVENT_TYPES = frozenset(
         EVENT_USER_UPSERTED,
         EVENT_GROUP_CHANGED,
         EVENT_REMINDER_CANCEL,
+        EVENT_SECTION_MEMBERSHIP_CHANGED,
     }
 )
 
