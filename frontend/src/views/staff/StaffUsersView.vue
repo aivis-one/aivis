@@ -418,6 +418,10 @@ onMounted(loadUsers)
     <template v-else>
       <div class="user-list">
         <div
+          tabindex="0"
+          role="button"
+          @keyup.enter="openDetail(item.id)"
+          @keyup.space.prevent="openDetail(item.id)"
           v-for="item in items"
           :key="item.id"
           class="user-item"

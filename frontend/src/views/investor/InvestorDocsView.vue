@@ -301,6 +301,10 @@ function metaLabel(doc: DocumentResponse): string {
     <!-- List -->
     <ul v-else class="docs__list">
       <li
+        tabindex="0"
+        role="button"
+        @keyup.enter="openDoc(doc)"
+        @keyup.space.prevent="openDoc(doc)"
         v-for="doc in documents"
         :key="doc.id"
         class="docs__item"

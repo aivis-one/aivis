@@ -71,7 +71,11 @@ const coverImage = computed(() =>
 </script>
 
 <template>
-  <div class="company-card" @click="$emit('click', company)">
+  <div
+    tabindex="0"
+    role="button"
+    @keyup.enter="$emit('click', company)"
+    @keyup.space.prevent="$emit('click', company)" class="company-card" @click="$emit('click', company)">
     <div
       class="company-card__img"
       :class="{ 'company-card__img--fallback': !coverImage }"

@@ -63,14 +63,22 @@ function goAvatar(): void {
     <div class="staff-more__section">
       <div class="staff-more__section-label">{{ t('staff.settings.tools') }}</div>
 
-      <div class="staff-more__nav-item" @click="goAgentApps">
+      <div
+        tabindex="0"
+        role="button"
+        @keyup.enter="goAgentApps"
+        @keyup.space.prevent="goAgentApps" class="staff-more__nav-item" @click="goAgentApps">
         <span class="staff-more__nav-left">
           <FileText :size="16" /> {{ t('staff.agentApps2.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </div>
 
-      <div class="staff-more__nav-item staff-more__nav-item--accent" @click="goAvatar">
+      <div
+        tabindex="0"
+        role="button"
+        @keyup.enter="goAvatar"
+        @keyup.space.prevent="goAvatar" class="staff-more__nav-item staff-more__nav-item--accent" @click="goAvatar">
         <span class="staff-more__nav-left">
           <Ghost :size="16" /> Avatar Mode
         </span>
@@ -92,7 +100,11 @@ function goAvatar(): void {
         <span class="staff-more__info-val">{{ t('staff.settings.langVal') }}</span>
       </div>
 
-      <div class="staff-more__nav-item staff-more__nav-item--danger" @click="handleLogout">
+      <div
+        tabindex="0"
+        role="button"
+        @keyup.enter="handleLogout"
+        @keyup.space.prevent="handleLogout" class="staff-more__nav-item staff-more__nav-item--danger" @click="handleLogout">
         <span class="staff-more__nav-left">
           <LogOut :size="16" /> {{ t('staff.settings.logout') }}
         </span>

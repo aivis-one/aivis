@@ -187,6 +187,10 @@ onMounted(loadTemplates)
     <template v-else>
       <div class="tpl-list">
         <div
+          tabindex="0"
+          role="button"
+          @keyup.enter="openDetail(tpl)"
+          @keyup.space.prevent="openDetail(tpl)"
           v-for="tpl in items"
           :key="tpl.id"
           class="tpl-item"

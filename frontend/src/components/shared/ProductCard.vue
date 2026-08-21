@@ -58,7 +58,11 @@ const available = computed(() => props.product.available_packages)
 </script>
 
 <template>
-  <div class="product-card" @click="$emit('click', product)">
+  <div
+    tabindex="0"
+    role="button"
+    @keyup.enter="$emit('click', product)"
+    @keyup.space.prevent="$emit('click', product)" class="product-card" @click="$emit('click', product)">
     <div
       class="product-card__img"
       :class="{ 'product-card__img--fallback': !coverImage }"

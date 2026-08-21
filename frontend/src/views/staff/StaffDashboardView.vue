@@ -156,7 +156,11 @@ onMounted(loadStats)
       </div>
 
       <!-- KYC alert banner -->
-      <div v-if="stats.pending_kyc_count > 0" class="staff-dash__alert" @click="goKyc">
+      <div
+        tabindex="0"
+        role="button"
+        @keyup.enter="goKyc"
+        @keyup.space.prevent="goKyc" v-if="stats.pending_kyc_count > 0" class="staff-dash__alert" @click="goKyc">
         <ShieldAlert :size="16" />
         <span>{{ stats.pending_kyc_count }} {{ t('staff.pending').toLowerCase() }} KYC</span>
       </div>

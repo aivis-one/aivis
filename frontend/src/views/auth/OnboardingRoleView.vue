@@ -3,7 +3,7 @@
 // POST /api/v1/users/me/select-role { role }
 // After success: fetchMe() → router.push('/') → guard redirects.
 
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -79,6 +79,27 @@ function selectRole(role: SelectableRole): void {
   selectedRole.value = role
 }
 
+/**
+ * Arrow-key navigation inside the radiogroup.
+ *
+ * A radio group selects as it moves -- that is the pattern's contract, and it
+ * is why the group is a single tab stop: Tab leaves the group, arrows choose
+ * within it. Wraps at both ends.
+ *
+ * Focus is moved explicitly because the roving `tabindex` alone only decides
+ * where Tab lands; it does not move focus when the selection changes.
+ */
+function moveRole(from: number, delta: number): void {
+  const next = (from + delta + roles.length) % roles.length
+  const target = roles[next]
+  if (!target) return
+  selectRole(target.id)
+  void nextTick(() => {
+    const cards = document.querySelectorAll<HTMLElement>('.role-card')
+    cards[next]?.focus()
+  })
+}
+
 async function handleSubmit(): Promise<void> {
   if (!selectedRole.value) return
   error.value = ''
@@ -121,13 +142,35 @@ async function handleSubmit(): Promise<void> {
       <h1 class="auth-title">{{ t('auth.role.title') }}</h1>
       <p class="auth-subtitle">{{ t('auth.role.subtitle') }}</p>
 
-      <div class="role-cards">
+      <!--
+        A11y: these were mouse-only <div>s. They are a SINGLE-SELECT -- one
+        `selectedRole`, a check mark on the chosen card, Continue disabled until
+        one is picked -- so role="button" would be a lie: it would announce three
+        independent buttons and never say that choosing one un-chooses another,
+        on the one registration step nobody can skip.
+        A radiogroup says it. Roving tabindex: the group is ONE tab stop and the
+        arrow keys move within it, which is what a radio group is supposed to do.
+      -->
+      <div
+        class="role-cards"
+        role="radiogroup"
+        :aria-label="t('auth.role.title')"
+      >
         <div
-          v-for="role in roles"
+          v-for="(role, i) in roles"
           :key="role.id"
           class="role-card"
           :class="{ selected: selectedRole === role.id }"
+          role="radio"
+          :aria-checked="selectedRole === role.id"
+          :tabindex="selectedRole === role.id || (!selectedRole && i === 0) ? 0 : -1"
           @click="selectRole(role.id)"
+          @keyup.enter="selectRole(role.id)"
+          @keyup.space.prevent="selectRole(role.id)"
+          @keydown.down.prevent="moveRole(i, 1)"
+          @keydown.right.prevent="moveRole(i, 1)"
+          @keydown.up.prevent="moveRole(i, -1)"
+          @keydown.left.prevent="moveRole(i, -1)"
         >
           <div class="role-card-check">
             <span v-if="selectedRole === role.id">✓</span>

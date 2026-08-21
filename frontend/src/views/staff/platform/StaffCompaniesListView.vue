@@ -158,6 +158,10 @@ onMounted(loadCompanies)
     <template v-else>
       <div class="company-list">
         <div
+          tabindex="0"
+          role="button"
+          @keyup.enter="openCompany(c.id)"
+          @keyup.space.prevent="openCompany(c.id)"
           v-for="c in items"
           :key="c.id"
           class="company-item"

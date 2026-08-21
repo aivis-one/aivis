@@ -346,6 +346,10 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
         <h3 class="ats__group-title">{{ pathLabel(group.l1) }}</h3>
         <ul class="ats__list">
           <li
+            tabindex="0"
+            role="button"
+            @keyup.enter="onDownload(att)"
+            @keyup.space.prevent="onDownload(att)"
             v-for="att in group.items"
             :key="att.id"
             class="ats__item"
