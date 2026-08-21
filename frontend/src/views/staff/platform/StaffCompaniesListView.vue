@@ -128,8 +128,12 @@ onMounted(loadCompanies)
     </div>
 
     <!-- Search -->
+    <!-- A4: a placeholder is not an accessible name -- it is a hint, and it
+         disappears the moment the user types. The visible design is a bare
+         search box, so the name goes on the control rather than into a label. -->
     <CInput
       v-model="search"
+      :aria-label="t('staff.platform.companies.searchPlaceholder')"
       :placeholder="t('staff.platform.companies.searchPlaceholder')"
     />
 
@@ -188,6 +192,8 @@ onMounted(loadCompanies)
   display: flex; gap: var(--space-2); overflow-x: auto; margin-bottom: var(--space-3); padding-bottom: var(--space-1);
 }
 .filter-chip {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
   background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
   cursor: pointer; white-space: nowrap; text-transform: capitalize;

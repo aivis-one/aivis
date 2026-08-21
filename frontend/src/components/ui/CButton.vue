@@ -21,9 +21,14 @@ withDefaults(
     class="c-btn"
     :class="['c-btn--' + variant, size === 'sm' && 'c-btn--sm', inline && 'c-btn--inline']"
     :disabled="disabled || loading"
+    :aria-busy="loading || undefined"
   >
     <span v-if="loading" class="c-btn__spinner" />
-    <slot v-else />
+    <!-- A1: while loading, the spinner used to REPLACE the slot (`<slot v-else/>`),
+         which left the button with no accessible name at all -- measured live on
+         `CommissionsView`'s "load more". The label now survives in a visually
+         hidden span, so the button looks identical and still announces itself. -->
+    <span :class="loading ? 'c-btn__label--sr' : undefined"><slot /></span>
   </button>
 </template>
 
@@ -116,6 +121,21 @@ withDefaults(
 .c-btn--sm { padding: var(--space-3) var(--space-4); font-size: var(--fs-xs); }
 
 /* Spinner */
+/* Visually hidden but still in the accessibility tree. NOT `display: none` and
+   NOT `visibility: hidden` -- both remove the text from the tree, which would
+   reproduce the defect this exists to fix while looking fixed. */
+.c-btn__label--sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .c-btn__spinner {
   width: var(--size-2xs);
   height: var(--size-2xs);

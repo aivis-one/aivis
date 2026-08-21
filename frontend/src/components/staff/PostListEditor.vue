@@ -439,8 +439,10 @@ onMounted(loadPosts)
             </button>
           </span>
         </div>
+        <!-- A4: placeholder is a hint, not a name; it vanishes on first keypress. -->
         <CInput
           v-model="tagDraft"
+          :aria-label="t('staff.platform.post.tagPlaceholder')"
           :placeholder="t('staff.platform.post.tagPlaceholder')"
           @keydown="onTagKeydown"
         />

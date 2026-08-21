@@ -314,9 +314,11 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
       <h2 class="ats__title">
         {{ t('public.companyOverview.sectionDocuments') }}
       </h2>
+      <!-- A4: the section heading beside it is a heading, not a label. -->
       <CSelect
         v-if="hasMultipleLanguages"
         v-model="selectModel"
+        :aria-label="t('auth.profile.language')"
         :options="selectOptions"
         class="ats__filter"
       />
