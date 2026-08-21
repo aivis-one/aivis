@@ -94,7 +94,19 @@
   --bg-subtle: var(--neutral-100);
   --text-primary: var(--neutral-900);
   --text-secondary: var(--neutral-600);
-  --text-tertiary: var(--neutral-500);
+  /* A6: NOT a ramp step. --neutral-500 (#6B7785) clears 4.5 against pure white
+     by 0.06 -- and the product never renders tertiary text on pure white. On
+     the surfaces it actually meets it measured 4.29 on --bg-page (#F6F8FA) and
+     4.02 on a card (#EDF1F5): ~250 sites per role, including the labels of the
+     bottom tab bar and the side nav. That gap between "the token pair" and
+     "the pair that reaches the eye" is exactly how it passed an audit.
+     #606A77 measures 5.16 / 4.84 / 5.49 on those three, so it clears the bar
+     on the worst of them by 0.34 rather than by 0.06, and it stays lighter
+     than --neutral-600 so tertiary is still distinguishable from secondary.
+     The DARK block below already does this -- its tertiary is a hand-picked
+     #7C8A99, not a ramp step. This makes the two themes symmetric.
+     --neutral-500 itself is unchanged: --toggle-track still points at it. */
+  --text-tertiary: #606A77;
   --border-default: var(--neutral-300);
   --primary: var(--azure-700);
   --primary-hover: var(--azure-800);

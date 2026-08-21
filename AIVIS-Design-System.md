@@ -10,7 +10,7 @@
 >
 > Any edit made here is lost on the next run. Change the SOURCE instead.
 
-**Generated:** 2026-08-20 · **Components:** 18 · **Tokens:** 149 distinct (207 declarations, the extra ones being theme overrides)
+**Generated:** 2026-08-21 · **Components:** 18 · **Tokens:** 149 distinct (207 declarations, the extra ones being theme overrides)
 
 **Audience: an agent working in this repository.** It answers three questions that otherwise cost a
 full read of `components/ui/`: what exists, what each thing accepts, and **what does not exist at all**.
@@ -140,7 +140,6 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 | `modelValue` | `boolean; label?: string` | no | `false` |
 
 **Emits:** `update:modelValue: [value: boolean]`
-**Slots:** default
 **Used by 3 file(s)**: `components/staff/EventEditor.vue`, `components/staff/PostListEditor.vue`, `views/staff/StaffUsersView.vue`
 
 ### `CEmptyState`
@@ -201,7 +200,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 ### `CModal`
 
 `frontend/src/components/ui/CModal.vue`
-> Modal overlay. Closes on overlay click (if allowed) or close button.
+> Modal overlay. Closes on Escape, on overlay click (if allowed), or on the
 
 | Prop | Type | Required | Default |
 |---|---|---|---|
@@ -359,7 +358,7 @@ the value below applies in every theme.
 | `--bg-subtle` | `var(--neutral-100)` | ±theme |
 | `--text-primary` | `var(--neutral-900)` | ±theme |
 | `--text-secondary` | `var(--neutral-600)` | ±theme |
-| `--text-tertiary` | `var(--neutral-500)` | ±theme |
+| `--text-tertiary` | `#606A77` | ±theme |
 | `--border-default` | `var(--neutral-300)` | ±theme |
 | `--primary` | `var(--azure-700)` | ±theme |
 | `--primary-hover` | `var(--azure-800)` | ±theme |
