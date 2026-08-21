@@ -364,8 +364,8 @@ the value below applies in every theme.
 | `--primary-hover` | `var(--azure-800)` | ±theme |
 | `--primary-active` | `var(--azure-900)` | ±theme |
 | `--primary-subtle` | `var(--azure-50)` | ±theme |
-| `--accent` | `var(--amber-600)` | ±theme |
-| `--accent-hover` | `var(--amber-700)` | ±theme |
+| `--accent` | `var(--amber-700)` | ±theme |
+| `--accent-hover` | `var(--amber-800)` | ±theme |
 | `--accent-subtle` | `var(--amber-50)` | ±theme |
 | `--danger` | `var(--red-600)` | ±theme |
 | `--danger-subtle` | `var(--red-50)` | ±theme |
@@ -490,7 +490,7 @@ the value below applies in every theme.
 | `--shadow-deep` | `0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3)` | ±theme |
 | `--shadow-focus` | `0 0 0 3px rgba(55,166,230,.5)` | ±theme |
 
-**⚠ DECLARED BUT REFERENCED BY NOTHING (34):** `--amber-100`, `--amber-400`, `--amber-500`, `--amber-800`, `--amber-900`, `--azure-400`, `--azure-500`, `--azure-600`, `--emerald-100`, `--emerald-200`, `--emerald-400`, `--emerald-500`, `--emerald-600`, `--emerald-800`, `--emerald-900`, `--fs-body-lg`, `--fs-display`, `--fs-h1`, `--fs-h2`, `--neutral-200`, `--neutral-400`, `--neutral-700`, `--neutral-800`, `--primary-tint`, `--red-100`, `--red-200`, `--red-400`, `--red-500`, `--red-700`, `--red-800`, `--red-900`, `--space-8`, `--space-9`, `--tile-min`
+**⚠ DECLARED BUT REFERENCED BY NOTHING (33):** `--amber-100`, `--amber-400`, `--amber-500`, `--amber-900`, `--azure-400`, `--azure-500`, `--azure-600`, `--emerald-100`, `--emerald-200`, `--emerald-400`, `--emerald-500`, `--emerald-600`, `--emerald-800`, `--emerald-900`, `--fs-body-lg`, `--fs-display`, `--fs-h1`, `--fs-h2`, `--neutral-200`, `--neutral-400`, `--neutral-700`, `--neutral-800`, `--primary-tint`, `--red-100`, `--red-200`, `--red-400`, `--red-500`, `--red-700`, `--red-800`, `--red-900`, `--space-8`, `--space-9`, `--tile-min`
 
 A token nothing uses is either a gap waiting to be filled or dead weight. `--font-mono` sat in this
 state while twelve raw monospace stacks lived in the views, so the answer is not automatically

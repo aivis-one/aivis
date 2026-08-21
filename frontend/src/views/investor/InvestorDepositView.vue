@@ -306,7 +306,7 @@ onMounted(load)
      under router.push this page renders 7 of its 9 controls. */
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: var(--accent-hover);
+  color: var(--accent);
   font-family: var(--font-mono);
 }
 

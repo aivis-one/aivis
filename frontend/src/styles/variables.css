@@ -112,8 +112,22 @@
   --primary-hover: var(--azure-800);
   --primary-active: var(--azure-900);
   --primary-subtle: var(--azure-50);
-  --accent: var(--amber-600);
-  --accent-hover: var(--amber-700);
+  /* A6: --accent is used as a TEXT colour in 14 places and had the same
+     surface-dependent shape --text-tertiary had: --amber-600 (#B1581B)
+     cleared 4.5 on --bg-page (4.61) and on white (4.91) and FAILED on a
+     card (--bg-subtle #EDF1F5, 4.32). Two sites were measured failing.
+     Moving the token fixes all fourteen at once instead of patching each.
+     --amber-700 as text: 6.15 / 5.77 / 6.55 -- passes on every surface.
+     As a BACKGROUND under --on-accent (#FFFFFF) it improves, 4.91 -> 6.55.
+     The hover step moves with it so the pair keeps its separation, and the
+     separation GROWS: luminance delta 0.0536 -> 0.0645, so the hover state
+     is more visible than before, not less. --amber-800 as a hover
+     background under --on-accent is 10.95.
+     NO NEW RAMP STEPS -- both values already existed.
+     DARK IS UNTOUCHED: its accent is --amber-300, which measures 7.70-8.39
+     as text on dark surfaces and 6.73 under --on-accent. */
+  --accent: var(--amber-700);
+  --accent-hover: var(--amber-800);
   --accent-subtle: var(--amber-50);
   --danger: var(--red-600);
   --danger-subtle: var(--red-50);

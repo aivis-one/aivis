@@ -273,7 +273,7 @@ onMounted(() => {
      the ramp. The border stays --accent -- a border carries no text.
      This is the only one of six .filter-chip.active rules that colours text
      with --accent; the other five use --primary with --on-primary. */
-  color: var(--accent-hover);
+  color: var(--accent);
   background: var(--bg-subtle);
 }
 </style>
