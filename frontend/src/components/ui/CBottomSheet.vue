@@ -17,6 +17,11 @@
 // same `close` event.
 // =============================================================================
 
+import { ref, toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { X } from 'lucide-vue-next'
+import { useDialog } from '@/composables/useDialog'
+
 const props = withDefaults(
   defineProps<{
     open: boolean
@@ -31,14 +36,38 @@ const emit = defineEmits<{ close: [] }>()
 function onOverlay(): void {
   if (props.closeOnOverlay) emit('close')
 }
+
+const { t } = useI18n()
+
+// This component offered NO dismissal a keyboard could reach: no close button,
+// no Escape, only a click on the overlay. Five of its six call sites happened
+// to put a Cancel button in the body; TransactionDetailSheet is read-only and
+// did not, so it could not be closed without a mouse. A sheet should not
+// depend on each caller remembering to supply the way out.
+const dialogEl = ref<HTMLElement | null>(null)
+useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="c-sheet">
       <div v-if="open" class="c-sheet-overlay" @click.self="onOverlay">
-        <div class="c-sheet-dialog">
+        <div
+          ref="dialogEl"
+          class="c-sheet-dialog"
+          role="dialog"
+          aria-modal="true"
+          tabindex="-1"
+        >
           <div class="c-sheet-handle" />
+          <button
+            type="button"
+            class="c-sheet-close"
+            :aria-label="t('common.close')"
+            @click="emit('close')"
+          >
+            <X :size="20" />
+          </button>
           <div v-if="title || $slots.header" class="c-sheet-header">
             <slot name="header">
               <h3 class="c-sheet-title">{{ title }}</h3>
@@ -60,7 +89,23 @@ function onOverlay(): void {
   display: flex; align-items: flex-end; justify-content: center;
 }
 
+.c-sheet-close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-3);
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+}
+
 .c-sheet-dialog {
+  position: relative;
   background: var(--bg-page);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%; max-width: 520px;

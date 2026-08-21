@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-// Modal overlay. Closes on overlay click (if allowed) or close button.
+// Modal overlay. Closes on Escape, on overlay click (if allowed), or on the
+// close button.
 
+import { ref, toRef } from 'vue'
 import { X } from 'lucide-vue-next'
+import { useDialog } from '@/composables/useDialog'
 
 const props = withDefaults(
   defineProps<{
@@ -22,13 +25,24 @@ function onOverlay(): void {
 // A1: the close control is an icon with no text; its name must come from an
 // aria-label. This component had no i18n binding.
 const { t } = useI18n()
+
+// Escape, focus containment and focus restore. The overlay click was the only
+// dismissal a keyboard could not perform.
+const dialogEl = ref<HTMLElement | null>(null)
+useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="c-modal">
       <div v-if="open" class="c-modal-overlay" @click.self="onOverlay">
-        <div class="c-modal-dialog">
+        <div
+          ref="dialogEl"
+          class="c-modal-dialog"
+          role="dialog"
+          aria-modal="true"
+          tabindex="-1"
+        >
           <button
         :aria-label="t('common.close')" v-if="showClose" class="c-modal-close" @click="emit('close')">
             <X :size="20" />
