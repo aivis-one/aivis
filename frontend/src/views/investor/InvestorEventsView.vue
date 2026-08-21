@@ -252,6 +252,8 @@ onMounted(() => {
 
 /* Filter chip -- same pattern as EventEditor / TemplatesSection. */
 .filter-chip {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-default);

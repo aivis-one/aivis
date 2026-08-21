@@ -679,6 +679,8 @@ button.sett__row:last-child {
   flex-wrap: wrap;
 }
 .sett__chip {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -719,6 +721,19 @@ button.sett__row:last-child {
   border: none;
   padding: 0;
   flex-shrink: 0;
+}
+
+/* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
+   it with a centred overlay. Growing the box itself would move the text this
+   control sits inside or beside. max() so an already-large box never shrinks. */
+.sett__toggle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 .sett__toggle::after {
   content: '';

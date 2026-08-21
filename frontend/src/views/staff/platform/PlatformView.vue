@@ -90,6 +90,8 @@ function go(path: string): void {
 .platform__nav { scrollbar-width: none; }
 
 .platform__chip {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);

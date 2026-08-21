@@ -117,6 +117,8 @@ function goToLogin(): void {
 }
 
 .shell__login {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border: none;
   border-radius: var(--radius-md);

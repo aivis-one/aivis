@@ -328,6 +328,7 @@ async function handleLogin(): Promise<void> {
 }
 
 .btn-link {
+  position: relative;
   background: none;
   border: none;
   color: var(--primary);
@@ -335,6 +336,19 @@ async function handleLogin(): Promise<void> {
   font-size: var(--fs-sm);
   cursor: pointer;
   padding: 0;
+}
+
+/* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
+   it with a centred overlay. Growing the box itself would move the text this
+   control sits inside or beside. max() so an already-large box never shrinks. */
+.btn-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 
 .btn-link:hover {

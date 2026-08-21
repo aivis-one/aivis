@@ -160,6 +160,19 @@ const { t } = useI18n()
   align-items: center;
 }
 
+/* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
+   it with a centred overlay. Growing the box itself would move the text this
+   control sits inside or beside. max() so an already-large box never shrinks. */
+.c-input-toggle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
+}
+
 .c-input-error {
   font-size: var(--fs-xs);
   color: var(--danger);

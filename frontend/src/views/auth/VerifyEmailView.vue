@@ -297,9 +297,23 @@ async function handleResend(): Promise<void> {
 .resend-label { font-size: var(--fs-sm); color: var(--text-secondary); }
 .resend-timer { font-size: var(--fs-sm); color: var(--text-tertiary); }
 .btn-link {
+  position: relative;
   font-size: var(--fs-sm); color: var(--primary); font-weight: 600;
   background: none; border: none; cursor: pointer;
   font-family: inherit; padding: 0;
+}
+
+/* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
+   it with a centred overlay. Growing the box itself would move the text this
+   control sits inside or beside. max() so an already-large box never shrinks. */
+.btn-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 .btn-link:hover { text-decoration: underline; }
 </style>

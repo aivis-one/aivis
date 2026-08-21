@@ -267,6 +267,8 @@ onMounted(loadTemplates)
 .sct__filters { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
 .sct__filter-row { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
 .filter-chip {
+  /* A5: pointer target floor. */
+  min-height: var(--tap-min);
   padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
   background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
   cursor: pointer; white-space: nowrap;
