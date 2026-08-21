@@ -298,9 +298,15 @@ onMounted(load)
   letter-spacing: 0.08em;
 }
 .dv__network-value {
+  /* A6: --accent (#B1581B) as TEXT measures 4.32 on a card (--bg-subtle
+     #EDF1F5). It passes on --bg-page (4.61) and fails on the surface it is
+     actually drawn on. --accent-hover is the darker amber that already
+     exists: 5.77 there. Second site of this exact shape after
+     InvestorEventsView's active filter chip. Found only by a DIRECT LOAD --
+     under router.push this page renders 7 of its 9 controls. */
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-hover);
   font-family: var(--font-mono);
 }
 
