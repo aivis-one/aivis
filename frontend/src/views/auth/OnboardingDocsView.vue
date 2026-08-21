@@ -210,9 +210,24 @@ async function handleSignAll(): Promise<void> {
             :class="{ signed: doc.is_signed }"
             @click="toggleCheck(doc)"
           >
+            <!--
+              A11y: the ROW carries @click and used to be the only way to toggle
+              this, which made it mouse-only. It cannot become role="button" --
+              it contains the "open document" button, and an ARIA button must not
+              hold interactive descendants.
+              What the row actually IS is a checkbox, so the box itself takes the
+              role, the state and the keyboard, and the link stays a sibling.
+            -->
             <div
               class="doc-checkbox"
               :class="{ checked: isChecked(doc), locked: doc.is_signed }"
+              role="checkbox"
+              :aria-checked="isChecked(doc)"
+              :aria-label="doc.title"
+              :tabindex="doc.is_signed ? -1 : 0"
+              @click.stop="toggleCheck(doc)"
+              @keyup.enter="toggleCheck(doc)"
+              @keyup.space.prevent="toggleCheck(doc)"
             >
               <span v-if="isChecked(doc)">✓</span>
             </div>
@@ -349,11 +364,25 @@ async function handleSignAll(): Promise<void> {
 .doc-item.signed { cursor: default; }
 
 .doc-checkbox {
+  position: relative;
   width: var(--size-xs); height: var(--size-xs); min-width: var(--size-xs);
   border: 2px solid var(--border-default); border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; margin-top: var(--space-1);
   font-size: var(--fs-xs); color: var(--on-primary);
+}
+
+/* A5: 24x24 painted. It only became visible to a hit test once it was given
+   role="checkbox" -- before that no interactive-element query could select
+   it at all. The painted box stays; the hit area is expanded past it. */
+.doc-checkbox::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 .doc-checkbox.checked {
   background: var(--primary); border-color: var(--primary);
@@ -362,8 +391,16 @@ async function handleSignAll(): Promise<void> {
   opacity: 0.8;
 }
 
-.doc-info { flex: 1; }
+/* A flex item defaults to min-width:auto, so it will not shrink below its
+   content. With a long document title this pushed .doc-info to 435px against
+   a 390 viewport -- and documentElement.scrollWidth stayed 390, so the
+   overflow was CLIPPED and unreachable, on all eight rows. min-width:0 lets
+   it shrink; overflow-wrap lets a long unbroken title break rather than push.
+   Found only on a direct load: the push sweep renders no documents here.
+   Same idiom already used by .event-card__body and .company-item__info. */
+.doc-info { flex: 1; min-width: 0; }
 .doc-title {
+  overflow-wrap: anywhere;
   font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-1);
 }
 .doc-meta { display: flex; gap: var(--space-2); }
@@ -372,11 +409,26 @@ async function handleSignAll(): Promise<void> {
 }
 
 .doc-link {
+  position: relative;
   display: inline-flex; align-items: center; gap: var(--space-2);
   color: var(--text-tertiary); margin-top: var(--space-1);
   background: none; border: none; padding: var(--space-1) var(--space-1); cursor: pointer;
   font-family: inherit; font-size: var(--fs-xs);
   transition: color 0.2s;
+}
+
+/* A5: 8 of these failed the 44px area test -- found ONLY by loading
+   /onboarding/docs directly; the push sweep renders no documents here and
+   reported the route clean. The painted link stays inline beside the row
+   text, so the hit area is expanded past it. */
+.doc-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 .doc-link:hover { color: var(--primary); }
 

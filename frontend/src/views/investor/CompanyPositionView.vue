@@ -544,6 +544,17 @@ onUnmounted(() => {
   gap: var(--space-4);
   margin-top: var(--space-3);
 }
+
+/* A6: `.cp__aggregate` is the azure gradient carrying --on-primary, but a
+   CButton keeps its own variant colours -- `outline` paints --text-secondary
+   text on a --border-default border, both tuned against --bg-page. Measured on
+   the gradient: 1.02 in dark, 1.15 in light. --on-primary gives 5.85 / 8.48.
+   Third instance of one shape: a semantic colour placed on a coloured panel.
+   Scoped to this hero so the variant is unchanged everywhere else. */
+.cp__aggregate .c-btn--outline {
+  color: var(--on-primary);
+  border-color: currentColor;
+}
 .cp__agg-value {
   font-size: var(--fs-3xl);
   font-weight: 700;
