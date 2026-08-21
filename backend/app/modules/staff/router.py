@@ -64,6 +64,7 @@ from app.modules.staff.schemas import (
 )
 from app.modules.staff.service import (
     create_staff,
+    deactivate_staff,
     get_effective_permissions,
     get_staff_profile,
     update_permissions,
@@ -112,6 +113,27 @@ async def staff_create(
     """Promote an existing user to staff role. Admin only."""
     await _require_admin(staff, session)
     profile = await create_staff(body.user_id, staff, session)
+    return StaffProfileResponse.model_validate(profile)
+
+
+@router.post("/{staff_profile_id}/deactivate")
+async def deactivate_staff_member(
+    staff_profile_id: UUID,
+    staff: User = Depends(get_current_staff),
+    session: AsyncSession = Depends(get_db_session),
+) -> StaffProfileResponse:
+    """Take a staff member off duty. Admin only.
+
+    POST rather than DELETE, and the difference is not cosmetic: the
+    profile row stays, with its permissions and its history. DELETE
+    would promise removal of a thing this endpoint deliberately keeps.
+
+    Admin only, by the same dependency that guards promotion: granting
+    staff and taking it away are one right, and splitting them would
+    mean somebody could remove a person they could not restore.
+    """
+    await _require_admin(staff, session)
+    profile = await deactivate_staff(staff_profile_id, staff, session)
     return StaffProfileResponse.model_validate(profile)
 
 

@@ -249,3 +249,44 @@ async def get_active_avatar(
 ) -> AvatarSession | None:
     """Get active avatar session for staff. Returns None if none."""
     return await _find_active_avatar(staff_id, session)
+
+
+async def close_all_avatar_sessions(
+    staff_id: UUID,
+    session: AsyncSession,
+) -> list[UUID]:
+    """Close every ACTIVE avatar session of this staff member (T-80).
+
+    Called when a staff member is deactivated. Not a variant of
+    end_avatar: that one is the staff member ending their OWN session
+    with their own token and raises when there is none, because a person
+    who pressed "exit" and was not inside wants to know. Here nobody
+    pressed anything, no session is the normal case, and the caller is
+    somebody else entirely.
+
+    ALL of them, not the latest one. start_avatar closes the previous
+    session before opening a new one, so two ACTIVE rows for one staff
+    member should not exist -- but "should not" is not "cannot", and
+    iterating costs one query while a branch for the second row would
+    cost a reader wondering whether it can happen.
+
+    THIS IS THE ONLY THING THAT ENDS AN IMPERSONATION. The avatar token
+    is deliberately NOT registered in the user's session index (see the
+    module header), so delete_all_sessions -- which is what
+    deactivation calls to log the person out everywhere -- cannot reach
+    it. Without this function a deactivated staff member keeps sitting
+    inside somebody else's account until the avatar TTL expires.
+
+    Returns the ids of the sessions it closed, for the audit record.
+    """
+    stmt = select(AvatarSession).where(
+        AvatarSession.staff_id == staff_id,
+        AvatarSession.status == AvatarSessionStatus.ACTIVE,
+    )
+    result = await session.execute(stmt)
+    active = list(result.scalars().all())
+
+    for avatar_session in active:
+        await _close_avatar_session(avatar_session, session)
+
+    return [avatar_session.id for avatar_session in active]

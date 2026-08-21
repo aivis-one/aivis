@@ -673,30 +673,15 @@ async def emit_support_membership(
     for every active staff profile in a single transaction rather than
     one at a time.
 
-    # KNOWN CEILING (nobody is ever undeclared; acknowledged by design):
-    #   1. Mechanics: `member=False` is a real half of this contract on
-    #      the comms side, and this product never sends it. Nothing in
-    #      this tree deactivates a StaffProfile -- is_active is written
-    #      exactly once, True, at creation (staff/service.create_staff)
-    #      -- and block_user refuses staff outright. So a person who
-    #      stops doing support keeps serving the section, keeps seeing
-    #      its queue and keeps being pinged for it. Their SESSION is
-    #      what actually gates the operator routes today, so the loss is
-    #      pings and roster membership, not access.
-    #   2. Status: acknowledged by design.
-    #   3. Backlog ref: none -- there is no deactivation path to hook
-    #      into, so the task is that path, not this call.
-    #   4. Promotion trigger: any path appears that deactivates a staff
-    #      profile or demotes a staff user (a "revoke staff" endpoint,
-    #      or block_user learning to accept staff).
-    #   5. Agreed fix: that path calls this function with member=False,
-    #      in its own transaction -- the argument already exists and is
-    #      exercised by comms' own tests.
-    #   6. Rejected: inferring departure at read time (emitting
-    #      member=False from get_support_operator when a profile looks
-    #      inactive). It is a write on a read path, it fires on every
-    #      request rather than on the event, and the read path runs on a
-    #      reader session that cannot emit at all.
+    BOTH DIRECTIONS HAVE A CALLER. `member=True` is sent when a staff
+    member is promoted (staff/service.create_staff); `member=False` when
+    one is deactivated (staff/service.deactivate_staff, T-80). The
+    marker that used to stand here -- "nobody is ever undeclared",
+    because nothing in this tree could deactivate a profile -- was
+    removed rather than reworded: its promotion trigger was "a
+    deactivation path appears", the path appeared, and a resolved
+    ceiling left standing sends the next reader looking for a
+    limitation that is gone.
     """
     from app.core.events.service import (
         EVENT_SECTION_MEMBERSHIP_CHANGED,
