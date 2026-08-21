@@ -266,7 +266,14 @@ onMounted(() => {
 }
 .filter-chip.active {
   border-color: var(--accent);
-  color: var(--accent);
+  /* A6: --accent (#B1581B) as TEXT on --bg-subtle (#EDF1F5) measures 4.32.
+     It passes on --bg-page (4.61) and fails on the card it is actually drawn
+     on. --accent-hover is the darker amber that already exists and measures
+     5.77 there, so the chip keeps its amber identity and no new value enters
+     the ramp. The border stays --accent -- a border carries no text.
+     This is the only one of six .filter-chip.active rules that colours text
+     with --accent; the other five use --primary with --on-primary. */
+  color: var(--accent-hover);
   background: var(--bg-subtle);
 }
 </style>

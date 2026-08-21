@@ -455,6 +455,20 @@ onMounted(() => {
 .pv__profit--up { color: var(--success); }
 .pv__profit--down { color: var(--danger); }
 
+/* A6: --success and --danger are tuned against --bg-page. `.pv__hero` is a
+   saturated azure gradient carrying --on-primary, and on it these two measure
+   1.35 / 1.08 in light and 1.04 / 1.23 in dark -- the figure telling an
+   investor whether they are up or down was effectively invisible on the one
+   panel that leads the screen, in BOTH themes and BOTH directions.
+   formatProfitPercent() already prefixes an explicit + or -, so the direction
+   is carried by the text and nothing is lost by taking the panel's own colour
+   here. (WCAG 1.4.1 wants that anyway: not by colour alone.)
+   The list rows below the hero sit on --bg-page and keep green and red. */
+.pv__hero .pv__profit--up,
+.pv__hero .pv__profit--down {
+  color: var(--on-primary);
+}
+
 /* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
    width, so on a 1016px desktop it stretches its contents to fill: measured,
    a stat tile reached 316px and an action button 497px. Past a point the extra
