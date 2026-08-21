@@ -48,6 +48,10 @@ beforeEach(() => {
   // discards everything, and all four focus tests failed at once because of it.
   // Giving elements a size restores a fact the real browser supplies; it does
   // not stub any part of the component under test.
+  // RE-MEASURED ON happy-dom 20 (2026-08-21, probe run then deleted): still
+  // width=0 height=0 top=0 left=0. THIS STUB IS STILL LOAD-BEARING -- unlike
+  // the tabIndex workaround in CCheckbox.spec.ts, which that same upgrade made
+  // unnecessary. Two workarounds from one environment, and only one died.
   realRect = Element.prototype.getBoundingClientRect
   Element.prototype.getBoundingClientRect = function () {
     return {

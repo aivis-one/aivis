@@ -78,20 +78,21 @@ describe('CCheckbox — keyboard', () => {
   })
 
   it('is not removed from the tab order', () => {
-    // NOTE ON WHAT THIS CAN AND CANNOT SAY. In a real browser an enabled
-    // <input type="checkbox"> with no tabindex attribute reports tabIndex 0 and
-    // is tab-reachable; measured live on the stand, it is 0. happy-dom returns
-    // -1 for any element with no explicit tabindex, so asserting tabIndex >= 0
-    // here fails on the ENVIRONMENT, not on the component -- it did, which is
-    // how this note came to exist.
-    // What this environment CAN answer is the part we could get wrong: that the
-    // control is a native enabled input and nothing has pushed it out of the
-    // tab order with an explicit negative tabindex.
+    // THIS NOW ASSERTS THE REAL THING, and the history is the point.
+    // Under happy-dom 15 every element with no explicit tabindex reported
+    // tabIndex -1, so the direct assertion failed on the ENVIRONMENT and this
+    // test stood in a weaker proxy: "no explicit negative tabindex attribute".
+    // Re-measured on happy-dom 20 (probe run 2026-08-21): checkbox=0, button=0,
+    // a[href]=0, div=-1 -- exactly what a browser reports. The proxy is retired
+    // and the thing it was standing in for is asserted directly, because a
+    // workaround that outlives its cause quietly narrows what the suite checks.
     const w = mount(CCheckbox, { props: { modelValue: false, label: 'x' } })
     const input = w.find('input').element as HTMLInputElement
     expect(input.tagName).toBe('INPUT')
     expect(input.hasAttribute('disabled')).toBe(false)
     expect(input.getAttribute('tabindex')).toBeNull()
+    // the assertion the proxy replaced: the control is genuinely tab-reachable
+    expect(input.tabIndex).toBe(0)
   })
 })
 

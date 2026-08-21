@@ -1,41 +1,43 @@
-{
-  "name": "aivis-frontend",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "lint": "eslint . && prettier --check .",
-    "lint:fix": "eslint --fix . && prettier --write .",
-    "type-check": "vue-tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "docs:ds": "node scripts/gen-design-system.mjs"
-  },
-  "dependencies": {
-    "lucide-vue-next": "^0.460",
-    "pinia": "^2.3",
-    "qrcode": "^1.5",
-    "vue": "^3.5",
-    "vue-i18n": "^10.0",
-    "vue-router": "^4.5"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0",
-    "@types/qrcode": "^1.5",
-    "@vitejs/plugin-vue": "^5.2",
-    "@vue/test-utils": "^2.4.11",
-    "eslint": "^9.17",
-    "eslint-plugin-vue": "^9.32",
-    "happy-dom": "^15.11.7",
-    "prettier": "^3.4",
-    "typescript": "^5.7",
-    "typescript-eslint": "^8.18",
-    "vite": "^6.0",
-    "vite-plugin-pwa": "^0.21",
-    "vitest": "^2.1.9",
-    "vue-tsc": "^2.2"
-  }
-}
+{
+  "name": "aivis-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . && prettier --check .",
+    "lint:fix": "eslint --fix . && prettier --write .",
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "audit": "npm audit --audit-level=high",
+    "gate": "npm run type-check && npm run test && npm run audit && npm run build",
+    "docs:ds": "node scripts/gen-design-system.mjs"
+  },
+  "dependencies": {
+    "lucide-vue-next": "^0.460",
+    "pinia": "^2.3",
+    "qrcode": "^1.5",
+    "vue": "^3.5",
+    "vue-i18n": "^10.0",
+    "vue-router": "^4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0",
+    "@types/qrcode": "^1.5",
+    "@vitejs/plugin-vue": "^5.2",
+    "@vue/test-utils": "^2.4.11",
+    "eslint": "^9.17",
+    "eslint-plugin-vue": "^9.32",
+    "happy-dom": "^20.11.6",
+    "prettier": "^3.4",
+    "typescript": "^5.7",
+    "typescript-eslint": "^8.18",
+    "vite": "^6.4.3",
+    "vite-plugin-pwa": "^0.21",
+    "vitest": "^3.2.7",
+    "vue-tsc": "^2.2"
+  }
+}
