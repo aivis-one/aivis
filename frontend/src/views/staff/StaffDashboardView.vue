@@ -54,7 +54,7 @@ async function loadStats(): Promise<void> {
 
 // Navigation handlers. Eight inline @click="router.push(...)" in the
 // template collapsed to five named functions (one per destination):
-// `/staff/kyc` is reached from three places, `/staff/payments` from
+// The KYC destination is reached from two places, `/staff/payments` from
 // two. Each handler owns its own safeNavigate call so future per-target
 // guards attach in one place, matching the InvestorDashboardView
 // `goPortfolio/goBalance/...` paradigm.
@@ -63,7 +63,15 @@ function goUsers(): void {
 }
 
 function goKyc(): void {
-  void safeNavigate(router.push('/staff/kyc'), '[StaffDashboardView] to KYC queue')
+  // `/staff/kyc` was REMOVED in iter 2.7 Block A2 and the router says so in
+  // three places -- a push to it fell through to the catch-all and rendered
+  // the 404 page. The queue is now a chip-filtered view of Users, and
+  // `pending_kyc_count` above counts KYCApplication.status == SUBMITTED
+  // (admin_service.py:373-377), so the deep link names that exact status.
+  void safeNavigate(
+    router.push('/staff/users?kyc_status=submitted'),
+    '[StaffDashboardView] to KYC queue',
+  )
 }
 
 function goPayments(): void {

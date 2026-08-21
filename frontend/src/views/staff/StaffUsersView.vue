@@ -58,6 +58,7 @@
 // =============================================================================
 
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Clock } from 'lucide-vue-next'
 import { CAvatar, CBadge, CLoader, CButton, CModal, CEmptyState, CInput, CCheckbox } from '@/components/ui'
@@ -140,7 +141,18 @@ const total = ref(0)
 const page = ref(1)
 const perPage = 20
 const roleFilter = ref('')
-const kycStatusFilter = ref<'' | KYCStatus>('')
+// The staff dashboard's KYC card and alert banner deep-link here, because
+// iter 2.7 A2 removed /staff/kyc and moved the queue into this screen. The
+// chip is selected from `?kyc_status=`, VALIDATED against the enum above --
+// the backend 422s on anything else, so an unknown value falls back to the
+// unfiltered list rather than travelling to the API.
+// Assigned during setup, ahead of the watch() below, so arriving with a
+// filter costs one request and not two.
+const route = useRoute()
+const queryKyc = String(route.query.kyc_status ?? '')
+const kycStatusFilter = ref<'' | KYCStatus>(
+  (ALL_KYC_STATUSES as readonly string[]).includes(queryKyc) ? (queryKyc as KYCStatus) : '',
+)
 const loading = ref(true)
 const error = ref(false)
 

@@ -36,7 +36,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 | `CModal` | 11 | 3 | — |
 | `CProgressBar` | 1 | 1 | — |
 | `CSelect` | 5 | 5 | `c-select--error` |
-| `CStatCard` | 4 | 5 | — |
+| `CStatCard` | 4 | 5 | `c-stat--interactive` |
 | `CTextarea` | 5 | 7 | `c-textarea--compact` `c-textarea--error` `c-textarea--mono` |
 | `CToast` | 5 | — | `c-toast--error` `c-toast--info` `c-toast--show` `c-toast--success` `c-toast--warning` |
 
@@ -253,6 +253,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 | `changeDir` | `'up' \| 'down'` | no | — |
 
 **Slots:** `icon`
+**Variant classes:** `.c-stat--interactive`
 **Used by 4 file(s)**: `views/company/CompanyDashboardView.vue`, `views/investor/CompanyOverviewView.vue`, `views/public/PublicCompanyOverviewView.vue`, `views/staff/StaffDashboardView.vue`
 
 ### `CTextarea`
