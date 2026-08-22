@@ -524,6 +524,43 @@ async def list_operator_threads(
     return await comms_request("GET", _THREADS_PATH, params=params)
 
 
+async def get_operator_thread_messages(
+    session: AsyncSession,
+    *,
+    thread_id: UUID,
+    limit: int,
+    cursor: str | None,
+) -> dict[str, Any]:
+    """One known support thread, newest messages first, for an operator.
+
+    The mirror of get_support_messages with the other boundary:
+    _require_known_thread instead of _require_own_thread. An operator
+    serves everybody, so ownership is not the question -- existence in
+    our pointer table is, and a thread id that names nothing this
+    product created never reaches comms.
+
+    NO ACTOR IS SENT, and none is taken. comms' feed endpoint accepts no
+    operator, participant or supervisor at all: it scopes nothing and
+    trusts the caller to have decided. So the gate here is the whole
+    gate -- the operator dependency on the route plus the pointer check
+    above -- and an unused `operator` argument in this signature would
+    tell the next reader that reading is scoped somewhere it is not.
+
+    Added in T-66-fix: T-66 gave the operator side four verbs -- queue,
+    claim, reply, status -- and no way to read the conversation being
+    replied to. Writing into a thread you cannot read is not a feature
+    with a missing screen; it is half a verb.
+    """
+    await _require_known_thread(session, thread_id)
+
+    params: dict[str, Any] = {"limit": limit}
+    if cursor is not None:
+        params["cursor"] = cursor
+    return await comms_request(
+        "GET", f"{_THREADS_PATH}/{thread_id}/messages", params=params
+    )
+
+
 async def claim_support_thread(
     session: AsyncSession, *, operator: SupportOperator, thread_id: UUID
 ) -> dict[str, Any]:

@@ -61,6 +61,7 @@ import { defineStore } from 'pinia'
 
 import {
   claimStaffSupportThread,
+  getStaffSupportThreadMessages,
   getSupportThreadMessages,
   listStaffSupportQueue,
   listSupportThreads,
@@ -255,7 +256,51 @@ export const useSupportStore = defineStore('support', () => {
   const changingStatus = reactive<Record<string, boolean>>({})
   const statusErrors = reactive<Record<string, SupportActionError | null>>({})
 
+  // The operator's view of ONE conversation. Kept apart from the user
+  // side's `messages` on purpose: one browser session can hold both --
+  // a staff member has their own support thread as a person too -- and
+  // sharing the array would let one screen overwrite the other's
+  // contents behind its back.
+  const staffMessages = ref<SupportMessageResponse[]>([])
+  const staffMessagesNextCursor = ref<string | null>(null)
+  const staffMessagesLoading = ref<boolean>(false)
+  const staffMessagesError = ref<SupportActionError | null>(null)
+
   let queueEpoch = 0
+
+  // A THIRD epoch, not queueEpoch. Refreshing the queue and reading a
+  // conversation are independent surfaces: sharing an epoch would make
+  // a queue refresh silently discard a feed load that was already in
+  // flight, and the screen would sit empty with no error to show for
+  // it.
+  let staffFeedEpoch = 0
+
+  /**
+   * First page of one request's conversation, for an operator.
+   *
+   * First page only, like the user-side feed: `staffMessagesNextCursor`
+   * is stored so a caller can see there is more, and paging it is left
+   * to whoever builds the screen -- machinery with no consumer would be
+   * a guess about a UI nobody has drawn yet.
+   */
+  async function fetchStaffMessages(threadId: string): Promise<void> {
+    const epoch = ++staffFeedEpoch
+    staffMessagesLoading.value = true
+    staffMessagesError.value = null
+    try {
+      const resp = await getStaffSupportThreadMessages(threadId)
+      if (epoch !== staffFeedEpoch) return
+      staffMessages.value = resp.messages
+      staffMessagesNextCursor.value = resp.next_cursor
+    } catch (err) {
+      if (epoch !== staffFeedEpoch) return
+      staffMessagesError.value = toActionError(err)
+    } finally {
+      if (epoch === staffFeedEpoch) {
+        staffMessagesLoading.value = false
+      }
+    }
+  }
 
   async function fetchQueue(): Promise<void> {
     const epoch = ++queueEpoch
@@ -362,6 +407,7 @@ export const useSupportStore = defineStore('support', () => {
   function reset(): void {
     ++threadEpoch
     ++queueEpoch
+    ++staffFeedEpoch
 
     thread.value = null
     threadLoading.value = false
@@ -383,6 +429,11 @@ export const useSupportStore = defineStore('support', () => {
 
     marking.value = false
     markError.value = null
+
+    staffMessages.value = []
+    staffMessagesNextCursor.value = null
+    staffMessagesLoading.value = false
+    staffMessagesError.value = null
 
     queue.value = []
     queueNextCursor.value = null
@@ -437,6 +488,13 @@ export const useSupportStore = defineStore('support', () => {
     queueLoading,
     queueError,
     fetchQueue,
+
+    // operator message feed
+    staffMessages,
+    staffMessagesNextCursor,
+    staffMessagesLoading,
+    staffMessagesError,
+    fetchStaffMessages,
 
     // operator per-thread actions
     claiming,

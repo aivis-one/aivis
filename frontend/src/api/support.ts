@@ -241,6 +241,35 @@ export function claimStaffSupportThread(
 }
 
 /**
+ * GET /api/v1/staff/support/threads/{id}/messages -- read one known
+ * request, newest first, keyset-paginated.
+ *
+ * SAME RESPONSE TYPE AS THE USER FEED, and that is a fact rather than
+ * a convenience: both routes forward comms' `GET /threads/{id}/messages`
+ * untouched (service.py get_support_messages and
+ * get_operator_thread_messages), and comms builds that body from a
+ * single serializer. Two types here would assert that one serializer
+ * produces two shapes.
+ *
+ * 404 if the id names no support thread this product created. NOT
+ * restricted to threads this operator claimed -- the queue shows the
+ * unclaimed pool, and an operator reads a request before deciding to
+ * take it. Claiming gates writing, not reading.
+ */
+export function getStaffSupportThreadMessages(
+  threadId: string,
+  params?: ListMessagesParams,
+): Promise<SupportMessageListResponse> {
+  const qs = buildQueryString({
+    limit: params?.limit,
+    cursor: params?.cursor,
+  })
+  return api.get<SupportMessageListResponse>(
+    `/api/v1/staff/support/threads/${threadId}/messages${qs}`,
+  )
+}
+
+/**
  * POST /api/v1/staff/support/threads/{id}/messages -- answer as this
  * operator.
  *

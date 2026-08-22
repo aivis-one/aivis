@@ -6,6 +6,7 @@
 #     unclaimed pool plus this operator's own threads (a supervisor gets
 #     every thread there is).
 #   POST /api/v1/staff/support/threads/{id}/claim   -- take one.
+#   GET  /api/v1/staff/support/threads/{id}/messages -- read it.
 #   POST /api/v1/staff/support/threads/{id}/messages -- reply.
 #   POST /api/v1/staff/support/threads/{id}/status  -- resolve or close.
 #
@@ -49,6 +50,7 @@ from app.modules.support.schemas import (
 )
 from app.modules.support.service import (
     claim_support_thread,
+    get_operator_thread_messages,
     list_operator_threads,
     reply_to_support_thread,
     set_support_thread_status,
@@ -97,6 +99,32 @@ async def claim_thread(
     reject_actor_override(request)
     return await claim_support_thread(
         session, operator=operator, thread_id=thread_id
+    )
+
+
+@router.get("/threads/{thread_id}/messages")
+async def get_thread_messages(
+    request: Request,
+    thread_id: UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    cursor: str | None = Query(default=None),
+    operator: SupportOperator = Depends(get_support_operator),
+    session: AsyncSession = Depends(get_db_reader),
+) -> Any:
+    """Read one known request, newest messages first.
+
+    404 if the id names no support thread this product created --
+    decided here, before comms is asked anything about it.
+
+    NOT scoped to threads this operator claimed, deliberately: the queue
+    shows the unclaimed pool, and an operator has to read a request
+    before deciding to take it. What claiming gates is WRITING (comms
+    refuses a message from anyone but the assignee) -- reading is gated
+    by being an operator at all.
+    """
+    reject_actor_override(request)
+    return await get_operator_thread_messages(
+        session, thread_id=thread_id, limit=limit, cursor=cursor
     )
 
 

@@ -92,6 +92,8 @@ class _FakeComms:
         self.calls: list[dict[str, Any]] = []
         self.threads: dict[str, dict[str, Any]] = {}
         self.unread: dict[str, int] = {}
+        # thread id -> messages, newest first (as comms orders them).
+        self.messages: dict[str, list[dict[str, Any]]] = {}
         self.fail_with: Any = None
 
     # -- wiring ---------------------------------------------------------
@@ -173,8 +175,16 @@ class _FakeComms:
                 return _FakeResponse(404, {"detail": "thread does not exist"})
             if parts[4] == "claim":
                 return self._claim(thread, json or {})
-            if parts[4] == "messages":
+            # METHOD-AWARE, since T-66-fix. Until the operator side had
+            # a feed route this branch only ever saw POST, so it did not
+            # look at the method -- and a GET would have been answered
+            # with a MESSAGE object instead of a page of them. A test
+            # written against that fake would have gone green while
+            # asserting a shape the service never returns.
+            if parts[4] == "messages" and method == "POST":
                 return self._post_message(thread, json or {})
+            if parts[4] == "messages" and method == "GET":
+                return self._feed(thread, params or {})
             if parts[4] == "status":
                 return self._status(thread, json or {})
 
@@ -211,6 +221,17 @@ class _FakeComms:
             return _FakeResponse(200, {"claimed": True, "thread": dict(thread)})
         return _FakeResponse(200, {"claimed": False, "thread": dict(thread)})
 
+    def _feed(
+        self, thread: dict[str, Any], params: dict[str, Any]
+    ) -> _FakeResponse:
+        """The thread's messages, newest first, as comms serves them."""
+        messages = self.messages.get(thread["id"], [])
+        limit = int(params.get("limit") or 20)
+        return _FakeResponse(
+            200,
+            {"messages": messages[:limit], "next_cursor": None},
+        )
+
     def _post_message(
         self, thread: dict[str, Any], body: dict[str, Any]
     ) -> _FakeResponse:
@@ -223,15 +244,17 @@ class _FakeComms:
                     "serving operator of this thread"
                 },
             )
-        return _FakeResponse(
-            200,
-            {
-                "id": str(uuid4()),
-                "thread_id": thread["id"],
-                "sender": sender,
-                "body": body.get("body"),
-            },
-        )
+        message = {
+            "id": str(uuid4()),
+            "thread_id": thread["id"],
+            "sender": sender,
+            "body": body.get("body"),
+        }
+        # Kept so the feed route can serve it back: a fake that accepted
+        # messages and then showed none would make "the operator reads
+        # the conversation" untestable.
+        self.messages.setdefault(thread["id"], []).insert(0, message)
+        return _FakeResponse(200, message)
 
     def _status(
         self, thread: dict[str, Any], body: dict[str, Any]
@@ -777,3 +800,121 @@ async def test_comms_being_down_is_an_answer_not_a_crash(
     assert closing.status_code == 502, closing.text
     assert listing.status_code == 502, listing.text
     assert comms.threads[thread_id]["status"] == "open"
+
+
+# ---------------------------------------------------------------------------
+# 7. Reading the conversation (T-66-fix)
+# ---------------------------------------------------------------------------
+#
+# T-66 shipped four operator verbs and no way to read what was being
+# answered. The route added here is the missing half; what it must NOT
+# become is a second door into other people's conversations, so the
+# boundary is the same pointer table the write verbs use.
+
+
+@pytest.mark.asyncio
+async def test_an_operator_reads_a_known_conversation(
+    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+) -> None:
+    """The positive half, and it comes first: a test that only proved
+    outsiders are refused would pass just as well if the route were
+    broken for everyone."""
+    user, token = await create_staff_user(client, db_session)
+    thread_id = await _a_request(client, db_session, comms, assignee=user.id)
+    await client.post(
+        f"{_STAFF_BASE}/{thread_id}/messages",
+        json={"body": "on it"},
+        headers=auth_headers(token),
+    )
+
+    response = await client.get(
+        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert [m["body"] for m in body["messages"]] == ["on it"]
+    assert body["next_cursor"] is None
+
+
+@pytest.mark.asyncio
+async def test_the_pool_is_readable_before_it_is_claimed(
+    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+) -> None:
+    """Reading is not gated on claiming, on purpose: an operator has to
+    see what a request says before deciding to take it. Claiming gates
+    WRITING -- that is a different test in this file."""
+    _user, token = await create_staff_user(client, db_session)
+    thread_id = await _a_request(client, db_session, comms)
+
+    response = await client.get(
+        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
+    )
+
+    assert response.status_code == 200, response.text
+
+
+@pytest.mark.asyncio
+async def test_an_ordinary_user_cannot_read_a_conversation(
+    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+) -> None:
+    """The operator dependency is the gate, same as on the other four."""
+    thread_id = await _a_request(client, db_session, comms)
+    body = await register_user(client)
+
+    response = await client.get(
+        f"{_STAFF_BASE}/{thread_id}/messages",
+        headers=auth_headers(body["session_token"]),
+    )
+
+    assert response.status_code == 403, response.text
+
+
+@pytest.mark.asyncio
+async def test_an_unknown_thread_is_refused_before_comms_is_asked(
+    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+) -> None:
+    """Shortage axis, and the assertion is about the fake's call log
+    rather than about the status alone: a 404 that comms produced would
+    look identical from outside and would mean a guessed id reaches the
+    service."""
+    _user, token = await create_staff_user(client, db_session)
+    stranger_id = uuid4()
+
+    response = await client.get(
+        f"{_STAFF_BASE}/{stranger_id}/messages", headers=auth_headers(token)
+    )
+
+    assert response.status_code == 404, response.text
+    assert not any(str(stranger_id) in call["path"] for call in comms.calls)
+
+
+@pytest.mark.asyncio
+async def test_an_empty_conversation_reads_as_an_empty_page(
+    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+) -> None:
+    """Emptiness axis: nothing said yet is a page of nothing, not a 404."""
+    _user, token = await create_staff_user(client, db_session)
+    thread_id = await _a_request(client, db_session, comms)
+
+    response = await client.get(
+        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["messages"] == []
+
+
+@pytest.mark.asyncio
+async def test_comms_being_down_refuses_the_read_rather_than_crashing(
+    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+) -> None:
+    _user, token = await create_staff_user(client, db_session)
+    thread_id = await _a_request(client, db_session, comms)
+    comms.fail_with = httpx.ConnectError("comms is down")
+
+    response = await client.get(
+        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
+    )
+
+    assert response.status_code == 502, response.text
