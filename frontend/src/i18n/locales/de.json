@@ -632,6 +632,27 @@
       "settings": {
         "title": "Einstellungen",
         "desc": "Profil, Einstellungen und Agentenprogramm"
+      },
+      "support": {
+        "title": "Support",
+        "desc": "Schreiben Sie uns bei Fragen"
+      }
+    },
+    "support": {
+      "title": "Support",
+      "invite": "Hier können Sie dem Support schreiben. Senden Sie Ihre erste Nachricht, und wir antworten.",
+      "placeholder": "Ihre Nachricht",
+      "send": "Senden",
+      "refresh": "Unterhaltung aktualisieren",
+      "initErrorTitle": "Anfrage konnte nicht geöffnet werden",
+      "initErrorRetry": "Erneut versuchen",
+      "feedErrorTitle": "Unterhaltung konnte nicht geladen werden",
+      "feedErrorRetry": "Erneut versuchen",
+      "errorUnavailable": "Der Support ist vorübergehend nicht erreichbar, versuchen Sie es später erneut",
+      "errorGeneric": "Nachricht konnte nicht gesendet werden, versuchen Sie es erneut",
+      "sender": {
+        "me": "Sie",
+        "operator": "Support"
       }
     }
   }

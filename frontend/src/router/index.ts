@@ -289,6 +289,13 @@ export const router = createRouter({
           component: () => import('@/views/investor/InvestorSettingsView.vue'),
         },
         {
+          // Ф-2: reached from the Support tile in InvestorMoreView, same
+          // shell/guard as its docs/settings neighbours above.
+          path: 'support',
+          name: 'investor-support',
+          component: () => import('@/views/investor/InvestorSupportView.vue'),
+        },
+        {
           path: 'more',
           name: 'investor-more',
           component: () => import('@/views/investor/InvestorMoreView.vue'),

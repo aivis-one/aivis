@@ -944,6 +944,28 @@
       "settings": {
         "title": "Settings",
         "desc": "Profile, preferences, and agent programme"
+      },
+      "support": {
+        "title": "Support",
+        "desc": "Message us if you have a question"
+      }
+    },
+    "support": {
+      "title": "Support",
+      "backLink": "Back to more",
+      "invite": "Write to support here. Send your first message and we'll answer.",
+      "placeholder": "Your message",
+      "send": "Send",
+      "refresh": "Refresh conversation",
+      "initErrorTitle": "Couldn't open your request",
+      "initErrorRetry": "Retry",
+      "feedErrorTitle": "Couldn't load the conversation",
+      "feedErrorRetry": "Retry",
+      "errorUnavailable": "Support is temporarily unavailable, try again later",
+      "errorGeneric": "Couldn't send the message, try again",
+      "sender": {
+        "me": "You",
+        "operator": "Support"
       }
     },
     "productsByCompany": {

@@ -13,8 +13,8 @@
 //   MarketView / TransactionsView / BalanceView convention.
 //
 // SCOPE (Q1 = c in chat).
-//   Two live tiles today: Documents, Settings. Notifications and the
-//   agent-application entry were considered and dropped:
+//   Three live tiles: Documents, Settings, Support (Ф-2). Notifications
+//   and the agent-application entry were considered and dropped:
 //     - Notifications: no route exists yet, module lands in F9.2.
 //     - Agent application: already lives inside InvestorSettingsView
 //       as a dedicated section, so a parallel top-level entry here
@@ -47,7 +47,12 @@
 
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, FileText, Settings as SettingsIcon } from 'lucide-vue-next'
+import {
+  ChevronRight,
+  FileText,
+  MessageCircle,
+  Settings as SettingsIcon,
+} from 'lucide-vue-next'
 import { safeNavigate } from '@/composables/safeNavigate'
 
 interface Tile {
@@ -78,6 +83,15 @@ const TILES: readonly Tile[] = [
     descKey: 'inv.more.settings.desc',
     route: '/investor/settings',
     icon: SettingsIcon,
+  },
+  // Ф-2: the comment above TILES promised this would be a one-line
+  // addition, not a template rewrite -- it is.
+  {
+    id: 'support',
+    labelKey: 'inv.more.support.title',
+    descKey: 'inv.more.support.desc',
+    route: '/investor/support',
+    icon: MessageCircle,
   },
 ] as const
 
