@@ -5,7 +5,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { FileText, Ghost, LogOut } from 'lucide-vue-next'
+import { FileText, Ghost, LogOut, MessageCircle } from 'lucide-vue-next'
 import { CAvatar, CBadge } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -45,6 +45,13 @@ function goAgentApps(): void {
 function goAvatar(): void {
   void safeNavigate(router.push('/staff/avatar'), '[StaffMoreView] to avatar')
 }
+
+function goSupport(): void {
+  void safeNavigate(
+    router.push('/staff/support'),
+    '[StaffMoreView] to support',
+  )
+}
 </script>
 
 <template>
@@ -70,6 +77,17 @@ function goAvatar(): void {
         @keyup.space.prevent="goAgentApps" class="staff-more__nav-item" @click="goAgentApps">
         <span class="staff-more__nav-left">
           <FileText :size="16" /> {{ t('staff.agentApps2.title') }}
+        </span>
+        <span class="staff-more__nav-right">&rarr;</span>
+      </div>
+
+      <div
+        tabindex="0"
+        role="button"
+        @keyup.enter="goSupport"
+        @keyup.space.prevent="goSupport" class="staff-more__nav-item" @click="goSupport">
+        <span class="staff-more__nav-left">
+          <MessageCircle :size="16" /> {{ t('staff.support.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </div>

@@ -230,6 +230,31 @@
       "rejectReason": "Ablehnungsgrund (erforderlich)",
       "noQueue": "Keine ausstehenden Anträge"
     },
+    "support": {
+      "title": "Support-Anfragen",
+      "hint": "Der Pool nicht übernommener Anfragen sowie Ihre eigenen. Tippen Sie auf eine Karte, um die Unterhaltung zu öffnen.",
+      "groupPool": "Nicht übernommen",
+      "groupMine": "Meine",
+      "groupForeign": "Bei anderen Mitarbeitern",
+      "empty": "Die Warteschlange ist leer",
+      "claim": "Übernehmen",
+      "claimConflict": "Bereits von einem anderen Mitarbeiter übernommen — Liste aktualisieren",
+      "refresh": "Aktualisieren",
+      "backToQueue": "Zurück zur Warteschlange",
+      "readOnlyHint": "Übernehmen Sie die Anfrage, bevor Sie antworten",
+      "foreignHint": "Diese Anfrage gehört einem anderen Mitarbeiter — nur Ansicht",
+      "placeholder": "Ihre Antwort",
+      "send": "Senden",
+      "feedErrorTitle": "Unterhaltung konnte nicht geladen werden",
+      "errorUnavailable": "Der Support ist vorübergehend nicht erreichbar, versuchen Sie es später erneut",
+      "errorGeneric": "Aktion konnte nicht ausgeführt werden, versuchen Sie es erneut",
+      "statusResolve": "Als gelöst markieren",
+      "statusClose": "Anfrage schließen",
+      "sender": {
+        "client": "Kunde",
+        "operator": "Mitarbeiter"
+      }
+    },
     "avatar": {
       "title": "Avatar-Modus",
       "subtitle": "Sehen Sie die Plattform aus Nutzersicht",

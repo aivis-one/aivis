@@ -578,6 +578,14 @@ export const router = createRouter({
           component: () => import('@/views/staff/StaffAgentAppsView.vue'),
         },
         {
+          // Ф-3: one route, list + conversation panel toggled by local
+          // state inside the view -- no child route for a single
+          // thread (see StaffSupportView's own header for why).
+          path: 'support',
+          name: 'staff-support',
+          component: () => import('@/views/staff/StaffSupportView.vue'),
+        },
+        {
           path: 'avatar',
           name: 'staff-avatar',
           component: () => import('@/views/staff/StaffAvatarView.vue'),

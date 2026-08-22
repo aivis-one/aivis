@@ -58,6 +58,20 @@
 //   would be new, unordered logic on top of stake A's contract. A
 //   404 here falls into the same generic error text as any other
 //   failure of that action.
+//
+// Ф-3 CROSS-REFERENCE (gate decision, develop B).
+//   views/staff/StaffSupportView.vue duplicates the message-bubble
+//   rendering and composer markup below (`.isup__feed`/`.isup__msg*`/
+//   `.isup__composer*`) rather than sharing a component with this
+//   file. Considered and rejected: extracting would have meant
+//   editing this already-shipped, working screen for the sake of a
+//   screen that did not exist yet, to save two small presentational
+//   blocks that already differ in submit logic (compound open+send
+//   here vs a plain reply there) and in how "which side is this
+//   message on" is computed (identity here vs thread.client there).
+//   A comment pointing both ways is the agreed guard against drift:
+//   if you change the bubble markup or the composer's error/disabled
+//   states here, check StaffSupportView's copy too.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'

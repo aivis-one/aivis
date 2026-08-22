@@ -230,6 +230,31 @@
       "rejectReason": "Rejection reason (required)",
       "noQueue": "No pending applications"
     },
+    "support": {
+      "title": "Support requests",
+      "hint": "The unclaimed pool plus your own claimed requests. Tap a card to open the conversation.",
+      "groupPool": "Unclaimed",
+      "groupMine": "Mine",
+      "groupForeign": "With other staff",
+      "empty": "The queue is empty",
+      "claim": "Claim",
+      "claimConflict": "Already claimed by another staff member — refresh the list",
+      "refresh": "Refresh",
+      "backToQueue": "Back to queue",
+      "readOnlyHint": "Claim this request before replying",
+      "foreignHint": "This request belongs to another staff member — view only",
+      "placeholder": "Your reply",
+      "send": "Send",
+      "feedErrorTitle": "Couldn't load the conversation",
+      "errorUnavailable": "Support is temporarily unavailable, try again later",
+      "errorGeneric": "Couldn't complete the action, try again",
+      "statusResolve": "Mark resolved",
+      "statusClose": "Close request",
+      "sender": {
+        "client": "Client",
+        "operator": "Staff"
+      }
+    },
     "avatar": {
       "title": "Avatar Mode",
       "subtitle": "View the platform as the user sees it",
