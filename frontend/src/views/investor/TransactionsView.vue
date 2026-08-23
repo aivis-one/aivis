@@ -222,30 +222,23 @@ onMounted(() => {
 
     <!-- List -->
     <ul v-else class="tv__list">
-      <li
-        v-for="item in store.items"
-        :key="item.id"
-        class="tv__item"
-        tabindex="0"
-        role="button"
-        @click="openDetail(item)"
-        @keyup.enter="openDetail(item)"
-        @keyup.space.prevent="openDetail(item)"
-      >
-        <div class="tv__item-icon">
-          <component :is="iconFor(item.type)" :size="16" />
-        </div>
-        <div class="tv__item-body">
-          <div class="tv__item-line">
-            <span class="tv__item-type">{{ typeLabel(item.type) }}</span>
-            <span class="tv__amount" :class="amountClass(item.amount_cents)">
-              {{ formatSignedPrice(item.amount_cents, item.currency) }}
-            </span>
+      <li v-for="item in store.items" :key="item.id">
+        <button type="button" class="tv__item" @click="openDetail(item)">
+          <div class="tv__item-icon">
+            <component :is="iconFor(item.type)" :size="16" />
           </div>
-          <div class="tv__item-line tv__item-line--sub">
-            <span class="tv__item-date">{{ formatDate(item.created_at) }}</span>
+          <div class="tv__item-body">
+            <div class="tv__item-line">
+              <span class="tv__item-type">{{ typeLabel(item.type) }}</span>
+              <span class="tv__amount" :class="amountClass(item.amount_cents)">
+                {{ formatSignedPrice(item.amount_cents, item.currency) }}
+              </span>
+            </div>
+            <div class="tv__item-line tv__item-line--sub">
+              <span class="tv__item-date">{{ formatDate(item.created_at) }}</span>
+            </div>
           </div>
-        </div>
+        </button>
       </li>
     </ul>
 
@@ -365,6 +358,8 @@ onMounted(() => {
 }
 
 .tv__item {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);

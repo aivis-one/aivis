@@ -16,12 +16,21 @@
 //                         "open link" affordance when the event has a
 //                         url.
 //
-// NAVIGATION-AGNOSTIC (mirrors CompanyCard / ProductCard).
-//   The card emits @click with the event; the parent decides what a
-//   tap does (the widget pushes to the events screen, the full list
-//   may do nothing or open the external url). The external link is the
-//   one exception: it is a plain <a target="_blank"> inside the card,
-//   stopPropagation'd so opening the link does not also fire @click.
+// NAVIGATION-AGNOSTIC, AND ONLY `compact` IS A CLICK TARGET.
+//   compact emits @click with the event and the parent decides what a
+//   tap does (the dashboard widget pushes to the events screen).
+//   full does NOT emit and is NOT clickable as a whole. Its one
+//   affordance is the explicit external link, a plain
+//   <a target="_blank"> inside the card.
+//   ⚠ full USED TO PAINT cursor:pointer, a :hover lift and an :active
+//   depress, and to emit @click -- which NO call site listened to
+//   (its only full-variant call site is InvestorEventsView). Every card on
+//   /investor/events looked pressable and did nothing, and with no
+//   tabindex and no role a keyboard user could not even discover it was
+//   inert. The affordance was removed rather than wired up, because
+//   /investor/events IS the events screen and there is no decided
+//   destination for a tap. If one is ever decided, the painted states
+//   come back WITH the listener, never before it.
 //
 // FP-25 SELF-HIDE.
 //   cover, description, location, and url are all optional on
@@ -107,12 +116,9 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
     <ChevronRight :size="16" class="event-card__chev" />
   </button>
 
-  <!-- Full: list card. Cover + description + optional external link. -->
-  <div
-    v-else
-    class="event-card event-card--full"
-    @click="$emit('click', event)"
-  >
+  <!-- Full: list card. Cover + description + optional external link.
+       Not a click target -- see the note at the top of this file. -->
+  <div v-else class="event-card event-card--full">
     <div
       class="event-card__cover"
       :class="{ 'event-card__cover--fallback': !coverImage }"
@@ -148,7 +154,6 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
         target="_blank"
         rel="noopener noreferrer"
         class="event-card__link"
-        @click.stop
       >
         <ExternalLink :size="16" />
         {{ t('inv.events.eventCard.openUrl') }}
@@ -264,7 +269,10 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 }
 .event-card__chev { color: var(--text-secondary); flex-shrink: 0; }
 
-/* Full variant: cover on top, body below. */
+/* Full variant: cover on top, body below. NOT a click target, so it paints
+   NO cursor:pointer, NO :hover lift and NO :active depress -- the card does
+   not emit and no call site listens. Do not restore any of the three without
+   restoring the listener with them. */
 .event-card--full {
   display: flex;
   flex-direction: column;
@@ -272,14 +280,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.event-card--full:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-2);
-}
-.event-card--full:active { transform: translateY(0); }
 .event-card__cover {
   position: relative;
   aspect-ratio: 16 / 9;

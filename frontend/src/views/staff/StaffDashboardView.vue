@@ -164,14 +164,15 @@ onMounted(loadStats)
       </div>
 
       <!-- KYC alert banner -->
-      <div
-        tabindex="0"
-        role="button"
-        @keyup.enter="goKyc"
-        @keyup.space.prevent="goKyc" v-if="stats.pending_kyc_count > 0" class="staff-dash__alert" @click="goKyc">
+      <button
+        v-if="stats.pending_kyc_count > 0"
+        type="button"
+        class="staff-dash__alert"
+        @click="goKyc"
+      >
         <ShieldAlert :size="16" />
         <span>{{ stats.pending_kyc_count }} {{ t('staff.pending').toLowerCase() }} KYC</span>
-      </div>
+      </button>
 
       <!-- Role breakdown -->
       <div v-if="Object.keys(stats.users_by_role).length" class="staff-dash__roles">
@@ -233,6 +234,8 @@ onMounted(loadStats)
 }
 
 .staff-dash__alert {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-2);

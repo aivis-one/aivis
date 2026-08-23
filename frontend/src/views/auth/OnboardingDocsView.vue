@@ -226,8 +226,8 @@ async function handleSignAll(): Promise<void> {
               :aria-label="doc.title"
               :tabindex="doc.is_signed ? -1 : 0"
               @click.stop="toggleCheck(doc)"
-              @keyup.enter="toggleCheck(doc)"
-              @keyup.space.prevent="toggleCheck(doc)"
+              @keydown.enter.prevent="toggleCheck(doc)"
+              @keydown.space.prevent="toggleCheck(doc)"
             >
               <span v-if="isChecked(doc)">✓</span>
             </div>

@@ -300,26 +300,19 @@ function metaLabel(doc: DocumentResponse): string {
 
     <!-- List -->
     <ul v-else class="docs__list">
-      <li
-        tabindex="0"
-        role="button"
-        @keyup.enter="openDoc(doc)"
-        @keyup.space.prevent="openDoc(doc)"
-        v-for="doc in documents"
-        :key="doc.id"
-        class="docs__item"
-        @click="openDoc(doc)"
-      >
-        <div class="docs__icon">
-          <FileText :size="16" />
-        </div>
-        <div class="docs__body">
-          <div class="docs__title">{{ doc.title }}</div>
-          <div class="docs__meta">{{ metaLabel(doc) }}</div>
-        </div>
-        <span class="docs__status" :class="statusClass(doc)">
-          {{ statusLabel(doc) }}
-        </span>
+      <li v-for="doc in documents" :key="doc.id">
+        <button type="button" class="docs__item" @click="openDoc(doc)">
+          <div class="docs__icon">
+            <FileText :size="16" />
+          </div>
+          <div class="docs__body">
+            <div class="docs__title">{{ doc.title }}</div>
+            <div class="docs__meta">{{ metaLabel(doc) }}</div>
+          </div>
+          <span class="docs__status" :class="statusClass(doc)">
+            {{ statusLabel(doc) }}
+          </span>
+        </button>
       </li>
     </ul>
 
@@ -429,6 +422,8 @@ function metaLabel(doc: DocumentResponse): string {
 }
 
 .docs__item {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);

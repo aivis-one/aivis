@@ -58,11 +58,7 @@ const available = computed(() => props.product.available_packages)
 </script>
 
 <template>
-  <div
-    tabindex="0"
-    role="button"
-    @keyup.enter="$emit('click', product)"
-    @keyup.space.prevent="$emit('click', product)" class="product-card" @click="$emit('click', product)">
+  <button type="button" class="product-card" @click="$emit('click', product)">
     <div
       class="product-card__img"
       :class="{ 'product-card__img--fallback': !coverImage }"
@@ -96,11 +92,13 @@ const available = computed(() => props.product.available_packages)
         </span>
       </div>
     </div>
-  </div>
+  </button>
 </template>
 
 <style scoped>
 .product-card {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   background: var(--bg-page);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);

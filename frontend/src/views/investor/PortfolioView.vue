@@ -246,57 +246,50 @@ onMounted(() => {
 
       <!-- Position cards -->
       <ul class="pv__list">
-        <li
-          v-for="p in store.positions"
-          :key="p.company_id"
-          class="pv__item"
-          tabindex="0"
-          role="button"
-          @click="openPosition(p)"
-          @keyup.enter="openPosition(p)"
-          @keyup.space.prevent="openPosition(p)"
-        >
-          <div class="pv__item-head">
-            <span class="pv__item-company">
-              <Building :size="16" class="pv__item-company-icon" />
-              <span class="pv__item-company-name">{{ p.company_name }}</span>
-            </span>
-            <span class="pv__item-head-right">
-              <span
-                class="pv__profit"
-                :class="profitClass(positionProfitPercent(p))"
-              >
-                {{ formatProfitPercent(positionProfitPercent(p)) }}
+        <li v-for="p in store.positions" :key="p.company_id">
+          <button type="button" class="pv__item" @click="openPosition(p)">
+            <div class="pv__item-head">
+              <span class="pv__item-company">
+                <Building :size="16" class="pv__item-company-icon" />
+                <span class="pv__item-company-name">{{ p.company_name }}</span>
               </span>
-              <ChevronRight :size="16" class="pv__item-chev" />
-            </span>
-          </div>
-          <div class="pv__item-stats">
-            <div class="pv__item-stat">
-              <div class="pv__item-stat-label">
-                {{ t('inv.portfolio.position.units') }}
+              <span class="pv__item-head-right">
+                <span
+                  class="pv__profit"
+                  :class="profitClass(positionProfitPercent(p))"
+                >
+                  {{ formatProfitPercent(positionProfitPercent(p)) }}
+                </span>
+                <ChevronRight :size="16" class="pv__item-chev" />
+              </span>
+            </div>
+            <div class="pv__item-stats">
+              <div class="pv__item-stat">
+                <div class="pv__item-stat-label">
+                  {{ t('inv.portfolio.position.units') }}
+                </div>
+                <div class="pv__item-stat-value">
+                  {{ formatNumber(p.total_units, locale) }}
+                </div>
               </div>
-              <div class="pv__item-stat-value">
-                {{ formatNumber(p.total_units, locale) }}
+              <div class="pv__item-stat">
+                <div class="pv__item-stat-label">
+                  {{ t('inv.portfolio.position.avgPrice') }}
+                </div>
+                <div class="pv__item-stat-value">
+                  {{ formatPrice(p.avg_price_cents) }}
+                </div>
+              </div>
+              <div class="pv__item-stat">
+                <div class="pv__item-stat-label">
+                  {{ t('inv.portfolio.position.value') }}
+                </div>
+                <div class="pv__item-stat-value">
+                  {{ formatPrice(p.current_value_cents) }}
+                </div>
               </div>
             </div>
-            <div class="pv__item-stat">
-              <div class="pv__item-stat-label">
-                {{ t('inv.portfolio.position.avgPrice') }}
-              </div>
-              <div class="pv__item-stat-value">
-                {{ formatPrice(p.avg_price_cents) }}
-              </div>
-            </div>
-            <div class="pv__item-stat">
-              <div class="pv__item-stat-label">
-                {{ t('inv.portfolio.position.value') }}
-              </div>
-              <div class="pv__item-stat-value">
-                {{ formatPrice(p.current_value_cents) }}
-              </div>
-            </div>
-          </div>
+          </button>
         </li>
       </ul>
     </template>
@@ -374,6 +367,8 @@ onMounted(() => {
   gap: var(--space-3);
 }
 .pv__item {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   border: 1px solid var(--border-default);

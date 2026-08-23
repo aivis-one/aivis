@@ -157,13 +157,10 @@ onMounted(loadCompanies)
     <!-- List -->
     <template v-else>
       <div class="company-list">
-        <div
-          tabindex="0"
-          role="button"
-          @keyup.enter="openCompany(c.id)"
-          @keyup.space.prevent="openCompany(c.id)"
+        <button
           v-for="c in items"
           :key="c.id"
+          type="button"
           class="company-item"
           @click="openCompany(c.id)"
         >
@@ -175,7 +172,7 @@ onMounted(loadCompanies)
             </div>
           </div>
           <CBadge :variant="statusVariant(c.status)" :text="c.status" />
-        </div>
+        </button>
       </div>
 
       <!-- Pagination -->
@@ -211,6 +208,8 @@ onMounted(loadCompanies)
 
 .company-list { display: flex; flex-direction: column; }
 .company-item {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;
 }

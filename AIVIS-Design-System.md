@@ -10,7 +10,7 @@
 >
 > Any edit made here is lost on the next run. Change the SOURCE instead.
 
-**Generated:** 2026-08-21 · **Components:** 18 · **Tokens:** 149 distinct (207 declarations, the extra ones being theme overrides)
+**Generated:** 2026-08-23 · **Components:** 18 · **Tokens:** 149 distinct (207 declarations, the extra ones being theme overrides)
 
 **Audience: an agent working in this repository.** It answers three questions that otherwise cost a
 full read of `components/ui/`: what exists, what each thing accepts, and **what does not exist at all**.
@@ -24,20 +24,20 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 | `AivisLogo` | 9 | 2 | — |
 | `CAppControls` | 8 | — | — |
 | `CAvatar` | 5 | 1 | `c-avatar--initials` |
-| `CBackLink` | 11 | 1 | — |
+| `CBackLink` | 13 | 1 | — |
 | `CBadge` | 12 | 2 | `c-badge--accent` `c-badge--danger` `c-badge--neutral` `c-badge--primary` `c-badge--success` `c-badge--warning` |
 | `CBottomSheet` | 5 | 3 | — |
-| `CButton` | 48 | 5 | `c-btn--accent` `c-btn--danger` `c-btn--inline` `c-btn--link` `c-btn--outline` `c-btn--primary` `c-btn--secondary` `c-btn--sm` `c-btn--telegram` |
+| `CButton` | 50 | 5 | `c-btn--accent` `c-btn--danger` `c-btn--inline` `c-btn--link` `c-btn--outline` `c-btn--primary` `c-btn--secondary` `c-btn--sm` `c-btn--telegram` |
 | `CCheckbox` | 3 | 1 | — |
-| `CEmptyState` | 44 | 1 | — |
+| `CEmptyState` | 46 | 1 | — |
 | `CIconBox` | 1 | 1 | `c-icon-box--accent` `c-icon-box--danger` `c-icon-box--neutral` `c-icon-box--primary` `c-icon-box--success` `c-icon-box--warning` |
 | `CInput` | 14 | 7 | `c-input--compact` `c-input--error` `c-input--reveal` |
-| `CLoader` | 49 | 1 | — |
+| `CLoader` | 51 | 1 | — |
 | `CModal` | 11 | 3 | — |
 | `CProgressBar` | 1 | 1 | — |
 | `CSelect` | 5 | 5 | `c-select--error` |
 | `CStatCard` | 4 | 5 | `c-stat--interactive` |
-| `CTextarea` | 5 | 7 | `c-textarea--compact` `c-textarea--error` `c-textarea--mono` |
+| `CTextarea` | 7 | 7 | `c-textarea--compact` `c-textarea--error` `c-textarea--mono` |
 | `CToast` | 5 | — | `c-toast--error` `c-toast--info` `c-toast--show` `c-toast--success` `c-toast--warning` |
 
 **Every component has at least one caller.**
@@ -84,7 +84,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 |---|---|---|---|
 | `label` | `string` | **yes** | — |
 
-**Used by 11 file(s)**
+**Used by 13 file(s)**
 
 ### `CBadge`
 
@@ -128,7 +128,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 
 **Slots:** default
 **Variant classes:** `.c-btn--accent` · `.c-btn--danger` · `.c-btn--inline` · `.c-btn--link` · `.c-btn--outline` · `.c-btn--primary` · `.c-btn--secondary` · `.c-btn--sm` · `.c-btn--telegram`
-**Used by 48 file(s)**
+**Used by 50 file(s)**
 
 ### `CCheckbox`
 
@@ -152,7 +152,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 | `title` | `string; description?: string` | no | — |
 
 **Slots:** `icon`
-**Used by 44 file(s)**
+**Used by 46 file(s)**
 
 ### `CIconBox`
 
@@ -195,7 +195,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 |---|---|---|---|
 | `size` | `number` | no | `32` |
 
-**Used by 49 file(s)**
+**Used by 51 file(s)**
 
 ### `CModal`
 
@@ -273,7 +273,7 @@ full read of `components/ui/`: what exists, what each thing accepts, and **what 
 
 **Emits:** `update:modelValue: [value: string]`
 **Variant classes:** `.c-textarea--compact` · `.c-textarea--error` · `.c-textarea--mono`
-**Used by 5 file(s)**: `components/staff/EventEditor.vue`, `components/staff/PostListEditor.vue`, `views/agent/AgentSettingsView.vue`, `views/company/CompanyBalanceView.vue`, `views/staff/platform/StaffCompanyRoadmapSection.vue`
+**Used by 7 file(s)**: `components/staff/EventEditor.vue`, `components/staff/PostListEditor.vue`, `views/agent/AgentSettingsView.vue`, `views/company/CompanyBalanceView.vue`, `views/investor/InvestorSupportView.vue`, `views/staff/StaffSupportView.vue`, `views/staff/platform/StaffCompanyRoadmapSection.vue`
 
 ### `CToast`
 

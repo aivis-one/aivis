@@ -360,36 +360,29 @@ function formatBytes(bytes: number): string {
       >
         <h3 class="ats__group-title">{{ pathLabel(group.l1) }}</h3>
         <ul class="ats__list">
-          <li
-            tabindex="0"
-            role="button"
-            @keyup.enter="onDownload(att)"
-            @keyup.space.prevent="onDownload(att)"
-            v-for="att in group.items"
-            :key="att.id"
-            class="ats__item"
-            @click="onDownload(att)"
-          >
-            <span class="ats__item-icon">
-              <component :is="mimeIcon(att.mime_type)" :size="20" />
-            </span>
-            <div class="ats__item-body">
-              <p class="ats__item-title">{{ att.title }}</p>
-              <p
-                v-if="att.description"
-                class="ats__item-desc"
-              >
-                {{ att.description }}
-              </p>
-              <p class="ats__item-meta">
-                {{ att.original_filename }}
-                ·
-                {{ formatBytes(att.file_size_bytes) }}
-              </p>
-            </div>
-            <span class="ats__item-download" aria-hidden="true">
-              <Download :size="16" />
-            </span>
+          <li v-for="att in group.items" :key="att.id">
+            <button type="button" class="ats__item" @click="onDownload(att)">
+              <span class="ats__item-icon">
+                <component :is="mimeIcon(att.mime_type)" :size="20" />
+              </span>
+              <div class="ats__item-body">
+                <p class="ats__item-title">{{ att.title }}</p>
+                <p
+                  v-if="att.description"
+                  class="ats__item-desc"
+                >
+                  {{ att.description }}
+                </p>
+                <p class="ats__item-meta">
+                  {{ att.original_filename }}
+                  ·
+                  {{ formatBytes(att.file_size_bytes) }}
+                </p>
+              </div>
+              <span class="ats__item-download" aria-hidden="true">
+                <Download :size="16" />
+              </span>
+            </button>
           </li>
         </ul>
       </section>
@@ -464,6 +457,8 @@ function formatBytes(bytes: number): string {
 }
 
 .ats__item {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-4);

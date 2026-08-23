@@ -70,38 +70,30 @@ function goSupport(): void {
     <div class="staff-more__section">
       <div class="staff-more__section-label">{{ t('staff.settings.tools') }}</div>
 
-      <div
-        tabindex="0"
-        role="button"
-        @keyup.enter="goAgentApps"
-        @keyup.space.prevent="goAgentApps" class="staff-more__nav-item" @click="goAgentApps">
+      <button type="button" class="staff-more__nav-item" @click="goAgentApps">
         <span class="staff-more__nav-left">
           <FileText :size="16" /> {{ t('staff.agentApps2.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
-      </div>
+      </button>
 
-      <div
-        tabindex="0"
-        role="button"
-        @keyup.enter="goSupport"
-        @keyup.space.prevent="goSupport" class="staff-more__nav-item" @click="goSupport">
+      <button type="button" class="staff-more__nav-item" @click="goSupport">
         <span class="staff-more__nav-left">
           <MessageCircle :size="16" /> {{ t('staff.support.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
-      </div>
+      </button>
 
-      <div
-        tabindex="0"
-        role="button"
-        @keyup.enter="goAvatar"
-        @keyup.space.prevent="goAvatar" class="staff-more__nav-item staff-more__nav-item--accent" @click="goAvatar">
+      <button
+        type="button"
+        class="staff-more__nav-item staff-more__nav-item--accent"
+        @click="goAvatar"
+      >
         <span class="staff-more__nav-left">
           <Ghost :size="16" /> Avatar Mode
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
-      </div>
+      </button>
     </div>
 
     <!-- System section -->
@@ -118,16 +110,16 @@ function goSupport(): void {
         <span class="staff-more__info-val">{{ t('staff.settings.langVal') }}</span>
       </div>
 
-      <div
-        tabindex="0"
-        role="button"
-        @keyup.enter="handleLogout"
-        @keyup.space.prevent="handleLogout" class="staff-more__nav-item staff-more__nav-item--danger" @click="handleLogout">
+      <button
+        type="button"
+        class="staff-more__nav-item staff-more__nav-item--danger"
+        @click="handleLogout"
+      >
         <span class="staff-more__nav-left">
           <LogOut :size="16" /> {{ t('staff.settings.logout') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -157,6 +149,8 @@ function goSupport(): void {
 }
 
 .staff-more__nav-item {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   display: flex; justify-content: space-between; align-items: center;
   padding: var(--space-4) 0; border-bottom: 1px solid var(--border-default); cursor: pointer;
   font-size: var(--fs-sm); color: var(--text-primary);

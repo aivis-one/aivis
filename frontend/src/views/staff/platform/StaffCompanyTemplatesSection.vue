@@ -186,13 +186,10 @@ onMounted(loadTemplates)
     <!-- List -->
     <template v-else>
       <div class="tpl-list">
-        <div
-          tabindex="0"
-          role="button"
-          @keyup.enter="openDetail(tpl)"
-          @keyup.space.prevent="openDetail(tpl)"
+        <button
           v-for="tpl in items"
           :key="tpl.id"
+          type="button"
           class="tpl-item"
           @click="openDetail(tpl)"
         >
@@ -212,7 +209,7 @@ onMounted(loadTemplates)
               &bull; v{{ tpl.version }}
             </div>
           </div>
-        </div>
+        </button>
       </div>
     </template>
 
@@ -287,6 +284,8 @@ onMounted(loadTemplates)
 
 .tpl-list { display: flex; flex-direction: column; }
 .tpl-item {
+  appearance: none; background: none; border: none; margin: 0; padding: 0;
+  font: inherit; color: inherit; text-align: start; width: 100%;
   display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;
 }
