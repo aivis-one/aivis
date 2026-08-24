@@ -228,10 +228,14 @@ function onCardClick(): void {
   grid-template-columns: 1fr;
   gap: var(--space-3);
 }
-@media (min-width: 520px) {
+/* B-3.0 2026-08-24: was 520px. Folded onto the declared component threshold 640, which is
+   what the two other product grids (.pps__grid, .pbc__grid) already use for two-up. */
+@media (min-width: 640px) {
   .cprods__grid { grid-template-columns: repeat(2, 1fr); }
 }
-@media (min-width: 900px) {
+/* B-3.0 2026-08-24: was 900px, the only site in the tree using it. Folded onto 960, which
+   is what .pps__grid and .pbc__grid already use for three-up. 900 is now RETIRED. */
+@media (min-width: 960px) {
   .cprods__grid { grid-template-columns: repeat(3, 1fr); }
 }
 

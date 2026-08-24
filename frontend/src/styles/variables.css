@@ -179,6 +179,43 @@
   --space-8: 4rem;
   --space-9: 6rem;
 
+  /* ==========================================================================
+     BREAKPOINTS -- DECLARED BY `B-3.0`, 2026-08-24. SINGLE SOURCE OF TRUTH, AND
+     IT IS ENFORCED: the B-3.0 done-test fails if any `@media` width anywhere in
+     `src/**` is not one of the values below.
+
+     THESE TOKENS CANNOT BE USED INSIDE `@media`. A CSS custom property is not
+     substituted in a media-query condition -- `@media (min-width: var(--bp-tier-md))`
+     is invalid and silently never matches. This project has no PostCSS, no
+     `@custom-media` and no Sass, so every query must still write its value
+     literally. The tokens make the set greppable, readable from JS, and
+     checkable; THE CHECKER IS WHAT MAKES THE SET REAL.
+
+     TWO KINDS OF BREAKPOINT. Conflating them is why five values read as
+     "undeclared" for four seats -- they were never tiers at all.
+
+     LAYOUT TIERS -- three tiers, two boundaries. They govern the SHELL: which
+     navigation renders and how the app frame is arranged. 6 sites.
+        below 820    compact -- tab bar, single column
+        820..1279    medium  -- icon rail appears (four shells + CSideNav)
+        1280+        wide    -- the rail gains labels (CSideNav)
+
+     COMPONENT THRESHOLDS -- they govern how many things fit inside ONE
+     container. They are NOT tiers and must NOT be folded onto 820/1280: a card
+     grid that waits until 820 to show two columns is wrong on every tablet.
+     11 sites.
+        480   single-column guard for the narrowest phones (max-width)
+        520   an action row turns from stacked to side-by-side
+        640   card grids go two-up; stat rows go four-up
+        960   card grids go three-up
+     ========================================================================== */
+  --bp-tier-md: 820px;
+  --bp-tier-lg: 1280px;
+  --bp-comp-xs: 480px;
+  --bp-comp-sm: 520px;
+  --bp-comp-md: 640px;
+  --bp-comp-lg: 960px;
+
   /* APP TIER — entered 2026-08-18 under the owner's ruling. The system declares a
      4px grid (4/8/12/16/24/32/48/64/96); these are the three sizes the cabinets
      use that sit MORE than 2px from any step, so snapping them would be a design
