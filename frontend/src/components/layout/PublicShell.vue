@@ -103,19 +103,12 @@ function goToLogin(): void {
 </template>
 
 <style scoped>
-.shell {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--bg-page);
-}
-
-.shell__content {
-  flex: 1;
-  overflow-y: auto;
-}
-
+/* PublicShell owns ONLY its login button. `.shell`, `.shell__content` and
+   `.shell__measure` are shared chrome and live in styles/shell.css.
+   ⚠ IT DELIBERATELY DOES NOT CARRY `shell--tabbed`: the storefront has no
+   tab bar and no side nav, so it gets no tier rules. Whether it SHOULD is
+   the owner's open call in `BATCH-PLAN.md` B-3.1 -- answering it is adding
+   one class to the root element above, and nothing else. */
 .shell__login {
   /* A5: pointer target floor. */
   min-height: var(--tap-min);
@@ -142,19 +135,5 @@ function goToLogin(): void {
 
 .shell__login:active {
   opacity: 0.8;
-}
-
-/* CONTENT MEASURE — the design system's own widths, finally referenced. Before
-   this, `main` ran to the full viewport at every width, so a text line reached
-   1248px against a readable 600-700 (measured by the B-1 harness).
-
-   Measure and centring ONLY, deliberately no gutter: 40 of the 62 views set
-   their own padding on their root rule, so a gutter here would double up and
-   cost 48px of a 390px phone. `.wrap` / `.wrap-wide` in global.css keep the
-   gutter for content that does NOT pad itself. */
-.shell__measure {
-  width: 100%;
-  max-width: var(--maxw);
-  margin-inline: auto;
 }
 </style>

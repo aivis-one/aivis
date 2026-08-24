@@ -7,6 +7,9 @@ import { i18n, setupI18n } from '@/i18n'
 
 import '@/styles/variables.css'
 import '@/styles/global.css'
+// shell.css AFTER global.css: it is layout chrome that must win a same-specificity
+// tie against the reset, and BEFORE telegram.css, which is platform skinning.
+import '@/styles/shell.css'
 import '@/styles/telegram.css'
 
 // Bootstrap sequence:

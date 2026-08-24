@@ -1,0 +1,99 @@
+/* ============================================================
+   SHELL CHROME — ONE SOURCE FOR THE FIVE SHELLS (B-3.1)
+
+   Until this file, `AgentShell` `CompanyShell` `InvestorShell` `StaffShell`
+   each carried the same `@media (min-width: 820px)` block, byte for byte, four
+   times over, plus the same `.shell` / `.shell__content` / `.shell__measure`
+   rules and the same two explanatory comments. `PublicShell` carried the
+   non-tier half of that a fifth time. A tier change had to be made in four
+   places and would one day have been made in three.
+
+   WHY A PLAIN STYLESHEET AND NOT A SHARED SFC: these rules describe a LAYOUT
+   CONTRACT between three components that already exist (a shell, CSideNav,
+   CTabBar). Wrapping them in a sixth component to share four rules would add a
+   node to every cabinet route to save nothing.
+
+   ⚠ `.shell--tabbed` IS THE GATE, AND IT IS DELIBERATE.
+   Four shells carry `class="shell shell--tabbed"`; `PublicShell` carries only
+   `shell`. The tier rules below therefore reach the four and not the fifth.
+   That is not an accident of naming — WHETHER THE PUBLIC STOREFRONT GETS THE
+   TIER SYSTEM IS THE OWNER'S OPEN CALL (`BATCH-PLAN.md`, B-3.1), and this shape
+   makes his answer a one-word edit in one template instead of a new block of
+   CSS. Do not resolve it by widening a selector here.
+
+   ⚠ THE HIDE RULE IS DELIBERATELY (0,3,0) AND MUST STAY THAT WAY.
+   `CTabBar` sets `display: flex` on its own root from its own chunk, at
+   specificity (0,2,0). Written as `.shell--tabbed .c-tabbar` this rule would
+   also be (0,2,0) — a TIE decided by which css chunk the browser happens to
+   load second, which is not stated in any stylesheet. `.shell.shell--tabbed`
+   makes it (0,3,0) so the outcome is a property of the CSS and not of the
+   bundler's emission order.
+   ============================================================ */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg-page);
+}
+
+.shell__content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* CONTENT MEASURE — the design system's own widths, finally referenced. Before
+   this, `main` ran to the full viewport at every width, so a text line reached
+   1248px against a readable 600-700 (measured by the B-1 harness).
+
+   Measure and centring ONLY, deliberately no gutter: 40 of the 62 views set
+   their own padding on their root rule, so a gutter here would double up and
+   cost 48px of a 390px phone. `.wrap` / `.wrap-wide` in global.css keep the
+   gutter for content that does NOT pad itself.
+
+   ⚠ StaffShell overrides this cap to `--maxw-wide` in its own scoped block.
+   THAT ASYMMETRY IS NOT DRIFT TO BE TIDIED HERE — it is `B-3.3` and it is the
+   owner's call. Folding it into one value would decide his question silently. */
+.shell__measure {
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
+}
+
+/* TIER SWITCH — the phone's bottom bar and the side menu are mutually
+   exclusive at every width, which is why they land together: shipped apart,
+   a desktop user would have no navigation at all for the length of one
+   commit. Below 820 CSideNav renders nothing and CTabBar carries it; from
+   820 up the body becomes a row and the bar is gone.
+
+   --tab-bar-height goes to 0 in the same breakpoint rather than the bar
+   merely being hidden, because that token is the declared source of truth
+   for the floating CTAs that pin themselves above the bar
+   (CompanyOverviewView). Hiding the bar alone would leave those CTAs
+   floating 56px clear of nothing. */
+.shell--tabbed .shell__body {
+  display: contents;
+}
+
+@media (min-width: 820px) {
+  .shell--tabbed {
+    --tab-bar-height: 0px;
+  }
+
+  .shell--tabbed .shell__body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .shell--tabbed .shell__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* (0,3,0) on purpose — see the header note. */
+  .shell.shell--tabbed .c-tabbar {
+    display: none;
+  }
+}
