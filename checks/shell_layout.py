@@ -138,7 +138,25 @@ def run(root: str) -> tuple[bool, list[str]]:
 
 
 def _root_class(vue_source: str) -> str | None:
-    m = re.search(r"<template>(.*?)</template>", vue_source, re.S)
+    # THE REGION MATCH IS GREEDY ON PURPOSE. `<template>` with no attributes is
+    # the SFC root; `</template>` is NOT unique -- 47 of the 101 .vue files here
+    # hold more than one `<template`, and a slot template closes with the same
+    # tag. A non-greedy `(.*?)` stops at the FIRST `</template>`, so it returns a
+    # TRUNCATED region: it reports a smaller thing and never errors, which is how
+    # a check comes to pass for the wrong reason.
+    #
+    # THIS READER WAS NOT ACTUALLY BITTEN, AND THE HONEST VERSION IS WORTH MORE
+    # THAN THE ALARMING ONE. A single-root SFC puts its root element FIRST in the
+    # template region -- in PublicShell.vue the root `<div class=` sits at offset
+    # 3, with 238 characters of the truncated region still to spare -- and across
+    # all 101 .vue files the two forms return the SAME root class. The old code
+    # was safe by structure here, not by luck. It is changed because the next
+    # reader of this region will look for something that is NOT first, and
+    # because a region match should mean the region.
+    #
+    # The selftest below plants a slot template ABOVE the root div, which is the
+    # shape that does reach the defect, and proves the two forms disagree there.
+    m = re.search(r"<template>(.*)</template>", vue_source, re.S)
     if not m:
         return None
     c = re.search(r'<div\s+class="([^"]*)"', m.group(1))
@@ -146,8 +164,9 @@ def _root_class(vue_source: str) -> str | None:
 
 
 def selftest(root: str) -> list[str]:
-    """Copy frontend/src, break it five different ways, and prove each break is
-    caught. The copy is thrown away; the real tree is never touched."""
+    """Copy frontend/src, break it five different ways and prove each break is
+    caught, then plant one thing that must NOT break it and prove that too.
+    The copy is thrown away; the real tree is never touched."""
     import shutil
     import tempfile
 
@@ -182,6 +201,37 @@ def selftest(root: str) -> list[str]:
           "max-width: var(--maxw);", "StaffShell's wide cap silently removed")
     plant("styles/shell.css", "@media (min-width: 820px) {\n  .shell--tabbed {",
           "@media (min-width: 900px) {\n  .shell--tabbed {", "the tier block moved off 820")
+
+    # A SURVIVAL PLANT, not a break: a slot template ABOVE the root <div>. This is
+    # legal Vue and changes nothing the check is about, so the check must still
+    # PASS. It exists because the region match used to be non-greedy, and a
+    # truncating region match fails SILENTLY -- it reports a smaller region and
+    # no error. The plant asserts three things in order, so it can never rot into
+    # a no-op: the text changed, the OLD form now gives a DIFFERENT answer from
+    # the shipped one (proving the plant reaches the defect), and the check still
+    # passes.
+    pub_rel = "components/layout/PublicShell.vue"
+    pub_path = os.path.join(base, "frontend", "src", pub_rel)
+    original = open(pub_path, encoding="utf-8").read()
+    anchor = '<div class="shell"'
+    assert anchor in original, "selftest anchor missing for the slot-above-root plant"
+    slotted = original.replace(anchor, '<template #decoy><span /></template>\n    ' + anchor, 1)
+    assert slotted != original, "slot-above-root plant changed nothing"
+    non_greedy = re.search(r"<template>(.*?)</template>", slotted, re.S)
+    truncated = None
+    if non_greedy:
+        d = re.search(r'<div\s+class="([^"]*)"', non_greedy.group(1))
+        truncated = d.group(1) if d else None
+    assert truncated != _root_class(slotted), \
+        "the slot-above-root plant does not separate the greedy and non-greedy forms"
+    open(pub_path, "w", encoding="utf-8").write(slotted)
+    survived, _ = run(base)
+    open(pub_path, "w", encoding="utf-8").write(original)
+    assert survived, ("a slot template above the root div broke the check -- the region "
+                      "match is truncating again")
+    restored, _ = run(base)
+    assert restored, "the slot-above-root plant left the copy broken"
+    out.append("  survives: a slot template above the root <div> (the truncating region match)")
 
     shutil.rmtree(base, ignore_errors=True)
     return out
