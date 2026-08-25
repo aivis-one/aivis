@@ -16,6 +16,9 @@
 #   kyc_admin_router          -> /api/v1/staff/kyc/* (Sprint 3.3)
 #   companies_router          -> /api/v1/companies/* (Sprint 4.1)
 #   staff_companies_router    -> /api/v1/staff/companies/* (Sprint 4.1)
+#   staff_company_audit_router -> /api/v1/staff/audit/companies (TASK-30
+#                                 ruling 3 / F2, read-only feed over
+#                                 AuditLog target_type="company")
 #   attachments_router        -> /api/v1/companies/{id}/attachments/*
 #                                (Refactor 2 iter 2.2, auth-flow)
 #   public_attachments_router -> /api/v1/public/companies/{id}/attachments/*
@@ -140,6 +143,7 @@ from app.modules.agent_applications.router import router as agent_applications_r
 from app.modules.agent_applications.staff_router import (
     router as staff_agent_applications_router,
 )
+from app.modules.audit.router import router as staff_company_audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.commissions.router import router as commissions_router
 from app.modules.commissions.worker import (
@@ -504,6 +508,13 @@ app.include_router(companies_router)
 # config under a single prefix.
 app.include_router(public_companies_router)
 app.include_router(staff_companies_router)
+# TASK-30 ruling 3 / F2: staff-only read feed of company (project)
+# writes recorded via record_audit(). Separate prefix
+# (/api/v1/staff/audit/*) rather than nesting under
+# staff_companies_router's /api/v1/staff/companies/{company_id} route
+# so it never needs the "declare the literal path before the {id}
+# path" ordering trick transactions/router.py uses for /export.
+app.include_router(staff_company_audit_router)
 # Refactor 2 iter 2.2: company attachments (auth-flow + public-flow + staff-flow).
 app.include_router(attachments_router)
 app.include_router(public_attachments_router)
