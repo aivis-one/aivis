@@ -16,9 +16,11 @@
 #   PATCH /api/v1/staff/companies/{id}/roadmap/reorder     -- reorder items
 #
 # PERMISSIONS:
-#   All endpoints require company_manage permission.
-#   Create, price change, and distribution_config update also require
-#   financial_operations permission.
+#   Read endpoints (list, detail, price-history) require company_manage.
+#   Write endpoints (create, update, price change, roadmap CRUD/reorder/
+#   cover) require project_manage. Create, price change, and
+#   distribution_config update also require financial_operations
+#   permission.
 #   price-history is gated on company_manage only -- it is a read-only
 #   audit surface, not a financial operation. (R2 §6 note: spec said
 #   "company_manage OR financial_operations" but the codebase has no
@@ -224,12 +226,12 @@ async def get_company_detail_endpoint(
 )
 async def create_company_endpoint(
     body: CreateCompanyRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> CompanyResponse:
     """Create a new company (user + profile).
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
     """
     await require_financial_operations(staff, session)
 
@@ -244,7 +246,7 @@ async def create_company_endpoint(
 async def update_company_endpoint(
     company_id: UUID,
     body: UpdateCompanyRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> CompanyResponse:
     """Update company profile.
@@ -266,12 +268,12 @@ async def update_company_endpoint(
 async def update_price_endpoint(
     company_id: UUID,
     body: UpdatePriceRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> CompanyResponse:
     """Change company share price.
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
     Cascades to active/hidden products.
     """
     await require_financial_operations(staff, session)
@@ -328,7 +330,7 @@ async def list_price_history_endpoint(
 async def create_roadmap_item_endpoint(
     company_id: UUID,
     body: CreateRoadmapItemRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> RoadmapItemResponse:
     """Add a roadmap item (R1 §5). Per-kind validation handled by the
@@ -363,7 +365,7 @@ async def create_roadmap_item_endpoint(
 async def reorder_roadmap_endpoint(
     company_id: UUID,
     body: ReorderRoadmapRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> list[RoadmapItemResponse]:
     """Reorder roadmap items."""
@@ -386,7 +388,7 @@ async def update_roadmap_item_endpoint(
     company_id: UUID,
     item_id: UUID,
     body: UpdateRoadmapItemRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> RoadmapItemResponse:
     """Update a roadmap item (partial, R1 §5).
@@ -424,7 +426,7 @@ async def update_roadmap_item_endpoint(
 async def delete_roadmap_item_endpoint(
     company_id: UUID,
     item_id: UUID,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Soft-delete a roadmap item."""
@@ -467,7 +469,7 @@ async def set_roadmap_cover_endpoint(
     company_id: UUID,
     item_id: UUID,
     file: UploadFile = File(...),
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> RoadmapItemResponse:
     """Upload / replace the cover image for a roadmap item (R1 §5).
@@ -514,7 +516,7 @@ async def set_roadmap_cover_endpoint(
 async def delete_roadmap_cover_endpoint(
     company_id: UUID,
     item_id: UUID,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Remove the cover image from a roadmap item.

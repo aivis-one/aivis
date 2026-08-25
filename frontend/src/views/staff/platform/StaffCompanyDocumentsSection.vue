@@ -23,9 +23,10 @@
 // a raw 400. Optimistic UI is rolled back by the reload.
 //
 // FP-23. Reorder + delete mutate, so both are gated on
-// canDo('company_manage') (template guard on the buttons + defensive
-// check in the handlers). A staffer without company_manage can still
-// read the list (the parent route only enforces requireStaff).
+// canDo('project_manage') -- narrowed from company_manage (TASK-30 §7)
+// -- (template guard on the buttons + defensive check in the handlers).
+// A staffer without project_manage can still read the list (the parent
+// route only enforces requireStaff).
 //
 // GROUPING. Attachments are grouped by `category`; reorder is scoped to
 // a single category. Within a group, rows are shown in `order`. The
@@ -53,8 +54,8 @@ const { showToast } = useToast()
 const route = useRoute()
 const { canDo } = useStaffPermissions()
 
-// FP-23: reorder + delete require company_manage.
-const canManage = canDo('company_manage')
+// FP-23: reorder + delete require project_manage.
+const canManage = canDo('project_manage')
 
 const companyId = computed<string>(() => {
   const raw = route.params.id

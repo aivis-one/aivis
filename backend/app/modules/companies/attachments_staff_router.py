@@ -3,7 +3,8 @@
 #                                                       iter 2.6c B5)
 # =============================================================================
 #
-# ENDPOINTS (all require company_manage; hard-delete also requires admin):
+# ENDPOINTS (list requires company_manage; writes require project_manage;
+#            hard-delete also requires admin):
 #   GET    /api/v1/staff/companies/{id}/attachments?include_deleted=
 #       -> list[StaffAttachmentResponse]                                   (200)
 #   POST   /api/v1/staff/companies/{id}/attachments
@@ -24,7 +25,14 @@
 #       -> 204                                                       (admin only)
 #
 # PERMISSIONS:
-#   - All 6 endpoints: require_staff_permission("company_manage").
+#   - List (read): require_staff_permission("company_manage").
+#   - The 6 write endpoints (create, reorder, patch metadata, replace
+#     file, soft-delete, hard-delete): require_staff_permission(
+#     "project_manage") -- narrowed from company_manage alongside the
+#     rest of the company/pool/product write surface (TASK-30 §7), so
+#     ordinary staff can no longer mutate a project's attachments once
+#     project self-service exists; only a full admin (project_manage
+#     True) can.
 #   - Hard delete additionally calls _require_admin(): is_admin checks
 #     that every permission flag is True, matching staff/router.py
 #     where _require_admin lives. Q-ATT-1: hard delete is a destructive
@@ -201,7 +209,7 @@ async def create_attachment_staff_endpoint(
     company_id: UUID,
     metadata: str = Form(...),
     file: UploadFile = File(...),
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> StaffAttachmentResponse:
     """Upload a new attachment via multipart.
@@ -257,7 +265,7 @@ async def create_attachment_staff_endpoint(
 async def reorder_attachments_staff_endpoint(
     company_id: UUID,
     body: ReorderAttachmentsRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Bulk reorder attachments inside one (company_id, category).
@@ -266,7 +274,7 @@ async def reorder_attachments_staff_endpoint(
     scope; the service rejects partial / extended lists with 400.
     Returns 204 on success.
 
-    Permission: company_manage (same as the per-row PATCH endpoint).
+    Permission: project_manage (same as the per-row PATCH endpoint).
     """
     await reorder_attachments(
         session,
@@ -290,7 +298,7 @@ async def patch_attachment_staff_endpoint(
     company_id: UUID,
     attachment_id: UUID,
     body: AttachmentPatchBody,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> StaffAttachmentResponse:
     """Partial update of attachment metadata. JSON body, no file upload."""
@@ -313,7 +321,7 @@ async def replace_attachment_staff_endpoint(
     company_id: UUID,
     attachment_id: UUID,
     file: UploadFile = File(...),
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> StaffAttachmentResponse:
     """Swap the binary content of an existing attachment.
@@ -353,7 +361,7 @@ async def replace_attachment_staff_endpoint(
 async def soft_delete_attachment_staff_endpoint(
     company_id: UUID,
     attachment_id: UUID,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Mark the attachment as deleted (is_deleted=True). MinIO object stays."""
@@ -372,7 +380,7 @@ async def soft_delete_attachment_staff_endpoint(
 async def hard_delete_attachment_staff_endpoint(
     company_id: UUID,
     attachment_id: UUID,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Drop the row AND the MinIO object. Admin-only.

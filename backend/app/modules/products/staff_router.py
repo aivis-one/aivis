@@ -13,7 +13,7 @@
 #   POST  /api/v1/staff/products/{id}/installments/preview           -- calculator (B4)
 #
 # PERMISSIONS:
-#   All endpoints require company_manage.
+#   All endpoints require project_manage.
 #   Create product, purchase_config update, and all installment ops
 #   (including preview) also require financial_operations.
 #
@@ -36,7 +36,7 @@
 #     calculator function, returns the result. No DB writes -- this is
 #     a read-only POST (POST chosen over GET only because the body
 #     carries multiple structured parameters).
-#   - Permission tier mirrors create_installment_endpoint: company_manage
+#   - Permission tier mirrors create_installment_endpoint: project_manage
 #     plus financial_operations. Even though preview does not write
 #     anything, exposing the calculator without financial_operations
 #     would let a junior staff member shape investor offers without the
@@ -95,12 +95,12 @@ router = APIRouter(prefix="/api/v1/staff/products", tags=["staff-products"])
 )
 async def create_product_endpoint(
     body: CreateProductRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> ProductResponse:
     """Create a new product.
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
     """
     await require_financial_operations(staff, session)
 
@@ -124,7 +124,7 @@ async def create_product_endpoint(
 async def update_product_endpoint(
     product_id: UUID,
     body: UpdateProductRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> ProductResponse:
     """Update product fields.
@@ -155,7 +155,7 @@ async def update_product_endpoint(
 async def update_product_status_endpoint(
     product_id: UUID,
     body: UpdateProductStatusRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> ProductResponse:
     """Change product status."""
@@ -178,12 +178,12 @@ async def update_product_status_endpoint(
 async def create_installment_endpoint(
     product_id: UUID,
     body: CreateInstallmentRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> InstallmentResponse:
     """Add an installment plan template.
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
     """
     await require_financial_operations(staff, session)
 
@@ -201,12 +201,12 @@ async def update_installment_endpoint(
     product_id: UUID,
     installment_id: UUID,
     body: UpdateInstallmentRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> InstallmentResponse:
     """Update an installment plan template.
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
     """
     await require_financial_operations(staff, session)
 
@@ -230,12 +230,12 @@ async def update_installment_endpoint(
 async def delete_installment_endpoint(
     product_id: UUID,
     installment_id: UUID,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     """Soft-delete an installment plan template.
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
     """
     await require_financial_operations(staff, session)
 
@@ -254,12 +254,12 @@ async def delete_installment_endpoint(
 async def preview_installment_endpoint(
     product_id: UUID,
     body: InstallmentPreviewRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> InstallmentPreviewResponse:
     """Compute a motivational installment plan_config from staff inputs.
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
 
     Read-only: no DB writes. The returned plan_config is the same
     shape consumed by POST /staff/products/{id}/installments -- staff

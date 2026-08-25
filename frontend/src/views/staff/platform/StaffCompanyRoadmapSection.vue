@@ -41,9 +41,10 @@
 // reorder is treated as a stale-list signal: toast + reload.
 //
 // FP-23. Every mutating CTA (add / edit / delete / reorder) is gated on
-// canDo('company_manage') -- template guard on the control plus a
-// defensive check in the handler. A staffer without company_manage
-// still reads the list (the parent route only enforces requireStaff).
+// canDo('project_manage') -- narrowed from company_manage (TASK-30 §7) --
+// template guard on the control plus a defensive check in the handler.
+// A staffer without project_manage still reads the list (the parent
+// route only enforces requireStaff).
 //
 // FP-25. Empty optional fields self-hide in the card (cover, description,
 // external_url, target_date, valid_until, linked post, linked product).
@@ -93,8 +94,8 @@ const { showToast } = useToast()
 const route = useRoute()
 const { canDo } = useStaffPermissions()
 
-// FP-23: every roadmap mutation requires company_manage.
-const canManage = canDo('company_manage')
+// FP-23: every roadmap mutation requires project_manage.
+const canManage = canDo('project_manage')
 
 const companyId = computed<string>(() => {
   const raw = route.params.id

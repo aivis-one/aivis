@@ -59,6 +59,7 @@ class UpdatePermissionsRequest(BaseModel):
     translation_edit: bool | None = None
     company_manage: bool | None = None
     content_manage: bool | None = None
+    project_manage: bool | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -1251,6 +1251,7 @@ export interface UpdatePermissionsRequest {
   translation_edit?: boolean | null
   company_manage?: boolean | null
   content_manage?: boolean | null
+  project_manage?: boolean | null
 }
 
 /** Update an existing active pool's total_options (допэмиссия). total_options: new absolute number of options in the pool. Must be > 0 and <= company.total_supply (validated in service). The service rejects values below already-consumed options. equity_percent is recomputed by the service based on the new total_options. Callers do not pass it. */

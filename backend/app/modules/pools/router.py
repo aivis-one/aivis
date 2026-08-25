@@ -8,7 +8,7 @@
 #                                                         (допэмиссия)
 #
 # PERMISSIONS:
-#   Both endpoints require company_manage + financial_operations.
+#   Both endpoints require project_manage + financial_operations.
 #   Mirrors POST /staff/companies and PATCH /staff/companies/{id}/price
 #   from Phase 4 -- creating or resizing a pool is a financial operation.
 #
@@ -71,12 +71,12 @@ router = APIRouter(
 async def create_pool_endpoint(
     company_id: UUID,
     body: CreatePoolRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> PoolResponse:
     """Create the active option pool for a company.
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
 
     Body:
         equity_percent: percentage of company.total_supply to allocate.
@@ -102,12 +102,12 @@ async def create_pool_endpoint(
 async def update_pool_endpoint(
     company_id: UUID,
     body: UpdatePoolRequest,
-    staff: User = Depends(require_staff_permission("company_manage")),
+    staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
 ) -> PoolResponse:
     """Update the active pool's total_options (допэмиссия).
 
-    Requires: company_manage + financial_operations.
+    Requires: project_manage + financial_operations.
 
     Body:
         total_options: new absolute number of options in the pool.

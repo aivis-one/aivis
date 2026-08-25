@@ -15,13 +15,14 @@
 //   PATCH /staff/companies/{id}/price      -- change price. Cascades to
 //         products + appends a history row server-side.
 //
-// FP-23 permission gate. The price change requires BOTH company_manage
-// AND financial_operations server-side. The edit CTA is therefore gated
-// on canEdit = canManage && canFinancial (template guard), and the save
-// handler re-checks defensively (console.warn + bail). Viewing the
-// history needs only company_manage, which the parent route already
-// enforces -- so a company_manage staffer without financial_operations
-// sees the price + history read-only, no edit button.
+// FP-23 permission gate. The price change requires BOTH project_manage
+// AND financial_operations server-side (narrowed from company_manage,
+// TASK-30 §7). The edit CTA is therefore gated on canEdit = canManage
+// && canFinancial (template guard), and the save handler re-checks
+// defensively (console.warn + bail). Viewing the history needs only
+// company_manage, which the parent route already enforces -- so a
+// staffer without project_manage sees the price + history read-only,
+// no edit button.
 //
 // Price is entered in dollars in the modal and converted to integer
 // cents for the wire (UpdatePriceRequest.price_per_unit_cents). Display
@@ -43,8 +44,8 @@ const { showToast } = useToast()
 const route = useRoute()
 const { canDo } = useStaffPermissions()
 
-// FP-23: edit requires company_manage AND financial_operations.
-const canManage = canDo('company_manage')
+// FP-23: edit requires project_manage AND financial_operations.
+const canManage = canDo('project_manage')
 const canFinancial = canDo('financial_operations')
 const canEdit = computed<boolean>(() => canManage.value && canFinancial.value)
 

@@ -37,6 +37,7 @@ DEFAULT_STAFF_PERMISSIONS: dict[str, bool] = {
     "translation_edit": False,
     "company_manage": True,
     "content_manage": True,
+    "project_manage": True,
 }
 
 # All valid permission keys. Used for request validation.

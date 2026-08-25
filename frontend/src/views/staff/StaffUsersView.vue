@@ -95,8 +95,10 @@ type PermissionKey = keyof Required<UpdatePermissionsRequest>
 //
 // content_manage was added to DEFAULT_STAFF_PERMISSIONS in backend
 // Sprint 9.1 and finally to UpdatePermissionsRequest in iter 2.7 A6
-// (schema-side mini-iter that closed the 9-vs-8 drift). The
-// exhaustiveness assertion below now expects nine keys.
+// (schema-side mini-iter that closed the 9-vs-8 drift). project_manage
+// was added under TASK-30 §7, narrowing the company/pool/product/
+// attachments write surface off company_manage to admin-only. The
+// exhaustiveness assertion below now expects ten keys.
 const ALL_PERMISSION_KEYS = [
   'avatar_mode',
   'kyc_approve',
@@ -107,6 +109,7 @@ const ALL_PERMISSION_KEYS = [
   'translation_edit',
   'company_manage',
   'content_manage',
+  'project_manage',
 ] as const satisfies readonly PermissionKey[]
 
 // Compile-time exhaustiveness: if the backend adds a new permission to
