@@ -12,6 +12,10 @@
 #                             terms required, no pool created here
 #   update_company()       -- partial update profile/media/distribution_config
 #                             (NO supply fields here -- see Sprint 4.3 note)
+#   update_own_company()   -- TASK-30 ruling 10/12: project self-service
+#                             partial update, project-editable fields only
+#                             (description/logo_url/cover_url/promo_video_url/
+#                             presentation_url + status ACTIVE->HIDDEN only)
 #   update_price()         -- change price + cascade to Products + history
 #   get_company()          -- load CompanyProfile by id
 #   list_companies()       -- paginated list (public: active only; staff: all;
@@ -175,6 +179,7 @@ from app.modules.companies.schemas import (
     PublicCompanyStatsResponse,
     RoadmapItemResponse,
     UpdateCompanyRequest,
+    UpdateOwnCompanyRequest,
 )
 from app.modules.posts.models import Post
 from app.modules.products.models import Product
@@ -480,6 +485,109 @@ async def update_company(
         company_id=str(company_id),
         fields=changed_fields,
         staff_id=str(staff.id),
+    )
+
+    return profile
+
+
+async def update_own_company(
+    company_id: UUID,
+    body: UpdateOwnCompanyRequest,
+    session: AsyncSession,
+) -> CompanyProfile:
+    """Partial self-update of a project's OWN profile (TASK-30 ruling 10/12).
+
+    Backs PATCH /api/v1/companies/me. Mirrors update_company()'s
+    partial-update-only-provided-fields shape, but scoped to the
+    project-editable field set: UpdateOwnCompanyRequest cannot carry
+    name / price_per_unit_cents / total_supply / shares_per_option /
+    distribution_config at all (schema-level exclusion + extra="forbid"),
+    so there is nothing admin-only left to strip here.
+
+    `company_id` is re-resolved via get_company() against THIS call's
+    own `session` rather than accepting a CompanyProfile instance handed
+    in from elsewhere. This deliberately diverges from a literal read of
+    "reuse the object the auth dependency already resolved": the router
+    identifies the caller via get_current_company_profile
+    (companies/dependencies.py), which is wired to get_db_reader -- a
+    rollback-only session used today by exactly two GET endpoints and
+    nothing else. Passing that ORM instance across sessions into a
+    get_db_session-scoped write would mutate an object the write
+    session's identity map does not know about; the flush below would
+    silently persist nothing for it. Passing only the id and re-fetching
+    here keeps this function session-safe and matches update_company()'s
+    own (company_id, session) shape exactly.
+
+    Status transition is the ONE legal direction through this endpoint:
+    current status ACTIVE and requested status HIDDEN. This is a
+    narrower rule than VALID_COMPANY_STATUS_TRANSITIONS (which also
+    allows hidden->active and ->archived for STAFF via update_company);
+    ruling 12 draws an asymmetric line for the project itself ("may hide
+    itself; only the admin may publish or archive"), so the check here
+    does not defer to that table at all -- every other request,
+    including a same-state ACTIVE->ACTIVE or HIDDEN->HIDDEN no-op, is
+    refused rather than silently accepted or ignored.
+
+    Raises:
+        NotFoundError: company not found (defence in depth -- company_id
+            comes from the caller's own authenticated profile, so this
+            should not be reachable in practice).
+        BadRequestError: a status value other than the single legal
+            ACTIVE -> HIDDEN transition was requested.
+    """
+    profile = await get_company(company_id, session)
+
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        return profile
+
+    changed_fields = list(updates.keys())
+    changes: dict[str, dict[str, object]] = {}
+
+    # -- Status transition: ACTIVE -> HIDDEN only, ruling 12 --
+    if "status" in updates:
+        requested_status = updates.pop("status")
+        if (
+            profile.status != CompanyStatus.ACTIVE
+            or requested_status != CompanyStatus.HIDDEN
+        ):
+            raise BadRequestError(
+                f"A project may only move its own status from "
+                f"'{CompanyStatus.ACTIVE.value}' to "
+                f"'{CompanyStatus.HIDDEN.value}' (attempted "
+                f"'{profile.status}' -> '{requested_status}'); publishing "
+                f"('{CompanyStatus.HIDDEN.value}' -> "
+                f"'{CompanyStatus.ACTIVE.value}') and archiving are "
+                f"staff-only actions."
+            )
+        changes["status"] = {"old": profile.status, "new": requested_status}
+        profile.status = requested_status
+
+    # -- Scalar presentation fields --
+    for field, value in updates.items():
+        changes[field] = {"old": getattr(profile, field), "new": value}
+        setattr(profile, field, value)
+
+    await session.flush()
+    await session.refresh(profile)
+
+    # Audit. actor_type="company" -- the actor here is the project
+    # itself, not staff; actor_id is the project's own user_id (the
+    # authenticated identity that made this call).
+    await record_audit(
+        session=session,
+        event="company.self_updated",
+        actor_id=profile.user_id,
+        actor_type="company",
+        target_type="company",
+        target_id=profile.id,
+        data={"fields": changed_fields, "changes": changes},
+    )
+
+    logger.info(
+        "company_self_updated",
+        company_id=str(company_id),
+        fields=changed_fields,
     )
 
     return profile

@@ -10,6 +10,16 @@
 #                                 to company, full commercial terms,
 #                                 no pool)
 #   UpdateCompanyRequest      -- PATCH /staff/companies/{id} (partial)
+#   UpdateOwnCompanyRequest   -- PATCH /companies/me (partial, project
+#                                 self-service; TASK-30 ruling 10/12 --
+#                                 "the project describes, the admin owns
+#                                 and prices". Deliberately NOT the same
+#                                 type as UpdateCompanyRequest: only the
+#                                 project-editable field subset exists on
+#                                 this model at all, so name / price /
+#                                 supply / distribution_config are
+#                                 structurally unrepresentable, not just
+#                                 ignored.)
 #   UpdatePriceRequest        -- PATCH /staff/companies/{id}/price
 #   CreateRoadmapItemRequest  -- POST /staff/companies/{id}/roadmap
 #   UpdateRoadmapItemRequest  -- PATCH /staff/companies/{id}/roadmap/{item_id}
@@ -181,6 +191,40 @@ class UpdateCompanyRequest(BaseModel):
     promo_video_url: str | None = None
     presentation_url: str | None = None
     distribution_config: dict | None = None  # type: ignore[type-arg]
+    status: str | None = None
+
+
+class UpdateOwnCompanyRequest(BaseModel):
+    """Partial self-update of the caller's OWN company profile.
+
+    Backs PATCH /api/v1/companies/me. TASK-30 ruling 10: "the project
+    describes; the admin owns and prices" -- this schema carries ONLY
+    the project-editable field set from TASK-30-SPEC.md §4. It is a
+    deliberately separate type from UpdateCompanyRequest (the staff-side
+    partial update), not a reuse or a subclass: name, price_per_unit_cents,
+    total_supply, shares_per_option and distribution_config do not exist
+    as fields on this model at all. Combined with extra="forbid", a
+    request body carrying any of them is rejected at the schema boundary
+    (422) before any service code runs -- structurally impossible to
+    submit, not merely ignored if present.
+
+    `status` is present but heavily restricted at the service layer
+    (update_own_company): the only legal transition through this
+    endpoint is ACTIVE -> HIDDEN (ruling 12 -- the project may withdraw
+    itself; only a staff admin may publish HIDDEN -> ACTIVE or set
+    ARCHIVED). The type here stays `str | None` (matching
+    UpdateCompanyRequest's own `status: str | None` -- no enum-level
+    validation) because the real gate is the one-directional business
+    rule, not the set of legal CompanyStatus values.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    description: str | None = Field(default=None, max_length=5000)
+    logo_url: str | None = Field(default=None, max_length=2000)
+    cover_url: str | None = Field(default=None, max_length=2000)
+    promo_video_url: str | None = Field(default=None, max_length=2000)
+    presentation_url: str | None = Field(default=None, max_length=2000)
     status: str | None = None
 
 
