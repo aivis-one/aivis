@@ -141,7 +141,18 @@
   --danger-subtle: var(--red-50);
   --success: var(--emerald-700);
   --success-subtle: var(--emerald-50);
-  --warning: var(--amber-600);
+  /* A6: amber-600 as TEXT cleared 4.5 on --bg-page (4.608) and on white
+     (4.905) and FAILED on every tint it actually meets -- worst 4.254 on
+     --danger-subtle. FIVE of the seven light grounds failed. amber-700
+     fails NONE of the seven, worst 5.676, so it clears by a margin rather
+     than a hairline; amber-800 is 9.495 and stops reading as amber.
+     This is the same repair --accent got seven lines above, and --warning
+     was left behind by one line. NO NEW RAMP STEP -- the value existed.
+     DARK IS UNTOUCHED: its --warning is amber-300 and is already clean on
+     every base. APCA never saw a problem here (0 of 64 below Lc 60), so
+     this buys CONFORMANCE, not legibility -- both are recorded, one is
+     not a substitute for the other. */
+  --warning: var(--amber-700);
   --warning-subtle: var(--amber-50);
   --on-primary: #FFFFFF;
   --on-danger: #FFFFFF;

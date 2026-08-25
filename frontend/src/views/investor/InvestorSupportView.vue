@@ -293,6 +293,7 @@ onMounted(() => {
         <CTextarea
           v-model="composerText"
           :placeholder="t('inv.support.placeholder')"
+          :aria-label="t('inv.support.placeholder')"
           :disabled="support.sending"
           maxlength="4000"
           :rows="2"

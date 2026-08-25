@@ -457,11 +457,30 @@ onMounted(loadEvents)
 }
 .evd__filters { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
 .filter-chip {
+  position: relative;
   /* A5: pointer target floor. */
   min-height: var(--tap-min);
   padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
   background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
   cursor: pointer; white-space: nowrap;
+}
+
+/* A5: the PAINTED box stays this size on purpose -- growing it would move the
+   text beside it. The HIT AREA is expanded past it with a centred overlay, the
+   pattern CInput.vue established and this codebase already uses ten times.
+   max() so an already-large box never shrinks. Added 2026-08-25 after the first
+   HIT TEST (elementFromPoint) rather than a bounding-box census: a pseudo-element
+   is not in getBoundingClientRect(), so no box-based count here could ever see
+   an overlay, and every A5 figure this project published measured the wrong
+   quantity. */
+.filter-chip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 .filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 

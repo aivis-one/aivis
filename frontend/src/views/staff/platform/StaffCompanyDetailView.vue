@@ -224,6 +224,17 @@ onMounted(loadCompany)
 .scd__tabs { scrollbar-width: none; }
 
 .scd__tab {
+  /* A5: 39px tall until 2026-08-25, five short of the 44px floor. The
+     centred ::after overlay this codebase uses elsewhere CANNOT work here:
+     .scd__tabs is overflow-x: auto, CSS cannot clip one axis only, so
+     overflow-y computes to auto and the container clips the overlay. The
+     tab IS the control and has no adjacent text to displace, so the box
+     grows instead -- the pattern .filter-chip already uses. Measured by
+     HIT TEST (elementFromPoint), which is what showed the overlay failing
+     exactly one probe: the vertical one. */
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
@@ -236,6 +247,7 @@ onMounted(loadCompany)
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
+
 .scd__tab:hover {
   background: var(--bg-subtle);
 }

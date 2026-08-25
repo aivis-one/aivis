@@ -314,6 +314,7 @@ onMounted(() => {
 }
 
 .tv__tab {
+  position: relative;
   flex-shrink: 0;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
@@ -326,6 +327,24 @@ onMounted(() => {
   cursor: pointer;
   white-space: nowrap;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+/* A5: the PAINTED box stays this size on purpose -- growing it would move the
+   text beside it. The HIT AREA is expanded past it with a centred overlay, the
+   pattern CInput.vue established and this codebase already uses ten times.
+   max() so an already-large box never shrinks. Added 2026-08-25 after the first
+   HIT TEST (elementFromPoint) rather than a bounding-box census: a pseudo-element
+   is not in getBoundingClientRect(), so no box-based count here could ever see
+   an overlay, and every A5 figure this project published measured the wrong
+   quantity. */
+.tv__tab::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
 }
 .tv__tab:hover {
   border-color: var(--primary);
