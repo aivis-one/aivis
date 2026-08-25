@@ -35,7 +35,7 @@
 # USAGE:
 #   docker compose exec -T app python scripts/seed_documents.py
 #
-# Called by install_aivis.sh after seed_platform.py / seed_admin.py.
+# Called by install_aivis.sh after seed_platform.py.
 # =============================================================================
 
 import asyncio
@@ -180,7 +180,8 @@ def _parse_metadata(file_path: Path, folder_language: str) -> dict | None:
 async def _pick_creator_id(session) -> UUID:
     """Return a user id to put into documents.created_by.
 
-    Prefer staff (seeded by seed_admin.py); fall back to Platform user
+    Prefer staff (the first one is created by `aivis seed`); fall
+    back to the Platform user
     (seeded by seed_platform.py). Both seeds run before this script in
     install_aivis.sh, so one of them is always available.
     """
@@ -204,7 +205,7 @@ async def _pick_creator_id(session) -> UUID:
     if platform_id is None:
         raise RuntimeError(
             "No staff or platform user found. "
-            "Run seed_platform.py (and seed_admin.py) first."
+            "Run seed_platform.py first."
         )
     return platform_id
 

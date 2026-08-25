@@ -26,6 +26,7 @@
 # =============================================================================
 
 import uuid
+from pathlib import Path
 from uuid import UUID
 
 import jinja2
@@ -36,8 +37,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.modules.companies.constants import (
-    DocumentTemplateKind,
     TEMPLATE_PLACEHOLDERS,
+    DocumentTemplateKind,
     TemplateStatus,
 )
 from app.modules.companies.models import CompanyDocumentTemplate
@@ -60,7 +61,6 @@ from tests.helpers import (
     create_admin_user,
     register_user,
 )
-
 
 # Synthetic ISO-like language code never covered by the platform seed
 # (the install script only seeds en/ru/de/ar). Lets the L1/L2/L3 guards
@@ -821,4 +821,67 @@ async def test_snapshot_uses_investor_language_at_purchase_time(
     assert refetched.purchase_agreement_template_id == en_template.id, (
         "Snapshot must be frozen at purchase time; later language changes "
         "on the User row must not move the template id."
+    )
+
+
+# ---------------------------------------------------------------------------
+# T-72: the seed must not grow a second bare-ORM creation path
+# ---------------------------------------------------------------------------
+
+
+def test_seed_creates_users_and_staff_only_through_application_paths() -> None:
+    """No bare `User(...)` in scripts/seed.py, and one `StaffProfile(...)`.
+
+    THE WHOLE POINT OF T-72 was that four seed scripts built users and
+    staff profiles by hand, so comms never learned about the people they
+    made -- no recipient, no membership, no notifications, an empty
+    contact book. The replacement routes everything through the
+    application's own paths, and this guard is what stops the next
+    convenient shortcut from quietly undoing that.
+
+    EXACTLY ONE StaffProfile construction is allowed and it is the
+    documented bypass: create_staff needs an admin actor and the FIRST
+    admin has none, so that one promotion is written by hand next to the
+    prose explaining why. If a second one appears, either the bypass has
+    been copied (which is the failure this guards) or the ceiling has
+    genuinely moved and this test should be re-argued, not relaxed.
+
+    A SUBSTRING SEARCH, DELIBERATELY. An AST walk would be tidier and
+    would miss the case that matters: a call assembled as a string, or a
+    model aliased on import. The forms below are enumerated rather than
+    sampled -- `User(`, `models.User(`, and the same two for
+    StaffProfile -- because a single grep can find an occurrence but
+    never prove there is none.
+    """
+    seed_path = Path(__file__).resolve().parent.parent / "scripts" / "seed.py"
+    source = seed_path.read_text(encoding="utf-8")
+
+    # Strip the header and the docstrings: they NAME these constructions
+    # while explaining why they are gone, and a guard that counted prose
+    # would fail on the explanation of itself.
+    code_lines = [
+        line
+        for line in source.splitlines()
+        if not line.lstrip().startswith("#")
+    ]
+    code = "\n".join(code_lines)
+
+    user_forms = ("User(", "models.User(", "UserModel(")
+    for form in user_forms:
+        # `find_user_by_email` and friends mention the class in type
+        # annotations, never as a call, so any hit is a construction.
+        assert form not in code, (
+            f"scripts/seed.py constructs a user with {form!r}. Users must "
+            f"be created through auth.service.register_email (or "
+            f"companies.service.create_company), which is what gives them "
+            f"a recipient in comms."
+        )
+
+    staff_forms = ("StaffProfile(", "models.StaffProfile(")
+    total = sum(code.count(form) for form in staff_forms)
+    assert total == 1, (
+        f"scripts/seed.py has {total} StaffProfile construction(s); "
+        f"exactly one is allowed -- the first-admin bypass. Every other "
+        f"staff member must go through staff.service.create_staff, which "
+        f"is what emits the support-section membership event."
     )

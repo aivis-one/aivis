@@ -1,0 +1,129 @@
+{
+  "description": "Default demo stand -- support channel, storefront, one agent chain",
+  "marker": "default",
+  "email_domain": "test.aivis.one",
+  "demo_password": "seedpass123",
+  "_notes": [
+    "WHAT THIS PROFILE IS FOR: after `aivis seed` on a clean stand an",
+    "investor can sign in and open a support request, and a support",
+    "staff member can sign in, see the queue and answer. Everything",
+    "else here exists to make those two screens non-empty.",
+    "",
+    "demo_password IS A FIXTURE, NOT A SECRET. It is the same",
+    "well-known password the deleted seed_test_accounts.py used, and it",
+    "is written here on purpose so a demo login is guessable by the",
+    "person running the demo. What keeps it off a real box is the",
+    "contour gate on `aivis seed`, not secrecy. The ADMIN password is",
+    "the opposite case and is NOT here -- it comes from ADMIN_PASSWORD.",
+    "",
+    "NO DATES ANYWHERE. Nothing in this profile takes a caller-chosen",
+    "date through its application path; see the seed.py header.",
+    "",
+    "distribution_config is the minimal valid one: the company keeps",
+    "everything and no agent level pays out. The agent below therefore",
+    "has a link and a referred investor but earns no commission -- the",
+    "referral CHAIN is what this profile demonstrates, not the money.",
+    "",
+    "package_size must fit the pool: total_supply 1000000 at",
+    "equity_percent 10 gives 100000 options, and the three packages",
+    "below are far under that."
+  ],
+
+  "admin": {
+    "email_local": "admin",
+    "first_name": "Admin",
+    "last_name": "AIVIS",
+    "country": "NL"
+  },
+
+  "staff": [
+    {
+      "email_local": "support1",
+      "first_name": "Maria",
+      "last_name": "Operator",
+      "country": "NL"
+    },
+    {
+      "email_local": "support2",
+      "first_name": "Tomas",
+      "last_name": "Operator",
+      "country": "NL"
+    }
+  ],
+
+  "company": {
+    "email_local": "company",
+    "first_name": "Company",
+    "last_name": "Owner",
+    "country": "NL",
+    "name": "Northwind Robotics",
+    "description": "Demo tenant: warehouse robotics, Series A.",
+    "price_per_unit_cents": 250,
+    "total_supply": 1000000,
+    "shares_per_option": 1,
+    "distribution_config": {
+      "company_pct": 1.0,
+      "agent_levels": []
+    },
+    "pool": {
+      "equity_percent": 10
+    },
+    "products": [
+      {
+        "name": "Starter package",
+        "package_size": 10,
+        "description": "Ten options. The entry ticket."
+      },
+      {
+        "name": "Growth package",
+        "package_size": 100,
+        "description": "One hundred options."
+      },
+      {
+        "name": "Anchor package",
+        "package_size": 1000,
+        "description": "One thousand options."
+      }
+    ]
+  },
+
+  "agents": [
+    {
+      "key": "lead",
+      "email_local": "agent",
+      "first_name": "Sofia",
+      "last_name": "Agent",
+      "country": "NL"
+    }
+  ],
+
+  "investors": [
+    {
+      "email_local": "investor1",
+      "first_name": "Anna",
+      "last_name": "Investor",
+      "country": "NL",
+      "portfolio": {
+        "deposit_cents": 10000000,
+        "purchases": 2
+      }
+    },
+    {
+      "email_local": "investor2",
+      "first_name": "Pavel",
+      "last_name": "Investor",
+      "country": "DE",
+      "referred_by_agent": "lead",
+      "portfolio": {
+        "deposit_cents": 5000000,
+        "purchases": 1
+      }
+    },
+    {
+      "email_local": "investor3",
+      "first_name": "Irina",
+      "last_name": "Investor",
+      "country": "NL"
+    }
+  ]
+}

@@ -148,6 +148,28 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         index=True,
     )
 
+    # -- Seed marker (T-72, migration 0044) --
+    # NULL for every person who arrived through the product. Set ONLY by
+    # scripts/seed.py, to the name of the profile that created the row.
+    #
+    # WHY A COLUMN AND NOT A CONVENTION. `seed --reset` has to answer
+    # "is this row mine" before it deletes anything, and every cheaper
+    # answer is wrong here: uuid primary keys have no reserved range to
+    # carve out (the reference implementation's trick), and an e-mail
+    # domain is not a border -- nothing stops a real person registering
+    # at the demo domain, and --reset would then delete them. The cost
+    # is honest and was accepted deliberately: a product column that
+    # exists for a development tool.
+    #
+    # The value is the PROFILE NAME, not a boolean, so two profiles on
+    # one stand can be reset independently and so a row can say which
+    # demo it belongs to.
+    seeded_profile: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
+
     # -- Auth credentials (JSONB sandbox) --
     # Schema: {
     #   "email": {"email": str, "password_hash": str, "verified": bool, "verified_at": str|null},

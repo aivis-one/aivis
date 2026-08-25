@@ -1441,18 +1441,15 @@ log "Seeding legal documents..."
 docker compose exec -T app python scripts/seed_documents.py
 success "Legal documents seeded"
 
-# Seed storefront (6 companies + 21 products + 19 installment plans) for dev/staging
-log "Seeding storefront (dev/staging fixtures)..."
-docker compose exec -T app python -m scripts.seed_storefront
-success "Storefront seeded"
-
-# Seed test accounts (investor / company / agent / staff for manual testing)
-# R-2.3: on APP_ENV=production the seeder refuses the well-known
-# seedpass123 accounts unless explicitly allowed -- opt in by exporting
-# AIVIS_SEED_TEST_ACCOUNTS=1 before running.
-log "Seeding test accounts (dev fixtures)..."
-docker compose exec -T app python -m scripts.seed_test_accounts ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
-success "Test accounts seeded"
+# T-72: THE INSTALL NO LONGER SEEDS DEMO DATA. Two blocks stood here --
+# the demo storefront and the four well-known test logins -- and both are
+# gone along with the scripts behind them. An install now produces
+# bootstrap and nothing else: the Platform user, the legal documents and
+# (below) the platform default templates.
+#
+# Demo data is a deliberate act with its own command, `aivis seed`, which
+# carries the contour guard that used to live inside one of the deleted
+# scripts. See the NEXT STEPS at the end of this file.
 
 # ------------------------------------------------------------------------------
 # Refactor 2 iter 2.3: seed platform default templates (R2 §1.4 + §4.9).
@@ -1469,8 +1466,8 @@ success "Test accounts seeded"
 # at those files. Reverse order would leave the DB pointing at empty
 # storage and the renderer 500ing on the first render attempt.
 #
-# Runs after `aivis seed` (Platform user is already in the DB --
-# seed_platform_templates.py needs it for system-actor audit attribution).
+# Runs after the Platform user is in the DB (seed_platform_templates.py
+# needs it for system-actor audit attribution).
 # ------------------------------------------------------------------------------
 
 log "Seeding platform default templates to MinIO..."
@@ -1547,4 +1544,8 @@ echo "3. Verify DKIM: opendkim-testkey -d ${MAIL_DOMAIN} -s ${DKIM_SELECTOR} -vv
 echo "4. Run: aivis restart app"
 echo "5. Test email: aivis test-email your@email.com"
 echo "6. Open MinIO Console: aivis storage console  (prints URL + credentials)"
+echo "7. Demo data, if this is a stand and not a real box:"
+echo "   -- ADMIN_PASSWORD=... aivis seed        (creates the first admin too)"
+echo "   -- aivis seed --list                    (available profiles)"
+echo "   The install seeds NO demo data at all; this is the only way in."
 echo ""

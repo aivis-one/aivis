@@ -20,7 +20,8 @@
 #   every test builds its OWN mini-company (owner user via API +
 #   CompanyProfile + OptionPool with a small total_options + Product
 #   [+ ProductInstallment template]) -- full control of the remainder,
-#   absolute asserts are safe. Row shapes mirror seed_test_accounts.py.
+#   absolute asserts are safe. Row shapes are built inline here;
+#   they used to mirror seed_test_accounts.py, deleted by T-72.
 #
 # P-01: services never commit -- tests commit after service calls.
 # =============================================================================
@@ -82,7 +83,8 @@ async def _mini_company(
 ) -> tuple[CompanyProfile, OptionPool, Product, ProductInstallment | None]:
     """Build a private company + pool + product (+ template).
 
-    Row shapes mirror seed_test_accounts.py so the fixtures stay in
+    Row shapes are self-contained (they mirrored seed_test_accounts.py
+    until T-72 deleted it) so the fixtures stay in
     lockstep with the real seeding path.
     """
     owner_data = await register_user(client)

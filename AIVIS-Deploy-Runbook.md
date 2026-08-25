@@ -405,14 +405,14 @@ no request at all*, not a 401.
   deliberately out of scope for this product as currently run. The install no longer aborts on a
   mail-service restart failure (it warns and continues) — but even a clean mail warning is not a
   real problem right now. Don't chase it as if it were.
-- **"Storefront seeded" completes but adds zero companies or products.** Intentional — the demo
-  company/product/installment lists were emptied deliberately (see the comment at the top of
-  `backend/scripts/seed_storefront.py`). An empty storefront after this step is the
-  expected result until real company data is loaded as a separate, later task — not a bug.
-- **"Test accounts seeded" may silently create nothing.** `seed_test_accounts` refuses to create the
-  well-known `seedpass123` test logins when `APP_ENV=production` (which this install sets) unless
-  `AIVIS_SEED_TEST_ACCOUNTS=1` was exported before running. This is a deliberate production safety
-  guard, not a failure — don't export that variable on a real cutover.
+- **The install seeds no demo data at all, and no longer prints "Storefront seeded" or "Test
+  accounts seeded"** (T-72). Both steps and the scripts behind them are gone. After an install the
+  database holds bootstrap only: the Platform user, the legal documents and the platform default
+  templates. An empty storefront and no test logins are the expected result, not a failure.
+- **Demo data is a separate, deliberate command.** `ADMIN_PASSWORD=... aivis seed` creates the first
+  admin, support staff, a demo company with products, an agent and a few investors from
+  `backend/scripts/seed_profiles/default.json`. It refuses outright on `APP_ENV=production` (which
+  this install sets) unless `AIVIS_SEED_DEMO=1` is exported — don't export that on a real cutover.
 - **No `needrestart` dialogs should appear at all.** If one does anyway, `NEEDRESTART_MODE=a` didn't
   take effect — check `env | grep NEEDRESTART` before doing anything else; something about how the
   script was invoked (e.g. running individual sections by hand instead of the whole file) likely
@@ -604,8 +604,13 @@ missing every object stored in MinIO; the only way to know is to read that log y
 ## 12. A few more worth knowing
 
 - **`aivis seed --reset` has no confirmation prompt at all** — unlike the install wipe, `update`'s
-  discard, and `db restore`, this one just runs. It resets seeded storefront and test-account data with
-  no "are you sure?" of any kind.
+  discard, and `db restore`, this one just runs. What it deletes is bounded rather than announced: only
+  rows whose `users.seeded_profile` matches the profile being run, plus what hangs off them. A person
+  who registered by hand — including at the demo e-mail domain — has no marker and is never deleted.
+  It stops with an error, having deleted nothing, if a live user registered through a seeded agent's
+  referral link.
+- **`aivis update` no longer re-seeds anything but bootstrap** (T-72). It used to re-run the demo
+  storefront and the test logins on every update; only demo data changed, but it changed silently.
 - **`aivis storage console` prints the MinIO Console URL and all three values §5 asks you to record by
   hand** — it's the box's own built-in equivalent of §5's `grep` command, and easier to remember. It
   doesn't change who does the recording: still read it yourself, still copy it into

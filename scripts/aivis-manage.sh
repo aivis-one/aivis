@@ -851,17 +851,8 @@ update_product() {
     echo -e "${GREEN}✓ Migrations applied${NC}"
 
     # ----------------------------------------------------------------------
-    # Seed prod DB in deterministic order.
-    #
-    # Iter 2.5 mini-fix #3 removed the historical reason for splitting
-    # seeds around pytest: tests used to wipe shared rows in the prod DB
-    # via cleanup_test_users, forcing a re-seed afterwards. Tests now
-    # run against the shared dev DB without transactional isolation
-    # (see backend/tests/conftest.py) and use UUID-suffixed identifiers
-    # for cross-run isolation, so prod seeds can run in one block with
-    # no interference.
-    #
-    # Each seed is idempotent:
+    # Re-run BOOTSTRAP after migrations. Bootstrap only -- the things the
+    # product cannot run without, each idempotent:
     #   seed_platform            -- Platform user (singleton).
     #   seed_platform_templates  -- 16 active platform-default rows.
     #                               Self-healing: if a previous run left
@@ -869,18 +860,21 @@ update_product() {
     #                               new active version is max(v)+1 and
     #                               an audit row records the recovery.
     #   seed_documents           -- privacy_policy / terms / etc.
-    #   seed_storefront          -- demo companies + products.
-    #   seed_test_accounts       -- four ready-to-login test accounts.
+    #
+    # T-72 REMOVED THE DEMO SEEDS FROM HERE, and this was the fourth
+    # place they ran from -- the one nobody had counted. Every `aivis
+    # update` re-seeded the demo storefront and the well-known test
+    # logins; on a production contour only R-2.3 inside one of those two
+    # scripts kept the logins out, and nothing at all kept the demo
+    # storefront out. Updating a product is not a request for a demo.
+    # Demo data now arrives one way: `aivis seed`, on purpose.
     # ----------------------------------------------------------------------
     echo ""
-    echo "Seeding prod DB..."
+    echo "Seeding prod DB (bootstrap)..."
     docker compose exec -T app python scripts/seed_platform.py
     docker compose exec -T app python -m scripts.seed_platform_templates
     docker compose exec -T app python scripts/seed_documents.py
-    docker compose exec -T app python -m scripts.seed_storefront
-    # R-2.3: refuses on APP_ENV=production unless AIVIS_SEED_TEST_ACCOUNTS=1.
-    docker compose exec -T app python -m scripts.seed_test_accounts ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
-    echo -e "${GREEN}✓ Prod DB seeded${NC}"
+    echo -e "${GREEN}✓ Prod DB bootstrapped${NC}"
 
     # ----------------------------------------------------------------------
     # Smoke check: platform templates seeded correctly in the prod DB.
@@ -1223,19 +1217,44 @@ case_db() {
 
 case_seed() {
     cd_compose
-    # R-2.3: seed_test_accounts refuses on APP_ENV=production unless
-    # AIVIS_SEED_TEST_ACCOUNTS=1 is exported (well-known credentials).
-    if [ "${1:-}" = "--reset" ]; then
-        docker compose exec -T app python scripts/seed_platform.py --reset
-        docker compose exec -T app python scripts/seed_documents.py
-        docker compose exec -T app python -m scripts.seed_storefront --reset
-        docker compose exec -T app python -m scripts.seed_test_accounts --reset ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
-    else
-        docker compose exec -T app python scripts/seed_platform.py
-        docker compose exec -T app python scripts/seed_documents.py
-        docker compose exec -T app python -m scripts.seed_storefront
-        docker compose exec -T app python -m scripts.seed_test_accounts ${AIVIS_SEED_TEST_ACCOUNTS:+--allow-production}
+
+    # ----------------------------------------------------------------------
+    # T-72: one verb, one script, one place the contour is checked.
+    #
+    # This used to run four seed scripts in a row and the production
+    # guard lived inside ONE of them (R-2.3: seed_test_accounts refused
+    # the well-known seedpass123 logins on APP_ENV=production). The
+    # guard moves here, to the command, because the command is now the
+    # only sanctioned way in -- and because a guard inside the script
+    # protected nothing the moment a second script was added beside it.
+    #
+    # Bootstrap is NOT seeding and is not run from here: the platform
+    # user, the platform templates and the legal documents are what the
+    # product needs to exist, they are installed by install_aivis.sh,
+    # and re-running them is not part of "make me a demo".
+    #
+    # AIVIS_SEED_DEMO=1 is the explicit opt-in on a production contour.
+    # It is deliberately not a flag on the command line: a variable has
+    # to be exported on purpose and does not end up in shell history as
+    # part of an otherwise ordinary command.
+    # ----------------------------------------------------------------------
+    local app_env
+    app_env=$(grep "^APP_ENV=" "$COMPOSE_DIR/backend/.env" 2>/dev/null | cut -d= -f2- | tr -d '"')
+
+    if [ "$app_env" = "production" ] && [ -z "${AIVIS_SEED_DEMO:-}" ]; then
+        echo -e "${RED}✗ Refusing to seed demo data on APP_ENV=production${NC}"
+        echo ""
+        echo "The seed creates demo people with a well-known password and"
+        echo "demo companies on the storefront. On a production contour that"
+        echo "is a live account set anybody can log into."
+        echo ""
+        echo "If this box really is a stand that merely calls itself"
+        echo "production, opt in explicitly:"
+        echo "    AIVIS_SEED_DEMO=1 aivis seed"
+        return 1
     fi
+
+    docker compose exec -T app python scripts/seed.py "$@"
 }
 
 # ==============================================================================
@@ -1244,17 +1263,27 @@ case_seed() {
 
 case_seed_portfolio() {
     cd_compose
+
+    # T-72: the verb survives, the script under it does not. Filling ONE
+    # named person's dashboard is not something a profile can express --
+    # the target already exists and is chosen by e-mail -- so it stays a
+    # separate entry point into the same seed rather than a second
+    # seeding mechanism that would drift away from the first.
+    #
+    # This path never writes users.seeded_profile: the target is a live
+    # person, and topping up their dashboard must not make them
+    # deletable by `aivis seed --reset`.
     local EMAIL="${1:-}"
     if [ -z "$EMAIL" ]; then
         echo "Usage: aivis seed-portfolio <email> [--deposit CENTS] [--purchases N]"
         echo ""
-        echo "Fills a user's dashboard with deposit + random purchases (dev only)."
+        echo "Fills an existing user's dashboard with a deposit + purchases."
         echo "Defaults: --deposit 10000000 (\$100k), --purchases 5"
         exit 1
     fi
     shift
-    docker compose exec -T app python -m scripts.seed_user_portfolio \
-        --email "$EMAIL" "$@"
+    docker compose exec -T app python scripts/seed.py \
+        --portfolio-for "$EMAIL" "$@"
 }
 
 # ==============================================================================
@@ -1704,9 +1733,12 @@ case "$CMD" in
         echo "  db dump                                   — Create SQL dump"
         echo "  db restore <file>                         — Restore from dump"
         echo "  db migrate                                — Run Alembic migrations"
-        echo "  seed                                      — Seed Platform user + legal docs + storefront + test accounts"
-        echo "  seed --reset                              — Reset everything seeded by 'seed' and re-seed"
-        echo "  seed-portfolio <email>                    — Dev: fill user's dashboard with deposit + purchases"
+        echo "  seed                                      — Seed demo data from the default profile"
+        echo "  seed --list                               — List available seed profiles"
+        echo "  seed --profile <name>                     — Seed from a named profile"
+        echo "  seed --reset                              — Delete this profile's rows, then seed again"
+        echo "  seed --dry-run                            — Print what would be seeded, write nothing"
+        echo "  seed-portfolio <email>                    — Fill an existing user's dashboard"
         echo ""
         echo "Storage (MinIO):"
         echo "  storage stats                             — Bucket size + object count"
