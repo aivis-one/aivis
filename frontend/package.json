@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "audit": "npm audit --audit-level=high",
-    "gate": "npm run type-check && npm run test && npm run audit && npm run build",
+    "checks": "python ../checks/run.py",
+    "gate": "npm run checks && npm run type-check && npm run test && npm run audit && npm run build",
     "docs:ds": "node scripts/gen-design-system.mjs"
   },
   "dependencies": {

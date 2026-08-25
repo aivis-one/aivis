@@ -81,17 +81,73 @@ Which surfaces a check reads is a property of the QUESTION, not of the file
 type: a rule census reads `<style>` only, while a check on what actually paints
 must also read inline `style=` attributes.
 
-## Not wired into `npm run gate` yet
+## Wired into `npm run gate`, 2026-08-25
 
-Deliberate. Adding a Python step to a JavaScript build is a decision for
-whoever owns the pipeline, and these are being shaken out by hand first. When
-that call is made it is one line in `frontend/package.json`:
+The shake-out period is over and it was not ceremonial: three defects were found
+INSIDE these checks during it, each by a selftest or by a second reader. Two
+lines in `frontend/package.json`:
 
 ```json
-"checks": "python ../checks/run.py"
+"checks": "python ../checks/run.py",
+"gate":   "npm run checks && npm run type-check && npm run test && npm run audit && npm run build"
 ```
 
-and adding `&& npm run checks` to the `gate` script.
+**The checks run FIRST, not last.** They are stdlib-only and take under a second;
+the build is the expensive step, and failing fast is the whole reason to have
+them in the chain at all.
+
+### The two premises under that recipe, both measured rather than assumed
+
+**The relative path.** `../checks/run.py` only works if the script's working
+directory is the package directory. It is, in BOTH invocations this repository
+actually uses — measured with a probe script that printed `process.cwd()`:
+
+| invocation | script cwd |
+|---|---|
+| `npm --prefix frontend run gate` from the repo root | `…/aivis/frontend` |
+| `npm run gate` from inside `frontend/` | `…/aivis/frontend` |
+
+They agree, so the relative path stands. Had they differed, the fix would have
+been to make the path independent of cwd rather than to pick a winner.
+
+**The interpreter.** The script says `python`, and that is a real dependency on a
+name nobody voted for, so here is exactly what was measured on the machine this
+was wired on (Windows 11, via npm's own shell, not via a POSIX shell):
+
+| name | resolves to |
+|---|---|
+| `python` | Python 3.13.13, `C:\Program Files\Python313\python.exe` |
+| `python3` | Python 3.14.5, the WindowsApps shim |
+
+Both run, and they are **not the same interpreter**. `python` was kept because it
+resolves to a real installation rather than a Store shim and because every run in
+this project's record was made with it. **The known limit, stated rather than
+hidden: on a POSIX box where only `python3` exists, this line needs to say
+`python3`.** Nothing here needs pip — standard library only — and Python is
+already a project dependency via `backend/pyproject.toml`.
+
+### What the wiring control proved
+
+A gate that NAMES the checks but would go green if they failed is worse than no
+wiring, because everyone believes it. So the wiring has its own control: plant an
+undeclared `777px` breakpoint in the real tree, **assert the break is LIVE**
+(`checks/run.py` alone fails and names 777) before believing anything about the
+gate, then read the gate's exit code **without a pipe** — a pipe gives you the
+last command's code, which has produced a false zero here twice.
+
+```
+checks pass on the untouched tree                 exit 0
+THE BREAK IS LIVE: checks fail and name 777       exit 1
+gate NON-ZERO from the repo root (--prefix)       exit 1
+the gate's output names the planted width         777 present
+gate NON-ZERO from inside frontend/               exit 1
+checks pass again after restore                   exit 0
+gate ZERO again after restore                     exit 0
+the victim file is byte-identical                 sha256 match
+```
+
+The plant is restored in a `finally`, so a crash mid-run cannot leave the tree
+broken, and the file's sha256 is compared before and after.
 
 ## Adding a check
 
