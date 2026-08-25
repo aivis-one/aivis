@@ -57,6 +57,9 @@
 #   events_router             -> /api/v1/events/* (Sprint 9.1)
 #   staff_posts_router        -> /api/v1/staff/posts/* (Sprint 9.1)
 #   staff_events_router       -> /api/v1/staff/events/* (Sprint 9.1)
+#   company_posts_router      -> /api/v1/company/posts/* (TASK-30,
+#                                 company self-service CRUD on its own
+#                                 Post rows, owner_type=company)
 #   investor_dashboard_router -> /api/v1/dashboard/* (Sprint 9.2)
 #   portfolio_router          -> /api/v1/portfolio/* (Sprint 9.2)
 #   agreement_router          -> /api/v1/purchases/{id}/agreement (Refactor 2 iter 2.4)
@@ -187,6 +190,7 @@ from app.modules.payments.staff_router import router as staff_payments_router
 from app.modules.payments.webhook_router import router as payments_webhook_router
 from app.modules.pools.router import router as staff_pools_router
 from app.modules.portfolio.router import router as portfolio_router
+from app.modules.posts.company_router import router as company_posts_router
 from app.modules.posts.router import events_router, posts_router
 from app.modules.posts.staff_router import staff_events_router, staff_posts_router
 from app.modules.products.public_router import (
@@ -552,6 +556,7 @@ app.include_router(posts_router)
 app.include_router(events_router)
 app.include_router(staff_posts_router)
 app.include_router(staff_events_router)
+app.include_router(company_posts_router)
 app.include_router(investor_dashboard_router)
 app.include_router(portfolio_router)
 # Refactor 2 iter 2.4: per-Purchase agreement + per-investor-company ownership

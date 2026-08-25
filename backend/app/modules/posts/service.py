@@ -51,10 +51,12 @@ from app.modules.companies.models import CompanyProfile
 from app.modules.posts.constants import OwnerType
 from app.modules.posts.models import Event, Post, PostDismiss
 from app.modules.posts.schemas import (
+    CreateCompanyPostRequest,
     CreateEventRequest,
     CreatePostRequest,
     EventResponse,
     PostResponse,
+    UpdateCompanyPostRequest,
     UpdateEventRequest,
     UpdatePostRequest,
 )
@@ -229,6 +231,222 @@ async def delete_post(
     )
 
     logger.info("post_deleted", post_id=str(post_id), staff_id=str(staff_id))
+
+
+# ---------------------------------------------------------------------------
+# Company self-service posts (TASK-30)
+# ---------------------------------------------------------------------------
+#
+# A company writing about itself. owner_type/owner_id are ALWAYS forced
+# to "company" / the caller's own company_id here -- never taken from
+# the request body -- so a project can never create, edit, or delete a
+# post for a different owner_id. Mirrors create_post/update_post/
+# delete_post's shape (same published_at transition logic, same soft
+# delete), but is deliberately a separate code path rather than a thin
+# wrapper around the staff functions: the staff functions always audit
+# with target_type="post", and TASK-30's ruling on this feature is to
+# audit with target_type="company" instead (see AUDIT DECISION below),
+# so the record_audit() call itself has to differ, not just its
+# arguments.
+#
+# AUDIT DECISION: target_type="company", target_id=company_id (NOT
+# target_type="post"). audit/service.py's list_company_audit_feed()
+# (GET /api/v1/staff/audit/companies, gated project_manage) filters
+# strictly on target_type="company" -- an entry keyed to the post's own
+# id would never surface there when an admin pulls up "everything this
+# project wrote about itself" by company_id. A project's own news post
+# is squarely inside that admin question, so it should show up in that
+# feed; that requires keying to the company, matching the precedent
+# audit/service.py's own module docstring sets for exactly this next
+# step ("flagged for whoever builds the roadmap-editing / attachment-
+# upload self-service write paths next ... decide whether to key those
+# events to the sub-entity ... or to the company (so they show up
+# here too)"). The post_id is still recorded inside `data` for
+# traceability, so nothing is lost by not keying to it.
+# ---------------------------------------------------------------------------
+
+
+async def _get_company_post_or_404(
+    session: AsyncSession,
+    company_id: UUID,
+    post_id: UUID,
+) -> Post:
+    """Load a non-deleted post owned by `company_id`, or raise 404.
+
+    404 (not 403) on a post that exists but belongs to a different
+    company, or to the platform -- same isolation contract as
+    companies/attachments_router.py ("A 404 (not 403) on a hidden /
+    deleted / cross-company attachment ... avoids confirming
+    existence"). A company must not be able to learn that a given
+    post ID exists and belongs to someone else.
+    """
+    stmt = select(Post).where(
+        Post.id == post_id,
+        Post.owner_type == OwnerType.COMPANY,
+        Post.owner_id == company_id,
+        Post.is_deleted.is_(False),
+    )
+    result = await session.execute(stmt)
+    post = result.scalar_one_or_none()
+    if post is None:
+        raise NotFoundError("Post not found")
+    return post
+
+
+async def create_company_post(
+    session: AsyncSession,
+    company_id: UUID,
+    actor_user_id: UUID,
+    body: CreateCompanyPostRequest,
+) -> Post:
+    """Create a post owned by the caller's own company (TASK-30).
+
+    owner_type/owner_id are forced to "company" / company_id here --
+    never read from `body`, which has no such fields. is_banner is
+    always False (see CreateCompanyPostRequest docstring).
+
+    Args:
+        session: Active DB session (caller commits).
+        company_id: The caller's own company_profiles.id, resolved
+            server-side from the auth token (never from the URL/body).
+        actor_user_id: The company user's own users.id -- recorded as
+            Post.created_by and as the audit actor_id.
+        body: Validated request body (no owner_type/owner_id/is_banner).
+
+    Returns:
+        The created Post (flushed, not committed).
+    """
+    published_at = datetime.now(UTC) if body.is_published else None
+
+    post = Post(
+        owner_type=OwnerType.COMPANY,
+        owner_id=company_id,
+        title=body.title,
+        body=body.body,
+        cover_url=body.cover_url,
+        tags=body.tags,
+        is_banner=False,
+        is_published=body.is_published,
+        published_at=published_at,
+        created_by=actor_user_id,
+    )
+    session.add(post)
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="company.post_created",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"post_id": str(post.id), "title": body.title},
+    )
+
+    logger.info(
+        "company_post_created",
+        post_id=str(post.id),
+        company_id=str(company_id),
+        actor_user_id=str(actor_user_id),
+    )
+
+    return post
+
+
+async def update_company_post(
+    session: AsyncSession,
+    company_id: UUID,
+    post_id: UUID,
+    actor_user_id: UUID,
+    body: UpdateCompanyPostRequest,
+) -> Post:
+    """Partial update (PATCH) of a post owned by the caller's company.
+
+    Args:
+        session: Active DB session (caller commits).
+        company_id: The caller's own company_profiles.id.
+        post_id: Post UUID.
+        actor_user_id: The company user's own users.id.
+        body: Validated request body (partial; no owner_type/owner_id/
+            is_banner -- those cannot be changed via this surface).
+
+    Returns:
+        Updated Post.
+
+    Raises:
+        NotFoundError: Post not found, deleted, or not owned by
+            `company_id` (platform posts and other companies' posts
+            both 404 here -- see _get_company_post_or_404).
+    """
+    post = await _get_company_post_or_404(session, company_id, post_id)
+
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        return post
+
+    if "is_published" in updates and updates["is_published"] and not post.is_published:
+        post.published_at = datetime.now(UTC)
+
+    for field, value in updates.items():
+        if field == "tags":
+            post.set_jsonb("tags", value)
+        else:
+            setattr(post, field, value)
+
+    await session.flush()
+    await session.refresh(post)
+
+    await record_audit(
+        session=session,
+        event="company.post_updated",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"post_id": str(post.id), "fields": list(updates.keys())},
+    )
+
+    return post
+
+
+async def delete_company_post(
+    session: AsyncSession,
+    company_id: UUID,
+    post_id: UUID,
+    actor_user_id: UUID,
+) -> None:
+    """Soft-delete (is_deleted=True) a post owned by the caller's company.
+
+    Args:
+        session: Active DB session (caller commits).
+        company_id: The caller's own company_profiles.id.
+        post_id: Post UUID.
+        actor_user_id: The company user's own users.id.
+
+    Raises:
+        NotFoundError: Post not found, deleted, or not owned by
+            `company_id`.
+    """
+    post = await _get_company_post_or_404(session, company_id, post_id)
+    post.is_deleted = True
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="company.post_deleted",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"post_id": str(post.id)},
+    )
+
+    logger.info(
+        "company_post_deleted",
+        post_id=str(post_id),
+        company_id=str(company_id),
+        actor_user_id=str(actor_user_id),
+    )
 
 
 async def list_posts(

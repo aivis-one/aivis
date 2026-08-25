@@ -5,8 +5,16 @@
 # Request/response schemas for posts and events endpoints.
 #
 # SCHEMAS:
-#   CreatePostRequest    -- staff creates post
-#   UpdatePostRequest    -- staff partial update (PATCH)
+#   CreatePostRequest        -- staff creates post (any owner_type/owner_id)
+#   UpdatePostRequest        -- staff partial update (PATCH)
+#   CreateCompanyPostRequest -- company creates a post about itself
+#                              (TASK-30). No owner_type/owner_id (forced
+#                              server-side to company/caller's own id) and
+#                              no is_banner (site-wide homepage banner
+#                              placement stays a staff-only decision --
+#                              see company_router.py for the rationale).
+#   UpdateCompanyPostRequest -- company partial update of its own post
+#                              (PATCH). Same omissions as the create form.
 #   PostResponse         -- single post with is_dismissed flag
 #   PostListResponse     -- paginated post list
 #   CreateEventRequest   -- staff creates event
@@ -84,6 +92,51 @@ class UpdatePostRequest(BaseModel):
     cover_url: str | None = None
     tags: list[Tag] | None = None
     is_banner: bool | None = None
+    is_published: bool | None = None
+
+    _validate_cover_url = field_validator("cover_url")(_validate_url)
+
+
+class CreateCompanyPostRequest(BaseModel):
+    """Company creates a post about itself (TASK-30).
+
+    owner_type is always "company" and owner_id is always the caller's
+    own company_id -- both are forced server-side in
+    company_router.py, never taken from the client, so a project can
+    never create a post for a different owner_id. is_banner is not
+    exposed here: a site-wide homepage banner placement is a staff
+    editorial decision (see PostListEditor.vue's
+    staff.platform.post.bannerBadge), not something a project should
+    be able to grant itself -- every company-authored post is created
+    with is_banner=False.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=50000)
+    cover_url: str | None = Field(default=None, max_length=2000)
+    tags: list[Tag] | None = Field(default=None)
+    is_published: bool = Field(default=False)
+
+    _validate_cover_url = field_validator("cover_url")(_validate_url)
+
+
+class UpdateCompanyPostRequest(BaseModel):
+    """Company partial update (PATCH) of its own post (TASK-30).
+
+    Same field set as CreateCompanyPostRequest minus title/body being
+    optional -- no owner_type/owner_id/is_banner. Ownership (the post
+    must belong to the caller's own company_id) is enforced in
+    service.update_company_post, not by this schema.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    body: str | None = Field(default=None, min_length=1, max_length=50000)
+    cover_url: str | None = None
+    tags: list[Tag] | None = None
     is_published: bool | None = None
 
     _validate_cover_url = field_validator("cover_url")(_validate_url)
