@@ -14,3 +14,20 @@ node_modules
 # that carry legal weight. Excluded on 2026-08-25, when a formatting pass first
 # reached them: 187 files needed formatting and 24 were these.
 public/legal
+
+# GENERATED FROM THE BACKEND'S OpenAPI SCHEMA -- formatting it is a treadmill.
+#
+# The production box regenerates src/api/generated.ts during `aivis update` and
+# PUSHES the result itself, on a cadence this repo does not control: measured
+# 2026-08-25, thirty-two such commits exist in history (git log --all --grep
+# "regenerate generated" -- frontend/src/api/generated.ts). Q4 formatted the file
+# on 2026-08-25 and the very next deploy (6bf9090) undid it, took `npm run lint`
+# from exit 0 to exit 1, and rotted a live citation by shifting a line.
+#
+# Any formatting applied here is guaranteed to be reverted by a machine, so this
+# is not a style exemption -- it is declining to fight a generator.
+#
+# NOT A NEW EXCEPTION: eslint.config.js already carries a per-file rule override
+# for this exact path, with its reason at lines 27-30. This brings prettier into
+# line with a decision eslint already holds.
+src/api/generated.ts
