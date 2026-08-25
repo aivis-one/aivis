@@ -1,0 +1,21 @@
+# Line endings are decided HERE, not by each machine.
+#
+# WHY: core.autocrlf=true on Windows checks files out as CRLF while the blobs
+# are LF. Git normalises CRLF->LF on read, so status/diff/write-tree ALL report
+# clean -- but prettier compares real bytes and fails. That divergence hid a
+# 183-file working-tree corruption that three git instruments called clean.
+#
+# text=auto: git decides what is text. eol=lf: text is checked out as LF on
+# every platform, which is what prettier writes and what the blobs already hold.
+* text=auto eol=lf
+
+# Binary assets: never touched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
