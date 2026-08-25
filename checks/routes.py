@@ -25,7 +25,7 @@ LINE_COMMENT = re.compile(r"(?<![:/])//[^\n]*")
 BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
 STRING = re.compile(r"'([^'\\]*(?:\\.[^'\\]*)*)'")
 
-GUARD_NAME_CALLS = 1  # next({ name: 'login' }) inside /r/:code's guard
+GUARD_NAME_CALLS = 1  # next({ name: 'public-companies' }) inside /r/:code's guard
 
 
 def _mask(text: str) -> str:
@@ -188,4 +188,60 @@ def selftest(root: str) -> list[str]:
     names = sorted(r["name"] for r in got)
     assert names == ["a", "ax", "b", "bx"], "nested names mis-attributed: %r" % names
     out.append("  nested children are joined onto their parent and keep their own names")
+
+    # TWO PLANTS, ONE PER FAILURE BRANCH OF run(). Added 2026-08-25, and the
+    # reason is worth the paragraph: until then this selftest never called
+    # run() at all. It parsed the live table and exercised _walk on a synthetic
+    # string, both of which pass on a tree that is fine -- so NEITHER of run()'s
+    # two ok=False branches had ever been shown to fire. README.md states the
+    # rule this file was the exception to: a check whose selftest only confirms
+    # that the current tree passes is not tested, it is merely executed.
+    #
+    # Each plant asserts THE TEXT CHANGED before it asserts anything about the
+    # outcome, and asserts WHICH branch reported it. Two plants in this repo's
+    # history anchored on a token that also lived in a comment: they edited the
+    # prose, the check correctly stayed silent, and a silent no-op reads exactly
+    # like a check that cannot fail.
+    import shutil
+    import tempfile
+
+    base = tempfile.mkdtemp()
+    try:
+        shutil.copytree(os.path.join(root, "frontend", "src"),
+                        os.path.join(base, "frontend", "src"))
+        router = os.path.join(base, "frontend", "src", "router", "index.ts")
+        original = open(router, encoding="utf-8").read()
+        clean, _ = run(base)
+        assert clean, "the untouched copy already fails"
+
+        def plant(old, new, label, expected):
+            text = open(router, encoding="utf-8").read()
+            assert old in text, "selftest anchor missing for %r" % label
+            changed = text.replace(old, new, 1)
+            assert changed != text, "selftest plant %r changed nothing" % label
+            open(router, "w", encoding="utf-8").write(changed)
+            broke, reported = run(base)
+            open(router, "w", encoding="utf-8").write(original)
+            assert not broke, "selftest: %s was not caught" % label
+            assert any(expected in ln for ln in reported), \
+                "selftest: %s was caught by the WRONG branch: %r" % (label, reported)
+            restored, _ = run(base)
+            assert restored, "selftest: %s left the copy broken" % label
+            out.append("  caught: %s" % label)
+
+        # branch 1 -- duplicates: give a second route a name that already exists.
+        plant("name: '%s'" % records[1]["name"], "name: '%s'" % records[0]["name"],
+              "a second route handed a name that already exists",
+              "DUPLICATE ROUTE NAME")
+
+        # branch 2 -- the guard count: one more `name:` outside the route table.
+        # It goes ABOVE createRouter, so it is outside the array by construction
+        # rather than by hoping a regex draws the boundary where we think it does.
+        plant("export const router = createRouter({",
+              "const zzDecoy = { name: 'zz-decoy' }\n\nexport const router = createRouter({",
+              "a `name:` appearing outside the route table",
+              "EXPECTED exactly")
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
     return out

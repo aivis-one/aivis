@@ -10,7 +10,7 @@ dependency (`backend/pyproject.toml`), so this adds no toolchain.
 
 ## What this is
 
-Four checks on `frontend/src` that the type checker and the unit tests cannot
+Five checks on `frontend/src` that the type checker and the unit tests cannot
 express, because each is a property of the CSS or the router **as a whole**
 rather than of one module.
 
@@ -23,6 +23,7 @@ for. None of them is a style preference.
 | `shell_layout.py` | the shell chrome has one source; the storefront stays outside the tier system; the tab-bar hide rule keeps its specificity; StaffShell keeps its own content cap | four shells carried the same `@media (min-width: 820px)` block byte for byte — a tier change had to be made in four places |
 | `tokens.py` | every `var(--x)` that paints resolves to a declared token | an undeclared custom property does not error and does not warn; the declaration is silently dropped |
 | `routes.py` | every route is named, every name is unique, and the table parses as the tree it is | a duplicate route name does not throw — Vue Router keeps the last one and every `push({ name })` for the shadowed route goes somewhere else |
+| `preauth.py` | every route with no width breakpoint anywhere in its closure carries a declared, non-empty reason for being fixed-width, and the set of such routes is re-derived from the router on every run | twelve pre-auth screens looked like twelve missing breakpoints and were not one — they cap with a design token and centre, and a `max-width` on a centred card is width behaviour. The defect was the SILENCE: nothing said the narrowness was deliberate, so the next reader would have “fixed” it |
 
 ## Why `--selftest` matters as much as the checks
 
@@ -30,12 +31,31 @@ A check that cannot fail passes forever and proves nothing.
 
 `--selftest` plants the exact defect each check is meant to catch — in a
 throwaway copy of `frontend/src`, never in the real tree — asserts the check
-rejects it, restores, and asserts it accepts again. Nine planted defects in
-total.
+rejects it, restores, and asserts it accepts again. **Sixteen distinct planted
+defects, reported over fifteen lines, across all five checks.** The two totals
+differ because `tokens.py` plants three bad `var()` uses in one probe file and
+reports them on two lines. **Each figure says which measure it is.** This line
+read “Nine planted defects in total” until 2026-08-25, and **that figure was
+right when it was written** — nine distinct defects over eight lines at
+`c8e5646`. It went stale in two later commits that nobody thought of as
+touching it: `77e57c9` added the survival plant, `41490fa` added `preauth.py`'s
+four. **An unlabelled count is how that happens invisibly — a reader cannot
+tell whether the number moved or the thing under it did.**
 
 **If you change a check, run the selftest before you trust a green run.** Two
 of these checks were wrong on their first version and their own selftest is
 what caught it.
+
+**`routes.py` was the exception until 2026-08-25, and it is worth naming rather
+than quietly repairing.** Its selftest parsed the live route table and exercised
+the tree-walker on a synthetic string — both of which pass on a tree that is
+fine — and never called `run()` at all, so neither of its two failure branches
+had ever been shown to fire. Both are now planted and both fire. **The check had
+been correct the whole time; its selftest simply did not say so, and those are
+two different statements.** The control that proves the repair is not the
+obvious one: `run()` is unchanged, so the new selftest passes against the old
+file either way. What bites is neutering each branch of `run()` in a throwaway
+copy — the new selftest goes red on both, the old one stays green on both.
 
 ## Two things in here that are easy to get wrong
 
