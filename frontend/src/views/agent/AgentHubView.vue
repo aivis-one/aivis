@@ -57,15 +57,10 @@ const creating = ref(false)
 // Derived
 // ---------------------------------------------------------------------------
 
-const statsLoaded = computed(
-  () => !agentStore.statsLoading && agentStore.stats !== null,
-)
+const statsLoaded = computed(() => !agentStore.statsLoading && agentStore.stats !== null)
 
 const linksEmpty = computed(
-  () =>
-    !agentStore.linksLoading
-    && !agentStore.linksError
-    && agentStore.links.length === 0,
+  () => !agentStore.linksLoading && !agentStore.linksError && agentStore.links.length === 0,
 )
 
 function shareUrl(link: ReferralLinkResponse): string {
@@ -130,8 +125,12 @@ onMounted(() => {
   <div class="hub">
     <!-- Screen title (FP-19: shell owns CHeader, view owns the h1) -->
     <div class="hub__header">
-      <h1 class="hub__title">{{ t('agent.hub.title') }}</h1>
-      <p class="hub__subtitle">{{ t('agent.hub.subtitle') }}</p>
+      <h1 class="hub__title">
+        {{ t('agent.hub.title') }}
+      </h1>
+      <p class="hub__subtitle">
+        {{ t('agent.hub.subtitle') }}
+      </p>
     </div>
 
     <!-- Aggregate funnel stats -->
@@ -153,13 +152,17 @@ onMounted(() => {
           <div class="hub__stat-value">
             {{ formatNumber(agentStore.stats!.total_links, locale) }}
           </div>
-          <div class="hub__stat-label">{{ t('agent.hub.stats.links') }}</div>
+          <div class="hub__stat-label">
+            {{ t('agent.hub.stats.links') }}
+          </div>
         </div>
         <div class="hub__stat">
           <div class="hub__stat-value">
             {{ formatNumber(agentStore.stats!.total_clicks, locale) }}
           </div>
-          <div class="hub__stat-label">{{ t('agent.hub.stats.clicks') }}</div>
+          <div class="hub__stat-label">
+            {{ t('agent.hub.stats.clicks') }}
+          </div>
         </div>
         <div class="hub__stat">
           <div class="hub__stat-value">
@@ -198,19 +201,15 @@ onMounted(() => {
 
     <!-- Link list -->
     <section class="hub__links">
-      <h2 class="hub__links-title">{{ t('agent.hub.links.title') }}</h2>
+      <h2 class="hub__links-title">
+        {{ t('agent.hub.links.title') }}
+      </h2>
 
-      <div
-        v-if="agentStore.linksLoading && agentStore.links.length === 0"
-        class="hub__center"
-      >
+      <div v-if="agentStore.linksLoading && agentStore.links.length === 0" class="hub__center">
         <CLoader :size="24" />
       </div>
 
-      <div
-        v-else-if="agentStore.linksError && agentStore.links.length === 0"
-        class="hub__center"
-      >
+      <div v-else-if="agentStore.linksError && agentStore.links.length === 0" class="hub__center">
         <CEmptyState :title="t('agent.hub.links.errorTitle')">
           <CButton variant="secondary" @click="retryLinks">
             {{ t('common.retry') }}
@@ -227,11 +226,7 @@ onMounted(() => {
       </div>
 
       <ul v-else class="hub__list">
-        <li
-          v-for="link in agentStore.links"
-          :key="link.id"
-          class="hub__card"
-        >
+        <li v-for="link in agentStore.links" :key="link.id" class="hub__card">
           <div class="hub__card-head">
             <span class="hub__card-code">
               <Link2 :size="16" class="hub__card-code-icon" />
@@ -239,17 +234,9 @@ onMounted(() => {
             </span>
             <span
               class="hub__card-state"
-              :class="
-                link.is_active
-                  ? 'hub__card-state--active'
-                  : 'hub__card-state--inactive'
-              "
+              :class="link.is_active ? 'hub__card-state--active' : 'hub__card-state--inactive'"
             >
-              {{
-                link.is_active
-                  ? t('common.statusActive')
-                  : t('agent.hub.link.inactive')
-              }}
+              {{ link.is_active ? t('common.statusActive') : t('agent.hub.link.inactive') }}
             </span>
           </div>
 
@@ -299,11 +286,7 @@ onMounted(() => {
       </ul>
 
       <div v-if="agentStore.hasMoreLinks && !linksEmpty" class="hub__more">
-        <CButton
-          variant="secondary"
-          :disabled="agentStore.linksLoading"
-          @click="loadMore"
-        >
+        <CButton variant="secondary" :disabled="agentStore.linksLoading" @click="loadMore">
           {{ t('agent.hub.links.loadMore') }}
         </CButton>
       </div>
@@ -516,8 +499,12 @@ onMounted(() => {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .hub__stats-grid { max-width: calc(2 * var(--tile-max)); }
-  .hub__card-counters { max-width: calc(3 * var(--tile-max)); }
+  .hub__stats-grid {
+    max-width: calc(2 * var(--tile-max));
+  }
+  .hub__card-counters {
+    max-width: calc(3 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -527,7 +514,9 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.hub__subtitle { max-width: var(--maxw-prose); }
+.hub__subtitle {
+  max-width: var(--maxw-prose);
+}
 
 /* A5: this control is deliberately 24px to sit right in its row, so the PAINTED
    box stays and the HIT AREA is expanded past it instead. The overlay is

@@ -65,9 +65,7 @@ const { t } = useI18n()
 // resolveCoverImage is effectively unused. Type assertion is safe --
 // the helper does an `??` lookup on both keys, missing keys read as
 // undefined and pass through to the null branch.
-const coverImage = computed(() =>
-  resolveCoverImage({ cover_url: props.company.cover_url }),
-)
+const coverImage = computed(() => resolveCoverImage({ cover_url: props.company.cover_url }))
 </script>
 
 <template>
@@ -82,7 +80,9 @@ const coverImage = computed(() =>
 
     <div class="company-card__body">
       <div class="company-card__header">
-        <h3 class="company-card__name">{{ company.name }}</h3>
+        <h3 class="company-card__name">
+          {{ company.name }}
+        </h3>
         <span class="company-card__chip">
           {{ t('common.statusActive') }}
         </span>
@@ -97,8 +97,15 @@ const coverImage = computed(() =>
 
 <style scoped>
 .company-card {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-page);
@@ -106,7 +113,9 @@ const coverImage = computed(() =>
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .company-card:hover {
@@ -133,11 +142,7 @@ const coverImage = computed(() =>
 
 .company-card__img--fallback {
   /* Subtle gradient so the placeholder doesn't read as broken. */
-  background-image: linear-gradient(
-    135deg,
-    var(--bg-subtle) 0%,
-    var(--bg-surface) 100%
-  );
+  background-image: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface) 100%);
 }
 
 .company-card__body {
@@ -205,5 +210,7 @@ const coverImage = computed(() =>
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.company-card__description { max-width: var(--maxw-prose); }
+.company-card__description {
+  max-width: var(--maxw-prose);
+}
 </style>

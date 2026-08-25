@@ -12,9 +12,19 @@ import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Home, Briefcase, Store, Wallet, Menu,
-  Link, Coins, Package, BarChart3, Settings,
-  Users, CreditCard, LayoutGrid,
+  Home,
+  Briefcase,
+  Store,
+  Wallet,
+  Menu,
+  Link,
+  Coins,
+  Package,
+  BarChart3,
+  Settings,
+  Users,
+  CreditCard,
+  LayoutGrid,
 } from 'lucide-vue-next'
 import type { TabItem } from '@/router/tabs'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -27,9 +37,19 @@ const { t } = useI18n()
 
 // Map icon string names to Lucide components.
 const iconMap: Record<string, Component> = {
-  Home, Briefcase, Store, Wallet, Menu,
-  Link, Coins, Package, BarChart3, Settings,
-  Users, CreditCard, LayoutGrid,
+  Home,
+  Briefcase,
+  Store,
+  Wallet,
+  Menu,
+  Link,
+  Coins,
+  Package,
+  BarChart3,
+  Settings,
+  Users,
+  CreditCard,
+  LayoutGrid,
 }
 
 function isActive(tab: TabItem): boolean {
@@ -62,9 +82,14 @@ function navigate(tab: TabItem): void {
 
 <style scoped>
 .c-tabbar {
-  position: sticky; bottom: 0; left: 0; right: 0;
-  display: flex; justify-content: space-around;
-  background: var(--bg-page); border-top: 1px solid var(--border-default);
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: var(--bg-page);
+  border-top: 1px solid var(--border-default);
   /* iter 2.5 cta-fix: height is the source-of-truth via
      --tab-bar-height; sub-route floating CTAs reference the same
      token to stay pinned above the bar. The token measures the
@@ -75,22 +100,49 @@ function navigate(tab: TabItem): void {
   z-index: 100;
 }
 .c-tabbar__item {
-  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
-  padding: var(--space-2) var(--space-3); min-width: var(--size-4xl); min-height: var(--size-2xl);
-  color: var(--text-tertiary); font-size: var(--fs-3xs); font-weight: 500;
-  cursor: pointer; transition: color 0.2s;
-  border: none; background: none; font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  min-width: var(--size-4xl);
+  min-height: var(--size-2xl);
+  color: var(--text-tertiary);
+  font-size: var(--fs-3xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+  border: none;
+  background: none;
+  font-family: inherit;
   position: relative;
 }
-.c-tabbar__item:hover { color: var(--primary-hover); }
-.c-tabbar__item--active { color: var(--primary); }
-.c-tabbar__item--active::after {
-  content: ''; position: absolute;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  left: 50%; transform: translateX(-50%);
-  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+.c-tabbar__item:hover {
+  color: var(--primary-hover);
 }
-.c-tabbar__icon { display: flex; align-items: center; justify-content: center; }
-.c-tabbar__label { line-height: 1; }
-[dir="rtl"] .c-tabbar { direction: rtl; }
+.c-tabbar__item--active {
+  color: var(--primary);
+}
+.c-tabbar__item--active::after {
+  content: '';
+  position: absolute;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.c-tabbar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.c-tabbar__label {
+  line-height: 1;
+}
+[dir='rtl'] .c-tabbar {
+  direction: rtl;
+}
 </style>

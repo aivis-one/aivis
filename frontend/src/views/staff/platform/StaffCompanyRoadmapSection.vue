@@ -58,15 +58,7 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import {
-  ChevronUp,
-  ChevronDown,
-  Pencil,
-  Trash2,
-  Map as MapIcon,
-  ImageUp,
-  X,
-} from 'lucide-vue-next'
+import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon, ImageUp, X } from 'lucide-vue-next'
 import {
   CLoader,
   CButton,
@@ -695,24 +687,19 @@ onMounted(() => {
       </div>
 
       <!-- Empty -->
-      <CEmptyState
-        v-if="!items.length"
-        :title="t('staff.platform.roadmap.empty')"
-      >
-        <template #icon><MapIcon :size="40" /></template>
+      <CEmptyState v-if="!items.length" :title="t('staff.platform.roadmap.empty')">
+        <template #icon>
+          <MapIcon :size="40" />
+        </template>
       </CEmptyState>
 
       <!-- List (order ASC) -->
       <div v-else class="rm-list">
-        <div
-          v-for="(item, idx) in items"
-          :key="item.id"
-          class="rm-item"
-        >
+        <div v-for="(item, idx) in items" :key="item.id" class="rm-item">
           <!-- Reorder (FP-23) -->
           <div v-if="canManage" class="rm-item__reorder">
             <button
-            :aria-label="t('common.moveUp')"
+              :aria-label="t('common.moveUp')"
               class="rm-item__move"
               :disabled="idx === 0 || reordering"
               @click="move(idx, -1)"
@@ -720,7 +707,7 @@ onMounted(() => {
               <ChevronUp :size="16" />
             </button>
             <button
-            :aria-label="t('common.moveDown')"
+              :aria-label="t('common.moveDown')"
               class="rm-item__move"
               :disabled="idx === items.length - 1 || reordering"
               @click="move(idx, 1)"
@@ -745,23 +732,26 @@ onMounted(() => {
               />
             </div>
 
-            <div class="rm-item__title">{{ item.title }}</div>
+            <div class="rm-item__title">
+              {{ item.title }}
+            </div>
 
             <!-- Dates (FP-25 self-hide) -->
-            <div
-              v-if="item.target_date || item.valid_until"
-              class="rm-item__dates"
-            >
+            <div v-if="item.target_date || item.valid_until" class="rm-item__dates">
               <span v-if="item.target_date">
-                {{ t('staff.platform.roadmap.fieldTargetDate') }}: {{ formatDate(item.target_date) }}
+                {{ t('staff.platform.roadmap.fieldTargetDate') }}:
+                {{ formatDate(item.target_date) }}
               </span>
               <span v-if="item.valid_until">
-                {{ t('staff.platform.roadmap.fieldValidUntil') }}: {{ formatDate(item.valid_until) }}
+                {{ t('staff.platform.roadmap.fieldValidUntil') }}:
+                {{ formatDate(item.valid_until) }}
               </span>
             </div>
 
             <!-- Description (FP-25 self-hide) -->
-            <p v-if="item.description" class="rm-item__desc">{{ item.description }}</p>
+            <p v-if="item.description" class="rm-item__desc">
+              {{ item.description }}
+            </p>
 
             <!-- External URL (FP-25 self-hide) -->
             <a
@@ -770,7 +760,8 @@ onMounted(() => {
               target="_blank"
               rel="noopener noreferrer"
               class="rm-item__link"
-            >{{ item.external_url }}</a>
+              >{{ item.external_url }}</a
+            >
 
             <!-- Linked post / product (FP-25 self-hide). D1 has no picker
                  UI; these only ever appear if a link was set elsewhere. -->
@@ -781,12 +772,14 @@ onMounted(() => {
 
           <!-- Row actions (FP-23) -->
           <div v-if="canManage" class="rm-item__actions">
-            <button
-            :aria-label="t('common.edit')" class="rm-item__action" @click="openEdit(item)">
+            <button :aria-label="t('common.edit')" class="rm-item__action" @click="openEdit(item)">
               <Pencil :size="16" />
             </button>
             <button
-            :aria-label="t('common.delete')" class="rm-item__action" @click="openDelete(item)">
+              :aria-label="t('common.delete')"
+              class="rm-item__action"
+              @click="openDelete(item)"
+            >
               <Trash2 :size="16" />
             </button>
           </div>
@@ -797,9 +790,11 @@ onMounted(() => {
     <!-- Create / edit modal -->
     <CModal :open="showForm" @close="closeForm">
       <h3 class="scr__modal-title">
-        {{ isEditing
-          ? t('staff.platform.roadmap.editTitle')
-          : t('staff.platform.roadmap.createTitle') }}
+        {{
+          isEditing
+            ? t('staff.platform.roadmap.editTitle')
+            : t('staff.platform.roadmap.createTitle')
+        }}
       </h3>
 
       <!-- Kind: tab strip on create, locked badge on edit -->
@@ -807,7 +802,9 @@ onMounted(() => {
         <span class="scr__kind-label">{{ t('staff.platform.roadmap.kindLabel') }}</span>
         <template v-if="isEditing">
           <CBadge :variant="kindVariant(draftKind)" :text="kindLabel(draftKind)" />
-          <p class="scr__kind-hint">{{ t('staff.platform.roadmap.kindLockedHint') }}</p>
+          <p class="scr__kind-hint">
+            {{ t('staff.platform.roadmap.kindLockedHint') }}
+          </p>
         </template>
         <div v-else class="scr__kind-tabs">
           <button
@@ -816,7 +813,9 @@ onMounted(() => {
             class="scr__kind-tab"
             :class="{ 'scr__kind-tab--active': draftKind === k }"
             @click="selectKind(k)"
-          >{{ kindLabel(k) }}</button>
+          >
+            {{ kindLabel(k) }}
+          </button>
         </div>
       </div>
 
@@ -910,9 +909,11 @@ onMounted(() => {
               @click="triggerCoverPicker"
             >
               <ImageUp :size="16" />
-              {{ coverPreviewUrl
-                ? t('staff.platform.roadmap.cover.replace')
-                : t('staff.platform.roadmap.cover.upload') }}
+              {{
+                coverPreviewUrl
+                  ? t('staff.platform.roadmap.cover.replace')
+                  : t('staff.platform.roadmap.cover.upload')
+              }}
             </CButton>
             <CButton
               v-if="coverPreviewUrl"
@@ -928,8 +929,8 @@ onMounted(() => {
 
           <!-- Hidden native picker (no CFileInput in the kit). -->
           <input
-          :aria-label="t('staff.platform.roadmap.cover.remove')"
             ref="coverInputEl"
+            :aria-label="t('staff.platform.roadmap.cover.remove')"
             type="file"
             accept="image/png,image/jpeg,image/webp"
             class="scr__cover-input"
@@ -953,146 +954,301 @@ onMounted(() => {
           :loading="saving"
           :disabled="!canSubmit"
           @click="handleSave"
-        >{{ t('common.save') }}</CButton>
+        >
+          {{ t('common.save') }}
+        </CButton>
       </div>
     </CModal>
 
     <!-- Delete confirm -->
     <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="scr__modal-title">{{ t('staff.platform.roadmap.deleteTitle') }}</h3>
-      <p class="scr__modal-hint">{{ t('staff.platform.roadmap.deleteConfirm') }}</p>
+      <h3 class="scr__modal-title">
+        {{ t('staff.platform.roadmap.deleteTitle') }}
+      </h3>
+      <p class="scr__modal-hint">
+        {{ t('staff.platform.roadmap.deleteConfirm') }}
+      </p>
       <div class="scr__modal-actions">
         <CButton variant="outline" size="sm" @click="deleteTarget = null">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton
-          variant="danger"
-          size="sm"
-          :loading="deleting"
-          @click="handleDelete"
-        >{{ t('common.delete') }}</CButton>
+        <CButton variant="danger" size="sm" :loading="deleting" @click="handleDelete">
+          {{ t('common.delete') }}
+        </CButton>
       </div>
     </CModal>
 
     <!-- Cover remove confirm (D2) -->
     <CModal :open="!!coverRemoveTarget" @close="coverRemoveTarget = null">
-      <h3 class="scr__modal-title">{{ t('staff.platform.roadmap.cover.removeTitle') }}</h3>
-      <p class="scr__modal-hint">{{ t('staff.platform.roadmap.cover.removeConfirm') }}</p>
+      <h3 class="scr__modal-title">
+        {{ t('staff.platform.roadmap.cover.removeTitle') }}
+      </h3>
+      <p class="scr__modal-hint">
+        {{ t('staff.platform.roadmap.cover.removeConfirm') }}
+      </p>
       <div class="scr__modal-actions">
         <CButton variant="outline" size="sm" @click="coverRemoveTarget = null">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton
-          variant="danger"
-          size="sm"
-          :loading="coverRemoving"
-          @click="handleCoverRemove"
-        >{{ t('staff.platform.roadmap.cover.remove') }}</CButton>
+        <CButton variant="danger" size="sm" :loading="coverRemoving" @click="handleCoverRemove">
+          {{ t('staff.platform.roadmap.cover.remove') }}
+        </CButton>
       </div>
     </CModal>
   </div>
 </template>
 
 <style scoped>
-.scr { padding: var(--space-4); }
+.scr {
+  padding: var(--space-4);
+}
 
 .scr__center {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: var(--center-sm); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-sm);
+  gap: var(--space-4);
 }
 
 .scr__toolbar {
-  display: flex; justify-content: flex-end; margin-bottom: var(--space-4);
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
 }
 
 /* -- List -- */
-.rm-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.rm-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 
 .rm-item {
-  display: flex; align-items: flex-start; gap: var(--space-3);
-  padding: var(--space-3); background: var(--bg-subtle);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-subtle);
   border-radius: var(--radius-md);
 }
 
 .rm-item__reorder {
-  display: flex; flex-direction: column; gap: var(--space-1); flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 0 0 auto;
 }
 .rm-item__move {
-  display: flex; align-items: center; justify-content: center;
-  width: var(--size-sm); height: var(--size-xs); border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm); background: var(--bg-page);
-  color: var(--text-secondary); cursor: pointer;
-  transition: border-color 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-sm);
+  height: var(--size-xs);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
 }
-.rm-item__move:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
-.rm-item__move:disabled { opacity: 0.4; cursor: default; }
+.rm-item__move:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.rm-item__move:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
-.rm-item__cover { flex: 0 0 auto; }
+.rm-item__cover {
+  flex: 0 0 auto;
+}
 .rm-item__cover-img {
-  width: var(--size-4xl); height: var(--size-4xl); object-fit: cover;
-  border-radius: var(--radius-sm); display: block;
+  width: var(--size-4xl);
+  height: var(--size-4xl);
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
 }
 
-.rm-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.rm-item__badges { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.rm-item__title { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
-.rm-item__dates {
-  display: flex; gap: var(--space-3); flex-wrap: wrap;
-  font-size: var(--fs-xs); color: var(--text-secondary);
+.rm-item__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
-.rm-item__desc { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0; line-height: 1.4; }
+.rm-item__badges {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.rm-item__title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.rm-item__dates {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.rm-item__desc {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
 .rm-item__link {
-  font-size: var(--fs-sm); color: var(--primary); word-break: break-all;
+  font-size: var(--fs-sm);
+  color: var(--primary);
+  word-break: break-all;
   text-decoration: none;
 }
-.rm-item__link:hover { text-decoration: underline; }
-.rm-item__rel { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.rm-item__link:hover {
+  text-decoration: underline;
+}
+.rm-item__rel {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
 
 .rm-item__actions {
-  display: flex; flex-direction: column; gap: var(--space-1); flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 0 0 auto;
 }
 .rm-item__action {
-  display: flex; align-items: center; justify-content: center;
-  width: var(--size-md); height: var(--size-sm); border: none; background: transparent;
-  color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
-  transition: color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-md);
+  height: var(--size-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.2s,
+    background 0.2s;
 }
-.rm-item__action:hover { color: var(--text-primary); background: var(--bg-page); }
+.rm-item__action:hover {
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
 
 /* -- Modal -- */
-.scr__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
-.scr__modal-hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 0 0 var(--space-4); }
-.scr__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
+.scr__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+.scr__modal-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+}
+.scr__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  justify-content: flex-end;
+}
 
-.scr__hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 0 0 var(--space-4); line-height: 1.4; }
+.scr__hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+  line-height: 1.4;
+}
 
 /* Kind tab strip */
-.scr__kind { margin-bottom: var(--space-4); }
-.scr__kind-label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
-.scr__kind-hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: var(--space-2) 0 0; line-height: 1.4; }
-.scr__kind-tabs { display: flex; gap: var(--space-2); }
-.scr__kind-tab {
-  flex: 1; padding: var(--space-3) var(--space-2); border: 2px solid var(--border-default);
-  border-radius: var(--radius-md); background: var(--bg-page);
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-secondary);
-  cursor: pointer; transition: all 0.2s;
+.scr__kind {
+  margin-bottom: var(--space-4);
 }
-.scr__kind-tab--active { border-color: var(--primary); color: var(--primary); background: var(--bg-subtle); }
+.scr__kind-label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+.scr__kind-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: var(--space-2) 0 0;
+  line-height: 1.4;
+}
+.scr__kind-tabs {
+  display: flex;
+  gap: var(--space-2);
+}
+.scr__kind-tab {
+  flex: 1;
+  padding: var(--space-3) var(--space-2);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-page);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.scr__kind-tab--active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--bg-subtle);
+}
 
 /* Native date field (no CDatePicker in the kit) */
-.scr__field { margin-bottom: var(--space-4); }
-.scr__field-label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-2); }
-.scr__field-error { font-size: var(--fs-xs); color: var(--danger); margin-top: var(--space-1); }
+.scr__field {
+  margin-bottom: var(--space-4);
+}
+.scr__field-label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+.scr__field-error {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  margin-top: var(--space-1);
+}
 
 /* Cover block (D2) */
-.scr__cover { margin-bottom: var(--space-4); }
-.scr__cover-preview { margin-bottom: var(--space-2); }
-.scr__cover-img {
-  width: 100%; max-height: 180px; object-fit: cover;
-  border-radius: var(--radius-md); display: block;
+.scr__cover {
+  margin-bottom: var(--space-4);
 }
-.scr__cover-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.scr__cover-input { display: none; }
+.scr__cover-preview {
+  margin-bottom: var(--space-2);
+}
+.scr__cover-img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  display: block;
+}
+.scr__cover-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.scr__cover-input {
+  display: none;
+}
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
    so this rule cannot bind until the container is already wider than a
@@ -1101,6 +1257,10 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.rm-item__desc { max-width: var(--maxw-prose); }
-.scr__hint { max-width: var(--maxw-prose); }
+.rm-item__desc {
+  max-width: var(--maxw-prose);
+}
+.scr__hint {
+  max-width: var(--maxw-prose);
+}
 </style>

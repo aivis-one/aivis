@@ -60,18 +60,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
-import {
-  ArrowLeft,
-  Download,
-  File as FileIcon,
-} from 'lucide-vue-next'
+import { ArrowLeft, Download, File as FileIcon } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
-import {
-  downloadPublicAttachment,
-  listPublicAttachments,
-} from '@/api/attachments'
+import { downloadPublicAttachment, listPublicAttachments } from '@/api/attachments'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { useToast } from '@/composables/useToast'
 import { formatBytes } from '@/utils/format'
@@ -192,17 +185,10 @@ async function onDownload(): Promise<void> {
   const att = attachment.value
   if (!att) return
   try {
-    await downloadPublicAttachment(
-      companyId.value,
-      att.id,
-      att.original_filename,
-    )
+    await downloadPublicAttachment(companyId.value, att.id, att.original_filename)
   } catch (err) {
     if (!notifyRateLimit(err)) {
-      showToast(
-        t('public.attachmentLanding.downloadError'),
-        'error',
-      )
+      showToast(t('public.attachmentLanding.downloadError'), 'error')
     }
   }
 }
@@ -246,16 +232,13 @@ async function onDownload(): Promise<void> {
         <div class="atl__icon">
           <component :is="heroIcon" :size="48" />
         </div>
-        <h1 class="atl__title">{{ attachment.title }}</h1>
-        <p
-          v-if="attachment.description"
-          class="atl__description"
-        >
+        <h1 class="atl__title">
+          {{ attachment.title }}
+        </h1>
+        <p v-if="attachment.description" class="atl__description">
           {{ attachment.description }}
         </p>
-        <p class="atl__meta">
-          {{ attachment.original_filename }} · {{ sizeDisplay }}
-        </p>
+        <p class="atl__meta">{{ attachment.original_filename }} · {{ sizeDisplay }}</p>
       </section>
 
       <div class="atl__cta">
@@ -304,7 +287,9 @@ async function onDownload(): Promise<void> {
   font-size: var(--fs-sm);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: background 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .atl__back:hover {
@@ -377,5 +362,7 @@ async function onDownload(): Promise<void> {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.atl__description { max-width: var(--maxw-prose); }
+.atl__description {
+  max-width: var(--maxw-prose);
+}
 </style>

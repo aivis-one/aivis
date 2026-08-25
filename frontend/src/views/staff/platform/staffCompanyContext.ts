@@ -27,5 +27,4 @@ export interface StaffCompanyContext {
   reload: () => Promise<void>
 }
 
-export const STAFF_COMPANY_KEY: InjectionKey<StaffCompanyContext> =
-  Symbol('staffCompany')
+export const STAFF_COMPANY_KEY: InjectionKey<StaffCompanyContext> = Symbol('staffCompany')

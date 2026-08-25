@@ -55,9 +55,7 @@ export interface PlanConfig {
  * (non-breaking: a plan with legit tranches but no bonus metadata is
  * still a valid plan to render).
  */
-export function parsePlanConfig(
-  cfg: Record<string, unknown>,
-): PlanConfig | null {
+export function parsePlanConfig(cfg: Record<string, unknown>): PlanConfig | null {
   const rawTranches = cfg['tranches']
   if (!Array.isArray(rawTranches)) return null
 
@@ -113,11 +111,7 @@ export function getPlanBonus(plan: InstallmentResponse): number {
  * consume that instead of recomputing -- mirroring the scheduler
  * in two languages is a drift liability.
  */
-export function getTrancheUnits(
-  config: PlanConfig,
-  totalUnits: number,
-  index: number,
-): number {
+export function getTrancheUnits(config: PlanConfig, totalUnits: number, index: number): number {
   const list = config.tranches
   if (index < 0 || index >= list.length) return 0
 

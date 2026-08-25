@@ -97,9 +97,7 @@ function keyLabel(key: string): string {
   // -> 'Trigger Tranche Number'. tOrRaw then prefers a real
   // translation if the key is in the catalogue, otherwise returns
   // the humanised form so unknown backend additions stay readable.
-  const humanised = key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  const humanised = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
   return tOrRaw(t, `inv.transactions.detail.keys.${key}`, humanised)
 }
 
@@ -178,11 +176,7 @@ function onClose(): void {
 </script>
 
 <template>
-  <CBottomSheet
-    :open="open"
-    :title="t('inv.transactions.detail.title')"
-    @close="onClose"
-  >
+  <CBottomSheet :open="open" :title="t('inv.transactions.detail.title')" @close="onClose">
     <div v-if="loading" class="tds__center">
       <CLoader :size="24" />
     </div>
@@ -194,25 +188,23 @@ function onClose(): void {
     <div v-else-if="txn" class="tds">
       <!-- Summary header -->
       <div class="tds__summary">
-        <div class="tds__type">{{ typeLabel(txn.type) }}</div>
+        <div class="tds__type">
+          {{ typeLabel(txn.type) }}
+        </div>
         <div class="tds__amount" :class="amountClass">
           {{ signedAmount }}
         </div>
-        <div class="tds__date">{{ formatDateTime(txn.created_at, locale) }}</div>
+        <div class="tds__date">
+          {{ formatDateTime(txn.created_at, locale) }}
+        </div>
       </div>
 
       <!-- Details key-value -->
       <div v-if="hasDetails" class="tds__details">
-        <div
-          v-for="[key, value] in detailEntries"
-          :key="key"
-          class="tds__row"
-        >
+        <div v-for="[key, value] in detailEntries" :key="key" class="tds__row">
           <span class="tds__key">{{ keyLabel(key) }}</span>
           <span class="tds__value">
-            <template
-              v-if="key === 'tx_hash' && typeof value === 'string'"
-            >
+            <template v-if="key === 'tx_hash' && typeof value === 'string'">
               <span class="tds__hash" :title="value">
                 {{ truncateHash(value) }}
               </span>
@@ -345,5 +337,7 @@ function onClose(): void {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.tds__summary { max-width: var(--maxw-prose); }
+.tds__summary {
+  max-width: var(--maxw-prose);
+}
 </style>

@@ -155,14 +155,9 @@ export function listSupportThreads(): Promise<SupportThreadListResponse> {
  *
  * 404 if the caller has never opened the channel (open first).
  */
-export function sendSupportMessage(
-  body: SendMessageIn['body'],
-): Promise<SupportMessageResponse> {
+export function sendSupportMessage(body: SendMessageIn['body']): Promise<SupportMessageResponse> {
   const payload: SendMessageIn = { body }
-  return api.post<SupportMessageResponse>(
-    '/api/v1/support/threads/messages',
-    payload,
-  )
+  return api.post<SupportMessageResponse>('/api/v1/support/threads/messages', payload)
 }
 
 /**
@@ -180,23 +175,16 @@ export function getSupportThreadMessages(
     limit: params?.limit,
     cursor: params?.cursor,
   })
-  return api.get<SupportMessageListResponse>(
-    `/api/v1/support/threads/${threadId}/messages${qs}`,
-  )
+  return api.get<SupportMessageListResponse>(`/api/v1/support/threads/${threadId}/messages${qs}`)
 }
 
 /**
  * POST /api/v1/support/threads/{id}/read -- mark the caller's thread
  * read; returns the fresh unread count.
  */
-export function markSupportThreadRead(
-  threadId: string,
-): Promise<SupportUnreadResponse> {
+export function markSupportThreadRead(threadId: string): Promise<SupportUnreadResponse> {
   const body: EmptyBodyIn = {}
-  return api.post<SupportUnreadResponse>(
-    `/api/v1/support/threads/${threadId}/read`,
-    body,
-  )
+  return api.post<SupportUnreadResponse>(`/api/v1/support/threads/${threadId}/read`, body)
 }
 
 // ---------------------------------------------------------------------------
@@ -216,9 +204,7 @@ export function listStaffSupportQueue(
     limit: params?.limit,
     cursor: params?.cursor,
   })
-  return api.get<SupportOperatorQueueResponse>(
-    `/api/v1/staff/support/threads${qs}`,
-  )
+  return api.get<SupportOperatorQueueResponse>(`/api/v1/staff/support/threads${qs}`)
 }
 
 /**
@@ -230,14 +216,9 @@ export function listStaffSupportQueue(
  * (200) with the same payload, idempotent by construction. Claiming
  * one a colleague already took is 409, not a value in the body.
  */
-export function claimStaffSupportThread(
-  threadId: string,
-): Promise<SupportThreadResponse> {
+export function claimStaffSupportThread(threadId: string): Promise<SupportThreadResponse> {
   const body: EmptyBodyIn = {}
-  return api.post<SupportThreadResponse>(
-    `/api/v1/staff/support/threads/${threadId}/claim`,
-    body,
-  )
+  return api.post<SupportThreadResponse>(`/api/v1/staff/support/threads/${threadId}/claim`, body)
 }
 
 /**

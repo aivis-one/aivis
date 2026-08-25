@@ -251,9 +251,7 @@ function statusClass(doc: DocumentResponse): string {
 }
 
 function statusLabel(doc: DocumentResponse): string {
-  return doc.is_signed
-    ? t('inv.docs.status.signed')
-    : t('inv.docs.status.pending')
+  return doc.is_signed ? t('inv.docs.status.signed') : t('inv.docs.status.pending')
 }
 
 function metaLabel(doc: DocumentResponse): string {
@@ -261,9 +259,7 @@ function metaLabel(doc: DocumentResponse): string {
   // is a derived flag built by the backend on list). Showing just a
   // signed/pending label here; a per-signature timestamp would need
   // a second endpoint and is out of B4 scope.
-  return doc.is_signed
-    ? t('inv.docs.meta.signed')
-    : t('inv.docs.meta.pending')
+  return doc.is_signed ? t('inv.docs.meta.signed') : t('inv.docs.meta.pending')
 }
 </script>
 
@@ -274,7 +270,9 @@ function metaLabel(doc: DocumentResponse): string {
          not a drill-down with originating context. Same paradigm as
          InvestorMoreView / InvestorSettingsView. -->
     <div class="docs__page-header">
-      <h1 class="docs__page-title">{{ t('inv.docs.title') }}</h1>
+      <h1 class="docs__page-title">
+        {{ t('inv.docs.title') }}
+      </h1>
     </div>
 
     <!-- First-load spinner -->
@@ -306,8 +304,12 @@ function metaLabel(doc: DocumentResponse): string {
             <FileText :size="16" />
           </div>
           <div class="docs__body">
-            <div class="docs__title">{{ doc.title }}</div>
-            <div class="docs__meta">{{ metaLabel(doc) }}</div>
+            <div class="docs__title">
+              {{ doc.title }}
+            </div>
+            <div class="docs__meta">
+              {{ metaLabel(doc) }}
+            </div>
           </div>
           <span class="docs__status" :class="statusClass(doc)">
             {{ statusLabel(doc) }}
@@ -319,7 +321,9 @@ function metaLabel(doc: DocumentResponse): string {
     <!-- Detail modal -->
     <CModal :open="modalOpen" @close="closeModal">
       <div v-if="viewingDoc" class="docs-modal">
-        <h2 class="docs-modal__title">{{ viewingDoc.title }}</h2>
+        <h2 class="docs-modal__title">
+          {{ viewingDoc.title }}
+        </h2>
 
         <!-- Loading body -->
         <div v-if="viewLoading" class="docs-modal__center">
@@ -363,11 +367,7 @@ function metaLabel(doc: DocumentResponse): string {
           >
             {{ signing ? t('inv.docs.modal.signing') : t('inv.docs.modal.sign') }}
           </CButton>
-          <CButton
-            v-else
-            variant="outline"
-            @click="closeModal"
-          >
+          <CButton v-else variant="outline" @click="closeModal">
             {{ t('inv.docs.modal.close') }}
           </CButton>
         </div>
@@ -422,8 +422,15 @@ function metaLabel(doc: DocumentResponse): string {
 }
 
 .docs__item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -431,7 +438,9 @@ function metaLabel(doc: DocumentResponse): string {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 .docs__item:hover {
   border-color: var(--primary-hover);
@@ -529,5 +538,7 @@ function metaLabel(doc: DocumentResponse): string {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.docs-modal__hint { max-width: var(--maxw-prose); }
+.docs-modal__hint {
+  max-width: var(--maxw-prose);
+}
 </style>

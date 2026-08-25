@@ -122,8 +122,12 @@ async function handleRetry(): Promise<void> {
     </header>
 
     <div class="auth-content">
-      <h1 class="auth-title">{{ t('auth.kyc.title') }}</h1>
-      <p class="auth-subtitle">{{ t('auth.kyc.subtitle') }}</p>
+      <h1 class="auth-title">
+        {{ t('auth.kyc.title') }}
+      </h1>
+      <p class="auth-subtitle">
+        {{ t('auth.kyc.subtitle') }}
+      </p>
 
       <!-- Not started -->
       <template v-if="kycStatus === 'not_started'">
@@ -143,15 +147,12 @@ async function handleRetry(): Promise<void> {
           </svg>
         </div>
 
-        <div v-if="error" class="auth-error">{{ error }}</div>
+        <div v-if="error" class="auth-error">
+          {{ error }}
+        </div>
 
         <div class="kyc-actions">
-          <button
-            class="btn btn-primary"
-            type="button"
-            :disabled="loading"
-            @click="handleSubmit"
-          >
+          <button class="btn btn-primary" type="button" :disabled="loading" @click="handleSubmit">
             <span v-if="loading" class="btn-spinner" />
             <span v-else>{{ t('auth.kyc.submit') }}</span>
           </button>
@@ -176,19 +177,16 @@ async function handleRetry(): Promise<void> {
               <polyline points="12 6 12 12 16 14" />
             </svg>
           </div>
-          <div class="kyc-card-title" style="color: var(--warning);">
+          <div class="kyc-card-title" style="color: var(--warning)">
             {{ t('auth.kyc.pending') }}
           </div>
-          <div class="kyc-card-text">{{ t('auth.kyc.pendingText') }}</div>
+          <div class="kyc-card-text">
+            {{ t('auth.kyc.pendingText') }}
+          </div>
         </div>
 
         <div class="kyc-actions">
-          <button
-            class="btn btn-primary"
-            type="button"
-            :disabled="loading"
-            @click="handleContinue"
-          >
+          <button class="btn btn-primary" type="button" :disabled="loading" @click="handleContinue">
             <span v-if="loading" class="btn-spinner" />
             <span v-else>{{ t('auth.kyc.continue') }}</span>
           </button>
@@ -213,19 +211,16 @@ async function handleRetry(): Promise<void> {
               <path d="M9 12l2 2 4-4" />
             </svg>
           </div>
-          <div class="kyc-card-title" style="color: var(--success);">
+          <div class="kyc-card-title" style="color: var(--success)">
             {{ t('auth.kyc.approved') }}
           </div>
-          <div class="kyc-card-text">{{ t('auth.kyc.approvedText') }}</div>
+          <div class="kyc-card-text">
+            {{ t('auth.kyc.approvedText') }}
+          </div>
         </div>
 
         <div class="kyc-actions">
-          <button
-            class="btn btn-primary"
-            type="button"
-            :disabled="loading"
-            @click="handleContinue"
-          >
+          <button class="btn btn-primary" type="button" :disabled="loading" @click="handleContinue">
             <span v-if="loading" class="btn-spinner" />
             <span v-else>{{ t('auth.kyc.continue') }}</span>
           </button>
@@ -251,21 +246,20 @@ async function handleRetry(): Promise<void> {
               <line x1="9" y1="9" x2="15" y2="15" />
             </svg>
           </div>
-          <div class="kyc-card-title" style="color: var(--danger);">
+          <div class="kyc-card-title" style="color: var(--danger)">
             {{ t('auth.kyc.rejected') }}
           </div>
-          <div class="kyc-card-text">{{ t('auth.kyc.rejectedText') }}</div>
+          <div class="kyc-card-text">
+            {{ t('auth.kyc.rejectedText') }}
+          </div>
         </div>
 
-        <div v-if="error" class="auth-error">{{ error }}</div>
+        <div v-if="error" class="auth-error">
+          {{ error }}
+        </div>
 
         <div class="kyc-actions">
-          <button
-            class="btn btn-primary"
-            type="button"
-            :disabled="loading"
-            @click="handleRetry"
-          >
+          <button class="btn btn-primary" type="button" :disabled="loading" @click="handleRetry">
             <span v-if="loading" class="btn-spinner" />
             <span v-else>{{ t('auth.kyc.redo') }}</span>
           </button>
@@ -274,7 +268,9 @@ async function handleRetry(): Promise<void> {
 
       <!-- Status legend -->
       <div class="kyc-statuses">
-        <div class="kyc-statuses-title">{{ t('auth.kyc.statusesTitle') }}</div>
+        <div class="kyc-statuses-title">
+          {{ t('auth.kyc.statusesTitle') }}
+        </div>
         <div class="kyc-status-item">
           <span class="kyc-status-dot warning" />
           <span>{{ t('auth.kyc.statusPending') }}</span>
@@ -294,93 +290,175 @@ async function handleRetry(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  display: flex; flex-direction: column;
-  min-height: 100vh; min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-page);
 }
 .auth-header {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-4) var(--space-5);
 }
 .auth-content {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: var(--space-5); overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  overflow-y: auto;
 }
 .auth-title {
-  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: var(--space-2); text-align: center;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  text-align: center;
 }
 .auth-subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  text-align: center;
+  line-height: 1.5;
 }
 .auth-error {
-  font-size: var(--fs-xs); color: var(--danger); text-align: center;
-  margin-bottom: var(--space-4); max-width: var(--maxw-form);
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  text-align: center;
+  margin-bottom: var(--space-4);
+  max-width: var(--maxw-form);
 }
 
-.kyc-icon { display: flex; justify-content: center; margin-bottom: var(--space-6); }
+.kyc-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-6);
+}
 
 .kyc-status-card {
-  width: 100%; max-width: var(--maxw-form); border-radius: var(--radius-lg);
-  padding: var(--space-6) var(--space-5); text-align: center; margin-bottom: var(--space-5);
+  width: 100%;
+  max-width: var(--maxw-form);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  margin-bottom: var(--space-5);
 }
 .kyc-status-card.pending {
-  background: var(--warning-subtle); border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--warning-subtle);
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 .kyc-status-card.approved {
-  background: var(--success-subtle); border: 1px solid rgba(34, 197, 94, 0.3);
+  background: var(--success-subtle);
+  border: 1px solid rgba(34, 197, 94, 0.3);
 }
 .kyc-status-card.rejected {
-  background: var(--danger-subtle); border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--danger-subtle);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.kyc-card-icon { display: flex; justify-content: center; margin-bottom: var(--space-4); }
-.kyc-card-title { font-size: var(--fs-lg); font-weight: 700; margin-bottom: var(--space-2); }
-.kyc-card-text { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; }
+.kyc-card-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+.kyc-card-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+.kyc-card-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
 
-.kyc-actions { width: 100%; max-width: var(--maxw-form); }
+.kyc-actions {
+  width: 100%;
+  max-width: var(--maxw-form);
+}
 
 .kyc-statuses {
-  margin-top: var(--space-6); width: 100%; max-width: var(--maxw-form);
-  padding: var(--space-4); background: var(--bg-surface);
+  margin-top: var(--space-6);
+  width: 100%;
+  max-width: var(--maxw-form);
+  padding: var(--space-4);
+  background: var(--bg-surface);
   border-radius: var(--radius-md);
 }
 .kyc-statuses-title {
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
   margin-bottom: var(--space-2);
 }
 .kyc-status-item {
-  display: flex; align-items: center; gap: var(--space-2);
-  font-size: var(--fs-xs); color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
   margin-bottom: var(--space-2);
 }
-.kyc-status-item:last-child { margin-bottom: 0; }
+.kyc-status-item:last-child {
+  margin-bottom: 0;
+}
 .kyc-status-dot {
-  width: 10px; height: 10px; min-width: 10px;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
   border-radius: 50%;
 }
-.kyc-status-dot.warning { background: var(--warning); }
-.kyc-status-dot.success { background: var(--success); }
-.kyc-status-dot.danger { background: var(--danger); }
-
-.btn { width: 100%; }
-.btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: var(--space-4); border-radius: var(--radius-md);
-  background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
-  border: none; cursor: pointer;
+.kyc-status-dot.warning {
+  background: var(--warning);
 }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.kyc-status-dot.success {
+  background: var(--success);
+}
+.kyc-status-dot.danger {
+  background: var(--danger);
+}
+
+.btn {
+  width: 100%;
+}
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-spinner {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: var(--size-2xs); height: var(--size-2xs); border: 2px solid currentColor; opacity: 0.35;
-  border-top-color: currentColor; border-radius: 50%;
+  width: var(--size-2xs);
+  height: var(--size-2xs);
+  border: 2px solid currentColor;
+  opacity: 0.35;
+  border-top-color: currentColor;
+  border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>

@@ -53,7 +53,9 @@ function walk(dir, out = []) {
   return out
 }
 
-const allFiles = walk(SRC).filter((f) => f.endsWith('.vue') || f.endsWith('.ts') || f.endsWith('.css'))
+const allFiles = walk(SRC).filter(
+  (f) => f.endsWith('.vue') || f.endsWith('.ts') || f.endsWith('.css'),
+)
 const fileText = new Map(allFiles.map((f) => [f, readFileSync(f, 'utf8')]))
 
 function styleBlock(text) {
@@ -134,7 +136,8 @@ function parseEmits(script) {
   const sl = braceSlice(script, i)
   if (!sl) return []
   const out = []
-  for (const m of sl.body.matchAll(/'([^']+)'\s*:\s*\[([^\]]*)\]/g)) out.push(`${m[1]}: [${m[2].trim()}]`)
+  for (const m of sl.body.matchAll(/'([^']+)'\s*:\s*\[([^\]]*)\]/g))
+    out.push(`${m[1]}: [${m[2].trim()}]`)
   return out
 }
 
@@ -157,7 +160,9 @@ function parseModifiers(style) {
 // --------------------------------------------------------------------------
 // component inventory
 
-const uiFiles = readdirSync(UI).filter((f) => f.endsWith('.vue')).sort()
+const uiFiles = readdirSync(UI)
+  .filter((f) => f.endsWith('.vue'))
+  .sort()
 const components = uiFiles.map((f) => {
   const path = join(UI, f)
   const text = readFileSync(path, 'utf8')
@@ -188,13 +193,16 @@ const components = uiFiles.map((f) => {
   }
 
   return {
-    name, file: relative(REPO, path).replace(/\\/g, '/'),
+    name,
+    file: relative(REPO, path).replace(/\\/g, '/'),
     purpose: purpose.trim(),
-    props, parsed,
+    props,
+    parsed,
     emits: parseEmits(script),
     slots: parseSlots(template),
     modifiers: parseModifiers(style),
-    uses, users: users.sort(),
+    uses,
+    users: users.sort(),
   }
 })
 
@@ -223,7 +231,8 @@ const tokenGroups = []
 
 // a token declared more than once is theme-dependent (light block + dark block)
 const declCount = new Map()
-for (const g of tokenGroups) for (const t of g.tokens) declCount.set(t.name, (declCount.get(t.name) || 0) + 1)
+for (const g of tokenGroups)
+  for (const t of g.tokens) declCount.set(t.name, (declCount.get(t.name) || 0) + 1)
 
 // which tokens does nothing reference?
 const allText = [...fileText.values()].join('\n')
@@ -240,7 +249,9 @@ const rawControlSites = []
 for (const [fp, t] of fileText) {
   if (!fp.endsWith('.vue')) continue
   if (fp.includes(join('components', 'ui'))) continue
-  const tpl = (t.match(/<template>([\s\S]*)/) || ['', ''])[1].split('<style')[0].replace(/<!--[\s\S]*?-->/g, '')
+  const tpl = (t.match(/<template>([\s\S]*)/) || ['', ''])[1]
+    .split('<style')[0]
+    .replace(/<!--[\s\S]*?-->/g, '')
   for (const m of tpl.matchAll(/<\s*(input|select|textarea)(?=[\s/>])([^>]*)/g)) {
     const typeM = m[2].match(/type="([^"]+)"/)
     rawControlSites.push({
@@ -273,12 +284,18 @@ p('> ```')
 p('>')
 p('> Any edit made here is lost on the next run. Change the SOURCE instead.')
 p()
-p(`**Generated:** ${now} · **Components:** ${components.length} · ` +
-  `**Tokens:** ${declCount.size} distinct (${[...declCount.values()].reduce((a, b) => a + b, 0)} declarations, ` +
-  `the extra ones being theme overrides)`)
+p(
+  `**Generated:** ${now} · **Components:** ${components.length} · ` +
+    `**Tokens:** ${declCount.size} distinct (${[...declCount.values()].reduce((a, b) => a + b, 0)} declarations, ` +
+    `the extra ones being theme overrides)`,
+)
 p()
-p('**Audience: an agent working in this repository.** It answers three questions that otherwise cost a')
-p('full read of `components/ui/`: what exists, what each thing accepts, and **what does not exist at all**.')
+p(
+  '**Audience: an agent working in this repository.** It answers three questions that otherwise cost a',
+)
+p(
+  'full read of `components/ui/`: what exists, what each thing accepts, and **what does not exist at all**.',
+)
 p()
 p('---')
 p()
@@ -293,8 +310,12 @@ for (const c of components) {
 p()
 const unused = components.filter((c) => c.uses === 0)
 if (unused.length) {
-  p(`**⚠ USED BY NOTHING: ${unused.map((c) => '`' + c.name + '`').join(', ')}.** A component with no`)
-  p('callers accumulates defects unnoticed — `CCard` and `CDivider` both had, and both were deleted for it.')
+  p(
+    `**⚠ USED BY NOTHING: ${unused.map((c) => '`' + c.name + '`').join(', ')}.** A component with no`,
+  )
+  p(
+    'callers accumulates defects unnoticed — `CCard` and `CDivider` both had, and both were deleted for it.',
+  )
 } else {
   p('**Every component has at least one caller.**')
 }
@@ -307,7 +328,9 @@ for (const c of components) {
   if (c.purpose) p(`> ${c.purpose}`)
   p()
   if (!c.parsed) {
-    p('**⚠ PROPS UNPARSED** — this component no longer matches the conventions this generator reads.')
+    p(
+      '**⚠ PROPS UNPARSED** — this component no longer matches the conventions this generator reads.',
+    )
     p('Listed anyway rather than omitted, so the gap is visible. Read the file directly.')
   } else if (!c.props.length) {
     p('**Props:** none.')
@@ -315,7 +338,9 @@ for (const c of components) {
     p('| Prop | Type | Required | Default |')
     p('|---|---|---|---|')
     for (const pr of c.props) {
-      p(`| \`${pr.name}\` | \`${cell(pr.type)}\` | ${pr.required ? '**yes**' : 'no'} | ${pr.default ? '`' + cell(pr.default) + '`' : '—'} |`)
+      p(
+        `| \`${pr.name}\` | \`${cell(pr.type)}\` | ${pr.required ? '**yes**' : 'no'} | ${pr.default ? '`' + cell(pr.default) + '`' : '—'} |`,
+      )
     }
   }
   p()
@@ -324,8 +349,11 @@ for (const c of components) {
   if (c.slots.hasDefault) slotBits.push('default')
   for (const n of c.slots.named) slotBits.push(`\`${n}\``)
   if (slotBits.length) p(`**Slots:** ${slotBits.join(', ')}`)
-  if (c.modifiers.length) p(`**Variant classes:** ${c.modifiers.map((m) => '`.' + m + '`').join(' · ')}`)
-  p(`**Used by ${c.uses} file(s)**${c.uses && c.uses <= 8 ? ': ' + c.users.map((u) => '`' + u + '`').join(', ') : ''}`)
+  if (c.modifiers.length)
+    p(`**Variant classes:** ${c.modifiers.map((m) => '`.' + m + '`').join(' · ')}`)
+  p(
+    `**Used by ${c.uses} file(s)**${c.uses && c.uses <= 8 ? ': ' + c.users.map((u) => '`' + u + '`').join(', ') : ''}`,
+  )
   p()
 }
 
@@ -333,8 +361,12 @@ p('---')
 p()
 p('## 2. Tokens')
 p()
-p('Values are as declared in the **light/base** block. A token marked **±theme** is declared more than')
-p('once, meaning a dark-theme or media-query block overrides it — resolve it at runtime, do not assume')
+p(
+  'Values are as declared in the **light/base** block. A token marked **±theme** is declared more than',
+)
+p(
+  'once, meaning a dark-theme or media-query block overrides it — resolve it at runtime, do not assume',
+)
 p('the value below applies in every theme.')
 p()
 for (const g of tokenGroups) {
@@ -353,11 +385,20 @@ for (const g of tokenGroups) {
 }
 
 if (unusedTokens.length) {
-  p(`**⚠ DECLARED BUT REFERENCED BY NOTHING (${unusedTokens.length}):** ` +
-    unusedTokens.sort().map((t) => '`' + t + '`').join(', '))
+  p(
+    `**⚠ DECLARED BUT REFERENCED BY NOTHING (${unusedTokens.length}):** ` +
+      unusedTokens
+        .sort()
+        .map((t) => '`' + t + '`')
+        .join(', '),
+  )
   p()
-  p('A token nothing uses is either a gap waiting to be filled or dead weight. `--font-mono` sat in this')
-  p('state while twelve raw monospace stacks lived in the views, so the answer is not automatically')
+  p(
+    'A token nothing uses is either a gap waiting to be filled or dead weight. `--font-mono` sat in this',
+  )
+  p(
+    'state while twelve raw monospace stacks lived in the views, so the answer is not automatically',
+  )
   p('"delete it" — check whether something should have been using it.')
   p()
 }
@@ -366,7 +407,9 @@ p('---')
 p()
 p('## 3. What does NOT exist')
 p()
-p('**The expensive discovery is not which component to use — it is that there is none.** Every raw form')
+p(
+  '**The expensive discovery is not which component to use — it is that there is none.** Every raw form',
+)
 p('control still living outside the kit is listed below, derived from the templates.')
 p()
 if (!rawControlSites.length) {
@@ -378,32 +421,50 @@ if (!rawControlSites.length) {
     p(`| \`${r.file}\` | \`<${r.tag} type="${r.type}">\` |`)
   }
   p()
-  p('**WHY each one is still raw is NOT derivable from source and is therefore not asserted here.**')
-  p('It is recorded in `BATCH-PLAN.md`. As of the last audit: a 6-box OTP control and a `display:none`')
+  p(
+    '**WHY each one is still raw is NOT derivable from source and is therefore not asserted here.**',
+  )
+  p(
+    'It is recorded in `BATCH-PLAN.md`. As of the last audit: a 6-box OTP control and a `display:none`',
+  )
   p('file picker, neither of which the kit has a component for.')
 }
 p()
 p('**No component exists for:** a chip / segmented nav row · a navigation tile (icon + title +')
-p('description + chevron) · a file input · a multi-box OTP / code entry · a date or datetime picker')
+p(
+  'description + chevron) · a file input · a multi-box OTP / code entry · a date or datetime picker',
+)
 p('(`CInput` carries the native `type` through instead) · a table.')
-p('**Confirm against section 1 before concluding one is missing — this list is written, not derived,**')
+p(
+  '**Confirm against section 1 before concluding one is missing — this list is written, not derived,**',
+)
 p('and is the one part of this document that can go stale.')
 p()
 p('---')
 p()
 p('## 4. Conventions that are not visible in the props')
 p()
-p('- **Attribute pass-through.** `CInput` and `CTextarea` set `inheritAttrs: false` and bind everything')
+p(
+  '- **Attribute pass-through.** `CInput` and `CTextarea` set `inheritAttrs: false` and bind everything',
+)
 p('  except `class`/`style` onto the CONTROL. `disabled`, `step`, `min`, `inputmode`, `readonly`,')
-p('  `spellcheck` and listeners reach the input; `class` and `style` stay on the group wrapper, so a')
+p(
+  '  `spellcheck` and listeners reach the input; `class` and `style` stay on the group wrapper, so a',
+)
 p('  consumer can still position the field. `CSelect` does NOT do this yet.')
-p('- **Label association.** `CInput`, `CSelect` and `CTextarea` pair label and control with `useId()`.')
+p(
+  '- **Label association.** `CInput`, `CSelect` and `CTextarea` pair label and control with `useId()`.',
+)
 p('  Pass the `label` prop rather than rendering your own `<label>` — a visible caption is not an')
 p('  accessible name unless it is associated.')
-p('- **Field spacing.** Each field group carries `margin-bottom: var(--space-4)`. Inside a container that')
+p(
+  '- **Field spacing.** Each field group carries `margin-bottom: var(--space-4)`. Inside a container that',
+)
 p('  supplies its own rhythm (a flex column with a `gap`), zero it with a class on the component.')
-p('- **Scoped styles reach a child root.** A class passed to a component lands on its root element and')
-p('  the parent\'s scoped CSS applies to it.')
+p(
+  '- **Scoped styles reach a child root.** A class passed to a component lands on its root element and',
+)
+p("  the parent's scoped CSS applies to it.")
 p()
 
 writeFileSync(OUT, L.join('\n'), 'utf8')

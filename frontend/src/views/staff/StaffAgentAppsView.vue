@@ -9,7 +9,11 @@ import { useI18n } from 'vue-i18n'
 import { FileText, Check, X } from 'lucide-vue-next'
 import { CAvatar, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
-import { fetchAgentApplications, approveAgentApplication, rejectAgentApplication } from '@/api/admin'
+import {
+  fetchAgentApplications,
+  approveAgentApplication,
+  rejectAgentApplication,
+} from '@/api/admin'
 import type { AgentApplicationResponse } from '@/api/types'
 
 const { t } = useI18n()
@@ -46,7 +50,7 @@ async function handleApprove(item: AgentApplicationResponse): Promise<void> {
   try {
     await approveAgentApplication(item.id)
     showToast(t('staff.agentApps2.approved'), 'success')
-    items.value = items.value.filter(i => i.id !== item.id)
+    items.value = items.value.filter((i) => i.id !== item.id)
   } catch {
     showToast(t('common.error'), 'error')
   } finally {
@@ -69,7 +73,7 @@ async function handleReject(): Promise<void> {
   try {
     await rejectAgentApplication(id, { reason: rejectReason.value })
     showToast(t('staff.agentApps2.rejected'), 'success')
-    items.value = items.value.filter(i => i.id !== id)
+    items.value = items.value.filter((i) => i.id !== id)
     showRejectModal.value = false
   } catch {
     showToast(t('common.error'), 'error')
@@ -97,21 +101,21 @@ onMounted(loadQueue)
 
     <!-- Error -->
     <div v-else-if="error" class="staff-apps__center">
-      <CButton variant="secondary" size="sm" @click="loadQueue">{{ t('common.retry') }}</CButton>
+      <CButton variant="secondary" size="sm" @click="loadQueue">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.agentApps2.noQueue')">
-      <template #icon><FileText :size="40" /></template>
+      <template #icon>
+        <FileText :size="40" />
+      </template>
     </CEmptyState>
 
     <!-- Queue -->
     <div v-else class="apps-list">
-      <div
-        v-for="item in items"
-        :key="item.id"
-        class="app-item"
-      >
+      <div v-for="item in items" :key="item.id" class="app-item">
         <CAvatar :name="item.user_id.slice(0, 8)" :size="40" />
         <div class="app-item__info">
           <div class="app-item__name">{{ item.user_id.slice(0, 8) }}…</div>
@@ -143,67 +147,136 @@ onMounted(loadQueue)
 
     <!-- Reject modal -->
     <CModal :open="showRejectModal" @close="showRejectModal = false">
-      <h3 class="reject__title">{{ t('staff.agentApps2.reject') }}</h3>
+      <h3 class="reject__title">
+        {{ t('staff.agentApps2.reject') }}
+      </h3>
       <CInput
         v-model="rejectReason"
         :label="t('staff.agentApps2.rejectReason')"
         :placeholder="t('staff.agentApps2.rejectReason')"
       />
       <div class="reject__actions">
-        <CButton variant="outline" size="sm" @click="showRejectModal = false">{{ t('common.cancel') }}</CButton>
+        <CButton variant="outline" size="sm" @click="showRejectModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
         <CButton
-          variant="danger" size="sm"
+          variant="danger"
+          size="sm"
           :loading="rejectLoading"
           :disabled="!rejectReason.trim()"
           @click="handleReject"
-        >{{ t('staff.agentApps2.reject') }}</CButton>
+        >
+          {{ t('staff.agentApps2.reject') }}
+        </CButton>
       </div>
     </CModal>
   </div>
 </template>
 
 <style scoped>
-.staff-apps { padding: var(--space-4); }
+.staff-apps {
+  padding: var(--space-4);
+}
 
 .staff-apps__hint {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-3); background: var(--bg-surface); border-radius: var(--radius-md);
-  margin-bottom: var(--space-4); font-size: var(--fs-xs); color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
 }
 
 .staff-apps__center {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: var(--center-md); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-md);
+  gap: var(--space-4);
 }
 
-.apps-list { display: flex; flex-direction: column; }
+.apps-list {
+  display: flex;
+  flex-direction: column;
+}
 .app-item {
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default);
 }
-.app-item__info { flex: 1; min-width: 0; }
-.app-item__name { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); }
-.app-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); text-transform: capitalize; }
+.app-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.app-item__name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+.app-item__detail {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+}
 /* A5: the gap is 12px, not 4, and the reason is arithmetic rather than taste.
    These buttons are painted 32px and carry a 44px hit overlay; at a 4px gap
    the pitch was 36 and ADJACENT OVERLAYS OVERLAPPED BY 8px, so the upper one
    swallowed its neighbour's edge and half the row still failed a hit test.
    32 + 12 = 44 makes each target own its full area with nothing to spare. */
-.app-item__actions { display: flex; gap: var(--space-3); flex-shrink: 0; }
+.app-item__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
 
 .app-btn {
-  width: var(--size-md); height: var(--size-md); border-radius: var(--radius-sm); border: none;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  width: var(--size-md);
+  height: var(--size-md);
+  border-radius: var(--radius-sm);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   transition: opacity 0.2s;
 }
-.app-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.app-btn--approve { background: var(--success); color: var(--on-success); }
-.app-btn--approve:hover:not(:disabled) { opacity: 0.9; }
-.app-btn--reject { background: var(--danger); color: var(--on-danger); }
-.app-btn--reject:hover:not(:disabled) { opacity: 0.9; }
+.app-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.app-btn--approve {
+  background: var(--success);
+  color: var(--on-success);
+}
+.app-btn--approve:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.app-btn--reject {
+  background: var(--danger);
+  color: var(--on-danger);
+}
+.app-btn--reject:hover:not(:disabled) {
+  opacity: 0.9;
+}
 
-.reject__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
-.reject__actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
+.reject__title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.reject__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
    so this rule cannot bind until the container is already wider than a
@@ -212,7 +285,9 @@ onMounted(loadQueue)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.staff-apps__hint { max-width: var(--maxw-prose); }
+.staff-apps__hint {
+  max-width: var(--maxw-prose);
+}
 
 /* A5: this control is deliberately 32px to sit right in its row, so the PAINTED
    box stays and the HIT AREA is expanded past it instead. The overlay is

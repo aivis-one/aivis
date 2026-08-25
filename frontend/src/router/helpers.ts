@@ -38,15 +38,11 @@ export type Shell = 'investor' | 'agent' | 'company' | 'staff'
  * Returns undefined for public / auth / onboarding routes that live
  * outside any shell.
  */
-export function getShell(
-  route: RouteLocationNormalizedLoaded,
-): Shell | undefined {
+export function getShell(route: RouteLocationNormalizedLoaded): Shell | undefined {
   return route.meta.shell
 }
 
 /** True when the current route is nested under /agent. */
-export function isAgentShell(
-  route: RouteLocationNormalizedLoaded,
-): boolean {
+export function isAgentShell(route: RouteLocationNormalizedLoaded): boolean {
   return getShell(route) === 'agent'
 }

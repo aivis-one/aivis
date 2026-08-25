@@ -61,7 +61,16 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Clock } from 'lucide-vue-next'
-import { CAvatar, CBadge, CLoader, CButton, CModal, CEmptyState, CInput, CCheckbox } from '@/components/ui'
+import {
+  CAvatar,
+  CBadge,
+  CLoader,
+  CButton,
+  CModal,
+  CEmptyState,
+  CInput,
+  CCheckbox,
+} from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import {
@@ -73,11 +82,7 @@ import {
   approveKYC,
   rejectKYC,
 } from '@/api/admin'
-import type {
-  UpdatePermissionsRequest,
-  UserListItem,
-  UserDetailResponse,
-} from '@/api/types'
+import type { UpdatePermissionsRequest, UserListItem, UserDetailResponse } from '@/api/types'
 
 // PermissionKey derived from the backend schema -- single source of
 // truth. Required<> strips the `?` so `keyof` returns every permission
@@ -118,12 +123,7 @@ void _permissionKeysExhaustive
 
 // KYC status filter chip values. Backend ?kyc_status= accepts these
 // exact strings (KYCStatus StrEnum, 422 on anything else).
-const ALL_KYC_STATUSES = [
-  'not_started',
-  'submitted',
-  'approved',
-  'rejected',
-] as const
+const ALL_KYC_STATUSES = ['not_started', 'submitted', 'approved', 'rejected'] as const
 type KYCStatus = (typeof ALL_KYC_STATUSES)[number]
 
 const { t } = useI18n()
@@ -139,6 +139,21 @@ const canDoKycApprove = canDo('kyc_approve')
 const items = ref<UserListItem[]>([])
 const total = ref(0)
 const page = ref(1)
+
+// Pagination steps are a NAMED CALL, not a two-statement inline expression.
+// `@click="page--; loadUsers()"` is two statements in a template
+// expression; prettier reflows it across lines and drops the semicolon, and
+// Vue's expression parser cannot read the result -- the build fails outright.
+// Measured on 2026-08-25, not predicted.
+function goToPrevPage(): void {
+  page.value--
+  void loadUsers()
+}
+
+function goToNextPage(): void {
+  page.value++
+  void loadUsers()
+}
 const perPage = 20
 const roleFilter = ref('')
 // The staff dashboard's KYC card and alert banner deep-link here, because
@@ -387,29 +402,36 @@ onMounted(loadUsers)
          the two filters compose at the backend boundary. -->
     <div class="staff-users__filters">
       <div class="staff-users__filter-row">
-        <button
-          class="filter-chip" :class="{ active: !roleFilter }"
-          @click="setRoleFilter('')"
-        >{{ t('common.all') }}</button>
+        <button class="filter-chip" :class="{ active: !roleFilter }" @click="setRoleFilter('')">
+          {{ t('common.all') }}
+        </button>
         <button
           v-for="r in ['investor', 'agent', 'company', 'staff']"
           :key="r"
-          class="filter-chip" :class="{ active: roleFilter === r }"
+          class="filter-chip"
+          :class="{ active: roleFilter === r }"
           @click="setRoleFilter(r)"
-        >{{ r }}</button>
+        >
+          {{ r }}
+        </button>
       </div>
       <div class="staff-users__filter-row">
         <button
-          class="filter-chip filter-chip--kyc" :class="{ active: !kycStatusFilter }"
+          class="filter-chip filter-chip--kyc"
+          :class="{ active: !kycStatusFilter }"
           @click="setKycStatusFilter('')"
-        >{{ t('staff.userDetail.kyc.filterAll') }}</button>
+        >
+          {{ t('staff.userDetail.kyc.filterAll') }}
+        </button>
         <button
           v-for="s in ALL_KYC_STATUSES"
           :key="s"
           class="filter-chip filter-chip--kyc"
           :class="{ active: kycStatusFilter === s }"
           @click="setKycStatusFilter(s)"
-        >{{ t(`staff.userDetail.kyc.filter.${s}`) }}</button>
+        >
+          {{ t(`staff.userDetail.kyc.filter.${s}`) }}
+        </button>
       </div>
     </div>
 
@@ -420,7 +442,9 @@ onMounted(loadUsers)
 
     <!-- Error -->
     <div v-else-if="error" class="staff-users__center">
-      <CButton variant="secondary" size="sm" @click="loadUsers">{{ t('common.retry') }}</CButton>
+      <CButton variant="secondary" size="sm" @click="loadUsers">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- Empty -->
@@ -438,10 +462,10 @@ onMounted(loadUsers)
         >
           <CAvatar :name="fullName(item)" :size="40" />
           <div class="user-item__info">
-            <div class="user-item__name">{{ fullName(item) }}</div>
-            <div class="user-item__detail">
-              {{ item.role }} &bull; {{ item.email ?? '—' }}
+            <div class="user-item__name">
+              {{ fullName(item) }}
             </div>
+            <div class="user-item__detail">{{ item.role }} &bull; {{ item.email ?? '—' }}</div>
           </div>
           <div class="user-item__right">
             <CBadge :variant="kycVariant(item.kyc_status)" :text="item.kyc_status" />
@@ -454,27 +478,25 @@ onMounted(loadUsers)
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="staff-users__pagination">
-        <CButton
-          variant="outline" size="sm"
-          :disabled="page <= 1"
-          @click="page--; loadUsers()"
-        >&larr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
+          &larr;
+        </CButton>
         <span class="staff-users__page">{{ page }} / {{ totalPages }}</span>
-        <CButton
-          variant="outline" size="sm"
-          :disabled="page >= totalPages"
-          @click="page++; loadUsers()"
-        >&rarr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
+          &rarr;
+        </CButton>
       </div>
     </template>
 
     <!-- Detail modal -->
     <CModal :open="showDetail" @close="showDetail = false">
-      <div v-if="detailLoading" class="staff-users__center" style="min-height:200px">
+      <div v-if="detailLoading" class="staff-users__center" style="min-height: 200px">
         <CLoader :size="24" />
       </div>
       <template v-else-if="detailUser">
-        <h3 class="detail__title">{{ t('staff.userDetail.title') }}</h3>
+        <h3 class="detail__title">
+          {{ t('staff.userDetail.title') }}
+        </h3>
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.role') }}</span>
           <CBadge :variant="roleVariant(detailUser.role)" :text="detailUser.role" />
@@ -483,7 +505,9 @@ onMounted(loadUsers)
           <span class="detail__label">{{ t('staff.userDetail.status') }}</span>
           <CBadge
             :variant="detailUser.is_active ? 'success' : 'danger'"
-            :text="detailUser.is_active ? t('staff.userDetail.active') : t('staff.userDetail.blocked')"
+            :text="
+              detailUser.is_active ? t('staff.userDetail.active') : t('staff.userDetail.blocked')
+            "
           />
         </div>
         <div class="detail__row">
@@ -497,7 +521,7 @@ onMounted(loadUsers)
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.registered') }}</span>
           <span class="detail__value">
-            <Clock :size="16" style="vertical-align:-1px" />
+            <Clock :size="16" style="vertical-align: -1px" />
             {{ formatDate(detailUser.created_at) }}
           </span>
         </div>
@@ -514,11 +538,10 @@ onMounted(loadUsers)
                2. handlers re-check + console.warn before firing.
              Buttons further restricted to status=submitted -- terminal
              statuses show only history. -->
-        <div
-          v-if="detailUser.latest_application_id"
-          class="detail__section"
-        >
-          <h4 class="detail__subtitle">{{ t('staff.userDetail.kyc.sectionTitle') }}</h4>
+        <div v-if="detailUser.latest_application_id" class="detail__section">
+          <h4 class="detail__subtitle">
+            {{ t('staff.userDetail.kyc.sectionTitle') }}
+          </h4>
 
           <div class="detail__row">
             <span class="detail__label">{{ t('staff.userDetail.kyc.latestStatus') }}</span>
@@ -532,10 +555,7 @@ onMounted(loadUsers)
                latest row (already shown above). 2+ rows means the user
                has re-submitted at least once -- R1 §3 "история re-submits
                если есть". -->
-          <div
-            v-if="detailUser.kyc_applications_history.length > 1"
-            class="kyc-history"
-          >
+          <div v-if="detailUser.kyc_applications_history.length > 1" class="kyc-history">
             <div class="kyc-history__title">
               {{ t('staff.userDetail.kyc.historyTitle') }}
             </div>
@@ -557,10 +577,7 @@ onMounted(loadUsers)
                Terminal statuses (approved / rejected) leave the section
                in read-only form. -->
           <div
-            v-if="
-              detailUser.latest_application_status === 'submitted'
-              && canDoKycApprove
-            "
+            v-if="detailUser.latest_application_status === 'submitted' && canDoKycApprove"
             class="detail__actions"
           >
             <CButton
@@ -568,24 +585,21 @@ onMounted(loadUsers)
               size="sm"
               :loading="kycActionLoading"
               @click="handleKycApprove"
-            >{{ t('staff.userDetail.kyc.approve') }}</CButton>
-            <CButton
-              variant="danger"
-              size="sm"
-              :disabled="kycActionLoading"
-              @click="openKycReject"
-            >{{ t('staff.userDetail.kyc.reject') }}</CButton>
+            >
+              {{ t('staff.userDetail.kyc.approve') }}
+            </CButton>
+            <CButton variant="danger" size="sm" :disabled="kycActionLoading" @click="openKycReject">
+              {{ t('staff.userDetail.kyc.reject') }}
+            </CButton>
           </div>
         </div>
 
         <!-- Staff permissions (if staff) -->
         <div v-if="detailUser.staff_profile" class="detail__section">
-          <h4 class="detail__subtitle">{{ t('staff.userDetail.permissions') }}</h4>
-          <div
-            v-for="key in ALL_PERMISSION_KEYS"
-            :key="key"
-            class="detail__perm"
-          >
+          <h4 class="detail__subtitle">
+            {{ t('staff.userDetail.permissions') }}
+          </h4>
+          <div v-for="key in ALL_PERMISSION_KEYS" :key="key" class="detail__perm">
             <CCheckbox
               :model-value="!!detailUser.staff_profile.permissions[key]"
               @update:model-value="(v: boolean) => setPermission(key, v)"
@@ -599,40 +613,62 @@ onMounted(loadUsers)
         <div class="detail__actions">
           <CButton
             v-if="detailUser.is_active && detailUser.role !== 'staff'"
-            variant="danger" size="sm"
+            variant="danger"
+            size="sm"
             @click="showBlockModal = true"
-          >{{ t('staff.userDetail.block') }}</CButton>
+          >
+            {{ t('staff.userDetail.block') }}
+          </CButton>
           <CButton
             v-if="detailUser.role !== 'staff'"
-            variant="secondary" size="sm"
+            variant="secondary"
+            size="sm"
             @click="showPromoteModal = true"
-          >{{ t('staff.userDetail.promoteToStaff') }}</CButton>
+          >
+            {{ t('staff.userDetail.promoteToStaff') }}
+          </CButton>
         </div>
       </template>
     </CModal>
 
     <!-- Block confirmation -->
     <CModal :open="showBlockModal" @close="showBlockModal = false">
-      <h3 class="detail__title">{{ t('staff.userDetail.block') }}</h3>
-      <p class="detail__confirm-text">{{ t('staff.userDetail.blockConfirm') }}</p>
+      <h3 class="detail__title">
+        {{ t('staff.userDetail.block') }}
+      </h3>
+      <p class="detail__confirm-text">
+        {{ t('staff.userDetail.blockConfirm') }}
+      </p>
       <CInput
         v-model="blockReason"
         :label="t('staff.userDetail.blockReason')"
         :placeholder="t('staff.userDetail.blockReason')"
       />
-      <div class="detail__actions" style="margin-top:16px">
-        <CButton variant="outline" size="sm" @click="showBlockModal = false">{{ t('common.cancel') }}</CButton>
-        <CButton variant="danger" size="sm" :loading="actionLoading" @click="handleBlock">{{ t('common.confirm') }}</CButton>
+      <div class="detail__actions" style="margin-top: 16px">
+        <CButton variant="outline" size="sm" @click="showBlockModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="danger" size="sm" :loading="actionLoading" @click="handleBlock">
+          {{ t('common.confirm') }}
+        </CButton>
       </div>
     </CModal>
 
     <!-- Promote confirmation -->
     <CModal :open="showPromoteModal" @close="showPromoteModal = false">
-      <h3 class="detail__title">{{ t('staff.userDetail.promoteToStaff') }}</h3>
-      <p class="detail__confirm-text">{{ t('staff.userDetail.promoteConfirm') }}</p>
-      <div class="detail__actions" style="margin-top:16px">
-        <CButton variant="outline" size="sm" @click="showPromoteModal = false">{{ t('common.cancel') }}</CButton>
-        <CButton variant="primary" size="sm" :loading="actionLoading" @click="handlePromote">{{ t('common.confirm') }}</CButton>
+      <h3 class="detail__title">
+        {{ t('staff.userDetail.promoteToStaff') }}
+      </h3>
+      <p class="detail__confirm-text">
+        {{ t('staff.userDetail.promoteConfirm') }}
+      </p>
+      <div class="detail__actions" style="margin-top: 16px">
+        <CButton variant="outline" size="sm" @click="showPromoteModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="primary" size="sm" :loading="actionLoading" @click="handlePromote">
+          {{ t('common.confirm') }}
+        </CButton>
       </div>
     </CModal>
 
@@ -640,50 +676,68 @@ onMounted(loadUsers)
          Reason is REQUIRED per R1 §3 -- the confirm button stays
          disabled while the trimmed input is empty. -->
     <CModal :open="showKycRejectModal" @close="showKycRejectModal = false">
-      <h3 class="detail__title">{{ t('staff.userDetail.kyc.reject') }}</h3>
-      <p class="detail__confirm-text">{{ t('staff.userDetail.kyc.rejectHint') }}</p>
+      <h3 class="detail__title">
+        {{ t('staff.userDetail.kyc.reject') }}
+      </h3>
+      <p class="detail__confirm-text">
+        {{ t('staff.userDetail.kyc.rejectHint') }}
+      </p>
       <CInput
         v-model="kycRejectReason"
         :label="t('staff.userDetail.kyc.rejectReason')"
         :placeholder="t('staff.userDetail.kyc.rejectReason')"
       />
-      <div class="detail__actions" style="margin-top:16px">
-        <CButton
-          variant="outline"
-          size="sm"
-          @click="showKycRejectModal = false"
-        >{{ t('common.cancel') }}</CButton>
+      <div class="detail__actions" style="margin-top: 16px">
+        <CButton variant="outline" size="sm" @click="showKycRejectModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
         <CButton
           variant="danger"
           size="sm"
           :disabled="!kycRejectReason.trim() || kycActionLoading"
           :loading="kycActionLoading"
           @click="handleKycReject"
-        >{{ t('staff.userDetail.kyc.reject') }}</CButton>
+        >
+          {{ t('staff.userDetail.kyc.reject') }}
+        </CButton>
       </div>
     </CModal>
   </div>
 </template>
 
 <style scoped>
-.staff-users { padding: var(--space-4); }
+.staff-users {
+  padding: var(--space-4);
+}
 
 /* iter 2.7 A5: filters are now two stacked rows (role + kyc_status).
    Each row scrolls horizontally on narrow viewports. */
 .staff-users__filters {
-  display: flex; flex-direction: column; gap: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   margin-bottom: var(--space-4);
 }
 .staff-users__filter-row {
-  display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1);
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
-  cursor: pointer; white-space: nowrap; text-transform: capitalize;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: capitalize;
   font-family: inherit;
 }
 
@@ -704,7 +758,11 @@ onMounted(loadUsers)
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
 }
-.filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.filter-chip.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
 
 /* Subtle visual distinction for KYC chips so the user can tell which
    row is which at a glance without reading. The kyc chips share the
@@ -713,39 +771,119 @@ onMounted(loadUsers)
   text-transform: none;
 }
 
-.user-list { display: flex; flex-direction: column; }
-.user-item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.2s;
+.user-list {
+  display: flex;
+  flex-direction: column;
 }
-.user-item:hover { background: var(--bg-subtle); }
-.user-item__info { flex: 1; min-width: 0; }
-.user-item__name { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
-.user-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); text-transform: capitalize; }
-.user-item__right { text-align: right; flex-shrink: 0; }
-.user-item__blocked { margin-top: var(--space-1); }
+.user-item {
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.user-item:hover {
+  background: var(--bg-subtle);
+}
+.user-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.user-item__name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.user-item__detail {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+}
+.user-item__right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.user-item__blocked {
+  margin-top: var(--space-1);
+}
 
 .staff-users__pagination {
-  display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
-.staff-users__page { font-size: var(--fs-xs); color: var(--text-secondary); }
+.staff-users__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
 
 .staff-users__center {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: var(--center-md); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-md);
+  gap: var(--space-4);
 }
 
 /* Detail modal */
-.detail__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
-.detail__subtitle { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: var(--space-4) 0 var(--space-2); }
-.detail__row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-2) 0; border-bottom: 1px solid var(--border-default); }
-.detail__label { font-size: var(--fs-xs); color: var(--text-secondary); }
-.detail__value { font-size: var(--fs-sm); color: var(--text-primary); }
-.detail__section { margin-top: var(--space-3); }
-.detail__perm { padding: var(--space-1) 0; }
-.detail__actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
-.detail__confirm-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-3); }
+.detail__title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.detail__subtitle {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.detail__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.detail__label {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.detail__value {
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+.detail__section {
+  margin-top: var(--space-3);
+}
+.detail__perm {
+  padding: var(--space-1) 0;
+}
+.detail__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+.detail__confirm-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-3);
+}
 
 /* KYC history timeline (iter 2.7 A5). */
 .kyc-history {
@@ -789,5 +927,7 @@ onMounted(loadUsers)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.detail__subtitle { max-width: var(--maxw-prose); }
+.detail__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

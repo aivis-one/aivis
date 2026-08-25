@@ -56,11 +56,7 @@ import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { getProduct } from '@/api/products'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import {
-  formatNumber,
-  formatPrice,
-  resolveCoverImage,
-} from '@/utils/format'
+import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 
@@ -126,10 +122,7 @@ function goBack(): void {
     return
   }
   const name = agentShell.value ? 'agent-companies' : 'investor-companies'
-  void safeNavigate(
-    router.push({ name }),
-    '[ProductDetailView] back fallback to companies list',
-  )
+  void safeNavigate(router.push({ name }), '[ProductDetailView] back fallback to companies list')
 }
 
 function buyNow(): void {
@@ -147,9 +140,7 @@ function buyNow(): void {
 function openInstallmentPlan(planId: string): void {
   if (!product.value) return
   if (available.value <= 0) return
-  const name = agentShell.value
-    ? 'agent-installment'
-    : 'investor-installment'
+  const name = agentShell.value ? 'agent-installment' : 'investor-installment'
   void safeNavigate(
     router.push({
       name,
@@ -191,10 +182,7 @@ onMounted(loadProduct)
            B3: button shape extracted to CBackLink; wrapper owns the
            margin so the button itself stays positioning-agnostic. -->
       <div class="pd__back-row">
-        <CBackLink
-          :label="t('inv.product.backLink')"
-          @click="goBack"
-        />
+        <CBackLink :label="t('inv.product.backLink')" @click="goBack" />
       </div>
 
       <!-- Hero with cover image -->
@@ -205,8 +193,12 @@ onMounted(loadProduct)
       >
         <Building v-if="!coverImage" :size="64" class="pd__hero-icon" />
         <div class="pd__hero-content">
-          <div class="pd__hero-company">{{ product.company_name }}</div>
-          <h1 class="pd__hero-title">{{ product.name }}</h1>
+          <div class="pd__hero-company">
+            {{ product.company_name }}
+          </div>
+          <h1 class="pd__hero-title">
+            {{ product.name }}
+          </h1>
         </div>
       </div>
 
@@ -232,7 +224,9 @@ onMounted(loadProduct)
             <div class="pd__stat-value">
               {{ formatNumber(available, locale) }}
             </div>
-            <div class="pd__stat-unit">{{ t('inv.available') }}</div>
+            <div class="pd__stat-unit">
+              {{ t('inv.available') }}
+            </div>
           </div>
         </div>
 
@@ -241,7 +235,9 @@ onMounted(loadProduct)
           <h2 class="pd__section-title">
             {{ t('inv.product.description') }}
           </h2>
-          <p class="pd__description">{{ product.description }}</p>
+          <p class="pd__description">
+            {{ product.description }}
+          </p>
         </section>
 
         <!-- Installment plans -- each card is a tappable CTA -->
@@ -249,10 +245,7 @@ onMounted(loadProduct)
           <h2 class="pd__section-title">
             {{ t('inv.product.installments') }}
           </h2>
-          <div
-            v-if="product.installments.length === 0"
-            class="pd__empty"
-          >
+          <div v-if="product.installments.length === 0" class="pd__empty">
             {{ t('inv.product.installmentsEmpty') }}
           </div>
           <ul v-else class="pd__plans">
@@ -269,10 +262,7 @@ onMounted(loadProduct)
               @keydown.space.prevent="openInstallmentPlan(plan.id)"
             >
               <span class="pd__plan-name">{{ plan.name }}</span>
-              <span
-                v-if="getPlanBonus(plan) > 0"
-                class="pd__plan-bonus"
-              >
+              <span v-if="getPlanBonus(plan) > 0" class="pd__plan-bonus">
                 {{
                   t('inv.product.installmentsBonus', {
                     n: getPlanBonus(plan),
@@ -286,17 +276,9 @@ onMounted(loadProduct)
         <!-- Primary CTA -- instant purchase. The installment CTA
              lives on the plan cards above (F4.2). -->
         <div class="pd__actions">
-          <CButton
-            variant="primary"
-            :disabled="available <= 0"
-            @click="buyNow"
-          >
+          <CButton variant="primary" :disabled="available <= 0" @click="buyNow">
             <ShoppingCart :size="16" />
-            {{
-              available > 0
-                ? t('inv.product.buy')
-                : t('inv.product.soldOut')
-            }}
+            {{ available > 0 ? t('inv.product.buy') : t('inv.product.soldOut') }}
           </CButton>
         </div>
       </div>
@@ -305,11 +287,16 @@ onMounted(loadProduct)
 </template>
 
 <style scoped>
-.pd { display: flex; flex-direction: column; }
+.pd {
+  display: flex;
+  flex-direction: column;
+}
 
 .pd__center {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-4);
   min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
@@ -332,12 +319,15 @@ onMounted(loadProduct)
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
-  display: flex; align-items: flex-end; justify-content: flex-start;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
   color: #fff;
 }
 .pd__hero::after {
   content: '';
-  position: absolute; inset: 0;
+  position: absolute;
+  inset: 0;
   background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.75));
   pointer-events: none;
 }
@@ -348,16 +338,20 @@ onMounted(loadProduct)
   justify-content: center;
   gap: var(--space-3);
 }
-.pd__hero--fallback::after { display: none; }
+.pd__hero--fallback::after {
+  display: none;
+}
 
 .pd__hero-icon {
-  position: relative; z-index: 1;
+  position: relative;
+  z-index: 1;
   color: var(--text-tertiary);
   stroke-width: 2;
 }
 
 .pd__hero-content {
-  position: relative; z-index: 2;
+  position: relative;
+  z-index: 2;
   padding: var(--space-4-lg);
   width: 100%;
 }
@@ -367,14 +361,16 @@ onMounted(loadProduct)
   padding: 0 var(--space-4-lg) var(--space-4-lg);
 }
 .pd__hero-company {
-  font-size: var(--fs-xs); font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   opacity: 0.85;
   margin-bottom: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 .pd__hero-title {
-  font-size: var(--fs-xl); font-weight: 700;
+  font-size: var(--fs-xl);
+  font-weight: 700;
   margin: 0;
   line-height: 1.3;
 }
@@ -382,7 +378,8 @@ onMounted(loadProduct)
 /* Body */
 .pd__body {
   padding: var(--space-4-lg);
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-5);
 }
 
@@ -405,19 +402,27 @@ onMounted(loadProduct)
   margin-bottom: var(--space-2);
 }
 .pd__stat-value {
-  font-size: var(--fs-h4); font-weight: 700;
+  font-size: var(--fs-h4);
+  font-weight: 700;
   color: var(--text-primary);
 }
-.pd__stat-value--price { color: var(--primary); }
+.pd__stat-value--price {
+  color: var(--primary);
+}
 .pd__stat-unit {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
   margin-top: var(--space-1);
 }
 
-.pd__section { display: flex; flex-direction: column; gap: var(--space-3); }
+.pd__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 .pd__section-title {
-  font-size: var(--fs-sm); font-weight: 700;
+  font-size: var(--fs-sm);
+  font-weight: 700;
   color: var(--text-primary);
   margin: 0;
   text-transform: uppercase;
@@ -467,7 +472,9 @@ onMounted(loadProduct)
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease,
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
     transform 0.05s ease;
 }
 .pd__plan:hover {
@@ -476,8 +483,7 @@ onMounted(loadProduct)
 .pd__plan:focus-visible {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px
-    color-mix(in srgb, var(--primary) 30%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 .pd__plan:active {
   transform: scale(0.99);
@@ -512,8 +518,12 @@ onMounted(loadProduct)
   padding-top: var(--space-2);
 }
 @media (min-width: 520px) {
-  .pd__actions { flex-direction: row; }
-  .pd__actions > * { flex: 1; }
+  .pd__actions {
+    flex-direction: row;
+  }
+  .pd__actions > * {
+    flex: 1;
+  }
 }
 
 /* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
@@ -527,7 +537,9 @@ onMounted(loadProduct)
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .pd__stats { max-width: calc(2 * var(--tile-max)); }
+  .pd__stats {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -537,5 +549,7 @@ onMounted(loadProduct)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.pd__description { max-width: var(--maxw-prose); }
+.pd__description {
+  max-width: var(--maxw-prose);
+}
 </style>

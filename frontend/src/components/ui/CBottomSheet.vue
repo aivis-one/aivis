@@ -52,13 +52,7 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
   <Teleport to="body">
     <Transition name="c-sheet">
       <div v-if="open" class="c-sheet-overlay" @click.self="onOverlay">
-        <div
-          ref="dialogEl"
-          class="c-sheet-dialog"
-          role="dialog"
-          aria-modal="true"
-          tabindex="-1"
-        >
+        <div ref="dialogEl" class="c-sheet-dialog" role="dialog" aria-modal="true" tabindex="-1">
           <div class="c-sheet-handle" />
           <button
             type="button"
@@ -70,7 +64,9 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
           </button>
           <div v-if="title || $slots.header" class="c-sheet-header">
             <slot name="header">
-              <h3 class="c-sheet-title">{{ title }}</h3>
+              <h3 class="c-sheet-title">
+                {{ title }}
+              </h3>
             </slot>
           </div>
           <div class="c-sheet-body">
@@ -84,9 +80,13 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 
 <style scoped>
 .c-sheet-overlay {
-  position: fixed; inset: 0; z-index: 1000;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 .c-sheet-close {
@@ -108,15 +108,20 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
   position: relative;
   background: var(--bg-page);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  width: 100%; max-width: 520px;
-  max-height: 85vh; max-height: 85dvh;
-  display: flex; flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: 85vh;
+  max-height: 85dvh;
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-deep);
 }
 
 .c-sheet-handle {
-  width: var(--size-xl); height: 4px;
-  background: var(--border-default); border-radius: var(--radius-pill);
+  width: var(--size-xl);
+  height: 4px;
+  background: var(--border-default);
+  border-radius: var(--radius-pill);
   margin: var(--space-2) auto var(--space-1);
   flex-shrink: 0;
 }
@@ -128,8 +133,10 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 }
 
 .c-sheet-title {
-  font-size: var(--fs-body); font-weight: 700;
-  color: var(--text-primary); margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
 }
 
 .c-sheet-body {
@@ -140,13 +147,19 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 
 /* Transition: overlay fades, dialog slides from the bottom. */
 .c-sheet-enter-active,
-.c-sheet-leave-active { transition: opacity 0.2s; }
+.c-sheet-leave-active {
+  transition: opacity 0.2s;
+}
 .c-sheet-enter-active .c-sheet-dialog,
 .c-sheet-leave-active .c-sheet-dialog {
   transition: transform 0.25s ease-out;
 }
 .c-sheet-enter-from,
-.c-sheet-leave-to { opacity: 0; }
+.c-sheet-leave-to {
+  opacity: 0;
+}
 .c-sheet-enter-from .c-sheet-dialog,
-.c-sheet-leave-to .c-sheet-dialog { transform: translateY(100%); }
+.c-sheet-leave-to .c-sheet-dialog {
+  transform: translateY(100%);
+}
 </style>

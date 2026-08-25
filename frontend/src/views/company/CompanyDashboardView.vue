@@ -95,13 +95,7 @@ import {
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
-import {
-  CButton,
-  CEmptyState,
-  CLoader,
-  CProgressBar,
-  CStatCard,
-} from '@/components/ui'
+import { CButton, CEmptyState, CLoader, CProgressBar, CStatCard } from '@/components/ui'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 import type { CompanyTransactionResponse, PoolEmbedResponse } from '@/api/types'
@@ -116,12 +110,8 @@ const dashboardStore = useCompanyDashboardStore()
 // Hero -- profile-derived
 // ---------------------------------------------------------------------------
 
-const companyName = computed<string>(
-  () => profileStore.profile?.name ?? '',
-)
-const logoUrl = computed<string | null>(
-  () => profileStore.profile?.logo_url ?? null,
-)
+const companyName = computed<string>(() => profileStore.profile?.name ?? '')
+const logoUrl = computed<string | null>(() => profileStore.profile?.logo_url ?? null)
 
 /**
  * Initials fallback when logo_url is null. Takes the first letter of
@@ -153,26 +143,16 @@ const initials = computed<string>(() => {
 const passiveConfirmed = computed<number>(
   () => dashboardStore.summary?.passive_balance.confirmed ?? 0,
 )
-const passiveFrozen = computed<number>(
-  () => dashboardStore.summary?.passive_balance.frozen ?? 0,
-)
+const passiveFrozen = computed<number>(() => dashboardStore.summary?.passive_balance.frozen ?? 0)
 const hasFrozen = computed<boolean>(() => passiveFrozen.value > 0)
 
-const totalRevenue = computed<number>(
-  () => dashboardStore.summary?.total_revenue_cents ?? 0,
-)
-const totalOptionsSold = computed<number>(
-  () => dashboardStore.summary?.total_options_sold ?? 0,
-)
-const productsCount = computed<number>(
-  () => dashboardStore.summary?.products_count ?? 0,
-)
+const totalRevenue = computed<number>(() => dashboardStore.summary?.total_revenue_cents ?? 0)
+const totalOptionsSold = computed<number>(() => dashboardStore.summary?.total_options_sold ?? 0)
+const productsCount = computed<number>(() => dashboardStore.summary?.products_count ?? 0)
 
 // pool is `PoolEmbedResponse | null | undefined` on the wire; coerce
 // the undefined case to null so the template's v-if check is clean.
-const pool = computed<PoolEmbedResponse | null>(
-  () => dashboardStore.summary?.pool ?? null,
-)
+const pool = computed<PoolEmbedResponse | null>(() => dashboardStore.summary?.pool ?? null)
 
 // recent_transactions is required (non-optional) on the response
 // schema, but we still default to [] so the v-for is safe in the
@@ -259,10 +239,7 @@ const initialLoading = computed<boolean>(() => {
   // Errors take priority over loading -- otherwise an errored fetch
   // that left its store ref null would loop in the loader forever.
   if (hasError.value) return false
-  return (
-    profileStore.profile === null
-    || dashboardStore.summary === null
-  )
+  return profileStore.profile === null || dashboardStore.summary === null
 })
 
 // ---------------------------------------------------------------------------
@@ -280,10 +257,7 @@ const initialLoading = computed<boolean>(() => {
  * and withdrawal.
  */
 async function loadAll(): Promise<void> {
-  await Promise.all([
-    profileStore.loadIfMissing(),
-    dashboardStore.refresh(),
-  ])
+  await Promise.all([profileStore.loadIfMissing(), dashboardStore.refresh()])
 }
 
 onMounted(() => {
@@ -310,25 +284,26 @@ onMounted(() => {
     <template v-else>
       <!-- Page header -->
       <div class="dash__header">
-        <h1 class="dash__title">{{ t('comp.dashboard.title') }}</h1>
-        <p class="dash__subtitle">{{ t('comp.dashboard.subtitle') }}</p>
+        <h1 class="dash__title">
+          {{ t('comp.dashboard.title') }}
+        </h1>
+        <p class="dash__subtitle">
+          {{ t('comp.dashboard.subtitle') }}
+        </p>
       </div>
 
       <!-- Hero -- company identity (logo + name) -->
       <div class="dash__hero">
         <div class="dash__hero-logo">
-          <img
-            v-if="logoUrl"
-            :src="logoUrl"
-            :alt="companyName"
-            class="dash__hero-logo-img"
-          />
+          <img v-if="logoUrl" :src="logoUrl" :alt="companyName" class="dash__hero-logo-img" />
           <div v-else class="dash__hero-logo-fallback">
             {{ initials }}
           </div>
         </div>
         <div class="dash__hero-text">
-          <div class="dash__hero-name">{{ companyName }}</div>
+          <div class="dash__hero-name">
+            {{ companyName }}
+          </div>
         </div>
       </div>
 
@@ -361,10 +336,7 @@ onMounted(() => {
             {{ t('comp.dashboard.pool.equity') }}
           </span>
         </div>
-        <CProgressBar
-          :value="pool.consumed"
-          :max="pool.total_options"
-        />
+        <CProgressBar :value="pool.consumed" :max="pool.total_options" />
         <div class="dash__pool-stats">
           <span>
             {{ formatNumber(pool.consumed, locale) }}
@@ -381,10 +353,7 @@ onMounted(() => {
 
       <!-- Metrics row -- 3 stat tiles -->
       <div class="dash__metrics">
-        <CStatCard
-          :value="formatPrice(totalRevenue)"
-          :label="t('comp.dashboard.metrics.revenue')"
-        >
+        <CStatCard :value="formatPrice(totalRevenue)" :label="t('comp.dashboard.metrics.revenue')">
           <template #icon>
             <TrendingUp :size="20" />
           </template>
@@ -413,19 +382,12 @@ onMounted(() => {
           {{ t('comp.dashboard.recent.title') }}
         </h2>
 
-        <p
-          v-if="recentTransactions.length === 0"
-          class="dash__recent-empty"
-        >
+        <p v-if="recentTransactions.length === 0" class="dash__recent-empty">
           {{ t('comp.dashboard.recent.empty') }}
         </p>
 
         <ul v-else class="dash__tx-list">
-          <li
-            v-for="tx in recentTransactions"
-            :key="tx.id"
-            class="dash__tx-item"
-          >
+          <li v-for="tx in recentTransactions" :key="tx.id" class="dash__tx-item">
             <div class="dash__tx-icon">
               <component :is="iconForType(tx.type)" :size="16" />
             </div>
@@ -434,10 +396,7 @@ onMounted(() => {
                 <span class="dash__tx-type">
                   {{ typeLabel(tx.type) }}
                 </span>
-                <span
-                  class="dash__tx-amount"
-                  :class="amountClass(tx.amount_cents)"
-                >
+                <span class="dash__tx-amount" :class="amountClass(tx.amount_cents)">
                   {{ formatSignedPrice(tx.amount_cents, tx.currency) }}
                 </span>
               </div>
@@ -474,7 +433,11 @@ onMounted(() => {
 }
 
 /* Header */
-.dash__header { display: flex; flex-direction: column; gap: var(--space-1); }
+.dash__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .dash__title {
   font-size: var(--fs-xl);
   font-weight: 700;
@@ -693,8 +656,12 @@ onMounted(() => {
   color: var(--text-primary);
   flex-shrink: 0;
 }
-.dash__tx-amount--credit { color: var(--success); }
-.dash__tx-amount--debit  { color: var(--danger); }
+.dash__tx-amount--credit {
+  color: var(--success);
+}
+.dash__tx-amount--debit {
+  color: var(--danger);
+}
 .dash__tx-date {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
@@ -711,7 +678,9 @@ onMounted(() => {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .dash__metrics { max-width: calc(3 * var(--tile-max)); }
+  .dash__metrics {
+    max-width: calc(3 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -721,5 +690,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.dash__subtitle { max-width: var(--maxw-prose); }
+.dash__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

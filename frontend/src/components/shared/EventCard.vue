@@ -62,9 +62,7 @@ defineEmits<{ click: [event: EventResponse] }>()
 
 const { t, locale } = useI18n()
 
-const coverImage = computed(() =>
-  resolveCoverImage({ cover_url: props.event.cover_url }),
-)
+const coverImage = computed(() => resolveCoverImage({ cover_url: props.event.cover_url }))
 
 const day = computed<string>(() => fmtDate({ day: 'numeric' }))
 const month = computed<string>(() => fmtDate({ month: 'short' }))
@@ -81,10 +79,7 @@ const time = computed<string>(() => {
 
 function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   try {
-    return new Date(props.event.starts_at).toLocaleDateString(
-      locale.value,
-      opts,
-    )
+    return new Date(props.event.starts_at).toLocaleDateString(locale.value, opts)
   } catch {
     return ''
   }
@@ -104,7 +99,9 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
       <span class="event-card__mon">{{ month }}</span>
     </div>
     <div class="event-card__body">
-      <div class="event-card__title">{{ event.title }}</div>
+      <div class="event-card__title">
+        {{ event.title }}
+      </div>
       <div class="event-card__meta">
         <span class="event-card__time">{{ time }}</span>
         <span v-if="event.location" class="event-card__loc">
@@ -174,7 +171,11 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   background: var(--bg-subtle);
   color: var(--accent);
 }
-.event-card__day { font-size: var(--fs-h4); font-weight: 700; line-height: 1; }
+.event-card__day {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  line-height: 1;
+}
 .event-card__mon {
   font-size: var(--fs-3xs);
   text-transform: uppercase;
@@ -196,7 +197,9 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.event-card__title--full { font-size: var(--fs-body); }
+.event-card__title--full {
+  font-size: var(--fs-body);
+}
 .event-card__meta {
   display: flex;
   flex-wrap: wrap;
@@ -267,7 +270,10 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   width: var(--size-3xl);
   height: var(--size-3xl);
 }
-.event-card__chev { color: var(--text-secondary); flex-shrink: 0; }
+.event-card__chev {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
 
 /* Full variant: cover on top, body below. NOT a click target, so it paints
    NO cursor:pointer, NO :hover lift and NO :active depress -- the card does
@@ -294,11 +300,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   color: var(--text-tertiary);
 }
 .event-card__cover--fallback {
-  background-image: linear-gradient(
-    135deg,
-    var(--bg-subtle) 0%,
-    var(--bg-surface) 100%
-  );
+  background-image: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface) 100%);
 }
 .event-card__cover-badge {
   position: absolute;
@@ -309,7 +311,9 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   background: var(--bg-page);
   box-shadow: var(--shadow-1);
 }
-.event-card--full .event-card__body { padding: var(--space-4); }
+.event-card--full .event-card__body {
+  padding: var(--space-4);
+}
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
    so this rule cannot bind until the container is already wider than a
@@ -318,5 +322,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.event-card__desc { max-width: var(--maxw-prose); }
+.event-card__desc {
+  max-width: var(--maxw-prose);
+}
 </style>

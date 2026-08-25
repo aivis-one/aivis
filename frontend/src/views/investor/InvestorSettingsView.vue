@@ -95,17 +95,10 @@ import {
   UserPlus,
 } from 'lucide-vue-next'
 
-import {
-  CAvatar,
-  CButton,
-  CLoader,
-} from '@/components/ui'
+import { CAvatar, CButton, CLoader } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { updateMe } from '@/api/users'
-import {
-  getMyAgentApplications,
-  submitAgentApplication,
-} from '@/api/agent-apps'
+import { getMyAgentApplications, submitAgentApplication } from '@/api/agent-apps'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -123,7 +116,7 @@ const { showToast } = useToast()
 
 function _profile(): Record<string, unknown> {
   const p = authStore.user?.profile
-  return (p && typeof p === 'object') ? (p as Record<string, unknown>) : {}
+  return p && typeof p === 'object' ? (p as Record<string, unknown>) : {}
 }
 
 const fullName = computed<string>(() => {
@@ -173,9 +166,7 @@ const THEME_MODES: readonly ThemeMode[] = ['auto', 'light', 'dark'] as const
 // Marketing consent
 // ---------------------------------------------------------------------------
 
-const marketingConsent = ref<boolean>(
-  Boolean(_profile().marketing_consent),
-)
+const marketingConsent = ref<boolean>(Boolean(_profile().marketing_consent))
 const marketingBusy = ref<boolean>(false)
 
 async function toggleMarketing(): Promise<void> {
@@ -226,9 +217,7 @@ const agentSubmitting = ref<boolean>(false)
 
 // Newest-first per backend contract (get_my_applications orders by
 // created_at DESC), so items[0] is always "the latest".
-const latestApp = computed<AgentApplicationResponse | null>(
-  () => agentApps.value[0] ?? null,
-)
+const latestApp = computed<AgentApplicationResponse | null>(() => agentApps.value[0] ?? null)
 
 const agentState = computed<AgentState>(() => {
   if (agentLoading.value) return 'loading'
@@ -300,10 +289,7 @@ async function applyForAgent(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function goKyc(): void {
-  void safeNavigate(
-    router.push('/onboarding/kyc'),
-    '[InvestorSettingsView] to KYC onboarding',
-  )
+  void safeNavigate(router.push('/onboarding/kyc'), '[InvestorSettingsView] to KYC onboarding')
 }
 
 function goDocs(): void {
@@ -341,16 +327,26 @@ onMounted(() => {
   <div class="sett">
     <!-- Inline page header, no CHeader (shell renders it). -->
     <div class="sett__header">
-      <h1 class="sett__page-title">{{ t('inv.settings.title') }}</h1>
-      <p class="sett__page-subtitle">{{ t('inv.settings.subtitle') }}</p>
+      <h1 class="sett__page-title">
+        {{ t('inv.settings.title') }}
+      </h1>
+      <p class="sett__page-subtitle">
+        {{ t('inv.settings.subtitle') }}
+      </p>
     </div>
 
     <!-- Profile card -->
     <section class="sett__profile">
       <CAvatar :url="avatarUrl" :name="fullName" :size="72" />
-      <div class="sett__name">{{ fullName }}</div>
-      <div v-if="email" class="sett__email">{{ email }}</div>
-      <div class="sett__role-badge">{{ roleLabel }}</div>
+      <div class="sett__name">
+        {{ fullName }}
+      </div>
+      <div v-if="email" class="sett__email">
+        {{ email }}
+      </div>
+      <div class="sett__role-badge">
+        {{ roleLabel }}
+      </div>
     </section>
 
     <!-- Profile details (read-only) -->
@@ -476,11 +472,7 @@ onMounted(() => {
 
       <!-- Can apply / reapply -->
       <div v-else class="sett__row sett__row--block">
-        <CButton
-          variant="primary"
-          :loading="agentSubmitting"
-          @click="applyForAgent"
-        >
+        <CButton variant="primary" :loading="agentSubmitting" @click="applyForAgent">
           <UserPlus :size="16" />
           {{
             agentState === 'can_reapply'
@@ -497,11 +489,7 @@ onMounted(() => {
         {{ t('inv.settings.actions.title') }}
       </div>
 
-      <button
-        type="button"
-        class="sett__row sett__row--clickable"
-        @click="goDocs"
-      >
+      <button type="button" class="sett__row sett__row--clickable" @click="goDocs">
         <span class="sett__row-label sett__row-label--accent">
           <FileText :size="16" />
           {{ t('inv.settings.actions.docs') }}
@@ -693,7 +681,10 @@ button.sett__row:last-child {
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
 }
 .sett__chip:hover {
   border-color: var(--primary-hover);
@@ -717,7 +708,9 @@ button.sett__row:last-child {
   border-radius: var(--radius-md);
   position: relative;
   cursor: pointer;
-  transition: background 0.2s, opacity 0.2s;
+  transition:
+    background 0.2s,
+    opacity 0.2s;
   border: none;
   padding: 0;
   flex-shrink: 0;

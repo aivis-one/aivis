@@ -143,9 +143,7 @@ async function _fetchHtmlBlob(path: string): Promise<string> {
       if (err instanceof DOMException && err.name === 'AbortError') {
         throw new ApiTimeoutError()
       }
-      throw new ApiNetworkError(
-        err instanceof Error ? err.message : 'Network error',
-      )
+      throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
     }
 
     if (!response.ok) {
@@ -175,9 +173,7 @@ async function _fetchHtmlBlob(path: string): Promise<string> {
       if (err instanceof DOMException && err.name === 'AbortError') {
         throw new ApiTimeoutError()
       }
-      throw new ApiNetworkError(
-        err instanceof Error ? err.message : 'Network error',
-      )
+      throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
     }
 
     return URL.createObjectURL(blob)
@@ -236,12 +232,8 @@ export function emailAgreement(purchaseId: string): Promise<void> {
  * active purchases for it; 500 if the template fallback misses across
  * all four stages (which a properly seeded platform default prevents).
  */
-export function fetchOwnershipCertificateBlob(
-  companyId: string,
-): Promise<string> {
-  return _fetchHtmlBlob(
-    `/api/v1/companies/${companyId}/ownership-certificate`,
-  )
+export function fetchOwnershipCertificateBlob(companyId: string): Promise<string> {
+  return _fetchHtmlBlob(`/api/v1/companies/${companyId}/ownership-certificate`)
 }
 
 /**
@@ -251,10 +243,6 @@ export function fetchOwnershipCertificateBlob(
  * 404 / 429 / 500 semantics as the agreement variant; rate-limit key
  * is `ownership_email:{user_id}`.
  */
-export function emailOwnershipCertificate(
-  companyId: string,
-): Promise<void> {
-  return api.post<void>(
-    `/api/v1/companies/${companyId}/ownership-certificate/email`,
-  )
+export function emailOwnershipCertificate(companyId: string): Promise<void> {
+  return api.post<void>(`/api/v1/companies/${companyId}/ownership-certificate/email`)
 }

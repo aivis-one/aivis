@@ -61,11 +61,7 @@ export function useInfiniteScroll(
           // Three-way gate: needs-more, not-paused, actually-visible.
           // `paused` is optional -- when omitted it's treated as never
           // paused, matching the legacy 3-arg contract.
-          if (
-            entry.isIntersecting &&
-            hasMore.value &&
-            !(paused?.value ?? false)
-          ) {
+          if (entry.isIntersecting && hasMore.value && !(paused?.value ?? false)) {
             void loadMore()
           }
         }

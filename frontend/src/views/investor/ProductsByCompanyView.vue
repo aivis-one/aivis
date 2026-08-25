@@ -205,11 +205,10 @@ function goBack(): void {
          CHeader back's history-back default with a deep-link fallback.
          B3: button shape extracted to CBackLink. -->
     <div class="pbc__page-header">
-      <CBackLink
-        :label="t('inv.productsByCompany.backLink')"
-        @click="goBack"
-      />
-      <h1 class="pbc__page-title">{{ headerTitle }}</h1>
+      <CBackLink :label="t('inv.productsByCompany.backLink')" @click="goBack" />
+      <h1 class="pbc__page-title">
+        {{ headerTitle }}
+      </h1>
     </div>
 
     <!-- Grid (visible whenever we have items) -->
@@ -223,18 +222,12 @@ function goBack(): void {
     </div>
 
     <!-- Initial load spinner -->
-    <div
-      v-else-if="productsStore.loading"
-      class="pbc__center"
-    >
+    <div v-else-if="productsStore.loading" class="pbc__center">
       <CLoader :size="28" />
     </div>
 
     <!-- Error state -->
-    <div
-      v-else-if="productsStore.error"
-      class="pbc__center"
-    >
+    <div v-else-if="productsStore.error" class="pbc__center">
       <CEmptyState
         :title="t('inv.productsByCompany.errorTitle')"
         :description="productsStore.error"
@@ -253,11 +246,7 @@ function goBack(): void {
     </div>
 
     <!-- Infinite-scroll sentinel (only when we already have items). -->
-    <div
-      v-if="productsStore.items.length > 0"
-      ref="sentinelRef"
-      class="pbc__sentinel"
-    >
+    <div v-if="productsStore.items.length > 0" ref="sentinelRef" class="pbc__sentinel">
       <CLoader v-if="productsStore.loading" :size="20" />
     </div>
   </div>

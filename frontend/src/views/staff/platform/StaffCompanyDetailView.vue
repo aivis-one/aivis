@@ -56,12 +56,36 @@ const companyId = computed<string>(() => {
 const sections = computed(() => {
   const id = companyId.value
   return [
-    { id: 'profile',   path: `/staff/platform/companies/${id}/profile`,   labelKey: 'staff.platform.company.tabs.profile' },
-    { id: 'price',     path: `/staff/platform/companies/${id}/price`,     labelKey: 'staff.platform.company.tabs.price' },
-    { id: 'roadmap',   path: `/staff/platform/companies/${id}/roadmap`,   labelKey: 'staff.platform.company.tabs.roadmap' },
-    { id: 'posts',     path: `/staff/platform/companies/${id}/posts`,     labelKey: 'staff.platform.company.tabs.posts' },
-    { id: 'documents', path: `/staff/platform/companies/${id}/documents`, labelKey: 'staff.platform.company.tabs.documents' },
-    { id: 'templates', path: `/staff/platform/companies/${id}/templates`, labelKey: 'staff.platform.company.tabs.templates' },
+    {
+      id: 'profile',
+      path: `/staff/platform/companies/${id}/profile`,
+      labelKey: 'staff.platform.company.tabs.profile',
+    },
+    {
+      id: 'price',
+      path: `/staff/platform/companies/${id}/price`,
+      labelKey: 'staff.platform.company.tabs.price',
+    },
+    {
+      id: 'roadmap',
+      path: `/staff/platform/companies/${id}/roadmap`,
+      labelKey: 'staff.platform.company.tabs.roadmap',
+    },
+    {
+      id: 'posts',
+      path: `/staff/platform/companies/${id}/posts`,
+      labelKey: 'staff.platform.company.tabs.posts',
+    },
+    {
+      id: 'documents',
+      path: `/staff/platform/companies/${id}/documents`,
+      labelKey: 'staff.platform.company.tabs.documents',
+    },
+    {
+      id: 'templates',
+      path: `/staff/platform/companies/${id}/templates`,
+      labelKey: 'staff.platform.company.tabs.templates',
+    },
   ] as const
 })
 
@@ -105,9 +129,7 @@ const placeholderTitle = computed<string>(() => {
     : t('staff.platform.company.headerPrefix')
 })
 
-const headerTitle = computed<string>(() =>
-  company.value?.name ?? placeholderTitle.value,
-)
+const headerTitle = computed<string>(() => company.value?.name ?? placeholderTitle.value)
 
 async function loadCompany(): Promise<void> {
   const id = companyId.value
@@ -156,11 +178,10 @@ onMounted(loadCompany)
          FP-20 (CBackLink shared component).
          FP-21 (goBack history-aware with deep-link fallback). -->
     <div class="scd__page-header">
-      <CBackLink
-        :label="t('staff.platform.company.backLink')"
-        @click="goBack"
-      />
-      <h1 class="scd__page-title">{{ headerTitle }}</h1>
+      <CBackLink :label="t('staff.platform.company.backLink')" @click="goBack" />
+      <h1 class="scd__page-title">
+        {{ headerTitle }}
+      </h1>
     </div>
 
     <!-- Horizontal scrollable tab strip across the 6 sections. -->
@@ -220,8 +241,12 @@ onMounted(loadCompany)
   z-index: 9;
   background: var(--bg-page);
 }
-.scd__tabs::-webkit-scrollbar { display: none; }
-.scd__tabs { scrollbar-width: none; }
+.scd__tabs::-webkit-scrollbar {
+  display: none;
+}
+.scd__tabs {
+  scrollbar-width: none;
+}
 
 .scd__tab {
   /* A5: 39px tall until 2026-08-25, five short of the 44px floor. The
@@ -245,7 +270,10 @@ onMounted(loadCompany)
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .scd__tab:hover {

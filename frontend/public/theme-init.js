@@ -5,7 +5,7 @@
 // Runs before Vue mounts to prevent FOUC (Flash of Unstyled Content).
 // =============================================================================
 
-(function () {
+;(function () {
   var t = localStorage.getItem('aivis-theme')
   if (t === 'dark' || t === 'light') {
     document.documentElement.setAttribute('data-theme', t)

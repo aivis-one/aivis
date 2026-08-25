@@ -71,9 +71,7 @@ const withdrawalsEpoch = ref(0)
 const withdrawalsLoadMoreErrored = ref(false)
 const sentinelRef = ref<HTMLElement | null>(null)
 
-const hasMoreWithdrawals = computed(
-  () => withdrawals.value.length < withdrawalsTotal.value,
-)
+const hasMoreWithdrawals = computed(() => withdrawals.value.length < withdrawalsTotal.value)
 
 async function fetchWithdrawalsFirstPage(): Promise<void> {
   const epoch = ++withdrawalsEpoch.value
@@ -94,11 +92,7 @@ async function fetchWithdrawalsFirstPage(): Promise<void> {
 }
 
 async function loadMoreWithdrawals(): Promise<void> {
-  if (
-    withdrawalsLoading.value
-    || !hasMoreWithdrawals.value
-    || withdrawalsLoadMoreErrored.value
-  ) {
+  if (withdrawalsLoading.value || !hasMoreWithdrawals.value || withdrawalsLoadMoreErrored.value) {
     return
   }
   const epoch = withdrawalsEpoch.value
@@ -129,12 +123,7 @@ function retryLoadMoreWithdrawals(): void {
 
 // FP-16 brake fed as the `paused` parameter -- a failed load-more
 // suppresses the observer until the user taps retry.
-useInfiniteScroll(
-  sentinelRef,
-  hasMoreWithdrawals,
-  loadMoreWithdrawals,
-  withdrawalsLoadMoreErrored,
-)
+useInfiniteScroll(sentinelRef, hasMoreWithdrawals, loadMoreWithdrawals, withdrawalsLoadMoreErrored)
 
 // ---------------------------------------------------------------------------
 // Payout details -- boolean gate only (editor lives in AgentSettingsView)
@@ -185,13 +174,13 @@ const hasError = computed(
     // cached summary to fall back on -- otherwise a transient refresh
     // failure with a still-valid cached balance would hide the whole
     // screen and retry could not clear it (review §2).
-    (dashboardStore.error !== null && dashboardStore.summary === null)
+    (dashboardStore.error !== null && dashboardStore.summary === null) ||
     // Same "no cached data to fall back on" gate for the local fetches:
     // a transient reload failure after a first page already loaded (e.g.
     // the refetch right after a successful withdrawal) must not replace
     // the whole screen with an error and make the balance vanish (2.2).
-    || (withdrawalsErrored.value && withdrawals.value.length === 0)
-    || (payoutErrored.value && !payoutLoaded.value),
+    (withdrawalsErrored.value && withdrawals.value.length === 0) ||
+    (payoutErrored.value && !payoutLoaded.value),
 )
 
 const initialLoading = computed(() => {
@@ -230,8 +219,8 @@ const withdrawAmountInput = ref('')
 const withdrawSubmitting = ref(false)
 const withdrawError = ref('')
 
-const parsedAmountCents = computed<number | null>(
-  () => parseAmountToCents(withdrawAmountInput.value),
+const parsedAmountCents = computed<number | null>(() =>
+  parseAmountToCents(withdrawAmountInput.value),
 )
 
 const withdrawValidationKey = computed<string | null>(() => {
@@ -293,9 +282,7 @@ async function submitWithdraw(): Promise<void> {
     await Promise.all([dashboardStore.refresh(), fetchWithdrawalsFirstPage()])
   } catch (err) {
     withdrawError.value =
-      err instanceof Error && err.message
-        ? err.message
-        : t('agent.balance.withdrawals.form.error')
+      err instanceof Error && err.message ? err.message : t('agent.balance.withdrawals.form.error')
     // Backup for the Balance -> Settings stitch: if payout details were
     // cleared mid-session (the backend 400), re-read the gate so the
     // CTA flips back to "set up payout details" once the sheet closes.
@@ -320,11 +307,7 @@ async function loadAll(): Promise<void> {
   // Refresh the dashboard unconditionally (parity with the investor
   // BalanceView). A conditional "only if summary is null" refresh left
   // retry unable to clear a stale shared error (review §2).
-  await Promise.all([
-    dashboardStore.refresh(),
-    fetchWithdrawalsFirstPage(),
-    fetchPayoutDetails(),
-  ])
+  await Promise.all([dashboardStore.refresh(), fetchWithdrawalsFirstPage(), fetchPayoutDetails()])
 }
 
 onMounted(() => {
@@ -336,8 +319,12 @@ onMounted(() => {
   <div class="abal">
     <!-- Header (FP-19: shell owns the header; tab -> no back-link) -->
     <div class="abal__header">
-      <h1 class="abal__title">{{ t('agent.balance.title') }}</h1>
-      <p class="abal__subtitle">{{ t('agent.balance.subtitle') }}</p>
+      <h1 class="abal__title">
+        {{ t('agent.balance.title') }}
+      </h1>
+      <p class="abal__subtitle">
+        {{ t('agent.balance.subtitle') }}
+      </p>
     </div>
 
     <!-- Initial loading -->
@@ -361,7 +348,9 @@ onMounted(() => {
           <Wallet :size="16" />
           <span>{{ t('agent.balance.card.title') }}</span>
         </div>
-        <div class="abal__balance-value">{{ formatPrice(passiveConfirmed) }}</div>
+        <div class="abal__balance-value">
+          {{ formatPrice(passiveConfirmed) }}
+        </div>
         <div v-if="hasFrozen" class="abal__balance-frozen">
           {{ t('agent.balance.card.frozen') }}: {{ formatPrice(passiveFrozen) }}
         </div>
@@ -379,11 +368,7 @@ onMounted(() => {
           </template>
           <!-- Payout details present: normal withdraw CTA -->
           <template v-else>
-            <CButton
-              variant="primary"
-              :disabled="!canWithdraw"
-              @click="openWithdrawSheet"
-            >
+            <CButton variant="primary" :disabled="!canWithdraw" @click="openWithdrawSheet">
               <ArrowUpFromLine :size="16" />
               {{ t('agent.balance.withdrawals.newButton') }}
             </CButton>
@@ -400,10 +385,7 @@ onMounted(() => {
           {{ t('agent.balance.withdrawals.title') }}
         </h2>
 
-        <p
-          v-if="withdrawals.length === 0 && !withdrawalsLoading"
-          class="abal__empty"
-        >
+        <p v-if="withdrawals.length === 0 && !withdrawalsLoading" class="abal__empty">
           {{ t('agent.balance.withdrawals.empty') }}
         </p>
 
@@ -417,10 +399,7 @@ onMounted(() => {
                 <span class="abal__item-amount">
                   {{ formatPrice(w.amount_cents) }}
                 </span>
-                <span
-                  class="abal__badge"
-                  :class="`abal__badge--${statusVariant(w.status)}`"
-                >
+                <span class="abal__badge" :class="`abal__badge--${statusVariant(w.status)}`">
                   {{ statusLabel(w.status) }}
                 </span>
               </div>
@@ -438,11 +417,7 @@ onMounted(() => {
           </li>
         </ul>
 
-        <div
-          v-if="withdrawals.length > 0"
-          ref="sentinelRef"
-          class="abal__sentinel"
-        >
+        <div v-if="withdrawals.length > 0" ref="sentinelRef" class="abal__sentinel">
           <CLoader v-if="withdrawalsLoading" :size="20" />
         </div>
 
@@ -491,10 +466,7 @@ onMounted(() => {
           </span>
         </label>
 
-        <p
-          v-if="withdrawValidationKey"
-          class="abal__form-error abal__form-error--soft"
-        >
+        <p v-if="withdrawValidationKey" class="abal__form-error abal__form-error--soft">
           {{
             t(withdrawValidationKey, {
               min: formatPrice(MIN_WITHDRAWAL_CENTS),
@@ -504,7 +476,9 @@ onMounted(() => {
           }}
         </p>
 
-        <p v-if="withdrawError" class="abal__form-error">{{ withdrawError }}</p>
+        <p v-if="withdrawError" class="abal__form-error">
+          {{ withdrawError }}
+        </p>
 
         <div class="abal__form-actions">
           <CButton
@@ -538,7 +512,11 @@ onMounted(() => {
   padding-bottom: var(--space-5);
 }
 
-.abal__header { display: flex; flex-direction: column; gap: var(--space-1); }
+.abal__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .abal__title {
   font-size: var(--fs-lg);
   font-weight: 700;
@@ -570,7 +548,11 @@ onMounted(() => {
   border: 1px solid var(--border-default);
 }
 
-.abal__balance { display: flex; flex-direction: column; gap: var(--space-2); }
+.abal__balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .abal__balance-head {
   display: inline-flex;
   align-items: center;
@@ -605,7 +587,11 @@ onMounted(() => {
   color: var(--text-tertiary);
 }
 
-.abal__section { display: flex; flex-direction: column; gap: var(--space-2); }
+.abal__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .abal__section-title {
   font-size: var(--fs-sm);
   font-weight: 700;
@@ -665,13 +651,18 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--space-2);
 }
-.abal__item-line--sub { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.abal__item-line--sub {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
 .abal__item-amount {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
 }
-.abal__item-date { white-space: nowrap; }
+.abal__item-date {
+  white-space: nowrap;
+}
 .abal__item-reason {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -736,10 +727,20 @@ onMounted(() => {
   text-align: center;
 }
 
-.abal__form { display: flex; flex-direction: column; gap: var(--space-4); }
-.abal__field { display: flex; flex-direction: column; gap: var(--space-2); }
+.abal__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.abal__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 /* See CompanyBalanceView: the flex gap is the field's rhythm. */
-.abal__control { margin-bottom: 0; }
+.abal__control {
+  margin-bottom: 0;
+}
 .abal__field-label {
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -752,7 +753,6 @@ onMounted(() => {
   color: var(--text-tertiary);
   line-height: 1.4;
 }
-
 
 .abal__form-error {
   margin: 0;
@@ -783,5 +783,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.abal__subtitle { max-width: var(--maxw-prose); }
+.abal__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

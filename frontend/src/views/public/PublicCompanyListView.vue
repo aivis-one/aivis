@@ -78,12 +78,7 @@ const initialLoading = computed<boolean>(
 
 const hasItems = computed<boolean>(() => store.items.length > 0)
 
-const isEmpty = computed<boolean>(
-  () =>
-    !initialLoading.value
-    && !store.errored
-    && !hasItems.value,
-)
+const isEmpty = computed<boolean>(() => !initialLoading.value && !store.errored && !hasItems.value)
 
 useInfiniteScroll(sentinelRef, hasMore, store.loadMore, loadMoreErrored)
 
@@ -117,8 +112,12 @@ async function retryLoadMore(): Promise<void> {
 <template>
   <div class="cl">
     <header class="cl__header">
-      <h1 class="cl__title">{{ t('public.companyList.title') }}</h1>
-      <p class="cl__subtitle">{{ t('public.companyList.subtitle') }}</p>
+      <h1 class="cl__title">
+        {{ t('public.companyList.title') }}
+      </h1>
+      <p class="cl__subtitle">
+        {{ t('public.companyList.subtitle') }}
+      </p>
     </header>
 
     <!-- Initial loading: full-page spinner. Only fires when there are
@@ -245,5 +244,7 @@ async function retryLoadMore(): Promise<void> {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.cl__subtitle { max-width: var(--maxw-prose); }
+.cl__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

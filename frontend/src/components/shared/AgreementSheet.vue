@@ -227,11 +227,7 @@ async function onEmail(): Promise<void> {
 </script>
 
 <template>
-  <CBottomSheet
-    :open="open"
-    :title="sheetTitle"
-    @close="onClose"
-  >
+  <CBottomSheet :open="open" :title="sheetTitle" @close="onClose">
     <div class="ags">
       <!-- Loading -->
       <div v-if="loading && !errored" class="ags__center">
@@ -257,32 +253,14 @@ async function onEmail(): Promise<void> {
           the document HTML read the SPA's localStorage + JWT. See
           TD-F11b in AIVIS-Frontend.md.
         -->
-        <iframe
-          :src="blobUrl"
-          sandbox=""
-          class="ags__iframe"
-          :title="sheetTitle"
-        />
+        <iframe :src="blobUrl" sandbox="" class="ags__iframe" :title="sheetTitle" />
 
         <div class="ags__actions">
-          <CButton
-            variant="outline"
-            size="sm"
-            @click="onClose"
-          >
+          <CButton variant="outline" size="sm" @click="onClose">
             {{ t('inv.agreement.close') }}
           </CButton>
-          <CButton
-            variant="primary"
-            size="sm"
-            :disabled="emailDisabled"
-            @click="onEmail"
-          >
-            {{
-              emailSending
-                ? t('inv.agreement.emailSending')
-                : t('inv.agreement.emailSend')
-            }}
+          <CButton variant="primary" size="sm" :disabled="emailDisabled" @click="onEmail">
+            {{ emailSending ? t('inv.agreement.emailSending') : t('inv.agreement.emailSend') }}
           </CButton>
         </div>
       </template>

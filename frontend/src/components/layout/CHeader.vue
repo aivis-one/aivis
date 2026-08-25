@@ -51,12 +51,7 @@ const { t } = useI18n()
 <template>
   <header class="c-header">
     <div class="c-header__left">
-      <button
-      v-if="showBack"
-      :aria-label="t('common.back')"
-      class="c-header__back"
-      @click="goBack"
-    >
+      <button v-if="showBack" :aria-label="t('common.back')" class="c-header__back" @click="goBack">
         <ChevronLeft :size="24" />
       </button>
       <AivisLogo v-if="showLogo && !showBack" :height="28" :show-text="false" />
@@ -71,13 +66,21 @@ const { t } = useI18n()
 
 <style scoped>
 .c-header {
-  position: sticky; top: 0; z-index: 100; background: var(--bg-page);
-  padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-default);
-  display: flex; align-items: center; justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-page);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
 }
 .c-header__left {
-  display: flex; align-items: center; gap: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   /* Claim the remaining width and allow the title child to shrink
      below its intrinsic content size (needed for ellipsis). */
   flex: 1;
@@ -85,7 +88,9 @@ const { t } = useI18n()
   overflow: hidden;
 }
 .c-header__title {
-  font-size: var(--fs-body); font-weight: 700; color: var(--primary-active);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--primary-active);
   /* Truncate long titles with ellipsis rather than push the right
      slot off the edge. */
   min-width: 0;
@@ -94,12 +99,20 @@ const { t } = useI18n()
   white-space: nowrap;
 }
 .c-header__back {
-  background: none; border: none; cursor: pointer; color: var(--text-primary);
-  padding: var(--space-1); display: flex; align-items: center; margin-left: -4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  padding: var(--space-1);
+  display: flex;
+  align-items: center;
+  margin-left: -4px;
   flex-shrink: 0;
 }
 .c-header__right {
-  display: flex; align-items: center; gap: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   /* Right slot must never shrink -- if someone adds action buttons
      they should stay full size; the title absorbs the space loss. */
   flex-shrink: 0;

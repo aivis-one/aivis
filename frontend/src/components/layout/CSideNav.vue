@@ -20,9 +20,19 @@ import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Home, Briefcase, Store, Wallet, Menu,
-  Link, Coins, Package, BarChart3, Settings,
-  Users, CreditCard, LayoutGrid,
+  Home,
+  Briefcase,
+  Store,
+  Wallet,
+  Menu,
+  Link,
+  Coins,
+  Package,
+  BarChart3,
+  Settings,
+  Users,
+  CreditCard,
+  LayoutGrid,
 } from 'lucide-vue-next'
 import type { TabItem } from '@/router/tabs'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -34,9 +44,19 @@ const router = useRouter()
 const { t } = useI18n()
 
 const iconMap: Record<string, Component> = {
-  Home, Briefcase, Store, Wallet, Menu,
-  Link, Coins, Package, BarChart3, Settings,
-  Users, CreditCard, LayoutGrid,
+  Home,
+  Briefcase,
+  Store,
+  Wallet,
+  Menu,
+  Link,
+  Coins,
+  Package,
+  BarChart3,
+  Settings,
+  Users,
+  CreditCard,
+  LayoutGrid,
 }
 
 function isActive(tab: TabItem): boolean {
@@ -73,7 +93,9 @@ function navigate(tab: TabItem): void {
 /* Not rendered below the tablet tier: the phone uses CTabBar. Mobile-first,
    so the menu appears at a min-width rather than the bar disappearing at a
    max-width — the product is written that way throughout. */
-.c-sidenav { display: none; }
+.c-sidenav {
+  display: none;
+}
 
 @media (min-width: 820px) {
   .c-sidenav {
@@ -102,19 +124,37 @@ function navigate(tab: TabItem): void {
     font-size: var(--fs-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: color 0.2s, background-color 0.2s;
+    transition:
+      color 0.2s,
+      background-color 0.2s;
     /* Rail: the icon centres in the row. Desktop re-aligns to the start. */
     justify-content: center;
   }
 
-  .c-sidenav__item:hover { color: var(--primary-hover); background: var(--bg-subtle); }
-  .c-sidenav__item:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-  .c-sidenav__item--active { color: var(--primary); background: var(--primary-subtle); }
+  .c-sidenav__item:hover {
+    color: var(--primary-hover);
+    background: var(--bg-subtle);
+  }
+  .c-sidenav__item:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .c-sidenav__item--active {
+    color: var(--primary);
+    background: var(--primary-subtle);
+  }
 
-  .c-sidenav__icon { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .c-sidenav__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
 
   /* Hidden in the rail; the accessible name is on the button's aria-label. */
-  .c-sidenav__label { display: none; }
+  .c-sidenav__label {
+    display: none;
+  }
 }
 
 /* --bp-tier-lg. Moved off 1280 on 2026-08-25: the step to a 232px rail took
@@ -124,12 +164,24 @@ function navigate(tab: TabItem): void {
    read a custom property, and checks/breakpoints.py is what holds them in
    step. See the tier table in variables.css. */
 @media (min-width: 1472px) {
-  .c-sidenav { width: 232px; padding: var(--space-3); }
-  .c-sidenav__item { justify-content: flex-start; padding-inline: var(--space-3); }
-  .c-sidenav__label { display: block; line-height: 1.2; text-align: start; }
+  .c-sidenav {
+    width: 232px;
+    padding: var(--space-3);
+  }
+  .c-sidenav__item {
+    justify-content: flex-start;
+    padding-inline: var(--space-3);
+  }
+  .c-sidenav__label {
+    display: block;
+    line-height: 1.2;
+    text-align: start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .c-sidenav__item { transition: none; }
+  .c-sidenav__item {
+    transition: none;
+  }
 }
 </style>

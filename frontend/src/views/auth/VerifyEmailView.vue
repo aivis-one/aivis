@@ -159,13 +159,17 @@ async function handleResend(): Promise<void> {
           width="64"
           height="64"
         >
-          <path d="M22 13V6.5C22 5.4 21.1 4.5 20 4.5H4C2.9 4.5 2 5.4 2 6.5V17.5C2 18.6 2.9 19.5 4 19.5H13" />
+          <path
+            d="M22 13V6.5C22 5.4 21.1 4.5 20 4.5H4C2.9 4.5 2 5.4 2 6.5V17.5C2 18.6 2.9 19.5 4 19.5H13"
+          />
           <polyline points="22 7 13.5 12.5 2 7" />
           <polyline points="16 19 18 21 22 17" />
         </svg>
       </div>
 
-      <h1 class="auth-title">{{ t('auth.verify.title') }}</h1>
+      <h1 class="auth-title">
+        {{ t('auth.verify.title') }}
+      </h1>
       <p class="auth-subtitle">
         {{ t('auth.verify.subtitle') }}
         <br />
@@ -189,7 +193,9 @@ async function handleResend(): Promise<void> {
         />
       </div>
 
-      <div v-if="error" class="auth-error">{{ error }}</div>
+      <div v-if="error" class="auth-error">
+        {{ error }}
+      </div>
 
       <div class="auth-form">
         <button
@@ -204,12 +210,7 @@ async function handleResend(): Promise<void> {
 
         <div class="resend-section">
           <span class="resend-label">{{ t('auth.verify.noCode') }}</span>
-          <button
-            v-if="resendCooldown <= 0"
-            type="button"
-            class="btn-link"
-            @click="handleResend"
-          >
+          <button v-if="resendCooldown <= 0" type="button" class="btn-link" @click="handleResend">
             {{ t('auth.verify.resend') }}
           </button>
           <span v-else class="resend-timer">
@@ -223,84 +224,154 @@ async function handleResend(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  display: flex; flex-direction: column;
-  min-height: 100vh; min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-page);
 }
 .auth-header {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-4) var(--space-5);
 }
 .auth-content {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: var(--space-5); overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  overflow-y: auto;
 }
 .auth-title {
-  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: var(--space-2); text-align: center;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  text-align: center;
 }
 .auth-subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  text-align: center;
+  line-height: 1.5;
 }
-.auth-form { width: 100%; max-width: var(--maxw-form); }
+.auth-form {
+  width: 100%;
+  max-width: var(--maxw-form);
+}
 .auth-error {
-  font-size: var(--fs-xs); color: var(--danger); text-align: center;
-  margin-bottom: var(--space-4); max-width: var(--maxw-form);
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  text-align: center;
+  margin-bottom: var(--space-4);
+  max-width: var(--maxw-form);
 }
 
 .verify-icon {
-  display: flex; justify-content: center; margin-bottom: var(--space-5);
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-5);
 }
-.verify-email { color: var(--text-primary); }
+.verify-email {
+  color: var(--text-primary);
+}
 
 .code-inputs {
-  display: flex; gap: var(--space-3); margin-bottom: var(--space-5);
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 .code-input {
-  width: var(--size-3xl); height: var(--size-4xl); text-align: center;
-  font-size: var(--fs-h3); font-weight: 700;
-  border: 2px solid var(--border-default); border-radius: var(--radius-md);
-  background: var(--bg-page); color: var(--text-primary);
+  width: var(--size-3xl);
+  height: var(--size-4xl);
+  text-align: center;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 .code-input:focus {
-  outline: none; border-color: var(--primary);
+  outline: none;
+  border-color: var(--primary);
   box-shadow: var(--shadow-focus);
 }
 
-.btn { width: 100%; }
-.btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: var(--space-4); border-radius: var(--radius-md);
-  background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
-  border: none; cursor: pointer;
+.btn {
+  width: 100%;
 }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-spinner {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: var(--size-2xs); height: var(--size-2xs); border: 2px solid currentColor; opacity: 0.35;
-  border-top-color: currentColor; border-radius: 50%;
+  width: var(--size-2xs);
+  height: var(--size-2xs);
+  border: 2px solid currentColor;
+  opacity: 0.35;
+  border-top-color: currentColor;
+  border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .resend-section {
-  text-align: center; margin-top: var(--space-4-lg);
-  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  text-align: center;
+  margin-top: var(--space-4-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
 }
-.resend-label { font-size: var(--fs-sm); color: var(--text-secondary); }
-.resend-timer { font-size: var(--fs-sm); color: var(--text-tertiary); }
+.resend-label {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.resend-timer {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+}
 .btn-link {
   position: relative;
-  font-size: var(--fs-sm); color: var(--primary); font-weight: 600;
-  background: none; border: none; cursor: pointer;
-  font-family: inherit; padding: 0;
+  font-size: var(--fs-sm);
+  color: var(--primary);
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
 }
 
 /* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
@@ -315,5 +386,7 @@ async function handleResend(): Promise<void> {
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
 }
-.btn-link:hover { text-decoration: underline; }
+.btn-link:hover {
+  text-decoration: underline;
+}
 </style>

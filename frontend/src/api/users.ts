@@ -30,11 +30,7 @@
 // =============================================================================
 
 import { api } from '@/api/client'
-import type {
-  PayoutDetailsResponse,
-  UserResponse,
-  UserUpdate,
-} from '@/api/types'
+import type { PayoutDetailsResponse, UserResponse, UserUpdate } from '@/api/types'
 
 /**
  * GET /api/v1/users/me -- authenticated user profile.
@@ -63,9 +59,7 @@ export function updateMe(body: UserUpdate): Promise<UserResponse> {
  * an error.
  */
 export function getPayoutDetails(): Promise<PayoutDetailsResponse> {
-  return api.get<PayoutDetailsResponse>(
-    '/api/v1/users/me/payout-details',
-  )
+  return api.get<PayoutDetailsResponse>('/api/v1/users/me/payout-details')
 }
 
 /**
@@ -79,8 +73,5 @@ export function getPayoutDetails(): Promise<PayoutDetailsResponse> {
 export function updatePayoutDetails(
   payout_details: Record<string, unknown>,
 ): Promise<PayoutDetailsResponse> {
-  return api.put<PayoutDetailsResponse>(
-    '/api/v1/users/me/payout-details',
-    { payout_details },
-  )
+  return api.put<PayoutDetailsResponse>('/api/v1/users/me/payout-details', { payout_details })
 }

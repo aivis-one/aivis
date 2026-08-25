@@ -108,9 +108,7 @@ const mineRows = computed<SupportOperatorThreadRow[]>(() =>
 // contains a colleague's claimed thread at all (comms' own visibility
 // filter), so this group is naturally empty for everyone else.
 const foreignRows = computed<SupportOperatorThreadRow[]>(() =>
-  support.queue.filter(
-    (row) => row.assignee !== null && row.assignee !== myOperatorId.value,
-  ),
+  support.queue.filter((row) => row.assignee !== null && row.assignee !== myOperatorId.value),
 )
 
 function retryQueue(): void {
@@ -128,8 +126,8 @@ const openThreadId = ref<string | null>(null)
 // Derived LIVE from the queue array, not a separate fetched copy --
 // see stake A header: the moment claimThread() updates a row, this
 // picks up the change for free, in the same render.
-const selectedThread = computed<SupportOperatorThreadRow | null>(() =>
-  support.queue.find((row) => row.id === openThreadId.value) ?? null,
+const selectedThread = computed<SupportOperatorThreadRow | null>(
+  () => support.queue.find((row) => row.id === openThreadId.value) ?? null,
 )
 
 const isMine = computed<boolean>(
@@ -140,9 +138,9 @@ const isPool = computed<boolean>(
 )
 const isForeign = computed<boolean>(
   () =>
-    selectedThread.value !== null
-    && selectedThread.value.assignee !== null
-    && selectedThread.value.assignee !== myOperatorId.value,
+    selectedThread.value !== null &&
+    selectedThread.value.assignee !== null &&
+    selectedThread.value.assignee !== myOperatorId.value,
 )
 
 function openThread(threadId: string): void {
@@ -226,7 +224,9 @@ onMounted(() => {
   <div class="ssup">
     <!-- ============================== QUEUE ============================== -->
     <template v-if="openThreadId === null">
-      <p class="ssup__hint">{{ t('staff.support.hint') }}</p>
+      <p class="ssup__hint">
+        {{ t('staff.support.hint') }}
+      </p>
 
       <div class="ssup__toolbar">
         <CButton
@@ -258,7 +258,9 @@ onMounted(() => {
 
       <div v-else class="ssup__groups">
         <section v-if="poolRows.length > 0" class="ssup__group">
-          <h2 class="ssup__group-title">{{ t('staff.support.groupPool') }}</h2>
+          <h2 class="ssup__group-title">
+            {{ t('staff.support.groupPool') }}
+          </h2>
           <div
             v-for="row in poolRows"
             :key="row.id"
@@ -276,9 +278,11 @@ onMounted(() => {
               </span>
             </div>
             <div v-if="support.claimErrors[row.id]" class="ssup__row-error">
-              {{ support.claimErrors[row.id]?.status === 409
-                ? t('staff.support.claimConflict')
-                : errorMessage(support.claimErrors[row.id]) }}
+              {{
+                support.claimErrors[row.id]?.status === 409
+                  ? t('staff.support.claimConflict')
+                  : errorMessage(support.claimErrors[row.id])
+              }}
             </div>
             <CButton
               variant="primary"
@@ -294,7 +298,9 @@ onMounted(() => {
         </section>
 
         <section v-if="mineRows.length > 0" class="ssup__group">
-          <h2 class="ssup__group-title">{{ t('staff.support.groupMine') }}</h2>
+          <h2 class="ssup__group-title">
+            {{ t('staff.support.groupMine') }}
+          </h2>
           <div
             v-for="row in mineRows"
             :key="row.id"
@@ -307,7 +313,10 @@ onMounted(() => {
           >
             <div class="ssup__row-body">
               <span class="ssup__row-id">{{ row.id.slice(0, 8) }}</span>
-              <span v-if="typeof row.unread === 'number' && row.unread > 0" class="ssup__row-unread">
+              <span
+                v-if="typeof row.unread === 'number' && row.unread > 0"
+                class="ssup__row-unread"
+              >
                 {{ row.unread }}
               </span>
             </div>
@@ -315,7 +324,9 @@ onMounted(() => {
         </section>
 
         <section v-if="foreignRows.length > 0" class="ssup__group">
-          <h2 class="ssup__group-title">{{ t('staff.support.groupForeign') }}</h2>
+          <h2 class="ssup__group-title">
+            {{ t('staff.support.groupForeign') }}
+          </h2>
           <div
             v-for="row in foreignRows"
             :key="row.id"
@@ -391,13 +402,17 @@ onMounted(() => {
             {{ t('staff.support.claim') }}
           </CButton>
           <div v-if="support.claimErrors[selectedThread.id]" class="ssup__row-error">
-            {{ support.claimErrors[selectedThread.id]?.status === 409
-              ? t('staff.support.claimConflict')
-              : errorMessage(support.claimErrors[selectedThread.id]) }}
+            {{
+              support.claimErrors[selectedThread.id]?.status === 409
+                ? t('staff.support.claimConflict')
+                : errorMessage(support.claimErrors[selectedThread.id])
+            }}
           </div>
         </div>
 
-        <p v-if="isForeign" class="ssup__hint">{{ t('staff.support.foreignHint') }}</p>
+        <p v-if="isForeign" class="ssup__hint">
+          {{ t('staff.support.foreignHint') }}
+        </p>
 
         <div class="ssup__body">
           <div v-if="support.staffMessagesLoading" class="ssup__center">
@@ -426,18 +441,26 @@ onMounted(() => {
               :class="{ 'ssup__msg--right': isRight(message) }"
             >
               <span class="ssup__msg-sender sr-only">
-                {{ isRight(message) ? t('staff.support.sender.operator') : t('staff.support.sender.client') }}
+                {{
+                  isRight(message)
+                    ? t('staff.support.sender.operator')
+                    : t('staff.support.sender.client')
+                }}
               </span>
-              <p class="ssup__msg-body">{{ message.body }}</p>
+              <p class="ssup__msg-body">
+                {{ message.body }}
+              </p>
             </div>
           </div>
         </div>
 
         <div v-if="isMine" class="ssup__composer">
           <div v-if="support.replyErrors[selectedThread.id]" class="ssup__composer-error">
-            {{ support.replyErrors[selectedThread.id]?.status === 409
-              ? t('staff.support.readOnlyHint')
-              : errorMessage(support.replyErrors[selectedThread.id]) }}
+            {{
+              support.replyErrors[selectedThread.id]?.status === 409
+                ? t('staff.support.readOnlyHint')
+                : errorMessage(support.replyErrors[selectedThread.id])
+            }}
           </div>
           <CTextarea
             v-model="composerText"
@@ -477,7 +500,10 @@ onMounted(() => {
   margin: 0;
 }
 
-.ssup__toolbar { display: flex; justify-content: flex-end; }
+.ssup__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
 
 .ssup__center {
   display: flex;
@@ -490,8 +516,15 @@ onMounted(() => {
   flex: 1;
 }
 
-.ssup__groups { display: flex; flex-direction: column; gap: var(--space-4); }
-.ssup__group { display: flex; flex-direction: column; }
+.ssup__groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ssup__group {
+  display: flex;
+  flex-direction: column;
+}
 .ssup__group-title {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -510,9 +543,21 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-default);
   cursor: pointer;
 }
-.ssup__row-body { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.ssup__row-id { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-primary); }
-.ssup__row-time { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.ssup__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.ssup__row-id {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+.ssup__row-time {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
 .ssup__row-unread {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -523,9 +568,14 @@ onMounted(() => {
   min-width: 20px;
   text-align: center;
 }
-.ssup__row-error { font-size: var(--fs-xs); color: var(--danger); }
+.ssup__row-error {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+}
 
-.ssup__back-row { display: flex; }
+.ssup__back-row {
+  display: flex;
+}
 
 .ssup__status-row {
   display: flex;
@@ -541,7 +591,13 @@ onMounted(() => {
   gap: var(--space-2);
 }
 
-.ssup__body { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; min-height: 0; }
+.ssup__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-height: 0;
+}
 
 .ssup__feed {
   display: flex;
@@ -566,7 +622,9 @@ onMounted(() => {
   align-self: flex-end;
   background: var(--primary);
 }
-.ssup__msg--right .ssup__msg-body { color: var(--on-primary); }
+.ssup__msg--right .ssup__msg-body {
+  color: var(--on-primary);
+}
 
 .ssup__msg-body {
   margin: 0;

@@ -34,10 +34,7 @@ import { useI18n } from 'vue-i18n'
 import { CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
-import {
-  fetchStaffCompanyPriceHistory,
-  updateStaffCompanyPrice,
-} from '@/api/staff-companies'
+import { fetchStaffCompanyPriceHistory, updateStaffCompanyPrice } from '@/api/staff-companies'
 import type { PriceHistoryResponse } from '@/api/types'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
@@ -63,9 +60,7 @@ const companyId = computed<string>(() => {
 // not show price, so a brief divergence from the injected company is
 // harmless.
 const ctx = inject(STAFF_COMPANY_KEY)
-const currentPriceCents = ref<number | null>(
-  ctx?.company.value?.price_per_unit_cents ?? null,
-)
+const currentPriceCents = ref<number | null>(ctx?.company.value?.price_per_unit_cents ?? null)
 
 // The parent may still be loading when this section mounts; sync the
 // price once the injected company resolves (or changes).
@@ -128,14 +123,14 @@ async function reload(): Promise<void> {
 
 function openEdit(): void {
   if (!canEdit.value) {
-    console.warn('[StaffCompanyPriceSection] openEdit blocked: needs company_manage + financial_operations')
+    console.warn(
+      '[StaffCompanyPriceSection] openEdit blocked: needs company_manage + financial_operations',
+    )
     return
   }
   // Prefill with the current price in dollars (2dp), or empty if unknown.
   priceDraft.value =
-    currentPriceCents.value !== null
-      ? (currentPriceCents.value / 100).toFixed(2)
-      : ''
+    currentPriceCents.value !== null ? (currentPriceCents.value / 100).toFixed(2) : ''
   showEdit.value = true
 }
 
@@ -196,16 +191,15 @@ onMounted(reload)
           {{ currentPriceCents !== null ? formatPrice(currentPriceCents) : '—' }}
         </span>
       </div>
-      <CButton
-        v-if="canEdit"
-        variant="primary"
-        size="sm"
-        @click="openEdit"
-      >{{ t('staff.platform.price.editCta') }}</CButton>
+      <CButton v-if="canEdit" variant="primary" size="sm" @click="openEdit">
+        {{ t('staff.platform.price.editCta') }}
+      </CButton>
     </div>
 
     <!-- History -->
-    <h3 class="scpr__history-title">{{ t('staff.platform.price.historyTitle') }}</h3>
+    <h3 class="scpr__history-title">
+      {{ t('staff.platform.price.historyTitle') }}
+    </h3>
 
     <div v-if="loading" class="scpr__center">
       <CLoader :size="28" />
@@ -217,10 +211,7 @@ onMounted(reload)
       </CButton>
     </div>
 
-    <CEmptyState
-      v-else-if="!history.length"
-      :title="t('staff.platform.price.historyEmpty')"
-    />
+    <CEmptyState v-else-if="!history.length" :title="t('staff.platform.price.historyEmpty')" />
 
     <template v-else>
       <div class="price-history">
@@ -228,11 +219,7 @@ onMounted(reload)
           <span class="price-history__col-price">{{ t('staff.platform.price.colPrice') }}</span>
           <span class="price-history__col-date">{{ t('staff.platform.price.colChangedAt') }}</span>
         </div>
-        <div
-          v-for="row in history"
-          :key="row.id"
-          class="price-history__row"
-        >
+        <div v-for="row in history" :key="row.id" class="price-history__row">
           <span class="price-history__col-price">{{ formatPrice(row.price_per_unit_cents) }}</span>
           <span class="price-history__col-date">{{ formatDateTime(row.changed_at) }}</span>
         </div>
@@ -240,16 +227,24 @@ onMounted(reload)
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="scpr__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">&larr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
+          &larr;
+        </CButton>
         <span class="scpr__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">&rarr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
+          &rarr;
+        </CButton>
       </div>
     </template>
 
     <!-- Edit modal -->
     <CModal :open="showEdit" @close="showEdit = false">
-      <h3 class="scpr__modal-title">{{ t('staff.platform.price.editTitle') }}</h3>
-      <p class="scpr__modal-hint">{{ t('staff.platform.price.editHint') }}</p>
+      <h3 class="scpr__modal-title">
+        {{ t('staff.platform.price.editTitle') }}
+      </h3>
+      <p class="scpr__modal-hint">
+        {{ t('staff.platform.price.editHint') }}
+      </p>
       <CInput
         v-model="priceDraft"
         type="number"
@@ -266,51 +261,118 @@ onMounted(reload)
           :loading="saving"
           :disabled="!canSubmit"
           @click="handleSave"
-        >{{ t('common.save') }}</CButton>
+        >
+          {{ t('common.save') }}
+        </CButton>
       </div>
     </CModal>
   </div>
 </template>
 
 <style scoped>
-.scpr { padding: var(--space-4); }
+.scpr {
+  padding: var(--space-4);
+}
 
 .scpr__current {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--space-4); background: var(--bg-subtle); border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
   margin-bottom: var(--space-4-lg);
 }
-.scpr__current-info { display: flex; flex-direction: column; gap: var(--space-1); }
-.scpr__current-label { font-size: var(--fs-xs); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
-.scpr__current-value { font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary); }
+.scpr__current-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.scpr__current-label {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.scpr__current-value {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--text-primary);
+}
 
-.scpr__history-title { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
+.scpr__history-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
 
 .scpr__center {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: var(--center-sm); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-sm);
+  gap: var(--space-4);
 }
 
-.price-history { display: flex; flex-direction: column; }
+.price-history {
+  display: flex;
+  flex-direction: column;
+}
 .price-history__head {
-  display: flex; padding: var(--space-2) 0; border-bottom: 2px solid var(--border-default);
-  font-size: var(--fs-xs); font-weight: 600; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.04em;
+  display: flex;
+  padding: var(--space-2) 0;
+  border-bottom: 2px solid var(--border-default);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .price-history__row {
-  display: flex; padding: var(--space-3) 0; border-bottom: 1px solid var(--border-default);
-  font-size: var(--fs-sm); color: var(--text-primary);
+  display: flex;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-default);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
 }
-.price-history__col-price { flex: 0 0 40%; font-weight: 600; }
-.price-history__col-date { flex: 1; color: var(--text-secondary); }
+.price-history__col-price {
+  flex: 0 0 40%;
+  font-weight: 600;
+}
+.price-history__col-date {
+  flex: 1;
+  color: var(--text-secondary);
+}
 
 .scpr__pagination {
-  display: flex; align-items: center; justify-content: center;
-  gap: var(--space-3); margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
-.scpr__page { font-size: var(--fs-xs); color: var(--text-secondary); }
+.scpr__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
 
-.scpr__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
-.scpr__modal-hint { font-size: var(--fs-xs); color: var(--text-secondary); margin: 0 0 var(--space-4); }
-.scpr__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
+.scpr__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+.scpr__modal-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+}
+.scpr__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  justify-content: flex-end;
+}
 </style>

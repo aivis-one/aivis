@@ -78,12 +78,15 @@ ol {
    already sets those per view, and taking them over in one sweep would change
    every screen's rhythm at the same moment as the typeface. This changes the
    LETTERFORMS only. */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: var(--font-display);
 }
 
 /* === RTL === */
-[dir="rtl"] {
+[dir='rtl'] {
   /* Arabic first, then the design system's body stack. This rule used to name
      the retired brand's typeface directly, after batch 6 had swapped the rest
      of the app to Manrope -- Arabic would have rendered in a different face
@@ -94,12 +97,12 @@ h1, h2, h3, h4 {
   font-family: 'Noto Sans Arabic', var(--font-body);
 }
 
-[dir="rtl"] .ml-auto {
+[dir='rtl'] .ml-auto {
   margin-left: 0;
   margin-right: auto;
 }
 
-[dir="rtl"] .mr-auto {
+[dir='rtl'] .mr-auto {
   margin-right: 0;
   margin-left: auto;
 }
@@ -178,7 +181,16 @@ body {
    its own ring still wins and only the untreated controls pick this up. The
    companion rule keeps the ring off mouse clicks, which is the whole reason
    :focus-visible exists. */
-:where(a[href], button, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+:where(
+  a[href],
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [role='button'],
+  [tabindex]:not([tabindex='-1'])
+):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }

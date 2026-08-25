@@ -7,11 +7,7 @@
 // =============================================================================
 
 // Aliases from auto-generated OpenAPI types (B7 / VELO migration).
-import type {
-  BlockRequest,
-  CompanyPositionResponse,
-  RejectRequest,
-} from './generated'
+import type { BlockRequest, CompanyPositionResponse, RejectRequest } from './generated'
 
 // ---------------------------------------------------------------------------
 // User
@@ -101,12 +97,7 @@ export interface ValidationErrorItem {
 // union so the two cannot drift.
 // ===========================================================================
 
-export type UserRole =
-  | 'investor'
-  | 'agent'
-  | 'company'
-  | 'staff'
-  | 'platform'
+export type UserRole = 'investor' | 'agent' | 'company' | 'staff' | 'platform'
 
 // Single source of truth for the runtime value list.
 //
@@ -153,11 +144,7 @@ export function asUserRole(raw: string | null | undefined): UserRole | null {
   return _USER_ROLE_VALUES.has(raw as UserRole) ? (raw as UserRole) : null
 }
 
-export type KycStatus =
-  | 'not_started'
-  | 'submitted'
-  | 'approved'
-  | 'rejected'
+export type KycStatus = 'not_started' | 'submitted' | 'approved' | 'rejected'
 
 // Same two-direction guard as UserRole above.
 const _KYC_STATUS_VALUES_ARRAY = [
@@ -184,9 +171,7 @@ const _KYC_STATUS_VALUES: ReadonlySet<KycStatus> = new Set(_KYC_STATUS_VALUES_AR
  * Used by stores/auth.ts to expose `kycStatus: KycStatus | null` so
  * gating checks like `kycStatus === 'approved'` are typed.
  */
-export function asKycStatus(
-  raw: string | null | undefined,
-): KycStatus | null {
+export function asKycStatus(raw: string | null | undefined): KycStatus | null {
   if (raw === null || raw === undefined) return null
   return _KYC_STATUS_VALUES.has(raw as KycStatus) ? (raw as KycStatus) : null
 }

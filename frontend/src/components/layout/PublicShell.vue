@@ -84,11 +84,7 @@ function goToLogin(): void {
   <div class="shell">
     <CHeader>
       <template #right>
-        <button
-          type="button"
-          class="shell__login"
-          @click="goToLogin"
-        >
+        <button type="button" class="shell__login" @click="goToLogin">
           {{ t('public.shell.loginButton') }}
         </button>
       </template>

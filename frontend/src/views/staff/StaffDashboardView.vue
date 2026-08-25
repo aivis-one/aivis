@@ -75,17 +75,11 @@ function goKyc(): void {
 }
 
 function goPayments(): void {
-  void safeNavigate(
-    router.push('/staff/payments'),
-    '[StaffDashboardView] to payments',
-  )
+  void safeNavigate(router.push('/staff/payments'), '[StaffDashboardView] to payments')
 }
 
 function goAgentApps(): void {
-  void safeNavigate(
-    router.push('/staff/agent-apps'),
-    '[StaffDashboardView] to agent apps',
-  )
+  void safeNavigate(router.push('/staff/agent-apps'), '[StaffDashboardView] to agent apps')
 }
 
 function goAvatar(): void {
@@ -100,7 +94,9 @@ onMounted(loadStats)
     <!-- Greeting -->
     <div class="staff-dash__greeting">
       <span class="staff-dash__label">{{ t('staff.panel') }}</span>
-      <h2 class="staff-dash__name">{{ userName }}</h2>
+      <h2 class="staff-dash__name">
+        {{ userName }}
+      </h2>
       <CBadge variant="primary" :text="t('staff.badge')" />
     </div>
 
@@ -111,8 +107,12 @@ onMounted(loadStats)
 
     <!-- Error -->
     <div v-else-if="error" class="staff-dash__center">
-      <p class="staff-dash__error">{{ t('common.error') }}</p>
-      <CButton variant="secondary" size="sm" @click="loadStats">{{ t('common.retry') }}</CButton>
+      <p class="staff-dash__error">
+        {{ t('common.error') }}
+      </p>
+      <CButton variant="secondary" size="sm" @click="loadStats">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- Stats -->
@@ -125,7 +125,9 @@ onMounted(loadStats)
           @click="goUsers"
         >
           <template #icon>
-            <CIconBox variant="primary"><Users :size="24" /></CIconBox>
+            <CIconBox variant="primary">
+              <Users :size="24" />
+            </CIconBox>
           </template>
         </CStatCard>
 
@@ -136,7 +138,9 @@ onMounted(loadStats)
           @click="goKyc"
         >
           <template #icon>
-            <CIconBox variant="warning"><ShieldAlert :size="24" /></CIconBox>
+            <CIconBox variant="warning">
+              <ShieldAlert :size="24" />
+            </CIconBox>
           </template>
         </CStatCard>
 
@@ -147,7 +151,9 @@ onMounted(loadStats)
           @click="goPayments"
         >
           <template #icon>
-            <CIconBox variant="success"><CreditCard :size="24" /></CIconBox>
+            <CIconBox variant="success">
+              <CreditCard :size="24" />
+            </CIconBox>
           </template>
         </CStatCard>
 
@@ -158,7 +164,9 @@ onMounted(loadStats)
           @click="goAgentApps"
         >
           <template #icon>
-            <CIconBox variant="accent"><UserCheck :size="24" /></CIconBox>
+            <CIconBox variant="accent">
+              <UserCheck :size="24" />
+            </CIconBox>
           </template>
         </CStatCard>
       </div>
@@ -176,18 +184,16 @@ onMounted(loadStats)
 
       <!-- Role breakdown -->
       <div v-if="Object.keys(stats.users_by_role).length" class="staff-dash__roles">
-        <div
-          v-for="(count, role) in stats.users_by_role"
-          :key="role"
-          class="staff-dash__role-chip"
-        >
+        <div v-for="(count, role) in stats.users_by_role" :key="role" class="staff-dash__role-chip">
           <span class="staff-dash__role-name">{{ role }}</span>
           <span class="staff-dash__role-count">{{ count }}</span>
         </div>
       </div>
 
       <!-- Quick actions -->
-      <div class="staff-dash__section-title">{{ t('staff.quickActions') }}</div>
+      <div class="staff-dash__section-title">
+        {{ t('staff.quickActions') }}
+      </div>
       <CButton variant="primary" size="sm" class="staff-dash__action" @click="goKyc">
         <ShieldCheck :size="16" /> {{ t('staff.processKyc') }}
       </CButton>
@@ -234,8 +240,15 @@ onMounted(loadStats)
 }
 
 .staff-dash__alert {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -315,6 +328,8 @@ onMounted(loadStats)
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .stats-grid { max-width: calc(2 * var(--tile-max)); }
+  .stats-grid {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 </style>

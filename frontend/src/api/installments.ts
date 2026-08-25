@@ -45,10 +45,7 @@ export function createInstallmentPlan(
   productId: string,
   body: CreateInstallmentPlanRequest,
 ): Promise<InstallmentPlanResponse> {
-  return api.post<InstallmentPlanResponse>(
-    `/api/v1/products/${productId}/installment`,
-    body,
-  )
+  return api.post<InstallmentPlanResponse>(`/api/v1/products/${productId}/installment`, body)
 }
 
 /**
@@ -63,19 +60,13 @@ export function listMyPlans(params?: {
     page: params?.page,
     per_page: params?.per_page,
   })
-  return api.get<InstallmentPlanListResponse>(
-    `/api/v1/installments/me${qs}`,
-  )
+  return api.get<InstallmentPlanListResponse>(`/api/v1/installments/me${qs}`)
 }
 
 /**
  * GET /api/v1/installments/{plan_id} -- plan detail with expanded
  * tranche list. Ownership-enforced on the backend; non-owners get 404.
  */
-export function getPlanDetail(
-  planId: string,
-): Promise<InstallmentPlanDetailResponse> {
-  return api.get<InstallmentPlanDetailResponse>(
-    `/api/v1/installments/${planId}`,
-  )
+export function getPlanDetail(planId: string): Promise<InstallmentPlanDetailResponse> {
+  return api.get<InstallmentPlanDetailResponse>(`/api/v1/installments/${planId}`)
 }

@@ -38,10 +38,28 @@ defineProps<{
   height: var(--size-xs);
 }
 
-.c-icon-box--primary { background: var(--primary-subtle); color: var(--primary); }
-.c-icon-box--accent { background: var(--accent-subtle); color: var(--accent); }
-.c-icon-box--success { background: var(--success-subtle); color: var(--success); }
-.c-icon-box--warning { background: var(--warning-subtle); color: var(--warning); }
-.c-icon-box--danger { background: var(--danger-subtle); color: var(--danger); }
-.c-icon-box--neutral { background: var(--bg-subtle); color: var(--text-secondary); }
+.c-icon-box--primary {
+  background: var(--primary-subtle);
+  color: var(--primary);
+}
+.c-icon-box--accent {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+.c-icon-box--success {
+  background: var(--success-subtle);
+  color: var(--success);
+}
+.c-icon-box--warning {
+  background: var(--warning-subtle);
+  color: var(--warning);
+}
+.c-icon-box--danger {
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+.c-icon-box--neutral {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}
 </style>

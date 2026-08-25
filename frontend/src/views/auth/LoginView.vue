@@ -150,7 +150,6 @@ async function handleLogin(): Promise<void> {
     }
   }
 }
-
 </script>
 
 <template>
@@ -165,8 +164,12 @@ async function handleLogin(): Promise<void> {
         <AivisLogo :height="64" />
       </div>
 
-      <h1 class="auth-title">{{ t('auth.login.title') }}</h1>
-      <p class="auth-subtitle">{{ t('auth.login.subtitle') }}</p>
+      <h1 class="auth-title">
+        {{ t('auth.login.title') }}
+      </h1>
+      <p class="auth-subtitle">
+        {{ t('auth.login.subtitle') }}
+      </p>
 
       <div class="auth-form">
         <CInput
@@ -187,13 +190,11 @@ async function handleLogin(): Promise<void> {
           @keydown.enter="handleLogin"
         />
 
-        <div v-if="error" class="auth-error">{{ error }}</div>
+        <div v-if="error" class="auth-error">
+          {{ error }}
+        </div>
 
-        <button
-          class="btn btn-primary"
-          :disabled="authStore.loading"
-          @click="handleLogin"
-        >
+        <button class="btn btn-primary" :disabled="authStore.loading" @click="handleLogin">
           <span v-if="authStore.loading" class="btn-spinner" />
           <span v-else>{{ t('auth.login.btn') }}</span>
         </button>

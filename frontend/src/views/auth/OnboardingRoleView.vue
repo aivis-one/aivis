@@ -139,8 +139,12 @@ async function handleSubmit(): Promise<void> {
     </header>
 
     <div class="auth-content">
-      <h1 class="auth-title">{{ t('auth.role.title') }}</h1>
-      <p class="auth-subtitle">{{ t('auth.role.subtitle') }}</p>
+      <h1 class="auth-title">
+        {{ t('auth.role.title') }}
+      </h1>
+      <p class="auth-subtitle">
+        {{ t('auth.role.subtitle') }}
+      </p>
 
       <!--
         A11y: these were mouse-only <div>s. They are a SINGLE-SELECT -- one
@@ -151,11 +155,7 @@ async function handleSubmit(): Promise<void> {
         A radiogroup says it. Roving tabindex: the group is ONE tab stop and the
         arrow keys move within it, which is what a radio group is supposed to do.
       -->
-      <div
-        class="role-cards"
-        role="radiogroup"
-        :aria-label="t('auth.role.title')"
-      >
+      <div class="role-cards" role="radiogroup" :aria-label="t('auth.role.title')">
         <div
           v-for="(role, i) in roles"
           :key="role.id"
@@ -179,20 +179,20 @@ async function handleSubmit(): Promise<void> {
             <span class="role-card-icon">{{ role.icon }}</span>
             <span class="role-card-title">{{ t(role.titleKey) }}</span>
           </div>
-          <div class="role-card-desc">{{ t(role.descKey) }}</div>
+          <div class="role-card-desc">
+            {{ t(role.descKey) }}
+          </div>
           <div class="role-card-features">
-            <span
-              v-for="feat in role.features"
-              :key="feat"
-              class="role-feature"
-            >
+            <span v-for="feat in role.features" :key="feat" class="role-feature">
               {{ t(feat) }}
             </span>
           </div>
         </div>
       </div>
 
-      <div v-if="error" class="auth-error">{{ error }}</div>
+      <div v-if="error" class="auth-error">
+        {{ error }}
+      </div>
 
       <div class="role-submit">
         <button
@@ -211,43 +211,67 @@ async function handleSubmit(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  display: flex; flex-direction: column;
-  min-height: 100vh; min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-page);
 }
 .auth-header {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-4) var(--space-5);
 }
 .auth-content {
-  flex: 1; display: flex; flex-direction: column;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: var(--space-5); overflow-y: auto;
+  padding: var(--space-5);
+  overflow-y: auto;
 }
 .auth-title {
-  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: var(--space-2); text-align: center;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  text-align: center;
 }
 .auth-subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  text-align: center;
+  line-height: 1.5;
 }
 .auth-error {
-  font-size: var(--fs-xs); color: var(--danger); text-align: center;
-  margin: var(--space-4) 0; max-width: var(--maxw-form-wide);
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  text-align: center;
+  margin: var(--space-4) 0;
+  max-width: var(--maxw-form-wide);
 }
 
 .role-cards {
-  display: flex; flex-direction: column; gap: var(--space-4);
-  width: 100%; max-width: var(--maxw-form-wide);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: var(--maxw-form-wide);
 }
 .role-card {
-  background: var(--bg-page); border: 2px solid var(--border-default);
-  border-radius: var(--radius-lg); padding: var(--space-4-lg);
-  cursor: pointer; transition: all 0.2s; position: relative;
+  background: var(--bg-page);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
 }
 .role-card:hover {
-  transform: translateY(-2px); box-shadow: var(--shadow-3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-3);
   border-color: var(--primary-hover);
 }
 .role-card.selected {
@@ -257,57 +281,106 @@ async function handleSubmit(): Promise<void> {
 }
 
 .role-card-check {
-  position: absolute; top: 16px; right: 16px;
-  width: var(--size-xs); height: var(--size-xs); border-radius: 50%;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: var(--size-xs);
+  height: var(--size-xs);
+  border-radius: 50%;
   border: 2px solid var(--border-default);
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s; font-size: var(--fs-sm); color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: var(--fs-sm);
+  color: var(--on-accent);
 }
 .role-card.selected .role-card-check {
-  background: var(--accent); border-color: var(--accent);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .role-card-header {
-  display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
-.role-card-icon { font-size: var(--fs-h3); }
-.role-card-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); }
+.role-card-icon {
+  font-size: var(--fs-h3);
+}
+.role-card-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+}
 .role-card-desc {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  line-height: 1.5; margin-bottom: var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-3);
 }
 
 .role-card-features {
-  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 .role-feature {
-  font-size: var(--fs-xs); font-weight: 500; padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm); background: var(--bg-surface);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
   color: var(--primary);
 }
 .role-card.selected .role-feature {
-  background: var(--accent-subtle); color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
 }
 
 .role-submit {
-  width: 100%; max-width: var(--maxw-form-wide); margin-top: var(--space-5);
+  width: 100%;
+  max-width: var(--maxw-form-wide);
+  margin-top: var(--space-5);
 }
-.btn { width: 100%; }
+.btn {
+  width: 100%;
+}
 .btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: var(--space-4); border-radius: var(--radius-md);
-  background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
-  border: none; cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
 }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-spinner {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: var(--size-2xs); height: var(--size-2xs); border: 2px solid currentColor; opacity: 0.35;
-  border-top-color: currentColor; border-radius: 50%;
+  width: var(--size-2xs);
+  height: var(--size-2xs);
+  border: 2px solid currentColor;
+  opacity: 0.35;
+  border-top-color: currentColor;
+  border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>

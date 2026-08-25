@@ -123,9 +123,7 @@ const availableLanguages = computed<string[]>(() => {
   return Array.from(set).sort()
 })
 
-const hasMultipleLanguages = computed<boolean>(
-  () => availableLanguages.value.length >= 2,
-)
+const hasMultipleLanguages = computed<boolean>(() => availableLanguages.value.length >= 2)
 
 const filteredItems = computed<AttachmentResponse[]>(() => {
   const filter = filterLanguage.value
@@ -136,9 +134,7 @@ const filteredItems = computed<AttachmentResponse[]>(() => {
   // than 'en', the user still sees English rows alongside their locale.
   // When the filter IS 'en', the predicate is trivially true on the
   // 'en' rows and false on the others -- no special case needed.
-  return items.value.filter(
-    (att) => att.language === filter || att.language === 'en',
-  )
+  return items.value.filter((att) => att.language === filter || att.language === 'en')
 })
 
 // Group filtered items by L1 path segment. Map preserves insertion
@@ -255,11 +251,7 @@ function mimeIcon(mime: string) {
   if (mime.startsWith('image/')) return ImageIcon
   if (mime.startsWith('video/')) return Video
   if (mime === 'application/pdf') return FileText
-  if (
-    mime.includes('spreadsheet')
-    || mime === 'text/csv'
-    || mime === 'application/vnd.ms-excel'
-  ) {
+  if (mime.includes('spreadsheet') || mime === 'text/csv' || mime === 'application/vnd.ms-excel') {
     return FileSpreadsheet
   }
   if (mime.includes('zip') || mime.includes('archive')) return FileArchive
@@ -344,21 +336,17 @@ function formatBytes(bytes: number): string {
     </div>
 
     <div v-else-if="errored" class="ats__center">
-      <CEmptyState
-        :title="t('inv.companyOverview.documents.errorTitle')"
-      />
+      <CEmptyState :title="t('inv.companyOverview.documents.errorTitle')" />
       <CButton variant="outline" size="sm" @click="onRetry">
         {{ t('inv.companyOverview.documents.errorRetry') }}
       </CButton>
     </div>
 
     <div v-else class="ats__groups">
-      <section
-        v-for="group in groupedItems"
-        :key="group.l1"
-        class="ats__group"
-      >
-        <h3 class="ats__group-title">{{ pathLabel(group.l1) }}</h3>
+      <section v-for="group in groupedItems" :key="group.l1" class="ats__group">
+        <h3 class="ats__group-title">
+          {{ pathLabel(group.l1) }}
+        </h3>
         <ul class="ats__list">
           <li v-for="att in group.items" :key="att.id">
             <button type="button" class="ats__item" @click="onDownload(att)">
@@ -366,11 +354,10 @@ function formatBytes(bytes: number): string {
                 <component :is="mimeIcon(att.mime_type)" :size="20" />
               </span>
               <div class="ats__item-body">
-                <p class="ats__item-title">{{ att.title }}</p>
-                <p
-                  v-if="att.description"
-                  class="ats__item-desc"
-                >
+                <p class="ats__item-title">
+                  {{ att.title }}
+                </p>
+                <p v-if="att.description" class="ats__item-desc">
                   {{ att.description }}
                 </p>
                 <p class="ats__item-meta">
@@ -457,8 +444,15 @@ function formatBytes(bytes: number): string {
 }
 
 .ats__item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -467,7 +461,9 @@ function formatBytes(bytes: number): string {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.12s ease, transform 0.12s ease;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
 }
 
 .ats__item:hover {

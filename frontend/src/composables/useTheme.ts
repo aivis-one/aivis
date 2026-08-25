@@ -85,9 +85,11 @@ if (_isBrowser()) {
  */
 function _syncThemeColour(mode: ThemeMode): void {
   if (!_isBrowser()) return
-  const sync = (window as unknown as {
-    __aivisSyncThemeColour?: (explicit: EffectiveTheme | null) => void
-  }).__aivisSyncThemeColour
+  const sync = (
+    window as unknown as {
+      __aivisSyncThemeColour?: (explicit: EffectiveTheme | null) => void
+    }
+  ).__aivisSyncThemeColour
   sync?.(mode === 'auto' ? null : mode)
 }
 

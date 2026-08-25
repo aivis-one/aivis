@@ -104,10 +104,6 @@ export function getMyCompany(): Promise<CompanyResponse> {
  * Investor-side `CompanyOverviewView` (iter 2.5) consumes both inline
  * without a second round-trip.
  */
-export function getCompany(
-  id: string,
-): Promise<PublicCompanyDetailResponse> {
-  return api.get<PublicCompanyDetailResponse>(
-    `/api/v1/public/companies/${id}`,
-  )
+export function getCompany(id: string): Promise<PublicCompanyDetailResponse> {
+  return api.get<PublicCompanyDetailResponse>(`/api/v1/public/companies/${id}`)
 }

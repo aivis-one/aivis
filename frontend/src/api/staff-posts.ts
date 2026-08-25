@@ -67,10 +67,7 @@ export function createStaffPost(body: CreatePostRequest): Promise<PostResponse> 
 }
 
 /** PATCH /api/v1/staff/posts/{id} -- partial update of a post. */
-export function updateStaffPost(
-  postId: string,
-  body: UpdatePostRequest,
-): Promise<PostResponse> {
+export function updateStaffPost(postId: string, body: UpdatePostRequest): Promise<PostResponse> {
   return api.patch<PostResponse>(`/api/v1/staff/posts/${postId}`, body)
 }
 

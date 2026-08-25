@@ -54,10 +54,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { getDashboardSummary } from '@/api/dashboard'
-import type {
-  BalanceResponse,
-  DashboardSummaryResponse,
-} from '@/api/types'
+import type { BalanceResponse, DashboardSummaryResponse } from '@/api/types'
 
 function emptyBalance(): BalanceResponse {
   return { confirmed: 0, frozen: 0 }

@@ -9,7 +9,9 @@ const { t } = useI18n()
 
 <template>
   <div class="view-stub">
-    <h1 class="view-stub__title">{{ t('nav.comp.product_edit') }}</h1>
+    <h1 class="view-stub__title">
+      {{ t('nav.comp.product_edit') }}
+    </h1>
     <div class="view-stub__badge">F5.2</div>
   </div>
 </template>

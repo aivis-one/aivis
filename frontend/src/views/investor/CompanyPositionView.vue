@@ -56,13 +56,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
-import {
-  CalendarClock,
-  FileSignature,
-  FileText,
-  Gift,
-  ShoppingCart,
-} from 'lucide-vue-next'
+import { CalendarClock, FileSignature, FileText, Gift, ShoppingCart } from 'lucide-vue-next'
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import AgreementSheet from '@/components/shared/AgreementSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -103,9 +97,7 @@ const companyId = computed<string>(() => route.params.id as string)
 // together).
 const selectedPurchaseId = ref<string | null>(null)
 const selectedLegalBasis = ref<string | null>(null)
-const certificateSheetOpen = computed<boolean>(
-  () => selectedPurchaseId.value !== null,
-)
+const certificateSheetOpen = computed<boolean>(() => selectedPurchaseId.value !== null)
 
 function openCertificate(p: PurchaseItemResponse): void {
   selectedPurchaseId.value = p.id
@@ -286,11 +278,10 @@ onUnmounted(() => {
            button shape extracted to CBackLink; .cp__page-header padding
            already handles spacing so no extra wrapper is needed. -->
       <div class="cp__page-header">
-        <CBackLink
-          :label="t('inv.companyPosition.backLink')"
-          @click="goBack"
-        />
-        <h1 class="cp__page-title">{{ headerTitle }}</h1>
+        <CBackLink :label="t('inv.companyPosition.backLink')" @click="goBack" />
+        <h1 class="cp__page-title">
+          {{ headerTitle }}
+        </h1>
       </div>
 
       <div class="cp__body">
@@ -353,11 +344,7 @@ onUnmounted(() => {
             duplicating it as a row-level button would be redundant.
           -->
           <div class="cp__ownership-actions">
-            <CButton
-              variant="outline"
-              size="sm"
-              @click="openOwnership"
-            >
+            <CButton variant="outline" size="sm" @click="openOwnership">
               <FileSignature :size="16" />
               {{ t('inv.companyPosition.ownership.viewCertificate') }}
             </CButton>
@@ -382,11 +369,7 @@ onUnmounted(() => {
           </div>
 
           <ul v-else class="cp__list">
-            <li
-              v-for="p in currentPurchases"
-              :key="p.id"
-              class="cp__item"
-            >
+            <li v-for="p in currentPurchases" :key="p.id" class="cp__item">
               <div class="cp__item-icon" :class="legalBasisClass(p.legal_basis)">
                 <Gift v-if="p.legal_basis === 'gift'" :size="16" />
                 <CalendarClock v-else-if="p.legal_basis === 'installment_tranche'" :size="16" />
@@ -406,20 +389,13 @@ onUnmounted(() => {
                     {{ formatNumber(p.units, locale) }}
                     {{ t('inv.companyPosition.purchases.units') }}
                   </span>
-                  <span
-                    v-if="p.legal_basis !== 'gift'"
-                    class="cp__item-stat"
-                  >
+                  <span v-if="p.legal_basis !== 'gift'" class="cp__item-stat">
                     {{ formatPrice(p.paid_cents) }}
                   </span>
                 </div>
               </div>
               <div class="cp__item-actions">
-                <CButton
-                  variant="outline"
-                  size="sm"
-                  @click="openCertificate(p)"
-                >
+                <CButton variant="outline" size="sm" @click="openCertificate(p)">
                   <FileText :size="16" />
                   {{ viewLabelForLegalBasis(p.legal_basis) }}
                 </CButton>
@@ -428,11 +404,7 @@ onUnmounted(() => {
           </ul>
 
           <!-- Infinite scroll sentinel (only when we have items) -->
-          <div
-            v-if="currentPurchases.length > 0"
-            ref="sentinelRef"
-            class="cp__sentinel"
-          >
+          <div v-if="currentPurchases.length > 0" ref="sentinelRef" class="cp__sentinel">
             <CLoader v-if="currentLoading" :size="20" />
           </div>
 
@@ -474,16 +446,16 @@ onUnmounted(() => {
           inv.agreement.title.ownership.
     -->
     <AgreementSheet
+      :id="selectedPurchaseId"
       :open="certificateSheetOpen"
       mode="agreement"
-      :id="selectedPurchaseId"
       :legal-basis="selectedLegalBasis ?? undefined"
       @close="closeCertificate"
     />
     <AgreementSheet
+      :id="companyId"
       :open="ownershipSheetOpen"
       mode="ownership"
-      :id="companyId"
       @close="closeOwnership"
     />
   </div>
@@ -707,6 +679,8 @@ onUnmounted(() => {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .cp__agg-grid { max-width: calc(2 * var(--tile-max)); }
+  .cp__agg-grid {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 </style>

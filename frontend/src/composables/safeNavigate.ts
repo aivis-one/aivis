@@ -77,9 +77,9 @@ export async function safeNavigate(
 ): Promise<void> {
   await navigation.catch((err: unknown) => {
     if (
-      isNavigationFailure(err, NavigationFailureType.duplicated)
-      || isNavigationFailure(err, NavigationFailureType.cancelled)
-      || isNavigationFailure(err, NavigationFailureType.aborted)
+      isNavigationFailure(err, NavigationFailureType.duplicated) ||
+      isNavigationFailure(err, NavigationFailureType.cancelled) ||
+      isNavigationFailure(err, NavigationFailureType.aborted)
     ) {
       return
     }

@@ -48,11 +48,7 @@ import {
   updateStaffPost,
   deleteStaffPost,
 } from '@/api/staff-posts'
-import type {
-  PostResponse,
-  CreatePostRequest,
-  UpdatePostRequest,
-} from '@/api/types'
+import type { PostResponse, CreatePostRequest, UpdatePostRequest } from '@/api/types'
 
 const props = defineProps<{
   /** When set, scope the list + new posts to this company and hide the owner picker. */
@@ -347,10 +343,7 @@ onMounted(loadPosts)
         <div v-for="post in items" :key="post.id" class="post-item">
           <div class="post-item__info">
             <div class="post-item__top">
-              <CBadge
-                :variant="ownerBadgeVariant(post.owner_type)"
-                :text="post.owner_type"
-              />
+              <CBadge :variant="ownerBadgeVariant(post.owner_type)" :text="post.owner_type" />
               <CBadge
                 v-if="post.is_banner"
                 variant="warning"
@@ -358,21 +351,33 @@ onMounted(loadPosts)
               />
               <CBadge
                 :variant="post.is_published ? 'success' : 'neutral'"
-                :text="post.is_published
-                  ? t('staff.platform.post.published')
-                  : t('staff.platform.post.draft')"
+                :text="
+                  post.is_published
+                    ? t('staff.platform.post.published')
+                    : t('staff.platform.post.draft')
+                "
               />
             </div>
-            <div class="post-item__title">{{ post.title }}</div>
-            <div class="post-item__date">{{ formatDate(post.created_at) }}</div>
+            <div class="post-item__title">
+              {{ post.title }}
+            </div>
+            <div class="post-item__date">
+              {{ formatDate(post.created_at) }}
+            </div>
           </div>
           <div v-if="canEdit" class="post-item__actions">
             <button
-            :aria-label="t('common.edit')" class="post-item__icon-btn" @click="openEdit(post)">
+              :aria-label="t('common.edit')"
+              class="post-item__icon-btn"
+              @click="openEdit(post)"
+            >
               <Pencil :size="16" />
             </button>
             <button
-            :aria-label="t('common.delete')" class="post-item__icon-btn post-item__icon-btn--danger" @click="openDelete(post)">
+              :aria-label="t('common.delete')"
+              class="post-item__icon-btn post-item__icon-btn--danger"
+              @click="openDelete(post)"
+            >
               <Trash2 :size="16" />
             </button>
           </div>
@@ -381,18 +386,24 @@ onMounted(loadPosts)
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="ple__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">&larr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
+          &larr;
+        </CButton>
         <span class="ple__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">&rarr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
+          &rarr;
+        </CButton>
       </div>
     </template>
 
     <!-- Editor modal -->
     <CModal :open="showEditor" @close="showEditor = false">
       <h3 class="ple__modal-title">
-        {{ editId === null
-          ? t('staff.platform.post.createTitle')
-          : t('staff.platform.post.editTitle') }}
+        {{
+          editId === null
+            ? t('staff.platform.post.createTitle')
+            : t('staff.platform.post.editTitle')
+        }}
       </h3>
 
       <!-- Owner picker: only when not fixed to a company. -->
@@ -434,7 +445,11 @@ onMounted(loadPosts)
           <span v-for="tag in form.tags" :key="tag" class="ple__chip">
             {{ tag }}
             <button
-        :aria-label="t('common.close')" type="button" class="ple__chip-x" @click="removeTag(tag)">
+              :aria-label="t('common.close')"
+              type="button"
+              class="ple__chip-x"
+              @click="removeTag(tag)"
+            >
               <X :size="16" />
             </button>
           </span>
@@ -471,9 +486,15 @@ onMounted(loadPosts)
 
     <!-- Delete confirm -->
     <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="ple__modal-title">{{ t('staff.platform.post.deleteTitle') }}</h3>
-      <p class="ple__modal-text">{{ t('staff.platform.post.deleteConfirm') }}</p>
-      <p v-if="deleteTarget" class="ple__modal-target">{{ deleteTarget.title }}</p>
+      <h3 class="ple__modal-title">
+        {{ t('staff.platform.post.deleteTitle') }}
+      </h3>
+      <p class="ple__modal-text">
+        {{ t('staff.platform.post.deleteConfirm') }}
+      </p>
+      <p v-if="deleteTarget" class="ple__modal-target">
+        {{ deleteTarget.title }}
+      </p>
       <div class="ple__modal-actions">
         <CButton variant="outline" size="sm" @click="deleteTarget = null">
           {{ t('common.cancel') }}
@@ -487,7 +508,9 @@ onMounted(loadPosts)
 </template>
 
 <style scoped>
-.ple { padding: 0; }
+.ple {
+  padding: 0;
+}
 
 .ple__toolbar {
   display: flex;
@@ -496,59 +519,155 @@ onMounted(loadPosts)
 }
 
 .ple__center {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: var(--center-md); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-md);
+  gap: var(--space-4);
 }
 
-.post-list { display: flex; flex-direction: column; }
+.post-list {
+  display: flex;
+  flex-direction: column;
+}
 .post-item {
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default);
 }
-.post-item__info { flex: 1; min-width: 0; }
-.post-item__top { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.post-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.post-item__top {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
 .post-item__title {
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.post-item__date { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
-.post-item__actions { display: flex; gap: var(--space-1); flex-shrink: 0; }
+.post-item__date {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+.post-item__actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
 .post-item__icon-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: var(--size-md); height: var(--size-md); border: none; background: none;
-  color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
-  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-md);
+  height: var(--size-md);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
-.post-item__icon-btn:hover { background: var(--bg-subtle); }
-.post-item__icon-btn--danger:hover { color: var(--danger); }
+.post-item__icon-btn:hover {
+  background: var(--bg-subtle);
+}
+.post-item__icon-btn--danger:hover {
+  color: var(--danger);
+}
 
 .ple__pagination {
-  display: flex; align-items: center; justify-content: center;
-  gap: var(--space-3); margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
-.ple__page { font-size: var(--fs-xs); color: var(--text-secondary); }
+.ple__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
 
-.ple__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
-.ple__modal-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-2); }
-.ple__modal-target { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-4); }
-.ple__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
+.ple__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.ple__modal-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2);
+}
+.ple__modal-target {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.ple__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  justify-content: flex-end;
+}
 
 .ple__label {
-  display: block; font-size: var(--fs-xs); font-weight: 600;
-  color: var(--text-primary); margin-bottom: var(--space-2);
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
 }
-.ple__tags-group { margin-bottom: var(--space-4); }
-.ple__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
+.ple__tags-group {
+  margin-bottom: var(--space-4);
+}
+.ple__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
 .ple__chip {
-  display: inline-flex; align-items: center; gap: var(--space-1);
-  padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
-  background: var(--bg-subtle); color: var(--text-primary); font-size: var(--fs-xs); font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  font-weight: 500;
 }
 .ple__chip-x {
-  display: flex; align-items: center; border: none; background: none;
-  color: var(--text-tertiary); cursor: pointer; padding: 0;
+  display: flex;
+  align-items: center;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 0;
 }
-.ple__chip-x:hover { color: var(--danger); }
+.ple__chip-x:hover {
+  color: var(--danger);
+}
 
-.ple__toggles { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-2); }
+.ple__toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
 </style>

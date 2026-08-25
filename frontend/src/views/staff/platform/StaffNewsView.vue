@@ -24,14 +24,21 @@ const canManageContent = canDo('content_manage')
 
 <template>
   <div class="staff-news">
-    <h2 class="staff-news__title">{{ t('staff.platform.news.title') }}</h2>
+    <h2 class="staff-news__title">
+      {{ t('staff.platform.news.title') }}
+    </h2>
     <PostListEditor :can-edit="canManageContent" />
   </div>
 </template>
 
 <style scoped>
-.staff-news { padding: var(--space-4); }
+.staff-news {
+  padding: var(--space-4);
+}
 .staff-news__title {
-  font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-3);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
 }
 </style>

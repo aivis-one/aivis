@@ -112,21 +112,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Sprint 4.4: role / kycStatus pass through narrowing guards from
   // api/types.ts. Unknown values become `null`, never an unsafe cast.
-  const role = computed<UserRole | null>(
-    () => asUserRole(user.value?.role),
-  )
-  const kycStatus = computed<KycStatus | null>(
-    () => asKycStatus(user.value?.kyc_status),
-  )
+  const role = computed<UserRole | null>(() => asUserRole(user.value?.role))
+  const kycStatus = computed<KycStatus | null>(() => asKycStatus(user.value?.kyc_status))
 
   // ---------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
 
   function _getStorage(): Storage {
-    return platform.getStorageDriver() === 'sessionStorage'
-      ? sessionStorage
-      : localStorage
+    return platform.getStorageDriver() === 'sessionStorage' ? sessionStorage : localStorage
   }
 
   function _persistToken(value: string | null): void {
@@ -175,16 +169,10 @@ export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------
 
   /** Email + password login. */
-  async function loginViaEmail(
-    email: string,
-    password: string,
-  ): Promise<void> {
+  async function loginViaEmail(email: string, password: string): Promise<void> {
     loading.value = true
     try {
-      const response = await api.post<AuthResponse>(
-        '/api/v1/auth/email/login',
-        { email, password },
-      )
+      const response = await api.post<AuthResponse>('/api/v1/auth/email/login', { email, password })
       _setSession(response)
       // iter 2.6 batch 2: clear the one-shot referral code on
       // successful sign-in. Closes the hygiene gap where a visitor
@@ -226,10 +214,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /** Telegram WebApp login. */
-  async function loginViaTelegram(
-    initData: string,
-    referralCode?: string | null,
-  ): Promise<void> {
+  async function loginViaTelegram(initData: string, referralCode?: string | null): Promise<void> {
     loading.value = true
     try {
       const response = await api.post<AuthResponse>(

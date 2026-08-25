@@ -58,9 +58,7 @@ function isChecked(doc: DocumentResponse): boolean {
   return doc.is_signed === true || checkedIds.value.has(doc.id)
 }
 
-const checkedCount = computed(
-  () => documents.value.filter(isChecked).length,
-)
+const checkedCount = computed(() => documents.value.filter(isChecked).length)
 
 // All unsigned docs have a tick, or there are no docs at all.
 const canSignAll = computed(() => {
@@ -192,8 +190,12 @@ async function handleSignAll(): Promise<void> {
     </header>
 
     <div class="auth-content">
-      <h1 class="auth-title">{{ t('auth.docs.title') }}</h1>
-      <p class="auth-subtitle">{{ t('auth.docs.subtitle') }}</p>
+      <h1 class="auth-title">
+        {{ t('auth.docs.title') }}
+      </h1>
+      <p class="auth-subtitle">
+        {{ t('auth.docs.subtitle') }}
+      </p>
 
       <!-- Loading -->
       <div v-if="loadingDocs" class="docs-loading">
@@ -232,16 +234,14 @@ async function handleSignAll(): Promise<void> {
               <span v-if="isChecked(doc)">✓</span>
             </div>
             <div class="doc-info">
-              <div class="doc-title">{{ doc.title }}</div>
+              <div class="doc-title">
+                {{ doc.title }}
+              </div>
               <div class="doc-meta">
                 <span class="doc-required">{{ t('auth.docs.required') }}</span>
               </div>
             </div>
-            <button
-              type="button"
-              class="doc-link"
-              @click.stop="openDocument(doc)"
-            >
+            <button type="button" class="doc-link" @click.stop="openDocument(doc)">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -271,7 +271,9 @@ async function handleSignAll(): Promise<void> {
           {{ t('auth.docs.noDocs') }}
         </div>
 
-        <div v-if="error" class="auth-error">{{ error }}</div>
+        <div v-if="error" class="auth-error">
+          {{ error }}
+        </div>
 
         <div class="doc-actions">
           <button
@@ -296,7 +298,9 @@ async function handleSignAll(): Promise<void> {
         <div v-if="viewLoading" class="doc-modal__center">
           <span class="btn-spinner" />
         </div>
-        <p v-else-if="viewError" class="auth-error">{{ viewError }}</p>
+        <p v-else-if="viewError" class="auth-error">
+          {{ viewError }}
+        </p>
         <!-- Trusted content: HTML authored in our own repo. Body innerHTML
              was extracted via DOMParser above, so <html>/<head>/<meta>
              are not in the mounted subtree. -->
@@ -314,62 +318,103 @@ async function handleSignAll(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  display: flex; flex-direction: column;
-  min-height: 100vh; min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-page);
 }
 .auth-header {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-4) var(--space-5);
 }
 .auth-content {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: var(--space-5); overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  overflow-y: auto;
 }
 .auth-title {
-  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: var(--space-2); text-align: center;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  text-align: center;
 }
 .auth-subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  text-align: center;
+  line-height: 1.5;
 }
 .auth-error {
-  font-size: var(--fs-xs); color: var(--danger); text-align: center;
-  margin-bottom: var(--space-4); max-width: var(--maxw-form-wide);
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  text-align: center;
+  margin-bottom: var(--space-4);
+  max-width: var(--maxw-form-wide);
 }
 
 .docs-loading {
-  display: flex; justify-content: center; padding: var(--space-6-lg);
+  display: flex;
+  justify-content: center;
+  padding: var(--space-6-lg);
 }
 
 .no-docs {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  text-align: center; margin-bottom: var(--space-5);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: var(--space-5);
 }
 
 .doc-list {
-  width: 100%; max-width: var(--maxw-form-wide);
-  display: flex; flex-direction: column; gap: var(--space-3);
+  width: 100%;
+  max-width: var(--maxw-form-wide);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
 .doc-item {
-  display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-4);
-  background: var(--bg-page); border: 1px solid var(--border-default);
-  border-radius: var(--radius-md); cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
   transition: all 0.2s;
 }
-.doc-item:hover { border-color: var(--primary-hover); background: var(--bg-surface); }
-.doc-item.signed { cursor: default; }
+.doc-item:hover {
+  border-color: var(--primary-hover);
+  background: var(--bg-surface);
+}
+.doc-item.signed {
+  cursor: default;
+}
 
 .doc-checkbox {
   position: relative;
-  width: var(--size-xs); height: var(--size-xs); min-width: var(--size-xs);
-  border: 2px solid var(--border-default); border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s; margin-top: var(--space-1);
-  font-size: var(--fs-xs); color: var(--on-primary);
+  width: var(--size-xs);
+  height: var(--size-xs);
+  min-width: var(--size-xs);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-top: var(--space-1);
+  font-size: var(--fs-xs);
+  color: var(--on-primary);
 }
 
 /* A5: 24x24 painted. It only became visible to a hit test once it was given
@@ -385,7 +430,8 @@ async function handleSignAll(): Promise<void> {
   height: max(100%, var(--tap-min));
 }
 .doc-checkbox.checked {
-  background: var(--primary); border-color: var(--primary);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 .doc-checkbox.locked {
   opacity: 0.8;
@@ -398,22 +444,40 @@ async function handleSignAll(): Promise<void> {
    it shrink; overflow-wrap lets a long unbroken title break rather than push.
    Found only on a direct load: the push sweep renders no documents here.
    Same idiom already used by .event-card__body and .company-item__info. */
-.doc-info { flex: 1; min-width: 0; }
+.doc-info {
+  flex: 1;
+  min-width: 0;
+}
 .doc-title {
   overflow-wrap: anywhere;
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
 }
-.doc-meta { display: flex; gap: var(--space-2); }
+.doc-meta {
+  display: flex;
+  gap: var(--space-2);
+}
 .doc-required {
-  font-size: var(--fs-xs); color: var(--danger); font-weight: 500;
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  font-weight: 500;
 }
 
 .doc-link {
   position: relative;
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  color: var(--text-tertiary); margin-top: var(--space-1);
-  background: none; border: none; padding: var(--space-1) var(--space-1); cursor: pointer;
-  font-family: inherit; font-size: var(--fs-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  background: none;
+  border: none;
+  padding: var(--space-1) var(--space-1);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-xs);
   transition: color 0.2s;
 }
 
@@ -430,64 +494,117 @@ async function handleSignAll(): Promise<void> {
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
 }
-.doc-link:hover { color: var(--primary); }
+.doc-link:hover {
+  color: var(--primary);
+}
 
 .doc-counter {
-  font-size: var(--fs-xs); color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
   margin-bottom: var(--space-4);
 }
 
-.doc-actions { width: 100%; max-width: var(--maxw-form-wide); }
-
-.btn { width: 100%; }
-.btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: var(--space-4); border-radius: var(--radius-md);
-  background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
-  border: none; cursor: pointer;
+.doc-actions {
+  width: 100%;
+  max-width: var(--maxw-form-wide);
 }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn {
+  width: 100%;
+}
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-spinner {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: var(--size-2xs); height: var(--size-2xs); border: 2px solid currentColor; opacity: 0.35;
-  border-top-color: currentColor; border-radius: 50%;
+  width: var(--size-2xs);
+  height: var(--size-2xs);
+  border: 2px solid currentColor;
+  opacity: 0.35;
+  border-top-color: currentColor;
+  border-radius: 50%;
   animation: spin 0.6s linear infinite;
   display: inline-block;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* --- Document preview modal --- */
 .doc-modal__title {
-  font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary);
-  margin: 0 0 var(--space-3); padding-right: var(--space-5);  /* room for close button */
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
+  padding-right: var(--space-5); /* room for close button */
 }
 .doc-modal__body {
-  min-height: 120px; max-height: 60vh; overflow-y: auto;
-  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
-  padding: var(--space-4); background: var(--bg-subtle);
+  min-height: 120px;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  background: var(--bg-subtle);
   margin-bottom: var(--space-4);
 }
 .doc-modal__center {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: var(--center-sm);
 }
 .doc-modal__content {
-  font-size: var(--fs-sm); color: var(--text-primary); line-height: 1.6;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
 }
-.doc-modal__content :deep(h1) { font-size: var(--fs-lg); margin: 0 0 var(--space-3); }
-.doc-modal__content :deep(h2) { font-size: var(--fs-body); margin: var(--space-4) 0 var(--space-2); }
-.doc-modal__content :deep(p) { margin: 0 0 var(--space-3); }
+.doc-modal__content :deep(h1) {
+  font-size: var(--fs-lg);
+  margin: 0 0 var(--space-3);
+}
+.doc-modal__content :deep(h2) {
+  font-size: var(--fs-body);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.doc-modal__content :deep(p) {
+  margin: 0 0 var(--space-3);
+}
 .doc-modal__content :deep(ul),
-.doc-modal__content :deep(ol) { margin: 0 0 var(--space-3); padding-left: var(--space-4-lg); }
-.doc-modal__content :deep(li) { margin-bottom: var(--space-1); }
+.doc-modal__content :deep(ol) {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-4-lg);
+}
+.doc-modal__content :deep(li) {
+  margin-bottom: var(--space-1);
+}
 
 .doc-modal__actions {
-  display: flex; justify-content: flex-end;
+  display: flex;
+  justify-content: flex-end;
 }
 .doc-modal__actions .btn-primary {
-  width: auto; min-width: 120px;
+  width: auto;
+  min-width: 120px;
 }
 </style>

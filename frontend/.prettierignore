@@ -1,0 +1,16 @@
+# Build output and dependencies.
+dist
+node_modules
+
+# LEGAL DOCUMENTS -- deliberately not formatted.
+#
+# public/legal holds the agent, company and investment agreements, the privacy
+# policy, the risk disclosure and the terms of service, in four languages: 24
+# files. A formatting pass is a code-style change and these are not code.
+#
+# Whitespace between inline elements in HTML is SIGNIFICANT -- it collapses to a
+# single space rather than to nothing -- so reflowing them can move text on a
+# rendered page, and the diff would be large, unreviewable and across documents
+# that carry legal weight. Excluded on 2026-08-25, when a formatting pass first
+# reached them: 187 files needed formatting and 24 were these.
+public/legal

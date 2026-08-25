@@ -111,12 +111,8 @@ export function fetchStaffCompanies(params?: {
  *
  * 404 only when the company id does not exist at all.
  */
-export function fetchStaffCompany(
-  companyId: string,
-): Promise<CompanyDetailResponse> {
-  return api.get<CompanyDetailResponse>(
-    `/api/v1/staff/companies/${companyId}`,
-  )
+export function fetchStaffCompany(companyId: string): Promise<CompanyDetailResponse> {
+  return api.get<CompanyDetailResponse>(`/api/v1/staff/companies/${companyId}`)
 }
 
 /**
@@ -144,7 +140,6 @@ export function fetchStaffCompanyPriceHistory(
   )
 }
 
-
 /**
  * PATCH /api/v1/staff/companies/{id}/price -- change the company's
  * share price (iter 2.7 C2). Cascades to active/hidden products
@@ -158,12 +153,8 @@ export function updateStaffCompanyPrice(
   companyId: string,
   body: UpdatePriceRequest,
 ): Promise<CompanyResponse> {
-  return api.patch<CompanyResponse>(
-    `/api/v1/staff/companies/${companyId}/price`,
-    body,
-  )
+  return api.patch<CompanyResponse>(`/api/v1/staff/companies/${companyId}/price`, body)
 }
-
 
 /**
  * GET /api/v1/staff/companies/{id}/templates -- staff template list
@@ -200,9 +191,7 @@ export function fetchStaffCompanyTemplates(
     language: params?.language,
     status: params?.status,
   })
-  return api.get<TemplateResponse[]>(
-    `/api/v1/staff/companies/${companyId}/templates${qs}`,
-  )
+  return api.get<TemplateResponse[]>(`/api/v1/staff/companies/${companyId}/templates${qs}`)
 }
 
 /**
@@ -223,7 +212,6 @@ export function fetchStaffCompanyTemplate(
     `/api/v1/staff/companies/${companyId}/templates/${templateId}`,
   )
 }
-
 
 /**
  * GET /api/v1/staff/companies/{id}/attachments -- staff document list
@@ -254,9 +242,7 @@ export function fetchStaffCompanyAttachments(
     language: params?.language,
     include_deleted: params?.include_deleted,
   })
-  return api.get<StaffAttachmentResponse[]>(
-    `/api/v1/staff/companies/${companyId}/attachments${qs}`,
-  )
+  return api.get<StaffAttachmentResponse[]>(`/api/v1/staff/companies/${companyId}/attachments${qs}`)
 }
 
 /**
@@ -273,10 +259,7 @@ export function reorderStaffCompanyAttachments(
   companyId: string,
   body: ReorderAttachmentsRequest,
 ): Promise<void> {
-  return api.patch<void>(
-    `/api/v1/staff/companies/${companyId}/attachments/reorder`,
-    body,
-  )
+  return api.patch<void>(`/api/v1/staff/companies/${companyId}/attachments/reorder`, body)
 }
 
 /**
@@ -289,11 +272,8 @@ export function deleteStaffCompanyAttachment(
   companyId: string,
   attachmentId: string,
 ): Promise<void> {
-  return api.delete(
-    `/api/v1/staff/companies/${companyId}/attachments/${attachmentId}`,
-  )
+  return api.delete(`/api/v1/staff/companies/${companyId}/attachments/${attachmentId}`)
 }
-
 
 // ---------------------------------------------------------------------------
 // Roadmap CRUD + reorder (iter 2.7 D1, R1 §5)
@@ -328,10 +308,7 @@ export function createRoadmapItem(
   companyId: string,
   body: CreateRoadmapItemRequest,
 ): Promise<RoadmapItemResponse> {
-  return api.post<RoadmapItemResponse>(
-    `/api/v1/staff/companies/${companyId}/roadmap`,
-    body,
-  )
+  return api.post<RoadmapItemResponse>(`/api/v1/staff/companies/${companyId}/roadmap`, body)
 }
 
 /**
@@ -367,13 +344,8 @@ export function updateRoadmapItem(
  * uploaded cover object is left in MinIO. Returns 204. Requires
  * company_manage server-side.
  */
-export function deleteRoadmapItem(
-  companyId: string,
-  itemId: string,
-): Promise<void> {
-  return api.delete(
-    `/api/v1/staff/companies/${companyId}/roadmap/${itemId}`,
-  )
+export function deleteRoadmapItem(companyId: string, itemId: string): Promise<void> {
+  return api.delete(`/api/v1/staff/companies/${companyId}/roadmap/${itemId}`)
 }
 
 /**
@@ -401,7 +373,6 @@ export function reorderRoadmap(
     body,
   )
 }
-
 
 // ---------------------------------------------------------------------------
 // Roadmap cover image (iter 2.7 D2, R1 §5.5)
@@ -446,9 +417,7 @@ export async function uploadRoadmapCover(
   itemId: string,
   file: File,
 ): Promise<RoadmapItemResponse> {
-  const url =
-    `${API_BASE_URL}/api/v1/staff/companies/${companyId}`
-    + `/roadmap/${itemId}/cover`
+  const url = `${API_BASE_URL}/api/v1/staff/companies/${companyId}` + `/roadmap/${itemId}/cover`
 
   const form = new FormData()
   // Field name MUST be `file` to bind the backend UploadFile param.
@@ -463,10 +432,7 @@ export async function uploadRoadmapCover(
   }
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(
-    () => controller.abort(),
-    COVER_UPLOAD_TIMEOUT_MS,
-  )
+  const timeoutId = setTimeout(() => controller.abort(), COVER_UPLOAD_TIMEOUT_MS)
 
   try {
     let response: Response
@@ -481,9 +447,7 @@ export async function uploadRoadmapCover(
       if (err instanceof DOMException && err.name === 'AbortError') {
         throw new ApiTimeoutError()
       }
-      throw new ApiNetworkError(
-        err instanceof Error ? err.message : 'Network error',
-      )
+      throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
     }
 
     // Parse the JSON body. On success it's the RoadmapItemResponse; on
@@ -492,8 +456,7 @@ export async function uploadRoadmapCover(
     try {
       data = await response.json()
     } catch {
-      const retryAfter =
-        response.status === 429 ? parseRetryAfterHeader(response) : undefined
+      const retryAfter = response.status === 429 ? parseRetryAfterHeader(response) : undefined
       throw new ApiResponseError(
         response.status,
         `HTTP ${response.status}: non-JSON response`,
@@ -513,8 +476,7 @@ export async function uploadRoadmapCover(
           detail = obj.message
         }
       }
-      const retryAfter =
-        response.status === 429 ? parseRetryAfterHeader(response) : undefined
+      const retryAfter = response.status === 429 ? parseRetryAfterHeader(response) : undefined
       throw new ApiResponseError(response.status, detail, retryAfter)
     }
 
@@ -534,11 +496,6 @@ export async function uploadRoadmapCover(
  * benign already-removed case if it wants. Nulls cover_storage_key;
  * the section reloads the detail to drop the thumbnail.
  */
-export function deleteRoadmapCover(
-  companyId: string,
-  itemId: string,
-): Promise<void> {
-  return api.delete(
-    `/api/v1/staff/companies/${companyId}/roadmap/${itemId}/cover`,
-  )
+export function deleteRoadmapCover(companyId: string, itemId: string): Promise<void> {
+  return api.delete(`/api/v1/staff/companies/${companyId}/roadmap/${itemId}/cover`)
 }

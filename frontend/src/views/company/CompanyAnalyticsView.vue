@@ -94,11 +94,7 @@ import { useI18n } from 'vue-i18n'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { getCompanyAnalytics } from '@/api/company'
 import { formatNumber, formatPrice } from '@/utils/format'
-import type {
-  CompanyAnalyticsResponse,
-  SalesByMonthEntry,
-  SalesByProductEntry,
-} from '@/api/types'
+import type { CompanyAnalyticsResponse, SalesByMonthEntry, SalesByProductEntry } from '@/api/types'
 
 const { t, locale } = useI18n()
 
@@ -144,19 +140,11 @@ const initialLoading = computed<boolean>(() => {
   return analytics.value === null
 })
 
-const totalRevenue = computed<number>(
-  () => analytics.value?.total_revenue_cents ?? 0,
-)
-const revenueThisMonth = computed<number>(
-  () => analytics.value?.revenue_this_month_cents ?? 0,
-)
-const totalOptionsSold = computed<number>(
-  () => analytics.value?.total_options_sold ?? 0,
-)
+const totalRevenue = computed<number>(() => analytics.value?.total_revenue_cents ?? 0)
+const revenueThisMonth = computed<number>(() => analytics.value?.revenue_this_month_cents ?? 0)
+const totalOptionsSold = computed<number>(() => analytics.value?.total_options_sold ?? 0)
 
-const salesByMonth = computed<SalesByMonthEntry[]>(
-  () => analytics.value?.sales_by_month ?? [],
-)
+const salesByMonth = computed<SalesByMonthEntry[]>(() => analytics.value?.sales_by_month ?? [])
 
 const hasChartData = computed<boolean>(() => salesByMonth.value.length > 0)
 
@@ -269,9 +257,7 @@ const salesByProduct = computed<SalesByProductEntry[]>(
   () => analytics.value?.sales_by_product ?? [],
 )
 
-const hasProductData = computed<boolean>(
-  () => salesByProduct.value.length > 0,
-)
+const hasProductData = computed<boolean>(() => salesByProduct.value.length > 0)
 
 /**
  * Sub-line label for each row. Zero-sales products show "No sales yet"
@@ -295,8 +281,12 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   <div class="canl">
     <!-- Page header -->
     <div class="canl__header">
-      <h1 class="canl__title">{{ t('comp.analytics.title') }}</h1>
-      <p class="canl__subtitle">{{ t('comp.analytics.subtitle') }}</p>
+      <h1 class="canl__title">
+        {{ t('comp.analytics.title') }}
+      </h1>
+      <p class="canl__subtitle">
+        {{ t('comp.analytics.subtitle') }}
+      </p>
     </div>
 
     <!-- Initial loading -->
@@ -361,11 +351,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
         <!-- Bars -->
         <div v-else class="canl__chart">
           <div class="canl__chart-bars">
-            <div
-              v-for="entry in salesByMonth"
-              :key="entry.month"
-              class="canl__chart-col"
-            >
+            <div v-for="entry in salesByMonth" :key="entry.month" class="canl__chart-col">
               <div class="canl__chart-bar-wrap">
                 <div
                   class="canl__chart-bar"
@@ -394,14 +380,14 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
         </p>
 
         <ul v-else class="canl__table">
-          <li
-            v-for="entry in salesByProduct"
-            :key="entry.product_id"
-            class="canl__row"
-          >
+          <li v-for="entry in salesByProduct" :key="entry.product_id" class="canl__row">
             <div class="canl__row-body">
-              <div class="canl__row-name">{{ entry.product_name }}</div>
-              <div class="canl__row-sub">{{ unitsLabelFor(entry) }}</div>
+              <div class="canl__row-name">
+                {{ entry.product_name }}
+              </div>
+              <div class="canl__row-sub">
+                {{ unitsLabelFor(entry) }}
+              </div>
             </div>
             <div class="canl__row-revenue">
               {{ formatPrice(entry.revenue_cents) }}
@@ -462,11 +448,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__metrics {
   padding: var(--space-4) var(--space-4) var(--space-4);
   border-radius: var(--radius);
-  background: linear-gradient(
-    135deg,
-    var(--primary),
-    var(--primary-active)
-  );
+  background: linear-gradient(135deg, var(--primary), var(--primary-active));
   color: var(--on-primary);
 }
 .canl__metrics-label {
@@ -578,7 +560,9 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   width: 100%;
   background: var(--primary);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  transition: height 0.3s ease, opacity 0.15s;
+  transition:
+    height 0.3s ease,
+    opacity 0.15s;
   cursor: default;
   min-height: 1px;
 }
@@ -662,5 +646,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.canl__subtitle { max-width: var(--maxw-prose); }
+.canl__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

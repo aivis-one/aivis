@@ -87,9 +87,7 @@ export const useCompanyListStore = defineStore('companyList', () => {
   // lives for the entire app lifetime.
   let fetchEpoch = 0
 
-  const hasMore = computed<boolean>(
-    () => items.value.length < total.value,
-  )
+  const hasMore = computed<boolean>(() => items.value.length < total.value)
 
   /**
    * Load page 1 and REPLACE items. Called on initial mount, when the
@@ -136,11 +134,7 @@ export const useCompanyListStore = defineStore('companyList', () => {
    * a row-level Retry banner instead of a full-page failure state.
    */
   async function loadMore(): Promise<void> {
-    if (
-      loading.value
-      || !hasMore.value
-      || loadMoreErrored.value
-    ) {
+    if (loading.value || !hasMore.value || loadMoreErrored.value) {
       return
     }
     const epoch = ++fetchEpoch

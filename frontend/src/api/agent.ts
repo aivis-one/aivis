@@ -44,10 +44,7 @@ export function createReferralLink(): Promise<ReferralLinkResponse> {
  * click_count / registration_count / purchase_count + is_active
  * (backend Task 1 Block D -- two batched aggregates, no N+1).
  */
-export function getMyReferralLinks(
-  page = 1,
-  perPage = 20,
-): Promise<ReferralLinkListResponse> {
+export function getMyReferralLinks(page = 1, perPage = 20): Promise<ReferralLinkListResponse> {
   return api.get<ReferralLinkListResponse>(
     `/api/v1/referrals/links/me?page=${page}&per_page=${perPage}`,
   )
@@ -94,10 +91,7 @@ export function getLeaderboard(): Promise<LeaderboardResponse> {
  * Commission + volume-bonus history, newest first.
  * limit is capped at 100 server-side.
  */
-export function getMyCommissions(
-  limit = 50,
-  offset = 0,
-): Promise<CommissionListResponse> {
+export function getMyCommissions(limit = 50, offset = 0): Promise<CommissionListResponse> {
   return api.get<CommissionListResponse>(
     `/api/v1/agent/commissions/me?limit=${limit}&offset=${offset}`,
   )
@@ -112,7 +106,5 @@ export function getMyCommissions(
  * entries (TD-COMMISSION-MONTH-AGG). Agent only.
  */
 export function getCommissionSummary(): Promise<CommissionSummaryResponse> {
-  return api.get<CommissionSummaryResponse>(
-    '/api/v1/agent/commissions/summary',
-  )
+  return api.get<CommissionSummaryResponse>('/api/v1/agent/commissions/summary')
 }

@@ -53,10 +53,7 @@ defineProps<{
 </script>
 
 <template>
-  <button
-    type="button"
-    class="c-back-link"
-  >
+  <button type="button" class="c-back-link">
     <ArrowLeft :size="16" />
     {{ label }}
   </button>
@@ -78,7 +75,9 @@ defineProps<{
   font-size: var(--fs-sm);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: background 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .c-back-link:hover {

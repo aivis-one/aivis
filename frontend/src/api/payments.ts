@@ -28,13 +28,8 @@ import type {
  * given network if one exists, otherwise generates a stub address.
  * F4.3 hardcodes network='TRC20'; the network selector is deferred.
  */
-export function createCryptoAddress(
-  body: CreateAddressRequest,
-): Promise<DepositAddressResponse> {
-  return api.post<DepositAddressResponse>(
-    '/api/v1/payments/crypto-address',
-    body,
-  )
+export function createCryptoAddress(body: CreateAddressRequest): Promise<DepositAddressResponse> {
+  return api.post<DepositAddressResponse>('/api/v1/payments/crypto-address', body)
 }
 
 /**

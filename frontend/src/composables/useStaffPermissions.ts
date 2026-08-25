@@ -94,9 +94,7 @@ export function useStaffPermissions() {
   const authStore = useAuthStore()
 
   /** True iff the user has a staff_profile (= role 'staff', master gate). */
-  const requireStaff: ComputedRef<boolean> = computed(
-    () => authStore.user?.staff_profile != null,
-  )
+  const requireStaff: ComputedRef<boolean> = computed(() => authStore.user?.staff_profile != null)
 
   // Per-key memoization. Vue's `computed` is cheap but each canDo call
   // would otherwise create a fresh ref. Caching by key means a view

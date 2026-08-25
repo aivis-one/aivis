@@ -102,8 +102,12 @@ const distributionJson = computed<string>(() => {
 
       <!-- Description (FP-25 self-hide when absent) -->
       <div v-if="company.description" class="scp__section">
-        <h3 class="scp__section-title">{{ t('staff.platform.profile.description') }}</h3>
-        <p class="scp__description">{{ company.description }}</p>
+        <h3 class="scp__section-title">
+          {{ t('staff.platform.profile.description') }}
+        </h3>
+        <p class="scp__description">
+          {{ company.description }}
+        </p>
       </div>
 
       <!-- External links (FP-25 self-hide each when absent) -->
@@ -111,7 +115,9 @@ const distributionJson = computed<string>(() => {
         v-if="company.logo_url || company.promo_video_url || company.presentation_url"
         class="scp__section"
       >
-        <h3 class="scp__section-title">{{ t('staff.platform.profile.links') }}</h3>
+        <h3 class="scp__section-title">
+          {{ t('staff.platform.profile.links') }}
+        </h3>
         <ul class="scp__links">
           <li v-if="company.logo_url">
             <a :href="company.logo_url" target="_blank" rel="noopener">
@@ -133,7 +139,9 @@ const distributionJson = computed<string>(() => {
 
       <!-- distribution_config (raw JSON inspection) -->
       <div class="scp__section">
-        <h3 class="scp__section-title">{{ t('staff.platform.profile.distributionConfig') }}</h3>
+        <h3 class="scp__section-title">
+          {{ t('staff.platform.profile.distributionConfig') }}
+        </h3>
         <pre class="scp__json">{{ distributionJson }}</pre>
       </div>
     </template>
@@ -144,41 +152,88 @@ const distributionJson = computed<string>(() => {
 </template>
 
 <style scoped>
-.scp { padding: var(--space-4); }
-
-.scp__center {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: var(--center-md); gap: var(--space-4);
+.scp {
+  padding: var(--space-4);
 }
 
-.scp__cover { margin-bottom: var(--space-4); }
+.scp__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-md);
+  gap: var(--space-4);
+}
+
+.scp__cover {
+  margin-bottom: var(--space-4);
+}
 .scp__cover-img {
-  width: 100%; max-height: 180px; object-fit: cover;
-  border-radius: var(--radius-md); display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  display: block;
 }
 
 .scp__row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: var(--space-3) 0; border-bottom: 1px solid var(--border-default);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-default);
 }
-.scp__label { font-size: var(--fs-xs); color: var(--text-secondary); }
-.scp__value { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
+.scp__label {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.scp__value {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
 
-.scp__section { margin-top: var(--space-4-lg); }
+.scp__section {
+  margin-top: var(--space-4-lg);
+}
 .scp__section-title {
-  font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
 }
 .scp__description {
-  font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
   white-space: pre-wrap;
 }
-.scp__links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.scp__links a { font-size: var(--fs-sm); color: var(--primary); text-decoration: underline; word-break: break-all; }
+.scp__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.scp__links a {
+  font-size: var(--fs-sm);
+  color: var(--primary);
+  text-decoration: underline;
+  word-break: break-all;
+}
 
 .scp__json {
-  font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-primary);
-  background: var(--bg-subtle); border-radius: var(--radius-sm);
-  padding: var(--space-3); overflow-x: auto; margin: 0; white-space: pre;
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre;
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -188,5 +243,7 @@ const distributionJson = computed<string>(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.scp__description { max-width: var(--maxw-prose); }
+.scp__description {
+  max-width: var(--maxw-prose);
+}
 </style>

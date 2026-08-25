@@ -72,11 +72,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import {
-  formatNumber,
-  formatPrice,
-  resolveCoverImage,
-} from '@/utils/format'
+import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
 import type { PublicProductDetailResponse } from '@/api/types'
 
 // Backend currency is not emitted on Public* yet (TD-F03). Same
@@ -119,9 +115,7 @@ const soldOut = computed(() => available.value <= 0)
 // falls back to a zeroed placeholder before the first refresh.
 // Aligning with the F4.4 B2 store migration: no more local
 // balanceCents ref, no more inline getDashboardSummary probe.
-const balanceCents = computed<number>(
-  () => dashboardStore.activeBalance.confirmed,
-)
+const balanceCents = computed<number>(() => dashboardStore.activeBalance.confirmed)
 
 const insufficientBalance = computed<boolean>(() => {
   return balanceCents.value < totalCents.value
@@ -151,10 +145,7 @@ async function load(): Promise<void> {
     // failures surface through dashboardStore.error and would leave
     // the UI with a zeroed balance, which the insufficient-balance
     // gate already handles gracefully.
-    const [p] = await Promise.all([
-      getProduct(productId.value),
-      dashboardStore.refresh(),
-    ])
+    const [p] = await Promise.all([getProduct(productId.value), dashboardStore.refresh()])
     product.value = p
   } catch {
     product.value = null
@@ -199,10 +190,7 @@ async function handlePurchaseError(err: unknown): Promise<void> {
     // regex with a backend-emitted error code.
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.purchase.error.kycRequired'), 'warning')
-      void safeNavigate(
-        router.push('/onboarding/kyc'),
-        '[PurchaseView] to KYC onboarding',
-      )
+      void safeNavigate(router.push('/onboarding/kyc'), '[PurchaseView] to KYC onboarding')
       return
     }
 
@@ -241,9 +229,7 @@ function cancel(): void {
   }
   void safeNavigate(
     router.push({
-      name: agentShell.value
-        ? 'agent-product-detail'
-        : 'investor-product-detail',
+      name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
       params: { id: productId.value },
     }),
     '[PurchaseView] cancel fallback to product detail',
@@ -300,8 +286,12 @@ onMounted(load)
       >
         <Building v-if="!coverImage" :size="48" class="pv__hero-icon" />
         <div class="pv__hero-content">
-          <div class="pv__hero-company">{{ product.company_name }}</div>
-          <h1 class="pv__hero-title">{{ product.name }}</h1>
+          <div class="pv__hero-company">
+            {{ product.company_name }}
+          </div>
+          <h1 class="pv__hero-title">
+            {{ product.name }}
+          </h1>
         </div>
       </div>
 
@@ -344,10 +334,7 @@ onMounted(load)
           <h2 class="pv__card-title">
             {{ t('inv.purchase.yourBalance') }}
           </h2>
-          <div
-            class="pv__balance"
-            :class="{ 'pv__balance--warn': insufficientBalance }"
-          >
+          <div class="pv__balance" :class="{ 'pv__balance--warn': insufficientBalance }">
             {{ formatPrice(balanceCents, product.currency) }}
           </div>
           <p v-if="insufficientBalance" class="pv__balance-hint">
@@ -357,23 +344,11 @@ onMounted(load)
 
         <!-- Actions -->
         <div class="pv__actions">
-          <CButton
-            variant="primary"
-            :disabled="!canConfirm"
-            @click="confirm"
-          >
+          <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
             <ShoppingCart :size="16" />
-            {{
-              soldOut
-                ? t('inv.product.soldOut')
-                : t('inv.purchase.confirm')
-            }}
+            {{ soldOut ? t('inv.product.soldOut') : t('inv.purchase.confirm') }}
           </CButton>
-          <CButton
-            variant="outline"
-            :disabled="submitting"
-            @click="cancel"
-          >
+          <CButton variant="outline" :disabled="submitting" @click="cancel">
             {{ t('inv.purchase.cancel') }}
           </CButton>
         </div>

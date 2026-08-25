@@ -154,9 +154,7 @@ const canSubmitPayout = computed(() => {
 })
 
 function openPayoutSheet(): void {
-  payoutEditInput.value = hasPayoutDetails.value
-    ? JSON.stringify(payoutDetails.value, null, 2)
-    : ''
+  payoutEditInput.value = hasPayoutDetails.value ? JSON.stringify(payoutDetails.value, null, 2) : ''
   payoutError.value = ''
   payoutSheetOpen.value = true
 }
@@ -193,9 +191,7 @@ async function submitPayout(): Promise<void> {
     closePayoutSheet()
   } catch (err) {
     payoutError.value =
-      err instanceof Error && err.message
-        ? err.message
-        : t('agent.settings.payout.form.error')
+      err instanceof Error && err.message ? err.message : t('agent.settings.payout.form.error')
   } finally {
     payoutSubmitting.value = false
   }
@@ -254,16 +250,26 @@ onMounted(() => {
     <!-- Page header (FP-19 inline; FP-20 sub-route back-link) -->
     <div class="sett__page-header">
       <CBackLink :label="t('agent.settings.backLink')" @click="goBack" />
-      <h1 class="sett__page-title">{{ t('agent.settings.title') }}</h1>
-      <p class="sett__page-subtitle">{{ t('agent.settings.subtitle') }}</p>
+      <h1 class="sett__page-title">
+        {{ t('agent.settings.title') }}
+      </h1>
+      <p class="sett__page-subtitle">
+        {{ t('agent.settings.subtitle') }}
+      </p>
     </div>
 
     <!-- Profile card (read-only) -->
     <section class="sett__profile">
       <CAvatar :url="avatarUrl" :name="fullName" :size="72" />
-      <div class="sett__name">{{ fullName }}</div>
-      <div v-if="email" class="sett__email">{{ email }}</div>
-      <div class="sett__role-badge">{{ roleLabel }}</div>
+      <div class="sett__name">
+        {{ fullName }}
+      </div>
+      <div v-if="email" class="sett__email">
+        {{ email }}
+      </div>
+      <div class="sett__role-badge">
+        {{ roleLabel }}
+      </div>
     </section>
 
     <!-- Payout details -->
@@ -271,14 +277,18 @@ onMounted(() => {
       <div class="sett__section-title">
         {{ t('agent.settings.payout.title') }}
       </div>
-      <p class="sett__section-desc">{{ t('agent.settings.payout.desc') }}</p>
+      <p class="sett__section-desc">
+        {{ t('agent.settings.payout.desc') }}
+      </p>
 
       <div v-if="payoutLoading && !payoutLoaded" class="sett__center">
         <CLoader :size="20" />
       </div>
 
       <template v-else-if="payoutErrored">
-        <p class="sett__empty">{{ t('agent.settings.payout.loadError') }}</p>
+        <p class="sett__empty">
+          {{ t('agent.settings.payout.loadError') }}
+        </p>
         <div class="sett__cta-row">
           <CButton variant="outline" size="sm" @click="fetchPayoutDetails">
             {{ t('agent.settings.payout.retry') }}
@@ -352,14 +362,13 @@ onMounted(() => {
           </span>
         </label>
 
-        <p
-          v-if="payoutValidationKey"
-          class="sett__form-error sett__form-error--soft"
-        >
+        <p v-if="payoutValidationKey" class="sett__form-error sett__form-error--soft">
           {{ t(payoutValidationKey) }}
         </p>
 
-        <p v-if="payoutError" class="sett__form-error">{{ payoutError }}</p>
+        <p v-if="payoutError" class="sett__form-error">
+          {{ payoutError }}
+        </p>
 
         <div class="sett__form-actions">
           <CButton
@@ -538,11 +547,23 @@ onMounted(() => {
 }
 
 /* Payout form */
-.sett__form { display: flex; flex-direction: column; gap: var(--space-4); }
-.sett__field { display: flex; flex-direction: column; gap: var(--space-2); }
+.sett__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.sett__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 /* See CompanyBalanceView: the flex gap is the field's rhythm. */
-.sett__control { margin-bottom: 0; }
-.sett__control :deep(.c-textarea) { min-height: 160px; }
+.sett__control {
+  margin-bottom: 0;
+}
+.sett__control :deep(.c-textarea) {
+  min-height: 160px;
+}
 .sett__field-label {
   font-size: var(--fs-xs);
   font-weight: 600;

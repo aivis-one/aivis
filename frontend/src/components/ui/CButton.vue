@@ -63,40 +63,83 @@ withDefaults(
    amber. The design system defines .btn-primary as --primary/--on-primary and
    .btn-accent as --accent/--on-accent, in three of its own files. The accent
    variant below is the one that keeps amber, for a deliberate second action. */
-.c-btn--primary { background: var(--primary); color: var(--on-primary); }
+.c-btn--primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
 .c-btn--primary:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: translateY(-2px);
   box-shadow: var(--shadow-2);
 }
-.c-btn--primary:active:not(:disabled) { background: var(--primary-active); transform: scale(0.98); }
-.c-btn--primary:disabled { background: var(--border-default); color: var(--text-tertiary); }
+.c-btn--primary:active:not(:disabled) {
+  background: var(--primary-active);
+  transform: scale(0.98);
+}
+.c-btn--primary:disabled {
+  background: var(--border-default);
+  color: var(--text-tertiary);
+}
 
 /* Accent (amber) -- the design system's .btn-accent */
-.c-btn--accent { background: var(--accent); color: var(--on-accent); }
+.c-btn--accent {
+  background: var(--accent);
+  color: var(--on-accent);
+}
 .c-btn--accent:hover:not(:disabled) {
   background: var(--accent-hover);
   transform: translateY(-2px);
   box-shadow: var(--shadow-2);
 }
-.c-btn--accent:active:not(:disabled) { transform: scale(0.98); }
-.c-btn--accent:disabled { background: var(--border-default); color: var(--text-tertiary); }
+.c-btn--accent:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.c-btn--accent:disabled {
+  background: var(--border-default);
+  color: var(--text-tertiary);
+}
 
 /* Secondary (outlined teal) */
-.c-btn--secondary { background: var(--bg-page); color: var(--primary); border: 2px solid var(--primary); }
-.c-btn--secondary:hover:not(:disabled) { background: var(--primary); color: var(--on-primary); transform: translateY(-2px); }
-.c-btn--secondary:active:not(:disabled) { transform: scale(0.98); }
+.c-btn--secondary {
+  background: var(--bg-page);
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+.c-btn--secondary:hover:not(:disabled) {
+  background: var(--primary);
+  color: var(--on-primary);
+  transform: translateY(-2px);
+}
+.c-btn--secondary:active:not(:disabled) {
+  transform: scale(0.98);
+}
 
 /* Outline (neutral) */
-.c-btn--outline { background: transparent; color: var(--text-secondary); border: 2px solid var(--border-default); }
-.c-btn--outline:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.c-btn--outline {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid var(--border-default);
+}
+.c-btn--outline:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
 
 /* Danger */
-.c-btn--danger { background: var(--danger); color: var(--on-danger); }
-.c-btn--danger:hover:not(:disabled) { opacity: 0.9; transform: translateY(-2px); }
+.c-btn--danger {
+  background: var(--danger);
+  color: var(--on-danger);
+}
+.c-btn--danger:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
 
 /* Telegram */
-.c-btn--telegram { background: var(--telegram); color: var(--on-telegram); }
+.c-btn--telegram {
+  background: var(--telegram);
+  color: var(--on-telegram);
+}
 .c-btn--telegram:hover:not(:disabled) {
   background: var(--telegram-dark);
   transform: translateY(-2px);
@@ -112,13 +155,20 @@ withDefaults(
   padding: var(--space-2);
   width: auto;
 }
-.c-btn--link:hover:not(:disabled) { text-decoration: underline; }
+.c-btn--link:hover:not(:disabled) {
+  text-decoration: underline;
+}
 
 /* Width: content-sized rather than full-bleed. */
-.c-btn--inline { width: auto; }
+.c-btn--inline {
+  width: auto;
+}
 
 /* Size: small */
-.c-btn--sm { padding: var(--space-3) var(--space-4); font-size: var(--fs-xs); }
+.c-btn--sm {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-xs);
+}
 
 /* Spinner */
 /* Visually hidden but still in the accessibility tree. NOT `display: none` and
@@ -150,6 +200,8 @@ withDefaults(
 }
 
 @keyframes c-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

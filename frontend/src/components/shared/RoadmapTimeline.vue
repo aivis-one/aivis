@@ -141,19 +141,13 @@ function shouldShowDescription(item: RoadmapItemResponse): boolean {
 
 // End-marker key -- single locale string, no params (spec deferred
 // the founded_at integration).
-const endMarkerLabel = computed<string>(() =>
-  t('inv.roadmap.endMarker'),
-)
+const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 </script>
 
 <template>
   <div class="roadmap">
     <ol class="roadmap__list">
-      <li
-        v-for="item in items"
-        :key="item.id"
-        class="roadmap__item"
-      >
+      <li v-for="item in items" :key="item.id" class="roadmap__item">
         <!-- Axis: line segment + dot. The line continues through the
              end-marker via the .roadmap__terminal block below. -->
         <div class="roadmap__axis">
@@ -174,11 +168,7 @@ const endMarkerLabel = computed<string>(() =>
               <span class="rti__chip rti__chip--neutral">
                 {{ kindLabel(item.kind) }}
               </span>
-              <span
-                v-if="item.status"
-                class="rti__chip"
-                :class="statusClass(item.status)"
-              >
+              <span v-if="item.status" class="rti__chip" :class="statusClass(item.status)">
                 {{ statusLabel(item.status) }}
               </span>
             </div>
@@ -191,13 +181,12 @@ const endMarkerLabel = computed<string>(() =>
             </time>
           </header>
 
-          <h3 class="roadmap__title">{{ item.title }}</h3>
+          <h3 class="roadmap__title">
+            {{ item.title }}
+          </h3>
 
           <!-- Description (inline) -- suppressed when post_id is set. -->
-          <p
-            v-if="shouldShowDescription(item)"
-            class="roadmap__description"
-          >
+          <p v-if="shouldShowDescription(item)" class="roadmap__description">
             {{ item.description }}
           </p>
 
@@ -217,11 +206,10 @@ const endMarkerLabel = computed<string>(() =>
               }"
             />
             <div class="roadmap__post-body">
-              <h4 class="roadmap__post-title">{{ item.post.title }}</h4>
-              <p
-                v-if="item.post.excerpt"
-                class="roadmap__post-excerpt"
-              >
+              <h4 class="roadmap__post-title">
+                {{ item.post.title }}
+              </h4>
+              <p v-if="item.post.excerpt" class="roadmap__post-excerpt">
                 {{ item.post.excerpt }}
               </p>
               <span class="roadmap__post-link">
@@ -232,10 +220,7 @@ const endMarkerLabel = computed<string>(() =>
 
           <!-- Actions: linked product + external URL. Two slots, may
                both be present, in which case they sit side by side. -->
-          <div
-            v-if="item.linked_product_id || item.external_url"
-            class="roadmap__actions"
-          >
+          <div v-if="item.linked_product_id || item.external_url" class="roadmap__actions">
             <button
               v-if="item.linked_product_id"
               type="button"
@@ -265,7 +250,9 @@ const endMarkerLabel = computed<string>(() =>
         <span class="roadmap__line roadmap__line--terminal" />
         <span class="roadmap__dot roadmap__dot--terminal" />
       </div>
-      <div class="roadmap__terminal-label">{{ endMarkerLabel }}</div>
+      <div class="roadmap__terminal-label">
+        {{ endMarkerLabel }}
+      </div>
     </div>
   </div>
 </template>
@@ -551,5 +538,7 @@ const endMarkerLabel = computed<string>(() =>
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.roadmap__description { max-width: var(--maxw-prose); }
+.roadmap__description {
+  max-width: var(--maxw-prose);
+}
 </style>

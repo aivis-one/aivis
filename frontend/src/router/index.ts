@@ -556,12 +556,14 @@ export const router = createRouter({
                 {
                   path: 'documents',
                   name: 'staff-platform-company-documents',
-                  component: () => import('@/views/staff/platform/StaffCompanyDocumentsSection.vue'),
+                  component: () =>
+                    import('@/views/staff/platform/StaffCompanyDocumentsSection.vue'),
                 },
                 {
                   path: 'templates',
                   name: 'staff-platform-company-templates',
-                  component: () => import('@/views/staff/platform/StaffCompanyTemplatesSection.vue'),
+                  component: () =>
+                    import('@/views/staff/platform/StaffCompanyTemplatesSection.vue'),
                 },
               ],
             },

@@ -95,7 +95,6 @@ async function handleSubmit(): Promise<void> {
     loading.value = false
   }
 }
-
 </script>
 
 <template>
@@ -106,8 +105,12 @@ async function handleSubmit(): Promise<void> {
     </header>
 
     <div class="auth-content">
-      <h1 class="auth-title">{{ t('auth.profile.title') }}</h1>
-      <p class="auth-subtitle">{{ t('auth.profile.subtitle') }}</p>
+      <h1 class="auth-title">
+        {{ t('auth.profile.title') }}
+      </h1>
+      <p class="auth-subtitle">
+        {{ t('auth.profile.subtitle') }}
+      </p>
 
       <div class="auth-form">
         <div class="form-row">
@@ -145,20 +148,13 @@ async function handleSubmit(): Promise<void> {
           placeholder="—"
         />
 
-        <CSelect
-          v-model="language"
-          :label="t('auth.profile.language')"
-          :options="languages"
-        />
+        <CSelect v-model="language" :label="t('auth.profile.language')" :options="languages" />
 
-        <div v-if="error" class="auth-error">{{ error }}</div>
+        <div v-if="error" class="auth-error">
+          {{ error }}
+        </div>
 
-        <button
-          class="btn btn-primary"
-          type="button"
-          :disabled="loading"
-          @click="handleSubmit"
-        >
+        <button class="btn btn-primary" type="button" :disabled="loading" @click="handleSubmit">
           <span v-if="loading" class="btn-spinner" />
           <span v-else>{{ t('auth.profile.btn') }}</span>
         </button>
@@ -169,57 +165,100 @@ async function handleSubmit(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  display: flex; flex-direction: column;
-  min-height: 100vh; min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-page);
 }
 .auth-header {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-4) var(--space-5);
 }
 .auth-content {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: var(--space-5); overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  overflow-y: auto;
 }
 .auth-title {
-  font-size: var(--fs-h3); font-weight: 700; color: var(--text-primary);
-  margin-bottom: var(--space-2); text-align: center;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  text-align: center;
 }
 .auth-subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: var(--space-6); text-align: center; line-height: 1.5;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-6);
+  text-align: center;
+  line-height: 1.5;
 }
-.auth-form { width: 100%; max-width: var(--maxw-form); }
+.auth-form {
+  width: 100%;
+  max-width: var(--maxw-form);
+}
 .auth-error {
-  font-size: var(--fs-xs); color: var(--danger); text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  text-align: center;
   margin-bottom: var(--space-4);
 }
 
 .form-row {
-  display: flex; gap: var(--space-3);
+  display: flex;
+  gap: var(--space-3);
 }
 /* The two name fields share the row equally. This targeted `.form-group`,
    the class the raw markup carried; the CInput root is `.c-input-group`, so
    the rule needed its own hook rather than a class the components do not use. */
-.form-row__col { flex: 1; }
-
-.btn { width: 100%; }
-.btn-primary {
-  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-  padding: var(--space-4); border-radius: var(--radius-md);
-  background: var(--primary); color: var(--on-primary);
-  font-weight: 600; font-size: var(--fs-sm); font-family: inherit;
-  border: none; cursor: pointer;
+.form-row__col {
+  flex: 1;
 }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn {
+  width: 100%;
+}
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-spinner {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: var(--size-2xs); height: var(--size-2xs); border: 2px solid currentColor; opacity: 0.35;
-  border-top-color: currentColor; border-radius: 50%;
+  width: var(--size-2xs);
+  height: var(--size-2xs);
+  border: 2px solid currentColor;
+  opacity: 0.35;
+  border-top-color: currentColor;
+  border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>

@@ -148,7 +148,9 @@ onMounted(() => {
 <template>
   <div class="iev">
     <header class="iev__header">
-      <h1 class="iev__title">{{ t('inv.events.title') }}</h1>
+      <h1 class="iev__title">
+        {{ t('inv.events.title') }}
+      </h1>
     </header>
 
     <!-- Filter chips: upcoming / past -->
@@ -158,13 +160,17 @@ onMounted(() => {
         class="filter-chip"
         :class="{ active: filter === 'upcoming' }"
         @click="setFilter('upcoming')"
-      >{{ t('inv.events.filter.upcoming') }}</button>
+      >
+        {{ t('inv.events.filter.upcoming') }}
+      </button>
       <button
         type="button"
         class="filter-chip"
         :class="{ active: filter === 'past' }"
         @click="setFilter('past')"
-      >{{ t('inv.events.filter.past') }}</button>
+      >
+        {{ t('inv.events.filter.past') }}
+      </button>
     </div>
 
     <!-- Initial loading -->
@@ -188,12 +194,7 @@ onMounted(() => {
     <!-- List + sentinel + load-more error banner -->
     <template v-else>
       <div class="iev__list">
-        <EventCard
-          v-for="event in items"
-          :key="event.id"
-          :event="event"
-          variant="full"
-        />
+        <EventCard v-for="event in items" :key="event.id" :event="event" variant="full" />
       </div>
 
       <div ref="sentinelRef" class="iev__sentinel" />
@@ -215,14 +216,21 @@ onMounted(() => {
   gap: var(--space-4);
   padding: var(--space-4);
 }
-.iev__header { display: flex; flex-direction: column; gap: var(--space-1); }
+.iev__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .iev__title {
   font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
 }
-.iev__filters { display: flex; gap: var(--space-2); }
+.iev__filters {
+  display: flex;
+  gap: var(--space-2);
+}
 .iev__center {
   display: flex;
   flex-direction: column;
@@ -237,7 +245,9 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-3);
 }
-.iev__sentinel { height: 1px; }
+.iev__sentinel {
+  height: 1px;
+}
 .iev__retry {
   display: flex;
   align-items: center;
@@ -248,7 +258,10 @@ onMounted(() => {
   border: 1px solid var(--border-default);
   background: var(--bg-page);
 }
-.iev__retry-text { font-size: var(--fs-sm); color: var(--text-secondary); }
+.iev__retry-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
 
 /* Filter chip -- same pattern as EventEditor / TemplatesSection. */
 .filter-chip {

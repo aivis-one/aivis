@@ -39,9 +39,7 @@ const STORAGE_KEY = 'aivis-lang'
 
 // Vite turns this into a map of lazy loaders, one per matched file.
 // Only the JSON actually imported ends up in a runtime chunk.
-const localeLoaders = import.meta.glob<{ default: Record<string, unknown> }>(
-  './locales/*.json',
-)
+const localeLoaders = import.meta.glob<{ default: Record<string, unknown> }>('./locales/*.json')
 
 export const i18n = createI18n({
   legacy: false,
@@ -93,10 +91,7 @@ function readStoredLocale(): SupportedLocale {
  */
 export async function setupI18n(): Promise<void> {
   const locale = readStoredLocale()
-  await Promise.all([
-    loadLocaleMessages(DEFAULT_LOCALE),
-    loadLocaleMessages(locale),
-  ])
+  await Promise.all([loadLocaleMessages(DEFAULT_LOCALE), loadLocaleMessages(locale)])
   i18n.global.locale.value = locale
   applyDir(locale)
 }
@@ -119,9 +114,7 @@ export async function setupI18n(): Promise<void> {
  * error and leaves the UI on the previous locale. Never throws --
  * callers are fire-and-forget.
  */
-export async function setLocale(
-  locale: string | null | undefined,
-): Promise<void> {
+export async function setLocale(locale: string | null | undefined): Promise<void> {
   if (!locale || !isSupportedLocale(locale)) return
 
   // Persist the authoritative choice up-front so the next cold boot

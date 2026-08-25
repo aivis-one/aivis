@@ -69,11 +69,11 @@ const subAgents = computed(() => agentStore.downline?.sub_agents ?? [])
 // are empty -- a brand-new agent with no downline at all.
 const isEmpty = computed(
   () =>
-    !agentStore.downlineLoading
-    && !agentStore.downlineError
-    && agentStore.downline !== null
-    && investors.value.length === 0
-    && subAgents.value.length === 0,
+    !agentStore.downlineLoading &&
+    !agentStore.downlineError &&
+    agentStore.downline !== null &&
+    investors.value.length === 0 &&
+    subAgents.value.length === 0,
 )
 
 // ---------------------------------------------------------------------------
@@ -113,23 +113,21 @@ onMounted(() => {
     <!-- Page header (FP-19: shell owns CHeader; FP-20: sub-route back-link) -->
     <div class="ref__page-header">
       <CBackLink :label="t('agent.referrals.backLink')" @click="goBack" />
-      <h1 class="ref__title">{{ t('agent.referrals.title') }}</h1>
-      <p class="ref__subtitle">{{ t('agent.referrals.subtitle') }}</p>
+      <h1 class="ref__title">
+        {{ t('agent.referrals.title') }}
+      </h1>
+      <p class="ref__subtitle">
+        {{ t('agent.referrals.subtitle') }}
+      </p>
     </div>
 
     <!-- Loading (first load only) -->
-    <div
-      v-if="agentStore.downlineLoading && agentStore.downline === null"
-      class="ref__center"
-    >
+    <div v-if="agentStore.downlineLoading && agentStore.downline === null" class="ref__center">
       <CLoader :size="24" />
     </div>
 
     <!-- Error -->
-    <div
-      v-else-if="agentStore.downlineError && agentStore.downline === null"
-      class="ref__center"
-    >
+    <div v-else-if="agentStore.downlineError && agentStore.downline === null" class="ref__center">
       <CEmptyState :title="t('agent.referrals.errorTitle')" />
       <CButton variant="outline" size="sm" @click="retry">
         {{ t('common.retry') }}
@@ -378,7 +376,9 @@ onMounted(() => {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .ref__card-counters { max-width: calc(3 * var(--tile-max)); }
+  .ref__card-counters {
+    max-width: calc(3 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -388,5 +388,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.ref__subtitle { max-width: var(--maxw-prose); }
+.ref__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

@@ -36,7 +36,7 @@ export const SUPPORTED_LOCALES = [
   { code: 'ar', label: 'العربية', short: 'AR', flag: '\u{1F1E6}\u{1F1EA}', dir: 'rtl' },
 ] as const satisfies readonly LocaleConfig[]
 
-export type SupportedLocale = typeof SUPPORTED_LOCALES[number]['code']
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]['code']
 
 /** Fallback when the backend has no stored language for the user. */
 export const DEFAULT_LOCALE: SupportedLocale = 'en'

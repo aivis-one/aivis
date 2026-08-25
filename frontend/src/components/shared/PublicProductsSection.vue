@@ -142,9 +142,7 @@ const shouldRender = computed<boolean>(() => {
 // CTA visibility + label (branched on auth state, see file header)
 // ---------------------------------------------------------------------------
 
-const hasMoreThanShown = computed<boolean>(
-  () => total.value > productsStore.items.length,
-)
+const hasMoreThanShown = computed<boolean>(() => total.value > productsStore.items.length)
 
 /**
  * Whether the visitor's auth state has somewhere to navigate to when
@@ -215,10 +213,7 @@ function onSeeAllClick(): void {
     // hidden-CTA contract by doing nothing. If we reach here the
     // CTA was somehow shown despite canNavigateToProducts -- a bug
     // worth a console.warn so it surfaces in dev.
-    console.warn(
-      '[PublicProductsSection] See-all CTA tapped for unsupported role:',
-      role,
-    )
+    console.warn('[PublicProductsSection] See-all CTA tapped for unsupported role:', role)
     return
   }
   void safeNavigate(
@@ -270,10 +265,7 @@ function onRetry(): void {
         />
       </div>
 
-      <div
-        v-if="hasMoreThanShown && canNavigateToProducts"
-        class="pps__cta"
-      >
+      <div v-if="hasMoreThanShown && canNavigateToProducts" class="pps__cta">
         <CButton variant="primary" @click="onSeeAllClick">
           {{ ctaLabel }}
         </CButton>

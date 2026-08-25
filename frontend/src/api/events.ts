@@ -67,9 +67,7 @@ export function listPublicEvents(params?: {
  * backend clamps `limit` to a ceiling (settings.events_upcoming_max_limit,
  * 50) and defaults to 3 when omitted; the dashboard widget passes 3.
  */
-export function listUpcomingEvents(
-  limit?: number,
-): Promise<EventResponse[]> {
+export function listUpcomingEvents(limit?: number): Promise<EventResponse[]> {
   const qs = buildQueryString({ limit })
   return api.get<EventResponse[]>(`/api/v1/events/upcoming${qs}`)
 }

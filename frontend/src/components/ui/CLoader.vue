@@ -15,5 +15,9 @@ withDefaults(defineProps<{ size?: number }>(), { size: 32 })
   border-radius: 50%;
   animation: c-spin 0.8s linear infinite;
 }
-@keyframes c-spin { to { transform: rotate(360deg); } }
+@keyframes c-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>

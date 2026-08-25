@@ -42,11 +42,7 @@ import {
   updateStaffEvent,
   deleteStaffEvent,
 } from '@/api/staff-events'
-import type {
-  EventResponse,
-  CreateEventRequest,
-  UpdateEventRequest,
-} from '@/api/types'
+import type { EventResponse, CreateEventRequest, UpdateEventRequest } from '@/api/types'
 
 const props = defineProps<{
   /** content_manage gate from the parent (FP-23). */
@@ -116,8 +112,7 @@ async function loadEvents(): Promise<void> {
   loading.value = true
   error.value = false
   try {
-    const upcoming =
-      upcomingFilter.value === '' ? undefined : upcomingFilter.value === 'true'
+    const upcoming = upcomingFilter.value === '' ? undefined : upcomingFilter.value === 'true'
     const resp = await fetchStaffEvents({
       upcoming,
       page: page.value,
@@ -285,17 +280,23 @@ onMounted(loadEvents)
           class="filter-chip"
           :class="{ active: upcomingFilter === '' }"
           @click="setUpcomingFilter('')"
-        >{{ t('staff.platform.event.filterAll') }}</button>
+        >
+          {{ t('staff.platform.event.filterAll') }}
+        </button>
         <button
           class="filter-chip"
           :class="{ active: upcomingFilter === 'true' }"
           @click="setUpcomingFilter('true')"
-        >{{ t('staff.platform.event.filterUpcoming') }}</button>
+        >
+          {{ t('staff.platform.event.filterUpcoming') }}
+        </button>
         <button
           class="filter-chip"
           :class="{ active: upcomingFilter === 'false' }"
           @click="setUpcomingFilter('false')"
-        >{{ t('staff.platform.event.filterPast') }}</button>
+        >
+          {{ t('staff.platform.event.filterPast') }}
+        </button>
       </div>
       <CButton v-if="canEdit" variant="primary" size="sm" @click="openCreate">
         <Plus :size="16" />
@@ -326,22 +327,36 @@ onMounted(loadEvents)
             <div class="event-item__top">
               <CBadge
                 :variant="ev.is_published ? 'success' : 'neutral'"
-                :text="ev.is_published
-                  ? t('staff.platform.event.published')
-                  : t('staff.platform.event.draft')"
+                :text="
+                  ev.is_published
+                    ? t('staff.platform.event.published')
+                    : t('staff.platform.event.draft')
+                "
               />
             </div>
-            <div class="event-item__title">{{ ev.title }}</div>
-            <div class="event-item__date">{{ formatDateTime(ev.starts_at) }}</div>
-            <div v-if="ev.location" class="event-item__loc">{{ ev.location }}</div>
+            <div class="event-item__title">
+              {{ ev.title }}
+            </div>
+            <div class="event-item__date">
+              {{ formatDateTime(ev.starts_at) }}
+            </div>
+            <div v-if="ev.location" class="event-item__loc">
+              {{ ev.location }}
+            </div>
           </div>
           <div v-if="canEdit" class="event-item__actions">
             <button
-            :aria-label="t('common.edit')" class="event-item__icon-btn" @click="openEdit(ev)">
+              :aria-label="t('common.edit')"
+              class="event-item__icon-btn"
+              @click="openEdit(ev)"
+            >
               <Pencil :size="16" />
             </button>
             <button
-            :aria-label="t('common.delete')" class="event-item__icon-btn event-item__icon-btn--danger" @click="openDelete(ev)">
+              :aria-label="t('common.delete')"
+              class="event-item__icon-btn event-item__icon-btn--danger"
+              @click="openDelete(ev)"
+            >
               <Trash2 :size="16" />
             </button>
           </div>
@@ -350,18 +365,24 @@ onMounted(loadEvents)
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="evd__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">&larr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
+          &larr;
+        </CButton>
         <span class="evd__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">&rarr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
+          &rarr;
+        </CButton>
       </div>
     </template>
 
     <!-- Editor modal -->
     <CModal :open="showEditor" @close="showEditor = false">
       <h3 class="evd__modal-title">
-        {{ editId === null
-          ? t('staff.platform.event.createTitle')
-          : t('staff.platform.event.editTitle') }}
+        {{
+          editId === null
+            ? t('staff.platform.event.createTitle')
+            : t('staff.platform.event.editTitle')
+        }}
       </h3>
 
       <CInput
@@ -433,9 +454,15 @@ onMounted(loadEvents)
 
     <!-- Delete confirm -->
     <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="evd__modal-title">{{ t('staff.platform.event.deleteTitle') }}</h3>
-      <p class="evd__modal-text">{{ t('staff.platform.event.deleteConfirm') }}</p>
-      <p v-if="deleteTarget" class="evd__modal-target">{{ deleteTarget.title }}</p>
+      <h3 class="evd__modal-title">
+        {{ t('staff.platform.event.deleteTitle') }}
+      </h3>
+      <p class="evd__modal-text">
+        {{ t('staff.platform.event.deleteConfirm') }}
+      </p>
+      <p v-if="deleteTarget" class="evd__modal-target">
+        {{ deleteTarget.title }}
+      </p>
       <div class="evd__modal-actions">
         <CButton variant="outline" size="sm" @click="deleteTarget = null">
           {{ t('common.cancel') }}
@@ -449,20 +476,36 @@ onMounted(loadEvents)
 </template>
 
 <style scoped>
-.evd { padding: 0; }
+.evd {
+  padding: 0;
+}
 
 .evd__toolbar {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: var(--space-3); margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
-.evd__filters { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
+.evd__filters {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
-  cursor: pointer; white-space: nowrap;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 /* A5: the PAINTED box stays this size on purpose -- growing it would move the
@@ -482,47 +525,127 @@ onMounted(loadEvents)
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
 }
-.filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.filter-chip.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
 
 .evd__center {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: var(--center-md); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-md);
+  gap: var(--space-4);
 }
 
-.event-list { display: flex; flex-direction: column; }
+.event-list {
+  display: flex;
+  flex-direction: column;
+}
 .event-item {
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default);
 }
-.event-item__info { flex: 1; min-width: 0; }
-.event-item__top { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.event-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.event-item__top {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
 .event-item__title {
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.event-item__date { font-size: var(--fs-xs); color: var(--text-secondary); margin-top: var(--space-1); }
-.event-item__loc { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
-.event-item__actions { display: flex; gap: var(--space-1); flex-shrink: 0; }
+.event-item__date {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+.event-item__loc {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+.event-item__actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
 .event-item__icon-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: var(--size-md); height: var(--size-md); border: none; background: none;
-  color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
-  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-md);
+  height: var(--size-md);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
-.event-item__icon-btn:hover { background: var(--bg-subtle); }
-.event-item__icon-btn--danger:hover { color: var(--danger); }
+.event-item__icon-btn:hover {
+  background: var(--bg-subtle);
+}
+.event-item__icon-btn--danger:hover {
+  color: var(--danger);
+}
 
 .evd__pagination {
-  display: flex; align-items: center; justify-content: center;
-  gap: var(--space-3); margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
-.evd__page { font-size: var(--fs-xs); color: var(--text-secondary); }
+.evd__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
 
-.evd__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-4); }
-.evd__modal-text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-2); }
-.evd__modal-target { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-4); }
-.evd__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
+.evd__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.evd__modal-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2);
+}
+.evd__modal-target {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.evd__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  justify-content: flex-end;
+}
 
-
-.evd__toggles { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-2); }
+.evd__toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
 </style>

@@ -31,7 +31,12 @@ export const INVESTOR_TABS: TabItem[] = [
 export const AGENT_TABS: TabItem[] = [
   { id: 'home', path: '/agent/dashboard', labelKey: 'tab.agent.home', icon: 'Home' },
   { id: 'hub', path: '/agent/hub', labelKey: 'tab.agent.hub', icon: 'Link' },
-  { id: 'commissions', path: '/agent/commissions', labelKey: 'tab.agent.commissions', icon: 'Coins' },
+  {
+    id: 'commissions',
+    path: '/agent/commissions',
+    labelKey: 'tab.agent.commissions',
+    icon: 'Coins',
+  },
   { id: 'balance', path: '/agent/balance', labelKey: 'tab.agent.balance', icon: 'Wallet' },
   { id: 'more', path: '/agent/more', labelKey: 'tab.agent.more', icon: 'Menu' },
 ]
@@ -39,7 +44,12 @@ export const AGENT_TABS: TabItem[] = [
 export const COMPANY_TABS: TabItem[] = [
   { id: 'home', path: '/company/dashboard', labelKey: 'tab.comp.home', icon: 'Home' },
   { id: 'products', path: '/company/products', labelKey: 'tab.comp.products', icon: 'Package' },
-  { id: 'analytics', path: '/company/analytics', labelKey: 'tab.comp.analytics', icon: 'BarChart3' },
+  {
+    id: 'analytics',
+    path: '/company/analytics',
+    labelKey: 'tab.comp.analytics',
+    icon: 'BarChart3',
+  },
   { id: 'balance', path: '/company/balance', labelKey: 'tab.comp.balance', icon: 'Wallet' },
   { id: 'settings', path: '/company/settings', labelKey: 'tab.comp.settings', icon: 'Settings' },
 ]

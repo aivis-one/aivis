@@ -139,9 +139,7 @@ export const useAgentStore = defineStore('agent', () => {
   // Computed
   // ---------------------------------------------------------------------------
 
-  const hasMoreLinks = computed(
-    () => links.value.length < linksTotal.value,
-  )
+  const hasMoreLinks = computed(() => links.value.length < linksTotal.value)
 
   /**
    * Current agent's rank in the monthly leaderboard, or null when
@@ -168,9 +166,7 @@ export const useAgentStore = defineStore('agent', () => {
    * Whether more commission-history entries remain to load. Mirrors
    * hasMoreLinks: accumulated items < server total.
    */
-  const hasMoreCommissions = computed(
-    () => commissions.value.length < commissionsTotal.value,
-  )
+  const hasMoreCommissions = computed(() => commissions.value.length < commissionsTotal.value)
 
   // ---------------------------------------------------------------------------
   // Actions -- referral links (Hub)
@@ -277,8 +273,7 @@ export const useAgentStore = defineStore('agent', () => {
       leaderboard.value = resp
     } catch (err) {
       if (mine !== leaderboardEpoch) return
-      leaderboardError.value =
-        err instanceof Error ? err.message : 'Unknown error'
+      leaderboardError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       if (mine === leaderboardEpoch) leaderboardLoading.value = false
     }
@@ -300,8 +295,7 @@ export const useAgentStore = defineStore('agent', () => {
       downline.value = resp
     } catch (err) {
       if (mine !== downlineEpoch) return
-      downlineError.value =
-        err instanceof Error ? err.message : 'Unknown error'
+      downlineError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       if (mine === downlineEpoch) downlineLoading.value = false
     }
@@ -318,8 +312,7 @@ export const useAgentStore = defineStore('agent', () => {
       commissionSummary.value = resp
     } catch (err) {
       if (mine !== commissionSummaryEpoch) return
-      commissionSummaryError.value =
-        err instanceof Error ? err.message : 'Unknown error'
+      commissionSummaryError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       if (mine === commissionSummaryEpoch) {
         commissionSummaryLoading.value = false
@@ -344,8 +337,7 @@ export const useAgentStore = defineStore('agent', () => {
       commissionsTotal.value = resp.total
     } catch (err) {
       if (mine !== commissionsEpoch) return
-      commissionsError.value =
-        err instanceof Error ? err.message : 'Unknown error'
+      commissionsError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       if (mine === commissionsEpoch) commissionsLoading.value = false
     }
@@ -363,17 +355,13 @@ export const useAgentStore = defineStore('agent', () => {
     commissionsLoading.value = true
     commissionsError.value = null
     try {
-      const resp = await getMyCommissions(
-        COMMISSIONS_PER_PAGE,
-        commissions.value.length,
-      )
+      const resp = await getMyCommissions(COMMISSIONS_PER_PAGE, commissions.value.length)
       if (mine !== commissionsEpoch) return
       commissions.value = [...commissions.value, ...resp.items]
       commissionsTotal.value = resp.total
     } catch (err) {
       if (mine !== commissionsEpoch) return
-      commissionsError.value =
-        err instanceof Error ? err.message : 'Unknown error'
+      commissionsError.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       if (mine === commissionsEpoch) commissionsLoading.value = false
     }

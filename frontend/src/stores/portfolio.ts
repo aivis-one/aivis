@@ -208,10 +208,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       // currentCompanyId check plus the epoch guard together cover
       // every race we can construct.
       if (currentCompanyId.value !== id) return
-      currentPurchases.value = [
-        ...currentPurchases.value,
-        ...resp.purchases,
-      ]
+      currentPurchases.value = [...currentPurchases.value, ...resp.purchases]
       currentTotal.value = resp.total
       currentPage.value = resp.page
       // Aggregate refresh is a happy side-effect: the detail response

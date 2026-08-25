@@ -37,7 +37,6 @@ const controlAttrs = computed(() => {
   return rest
 })
 
-
 const showPassword = ref(false)
 const isPassword = props.type === 'password'
 
@@ -87,12 +86,16 @@ const { t } = useI18n()
         <Eye v-else :size="20" />
       </button>
     </div>
-    <div v-if="error" class="c-input-error">{{ error }}</div>
+    <div v-if="error" class="c-input-error">
+      {{ error }}
+    </div>
   </div>
 </template>
 
 <style scoped>
-.c-input-group { margin-bottom: var(--space-4); }
+.c-input-group {
+  margin-bottom: var(--space-4);
+}
 
 .c-input-label {
   display: block;
@@ -111,7 +114,9 @@ const { t } = useI18n()
   font-family: inherit;
   background: var(--bg-page);
   color: var(--text-primary);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .c-input:focus {
@@ -120,12 +125,17 @@ const { t } = useI18n()
   box-shadow: var(--shadow-focus);
 }
 
-.c-input::placeholder { color: var(--text-tertiary); }
+.c-input::placeholder {
+  color: var(--text-tertiary);
+}
 
 /* The kit had no disabled state at all, which went unnoticed because until
    attribute pass-through existed nothing could pass `disabled` to the control.
    The forms that adopt this variant disable their fields while submitting. */
-.c-input:disabled { opacity: 0.6; cursor: not-allowed; }
+.c-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .c-input--error {
   border-color: var(--danger);
@@ -140,11 +150,15 @@ const { t } = useI18n()
   transition: border-color 0.15s;
 }
 
-.c-input-wrapper { position: relative; }
+.c-input-wrapper {
+  position: relative;
+}
 /* Only a field that actually HAS a reveal button reserves room for one. This
    matched every .c-input in the wrapper, so an email field carried 48px of
    right padding for a button that was never rendered. */
-.c-input-wrapper .c-input--reveal { padding-right: var(--space-7); }
+.c-input-wrapper .c-input--reveal {
+  padding-right: var(--space-7);
+}
 
 .c-input-toggle {
   position: absolute;
@@ -180,8 +194,15 @@ const { t } = useI18n()
 }
 
 @keyframes c-shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
 }
 </style>

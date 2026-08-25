@@ -33,10 +33,10 @@ async function handleStart(): Promise<void> {
   <div class="staff-avatar">
     <!-- Header banner -->
     <div class="avatar-header">
-      <div class="avatar-header__title">
-        <Ghost :size="20" /> {{ t('staff.avatar.title') }}
+      <div class="avatar-header__title"><Ghost :size="20" /> {{ t('staff.avatar.title') }}</div>
+      <div class="avatar-header__sub">
+        {{ t('staff.avatar.subtitle') }}
       </div>
-      <div class="avatar-header__sub">{{ t('staff.avatar.subtitle') }}</div>
     </div>
 
     <!-- Start form -->
@@ -47,7 +47,8 @@ async function handleStart(): Promise<void> {
         :placeholder="t('staff.avatar.selectUser')"
       />
       <CButton
-        variant="primary" size="sm"
+        variant="primary"
+        size="sm"
         :loading="loading"
         :disabled="!targetUserId.trim()"
         style="margin-top: 12px"
@@ -73,7 +74,9 @@ async function handleStart(): Promise<void> {
 </template>
 
 <style scoped>
-.staff-avatar { padding: var(--space-4); }
+.staff-avatar {
+  padding: var(--space-4);
+}
 
 .avatar-header {
   padding: var(--space-4-lg);
@@ -97,7 +100,9 @@ async function handleStart(): Promise<void> {
   margin-top: var(--space-1);
 }
 
-.avatar-form { margin-bottom: var(--space-5); }
+.avatar-form {
+  margin-bottom: var(--space-5);
+}
 
 .avatar-restrictions {
   padding: var(--space-4);
@@ -138,5 +143,7 @@ async function handleStart(): Promise<void> {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.avatar-header__sub { max-width: var(--maxw-prose); }
+.avatar-header__sub {
+  max-width: var(--maxw-prose);
+}
 </style>

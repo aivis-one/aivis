@@ -105,10 +105,8 @@ const hasThread = computed<boolean>(() => knownThreadId.value !== null)
 // thread exists without waiting on feed flags that were never set.
 const showInvite = computed<boolean>(
   () =>
-    !hasThread.value
-    || (!support.messagesLoading
-      && !support.messagesError
-      && support.messages.length === 0),
+    !hasThread.value ||
+    (!support.messagesLoading && !support.messagesError && support.messages.length === 0),
 )
 
 // Store hands back comms' own order ("newest first"); this screen
@@ -200,10 +198,7 @@ function goBack(): void {
     router.back()
     return
   }
-  void safeNavigate(
-    router.push({ name: 'investor-more' }),
-    '[InvestorSupportView] back',
-  )
+  void safeNavigate(router.push({ name: 'investor-more' }), '[InvestorSupportView] back')
 }
 
 onMounted(() => {
@@ -218,7 +213,9 @@ onMounted(() => {
     </div>
 
     <header class="isup__header">
-      <h1 class="isup__title">{{ t('inv.support.title') }}</h1>
+      <h1 class="isup__title">
+        {{ t('inv.support.title') }}
+      </h1>
     </header>
 
     <!-- INIT: determining whether a request already exists -->
@@ -281,7 +278,9 @@ onMounted(() => {
             <span class="isup__msg-sender sr-only">
               {{ isMine(message) ? t('inv.support.sender.me') : t('inv.support.sender.operator') }}
             </span>
-            <p class="isup__msg-body">{{ message.body }}</p>
+            <p class="isup__msg-body">
+              {{ message.body }}
+            </p>
           </div>
         </div>
       </div>
@@ -330,7 +329,11 @@ onMounted(() => {
   display: flex;
 }
 
-.isup__header { display: flex; flex-direction: column; gap: var(--space-1); }
+.isup__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .isup__title {
   font-size: var(--fs-lg);
   font-weight: 700;
@@ -393,7 +396,9 @@ onMounted(() => {
   align-self: flex-end;
   background: var(--primary);
 }
-.isup__msg--mine .isup__msg-body { color: var(--on-primary); }
+.isup__msg--mine .isup__msg-body {
+  color: var(--on-primary);
+}
 
 .isup__msg-body {
   margin: 0;

@@ -38,11 +38,7 @@
 // =============================================================================
 
 import { computed, ref } from 'vue'
-import {
-  isNavigationFailure,
-  NavigationFailureType,
-  useRouter,
-} from 'vue-router'
+import { isNavigationFailure, NavigationFailureType, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { setAuthToken, getAuthToken } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
@@ -106,10 +102,7 @@ export function useAvatar() {
       // rollback `catch` below, which would restore the staff token
       // despite a fully successful API call and token swap.
       const targetDashboard = getRoleDashboard(authStore.role)
-      await safeNavigate(
-        router.push(targetDashboard),
-        '[useAvatar] to target dashboard',
-      )
+      await safeNavigate(router.push(targetDashboard), '[useAvatar] to target dashboard')
     } catch {
       // Rollback: restore staff token on failure (memory + storage).
       const savedToken = sessionStorage.getItem(STAFF_TOKEN_KEY)
@@ -187,10 +180,7 @@ export function useAvatar() {
       // benign NavigationFailure does NOT bubble into the outer
       // rollback `catch` below, which would re-restore the staff
       // token and reset stores despite a fully successful endAvatar.
-      await safeNavigate(
-        router.push('/staff/dashboard'),
-        '[useAvatar] to staff dashboard',
-      )
+      await safeNavigate(router.push('/staff/dashboard'), '[useAvatar] to staff dashboard')
     } catch {
       // Even if endAvatar API call fails, restore staff token to prevent desync.
       // The backend avatar session will expire by TTL.
@@ -202,14 +192,13 @@ export function useAvatar() {
       // and we want stores to start from a clean baseline regardless
       // of whether it succeeds.
       resetAllDataStores()
-      await authStore.fetchMe().catch(() => { /* best effort */ })
+      await authStore.fetchMe().catch(() => {
+        /* best effort */
+      })
       // We are already inside the outer rollback `catch` -- any rejection
       // from this push would otherwise become an unhandled rejection.
       // safeNavigate's no-throw contract guarantees containment here.
-      await safeNavigate(
-        router.push('/staff/dashboard'),
-        '[useAvatar] rollback to staff dashboard',
-      )
+      await safeNavigate(router.push('/staff/dashboard'), '[useAvatar] rollback to staff dashboard')
       showToast(t('common.error'), 'error')
     } finally {
       loading.value = false
@@ -220,9 +209,7 @@ export function useAvatar() {
    * Get main token storage — uses platform detection (same as auth store).
    */
   function _getMainStorage(): Storage {
-    return platform.getStorageDriver() === 'sessionStorage'
-      ? sessionStorage
-      : localStorage
+    return platform.getStorageDriver() === 'sessionStorage' ? sessionStorage : localStorage
   }
 
   return {

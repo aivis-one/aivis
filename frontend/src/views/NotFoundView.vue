@@ -19,7 +19,9 @@ function goHome(): void {
 <template>
   <div class="not-found">
     <h1 class="not-found__code">404</h1>
-    <p class="not-found__text">{{ t('error.pageNotFound') }}</p>
+    <p class="not-found__text">
+      {{ t('error.pageNotFound') }}
+    </p>
     <CButton inline @click="goHome">
       {{ t('common.back') }}
     </CButton>
@@ -60,5 +62,7 @@ function goHome(): void {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.not-found__text { max-width: var(--maxw-prose); }
+.not-found__text {
+  max-width: var(--maxw-prose);
+}
 </style>

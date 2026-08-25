@@ -11,10 +11,7 @@ const { toastState } = useToast()
   <Teleport to="body">
     <div
       class="c-toast"
-      :class="[
-        toastState.visible && 'c-toast--show',
-        'c-toast--' + toastState.variant,
-      ]"
+      :class="[toastState.visible && 'c-toast--show', 'c-toast--' + toastState.variant]"
     >
       {{ toastState.message }}
     </div>
@@ -49,8 +46,20 @@ const { toastState } = useToast()
   opacity: 1;
 }
 
-.c-toast--info { background: var(--primary); color: var(--on-primary); }
-.c-toast--success { background: var(--success); color: var(--on-success); }
-.c-toast--error { background: var(--danger); color: var(--on-danger); }
-.c-toast--warning { background: var(--warning); color: var(--text-primary); }
+.c-toast--info {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.c-toast--success {
+  background: var(--success);
+  color: var(--on-success);
+}
+.c-toast--error {
+  background: var(--danger);
+  color: var(--on-danger);
+}
+.c-toast--warning {
+  background: var(--warning);
+  color: var(--text-primary);
+}
 </style>

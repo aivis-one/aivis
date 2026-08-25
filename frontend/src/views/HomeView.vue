@@ -9,7 +9,9 @@ const { t } = useI18n()
     <div class="home-logo">
       <img src="/aivis-mark.svg" alt="AIVIS" />
     </div>
-    <h1 class="home-title">{{ t('app.name') }}</h1>
+    <h1 class="home-title">
+      {{ t('app.name') }}
+    </h1>
     <p class="home-version">v0.1.0</p>
   </div>
 </template>

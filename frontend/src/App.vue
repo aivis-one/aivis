@@ -84,15 +84,9 @@ onMounted(() => {
   <div v-if="isAvatarActive && authStore.isAuthenticated" class="avatar-banner">
     <div class="avatar-banner__left">
       <Ghost :size="16" />
-      <span class="avatar-banner__text">
-        Avatar: {{ avatarTargetName }}
-      </span>
+      <span class="avatar-banner__text"> Avatar: {{ avatarTargetName }} </span>
     </div>
-    <button
-      class="avatar-banner__btn"
-      :disabled="avatarLoading"
-      @click="endAvatarSession"
-    >
+    <button class="avatar-banner__btn" :disabled="avatarLoading" @click="endAvatarSession">
       <Shield :size="16" />
       {{ t('staff.avatar.return') }}
     </button>
@@ -106,8 +100,12 @@ onMounted(() => {
     v-else-if="authError && !isStandalone && !authStore.isAuthenticated"
     class="auth-error-screen"
   >
-    <p class="auth-error-text">{{ authError }}</p>
-    <button class="auth-error-retry" @click="retryAuth">{{ t('common.retry') }}</button>
+    <p class="auth-error-text">
+      {{ authError }}
+    </p>
+    <button class="auth-error-retry" @click="retryAuth">
+      {{ t('common.retry') }}
+    </button>
   </div>
 
   <!-- Phase 3 (iter 2.6 batch 2): router-driven content for both

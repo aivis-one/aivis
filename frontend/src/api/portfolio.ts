@@ -27,10 +27,7 @@
 
 import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
-import type {
-  CompanyPositionDetailResponse,
-  PortfolioResponse,
-} from '@/api/types'
+import type { CompanyPositionDetailResponse, PortfolioResponse } from '@/api/types'
 
 export interface GetCompanyPositionParams {
   page?: number
@@ -63,7 +60,5 @@ export function getCompanyPosition(
     page: params?.page,
     per_page: params?.per_page,
   })
-  return api.get<CompanyPositionDetailResponse>(
-    `/api/v1/portfolio/me/company/${companyId}${qs}`,
-  )
+  return api.get<CompanyPositionDetailResponse>(`/api/v1/portfolio/me/company/${companyId}${qs}`)
 }

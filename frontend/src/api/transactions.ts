@@ -25,10 +25,7 @@
 
 import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
-import type {
-  TransactionListResponse,
-  TransactionResponse,
-} from '@/api/types'
+import type { TransactionListResponse, TransactionResponse } from '@/api/types'
 
 export interface ListTransactionsParams {
   page?: number

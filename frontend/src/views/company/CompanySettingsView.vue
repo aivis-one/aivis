@@ -228,8 +228,12 @@ onMounted(() => {
   <div class="cset">
     <!-- Inline page header -->
     <div class="cset__header">
-      <h1 class="cset__page-title">{{ t('comp.settings.title') }}</h1>
-      <p class="cset__page-subtitle">{{ t('comp.settings.subtitle') }}</p>
+      <h1 class="cset__page-title">
+        {{ t('comp.settings.title') }}
+      </h1>
+      <p class="cset__page-subtitle">
+        {{ t('comp.settings.subtitle') }}
+      </p>
     </div>
 
     <!-- Initial loading -->
@@ -239,10 +243,7 @@ onMounted(() => {
 
     <!-- Error -->
     <div v-else-if="hasError" class="cset__center">
-      <CEmptyState
-        :title="t('comp.settings.errorTitle')"
-        :description="profileStore.error ?? ''"
-      />
+      <CEmptyState :title="t('comp.settings.errorTitle')" :description="profileStore.error ?? ''" />
       <CButton variant="outline" size="sm" @click="loadProfile">
         {{ t('comp.settings.errorRetry') }}
       </CButton>
@@ -253,32 +254,23 @@ onMounted(() => {
       <!-- Hero card -->
       <section class="cset__hero">
         <div class="cset__hero-logo">
-          <img
-            v-if="logoUrl"
-            :src="logoUrl"
-            :alt="companyName"
-            class="cset__hero-logo-img"
-          />
+          <img v-if="logoUrl" :src="logoUrl" :alt="companyName" class="cset__hero-logo-img" />
           <div v-else class="cset__hero-logo-fallback">
             {{ initials }}
           </div>
         </div>
         <div class="cset__hero-text">
-          <div class="cset__hero-name">{{ companyName }}</div>
-          <span
-            class="cset__status-badge"
-            :class="statusBadgeClass"
-          >
+          <div class="cset__hero-name">
+            {{ companyName }}
+          </div>
+          <span class="cset__status-badge" :class="statusBadgeClass">
             {{ statusLabel }}
           </span>
         </div>
       </section>
 
       <!-- Profile -->
-      <section
-        v-if="profile.description || status"
-        class="cset__section"
-      >
+      <section v-if="profile.description || status" class="cset__section">
         <div class="cset__section-title">
           {{ t('comp.settings.profile.title') }}
         </div>
@@ -286,7 +278,9 @@ onMounted(() => {
           <span class="cset__row-label">
             {{ t('comp.settings.profile.description') }}
           </span>
-          <p class="cset__row-multiline">{{ profile.description }}</p>
+          <p class="cset__row-multiline">
+            {{ profile.description }}
+          </p>
         </div>
         <div v-if="status" class="cset__row">
           <span class="cset__row-label">
@@ -368,7 +362,9 @@ onMounted(() => {
 
       <!-- Static support hint above the action section. Plain text,
            not a toast: the user is not trying to tap anything yet. -->
-      <p class="cset__hint">{{ t('comp.settings.editViaSupport') }}</p>
+      <p class="cset__hint">
+        {{ t('comp.settings.editViaSupport') }}
+      </p>
 
       <!-- Actions -->
       <section class="cset__section">
@@ -401,7 +397,9 @@ onMounted(() => {
 }
 
 /* Header */
-.cset__header { padding: var(--space-4) var(--space-4) 0; }
+.cset__header {
+  padding: var(--space-4) var(--space-4) 0;
+}
 .cset__page-title {
   font-size: var(--fs-lg);
   font-weight: 700;
@@ -450,7 +448,11 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
 }
-.cset__hero-logo-img { width: 100%; height: 100%; object-fit: cover; }
+.cset__hero-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .cset__hero-logo-fallback {
   font-size: var(--fs-lg);
   font-weight: 700;
@@ -497,7 +499,10 @@ onMounted(() => {
 }
 
 /* Section */
-.cset__section { padding: 0 var(--space-4); margin-bottom: var(--space-4-lg); }
+.cset__section {
+  padding: 0 var(--space-4);
+  margin-bottom: var(--space-4-lg);
+}
 .cset__section-title {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -518,7 +523,9 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-default);
   min-height: var(--size-3xl);
 }
-.cset__row:last-child { border-bottom: none; }
+.cset__row:last-child {
+  border-bottom: none;
+}
 a.cset__row,
 button.cset__row {
   width: 100%;
@@ -532,15 +539,21 @@ button.cset__row {
   text-decoration: none;
 }
 a.cset__row:last-child,
-button.cset__row:last-child { border-bottom: none; }
+button.cset__row:last-child {
+  border-bottom: none;
+}
 
 .cset__row--block {
   flex-wrap: wrap;
   align-items: stretch;
   flex-direction: column;
 }
-.cset__row--clickable { transition: background 0.15s; }
-.cset__row--clickable:hover { background: var(--bg-subtle); }
+.cset__row--clickable {
+  transition: background 0.15s;
+}
+.cset__row--clickable:hover {
+  background: var(--bg-subtle);
+}
 .cset__row--disabled {
   opacity: 0.6;
   pointer-events: none;
@@ -610,5 +623,7 @@ button.cset__row:last-child { border-bottom: none; }
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.cset__hint { max-width: var(--maxw-prose); }
+.cset__hint {
+  max-width: var(--maxw-prose);
+}
 </style>

@@ -66,13 +66,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import {
-  ArrowDownToLine,
-  Briefcase,
-  ChevronRight,
-  Store,
-  Wallet,
-} from 'lucide-vue-next'
+import { ArrowDownToLine, Briefcase, ChevronRight, Store, Wallet } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import EventCard from '@/components/shared/EventCard.vue'
 import { listPosts } from '@/api/posts'
@@ -168,28 +162,18 @@ const portfolioEmpty = computed<boolean>(() => {
   return s === null || s.companies_count === 0
 })
 
-const totalCurrentValue = computed<number>(
-  () => dashboardStore.summary?.current_value_cents ?? 0,
-)
+const totalCurrentValue = computed<number>(() => dashboardStore.summary?.current_value_cents ?? 0)
 
-const totalUnits = computed<number>(
-  () => dashboardStore.summary?.total_units ?? 0,
-)
+const totalUnits = computed<number>(() => dashboardStore.summary?.total_units ?? 0)
 
-const productsCount = computed<number>(
-  () => dashboardStore.summary?.companies_count ?? 0,
-)
+const productsCount = computed<number>(() => dashboardStore.summary?.companies_count ?? 0)
 
 // ---------------------------------------------------------------------------
 // Balance -- thin getter over the store's convenience property
 // ---------------------------------------------------------------------------
 
-const activeConfirmed = computed<number>(
-  () => dashboardStore.activeBalance.confirmed,
-)
-const activeFrozen = computed<number>(
-  () => dashboardStore.activeBalance.frozen,
-)
+const activeConfirmed = computed<number>(() => dashboardStore.activeBalance.confirmed)
+const activeFrozen = computed<number>(() => dashboardStore.activeBalance.frozen)
 const hasFrozen = computed<boolean>(() => activeFrozen.value > 0)
 
 // ---------------------------------------------------------------------------
@@ -203,16 +187,10 @@ function goPortfolio(): void {
   )
 }
 function goBalance(): void {
-  void safeNavigate(
-    router.push({ name: 'investor-balance' }),
-    '[InvestorDashboardView] to balance',
-  )
+  void safeNavigate(router.push({ name: 'investor-balance' }), '[InvestorDashboardView] to balance')
 }
 function goDeposit(): void {
-  void safeNavigate(
-    router.push({ name: 'investor-deposit' }),
-    '[InvestorDashboardView] to deposit',
-  )
+  void safeNavigate(router.push({ name: 'investor-deposit' }), '[InvestorDashboardView] to deposit')
 }
 function goMarket(): void {
   // iter 2.6.x hotfix: route renamed in iter 2.5 batch 9 -- the
@@ -228,10 +206,7 @@ function goEvents(): void {
   // Dashboard is mounted under the investor shell only (the agent shell
   // has its own AgentDashboardView), so the events screen is always the
   // investor-side route -- no shell-aware route name needed here.
-  void safeNavigate(
-    router.push({ name: 'investor-events' }),
-    '[InvestorDashboardView] to events',
-  )
+  void safeNavigate(router.push({ name: 'investor-events' }), '[InvestorDashboardView] to events')
 }
 
 // ---------------------------------------------------------------------------
@@ -285,8 +260,12 @@ onBeforeUnmount(() => {
   <div class="dash">
     <!-- Greeting -->
     <div class="dash__header">
-      <h1 class="dash__title">{{ greeting }}</h1>
-      <p class="dash__subtitle">{{ t('inv.dashboard.title') }}</p>
+      <h1 class="dash__title">
+        {{ greeting }}
+      </h1>
+      <p class="dash__subtitle">
+        {{ t('inv.dashboard.title') }}
+      </p>
     </div>
 
     <!-- Portfolio hero card -->
@@ -376,31 +355,20 @@ onBeforeUnmount(() => {
       </h2>
 
       <!-- Loading -->
-      <div
-        v-if="postsLoading && posts.length === 0 && !postsErrored"
-        class="dash__posts-center"
-      >
+      <div v-if="postsLoading && posts.length === 0 && !postsErrored" class="dash__posts-center">
         <CLoader :size="24" />
       </div>
 
       <!-- Error -->
-      <div
-        v-else-if="postsErrored && posts.length === 0"
-        class="dash__posts-center"
-      >
-        <CEmptyState
-          :title="t('inv.dashboard.posts.errorTitle')"
-        />
+      <div v-else-if="postsErrored && posts.length === 0" class="dash__posts-center">
+        <CEmptyState :title="t('inv.dashboard.posts.errorTitle')" />
         <CButton variant="outline" size="sm" @click="loadPosts">
           {{ t('inv.dashboard.posts.errorRetry') }}
         </CButton>
       </div>
 
       <!-- Empty -->
-      <div
-        v-else-if="!postsLoading && posts.length === 0"
-        class="dash__posts-center"
-      >
+      <div v-else-if="!postsLoading && posts.length === 0" class="dash__posts-center">
         <CEmptyState :title="t('inv.dashboard.posts.empty')" />
       </div>
 
@@ -415,7 +383,9 @@ onBeforeUnmount(() => {
             loading="lazy"
           />
           <div class="dash__post-body">
-            <div class="dash__post-title">{{ post.title }}</div>
+            <div class="dash__post-title">
+              {{ post.title }}
+            </div>
             <div class="dash__post-date">
               {{ formatPostDate(post.published_at ?? post.created_at) }}
             </div>
@@ -440,10 +410,7 @@ onBeforeUnmount(() => {
 
       <!-- Error (does NOT hide -- a failed fetch must not look like
            "no events"; offer a retry instead) -->
-      <div
-        v-else-if="eventsErrored && events.length === 0"
-        class="dash__events-center"
-      >
+      <div v-else-if="eventsErrored && events.length === 0" class="dash__events-center">
         <CEmptyState :title="t('inv.dashboard.events.errorTitle')" />
         <CButton variant="outline" size="sm" @click="loadEvents">
           {{ t('inv.dashboard.events.errorRetry') }}
@@ -452,11 +419,7 @@ onBeforeUnmount(() => {
 
       <!-- List: each card opens the full events screen -->
       <ul v-else class="dash__events-list">
-        <li
-          v-for="event in events"
-          :key="event.id"
-          class="dash__event"
-        >
+        <li v-for="event in events" :key="event.id" class="dash__event">
           <EventCard :event="event" variant="compact" @click="goEvents" />
         </li>
       </ul>
@@ -473,13 +436,21 @@ onBeforeUnmount(() => {
 }
 
 /* Header */
-.dash__header { display: flex; flex-direction: column; gap: var(--space-1); }
+.dash__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .dash__title {
-  font-size: var(--fs-xl); font-weight: 700;
-  color: var(--text-primary); margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
 }
 .dash__subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0;
 }
 
 /* Portfolio hero */
@@ -497,8 +468,12 @@ onBeforeUnmount(() => {
   font-family: inherit;
   transition: transform 0.15s;
 }
-.dash__portfolio:hover { transform: translateY(-1px); }
-.dash__portfolio:active { transform: translateY(0); }
+.dash__portfolio:hover {
+  transform: translateY(-1px);
+}
+.dash__portfolio:active {
+  transform: translateY(0);
+}
 
 .dash__portfolio-head {
   display: flex;
@@ -509,9 +484,13 @@ onBeforeUnmount(() => {
   opacity: 0.9;
 }
 .dash__portfolio-label {
-  display: inline-flex; align-items: center; gap: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
-.dash__portfolio-chev { opacity: 0.8; }
+.dash__portfolio-chev {
+  opacity: 0.8;
+}
 
 .dash__portfolio-value {
   font-size: var(--fs-2xl);
@@ -568,7 +547,9 @@ onBeforeUnmount(() => {
   font-family: inherit;
   transition: border-color 0.15s;
 }
-.dash__balance:hover { border-color: var(--primary); }
+.dash__balance:hover {
+  border-color: var(--primary);
+}
 
 .dash__balance-head {
   display: flex;
@@ -579,7 +560,9 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 .dash__balance-label {
-  display: inline-flex; align-items: center; gap: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .dash__balance-value {
   font-size: var(--fs-xl);
@@ -611,7 +594,9 @@ onBeforeUnmount(() => {
   font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 .dash__action:hover {
   border-color: var(--primary);
@@ -619,7 +604,11 @@ onBeforeUnmount(() => {
 }
 
 /* Posts */
-.dash__posts { display: flex; flex-direction: column; gap: var(--space-3); }
+.dash__posts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 .dash__posts-title {
   font-size: var(--fs-sm);
   font-weight: 700;
@@ -627,8 +616,10 @@ onBeforeUnmount(() => {
   margin: var(--space-1) 0 0;
 }
 .dash__posts-center {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-3);
   min-height: var(--center-sm);
   padding: var(--space-4) var(--space-2);
@@ -650,7 +641,8 @@ onBeforeUnmount(() => {
   background: var(--bg-page);
 }
 .dash__post-cover {
-  width: var(--size-4xl); height: var(--size-4xl);
+  width: var(--size-4xl);
+  height: var(--size-4xl);
   object-fit: cover;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
@@ -678,7 +670,11 @@ onBeforeUnmount(() => {
 }
 
 /* Upcoming events widget */
-.dash__events { display: flex; flex-direction: column; gap: var(--space-3); }
+.dash__events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 .dash__events-title {
   font-size: var(--fs-sm);
   font-weight: 700;
@@ -686,8 +682,10 @@ onBeforeUnmount(() => {
   margin: var(--space-1) 0 0;
 }
 .dash__events-center {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-3);
   min-height: var(--center-sm);
   padding: var(--space-4) var(--space-2);
@@ -712,7 +710,9 @@ onBeforeUnmount(() => {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .dash__actions { max-width: calc(2 * var(--tile-max)); }
+  .dash__actions {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -722,5 +722,7 @@ onBeforeUnmount(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.dash__subtitle { max-width: var(--maxw-prose); }
+.dash__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

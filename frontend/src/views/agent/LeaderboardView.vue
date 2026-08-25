@@ -53,10 +53,10 @@ const periodStart = computed(() => agentStore.leaderboard?.period_start ?? null)
 // first snapshot of the period yet.
 const isEmpty = computed(
   () =>
-    !agentStore.leaderboardLoading
-    && !agentStore.leaderboardError
-    && agentStore.leaderboard !== null
-    && entries.value.length === 0,
+    !agentStore.leaderboardLoading &&
+    !agentStore.leaderboardError &&
+    agentStore.leaderboard !== null &&
+    entries.value.length === 0,
 )
 
 // Period caption -- empty when no snapshot period is known yet (the
@@ -106,15 +106,16 @@ onMounted(() => {
     <!-- Page header (FP-19: shell owns the header; FP-20: sub-route back-link) -->
     <div class="lb__page-header">
       <CBackLink :label="t('agent.leaderboard.backLink')" @click="goBack" />
-      <h1 class="lb__title">{{ t('agent.leaderboard.title') }}</h1>
-      <p class="lb__subtitle">{{ t('agent.leaderboard.subtitle') }}</p>
+      <h1 class="lb__title">
+        {{ t('agent.leaderboard.title') }}
+      </h1>
+      <p class="lb__subtitle">
+        {{ t('agent.leaderboard.subtitle') }}
+      </p>
     </div>
 
     <!-- Loading -->
-    <div
-      v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null"
-      class="lb__center"
-    >
+    <div v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null" class="lb__center">
       <CLoader :size="24" />
     </div>
 
@@ -284,5 +285,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.lb__subtitle { max-width: var(--maxw-prose); }
+.lb__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

@@ -59,11 +59,7 @@ export function mimeIcon(mime: string) {
   if (mime.startsWith('image/')) return ImageIcon
   if (mime.startsWith('video/')) return Video
   if (mime === 'application/pdf') return FileText
-  if (
-    mime.includes('spreadsheet')
-    || mime === 'text/csv'
-    || mime === 'application/vnd.ms-excel'
-  ) {
+  if (mime.includes('spreadsheet') || mime === 'text/csv' || mime === 'application/vnd.ms-excel') {
     return FileSpreadsheet
   }
   if (mime.includes('zip') || mime.includes('archive')) return FileArchive

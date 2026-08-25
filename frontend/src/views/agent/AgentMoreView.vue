@@ -77,8 +77,12 @@ function openTile(tile: Tile): void {
   <div class="more">
     <!-- Inline page header, no CHeader (shell renders it). -->
     <div class="more__header">
-      <h1 class="more__title">{{ t('agent.more.title') }}</h1>
-      <p class="more__subtitle">{{ t('agent.more.subtitle') }}</p>
+      <h1 class="more__title">
+        {{ t('agent.more.title') }}
+      </h1>
+      <p class="more__subtitle">
+        {{ t('agent.more.subtitle') }}
+      </p>
     </div>
 
     <div class="more__grid">
@@ -93,8 +97,12 @@ function openTile(tile: Tile): void {
           <component :is="tile.icon" :size="24" />
         </div>
         <div class="more__tile-body">
-          <div class="more__tile-title">{{ t(tile.labelKey) }}</div>
-          <div class="more__tile-desc">{{ t(tile.descKey) }}</div>
+          <div class="more__tile-title">
+            {{ t(tile.labelKey) }}
+          </div>
+          <div class="more__tile-desc">
+            {{ t(tile.descKey) }}
+          </div>
         </div>
         <ChevronRight :size="16" class="more__tile-chev" />
       </button>
@@ -145,7 +153,10 @@ function openTile(tile: Tile): void {
   text-align: left;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
   min-height: 72px;
 }
 .more__tile:hover {
@@ -198,5 +209,7 @@ function openTile(tile: Tile): void {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.more__subtitle { max-width: var(--maxw-prose); }
+.more__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

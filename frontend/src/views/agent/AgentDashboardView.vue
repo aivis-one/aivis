@@ -62,27 +62,18 @@ const isAgent = computed(() => authStore.user?.role === 'agent')
 // ---------------------------------------------------------------------------
 
 const rankDisplay = computed<string>(() =>
-  agentStore.myRank !== null
-    ? `#${agentStore.myRank}`
-    : t('agent.dashboard.widgets.rankNone'),
+  agentStore.myRank !== null ? `#${agentStore.myRank}` : t('agent.dashboard.widgets.rankNone'),
 )
 
-const balanceConfirmed = computed<number>(
-  () => dashboardStore.passiveBalance.confirmed,
-)
-const balanceFrozen = computed<number>(
-  () => dashboardStore.passiveBalance.frozen,
-)
+const balanceConfirmed = computed<number>(() => dashboardStore.passiveBalance.confirmed)
+const balanceFrozen = computed<number>(() => dashboardStore.passiveBalance.frozen)
 
 // ---------------------------------------------------------------------------
 // Quick actions (FP-18: safeNavigate only)
 // ---------------------------------------------------------------------------
 
 function goHub(): void {
-  void safeNavigate(
-    router.push({ name: 'agent-hub' }),
-    '[AgentDashboardView] to agent-hub',
-  )
+  void safeNavigate(router.push({ name: 'agent-hub' }), '[AgentDashboardView] to agent-hub')
 }
 
 function goCommissions(): void {
@@ -111,8 +102,12 @@ onMounted(() => {
   <div class="dash">
     <!-- Screen title (FP-19: shell owns CHeader, view owns the h1) -->
     <div class="dash__header">
-      <h1 class="dash__title">{{ t('agent.dashboard.title') }}</h1>
-      <p class="dash__subtitle">{{ t('agent.dashboard.subtitle') }}</p>
+      <h1 class="dash__title">
+        {{ t('agent.dashboard.title') }}
+      </h1>
+      <p class="dash__subtitle">
+        {{ t('agent.dashboard.subtitle') }}
+      </p>
     </div>
 
     <!-- Widget grid -->
@@ -127,7 +122,7 @@ onMounted(() => {
         </div>
         <template v-else>
           <div class="dash__widget-value">
-            <template v-if="agentStore.commissionSummaryError">—</template>
+            <template v-if="agentStore.commissionSummaryError"> — </template>
             <template v-else>
               {{ formatPrice(agentStore.monthCommissionCents) }}
             </template>
@@ -152,8 +147,10 @@ onMounted(() => {
         </div>
         <template v-else>
           <div class="dash__widget-value">
-            <template v-if="agentStore.leaderboardError">—</template>
-            <template v-else>{{ rankDisplay }}</template>
+            <template v-if="agentStore.leaderboardError"> — </template>
+            <template v-else>
+              {{ rankDisplay }}
+            </template>
           </div>
           <div class="dash__widget-label">
             {{
@@ -175,8 +172,10 @@ onMounted(() => {
         </div>
         <template v-else>
           <div class="dash__widget-value">
-            <template v-if="dashboardStore.error">—</template>
-            <template v-else>{{ formatPrice(balanceConfirmed) }}</template>
+            <template v-if="dashboardStore.error"> — </template>
+            <template v-else>
+              {{ formatPrice(balanceConfirmed) }}
+            </template>
           </div>
           <div class="dash__widget-label">
             {{
@@ -184,10 +183,7 @@ onMounted(() => {
                 ? t('agent.dashboard.errors.balance')
                 : t('agent.dashboard.widgets.balance')
             }}
-            <span
-              v-if="!dashboardStore.error && balanceFrozen > 0"
-              class="dash__widget-sub"
-            >
+            <span v-if="!dashboardStore.error && balanceFrozen > 0" class="dash__widget-sub">
               +{{ formatPrice(balanceFrozen) }}
               {{ t('agent.dashboard.widgets.balanceFrozen') }}
             </span>
@@ -205,13 +201,9 @@ onMounted(() => {
         </div>
         <template v-else>
           <div class="dash__widget-value">
-            <template v-if="agentStore.statsError || !agentStore.stats">
-              —
-            </template>
+            <template v-if="agentStore.statsError || !agentStore.stats"> — </template>
             <template v-else>
-              {{
-                formatNumber(agentStore.stats.total_registrations, locale)
-              }}
+              {{ formatNumber(agentStore.stats.total_registrations, locale) }}
             </template>
           </div>
           <div class="dash__widget-label">
@@ -382,8 +374,12 @@ onMounted(() => {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .dash__widgets { max-width: calc(2 * var(--tile-max)); }
-  .dash__actions-row { max-width: calc(2 * var(--tile-max)); }
+  .dash__widgets {
+    max-width: calc(2 * var(--tile-max));
+  }
+  .dash__actions-row {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -393,5 +389,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.dash__subtitle { max-width: var(--maxw-prose); }
+.dash__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

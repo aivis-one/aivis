@@ -35,10 +35,7 @@
 // =============================================================================
 
 import { api } from '@/api/client'
-import type {
-  AgentApplicationListResponse,
-  AgentApplicationResponse,
-} from '@/api/types'
+import type { AgentApplicationListResponse, AgentApplicationResponse } from '@/api/types'
 
 /**
  * POST /api/v1/agent-applications
@@ -60,7 +57,5 @@ export function submitAgentApplication(): Promise<AgentApplicationResponse> {
  * schema omits them for this endpoint).
  */
 export function getMyAgentApplications(): Promise<AgentApplicationListResponse> {
-  return api.get<AgentApplicationListResponse>(
-    '/api/v1/agent-applications/me',
-  )
+  return api.get<AgentApplicationListResponse>('/api/v1/agent-applications/me')
 }

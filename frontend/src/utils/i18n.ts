@@ -44,11 +44,7 @@
  * keeps defaults in src/i18n/index.ts; do not change that without
  * updating tOrRaw to match.
  */
-export function tOrRaw(
-  t: (key: string) => string,
-  key: string,
-  raw: string,
-): string {
+export function tOrRaw(t: (key: string) => string, key: string, raw: string): string {
   const translated = t(key)
   return translated === key ? raw : translated
 }

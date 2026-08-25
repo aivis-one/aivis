@@ -373,10 +373,7 @@ export const useSupportStore = defineStore('support', () => {
    * Resolve or close a thread. `open` is not offered as a target --
    * see SetStatusIn on the backend; there is no manual reopen.
    */
-  async function setThreadStatus(
-    threadId: string,
-    status: SetStatusIn['status'],
-  ): Promise<void> {
+  async function setThreadStatus(threadId: string, status: SetStatusIn['status']): Promise<void> {
     if (changingStatus[threadId]) return
     changingStatus[threadId] = true
     statusErrors[threadId] = null

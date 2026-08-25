@@ -51,9 +51,9 @@ const agentStore = useAgentStore()
 
 const commissionsEmpty = computed(
   () =>
-    !agentStore.commissionsLoading
-    && !agentStore.commissionsError
-    && agentStore.commissions.length === 0,
+    !agentStore.commissionsLoading &&
+    !agentStore.commissionsError &&
+    agentStore.commissions.length === 0,
 )
 
 // ---------------------------------------------------------------------------
@@ -79,9 +79,7 @@ function levelLabel(level: number | null | undefined): string {
 
 // reversed is the one that must stand out; mirrors the danger mapping
 // used by BalanceView / CompanyBalanceView. Unknown statuses -> neutral.
-function statusVariant(
-  status: string,
-): 'success' | 'warning' | 'danger' | 'neutral' {
+function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
   if (status === 'confirmed') return 'success'
   if (status === 'frozen') return 'warning'
   if (status === 'reversed') return 'danger'
@@ -113,8 +111,12 @@ onMounted(() => {
   <div class="comm">
     <!-- Screen title (FP-19: shell owns the header, view owns the h1) -->
     <div class="comm__header">
-      <h1 class="comm__title">{{ t('agent.commissions.title') }}</h1>
-      <p class="comm__subtitle">{{ t('agent.commissions.subtitle') }}</p>
+      <h1 class="comm__title">
+        {{ t('agent.commissions.title') }}
+      </h1>
+      <p class="comm__subtitle">
+        {{ t('agent.commissions.subtitle') }}
+      </p>
     </div>
 
     <!-- Loading (first page) -->
@@ -147,11 +149,7 @@ onMounted(() => {
     <!-- List -->
     <template v-else>
       <ul class="comm__list">
-        <li
-          v-for="entry in agentStore.commissions"
-          :key="entry.id"
-          class="comm__card"
-        >
+        <li v-for="entry in agentStore.commissions" :key="entry.id" class="comm__card">
           <div class="comm__row">
             <span class="comm__type">{{ typeLabel(entry.type) }}</span>
             <span class="comm__amount">
@@ -186,10 +184,7 @@ onMounted(() => {
             </div>
 
             <div class="comm__meta-right">
-              <span
-                class="comm__status"
-                :class="`comm__status--${statusVariant(entry.status)}`"
-              >
+              <span class="comm__status" :class="`comm__status--${statusVariant(entry.status)}`">
                 {{ statusLabel(entry.status) }}
               </span>
               <span class="comm__date">{{ formatDate(entry.created_at, locale) }}</span>
@@ -198,10 +193,7 @@ onMounted(() => {
         </li>
       </ul>
 
-      <div
-        v-if="agentStore.hasMoreCommissions && !commissionsEmpty"
-        class="comm__more"
-      >
+      <div v-if="agentStore.hasMoreCommissions && !commissionsEmpty" class="comm__more">
         <CButton
           variant="secondary"
           :loading="agentStore.commissionsLoading"
@@ -391,5 +383,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.comm__subtitle { max-width: var(--maxw-prose); }
+.comm__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

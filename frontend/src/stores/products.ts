@@ -84,8 +84,7 @@ export const useProductsStore = defineStore('products', () => {
       page.value = 1
     } catch (err) {
       if (epoch !== fetchEpoch) return
-      error.value =
-        err instanceof Error ? err.message : 'Failed to load products'
+      error.value = err instanceof Error ? err.message : 'Failed to load products'
     } finally {
       // Only clear the loading flag if we're the current epoch -- a
       // newer call already set loading=true and owns the lifecycle.
@@ -117,8 +116,7 @@ export const useProductsStore = defineStore('products', () => {
       page.value = nextPage
     } catch (err) {
       if (epoch !== fetchEpoch) return
-      error.value =
-        err instanceof Error ? err.message : 'Failed to load more products'
+      error.value = err instanceof Error ? err.message : 'Failed to load more products'
     } finally {
       if (epoch === fetchEpoch) loading.value = false
     }

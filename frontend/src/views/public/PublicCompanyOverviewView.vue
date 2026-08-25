@@ -132,9 +132,7 @@ const priceGrowthDir = computed<'up' | 'down' | undefined>(() => {
 // Roadmap visibility (R1 §6.1)
 // ---------------------------------------------------------------------------
 
-const hasRoadmap = computed<boolean>(
-  () => (data.value?.roadmap?.length ?? 0) > 0,
-)
+const hasRoadmap = computed<boolean>(() => (data.value?.roadmap?.length ?? 0) > 0)
 
 // ---------------------------------------------------------------------------
 // Load + lifecycle
@@ -242,7 +240,9 @@ function onRoadmapPostClick(_postId: string): void {
             <span class="co__hero-status">
               {{ t('common.statusActive') }}
             </span>
-            <h1 class="co__hero-name">{{ data.name }}</h1>
+            <h1 class="co__hero-name">
+              {{ data.name }}
+            </h1>
             <p v-if="data.description" class="co__hero-description">
               {{ data.description }}
             </p>
@@ -255,10 +255,7 @@ function onRoadmapPostClick(_postId: string): void {
             :value="poolTotalDisplay"
             :label="t('public.companyOverview.stats.poolTotalOptions')"
           />
-          <CStatCard
-            :value="soldDisplay"
-            :label="t('public.companyOverview.stats.optionsSold')"
-          />
+          <CStatCard :value="soldDisplay" :label="t('public.companyOverview.stats.optionsSold')" />
           <CStatCard
             :value="soldPercentDisplay"
             :label="t('public.companyOverview.stats.optionsSoldPercent')"
@@ -359,11 +356,7 @@ function onRoadmapPostClick(_postId: string): void {
 }
 
 .co__hero-cover--fallback {
-  background-image: linear-gradient(
-    135deg,
-    var(--bg-subtle) 0%,
-    var(--bg-surface) 100%
-  );
+  background-image: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface) 100%);
 }
 
 .co__hero-body {
@@ -438,6 +431,8 @@ function onRoadmapPostClick(_postId: string): void {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .co__stats { max-width: calc(2 * var(--tile-max)); }
+  .co__stats {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 </style>

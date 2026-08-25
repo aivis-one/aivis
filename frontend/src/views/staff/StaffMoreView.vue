@@ -36,10 +36,7 @@ async function handleLogout(): Promise<void> {
 // instead of widening a generic `navigate(target)` helper. Matches
 // the InvestorDashboardView `goPortfolio/goBalance/...` paradigm.
 function goAgentApps(): void {
-  void safeNavigate(
-    router.push('/staff/agent-apps'),
-    '[StaffMoreView] to agent apps',
-  )
+  void safeNavigate(router.push('/staff/agent-apps'), '[StaffMoreView] to agent apps')
 }
 
 function goAvatar(): void {
@@ -47,10 +44,7 @@ function goAvatar(): void {
 }
 
 function goSupport(): void {
-  void safeNavigate(
-    router.push('/staff/support'),
-    '[StaffMoreView] to support',
-  )
+  void safeNavigate(router.push('/staff/support'), '[StaffMoreView] to support')
 }
 </script>
 
@@ -59,8 +53,12 @@ function goSupport(): void {
     <!-- Profile card -->
     <div class="staff-more__profile">
       <CAvatar :name="userName" :size="72" />
-      <div class="staff-more__name">{{ userName }}</div>
-      <div class="staff-more__email">{{ userEmail }}</div>
+      <div class="staff-more__name">
+        {{ userName }}
+      </div>
+      <div class="staff-more__email">
+        {{ userEmail }}
+      </div>
       <div class="staff-more__badges">
         <CBadge variant="primary" text="Staff" />
       </div>
@@ -68,7 +66,9 @@ function goSupport(): void {
 
     <!-- Tools section -->
     <div class="staff-more__section">
-      <div class="staff-more__section-label">{{ t('staff.settings.tools') }}</div>
+      <div class="staff-more__section-label">
+        {{ t('staff.settings.tools') }}
+      </div>
 
       <button type="button" class="staff-more__nav-item" @click="goAgentApps">
         <span class="staff-more__nav-left">
@@ -89,16 +89,16 @@ function goSupport(): void {
         class="staff-more__nav-item staff-more__nav-item--accent"
         @click="goAvatar"
       >
-        <span class="staff-more__nav-left">
-          <Ghost :size="16" /> Avatar Mode
-        </span>
+        <span class="staff-more__nav-left"> <Ghost :size="16" /> Avatar Mode </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </button>
     </div>
 
     <!-- System section -->
     <div class="staff-more__section">
-      <div class="staff-more__section-label">{{ t('staff.settings.system') }}</div>
+      <div class="staff-more__section-label">
+        {{ t('staff.settings.system') }}
+      </div>
 
       <div class="staff-more__info-row">
         <span>{{ t('staff.settings.platform') }}</span>
@@ -125,45 +125,96 @@ function goSupport(): void {
 </template>
 
 <style scoped>
-.staff-more { padding: var(--space-4); }
+.staff-more {
+  padding: var(--space-4);
+}
 
 .staff-more__profile {
-  text-align: center; padding: var(--space-4-lg) 0; margin-bottom: var(--space-4);
+  text-align: center;
+  padding: var(--space-4-lg) 0;
+  margin-bottom: var(--space-4);
 }
 .staff-more__name {
-  font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin-top: var(--space-3);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: var(--space-3);
 }
 .staff-more__email {
-  font-size: var(--fs-sm); color: var(--text-secondary); margin-top: var(--space-1);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
 }
 .staff-more__badges {
-  display: inline-flex; gap: var(--space-2); margin-top: var(--space-2);
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .staff-more__section {
-  border-top: 1px solid var(--border-default); padding-top: var(--space-4); margin-top: var(--space-4);
+  border-top: 1px solid var(--border-default);
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
 }
 .staff-more__section-label {
-  font-size: var(--fs-xs); font-weight: 700; color: var(--text-tertiary);
-  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--space-3);
 }
 
 .staff-more__nav-item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
-  display: flex; justify-content: space-between; align-items: center;
-  padding: var(--space-4) 0; border-bottom: 1px solid var(--border-default); cursor: pointer;
-  font-size: var(--fs-sm); color: var(--text-primary);
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
 }
-.staff-more__nav-item:hover { opacity: 0.8; }
-.staff-more__nav-item--accent { color: var(--accent); font-weight: 600; }
-.staff-more__nav-item--danger { color: var(--danger); border-bottom: none; }
-.staff-more__nav-left { display: flex; align-items: center; gap: var(--space-2); }
-.staff-more__nav-right { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.staff-more__nav-item:hover {
+  opacity: 0.8;
+}
+.staff-more__nav-item--accent {
+  color: var(--accent);
+  font-weight: 600;
+}
+.staff-more__nav-item--danger {
+  color: var(--danger);
+  border-bottom: none;
+}
+.staff-more__nav-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.staff-more__nav-right {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
 
 .staff-more__info-row {
-  display: flex; justify-content: space-between; padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default); font-size: var(--fs-sm); color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-default);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
 }
-.staff-more__info-val { font-size: var(--fs-sm); color: var(--text-tertiary); }
+.staff-more__info-val {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+}
 </style>

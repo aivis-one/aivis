@@ -25,10 +25,7 @@
 
 import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
-import type {
-  PublicProductDetailResponse,
-  PublicProductListResponse,
-} from '@/api/types'
+import type { PublicProductDetailResponse, PublicProductListResponse } from '@/api/types'
 
 /**
  * GET /api/v1/public/products -- paginated list of active products.
@@ -60,10 +57,6 @@ export function listProducts(params?: {
  *
  * Returns 404 for non-active (hidden / archived) products.
  */
-export function getProduct(
-  id: string,
-): Promise<PublicProductDetailResponse> {
-  return api.get<PublicProductDetailResponse>(
-    `/api/v1/public/products/${id}`,
-  )
+export function getProduct(id: string): Promise<PublicProductDetailResponse> {
+  return api.get<PublicProductDetailResponse>(`/api/v1/public/products/${id}`)
 }

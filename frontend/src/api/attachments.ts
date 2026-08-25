@@ -122,9 +122,7 @@ export function listAttachments(
     category_prefix: params?.category_prefix,
     language: params?.language,
   })
-  return api.get<AttachmentResponse[]>(
-    `/api/v1/companies/${companyId}/attachments${qs}`,
-  )
+  return api.get<AttachmentResponse[]>(`/api/v1/companies/${companyId}/attachments${qs}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -144,12 +142,8 @@ export function listAttachments(
  * see backend/app/modules/companies/constants.py). On exceeding the
  * limit the call rejects with ApiResponseError(status=429, retryAfter=N).
  */
-export function listPublicAttachments(
-  companyId: string,
-): Promise<AttachmentResponse[]> {
-  return api.get<AttachmentResponse[]>(
-    `/api/v1/public/companies/${companyId}/attachments`,
-  )
+export function listPublicAttachments(companyId: string): Promise<AttachmentResponse[]> {
+  return api.get<AttachmentResponse[]>(`/api/v1/public/companies/${companyId}/attachments`)
 }
 
 // ---------------------------------------------------------------------------
@@ -172,11 +166,7 @@ export function listPublicAttachments(
  * Throws ApiResponseError / ApiNetworkError / ApiTimeoutError. The
  * caller surfaces the error UX (typically a toast).
  */
-async function _downloadBlob(
-  url: string,
-  filename: string,
-  withAuth: boolean,
-): Promise<void> {
+async function _downloadBlob(url: string, filename: string, withAuth: boolean): Promise<void> {
   const headers: Record<string, string> = {}
   if (withAuth) {
     const token = getAuthToken()
@@ -186,10 +176,7 @@ async function _downloadBlob(
   }
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(
-    () => controller.abort(),
-    DOWNLOAD_TIMEOUT_MS,
-  )
+  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS)
 
   let blobUrl: string | null = null
   try {
@@ -207,9 +194,7 @@ async function _downloadBlob(
       if (err instanceof DOMException && err.name === 'AbortError') {
         throw new ApiTimeoutError()
       }
-      throw new ApiNetworkError(
-        err instanceof Error ? err.message : 'Network error',
-      )
+      throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
     }
 
     if (!response.ok) {
@@ -228,10 +213,7 @@ async function _downloadBlob(
         if (data && typeof data === 'object') {
           if ('detail' in data && data.detail != null) {
             detail = String(data.detail)
-          } else if (
-            'message' in data
-            && typeof data.message === 'string'
-          ) {
+          } else if ('message' in data && typeof data.message === 'string') {
             detail = data.message
           }
         }
@@ -239,8 +221,7 @@ async function _downloadBlob(
         // Non-JSON body -- keep the `HTTP <status>` default.
       }
       // R20 FE-20-01: shared parser instead of an inline copy.
-      const retryAfter =
-        response.status === 429 ? parseRetryAfterHeader(response) : undefined
+      const retryAfter = response.status === 429 ? parseRetryAfterHeader(response) : undefined
       throw new ApiResponseError(response.status, detail, retryAfter)
     }
 
@@ -251,9 +232,7 @@ async function _downloadBlob(
       if (err instanceof DOMException && err.name === 'AbortError') {
         throw new ApiTimeoutError()
       }
-      throw new ApiNetworkError(
-        err instanceof Error ? err.message : 'Network error',
-      )
+      throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
     }
 
     blobUrl = URL.createObjectURL(blob)
@@ -303,8 +282,7 @@ export function downloadAttachment(
   filename: string,
 ): Promise<void> {
   const url =
-    `${API_BASE_URL}/api/v1/companies/${companyId}`
-    + `/attachments/${attachmentId}/download`
+    `${API_BASE_URL}/api/v1/companies/${companyId}` + `/attachments/${attachmentId}/download`
   return _downloadBlob(url, filename, /* withAuth */ true)
 }
 
@@ -330,7 +308,6 @@ export function downloadPublicAttachment(
   filename: string,
 ): Promise<void> {
   const url =
-    `${API_BASE_URL}/api/v1/public/companies/${companyId}`
-    + `/attachments/${attachmentId}/download`
+    `${API_BASE_URL}/api/v1/public/companies/${companyId}` + `/attachments/${attachmentId}/download`
   return _downloadBlob(url, filename, /* withAuth */ false)
 }

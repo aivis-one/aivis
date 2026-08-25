@@ -41,10 +41,7 @@
 // =============================================================================
 
 import { api } from '@/api/client'
-import type {
-  CompanyAnalyticsResponse,
-  CompanyDashboardResponse,
-} from '@/api/types'
+import type { CompanyAnalyticsResponse, CompanyDashboardResponse } from '@/api/types'
 
 /**
  * GET /api/v1/company/dashboard

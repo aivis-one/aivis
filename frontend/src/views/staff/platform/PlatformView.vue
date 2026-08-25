@@ -31,8 +31,8 @@ const router = useRouter()
 // like /staff/platform/companies/:id/profile still light up the
 // "Companies" chip.
 const subsections = [
-  { id: 'news',      path: '/staff/platform/news',      labelKey: 'staff.platform.tabs.news' },
-  { id: 'events',    path: '/staff/platform/events',    labelKey: 'staff.platform.tabs.events' },
+  { id: 'news', path: '/staff/platform/news', labelKey: 'staff.platform.tabs.news' },
+  { id: 'events', path: '/staff/platform/events', labelKey: 'staff.platform.tabs.events' },
   { id: 'companies', path: '/staff/platform/companies', labelKey: 'staff.platform.tabs.companies' },
 ] as const
 
@@ -86,8 +86,12 @@ function go(path: string): void {
   top: 0;
   z-index: 10;
 }
-.platform__nav::-webkit-scrollbar { display: none; }
-.platform__nav { scrollbar-width: none; }
+.platform__nav::-webkit-scrollbar {
+  display: none;
+}
+.platform__nav {
+  scrollbar-width: none;
+}
 
 .platform__chip {
   /* A5: pointer target floor. */
@@ -102,7 +106,10 @@ function go(path: string): void {
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 .platform__chip:hover {
   background: var(--bg-subtle);

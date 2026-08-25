@@ -91,9 +91,7 @@ export function getRoleDashboard(role: string | null): string {
  * Returning `undefined` allows navigation to proceed.
  * Returning a RouteLocationRaw triggers a redirect.
  */
-export async function globalGuard(
-  to: RouteLocationNormalized,
-): Promise<void | RouteLocationRaw> {
+export async function globalGuard(to: RouteLocationNormalized): Promise<void | RouteLocationRaw> {
   const { waitUntilReady } = useAuth()
   const authStore = useAuthStore()
 
@@ -109,10 +107,7 @@ export async function globalGuard(
   // --- Public routes ---
   if (to.meta.public) {
     // Redirect authenticated users away from login/register.
-    if (
-      authStore.isAuthenticated
-      && (to.name === 'login' || to.name === 'register')
-    ) {
+    if (authStore.isAuthenticated && (to.name === 'login' || to.name === 'register')) {
       return getRoleDashboard(authStore.role)
     }
     return

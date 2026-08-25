@@ -159,10 +159,7 @@ async function loadMore(): Promise<void> {
 }
 
 function goDeposit(): void {
-  void safeNavigate(
-    router.push({ name: 'investor-deposit' }),
-    '[BalanceView] to deposit',
-  )
+  void safeNavigate(router.push({ name: 'investor-deposit' }), '[BalanceView] to deposit')
 }
 
 async function reload(): Promise<void> {
@@ -199,14 +196,25 @@ watch(
 <template>
   <div class="bv">
     <div class="bv__header">
-      <h1 class="bv__title">{{ t('inv.balance.title') }}</h1>
+      <h1 class="bv__title">
+        {{ t('inv.balance.title') }}
+      </h1>
     </div>
 
     <!-- Active balance card -->
     <section class="bv__card bv__balance">
-      <h2 class="bv__card-title">{{ t('inv.balance.active') }}</h2>
+      <h2 class="bv__card-title">
+        {{ t('inv.balance.active') }}
+      </h2>
 
-      <div v-if="dashboardStore.loading && dashboardStore.activeBalance.confirmed === 0 && dashboardStore.activeBalance.frozen === 0" class="bv__balance-loading">
+      <div
+        v-if="
+          dashboardStore.loading &&
+          dashboardStore.activeBalance.confirmed === 0 &&
+          dashboardStore.activeBalance.frozen === 0
+        "
+        class="bv__balance-loading"
+      >
         <CLoader :size="20" />
       </div>
 
@@ -215,10 +223,7 @@ watch(
           {{ formatPrice(dashboardStore.activeBalance.confirmed) }}
         </div>
 
-        <div
-          v-if="hasFrozen"
-          class="bv__balance-frozen"
-        >
+        <div v-if="hasFrozen" class="bv__balance-frozen">
           <span class="bv__balance-frozen-label">
             {{ t('inv.balance.frozen') }}
           </span>
@@ -227,21 +232,14 @@ watch(
           </span>
         </div>
 
-        <div
-          v-if="dashboardStore.error"
-          class="bv__balance-error"
-        >
+        <div v-if="dashboardStore.error" class="bv__balance-error">
           <span>{{ t('inv.balance.refreshFailed') }}</span>
           <CButton variant="outline" size="sm" @click="reload">
             {{ t('common.retry') }}
           </CButton>
         </div>
 
-        <CButton
-          variant="primary"
-          class="bv__deposit"
-          @click="goDeposit"
-        >
+        <CButton variant="primary" class="bv__deposit" @click="goDeposit">
           <ArrowDownToLine :size="16" />
           {{ t('inv.balance.deposit') }}
         </CButton>
@@ -255,18 +253,12 @@ watch(
       </h2>
 
       <!-- Initial load spinner (no items yet, fetching) -->
-      <div
-        v-if="loadingHistory && items.length === 0 && !historyError"
-        class="bv__history-center"
-      >
+      <div v-if="loadingHistory && items.length === 0 && !historyError" class="bv__history-center">
         <CLoader :size="24" />
       </div>
 
       <!-- Error (first-page failure) -->
-      <div
-        v-else-if="historyError && items.length === 0"
-        class="bv__history-center"
-      >
+      <div v-else-if="historyError && items.length === 0" class="bv__history-center">
         <CEmptyState
           :title="t('inv.balance.historyError.title')"
           :description="t('inv.balance.historyError.desc')"
@@ -277,10 +269,7 @@ watch(
       </div>
 
       <!-- Empty state -->
-      <div
-        v-else-if="!loadingHistory && items.length === 0"
-        class="bv__history-center"
-      >
+      <div v-else-if="!loadingHistory && items.length === 0" class="bv__history-center">
         <CEmptyState :title="t('inv.balance.historyEmpty')">
           <template #icon>
             <CreditCard :size="32" />
@@ -290,11 +279,7 @@ watch(
 
       <!-- List -->
       <ul v-else class="bv__list">
-        <li
-          v-for="item in items"
-          :key="item.id"
-          class="bv__item"
-        >
+        <li v-for="item in items" :key="item.id" class="bv__item">
           <div class="bv__item-icon">
             <CreditCard :size="16" />
           </div>
@@ -311,21 +296,14 @@ watch(
               <span class="bv__item-date">
                 {{ formatDate(item.created_at) }}
               </span>
-              <CBadge
-                :variant="statusVariant(item.status)"
-                :text="statusLabel(item.status)"
-              />
+              <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
             </div>
           </div>
         </li>
       </ul>
 
       <!-- Infinite scroll sentinel (only when we already have items) -->
-      <div
-        v-if="items.length > 0"
-        ref="sentinelRef"
-        class="bv__sentinel"
-      >
+      <div v-if="items.length > 0" ref="sentinelRef" class="bv__sentinel">
         <CLoader v-if="loadingHistory" :size="20" />
       </div>
     </section>

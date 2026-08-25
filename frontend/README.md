@@ -41,7 +41,7 @@ aivis status
 
 Copy `.env.example` to `.env` and configure:
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_API_BASE_URL` | Backend API URL (e.g. `https://api.aivis.one`) |
-| `VITE_TELEGRAM_BOT_URL` | Telegram bot deep link |
+| Variable                | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `VITE_API_BASE_URL`     | Backend API URL (e.g. `https://api.aivis.one`) |
+| `VITE_TELEGRAM_BOT_URL` | Telegram bot deep link                         |

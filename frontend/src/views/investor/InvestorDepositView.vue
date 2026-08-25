@@ -130,10 +130,7 @@ function goBack(): void {
     router.back()
     return
   }
-  void safeNavigate(
-    router.push({ name: 'investor-balance' }),
-    '[InvestorDepositView] to balance',
-  )
+  void safeNavigate(router.push({ name: 'investor-balance' }), '[InvestorDepositView] to balance')
 }
 
 onMounted(load)
@@ -173,11 +170,10 @@ onMounted(load)
            B3: button shape extracted to CBackLink; .dv__page-header
            padding handles spacing. -->
       <div class="dv__page-header">
-        <CBackLink
-          :label="t('inv.deposit.backLink')"
-          @click="goBack"
-        />
-        <h1 class="dv__page-title">{{ t('inv.deposit.title') }}</h1>
+        <CBackLink :label="t('inv.deposit.backLink')" @click="goBack" />
+        <h1 class="dv__page-title">
+          {{ t('inv.deposit.title') }}
+        </h1>
       </div>
 
       <div class="dv__body">
@@ -189,16 +185,14 @@ onMounted(load)
             </span>
             <span class="dv__network-value">{{ NETWORK }}</span>
           </div>
-          <p class="dv__hint">{{ t('inv.deposit.subtitle') }}</p>
+          <p class="dv__hint">
+            {{ t('inv.deposit.subtitle') }}
+          </p>
         </section>
 
         <!-- QR + address -->
         <section class="dv__card dv__qr-section">
-          <div
-            v-if="qrSvg"
-            class="dv__qr"
-            v-html="qrSvg"
-          ></div>
+          <div v-if="qrSvg" class="dv__qr" v-html="qrSvg" />
           <div v-else class="dv__qr dv__qr--fallback">
             <!-- QR library failed but address still loaded: the text
                  form below is enough to complete a deposit. -->
@@ -209,12 +203,7 @@ onMounted(load)
             {{ address }}
           </div>
 
-          <CButton
-            variant="primary"
-            class="dv__copy"
-            :disabled="copying"
-            @click="copyAddress"
-          >
+          <CButton variant="primary" class="dv__copy" :disabled="copying" @click="copyAddress">
             <Copy :size="16" />
             {{ t('inv.deposit.copy') }}
           </CButton>
@@ -223,7 +212,9 @@ onMounted(load)
         <!-- Security warning -->
         <section class="dv__card dv__warning">
           <ShieldAlert :size="16" class="dv__warning-icon" />
-          <p class="dv__warning-text">{{ t('inv.deposit.warning') }}</p>
+          <p class="dv__warning-text">
+            {{ t('inv.deposit.warning') }}
+          </p>
         </section>
       </div>
     </template>
@@ -395,5 +386,7 @@ onMounted(load)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.dv__hint { max-width: var(--maxw-prose); }
+.dv__hint {
+  max-width: var(--maxw-prose);
+}
 </style>

@@ -78,9 +78,7 @@ const { hasMore } = storeToRefs(productsStore)
 
 const sentinelRef = ref<HTMLElement | null>(null)
 
-const myCompanyId = computed<string | null>(
-  () => profileStore.profile?.id ?? null,
-)
+const myCompanyId = computed<string | null>(() => profileStore.profile?.id ?? null)
 
 // Initial load: empty store and no error yet, profile not yet
 // resolved -- show the central spinner. Once profile resolves AND
@@ -96,17 +94,11 @@ const hasError = computed<boolean>(
 )
 
 const errorMessage = computed<string>(
-  () =>
-    productsStore.error
-    ?? profileStore.error
-    ?? t('comp.products.errorTitle'),
+  () => productsStore.error ?? profileStore.error ?? t('comp.products.errorTitle'),
 )
 
 const isEmpty = computed<boolean>(
-  () =>
-    !initialLoading.value
-    && !hasError.value
-    && productsStore.items.length === 0,
+  () => !initialLoading.value && !hasError.value && productsStore.items.length === 0,
 )
 
 useInfiniteScroll(sentinelRef, hasMore, productsStore.loadMore)
@@ -155,8 +147,12 @@ function onCardClick(): void {
   <div class="cprods">
     <!-- Header -->
     <div class="cprods__header">
-      <h1 class="cprods__title">{{ t('comp.products.title') }}</h1>
-      <p class="cprods__subtitle">{{ t('comp.products.subtitle') }}</p>
+      <h1 class="cprods__title">
+        {{ t('comp.products.title') }}
+      </h1>
+      <p class="cprods__subtitle">
+        {{ t('comp.products.subtitle') }}
+      </p>
     </div>
 
     <!-- Initial load -->
@@ -166,10 +162,7 @@ function onCardClick(): void {
 
     <!-- Error -->
     <div v-else-if="hasError" class="cprods__center">
-      <CEmptyState
-        :title="t('comp.products.errorTitle')"
-        :description="errorMessage"
-      />
+      <CEmptyState :title="t('comp.products.errorTitle')" :description="errorMessage" />
       <CButton variant="outline" size="sm" @click="loadAll">
         {{ t('comp.products.errorRetry') }}
       </CButton>
@@ -201,21 +194,30 @@ function onCardClick(): void {
 </template>
 
 <style scoped>
-.cprods { padding: var(--space-4); }
+.cprods {
+  padding: var(--space-4);
+}
 
-.cprods__header { margin-bottom: var(--space-4); }
+.cprods__header {
+  margin-bottom: var(--space-4);
+}
 .cprods__title {
-  font-size: var(--fs-lg); font-weight: 700;
-  color: var(--text-primary); margin: 0 0 var(--space-1);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
 }
 .cprods__subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .cprods__center {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-4);
   min-height: var(--center-md);
   padding: var(--space-5);
@@ -231,16 +233,22 @@ function onCardClick(): void {
 /* B-3.0 2026-08-24: was 520px. Folded onto the declared component threshold 640, which is
    what the two other product grids (.pps__grid, .pbc__grid) already use for two-up. */
 @media (min-width: 640px) {
-  .cprods__grid { grid-template-columns: repeat(2, 1fr); }
+  .cprods__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 /* B-3.0 2026-08-24: was 900px, the only site in the tree using it. Folded onto 960, which
    is what .pps__grid and .pbc__grid already use for three-up. 900 is now RETIRED. */
 @media (min-width: 960px) {
-  .cprods__grid { grid-template-columns: repeat(3, 1fr); }
+  .cprods__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .cprods__sentinel {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--space-4);
   min-height: var(--size-xl);
 }
@@ -252,5 +260,7 @@ function onCardClick(): void {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.cprods__subtitle { max-width: var(--maxw-prose); }
+.cprods__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

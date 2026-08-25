@@ -54,10 +54,7 @@ import { useI18n } from 'vue-i18n'
 import { Download } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
-import {
-  downloadPublicAttachment,
-  listPublicAttachments,
-} from '@/api/attachments'
+import { downloadPublicAttachment, listPublicAttachments } from '@/api/attachments'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { useToast } from '@/composables/useToast'
 import { formatBytes } from '@/utils/format'
@@ -164,9 +161,7 @@ const availableLanguages = computed<string[]>(() => {
   return Array.from(set).sort()
 })
 
-const hasMultipleLanguages = computed<boolean>(
-  () => availableLanguages.value.length >= 2,
-)
+const hasMultipleLanguages = computed<boolean>(() => availableLanguages.value.length >= 2)
 
 const filteredItems = computed<AttachmentResponse[]>(() => {
   const filter = filterLanguage.value
@@ -176,33 +171,29 @@ const filteredItems = computed<AttachmentResponse[]>(() => {
   // English-as-universal-fallback (same as auth-flow section):
   // when filter is not 'en', the visitor still sees English rows
   // alongside their locale.
-  return items.value.filter(
-    (att) => att.language === filter || att.language === 'en',
-  )
+  return items.value.filter((att) => att.language === filter || att.language === 'en')
 })
 
 // Group filtered items by L1 path segment, then sort each bucket by
 // `order` ASC and the bucket list alphabetically by L1 key.
-const groupedItems = computed<{ l1: string; items: AttachmentResponse[] }[]>(
-  () => {
-    const buckets = new Map<string, AttachmentResponse[]>()
-    for (const att of filteredItems.value) {
-      const l1 = (att.category.split('/')[0] ?? '').toLowerCase()
-      const list = buckets.get(l1)
-      if (list) {
-        list.push(att)
-      } else {
-        buckets.set(l1, [att])
-      }
+const groupedItems = computed<{ l1: string; items: AttachmentResponse[] }[]>(() => {
+  const buckets = new Map<string, AttachmentResponse[]>()
+  for (const att of filteredItems.value) {
+    const l1 = (att.category.split('/')[0] ?? '').toLowerCase()
+    const list = buckets.get(l1)
+    if (list) {
+      list.push(att)
+    } else {
+      buckets.set(l1, [att])
     }
-    for (const list of buckets.values()) {
-      list.sort((a, b) => a.order - b.order)
-    }
-    return Array.from(buckets.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([l1, items]) => ({ l1, items }))
-  },
-)
+  }
+  for (const list of buckets.values()) {
+    list.sort((a, b) => a.order - b.order)
+  }
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([l1, items]) => ({ l1, items }))
+})
 
 // ---------------------------------------------------------------------------
 // Self-hide decision (R2 §7.2, mirrors AttachmentsSection §7.1)
@@ -283,21 +274,14 @@ async function onRetry(): Promise<void> {
 
 async function onDownload(att: AttachmentResponse): Promise<void> {
   try {
-    await downloadPublicAttachment(
-      props.companyId,
-      att.id,
-      att.original_filename,
-    )
+    await downloadPublicAttachment(props.companyId, att.id, att.original_filename)
   } catch (err) {
     // 429 has its own toast with Retry-After hint; for everything
     // else (404 -- the row was un-published between list and click,
     // 5xx, network) we show a generic toast so the user knows the
     // tap actually failed.
     if (!notifyRateLimit(err)) {
-      showToast(
-        t('public.companyOverview.documents.downloadError'),
-        'error',
-      )
+      showToast(t('public.companyOverview.documents.downloadError'), 'error')
     }
   }
 }
@@ -329,21 +313,17 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
     </div>
 
     <div v-else-if="errored" class="ats__center">
-      <CEmptyState
-        :title="t('public.companyOverview.documents.errorTitle')"
-      />
+      <CEmptyState :title="t('public.companyOverview.documents.errorTitle')" />
       <CButton variant="outline" size="sm" @click="onRetry">
         {{ t('public.companyOverview.documents.errorRetry') }}
       </CButton>
     </div>
 
     <div v-else class="ats__groups">
-      <section
-        v-for="group in groupedItems"
-        :key="group.l1"
-        class="ats__group"
-      >
-        <h3 class="ats__group-title">{{ pathLabel(group.l1) }}</h3>
+      <section v-for="group in groupedItems" :key="group.l1" class="ats__group">
+        <h3 class="ats__group-title">
+          {{ pathLabel(group.l1) }}
+        </h3>
         <ul class="ats__list">
           <li v-for="att in group.items" :key="att.id">
             <button type="button" class="ats__item" @click="onDownload(att)">
@@ -351,11 +331,10 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
                 <component :is="mimeIcon(att.mime_type)" :size="20" />
               </span>
               <div class="ats__item-body">
-                <p class="ats__item-title">{{ att.title }}</p>
-                <p
-                  v-if="att.description"
-                  class="ats__item-desc"
-                >
+                <p class="ats__item-title">
+                  {{ att.title }}
+                </p>
+                <p v-if="att.description" class="ats__item-desc">
                   {{ att.description }}
                 </p>
                 <p class="ats__item-meta">
@@ -441,8 +420,15 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 }
 
 .ats__item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -451,7 +437,9 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.12s ease, transform 0.12s ease;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
 }
 
 .ats__item:hover {

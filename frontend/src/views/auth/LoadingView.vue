@@ -12,7 +12,9 @@ const { t } = useI18n()
   <div class="loading-view">
     <AivisLogo :height="64" />
     <CLoader class="loading-spinner" />
-    <p class="loading-text">{{ t('common.loading') }}</p>
+    <p class="loading-text">
+      {{ t('common.loading') }}
+    </p>
   </div>
 </template>
 

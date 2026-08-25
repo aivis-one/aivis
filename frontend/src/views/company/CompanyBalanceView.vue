@@ -21,13 +21,7 @@
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  ArrowUpFromLine,
-  ChevronRight,
-  CreditCard,
-  Pencil,
-  Wallet,
-} from 'lucide-vue-next'
+import { ArrowUpFromLine, ChevronRight, CreditCard, Pencil, Wallet } from 'lucide-vue-next'
 
 import { CBottomSheet, CButton, CEmptyState, CLoader, CInput, CTextarea } from '@/components/ui'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
@@ -65,9 +59,7 @@ const withdrawalsEpoch = ref(0)
 
 const sentinelRef = ref<HTMLElement | null>(null)
 
-const hasMoreWithdrawals = computed(
-  () => withdrawals.value.length < withdrawalsTotal.value,
-)
+const hasMoreWithdrawals = computed(() => withdrawals.value.length < withdrawalsTotal.value)
 
 async function fetchWithdrawalsFirstPage(): Promise<void> {
   // Bump epoch first so any in-flight loadMore knows its result is stale.
@@ -155,12 +147,8 @@ const payoutDetailsJson = computed(() =>
 // Balance derived
 // ---------------------------------------------------------------------------
 
-const passiveConfirmed = computed(
-  () => dashboardStore.summary?.passive_balance.confirmed ?? 0,
-)
-const passiveFrozen = computed(
-  () => dashboardStore.summary?.passive_balance.frozen ?? 0,
-)
+const passiveConfirmed = computed(() => dashboardStore.summary?.passive_balance.confirmed ?? 0)
+const passiveFrozen = computed(() => dashboardStore.summary?.passive_balance.frozen ?? 0)
 const hasFrozen = computed(() => passiveFrozen.value > 0)
 
 // ---------------------------------------------------------------------------
@@ -182,9 +170,9 @@ const hasError = computed(
     // transient reload failure (e.g. the refetch after a successful
     // withdrawal) must not blank the whole money screen and make the
     // balance vanish (review §2/2.2, mirrors AgentBalanceView).
-    (dashboardStore.error !== null && dashboardStore.summary === null)
-    || (withdrawalsErrored.value && withdrawals.value.length === 0)
-    || (payoutErrored.value && !payoutLoaded.value),
+    (dashboardStore.error !== null && dashboardStore.summary === null) ||
+    (withdrawalsErrored.value && withdrawals.value.length === 0) ||
+    (payoutErrored.value && !payoutLoaded.value),
 )
 
 // ---------------------------------------------------------------------------
@@ -215,8 +203,8 @@ const withdrawAmountInput = ref('')
 const withdrawSubmitting = ref(false)
 const withdrawError = ref('')
 
-const parsedAmountCents = computed<number | null>(
-  () => parseAmountToCents(withdrawAmountInput.value),
+const parsedAmountCents = computed<number | null>(() =>
+  parseAmountToCents(withdrawAmountInput.value),
 )
 
 const withdrawValidationKey = computed<string | null>(() => {
@@ -266,15 +254,10 @@ async function submitWithdraw(): Promise<void> {
     await createWithdrawal(cents)
     showToast(t('comp.balance.withdrawals.form.successToast'), 'success')
     closeWithdrawSheet()
-    await Promise.all([
-      dashboardStore.refresh(),
-      fetchWithdrawalsFirstPage(),
-    ])
+    await Promise.all([dashboardStore.refresh(), fetchWithdrawalsFirstPage()])
   } catch (err) {
     withdrawError.value =
-      err instanceof Error && err.message
-        ? err.message
-        : t('comp.balance.withdrawals.form.error')
+      err instanceof Error && err.message ? err.message : t('comp.balance.withdrawals.form.error')
   } finally {
     withdrawSubmitting.value = false
   }
@@ -331,9 +314,7 @@ const canSubmitPayout = computed(() => {
 })
 
 function openPayoutSheet(): void {
-  payoutEditInput.value = hasPayoutDetails.value
-    ? JSON.stringify(payoutDetails.value, null, 2)
-    : ''
+  payoutEditInput.value = hasPayoutDetails.value ? JSON.stringify(payoutDetails.value, null, 2) : ''
   payoutError.value = ''
   payoutSheetOpen.value = true
 }
@@ -370,9 +351,7 @@ async function submitPayout(): Promise<void> {
     closePayoutSheet()
   } catch (err) {
     payoutError.value =
-      err instanceof Error && err.message
-        ? err.message
-        : t('comp.balance.payout.form.error')
+      err instanceof Error && err.message ? err.message : t('comp.balance.payout.form.error')
   } finally {
     payoutSubmitting.value = false
   }
@@ -391,14 +370,8 @@ watch(payoutSheetOpen, (open) => {
 
 async function loadAll(): Promise<void> {
   const dashboardPromise =
-    dashboardStore.summary === null
-      ? dashboardStore.refresh()
-      : Promise.resolve()
-  await Promise.all([
-    dashboardPromise,
-    fetchWithdrawalsFirstPage(),
-    fetchPayoutDetails(),
-  ])
+    dashboardStore.summary === null ? dashboardStore.refresh() : Promise.resolve()
+  await Promise.all([dashboardPromise, fetchWithdrawalsFirstPage(), fetchPayoutDetails()])
 }
 
 onMounted(() => {
@@ -410,8 +383,12 @@ onMounted(() => {
   <div class="cbal">
     <!-- Header -->
     <div class="cbal__header">
-      <h1 class="cbal__title">{{ t('comp.balance.title') }}</h1>
-      <p class="cbal__subtitle">{{ t('comp.balance.subtitle') }}</p>
+      <h1 class="cbal__title">
+        {{ t('comp.balance.title') }}
+      </h1>
+      <p class="cbal__subtitle">
+        {{ t('comp.balance.subtitle') }}
+      </p>
     </div>
 
     <!-- Initial loading -->
@@ -463,10 +440,7 @@ onMounted(() => {
           {{ t('comp.balance.withdrawals.title') }}
         </h2>
 
-        <p
-          v-if="withdrawals.length === 0 && !withdrawalsLoading"
-          class="cbal__empty"
-        >
+        <p v-if="withdrawals.length === 0 && !withdrawalsLoading" class="cbal__empty">
           {{ t('comp.balance.withdrawals.empty') }}
         </p>
 
@@ -480,10 +454,7 @@ onMounted(() => {
                 <span class="cbal__item-amount">
                   {{ formatPrice(w.amount_cents) }}
                 </span>
-                <span
-                  class="cbal__badge"
-                  :class="`cbal__badge--${statusVariant(w.status)}`"
-                >
+                <span class="cbal__badge" :class="`cbal__badge--${statusVariant(w.status)}`">
                   {{ statusLabel(w.status) }}
                 </span>
               </div>
@@ -501,11 +472,7 @@ onMounted(() => {
           </li>
         </ul>
 
-        <div
-          v-if="withdrawals.length > 0"
-          ref="sentinelRef"
-          class="cbal__sentinel"
-        >
+        <div v-if="withdrawals.length > 0" ref="sentinelRef" class="cbal__sentinel">
           <CLoader v-if="withdrawalsLoading" :size="20" />
         </div>
       </section>
@@ -565,10 +532,7 @@ onMounted(() => {
           </span>
         </label>
 
-        <p
-          v-if="withdrawValidationKey"
-          class="cbal__form-error cbal__form-error--soft"
-        >
+        <p v-if="withdrawValidationKey" class="cbal__form-error cbal__form-error--soft">
           {{
             t(withdrawValidationKey, {
               min: formatPrice(MIN_WITHDRAWAL_CENTS),
@@ -629,10 +593,7 @@ onMounted(() => {
           </span>
         </label>
 
-        <p
-          v-if="payoutValidationKey"
-          class="cbal__form-error cbal__form-error--soft"
-        >
+        <p v-if="payoutValidationKey" class="cbal__form-error cbal__form-error--soft">
           {{ t(payoutValidationKey) }}
         </p>
 
@@ -672,18 +633,28 @@ onMounted(() => {
   padding-bottom: var(--space-5);
 }
 
-.cbal__header { display: flex; flex-direction: column; gap: var(--space-1); }
+.cbal__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .cbal__title {
-  font-size: var(--fs-lg); font-weight: 700;
-  color: var(--text-primary); margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
 }
 .cbal__subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0;
 }
 
 .cbal__center {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-3);
   min-height: calc(100vh - 240px);
   min-height: calc(100dvh - 240px);
@@ -698,16 +669,26 @@ onMounted(() => {
   border: 1px solid var(--border-default);
 }
 
-.cbal__balance { display: flex; flex-direction: column; gap: var(--space-2); }
+.cbal__balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .cbal__balance-head {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  font-size: var(--fs-xs); font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.05em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 .cbal__balance-value {
-  font-size: var(--fs-2xl); font-weight: 700;
-  color: var(--text-primary); line-height: 1.1;
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
 }
 .cbal__balance-frozen {
   font-size: var(--fs-xs);
@@ -715,75 +696,114 @@ onMounted(() => {
 }
 
 .cbal__cta-row {
-  display: flex; align-items: center; gap: var(--space-3);
-  margin-top: var(--space-3); flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
 }
 .cbal__cta-hint {
-  font-size: var(--fs-xs); font-style: italic;
+  font-size: var(--fs-xs);
+  font-style: italic;
   color: var(--text-tertiary);
-  text-transform: uppercase; letter-spacing: 0.05em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.cbal__section { display: flex; flex-direction: column; gap: var(--space-2); }
+.cbal__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .cbal__section-title {
-  font-size: var(--fs-sm); font-weight: 700;
-  color: var(--text-primary); margin: var(--space-1) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: var(--space-1) 0 0;
 }
 
 .cbal__empty {
-  font-size: var(--fs-xs); color: var(--text-secondary); margin: 0;
-  padding: var(--space-4); border-radius: var(--radius);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
 }
 
 .cbal__list {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 .cbal__item {
-  display: flex; align-items: center; gap: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
 .cbal__item-icon {
-  display: flex; align-items: center; justify-content: center;
-  width: var(--size-md); height: var(--size-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-md);
+  height: var(--size-md);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 .cbal__item-body {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column; gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 .cbal__item-line {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 .cbal__item-line--sub {
-  font-size: var(--fs-xs); color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
 }
 .cbal__item-amount {
-  font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
 }
-.cbal__item-date { white-space: nowrap; }
+.cbal__item-date {
+  white-space: nowrap;
+}
 .cbal__item-reason {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--danger);
-  font-style: italic; text-align: right;
+  font-style: italic;
+  text-align: right;
   max-width: 60%;
 }
 
 .cbal__badge {
   display: inline-block;
-  font-size: var(--fs-3xs); font-weight: 700;
+  font-size: var(--fs-3xs);
+  font-weight: 700;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
-  text-transform: uppercase; letter-spacing: 0.05em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   flex-shrink: 0;
 }
 .cbal__badge--success {
@@ -808,8 +828,11 @@ onMounted(() => {
 }
 
 .cbal__sentinel {
-  display: flex; align-items: center; justify-content: center;
-  padding: var(--space-4) 0 0; min-height: var(--size-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) 0 0;
+  min-height: var(--size-md);
 }
 
 .cbal__json {
@@ -826,24 +849,37 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-.cbal__form { display: flex; flex-direction: column; gap: var(--space-4); }
-.cbal__field { display: flex; flex-direction: column; gap: var(--space-2); }
+.cbal__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.cbal__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 /* The field's own rhythm is the flex gap above; the kit group's bottom margin
    would add a second, larger one inside it. The payout box keeps the height it
    was given -- :deep() because that height belongs to the control, not the group. */
-.cbal__control { margin-bottom: 0; }
-.cbal__control--payout :deep(.c-textarea) { min-height: 160px; }
+.cbal__control {
+  margin-bottom: 0;
+}
+.cbal__control--payout :deep(.c-textarea) {
+  min-height: 160px;
+}
 .cbal__field-label {
-  font-size: var(--fs-xs); font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.05em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 .cbal__field-hint {
-  font-size: var(--fs-xs); color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
   line-height: 1.4;
 }
-
-
 
 .cbal__form-error {
   margin: 0;
@@ -861,7 +897,8 @@ onMounted(() => {
 }
 
 .cbal__form-actions {
-  display: flex; gap: var(--space-2);
+  display: flex;
+  gap: var(--space-2);
   justify-content: flex-end;
   margin-top: var(--space-1);
 }
@@ -873,5 +910,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.cbal__subtitle { max-width: var(--maxw-prose); }
+.cbal__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

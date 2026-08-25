@@ -29,11 +29,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Building } from 'lucide-vue-next'
-import {
-  formatNumber,
-  formatPrice,
-  resolveCoverImage,
-} from '@/utils/format'
+import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
 import type { PublicProductResponse } from '@/api/types'
 
 // Backend doesn't yet emit `currency` on PublicProductResponse
@@ -64,15 +60,13 @@ const available = computed(() => props.product.available_packages)
       :class="{ 'product-card__img--fallback': !coverImage }"
       :style="{ backgroundImage: coverImage ?? 'none' }"
     >
-      <Building
-        v-if="!coverImage"
-        :size="48"
-        class="product-card__icon"
-      />
+      <Building v-if="!coverImage" :size="48" class="product-card__icon" />
       <span class="product-card__company">{{ product.company_name }}</span>
     </div>
     <div class="product-card__body">
-      <div class="product-card__name">{{ product.name }}</div>
+      <div class="product-card__name">
+        {{ product.name }}
+      </div>
       <div v-if="product.description" class="product-card__desc">
         {{ product.description }}
       </div>
@@ -97,14 +91,23 @@ const available = computed(() => props.product.available_packages)
 
 <style scoped>
 .product-card {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   background: var(--bg-page);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 .product-card:hover {
   transform: translateY(-4px);
@@ -116,48 +119,66 @@ const available = computed(() => props.product.available_packages)
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   color: #fff;
 }
 .product-card__img::after {
   content: '';
-  position: absolute; inset: 0;
+  position: absolute;
+  inset: 0;
   background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.6));
   pointer-events: none;
 }
 .product-card__img--fallback {
   background-color: var(--bg-subtle);
 }
-.product-card__img--fallback::after { display: none; }
+.product-card__img--fallback::after {
+  display: none;
+}
 
 .product-card__icon {
-  position: relative; z-index: 1;
+  position: relative;
+  z-index: 1;
   color: var(--text-tertiary);
   stroke-width: 2;
 }
 
 .product-card__company {
-  position: absolute; top: 8px; left: 8px; z-index: 2;
-  font-size: var(--fs-xs); font-weight: 600;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
   max-width: calc(100% - 16px);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.product-card__body { padding: var(--space-4); }
+.product-card__body {
+  padding: var(--space-4);
+}
 
 .product-card__name {
-  font-size: var(--fs-body); font-weight: 700;
-  color: var(--text-primary); margin-bottom: var(--space-1);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
 }
 
 .product-card__desc {
-  font-size: var(--fs-sm); color: var(--text-secondary);
-  margin-bottom: var(--space-3); line-height: 1.4;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -170,7 +191,9 @@ const available = computed(() => props.product.available_packages)
    baseline to flex-start so the right column anchors to the top of
    the price block, lining up with the bigger pack price. */
 .product-card__meta {
-  display: flex; justify-content: space-between; align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: var(--space-2);
 }
 
@@ -182,11 +205,13 @@ const available = computed(() => props.product.available_packages)
 }
 
 .product-card__price {
-  font-size: var(--fs-h4); font-weight: 700;
+  font-size: var(--fs-h4);
+  font-weight: 700;
   color: var(--primary);
 }
 .product-card__unit {
-  font-size: var(--fs-xs); font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: 500;
   color: var(--text-secondary);
 }
 
@@ -199,7 +224,8 @@ const available = computed(() => props.product.available_packages)
 }
 
 .product-card__units {
-  font-size: var(--fs-xs); color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
   text-align: end;
   white-space: nowrap;
   /* Sprint 4.4: align with the top of the bigger pack price line above
@@ -216,5 +242,7 @@ const available = computed(() => props.product.available_packages)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.product-card__desc { max-width: var(--maxw-prose); }
+.product-card__desc {
+  max-width: var(--maxw-prose);
+}
 </style>

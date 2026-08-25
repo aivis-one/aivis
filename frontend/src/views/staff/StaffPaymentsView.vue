@@ -17,6 +17,21 @@ const { showToast } = useToast()
 const items = ref<StaffPaymentResponse[]>([])
 const total = ref(0)
 const page = ref(1)
+
+// Pagination steps are a NAMED CALL, not a two-statement inline expression.
+// `@click="page--; loadPayments()"` is two statements in a template
+// expression; prettier reflows it across lines and drops the semicolon, and
+// Vue's expression parser cannot read the result -- the build fails outright.
+// Measured on 2026-08-25, not predicted.
+function goToPrevPage(): void {
+  page.value--
+  void loadPayments()
+}
+
+function goToNextPage(): void {
+  page.value++
+  void loadPayments()
+}
 const perPage = 20
 const statusFilter = ref('')
 const loading = ref(true)
@@ -103,13 +118,18 @@ onMounted(loadPayments)
 
     <!-- Status filters -->
     <div class="staff-pay__filters">
-      <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatusFilter('')">All</button>
+      <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatusFilter('')">
+        All
+      </button>
       <button
         v-for="s in ['frozen', 'confirmed', 'reversed', 'failed']"
         :key="s"
-        class="filter-chip" :class="{ active: statusFilter === s }"
+        class="filter-chip"
+        :class="{ active: statusFilter === s }"
         @click="setStatusFilter(s)"
-      >{{ s }}</button>
+      >
+        {{ s }}
+      </button>
     </div>
 
     <!-- Loading -->
@@ -119,24 +139,26 @@ onMounted(loadPayments)
 
     <!-- Error -->
     <div v-else-if="error" class="staff-pay__center">
-      <CButton variant="secondary" size="sm" @click="loadPayments">{{ t('common.retry') }}</CButton>
+      <CButton variant="secondary" size="sm" @click="loadPayments">
+        {{ t('common.retry') }}
+      </CButton>
     </div>
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.payments.noPayments')">
-      <template #icon><CreditCard :size="40" /></template>
+      <template #icon>
+        <CreditCard :size="40" />
+      </template>
     </CEmptyState>
 
     <!-- Payment list -->
     <template v-else>
       <div class="pay-list">
-        <div
-          v-for="item in items"
-          :key="item.id"
-          class="pay-item"
-        >
+        <div v-for="item in items" :key="item.id" class="pay-item">
           <div class="pay-item__info">
-            <div class="pay-item__amount">{{ formatCents(item.amount_cents, item.currency) }}</div>
+            <div class="pay-item__amount">
+              {{ formatCents(item.amount_cents, item.currency) }}
+            </div>
             <div class="pay-item__detail">
               {{ item.payment_type }} &bull; {{ item.provider }} &bull;
               {{ new Date(item.created_at).toLocaleDateString() }}
@@ -149,23 +171,33 @@ onMounted(loadPayments)
               v-if="item.status === 'confirmed'"
               class="pay-item__reverse"
               @click.stop="openReverse(item)"
-            >{{ t('staff.payments.reverse') }}</button>
+            >
+              {{ t('staff.payments.reverse') }}
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="staff-pay__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--; loadPayments()">&larr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
+          &larr;
+        </CButton>
         <span class="staff-pay__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++; loadPayments()">&rarr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
+          &rarr;
+        </CButton>
       </div>
     </template>
 
     <!-- Reverse modal -->
     <CModal :open="showReverseModal" @close="showReverseModal = false">
-      <h3 class="modal__title">{{ t('staff.payments.reverse') }}</h3>
-      <p class="modal__text">{{ t('staff.payments.reverseConfirm') }}</p>
+      <h3 class="modal__title">
+        {{ t('staff.payments.reverse') }}
+      </h3>
+      <p class="modal__text">
+        {{ t('staff.payments.reverseConfirm') }}
+      </p>
       <p v-if="reverseTarget" class="modal__amount">
         {{ formatCents(reverseTarget.amount_cents, reverseTarget.currency) }}
       </p>
@@ -175,32 +207,55 @@ onMounted(loadPayments)
         :placeholder="t('staff.payments.reason')"
       />
       <div class="modal__actions">
-        <CButton variant="outline" size="sm" @click="showReverseModal = false">{{ t('common.cancel') }}</CButton>
-        <CButton variant="danger" size="sm" :loading="reverseLoading" @click="handleReverse">{{ t('common.confirm') }}</CButton>
+        <CButton variant="outline" size="sm" @click="showReverseModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="danger" size="sm" :loading="reverseLoading" @click="handleReverse">
+          {{ t('common.confirm') }}
+        </CButton>
       </div>
     </CModal>
   </div>
 </template>
 
 <style scoped>
-.staff-pay { padding: var(--space-4); }
+.staff-pay {
+  padding: var(--space-4);
+}
 
 .staff-pay__hint {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-3); background: var(--bg-surface); border-radius: var(--radius-md);
-  margin-bottom: var(--space-4); font-size: var(--fs-xs); color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
 }
 
 .staff-pay__filters {
-  display: flex; gap: var(--space-2); overflow-x: auto; margin-bottom: var(--space-4); padding-bottom: var(--space-1);
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
-  cursor: pointer; white-space: nowrap; text-transform: capitalize;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 
 /* A5: the PAINTED box stays this size on purpose -- growing it would move the
@@ -220,36 +275,104 @@ onMounted(loadPayments)
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
 }
-.filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.filter-chip.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
 
 .staff-pay__center {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: var(--center-md); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-md);
+  gap: var(--space-4);
 }
 
-.pay-list { display: flex; flex-direction: column; }
+.pay-list {
+  display: flex;
+  flex-direction: column;
+}
 .pay-item {
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border-default);
 }
-.pay-item__info { flex: 1; min-width: 0; }
-.pay-item__amount { font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
-.pay-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); }
-.pay-item__user { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); font-family: var(--font-mono); }
-.pay-item__right { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-end; }
+.pay-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.pay-item__amount {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.pay-item__detail {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.pay-item__user {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+}
+.pay-item__right {
+  text-align: right;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-end;
+}
 .pay-item__reverse {
-  font-size: var(--fs-xs); font-weight: 600; color: var(--danger); background: none; border: none;
-  cursor: pointer; padding: var(--space-1) 0; text-decoration: underline;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--danger);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  text-decoration: underline;
 }
 
 .staff-pay__pagination {
-  display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
-.staff-pay__page { font-size: var(--fs-xs); color: var(--text-secondary); }
+.staff-pay__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
 
-.modal__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
-.modal__text { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0 0 var(--space-2); }
-.modal__amount { font-size: var(--fs-body); font-weight: 700; color: var(--danger); margin: 0 0 var(--space-4); }
-.modal__actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
+.modal__title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+.modal__text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2);
+}
+.modal__amount {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--danger);
+  margin: 0 0 var(--space-4);
+}
+.modal__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
    so this rule cannot bind until the container is already wider than a
@@ -258,6 +381,10 @@ onMounted(loadPayments)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.modal__text { max-width: var(--maxw-prose); }
-.staff-pay__hint { max-width: var(--maxw-prose); }
+.modal__text {
+  max-width: var(--maxw-prose);
+}
+.staff-pay__hint {
+  max-width: var(--maxw-prose);
+}
 </style>

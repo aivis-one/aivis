@@ -61,9 +61,7 @@ const store = usePortfolioStore()
 // Derived state
 // ---------------------------------------------------------------------------
 
-const hasPositions = computed<boolean>(
-  () => store.positions.length > 0,
-)
+const hasPositions = computed<boolean>(() => store.positions.length > 0)
 
 // Aggregate rollups for the hero card. Sum across positions instead
 // of a second round-trip to /dashboard/summary -- dashboardStore may
@@ -165,8 +163,12 @@ onMounted(() => {
   <div class="pv">
     <!-- Header -->
     <div class="pv__header">
-      <h1 class="pv__title">{{ t('inv.portfolio.title') }}</h1>
-      <p class="pv__subtitle">{{ t('inv.portfolio.subtitle') }}</p>
+      <h1 class="pv__title">
+        {{ t('inv.portfolio.title') }}
+      </h1>
+      <p class="pv__subtitle">
+        {{ t('inv.portfolio.subtitle') }}
+      </p>
     </div>
 
     <!-- Initial load spinner (no positions yet, fetching) -->
@@ -178,10 +180,7 @@ onMounted(() => {
     </div>
 
     <!-- Error (first load failed) -->
-    <div
-      v-else-if="store.positionsErrored && !store.positionsLoaded"
-      class="pv__center"
-    >
+    <div v-else-if="store.positionsErrored && !store.positionsLoaded" class="pv__center">
       <CEmptyState :title="t('inv.portfolio.errorTitle')" />
       <CButton variant="outline" size="sm" @click="store.fetchPortfolio()">
         {{ t('common.retry') }}
@@ -189,10 +188,7 @@ onMounted(() => {
     </div>
 
     <!-- Empty state -->
-    <div
-      v-else-if="!store.positionsLoading && !hasPositions"
-      class="pv__center"
-    >
+    <div v-else-if="!store.positionsLoading && !hasPositions" class="pv__center">
       <CEmptyState
         :title="t('inv.portfolio.empty.title')"
         :description="t('inv.portfolio.empty.description')"
@@ -234,10 +230,7 @@ onMounted(() => {
             <div class="pv__hero-stat-label">
               {{ t('inv.portfolio.profit') }}
             </div>
-            <div
-              class="pv__hero-stat-value"
-              :class="profitClass(totalProfitPercent)"
-            >
+            <div class="pv__hero-stat-value" :class="profitClass(totalProfitPercent)">
               {{ formatProfitPercent(totalProfitPercent) }}
             </div>
           </div>
@@ -254,10 +247,7 @@ onMounted(() => {
                 <span class="pv__item-company-name">{{ p.company_name }}</span>
               </span>
               <span class="pv__item-head-right">
-                <span
-                  class="pv__profit"
-                  :class="profitClass(positionProfitPercent(p))"
-                >
+                <span class="pv__profit" :class="profitClass(positionProfitPercent(p))">
                   {{ formatProfitPercent(positionProfitPercent(p)) }}
                 </span>
                 <ChevronRight :size="16" class="pv__item-chev" />
@@ -304,18 +294,28 @@ onMounted(() => {
   gap: var(--space-4);
 }
 
-.pv__header { display: flex; flex-direction: column; gap: var(--space-1); }
+.pv__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .pv__title {
-  font-size: var(--fs-lg); font-weight: 700;
-  color: var(--text-primary); margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
 }
 .pv__subtitle {
-  font-size: var(--fs-sm); color: var(--text-secondary); margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: 0;
 }
 
 .pv__center {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-4);
   min-height: var(--center-md);
   padding: var(--space-5);
@@ -367,8 +367,15 @@ onMounted(() => {
   gap: var(--space-3);
 }
 .pv__item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius);
   border: 1px solid var(--border-default);
@@ -379,7 +386,9 @@ onMounted(() => {
   gap: var(--space-3);
   transition: border-color 0.15s;
 }
-.pv__item:hover { border-color: var(--primary); }
+.pv__item:hover {
+  border-color: var(--primary);
+}
 .pv__item:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -422,7 +431,9 @@ onMounted(() => {
   gap: var(--space-2);
   flex-shrink: 0;
 }
-.pv__item-chev { color: var(--text-tertiary); }
+.pv__item-chev {
+  color: var(--text-tertiary);
+}
 
 .pv__item-stats {
   display: grid;
@@ -447,8 +458,12 @@ onMounted(() => {
   font-size: var(--fs-xs);
   font-weight: 700;
 }
-.pv__profit--up { color: var(--success); }
-.pv__profit--down { color: var(--danger); }
+.pv__profit--up {
+  color: var(--success);
+}
+.pv__profit--down {
+  color: var(--danger);
+}
 
 /* A6: --success and --danger are tuned against --bg-page. `.pv__hero` is a
    saturated azure gradient carrying --on-primary, and on it these two measure
@@ -475,7 +490,9 @@ onMounted(() => {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .pv__item-stats { max-width: calc(3 * var(--tile-max)); }
+  .pv__item-stats {
+    max-width: calc(3 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -485,5 +502,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.pv__subtitle { max-width: var(--maxw-prose); }
+.pv__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

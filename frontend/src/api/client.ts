@@ -187,7 +187,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const url = `${BASE_URL}${path}`
 
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
+    Accept: 'application/json',
     'Accept-Language': i18n.global.locale.value,
   }
 
@@ -239,8 +239,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     // Non-JSON 4xx/5xx still needs Retry-After plumbed for the 429
     // case -- a misconfigured upstream could in theory emit 429 with
     // an empty/non-JSON body. Read it before throwing.
-    const retryAfter =
-      response.status === 429 ? parseRetryAfterHeader(response) : undefined
+    const retryAfter = response.status === 429 ? parseRetryAfterHeader(response) : undefined
     throw new ApiResponseError(
       response.status,
       `HTTP ${response.status}: non-JSON response`,
@@ -250,8 +249,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   // Error responses (4xx, 5xx).
   if (!response.ok) {
-    const retryAfter =
-      response.status === 429 ? parseRetryAfterHeader(response) : undefined
+    const retryAfter = response.status === 429 ? parseRetryAfterHeader(response) : undefined
     throw new ApiResponseError(
       response.status,
       extractErrorMessage(response.status, data),

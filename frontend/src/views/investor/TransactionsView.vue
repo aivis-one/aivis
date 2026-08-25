@@ -47,7 +47,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownLeft, ArrowUpRight, CreditCard, RefreshCw, Repeat, ShoppingBag } from 'lucide-vue-next'
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  CreditCard,
+  RefreshCw,
+  Repeat,
+  ShoppingBag,
+} from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import TransactionDetailSheet from '@/components/shared/TransactionDetailSheet.vue'
@@ -167,8 +174,12 @@ onMounted(() => {
   <div class="tv">
     <!-- Page header -->
     <div class="tv__header">
-      <h1 class="tv__title">{{ t('inv.transactions.title') }}</h1>
-      <p class="tv__subtitle">{{ t('inv.transactions.subtitle') }}</p>
+      <h1 class="tv__title">
+        {{ t('inv.transactions.title') }}
+      </h1>
+      <p class="tv__subtitle">
+        {{ t('inv.transactions.subtitle') }}
+      </p>
     </div>
 
     <!-- Category tabs -->
@@ -187,18 +198,12 @@ onMounted(() => {
     </div>
 
     <!-- Initial load spinner (no items yet, fetching) -->
-    <div
-      v-if="store.loading && !hasItems && !store.errored"
-      class="tv__center"
-    >
+    <div v-if="store.loading && !hasItems && !store.errored" class="tv__center">
       <CLoader :size="28" />
     </div>
 
     <!-- First-page error -->
-    <div
-      v-else-if="store.errored && !hasItems"
-      class="tv__center"
-    >
+    <div v-else-if="store.errored && !hasItems" class="tv__center">
       <CEmptyState
         :title="t('inv.transactions.errorTitle')"
         :description="t('inv.transactions.errorDesc')"
@@ -209,10 +214,7 @@ onMounted(() => {
     </div>
 
     <!-- Empty state -->
-    <div
-      v-else-if="!store.loading && !hasItems"
-      class="tv__center"
-    >
+    <div v-else-if="!store.loading && !hasItems" class="tv__center">
       <CEmptyState :title="t('inv.transactions.empty')">
         <template #icon>
           <CreditCard :size="32" />
@@ -243,11 +245,7 @@ onMounted(() => {
     </ul>
 
     <!-- Infinite scroll sentinel (only when we already have items) -->
-    <div
-      v-if="hasItems"
-      ref="sentinelRef"
-      class="tv__sentinel"
-    >
+    <div v-if="hasItems" ref="sentinelRef" class="tv__sentinel">
       <CLoader v-if="store.loading" :size="20" />
     </div>
 
@@ -257,10 +255,7 @@ onMounted(() => {
       list treatment. Tapping Retry clears the pause flag in the
       store and re-fires loadMore explicitly.
     -->
-    <div
-      v-if="hasItems && store.loadMoreErrored && !store.loading"
-      class="tv__loadmore-error"
-    >
+    <div v-if="hasItems && store.loadMoreErrored && !store.loading" class="tv__loadmore-error">
       <span class="tv__loadmore-error-text">
         {{ t('inv.transactions.errorTitle') }}
       </span>
@@ -326,7 +321,10 @@ onMounted(() => {
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
 }
 
 /* A5: the PAINTED box stays this size on purpose -- growing it would move the
@@ -377,8 +375,15 @@ onMounted(() => {
 }
 
 .tv__item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -387,7 +392,9 @@ onMounted(() => {
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .tv__item:hover,
 .tv__item:focus-visible {
@@ -488,5 +495,7 @@ onMounted(() => {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.tv__subtitle { max-width: var(--maxw-prose); }
+.tv__subtitle {
+  max-width: var(--maxw-prose);
+}
 </style>

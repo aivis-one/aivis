@@ -145,7 +145,13 @@ function ruleBody(selector: string): string | null {
   const re = /([^{}]+)\{([^{}]*)\}/g
   let m: RegExpExecArray | null
   while ((m = re.exec(css)) !== null) {
-    if (m[1].split(',').map((s) => s.trim()).includes(selector)) return m[2]
+    if (
+      m[1]
+        .split(',')
+        .map((s) => s.trim())
+        .includes(selector)
+    )
+      return m[2]
   }
   return null
 }

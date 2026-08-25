@@ -26,10 +26,7 @@
 
 import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
-import type {
-  WithdrawalListResponse,
-  WithdrawalResponse,
-} from '@/api/types'
+import type { WithdrawalListResponse, WithdrawalResponse } from '@/api/types'
 
 /**
  * GET /api/v1/withdrawals/me -- paginated withdrawal history for the
@@ -64,9 +61,7 @@ export function listMyWithdrawals(params?: {
  *
  * Returns the newly created WithdrawalResponse with status='pending'.
  */
-export function createWithdrawal(
-  amount_cents: number,
-): Promise<WithdrawalResponse> {
+export function createWithdrawal(amount_cents: number): Promise<WithdrawalResponse> {
   return api.post<WithdrawalResponse>('/api/v1/withdrawals', {
     amount_cents,
   })

@@ -60,10 +60,7 @@ const error = ref('')
 function goToLogin(): void {
   // Forward `?next=...` so the eventual sign-in returns the visitor
   // to the same public page they were aiming for.
-  void safeNavigate(
-    router.push({ name: 'login', query: route.query }),
-    '[RegisterView] to login',
-  )
+  void safeNavigate(router.push({ name: 'login', query: route.query }), '[RegisterView] to login')
 }
 
 async function handleRegister(): Promise<void> {
@@ -98,10 +95,7 @@ async function handleRegister(): Promise<void> {
     // safeNavigate is no-throw by contract -- critical here so a benign
     // NavigationFailure does NOT bubble into the outer registration-error
     // catch and surface as a generic-error toast after successful registration.
-    await safeNavigate(
-      router.push({ name: 'verify' }),
-      '[RegisterView] post-register to verify',
-    )
+    await safeNavigate(router.push({ name: 'verify' }), '[RegisterView] post-register to verify')
   } catch (err) {
     if (err instanceof ApiResponseError) {
       if (err.status === 409) {
@@ -118,7 +112,6 @@ async function handleRegister(): Promise<void> {
     }
   }
 }
-
 </script>
 
 <template>
@@ -142,8 +135,12 @@ async function handleRegister(): Promise<void> {
     </header>
 
     <div class="auth-content">
-      <h1 class="auth-title">{{ t('auth.register.title') }}</h1>
-      <p class="auth-subtitle">{{ t('auth.register.subtitle') }}</p>
+      <h1 class="auth-title">
+        {{ t('auth.register.title') }}
+      </h1>
+      <p class="auth-subtitle">
+        {{ t('auth.register.subtitle') }}
+      </p>
 
       <div class="auth-form">
         <CInput
@@ -168,7 +165,9 @@ async function handleRegister(): Promise<void> {
             autocomplete="new-password"
             @keydown.enter="handleRegister"
           />
-          <div class="form-hint">{{ t('auth.register.passwordHint') }}</div>
+          <div class="form-hint">
+            {{ t('auth.register.passwordHint') }}
+          </div>
         </div>
 
         <CInput
@@ -180,13 +179,11 @@ async function handleRegister(): Promise<void> {
           @keydown.enter="handleRegister"
         />
 
-        <div v-if="error" class="auth-error">{{ error }}</div>
+        <div v-if="error" class="auth-error">
+          {{ error }}
+        </div>
 
-        <button
-          class="btn btn-primary"
-          :disabled="authStore.loading"
-          @click="handleRegister"
-        >
+        <button class="btn btn-primary" :disabled="authStore.loading" @click="handleRegister">
           <span v-if="authStore.loading" class="btn-spinner" />
           <span v-else>{{ t('auth.register.btn') }}</span>
         </button>

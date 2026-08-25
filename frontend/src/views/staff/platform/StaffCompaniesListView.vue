@@ -109,22 +109,24 @@ onMounted(loadCompanies)
 
 <template>
   <div class="scl">
-    <h2 class="scl__title">{{ t('staff.platform.companies.title') }}</h2>
+    <h2 class="scl__title">
+      {{ t('staff.platform.companies.title') }}
+    </h2>
 
     <!-- Status filter chips -->
     <div class="scl__filters">
+      <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatusFilter('')">
+        {{ t('staff.platform.companies.filterAll') }}
+      </button>
       <button
-        class="filter-chip"
-        :class="{ active: !statusFilter }"
-        @click="setStatusFilter('')"
-      >{{ t('staff.platform.companies.filterAll') }}</button>
-      <button
-        v-for="s in (['active', 'hidden', 'archived'] as const)"
+        v-for="s in ['active', 'hidden', 'archived'] as const"
         :key="s"
         class="filter-chip"
         :class="{ active: statusFilter === s }"
         @click="setStatusFilter(s)"
-      >{{ t(`staff.platform.companies.filter.${s}`) }}</button>
+      >
+        {{ t(`staff.platform.companies.filter.${s}`) }}
+      </button>
     </div>
 
     <!-- Search -->
@@ -151,7 +153,9 @@ onMounted(loadCompanies)
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.platform.companies.empty')">
-      <template #icon><Building2 :size="40" /></template>
+      <template #icon>
+        <Building2 :size="40" />
+      </template>
     </CEmptyState>
 
     <!-- List -->
@@ -165,7 +169,9 @@ onMounted(loadCompanies)
           @click="openCompany(c.id)"
         >
           <div class="company-item__info">
-            <div class="company-item__name">{{ c.name }}</div>
+            <div class="company-item__name">
+              {{ c.name }}
+            </div>
             <div class="company-item__detail">
               {{ formatPrice(c.price_per_unit_cents) }} &bull;
               {{ t('staff.platform.companies.supply', { n: c.total_supply }) }}
@@ -177,28 +183,50 @@ onMounted(loadCompanies)
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="scl__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">&larr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
+          &larr;
+        </CButton>
         <span class="scl__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">&rarr;</CButton>
+        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
+          &rarr;
+        </CButton>
       </div>
     </template>
   </div>
 </template>
 
 <style scoped>
-.scl { padding: var(--space-4); }
-.scl__title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-3); }
+.scl {
+  padding: var(--space-4);
+}
+.scl__title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
+}
 
 .scl__filters {
-  display: flex; gap: var(--space-2); overflow-x: auto; margin-bottom: var(--space-3); padding-bottom: var(--space-1);
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
-  cursor: pointer; white-space: nowrap; text-transform: capitalize;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 
 /* A5: the PAINTED box stays this size on purpose -- growing it would move the
@@ -218,31 +246,73 @@ onMounted(loadCompanies)
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
 }
-.filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.filter-chip.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
 
 .scl__center {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: var(--center-md); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-md);
+  gap: var(--space-4);
 }
 
-.company-list { display: flex; flex-direction: column; }
+.company-list {
+  display: flex;
+  flex-direction: column;
+}
 .company-item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background 0.15s;
 }
-.company-item:hover { background: var(--bg-subtle); }
-.company-item__info { flex: 1; min-width: 0; }
+.company-item:hover {
+  background: var(--bg-subtle);
+}
+.company-item__info {
+  flex: 1;
+  min-width: 0;
+}
 .company-item__name {
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.company-item__detail { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
+.company-item__detail {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
 
 .scl__pagination {
-  display: flex; align-items: center; justify-content: center;
-  gap: var(--space-3); margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
-.scl__page { font-size: var(--fs-xs); color: var(--text-secondary); }
+.scl__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
 </style>

@@ -28,10 +28,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CLoader, CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
-import {
-  fetchStaffCompanyTemplates,
-  fetchStaffCompanyTemplate,
-} from '@/api/staff-companies'
+import { fetchStaffCompanyTemplates, fetchStaffCompanyTemplate } from '@/api/staff-companies'
 import type { TemplateResponse, TemplateDetailResponse } from '@/api/types'
 
 const { t } = useI18n()
@@ -117,9 +114,15 @@ async function openDetail(template: TemplateResponse): Promise<void> {
   }
 }
 
-function setKind(v: KindFilter): void { kindFilter.value = v }
-function setLanguage(v: LanguageFilter): void { languageFilter.value = v }
-function setStatus(v: StatusFilter): void { statusFilter.value = v }
+function setKind(v: KindFilter): void {
+  kindFilter.value = v
+}
+function setLanguage(v: LanguageFilter): void {
+  languageFilter.value = v
+}
+function setStatus(v: StatusFilter): void {
+  statusFilter.value = v
+}
 
 watch([kindFilter, languageFilter, statusFilter], () => loadTemplates())
 watch(companyId, () => loadTemplates())
@@ -140,7 +143,9 @@ onMounted(loadTemplates)
           class="filter-chip"
           :class="{ active: kindFilter === k }"
           @click="setKind(k)"
-        >{{ t(`staff.platform.templates.kind.${k}`) }}</button>
+        >
+          {{ t(`staff.platform.templates.kind.${k}`) }}
+        </button>
       </div>
       <div class="sct__filter-row">
         <button class="filter-chip" :class="{ active: !languageFilter }" @click="setLanguage('')">
@@ -152,7 +157,9 @@ onMounted(loadTemplates)
           class="filter-chip"
           :class="{ active: languageFilter === l }"
           @click="setLanguage(l)"
-        >{{ l.toUpperCase() }}</button>
+        >
+          {{ l.toUpperCase() }}
+        </button>
       </div>
       <div class="sct__filter-row">
         <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatus('')">
@@ -164,7 +171,9 @@ onMounted(loadTemplates)
           class="filter-chip"
           :class="{ active: statusFilter === s }"
           @click="setStatus(s)"
-        >{{ t(`staff.platform.templates.status.${s}`) }}</button>
+        >
+          {{ t(`staff.platform.templates.status.${s}`) }}
+        </button>
       </div>
     </div>
 
@@ -202,11 +211,12 @@ onMounted(loadTemplates)
                 :text="t('staff.platform.templates.platformDefault')"
               />
             </div>
-            <div class="tpl-item__title">{{ tpl.title }}</div>
+            <div class="tpl-item__title">
+              {{ tpl.title }}
+            </div>
             <div class="tpl-item__meta">
               {{ t(`staff.platform.templates.kind.${tpl.kind}`) }}
-              &bull; {{ tpl.language.toUpperCase() }}
-              &bull; v{{ tpl.version }}
+              &bull; {{ tpl.language.toUpperCase() }} &bull; v{{ tpl.version }}
             </div>
           </div>
         </button>
@@ -215,16 +225,20 @@ onMounted(loadTemplates)
 
     <!-- Detail modal -->
     <CModal :open="showDetail" @close="showDetail = false">
-      <div v-if="detailLoading" class="sct__center" style="min-height:160px">
+      <div v-if="detailLoading" class="sct__center" style="min-height: 160px">
         <CLoader :size="24" />
       </div>
 
-      <div v-else-if="detailError" class="sct__center" style="min-height:160px">
-        <p class="sct__detail-error">{{ t('staff.platform.templates.detailError') }}</p>
+      <div v-else-if="detailError" class="sct__center" style="min-height: 160px">
+        <p class="sct__detail-error">
+          {{ t('staff.platform.templates.detailError') }}
+        </p>
       </div>
 
       <template v-else-if="detail">
-        <h3 class="sct__modal-title">{{ detail.title }}</h3>
+        <h3 class="sct__modal-title">
+          {{ detail.title }}
+        </h3>
         <div class="sct__detail-meta">
           <CBadge :variant="statusVariant(detail.status)" :text="detail.status" />
           <span>{{ t(`staff.platform.templates.kind.${detail.kind}`) }}</span>
@@ -242,7 +256,9 @@ onMounted(loadTemplates)
         <div v-if="detail.asset_files.length" class="sct__assets">
           <span class="sct__assets-label">{{ t('staff.platform.templates.assetFiles') }}</span>
           <ul class="sct__assets-list">
-            <li v-for="f in detail.asset_files" :key="f">{{ f }}</li>
+            <li v-for="f in detail.asset_files" :key="f">
+              {{ f }}
+            </li>
           </ul>
         </div>
 
@@ -263,17 +279,35 @@ onMounted(loadTemplates)
 </template>
 
 <style scoped>
-.sct { padding: var(--space-4); }
+.sct {
+  padding: var(--space-4);
+}
 
-.sct__filters { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
-.sct__filter-row { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
+.sct__filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.sct__filter-row {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
   min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--border-default);
-  background: var(--bg-page); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600;
-  cursor: pointer; white-space: nowrap;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 /* A5: the PAINTED box stays this size on purpose -- growing it would move the
@@ -293,56 +327,150 @@ onMounted(loadTemplates)
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
 }
-.filter-chip.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.filter-chip.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
 
 .sct__center {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: var(--center-sm); gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--center-sm);
+  gap: var(--space-4);
 }
-.sct__detail-error { font-size: var(--fs-sm); color: var(--danger); text-align: center; }
+.sct__detail-error {
+  font-size: var(--fs-sm);
+  color: var(--danger);
+  text-align: center;
+}
 
-.tpl-list { display: flex; flex-direction: column; }
+.tpl-list {
+  display: flex;
+  flex-direction: column;
+}
 .tpl-item {
-  appearance: none; background: none; border: none; margin: 0; padding: 0;
-  font: inherit; color: inherit; text-align: start; width: 100%;
-  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background 0.15s;
 }
-.tpl-item:hover { background: var(--bg-subtle); }
-.tpl-item__info { flex: 1; min-width: 0; }
-.tpl-item__top { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.tpl-item:hover {
+  background: var(--bg-subtle);
+}
+.tpl-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.tpl-item__top {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
 .tpl-item__title {
-  font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.tpl-item__meta { font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-1); }
+.tpl-item__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
 
-.sct__modal-title { font-size: var(--fs-h4); font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-2); }
+.sct__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
 .sct__detail-meta {
-  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
-  font-size: var(--fs-xs); color: var(--text-secondary); margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
 }
 
-.sct__storage, .sct__assets { margin-bottom: var(--space-4); }
-.sct__storage-label, .sct__assets-label, .sct__html-label {
-  display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-2);
+.sct__storage,
+.sct__assets {
+  margin-bottom: var(--space-4);
+}
+.sct__storage-label,
+.sct__assets-label,
+.sct__html-label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-2);
 }
 .sct__storage-value {
-  font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-primary);
-  background: var(--bg-subtle); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   word-break: break-all;
 }
-.sct__assets-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.sct__assets-list li { font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-secondary); }
-
-.sct__html { margin-bottom: var(--space-2); }
-.sct__html-pre {
-  font-size: var(--fs-xs); font-family: var(--font-mono); color: var(--text-primary);
-  background: var(--bg-subtle); border-radius: var(--radius-sm);
-  padding: var(--space-3); overflow: auto; max-height: 360px; margin: 0;
-  white-space: pre-wrap; word-break: break-word;
+.sct__assets-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sct__assets-list li {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
 }
 
-.sct__modal-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); justify-content: flex-end; }
+.sct__html {
+  margin-bottom: var(--space-2);
+}
+.sct__html-pre {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  overflow: auto;
+  max-height: 360px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sct__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  justify-content: flex-end;
+}
 </style>

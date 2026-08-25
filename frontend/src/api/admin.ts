@@ -102,10 +102,7 @@ export function updatePermissions(
   staffProfileId: string,
   body: UpdatePermissionsRequest,
 ): Promise<StaffProfileResponse> {
-  return api.patch<StaffProfileResponse>(
-    `/api/v1/staff/users/${staffProfileId}/permissions`,
-    body,
-  )
+  return api.patch<StaffProfileResponse>(`/api/v1/staff/users/${staffProfileId}/permissions`, body)
 }
 
 // ---------------------------------------------------------------------------
@@ -152,10 +149,7 @@ export function reversePayment(
   paymentId: string,
   body?: ReversePaymentRequest,
 ): Promise<ReversalResponse> {
-  return api.post<ReversalResponse>(
-    `/api/v1/staff/payments/${paymentId}/reverse`,
-    body ?? {},
-  )
+  return api.post<ReversalResponse>(`/api/v1/staff/payments/${paymentId}/reverse`, body ?? {})
 }
 
 // ---------------------------------------------------------------------------
@@ -164,9 +158,7 @@ export function reversePayment(
 
 /** POST /api/v1/staff/withdrawals/{id}/confirm — approve withdrawal. */
 export function confirmWithdrawal(withdrawalId: string): Promise<WithdrawalResponse> {
-  return api.post<WithdrawalResponse>(
-    `/api/v1/staff/withdrawals/${withdrawalId}/confirm`,
-  )
+  return api.post<WithdrawalResponse>(`/api/v1/staff/withdrawals/${withdrawalId}/confirm`)
 }
 
 /** POST /api/v1/staff/withdrawals/{id}/reject — reject withdrawal. */
@@ -174,10 +166,7 @@ export function rejectWithdrawal(
   withdrawalId: string,
   body: RejectWithdrawalRequest,
 ): Promise<WithdrawalResponse> {
-  return api.post<WithdrawalResponse>(
-    `/api/v1/staff/withdrawals/${withdrawalId}/reject`,
-    body,
-  )
+  return api.post<WithdrawalResponse>(`/api/v1/staff/withdrawals/${withdrawalId}/reject`, body)
 }
 
 // ---------------------------------------------------------------------------
@@ -220,8 +209,5 @@ export function rejectAgentApplication(
   applicationId: string,
   body: RejectAgentApplicationRequest,
 ): Promise<void> {
-  return api.post<void>(
-    `/api/v1/staff/agent-applications/${applicationId}/reject`,
-    body,
-  )
+  return api.post<void>(`/api/v1/staff/agent-applications/${applicationId}/reject`, body)
 }

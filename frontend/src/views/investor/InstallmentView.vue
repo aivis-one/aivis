@@ -65,21 +65,14 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import {
-  formatNumber,
-  formatPrice,
-  resolveCoverImage,
-} from '@/utils/format'
+import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
 import {
   getPlanBonus,
   getTrancheUnits,
   parsePlanConfig,
   type PlanConfig,
 } from '@/utils/installmentPlans'
-import type {
-  InstallmentResponse,
-  PublicProductDetailResponse,
-} from '@/api/types'
+import type { InstallmentResponse, PublicProductDetailResponse } from '@/api/types'
 
 // Backend currency field is not emitted on Public*/BalanceResponse
 // yet (TD-F03 scope includes both). Same escape hatch as the other
@@ -136,9 +129,7 @@ const firstTrancheCents = computed<number>(() => {
 // zero before the first refresh resolves (zeroed placeholder) -- the
 // insufficientBalance gate below treats that as "not enough", which
 // is the safe pessimistic default until the real value arrives.
-const balanceCents = computed<number>(
-  () => dashboardStore.activeBalance.confirmed,
-)
+const balanceCents = computed<number>(() => dashboardStore.activeBalance.confirmed)
 
 const insufficientBalance = computed<boolean>(() => {
   return balanceCents.value < firstTrancheCents.value
@@ -195,10 +186,7 @@ async function load(): Promise<void> {
     // the product fetch's failure flips `errored` -- balance load
     // failures surface through dashboardStore.error; a zeroed balance
     // is handled by the insufficientBalance gate below.
-    const [p] = await Promise.all([
-      getProduct(productId.value),
-      dashboardStore.refresh(),
-    ])
+    const [p] = await Promise.all([getProduct(productId.value), dashboardStore.refresh()])
     product.value = p
 
     // Resolve the query-provided template against the just-loaded
@@ -267,10 +255,7 @@ async function handlePlanError(err: unknown): Promise<void> {
 
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.installment.error.kycRequired'), 'warning')
-      void safeNavigate(
-        router.push('/onboarding/kyc'),
-        '[InstallmentView] to KYC onboarding',
-      )
+      void safeNavigate(router.push('/onboarding/kyc'), '[InstallmentView] to KYC onboarding')
       return
     }
 
@@ -309,9 +294,7 @@ function cancel(): void {
   }
   void safeNavigate(
     router.push({
-      name: agentShell.value
-        ? 'agent-product-detail'
-        : 'investor-product-detail',
+      name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
       params: { id: productId.value },
     }),
     '[InstallmentView] cancel fallback to product detail',
@@ -387,10 +370,7 @@ onMounted(load)
            router.back(), falls back to product detail on deep-link).
            B3: button shape extracted to CBackLink. -->
       <div class="iv__back-row">
-        <CBackLink
-          :label="t('inv.installment.backLink')"
-          @click="cancel"
-        />
+        <CBackLink :label="t('inv.installment.backLink')" @click="cancel" />
       </div>
 
       <!-- Product hero -->
@@ -401,8 +381,12 @@ onMounted(load)
       >
         <Building v-if="!coverImage" :size="48" class="iv__hero-icon" />
         <div class="iv__hero-content">
-          <div class="iv__hero-company">{{ product.company_name }}</div>
-          <h1 class="iv__hero-title">{{ product.name }}</h1>
+          <div class="iv__hero-company">
+            {{ product.company_name }}
+          </div>
+          <h1 class="iv__hero-title">
+            {{ product.name }}
+          </h1>
         </div>
       </div>
 
@@ -428,10 +412,7 @@ onMounted(load)
                 @keydown.space.prevent="pickPlan(plan)"
               >
                 <span class="iv__plan-name">{{ plan.name }}</span>
-                <span
-                  v-if="getPlanBonus(plan) > 0"
-                  class="iv__plan-bonus"
-                >
+                <span v-if="getPlanBonus(plan) > 0" class="iv__plan-bonus">
                   {{
                     t('inv.product.installmentsBonus', {
                       n: getPlanBonus(plan),
@@ -458,10 +439,7 @@ onMounted(load)
             </h2>
             <div class="iv__plan iv__plan--selected">
               <span class="iv__plan-name">{{ selectedPlan.name }}</span>
-              <span
-                v-if="planConfig.bonus_units > 0"
-                class="iv__plan-bonus"
-              >
+              <span v-if="planConfig.bonus_units > 0" class="iv__plan-bonus">
                 {{
                   t('inv.product.installmentsBonus', {
                     n: planConfig.bonus_units,
@@ -477,11 +455,7 @@ onMounted(load)
               {{ t('inv.installment.tranches') }}
             </h2>
             <ul class="iv__tranches">
-              <li
-                v-for="(tr, i) in planConfig.tranches"
-                :key="i"
-                class="iv__tranche"
-              >
+              <li v-for="(tr, i) in planConfig.tranches" :key="i" class="iv__tranche">
                 <span class="iv__tranche-num">
                   {{ t('inv.installment.tranche', { n: i + 1 }) }}
                 </span>
@@ -513,36 +487,22 @@ onMounted(load)
               <span class="iv__row-label">
                 {{ t('inv.installment.yourBalance') }}
               </span>
-              <span
-                class="iv__row-value"
-                :class="{ 'iv__row-value--warn': insufficientBalance }"
-              >
+              <span class="iv__row-value" :class="{ 'iv__row-value--warn': insufficientBalance }">
                 {{ formatPrice(balanceCents, product.currency) }}
               </span>
             </div>
-            <p
-              v-if="insufficientBalance"
-              class="iv__balance-hint"
-            >
+            <p v-if="insufficientBalance" class="iv__balance-hint">
               {{ t('inv.installment.insufficientHint') }}
             </p>
           </section>
 
           <!-- Actions -->
           <div class="iv__actions">
-            <CButton
-              variant="primary"
-              :disabled="!canConfirm"
-              @click="confirm"
-            >
+            <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
               <Calendar :size="16" />
               {{ t('inv.installment.confirm') }}
             </CButton>
-            <CButton
-              variant="outline"
-              :disabled="submitting"
-              @click="cancel"
-            >
+            <CButton variant="outline" :disabled="submitting" @click="cancel">
               {{ t('inv.installment.cancel') }}
             </CButton>
           </div>
@@ -694,7 +654,9 @@ onMounted(load)
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease,
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
     transform 0.05s ease;
 }
 .iv__plan:hover {
@@ -703,8 +665,7 @@ onMounted(load)
 .iv__plan:focus-visible {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px
-    color-mix(in srgb, var(--primary) 30%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 .iv__plan:active {
   transform: scale(0.99);
@@ -818,6 +779,10 @@ onMounted(load)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.iv__hint { max-width: var(--maxw-prose); }
-.iv__note { max-width: var(--maxw-prose); }
+.iv__hint {
+  max-width: var(--maxw-prose);
+}
+.iv__note {
+  max-width: var(--maxw-prose);
+}
 </style>

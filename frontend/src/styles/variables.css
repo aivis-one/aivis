@@ -35,58 +35,58 @@
 
 :root {
   /* --- primitives: theme-independent by design; never redefined below --- */
-  --amber-50: #FCF1E4;
-  --amber-100: #F9D0AA;
-  --amber-200: #F5AE6D;
-  --amber-300: #F2913A;
-  --amber-400: #D97B2E;
-  --amber-500: #C66A25;
-  --amber-600: #B1581B;
-  --amber-700: #9A4410;
-  --amber-800: #652C0A;
-  --amber-900: #3A1905;
-  --azure-50: #EAF4FC;
-  --azure-100: #ADD9F5;
-  --azure-200: #6DBDED;
-  --azure-300: #37A6E6;
-  --azure-400: #2B8ECB;
-  --azure-500: #217AB6;
-  --azure-600: #16669F;
-  --azure-700: #0B4F86;
-  --azure-800: #083B64;
-  --azure-900: #062A48;
-  --emerald-50: #E7F8EF;
-  --emerald-100: #AAEBC9;
-  --emerald-200: #6ADDA0;
-  --emerald-300: #34D17E;
-  --emerald-400: #29B56E;
-  --emerald-500: #21A062;
+  --amber-50: #fcf1e4;
+  --amber-100: #f9d0aa;
+  --amber-200: #f5ae6d;
+  --amber-300: #f2913a;
+  --amber-400: #d97b2e;
+  --amber-500: #c66a25;
+  --amber-600: #b1581b;
+  --amber-700: #9a4410;
+  --amber-800: #652c0a;
+  --amber-900: #3a1905;
+  --azure-50: #eaf4fc;
+  --azure-100: #add9f5;
+  --azure-200: #6dbded;
+  --azure-300: #37a6e6;
+  --azure-400: #2b8ecb;
+  --azure-500: #217ab6;
+  --azure-600: #16669f;
+  --azure-700: #0b4f86;
+  --azure-800: #083b64;
+  --azure-900: #062a48;
+  --emerald-50: #e7f8ef;
+  --emerald-100: #aaebc9;
+  --emerald-200: #6adda0;
+  --emerald-300: #34d17e;
+  --emerald-400: #29b56e;
+  --emerald-500: #21a062;
   --emerald-600: #188854;
-  --emerald-700: #0E6E45;
-  --emerald-800: #0A4D30;
-  --emerald-900: #06321F;
-  --neutral-0: #FFFFFF;
-  --neutral-50: #F6F8FA;
-  --neutral-100: #EDF1F5;
-  --neutral-200: #DDE4EB;
-  --neutral-300: #C5D0DA;
-  --neutral-400: #9BA8B6;
-  --neutral-500: #6B7785;
-  --neutral-600: #4C5763;
-  --neutral-700: #353E48;
-  --neutral-800: #1F262E;
-  --neutral-900: #11161B;
-  --neutral-950: #070A0E;
-  --red-50: #FCEBEA;
-  --red-100: #F6C7C4;
-  --red-200: #EE9893;
-  --red-300: #E5645D;
-  --red-400: #D63E37;
-  --red-500: #BE2D27;
-  --red-600: #9C231E;
-  --red-700: #7A1A16;
+  --emerald-700: #0e6e45;
+  --emerald-800: #0a4d30;
+  --emerald-900: #06321f;
+  --neutral-0: #ffffff;
+  --neutral-50: #f6f8fa;
+  --neutral-100: #edf1f5;
+  --neutral-200: #dde4eb;
+  --neutral-300: #c5d0da;
+  --neutral-400: #9ba8b6;
+  --neutral-500: #6b7785;
+  --neutral-600: #4c5763;
+  --neutral-700: #353e48;
+  --neutral-800: #1f262e;
+  --neutral-900: #11161b;
+  --neutral-950: #070a0e;
+  --red-50: #fcebea;
+  --red-100: #f6c7c4;
+  --red-200: #ee9893;
+  --red-300: #e5645d;
+  --red-400: #d63e37;
+  --red-500: #be2d27;
+  --red-600: #9c231e;
+  --red-700: #7a1a16;
   --red-800: #561310;
-  --red-900: #360B09;
+  --red-900: #360b09;
 
   /* --- semantics: light --- */
   --bg-page: var(--neutral-50);
@@ -106,7 +106,7 @@
      The DARK block below already does this -- its tertiary is a hand-picked
      #7C8A99, not a ramp step. This makes the two themes symmetric.
      --neutral-500 itself is unchanged: --toggle-track still points at it. */
-  --text-tertiary: #606A77;
+  --text-tertiary: #606a77;
   --border-default: var(--neutral-300);
   --primary: var(--azure-700);
   --primary-hover: var(--azure-800);
@@ -154,9 +154,9 @@
      not a substitute for the other. */
   --warning: var(--amber-700);
   --warning-subtle: var(--amber-50);
-  --on-primary: #FFFFFF;
-  --on-danger: #FFFFFF;
-  --on-accent: #FFFFFF;
+  --on-primary: #ffffff;
+  --on-danger: #ffffff;
+  --on-accent: #ffffff;
   /* SYNC-ADDITION (2026-08-18): --on-success is NOT in the design-system source.
      Its three siblings are, and --success inverts exactly as they do
      (emerald-700 -> emerald-300), so `color: white` on a success surface is
@@ -164,12 +164,14 @@
      --on-danger's dark value IS --red-900, so this is --emerald-900.
      A regeneration from source will DROP this line -- same hazard as the
      prefers-color-scheme block below. */
-  --on-success: #FFFFFF;
-  --shadow-1: 0 1px 2px rgba(11,79,134,.06),0 1px 3px rgba(17,22,27,.05);
-  --shadow-2: 0 4px 8px rgba(11,79,134,.06),0 8px 24px rgba(17,22,27,.07);
-  --shadow-3: 0 12px 24px rgba(11,79,134,.08),0 24px 56px rgba(17,22,27,.12);
-  --shadow-deep: 0 2px 4px rgba(11,79,134,.06), 0 8px 16px rgba(11,79,134,.10), 0 24px 48px rgba(11,79,134,.14), 0 48px 96px rgba(17,22,27,.08);
-  --shadow-focus: 0 0 0 3px rgba(55,166,230,.4);
+  --on-success: #ffffff;
+  --shadow-1: 0 1px 2px rgba(11, 79, 134, 0.06), 0 1px 3px rgba(17, 22, 27, 0.05);
+  --shadow-2: 0 4px 8px rgba(11, 79, 134, 0.06), 0 8px 24px rgba(17, 22, 27, 0.07);
+  --shadow-3: 0 12px 24px rgba(11, 79, 134, 0.08), 0 24px 56px rgba(17, 22, 27, 0.12);
+  --shadow-deep:
+    0 2px 4px rgba(11, 79, 134, 0.06), 0 8px 16px rgba(11, 79, 134, 0.1),
+    0 24px 48px rgba(11, 79, 134, 0.14), 0 48px 96px rgba(17, 22, 27, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(55, 166, 230, 0.4);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -244,7 +246,7 @@
      land on a system step within 2px; these are the other 4%. */
   --space-4-lg: 1.25rem; /* 20px, between --space-4 (16) and --space-5 (24) */
   --space-5-lg: 1.75rem; /* 28px, between --space-5 (24) and --space-6 (32) */
-  --space-6-lg: 2.5rem;  /* 40px, between --space-6 (32) and --space-7 (48) */
+  --space-6-lg: 2.5rem; /* 40px, between --space-6 (32) and --space-7 (48) */
 
   /* TYPE SCALE — imported 2026-08-18, and DELIBERATELY UNREFERENCED for now.
      The product had ZERO of the system's eight steps against 538 hardcoded
@@ -279,13 +281,13 @@
      Each site moved toward the step its own kind of element already sat on —
      57 up to --fs-sm, 58 down to --fs-xs — rather than the whole block moving
      one way. Ambiguous sites went UP: 12px is already the low end of readable. */
-  --fs-3xs: 0.625rem;    /* 10px */
-  --fs-lg: 1.25rem;      /* 20px */
-  --fs-xl: 1.375rem;     /* 22px */
-  --fs-2xl: 1.75rem;     /* 28px */
-  --fs-3xl: 1.875rem;    /* 30px */
-  --fs-4xl: 2rem;        /* 32px */
-  --fs-hero: 4.5rem;     /* 72px */
+  --fs-3xs: 0.625rem; /* 10px */
+  --fs-lg: 1.25rem; /* 20px */
+  --fs-xl: 1.375rem; /* 22px */
+  --fs-2xl: 1.75rem; /* 28px */
+  --fs-3xl: 1.875rem; /* 30px */
+  --fs-4xl: 2rem; /* 32px */
+  --fs-hero: 4.5rem; /* 72px */
 
   /* CONTAINER MEASURE — the system's two widths, referenced ZERO times by the
      product until now, which is why `main` ran to viewport-minus-10px at every
@@ -353,7 +355,8 @@
      leaves Arabic users with no font at all. It has bitten this repo once already,
      when the RTL rule still named the retired face. The TOKENS are native to the
      system; what is additive is the Arabic family inside each stack. */
-  --font-display: 'Plus Jakarta Sans', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display:
+    'Plus Jakarta Sans', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Manrope', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Noto Sans Arabic', ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -380,8 +383,8 @@
   --tab-bar-height: 56px;
   --cta-bar-height: 56px;
   /* Telegram's own brand colours. Not ours to restyle. */
-  --telegram: #2AABEE;
-  --telegram-dark: #229ED9;
+  --telegram: #2aabee;
+  --telegram-dark: #229ed9;
   /* --on-telegram completes the --on-* family: every other accent colour has
      one and this did not, so CButton spelled it `color: white` -- the exact
      SPELLING the 2026-08-18 contrast audit was blind to. --telegram is declared
@@ -389,7 +392,7 @@
      MEASURED: white on #2AABEE is 2.57:1. That is below 4.5 and it STAYS --
      the line above is the ruling: Telegram's brand is not ours to restyle.
      Recorded here so the next audit meets the number instead of the defect. */
-  --on-telegram: #FFFFFF;
+  --on-telegram: #ffffff;
   /* TOGGLE. The knob was a raw #fff while its track was tokenised, so the track
      followed the theme and the knob could not. MEASURED 2026-08-19: knob vs
      track 1.57:1 in LIGHT (white on --border-default #C5D0DA) against 11.6:1 in
@@ -404,36 +407,38 @@
 
 /* === the user explicitly chose dark ===
    SYNC: keep identical with @media (prefers-color-scheme: dark) below */
-[data-theme="dark"] {
+[data-theme='dark'] {
   --bg-page: var(--neutral-950);
-  --bg-surface: #10161D;
-  --bg-subtle: #161D26;
+  --bg-surface: #10161d;
+  --bg-subtle: #161d26;
   --text-primary: var(--neutral-50);
-  --text-secondary: #A7B4C2;
-  --text-tertiary: #7C8A99;
-  --border-default: #2E3A46;
+  --text-secondary: #a7b4c2;
+  --text-tertiary: #7c8a99;
+  --border-default: #2e3a46;
   --primary: var(--azure-300);
   --primary-hover: var(--azure-200);
   --primary-active: var(--azure-100);
-  --primary-subtle: rgba(55,166,230,.14);
+  --primary-subtle: rgba(55, 166, 230, 0.14);
   --accent: var(--amber-300);
   --accent-hover: var(--amber-200);
-  --accent-subtle: rgba(242,145,58,.16);
+  --accent-subtle: rgba(242, 145, 58, 0.16);
   --danger: var(--red-300);
-  --danger-subtle: rgba(214,62,55,.16);
+  --danger-subtle: rgba(214, 62, 55, 0.16);
   --success: var(--emerald-300);
-  --success-subtle: rgba(52,209,126,.14);
+  --success-subtle: rgba(52, 209, 126, 0.14);
   --warning: var(--amber-300);
-  --warning-subtle: rgba(242,145,58,.16);
-  --on-primary: #04243E;
-  --on-danger: #360B09;
-  --on-accent: #3A1905;
-  --on-success: #06321F; /* SYNC-ADDITION, see :root */
-  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
-  --shadow-2: 0 6px 18px rgba(0,0,0,.45);
-  --shadow-3: 0 16px 40px rgba(0,0,0,.55);
-  --shadow-deep: 0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3);
-  --shadow-focus: 0 0 0 3px rgba(55,166,230,.5);
+  --warning-subtle: rgba(242, 145, 58, 0.16);
+  --on-primary: #04243e;
+  --on-danger: #360b09;
+  --on-accent: #3a1905;
+  --on-success: #06321f; /* SYNC-ADDITION, see :root */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --shadow-deep:
+    0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.5), 0 24px 48px rgba(0, 0, 0, 0.6),
+    0 48px 96px rgba(0, 0, 0, 0.3);
+  --shadow-focus: 0 0 0 3px rgba(55, 166, 230, 0.5);
 }
 
 /* === the OS is dark and the user has not chosen ===
@@ -446,33 +451,35 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --bg-page: var(--neutral-950);
-    --bg-surface: #10161D;
-    --bg-subtle: #161D26;
+    --bg-surface: #10161d;
+    --bg-subtle: #161d26;
     --text-primary: var(--neutral-50);
-    --text-secondary: #A7B4C2;
-    --text-tertiary: #7C8A99;
-    --border-default: #2E3A46;
+    --text-secondary: #a7b4c2;
+    --text-tertiary: #7c8a99;
+    --border-default: #2e3a46;
     --primary: var(--azure-300);
     --primary-hover: var(--azure-200);
     --primary-active: var(--azure-100);
-    --primary-subtle: rgba(55,166,230,.14);
+    --primary-subtle: rgba(55, 166, 230, 0.14);
     --accent: var(--amber-300);
     --accent-hover: var(--amber-200);
-    --accent-subtle: rgba(242,145,58,.16);
+    --accent-subtle: rgba(242, 145, 58, 0.16);
     --danger: var(--red-300);
-    --danger-subtle: rgba(214,62,55,.16);
+    --danger-subtle: rgba(214, 62, 55, 0.16);
     --success: var(--emerald-300);
-    --success-subtle: rgba(52,209,126,.14);
+    --success-subtle: rgba(52, 209, 126, 0.14);
     --warning: var(--amber-300);
-    --warning-subtle: rgba(242,145,58,.16);
-    --on-primary: #04243E;
-    --on-danger: #360B09;
-    --on-accent: #3A1905;
-    --on-success: #06321F; /* SYNC-ADDITION, see :root */
-    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
-    --shadow-2: 0 6px 18px rgba(0,0,0,.45);
-    --shadow-3: 0 16px 40px rgba(0,0,0,.55);
-    --shadow-deep: 0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3);
-    --shadow-focus: 0 0 0 3px rgba(55,166,230,.5);
+    --warning-subtle: rgba(242, 145, 58, 0.16);
+    --on-primary: #04243e;
+    --on-danger: #360b09;
+    --on-accent: #3a1905;
+    --on-success: #06321f; /* SYNC-ADDITION, see :root */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.45);
+    --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.55);
+    --shadow-deep:
+      0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.5), 0 24px 48px rgba(0, 0, 0, 0.6),
+      0 48px 96px rgba(0, 0, 0, 0.3);
+    --shadow-focus: 0 0 0 3px rgba(55, 166, 230, 0.5);
   }
 }

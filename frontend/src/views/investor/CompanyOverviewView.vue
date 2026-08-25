@@ -158,9 +158,7 @@ const priceGrowthDir = computed<'up' | 'down' | undefined>(() => {
 // Roadmap visibility (R1 §6.1)
 // ---------------------------------------------------------------------------
 
-const hasRoadmap = computed<boolean>(
-  () => (data.value?.roadmap?.length ?? 0) > 0,
-)
+const hasRoadmap = computed<boolean>(() => (data.value?.roadmap?.length ?? 0) > 0)
 
 // ---------------------------------------------------------------------------
 // Load + lifecycle
@@ -290,10 +288,7 @@ function onRoadmapPostClick(_postId: string): void {
            (single-shell-header paradigm). Company name lives in the
            hero <h1> below. B3: button shape extracted to CBackLink. -->
       <div class="co__back-row">
-        <CBackLink
-          :label="t('inv.companyOverview.backLink')"
-          @click="goBack"
-        />
+        <CBackLink :label="t('inv.companyOverview.backLink')" @click="goBack" />
       </div>
 
       <main class="co__main">
@@ -310,7 +305,9 @@ function onRoadmapPostClick(_postId: string): void {
             <span class="co__hero-status">
               {{ t('common.statusActive') }}
             </span>
-            <h1 class="co__hero-name">{{ data.name }}</h1>
+            <h1 class="co__hero-name">
+              {{ data.name }}
+            </h1>
             <p v-if="data.description" class="co__hero-description">
               {{ data.description }}
             </p>
@@ -323,10 +320,7 @@ function onRoadmapPostClick(_postId: string): void {
             :value="poolTotalDisplay"
             :label="t('inv.companyOverview.stats.poolTotalOptions')"
           />
-          <CStatCard
-            :value="soldDisplay"
-            :label="t('inv.companyOverview.stats.optionsSold')"
-          />
+          <CStatCard :value="soldDisplay" :label="t('inv.companyOverview.stats.optionsSold')" />
           <CStatCard
             :value="soldPercentDisplay"
             :label="t('inv.companyOverview.stats.optionsSoldPercent')"
@@ -409,10 +403,8 @@ function onRoadmapPostClick(_postId: string): void {
      --space-xl is breathing room so the last item doesn't visually
      kiss the CTA shadow. */
   padding-bottom: calc(
-    var(--space-7)
-    + var(--cta-bar-height)
-    + var(--tab-bar-height)
-    + env(safe-area-inset-bottom, 0px)
+    var(--space-7) + var(--cta-bar-height) + var(--tab-bar-height) +
+      env(safe-area-inset-bottom, 0px)
   );
 }
 
@@ -438,11 +430,7 @@ function onRoadmapPostClick(_postId: string): void {
 }
 
 .co__hero-cover--fallback {
-  background-image: linear-gradient(
-    135deg,
-    var(--bg-subtle) 0%,
-    var(--bg-surface) 100%
-  );
+  background-image: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface) 100%);
 }
 
 .co__hero-body {
@@ -527,11 +515,7 @@ function onRoadmapPostClick(_postId: string): void {
   position: fixed;
   left: var(--space-4);
   right: var(--space-4);
-  bottom: calc(
-    var(--tab-bar-height)
-    + env(safe-area-inset-bottom, 0px)
-    + var(--space-2)
-  );
+  bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
   /* min-height (not height) pins the visible strip to --cta-bar-height
      so the token is the real source of truth that .co__main's
      padding-bottom relies on. min-height (rather than height) keeps
@@ -565,6 +549,8 @@ function onRoadmapPostClick(_postId: string): void {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .co__stats { max-width: calc(2 * var(--tile-max)); }
+  .co__stats {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 </style>

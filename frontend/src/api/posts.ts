@@ -47,9 +47,7 @@ export interface ListPostsParams {
  * first on the backend (created_at DESC). The dashboard widget
  * calls this with `{ per_page: 5 }` and renders the `items` slice.
  */
-export function listPosts(
-  params?: ListPostsParams,
-): Promise<PostListResponse> {
+export function listPosts(params?: ListPostsParams): Promise<PostListResponse> {
   const qs = buildQueryString({
     page: params?.page,
     per_page: params?.per_page,

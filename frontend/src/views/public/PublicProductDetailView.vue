@@ -60,11 +60,7 @@ import { getProduct } from '@/api/products'
 import { useAuthStore } from '@/stores/auth'
 import { useAuthWall } from '@/composables/useAuthWall'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
-import {
-  formatNumber,
-  formatPrice,
-  resolveCoverImage,
-} from '@/utils/format'
+import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 
@@ -164,9 +160,7 @@ const isSoldOut = computed<boolean>(() => available.value <= 0)
 
 const buyLabel = computed<string>(() => {
   if (isSoldOut.value) return t('inv.product.soldOut')
-  return authStore.isAuthenticated
-    ? t('inv.product.buy')
-    : t('public.productDetail.purchaseCTA')
+  return authStore.isAuthenticated ? t('inv.product.buy') : t('public.productDetail.purchaseCTA')
 })
 
 // ---------------------------------------------------------------------------
@@ -232,10 +226,7 @@ function onBuyClick(): void {
   } else if (role === 'investor') {
     targetRoute = 'investor-purchase'
   } else {
-    console.warn(
-      '[PublicProductDetailView] Buy CTA tapped for unsupported role:',
-      role,
-    )
+    console.warn('[PublicProductDetailView] Buy CTA tapped for unsupported role:', role)
     return
   }
   void safeNavigate(
@@ -280,10 +271,7 @@ function onBuyClick(): void {
            iter 2.7 batch B3: button shape extracted to CBackLink so the
            public and auth flows share the same component. -->
       <div class="ppd__back-row">
-        <CBackLink
-          :label="t('public.productDetail.backLink')"
-          @click="goToCompany"
-        />
+        <CBackLink :label="t('public.productDetail.backLink')" @click="goToCompany" />
       </div>
 
       <!-- Hero with cover image (matches auth-flow ProductDetailView
@@ -295,8 +283,12 @@ function onBuyClick(): void {
       >
         <Building v-if="!coverImage" :size="64" class="ppd__hero-icon" />
         <div class="ppd__hero-content">
-          <div class="ppd__hero-company">{{ product.company_name }}</div>
-          <h1 class="ppd__hero-title">{{ product.name }}</h1>
+          <div class="ppd__hero-company">
+            {{ product.company_name }}
+          </div>
+          <h1 class="ppd__hero-title">
+            {{ product.name }}
+          </h1>
         </div>
       </div>
 
@@ -322,7 +314,9 @@ function onBuyClick(): void {
             <div class="ppd__stat-value">
               {{ formatNumber(available, locale) }}
             </div>
-            <div class="ppd__stat-unit">{{ t('inv.available') }}</div>
+            <div class="ppd__stat-unit">
+              {{ t('inv.available') }}
+            </div>
           </div>
         </div>
 
@@ -331,7 +325,9 @@ function onBuyClick(): void {
           <h2 class="ppd__section-title">
             {{ t('inv.product.description') }}
           </h2>
-          <p class="ppd__description">{{ product.description }}</p>
+          <p class="ppd__description">
+            {{ product.description }}
+          </p>
         </section>
 
         <!-- Installment plans: read-only list for public visitor.
@@ -342,23 +338,13 @@ function onBuyClick(): void {
           <h2 class="ppd__section-title">
             {{ t('inv.product.installments') }}
           </h2>
-          <div
-            v-if="product.installments.length === 0"
-            class="ppd__empty"
-          >
+          <div v-if="product.installments.length === 0" class="ppd__empty">
             {{ t('inv.product.installmentsEmpty') }}
           </div>
           <ul v-else class="ppd__plans">
-            <li
-              v-for="plan in product.installments"
-              :key="plan.id"
-              class="ppd__plan"
-            >
+            <li v-for="plan in product.installments" :key="plan.id" class="ppd__plan">
               <span class="ppd__plan-name">{{ plan.name }}</span>
-              <span
-                v-if="getPlanBonus(plan) > 0"
-                class="ppd__plan-bonus"
-              >
+              <span v-if="getPlanBonus(plan) > 0" class="ppd__plan-bonus">
                 {{
                   t('inv.product.installmentsBonus', {
                     n: getPlanBonus(plan),
@@ -376,11 +362,7 @@ function onBuyClick(): void {
              the button stays visible but disabled with a "Sold out"
              label so the visitor knows the product exists. -->
         <div v-if="canNavigateToPurchase" class="ppd__actions">
-          <CButton
-            variant="primary"
-            :disabled="isSoldOut"
-            @click="onBuyClick"
-          >
+          <CButton variant="primary" :disabled="isSoldOut" @click="onBuyClick">
             <ShoppingCart :size="16" />
             {{ buyLabel }}
           </CButton>
@@ -625,7 +607,9 @@ function onBuyClick(): void {
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 820px) {
-  .ppd__stats { max-width: calc(2 * var(--tile-max)); }
+  .ppd__stats {
+    max-width: calc(2 * var(--tile-max));
+  }
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -635,5 +619,7 @@ function onBuyClick(): void {
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
-.ppd__description { max-width: var(--maxw-prose); }
+.ppd__description {
+  max-width: var(--maxw-prose);
+}
 </style>

@@ -12,10 +12,7 @@
 // =============================================================================
 
 import { api } from '@/api/client'
-import type {
-  CreatePurchaseRequest,
-  PurchaseResponse,
-} from '@/api/types'
+import type { CreatePurchaseRequest, PurchaseResponse } from '@/api/types'
 
 /**
  * POST /api/v1/products/{product_id}/purchase
@@ -40,8 +37,5 @@ export function createPurchase(
   productId: string,
   body: CreatePurchaseRequest = {},
 ): Promise<PurchaseResponse[]> {
-  return api.post<PurchaseResponse[]>(
-    `/api/v1/products/${productId}/purchase`,
-    body,
-  )
+  return api.post<PurchaseResponse[]>(`/api/v1/products/${productId}/purchase`, body)
 }
