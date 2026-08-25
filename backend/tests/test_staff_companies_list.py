@@ -36,12 +36,15 @@ import uuid
 import pytest
 from app.modules.companies.constants import CompanyStatus
 from app.modules.companies.models import CompanyProfile
+from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS
+from app.modules.staff.models import StaffProfile
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers import (
     auth_headers,
     create_admin_user,
+    create_staff_user,
     register_user,
 )
 
@@ -379,3 +382,101 @@ async def test_staff_detail_404_for_unknown(
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 404, resp.text
+
+
+# ---------------------------------------------------------------------------
+# 8: project_manage gates POST /staff/companies (TASK-30 SS7 done-test B2)
+# ---------------------------------------------------------------------------
+
+
+def _company_payload(*, name: str, email: str) -> dict:
+    """Shared POST /staff/companies body -- same shape as _create_company,
+    duplicated here (rather than reusing _create_company) because this
+    test needs the raw response/status of the FIRST (expected-403) call,
+    which _create_company's own assert resp.status_code == 201 would
+    mask.
+    """
+    return {
+        "email": email,
+        "password": "companypass123",
+        "name": name,
+        "description": "B2 done-test probe",
+        "price_per_unit_cents": 10_000,
+        "distribution_config": {
+            "company_pct": 0.65,
+            "agent_levels": [0.10, 0.03, 0.01],
+        },
+        "total_supply": 1_000_000,
+        "shares_per_option": 1,
+    }
+
+
+async def _set_project_manage(
+    db_session: AsyncSession, user_id: uuid.UUID, value: bool
+) -> None:
+    """Flip project_manage on an existing StaffProfile, leaving every
+    other permission at its default.
+
+    Used to turn the ordinary-staff fixture (project_manage=False,
+    the new default) into the admin-equivalent-for-this-permission
+    fixture the control half of the B2 done-test needs, without
+    promoting to full admin via create_admin_user (that would also
+    flip translation_edit, which is irrelevant to this endpoint and
+    would muddy what the control is actually proving).
+    """
+    profile = (
+        await db_session.execute(
+            select(StaffProfile).where(StaffProfile.user_id == user_id)
+        )
+    ).scalar_one()
+    perms = dict(DEFAULT_STAFF_PERMISSIONS)
+    perms["project_manage"] = value
+    profile.set_jsonb("permissions", perms)
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_create_company_requires_project_manage(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """B2 done-test: a staff account WITHOUT project_manage cannot
+    create a company (a project write); the SAME call with
+    project_manage granted must first be shown SUCCEEDING -- otherwise
+    the 403 alone would prove only that *something* failed (wrong
+    payload, wrong token, an unrelated permission also missing), not
+    specifically that project_manage is the gate.
+
+    create_staff_user's fixture carries DEFAULT_STAFF_PERMISSIONS
+    verbatim, which after the project_manage default flip means
+    project_manage=False while financial_operations stays True (the
+    create endpoint also requires financial_operations, per
+    companies/staff_router.py's own header comment -- unaffected by
+    this change, so it is not what's under test here).
+    """
+    staff, token = await create_staff_user(client, db_session)
+
+    # Negative: ordinary staff, no project_manage -> 403.
+    resp = await client.post(
+        "/api/v1/staff/companies",
+        json=_company_payload(
+            name=f"NoProjectManageCo {uuid.uuid4().hex[:8]}",
+            email=f"pm403_{uuid.uuid4().hex[:12]}@example.com",
+        ),
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 403, resp.text
+
+    # CONTROL: identical staff account, identical call, project_manage
+    # granted -> 201. Proves the 403 above was specifically gated by
+    # project_manage rather than some other broken precondition.
+    await _set_project_manage(db_session, staff.id, True)
+
+    resp = await client.post(
+        "/api/v1/staff/companies",
+        json=_company_payload(
+            name=f"WithProjectManageCo {uuid.uuid4().hex[:8]}",
+            email=f"pmok_{uuid.uuid4().hex[:12]}@example.com",
+        ),
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201, resp.text

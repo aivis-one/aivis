@@ -23,6 +23,24 @@
 #
 # Sprint 9.1:
 #   Added content_manage permission. Controls CRUD on posts and events.
+#
+# TASK-30 SS7 ruling 6/8 (project_manage):
+#   Added project_manage, gating write routes on companies, pools,
+#   products, and company attachments to admin-only staff. It first
+#   shipped defaulting True on the theory that a False default would
+#   silently strip admin status from every legacy full-permission
+#   profile (is_admin() = all(VALID_PERMISSION_KEYS), and this dict
+#   defines that set). True was wrong for a different reason: every
+#   other key here except translation_edit already defaults True, so a
+#   True default for project_manage narrowed nothing -- ordinary staff
+#   could still write project data exactly as before, defeating the
+#   ruling. The correct fix is False here PLUS a one-time backfill
+#   migration (2026_08_26_0043_project_manage_admin_backfill) that
+#   writes project_manage: true into every profile that was already an
+#   admin under the other 9 keys, so is_admin() reads the same for
+#   every pre-existing admin across the deploy. Ship this default flip
+#   without that migration and real admins lose admin-gated actions
+#   the instant the app restarts.
 # =============================================================================
 
 # Default permissions for newly created staff.
@@ -37,7 +55,7 @@ DEFAULT_STAFF_PERMISSIONS: dict[str, bool] = {
     "translation_edit": False,
     "company_manage": True,
     "content_manage": True,
-    "project_manage": True,
+    "project_manage": False,
 }
 
 # All valid permission keys. Used for request validation.
