@@ -15,11 +15,7 @@
 export type CompanyStatus = 'active' | 'hidden' | 'archived'
 
 /** Document template kinds. Maps onto Purchase.legal_basis for the per-purchase variants; OWNERSHIP_CERTIFICATE is the live aggregate. R2 §4.3: purchase_agreement -> Purchase.legal_basis = sale gift_certificate -> Purchase.legal_basis = gift installment_subcontract -> Purchase.legal_basis = installment_tranche ownership_certificate -> live aggregate of investor's purchases for one company (no per-purchase snapshot) */
-export type DocumentTemplateKind =
-  | 'purchase_agreement'
-  | 'gift_certificate'
-  | 'installment_subcontract'
-  | 'ownership_certificate'
+export type DocumentTemplateKind = 'purchase_agreement' | 'gift_certificate' | 'installment_subcontract' | 'ownership_certificate'
 
 /** KYC verification status. Denormalized cache from KYCApplication. */
 export type KYCStatus = 'not_started' | 'submitted' | 'approved' | 'rejected'
@@ -502,7 +498,8 @@ export interface EmailRegisterRequest {
 }
 
 /** A body with no fields at all, for the two verbs that need none. Opening a request and marking it read are fully determined by the session: there is nothing to say beyond the verb itself. The model exists ONLY so that a body carrying an actor field is refused instead of ignored -- a handler with no body model at all would accept and discard it without a word. */
-export interface EmptyBodyIn {}
+export interface EmptyBodyIn {
+}
 
 /** Paginated event list. */
 export interface EventListResponse {
