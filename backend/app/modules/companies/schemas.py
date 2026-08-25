@@ -5,6 +5,10 @@
 #
 # REQUEST SCHEMAS:
 #   CreateCompanyRequest      -- POST /staff/companies
+#   AssignCompanyRequest      -- POST /staff/companies/assign (TASK-30
+#                                 ruling 1 + 9: promote an EXISTING user
+#                                 to company, full commercial terms,
+#                                 no pool)
 #   UpdateCompanyRequest      -- PATCH /staff/companies/{id} (partial)
 #   UpdatePriceRequest        -- PATCH /staff/companies/{id}/price
 #   CreateRoadmapItemRequest  -- POST /staff/companies/{id}/roadmap
@@ -114,6 +118,45 @@ class CreateCompanyRequest(BaseModel):
     # Sprint 4.3: supply config.
     # total_supply -- total number of options covering 100% of company shares.
     # shares_per_option -- denomination ratio (default 1: one option = one share).
+    total_supply: int = Field(gt=0)
+    shares_per_option: int = Field(default=1, gt=0)
+
+
+class AssignCompanyRequest(BaseModel):
+    """Assign an EXISTING user to become a company (TASK-30 ruling 1 + 9).
+
+    Mirrors CreateCompanyRequest minus the account-creation fields
+    (email/password -- the admin never sees or sets the target's
+    password, per ruling 1) plus `user_id` identifying the existing
+    user to promote.
+
+    Every commercial-terms field stays REQUIRED (revised ruling 9: the
+    admin assigns WITH full commercial terms -- price, supply,
+    distribution config -- there is no deferred-price state for this
+    endpoint). What IS deferred is the OptionPool: this schema has no
+    pool fields at all -- pool issuance stays a separate, later,
+    explicit action via POST /staff/pools, exactly as it already is
+    for create_company (see Sprint 4.3 module note in service.py).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Existing user to promote. Their password never passes through
+    # this endpoint or through admin hands.
+    user_id: UUID
+
+    # Company profile -- identical field set to CreateCompanyRequest,
+    # minus email/password.
+    name: str = Field(min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=5000)
+    logo_url: str | None = Field(default=None, max_length=2000)
+    cover_url: str | None = Field(default=None, max_length=2000)
+    promo_video_url: str | None = Field(default=None, max_length=2000)
+    presentation_url: str | None = Field(default=None, max_length=2000)
+    price_per_unit_cents: int = Field(gt=0)
+    distribution_config: dict  # type: ignore[type-arg]
+
+    # Sprint 4.3: supply config, same as CreateCompanyRequest. Required.
     total_supply: int = Field(gt=0)
     shares_per_option: int = Field(default=1, gt=0)
 

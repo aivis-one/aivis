@@ -106,7 +106,7 @@ async def create_staff(
     try:
         await session.flush()
     except IntegrityError as exc:
-        if "staff_profiles_user_id_key" in str(exc.orig):
+        if "uq_staff_profiles_user_id" in str(exc.orig):
             raise ConflictError("Staff profile already exists")
         raise
 

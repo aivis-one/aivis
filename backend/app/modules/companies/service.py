@@ -6,6 +6,10 @@
 # RESPONSIBILITIES:
 #   create_company()       -- create User (role=company) + CompanyProfile
 #                             with total_supply / shares_per_option
+#   assign_company()       -- TASK-30 ruling 1 + 9: promote an EXISTING
+#                             user to company (no password ever passes
+#                             through admin hands), full commercial
+#                             terms required, no pool created here
 #   update_company()       -- partial update profile/media/distribution_config
 #                             (NO supply fields here -- see Sprint 4.3 note)
 #   update_price()         -- change price + cascade to Products + history
@@ -163,6 +167,7 @@ from app.modules.companies.models import (
     RoadmapItemStatus,
 )
 from app.modules.companies.schemas import (
+    AssignCompanyRequest,
     AttachmentInboxMetadata,
     AttachmentPatchBody,
     CreateCompanyRequest,
@@ -259,7 +264,7 @@ async def create_company(
     try:
         await session.flush()
     except IntegrityError as exc:
-        if "company_profiles_user_id_key" in str(exc.orig):
+        if "uq_company_profiles_user_id" in str(exc.orig):
             raise ConflictError("Company profile already exists for this user")
         raise
 
@@ -285,6 +290,123 @@ async def create_company(
         "company_created",
         company_id=str(profile.id),
         user_id=str(company_user.id),
+        staff_id=str(staff.id),
+        total_supply=body.total_supply,
+        shares_per_option=body.shares_per_option,
+    )
+
+    return profile
+
+
+async def assign_company(
+    body: AssignCompanyRequest,
+    staff: User,
+    session: AsyncSession,
+) -> CompanyProfile:
+    """Promote an EXISTING user to company, with full commercial terms.
+
+    TASK-30 ruling 1 + revised ruling 9: mirrors staff/service.py's
+    create_staff() -- the admin assigns an EXISTING user_id, never a
+    password (ruling 1); the target's credentials are untouched by
+    this call. Unlike create_staff (default permissions, nothing else
+    to configure), a company assignment carries commercial terms, so
+    AssignCompanyRequest requires every CreateCompanyRequest field
+    except email/password.
+
+    No OptionPool is created here, same as create_company: pool
+    issuance stays a separate, later, explicit action via the pool
+    admin endpoints (POST /staff/pools). A company with no pool yet is
+    an existing, legal "fresh start-state" (see
+    get_public_company_stats docstring above and
+    PublicCompanyStatsResponse docstring in schemas.py).
+
+    Raises:
+        NotFoundError: If target user not found.
+        BadRequestError: If distribution_config is invalid, or the
+            target is the platform user.
+        ConflictError: If the user already has a CompanyProfile (either
+            role already COMPANY, or -- as a defence-in-depth race
+            guard -- a concurrent assignment beat this one to the
+            unique constraint on company_profiles.user_id).
+    """
+    # Validate distribution_config up front, same as create_company --
+    # fail before touching the target user's role at all.
+    validate_distribution_config(body.distribution_config)
+
+    # Load target user.
+    stmt = select(User).where(User.id == body.user_id)
+    result = await session.execute(stmt)
+    target = result.scalar_one_or_none()
+
+    if target is None:
+        raise NotFoundError("User not found")
+
+    if target.role == UserRole.PLATFORM:
+        raise BadRequestError("Cannot assign platform user to a company")
+
+    if target.role == UserRole.COMPANY:
+        # Fast path -- avoids a doomed INSERT for the common case where
+        # the caller retries an assignment they already made. The
+        # IntegrityError catch below is the actual data-level guarantee
+        # (race between two concurrent assign calls for the same user);
+        # this check just gives the ordinary sequential case a cleaner,
+        # earlier error before the profile insert is attempted.
+        raise ConflictError("User is already a company")
+
+    # Change role.
+    target.role = UserRole.COMPANY
+
+    # Create CompanyProfile.
+    profile = CompanyProfile(
+        user_id=target.id,
+        name=body.name,
+        description=body.description,
+        logo_url=body.logo_url,
+        cover_url=body.cover_url,
+        promo_video_url=body.promo_video_url,
+        presentation_url=body.presentation_url,
+        price_per_unit_cents=body.price_per_unit_cents,
+        distribution_config=body.distribution_config,
+        total_supply=body.total_supply,
+        shares_per_option=body.shares_per_option,
+        status=CompanyStatus.HIDDEN,
+    )
+    session.add(profile)
+
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        if "uq_company_profiles_user_id" in str(exc.orig):
+            raise ConflictError("Company profile already exists for this user")
+        raise
+
+    await session.refresh(profile)
+
+    # A company user is a recipient like any other -- comms must know
+    # them before the first message (T-64), same as create_company.
+    # Never raises; a failure defers the recipient to the outbox.
+    await ensure_recipient(session, target)
+
+    # Audit.
+    await record_audit(
+        session=session,
+        event="company.assigned",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="company",
+        target_id=profile.id,
+        data={
+            "name": body.name,
+            "user_id": str(target.id),
+            "total_supply": body.total_supply,
+            "shares_per_option": body.shares_per_option,
+        },
+    )
+
+    logger.info(
+        "company_assigned",
+        company_id=str(profile.id),
+        user_id=str(target.id),
         staff_id=str(staff.id),
         total_supply=body.total_supply,
         shares_per_option=body.shares_per_option,

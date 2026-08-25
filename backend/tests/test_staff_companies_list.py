@@ -480,3 +480,134 @@ async def test_create_company_requires_project_manage(
         headers=auth_headers(token),
     )
     assert resp.status_code == 201, resp.text
+
+
+# ---------------------------------------------------------------------------
+# 9: POST /staff/companies/assign -- promote an EXISTING user to company
+# (TASK-30 ruling 1 + revised ruling 9)
+# ---------------------------------------------------------------------------
+
+
+def _assign_payload(*, user_id: str, name: str) -> dict:
+    """Shared POST /staff/companies/assign body.
+
+    Same commercial-terms fields as _company_payload, minus
+    email/password (the target user already has an account and a
+    password the admin never sees, per ruling 1) plus user_id.
+    """
+    return {
+        "user_id": user_id,
+        "name": name,
+        "description": "Assign-company done-test probe",
+        "price_per_unit_cents": 10_000,
+        "distribution_config": {
+            "company_pct": 0.65,
+            "agent_levels": [0.10, 0.03, 0.01],
+        },
+        "total_supply": 1_000_000,
+        "shares_per_option": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_assign_company_requires_project_manage(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A staff account WITHOUT project_manage cannot assign an existing
+    user to a company; the SAME call with project_manage granted must
+    succeed. Direct analog of test_create_company_requires_project_manage
+    above, for the new /assign endpoint.
+    """
+    staff, token = await create_staff_user(client, db_session)
+
+    target = await register_user(client)
+    target_user_id = target["user"]["id"]
+
+    # Negative: ordinary staff, no project_manage -> 403.
+    resp = await client.post(
+        "/api/v1/staff/companies/assign",
+        json=_assign_payload(
+            user_id=target_user_id,
+            name=f"NoProjectManageAssign {uuid.uuid4().hex[:8]}",
+        ),
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 403, resp.text
+
+    # CONTROL: identical staff account, identical call, project_manage
+    # granted -> 201. Proves the 403 above was specifically gated by
+    # project_manage rather than some other broken precondition (e.g.
+    # a bad user_id or payload shape).
+    await _set_project_manage(db_session, staff.id, True)
+
+    resp = await client.post(
+        "/api/v1/staff/companies/assign",
+        json=_assign_payload(
+            user_id=target_user_id,
+            name=f"WithProjectManageAssign {uuid.uuid4().hex[:8]}",
+        ),
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["user_id"] == target_user_id
+    assert body["status"] == CompanyStatus.HIDDEN.value
+
+
+@pytest.mark.asyncio
+async def test_assign_company_conflict_on_second_assign(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A2 done-test (the actual point of this endpoint): assigning a
+    project to a user who ALREADY has a CompanyProfile must return a
+    clean, named 4xx -- never a raw 500, never a silently-created
+    second row.
+
+    CompanyProfile.user_id carries a DB-level unique constraint
+    (uq_company_profiles_user_id, migration 2026_04_05_0005_companies)
+    that makes it impossible to plant a bad row directly to probe the
+    error path -- so this test does the only thing that actually
+    exercises the guard: attempt two real assigns against the SAME
+    target user. The first must succeed; the second must be refused
+    with 409 (ConflictError), not 500, and must not create a second
+    CompanyProfile row.
+    """
+    admin_token = await _admin_token(client, db_session)
+
+    target = await register_user(client)
+    target_user_id = target["user"]["id"]
+
+    # First assign: succeeds.
+    first = await client.post(
+        "/api/v1/staff/companies/assign",
+        json=_assign_payload(
+            user_id=target_user_id,
+            name=f"FirstAssign {uuid.uuid4().hex[:8]}",
+        ),
+        headers=auth_headers(admin_token),
+    )
+    assert first.status_code == 201, first.text
+    first_company_id = first.json()["id"]
+
+    # Second assign against the SAME user: must be refused cleanly.
+    second = await client.post(
+        "/api/v1/staff/companies/assign",
+        json=_assign_payload(
+            user_id=target_user_id,
+            name=f"SecondAssign {uuid.uuid4().hex[:8]}",
+        ),
+        headers=auth_headers(admin_token),
+    )
+    assert second.status_code == 409, second.text
+
+    # No second row was created for this user: exactly one
+    # CompanyProfile still exists, and it's the one from the first call.
+    rows = (
+        await db_session.execute(
+            select(CompanyProfile).where(
+                CompanyProfile.user_id == uuid.UUID(target_user_id)
+            )
+        )
+    ).scalars().all()
+    assert len(rows) == 1
+    assert str(rows[0].id) == first_company_id

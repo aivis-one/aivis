@@ -7,6 +7,9 @@
 #   GET   /api/v1/staff/companies                          -- list (paginated)
 #   GET   /api/v1/staff/companies/{id}                     -- detail (+ roadmap)
 #   POST  /api/v1/staff/companies                          -- create company
+#   POST  /api/v1/staff/companies/assign                   -- assign EXISTING
+#                                                              user to company
+#                                                              (TASK-30 ruling 1+9)
 #   PATCH /api/v1/staff/companies/{id}                     -- update profile
 #   PATCH /api/v1/staff/companies/{id}/price               -- change price
 #   GET   /api/v1/staff/companies/{id}/price-history       -- price history (B3)
@@ -79,6 +82,7 @@ from app.modules.companies.constants import (
     CompanyStatus,
 )
 from app.modules.companies.schemas import (
+    AssignCompanyRequest,
     CompanyDetailResponse,
     CompanyListResponse,
     CompanyResponse,
@@ -93,6 +97,7 @@ from app.modules.companies.schemas import (
     UpdateRoadmapItemRequest,
 )
 from app.modules.companies.service import (
+    assign_company,
     build_roadmap_item_response,
     create_company,
     create_roadmap_item,
@@ -236,6 +241,36 @@ async def create_company_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await create_company(body, staff, session)
+    return CompanyResponse.model_validate(profile)
+
+
+@router.post(
+    "/assign",
+    response_model=CompanyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def assign_company_endpoint(
+    body: AssignCompanyRequest,
+    staff: User = Depends(require_staff_permission("project_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> CompanyResponse:
+    """Promote an EXISTING user to company (TASK-30 ruling 1 + 9).
+
+    Unlike POST /staff/companies (create_company_endpoint above), this
+    does not mint a new User -- `body.user_id` must already exist, and
+    their password is never seen by or passed through the admin
+    (ruling 1). Commercial terms (price, supply, distribution config)
+    are required in full (revised ruling 9); no OptionPool is created
+    here -- issue one afterwards via POST /staff/pools.
+
+    Requires: project_manage + financial_operations, same combination
+    as create_company_endpoint -- this endpoint sets the identical
+    price_per_unit_cents / distribution_config fields, so it is gated
+    the same way.
+    """
+    await require_financial_operations(staff, session)
+
+    profile = await assign_company(body, staff, session)
     return CompanyResponse.model_validate(profile)
 
 
