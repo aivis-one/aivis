@@ -31,7 +31,7 @@ FOUR THINGS ARE EASY TO UNDO BY ACCIDENT, AND EACH IS ASSERTED HERE:
    question, so it stays visible in one place rather than being folded into a
    single value here.
 
-CSideNav is NOT part of this. It has its own 820 and 1280 blocks plus a
+CSideNav is NOT part of this. It has its own 820 and 1472 blocks plus a
 reduced-motion block, and they are its own rules, not the shell tier. The check
 asserts it still holds three and that the shell rules have not leaked into them.
 """
@@ -128,7 +128,7 @@ def run(root: str) -> tuple[bool, list[str]]:
     sidenav = _css_of(os.path.join(layout, "CSideNav.vue"))
     blocks = media_blocks(sidenav)
     if len(blocks) != 3:
-        problems.append("CSideNav should hold THREE @media blocks (820, 1280, reduced-motion), "
+        problems.append("CSideNav should hold THREE @media blocks (820, 1472, reduced-motion), "
                         "found %d" % len(blocks))
     for condition, _whole, body in blocks:
         if "820px" in condition and "tab-bar-height" in body:

@@ -2,7 +2,7 @@
 // Side navigation for the tablet and desktop tiers.
 //
 // ONE menu with its labels switched off, not a third layout — the owner's
-// ruling. Tablet (>=820) renders it as an icon rail; desktop (>=1280) shows
+// ruling. Tablet (>=820) renders it as an icon rail; desktop (>=1472) shows
 // the same rail with labels. Below 820 it is not rendered at all and CTabBar
 // carries navigation instead; the two are mutually exclusive at every width,
 // which is why they had to land in one change.
@@ -117,7 +117,13 @@ function navigate(tab: TabItem): void {
   .c-sidenav__label { display: none; }
 }
 
-@media (min-width: 1280px) {
+/* --bp-tier-lg. Moved off 1280 on 2026-08-25: the step to a 232px rail took
+   more width than crossing into the wide tier gave back, so the content column
+   got NARROWER at the boundary -- 1207 -> 1048 for staff. Measured, not
+   modelled. The value must stay equal to --bp-tier-lg; a media query cannot
+   read a custom property, and checks/breakpoints.py is what holds them in
+   step. See the tier table in variables.css. */
+@media (min-width: 1472px) {
   .c-sidenav { width: 232px; padding: var(--space-3); }
   .c-sidenav__item { justify-content: flex-start; padding-inline: var(--space-3); }
   .c-sidenav__label { display: block; line-height: 1.2; text-align: start; }

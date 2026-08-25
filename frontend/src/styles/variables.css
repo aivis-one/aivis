@@ -197,8 +197,18 @@
      LAYOUT TIERS -- three tiers, two boundaries. They govern the SHELL: which
      navigation renders and how the app frame is arranged. 6 sites.
         below 820    compact -- tab bar, single column
-        820..1279    medium  -- icon rail appears (four shells + CSideNav)
-        1280+        wide    -- the rail gains labels (CSideNav)
+        820..1471    medium  -- icon rail appears (four shells + CSideNav)
+        1472+        wide    -- the rail gains labels (CSideNav)
+
+     THE WIDE BOUNDARY WAS 1280 UNTIL 2026-08-25 AND MOVING IT IS THE WHOLE
+     POINT OF THIS EDIT. At 1280 the rail stepped 72 -> 232 while the content
+     cap did not move, so crossing INTO the wide tier made the content column
+     NARROWER for every role: a staff user went from 1207px at 1279 to 1048px
+     at 1280, and stayed worse off up to 1438. The tier boundary and the rail's
+     own step had been declared independently and cancelled each other.
+     1472 is not a taste: it is the width at which viewport - 232 first reaches
+     the widest cap in the system (--maxw-wide, 1240), so no role loses a pixel
+     at the step. The cost is that labels now appear at 1472 rather than 1280.
 
      COMPONENT THRESHOLDS -- they govern how many things fit inside ONE
      container. They are NOT tiers and must NOT be folded onto 820/1280: a card
@@ -210,7 +220,7 @@
         960   card grids go three-up
      ========================================================================== */
   --bp-tier-md: 820px;
-  --bp-tier-lg: 1280px;
+  --bp-tier-lg: 1472px;
   --bp-comp-xs: 480px;
   --bp-comp-sm: 520px;
   --bp-comp-md: 640px;
