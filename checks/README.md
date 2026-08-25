@@ -19,7 +19,7 @@ for. None of them is a style preference.
 
 | check | what it asserts | the defect it was written for |
 |---|---|---|
-| `breakpoints.py` | every width in a `@media` query is one of the `--bp-*` values declared in `variables.css` | seven different breakpoints lived in 31 media queries across 22 files and only two were named anywhere |
+| `breakpoints.py` | the declared `--bp-*` set and the widths actually in use are the SAME set — every width in a `@media` query is declared, AND every declared token is used by something | seven different breakpoints lived in 31 media queries across 22 files and only two were named anywhere. The converse direction was added later, after `--bp-tier-lg` sat declared-and-unused while the one rule keyed to its value carried a bare literal |
 | `shell_layout.py` | the shell chrome has one source; the storefront stays outside the tier system; the tab-bar hide rule keeps its specificity; StaffShell keeps its own content cap | four shells carried the same `@media (min-width: 820px)` block byte for byte — a tier change had to be made in four places |
 | `tokens.py` | every `var(--x)` that paints resolves to a declared token | an undeclared custom property does not error and does not warn; the declaration is silently dropped |
 | `routes.py` | every route is named, every name is unique, and the table parses as the tree it is | a duplicate route name does not throw — Vue Router keeps the last one and every `push({ name })` for the shadowed route goes somewhere else |
@@ -31,8 +31,8 @@ A check that cannot fail passes forever and proves nothing.
 
 `--selftest` plants the exact defect each check is meant to catch — in a
 throwaway copy of `frontend/src`, never in the real tree — asserts the check
-rejects it, restores, and asserts it accepts again. **Sixteen distinct planted
-defects, reported over fifteen lines, across all five checks.** The two totals
+rejects it, restores, and asserts it accepts again. **Nineteen distinct plants,
+reported over eighteen lines, across all five checks.** The two totals
 differ because `tokens.py` plants three bad `var()` uses in one probe file and
 reports them on two lines. **Each figure says which measure it is.** This line
 read “Nine planted defects in total” until 2026-08-25, and **that figure was
@@ -45,6 +45,17 @@ tell whether the number moved or the thing under it did.**
 **If you change a check, run the selftest before you trust a green run.** Two
 of these checks were wrong on their first version and their own selftest is
 what caught it.
+
+**`breakpoints.py` gained its second direction on 2026-08-25, and the hole it
+closed is worth stating.** Asserting that every width IN USE is declared says
+nothing about a token declared and used by NOTHING — `--bp-tier-lg` sat exactly
+there, a tier that existed only in this stylesheet's opinion of itself, while
+the single rule keyed to its value carried a bare literal. Three plants guard
+the new direction: an orphan token is caught; **the same token named only inside
+a comment is still caught**, because prose is not use and if the masker stopped
+working this half could never fail; and a token a script reads by name SURVIVES,
+because the check must not punish a legitimate use. The control that proves it:
+neuter the branch and the new selftest goes red while the old one stays green.
 
 **`routes.py` was the exception until 2026-08-25, and it is worth naming rather
 than quietly repairing.** Its selftest parsed the live route table and exercised
