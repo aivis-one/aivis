@@ -51,7 +51,7 @@
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -93,6 +93,21 @@ def _extract_user_name(user: User) -> tuple[str | None, str | None]:
     if user.profile:
         return user.profile.get("first_name"), user.profile.get("last_name")
     return None, None
+
+
+def _escape_like(needle: str) -> str:
+    """Escape LIKE/ILIKE metacharacters so user input matches literally.
+
+    Mirrors companies/service.py::_escape_like -- not shared cross-module
+    (it is a 3-line pure function, and the two call sites filter unrelated
+    columns). Order matters: backslash MUST be escaped first, otherwise
+    the backslashes just added for % and _ get double-escaped.
+    """
+    return (
+        needle.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
 
 
 def _build_staff_profile_response(
@@ -138,10 +153,11 @@ async def list_users(
     *,
     role: str | None = None,
     kyc_status: str | None = None,
+    search: str | None = None,
     page: int = 1,
     per_page: int = 20,
 ) -> UserListResponse:
-    """List users with pagination and optional role / kyc_status filters.
+    """List users with pagination and optional role / kyc_status / search filters.
 
     Platform user is always excluded.
     For staff users, includes StaffProfile with effective permissions.
@@ -149,6 +165,13 @@ async def list_users(
     iter 2.6c B1: kyc_status is validated to be a KYCStatus enum value
     at the router boundary, so the service accepts a plain string and
     appends it to the base filter when present.
+
+    TASK-30 admin-capability gap: search is a case-insensitive substring
+    match across email, first_name, last_name -- all three live in JSONB
+    (credentials/profile), not plain columns, so this ORs three `.astext`
+    ILIKE clauses rather than filtering one column. Needed by the staff
+    user picker (assign-to-company, avatar mode): before this, there was
+    no way to find a user's UUID through the product at all.
     """
     # Base filter: exclude platform.
     base_filter = User.role != UserRole.PLATFORM
@@ -158,6 +181,16 @@ async def list_users(
 
     if kyc_status is not None:
         base_filter = base_filter & (User.kyc_status == kyc_status)
+
+    if search is not None:
+        needle = search.strip()
+        if needle:
+            pattern = f"%{_escape_like(needle)}%"
+            base_filter = base_filter & or_(
+                User.credentials["email"]["email"].astext.ilike(pattern, escape="\\"),
+                User.profile["first_name"].astext.ilike(pattern, escape="\\"),
+                User.profile["last_name"].astext.ilike(pattern, escape="\\"),
+            )
 
     # Count total.
     count_stmt = select(func.count()).select_from(User).where(base_filter)

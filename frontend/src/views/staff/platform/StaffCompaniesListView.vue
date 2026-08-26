@@ -9,8 +9,19 @@
 // section tabs land in Block C.
 //
 // Source: api/staff-companies.ts::fetchStaffCompanies (company_manage
-// gated server-side). This view is read + navigate only -- no company
-// CRUD here; creation / editing live behind the detail sections.
+// gated server-side). This view is read + navigate only for existing
+// companies -- editing lives behind the detail sections.
+//
+// TASK-30 admin-capability gap (W0): the one write action this view
+// DOES carry is "Assign" -- promote an existing user to company
+// (POST /staff/companies/assign). Before this, there was no functional
+// way to produce a working company account through the product at all:
+// self-service "company" onboarding set role with no CompanyProfile row
+// (see users/schemas.py's _SELECTABLE_ROLES note), and neither company-
+// creation endpoint had a frontend entry point. FP-23: gated on
+// project_manage AND financial_operations, same combination as the
+// price change (this form sets price_per_unit_cents + distribution_config
+// too).
 //
 // Search is debounced (300ms) so each keystroke doesn't fire a request;
 // the timer resets page to 1 on a new term.
@@ -20,15 +31,26 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building2 } from 'lucide-vue-next'
-import { CBadge, CLoader, CButton, CEmptyState, CInput } from '@/components/ui'
+import { CBadge, CLoader, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
+import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { safeNavigate } from '@/composables/safeNavigate'
-import { fetchStaffCompanies } from '@/api/staff-companies'
-import type { CompanyResponse } from '@/api/types'
+import { ApiResponseError } from '@/api/client'
+import { fetchStaffCompanies, assignCompany } from '@/api/staff-companies'
+import UserPicker from '@/components/staff/UserPicker.vue'
+import type { CompanyResponse, UserListItem } from '@/api/types'
 
 const { t } = useI18n()
 const { showToast } = useToast()
 const router = useRouter()
+const { canDo } = useStaffPermissions()
+
+// FP-23: assign requires project_manage AND financial_operations, same
+// combination as the price change (StaffCompanyPriceSection) -- this
+// form sets price_per_unit_cents + distribution_config too.
+const canManage = canDo('project_manage')
+const canFinancial = canDo('financial_operations')
+const canAssign = computed<boolean>(() => canManage.value && canFinancial.value)
 
 const items = ref<CompanyResponse[]>([])
 const total = ref(0)
@@ -105,13 +127,183 @@ watch(search, () => {
 })
 
 onMounted(loadCompanies)
+
+// ---------------------------------------------------------------------------
+// Assign modal (TASK-30 W0)
+//
+// One form: pick an existing user (UserPicker), enter the commercial
+// terms AssignCompanyRequest requires in full (name, price, supply,
+// distribution config -- revised ruling 9: no deferred-price state for
+// this endpoint, unlike create_company). Optional media/description
+// fields are left blank-able; the project fills them in itself later
+// via CompanySettingsView once W1 gets its own edit UI.
+//
+// distribution_config is entered as a company-% number + a comma-
+// separated agent-levels list (both in PERCENT, converted to the 0-1
+// fractions the backend's validate_distribution_config expects) rather
+// than raw JSON -- this is a CREATE-time required field, unlike
+// StaffCompanyProfileSection's read-only JSON dump of an existing
+// company's config.
+// ---------------------------------------------------------------------------
+
+const showAssign = ref(false)
+const assigning = ref(false)
+
+const assignUserId = ref('')
+const assignSelectedUser = ref<UserListItem | null>(null)
+const assignName = ref('')
+const assignDescription = ref('')
+const assignPriceDollars = ref('')
+const assignTotalSupply = ref('')
+const assignSharesPerOption = ref('1')
+const assignCompanyPct = ref('')
+const assignAgentLevels = ref('')
+
+function resetAssignForm(): void {
+  assignUserId.value = ''
+  assignSelectedUser.value = null
+  assignName.value = ''
+  assignDescription.value = ''
+  assignPriceDollars.value = ''
+  assignTotalSupply.value = ''
+  assignSharesPerOption.value = '1'
+  assignCompanyPct.value = ''
+  assignAgentLevels.value = ''
+}
+
+function openAssign(): void {
+  if (!canAssign.value) {
+    console.warn(
+      '[StaffCompaniesListView] openAssign blocked: needs project_manage + financial_operations',
+    )
+    return
+  }
+  resetAssignForm()
+  showAssign.value = true
+}
+
+function closeAssign(): void {
+  showAssign.value = false
+}
+
+function onUserSelected(user: UserListItem | null): void {
+  assignSelectedUser.value = user
+}
+
+// Price entered in dollars (mirrors StaffCompanyPriceSection), converted
+// to integer cents for the wire.
+const assignPriceCents = computed<number | null>(() => {
+  const dollars = Number(assignPriceDollars.value)
+  if (!Number.isFinite(dollars) || dollars <= 0) return null
+  return Math.round(dollars * 100)
+})
+
+const assignTotalSupplyInt = computed<number | null>(() => {
+  const n = Number(assignTotalSupply.value)
+  if (!Number.isInteger(n) || n <= 0) return null
+  return n
+})
+
+const assignSharesPerOptionInt = computed<number | null>(() => {
+  const n = Number(assignSharesPerOption.value)
+  if (!Number.isInteger(n) || n <= 0) return null
+  return n
+})
+
+// company_pct: percent input (0, 100) exclusive -> fraction (0, 1) exclusive.
+const assignCompanyPctFraction = computed<number | null>(() => {
+  const n = Number(assignCompanyPct.value)
+  if (!Number.isFinite(n) || n <= 0 || n >= 100) return null
+  return n / 100
+})
+
+// agent_levels: comma-separated percents -> fractions. Empty input is a
+// valid empty array (backend allows agent_levels: []).
+const assignAgentLevelsFractions = computed<number[] | null>(() => {
+  const raw = assignAgentLevels.value.trim()
+  if (!raw) return []
+  const parts = raw.split(',').map((p) => p.trim())
+  const nums: number[] = []
+  for (const p of parts) {
+    const n = Number(p)
+    if (!Number.isFinite(n) || n <= 0 || n >= 100) return null
+    nums.push(n / 100)
+  }
+  return nums
+})
+
+// Mirrors the backend's own invariant (validate_distribution_config):
+// company_pct + sum(agent_levels) <= 1.0. Checked client-side to avoid
+// an obvious 400, not a substitute for it.
+const assignDistributionValid = computed<boolean>(() => {
+  const pct = assignCompanyPctFraction.value
+  const levels = assignAgentLevelsFractions.value
+  if (pct === null || levels === null) return false
+  const sum = pct + levels.reduce((a, b) => a + b, 0)
+  return sum <= 1.0
+})
+
+const canSubmitAssign = computed<boolean>(() => {
+  return (
+    !!assignUserId.value &&
+    !!assignName.value.trim() &&
+    assignPriceCents.value !== null &&
+    assignTotalSupplyInt.value !== null &&
+    assignSharesPerOptionInt.value !== null &&
+    assignDistributionValid.value
+  )
+})
+
+async function handleAssign(): Promise<void> {
+  if (!canAssign.value) {
+    console.warn(
+      '[StaffCompaniesListView] handleAssign blocked: needs project_manage + financial_operations',
+    )
+    return
+  }
+  if (!canSubmitAssign.value) return
+  const pct = assignCompanyPctFraction.value
+  const levels = assignAgentLevelsFractions.value
+  if (pct === null || levels === null) return
+
+  assigning.value = true
+  try {
+    await assignCompany({
+      user_id: assignUserId.value,
+      name: assignName.value.trim(),
+      description: assignDescription.value.trim() || undefined,
+      price_per_unit_cents: assignPriceCents.value as number,
+      total_supply: assignTotalSupplyInt.value as number,
+      shares_per_option: assignSharesPerOptionInt.value as number,
+      distribution_config: { company_pct: pct, agent_levels: levels },
+    })
+    showToast(t('staff.platform.companies.assign.success'), 'success')
+    showAssign.value = false
+    page.value = 1
+    await loadCompanies()
+  } catch (e) {
+    if (e instanceof ApiResponseError && e.detail) {
+      showToast(e.detail, 'error')
+    } else {
+      showToast(t('common.error'), 'error')
+    }
+  } finally {
+    assigning.value = false
+  }
+}
 </script>
 
 <template>
   <div class="scl">
-    <h2 class="scl__title">
-      {{ t('staff.platform.companies.title') }}
-    </h2>
+    <div class="scl__header">
+      <h2 class="scl__title">
+        {{ t('staff.platform.companies.title') }}
+      </h2>
+      <!-- FP-23: Assign CTA (W0) requires project_manage + financial_operations. -->
+      <CButton v-if="canAssign" variant="primary" size="sm" @click="openAssign">
+        {{ t('staff.platform.companies.assign.cta') }}
+      </CButton>
+    </div>
 
     <!-- Status filter chips -->
     <div class="scl__filters">
@@ -192,6 +384,99 @@ onMounted(loadCompanies)
         </CButton>
       </div>
     </template>
+
+    <!-- Assign modal (W0) -->
+    <CModal :open="showAssign" @close="closeAssign">
+      <h3 class="scl__modal-title">
+        {{ t('staff.platform.companies.assign.title') }}
+      </h3>
+      <p class="scl__modal-hint">
+        {{ t('staff.platform.companies.assign.hint') }}
+      </p>
+
+      <div class="scl__field">
+        <label class="scl__field-label">{{ t('staff.platform.companies.assign.fieldUser') }}</label>
+        <UserPicker v-model="assignUserId" @select="onUserSelected" />
+        <p v-if="assignSelectedUser?.role === 'company'" class="scl__field-error">
+          {{ t('staff.platform.companies.assign.alreadyCompanyError') }}
+        </p>
+      </div>
+
+      <CInput
+        v-model="assignName"
+        :label="t('staff.platform.companies.assign.fieldName')"
+        :placeholder="t('staff.platform.companies.assign.fieldName')"
+      />
+
+      <CTextarea
+        v-model="assignDescription"
+        :label="t('staff.platform.companies.assign.fieldDescription')"
+        :rows="3"
+      />
+
+      <CInput
+        v-model="assignPriceDollars"
+        type="number"
+        min="0"
+        step="0.01"
+        :label="t('staff.platform.companies.assign.fieldPrice')"
+        placeholder="0.00"
+      />
+
+      <CInput
+        v-model="assignTotalSupply"
+        type="number"
+        min="1"
+        step="1"
+        :label="t('staff.platform.companies.assign.fieldTotalSupply')"
+      />
+
+      <CInput
+        v-model="assignSharesPerOption"
+        type="number"
+        min="1"
+        step="1"
+        :label="t('staff.platform.companies.assign.fieldSharesPerOption')"
+      />
+
+      <CInput
+        v-model="assignCompanyPct"
+        type="number"
+        min="0"
+        max="100"
+        step="0.1"
+        :label="t('staff.platform.companies.assign.fieldCompanyPct')"
+        placeholder="65"
+      />
+
+      <CInput
+        v-model="assignAgentLevels"
+        :label="t('staff.platform.companies.assign.fieldAgentLevels')"
+        placeholder="10, 3, 1"
+        :error="
+          assignAgentLevelsFractions === null
+            ? t('staff.platform.companies.assign.agentLevelsError')
+            : !assignDistributionValid
+              ? t('staff.platform.companies.assign.distributionSumError')
+              : ''
+        "
+      />
+
+      <div class="scl__modal-actions">
+        <CButton variant="outline" size="sm" @click="closeAssign">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="assigning"
+          :disabled="!canSubmitAssign"
+          @click="handleAssign"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 
@@ -199,11 +484,52 @@ onMounted(loadCompanies)
 .scl {
   padding: var(--space-4);
 }
+.scl__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
 .scl__title {
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 var(--space-3);
+  margin: 0;
+}
+
+/* Assign modal (W0) */
+.scl__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+.scl__modal-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+}
+.scl__field {
+  margin-bottom: var(--space-4);
+}
+.scl__field-label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+.scl__field-error {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  margin: var(--space-2) 0 0;
+}
+.scl__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  justify-content: flex-end;
 }
 
 .scl__filters {

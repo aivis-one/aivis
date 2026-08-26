@@ -31,9 +31,12 @@
 //   PATCH  /api/v1/staff/companies/{id}/roadmap/reorder     -- reorder (D1)
 //   PATCH  /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update item (D1)
 //   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}   -- soft-delete (D1)
+//   POST   /api/v1/staff/companies/assign                   -- assign existing user (TASK-30 gap fix, W0)
 //
 // Endpoints deferred (not yet needed by any staff view):
-//   POST   /api/v1/staff/companies
+//   POST   /api/v1/staff/companies -- create-with-new-account path; the
+//          product only has a UI for assign (promote an existing user),
+//          per the owner ruling that drove W0.
 //
 // Block D2 (cover upload) adds two more here -- they speak multipart
 // via fetch() (the JSON `api` client cannot send FormData), so they
@@ -52,6 +55,7 @@ import {
 } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
 import type {
+  AssignCompanyRequest,
   CompanyDetailResponse,
   CompanyListResponse,
   CompanyResponse,
@@ -114,6 +118,20 @@ export function fetchStaffCompanies(params?: {
  */
 export function fetchStaffCompany(companyId: string): Promise<CompanyDetailResponse> {
   return api.get<CompanyDetailResponse>(`/api/v1/staff/companies/${companyId}`)
+}
+
+/**
+ * POST /api/v1/staff/companies/assign -- promote an EXISTING user to
+ * company (TASK-30 admin-capability gap). Unlike POST /staff/companies
+ * (create_company, not wired here -- see module note above), this does
+ * not mint a new User; `body.user_id` must already exist and its
+ * password is never touched. Requires project_manage AND
+ * financial_operations server-side (same combination as the price
+ * change, because commercial terms are set here too). Returns the new
+ * CompanyResponse (201).
+ */
+export function assignCompany(body: AssignCompanyRequest): Promise<CompanyResponse> {
+  return api.post<CompanyResponse>('/api/v1/staff/companies/assign', body)
 }
 
 /**

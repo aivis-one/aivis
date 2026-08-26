@@ -64,18 +64,25 @@ export function fetchDashboardStats(): Promise<DashboardStatsResponse> {
  *   - kyc_status: 'not_started' | 'submitted' | 'approved' | 'rejected'
  *                 (iter 2.6c B1; backend validates via KYCStatus StrEnum,
  *                  422 on any other value)
+ *   - search:     case-insensitive substring match on email, first_name,
+ *                 or last_name (TASK-30 admin-capability gap). Backs the
+ *                 UserPicker component -- the only way to find a user's
+ *                 UUID through the product before this was to already
+ *                 know it.
  *
  * Pagination: page (1-indexed), per_page. Sort is fixed server-side.
  */
 export function fetchUsers(params?: {
   role?: string
   kyc_status?: string
+  search?: string
   page?: number
   per_page?: number
 }): Promise<UserListResponse> {
   const qs = buildQueryString({
     role: params?.role,
     kyc_status: params?.kyc_status,
+    search: params?.search,
     page: params?.page,
     per_page: params?.per_page,
   })

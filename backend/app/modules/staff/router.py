@@ -181,6 +181,15 @@ async def user_list(
             "or rejected."
         ),
     ),
+    search: str | None = Query(
+        default=None,
+        max_length=255,
+        description=(
+            "Case-insensitive substring match on email, first_name, or "
+            "last_name. Used by the staff user picker (assign-to-company, "
+            "avatar mode) to find a target user without knowing their UUID."
+        ),
+    ),
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(default=20, ge=1, le=100, description="Items per page"),
     staff: User = Depends(get_current_staff),
@@ -207,11 +216,17 @@ async def user_list(
     `User.role != UserRole.PLATFORM`, and that exclusion is the
     authoritative invariant -- not removed because a caller asked
     for it explicitly.
+
+    ?search= (TASK-30 admin-capability gap): email/first_name/last_name
+    live in JSONB (credentials, profile), not plain columns, so this
+    matches list_companies' ?search= pattern (ILIKE, metacharacters
+    escaped) rather than a column filter.
     """
     return await list_users(
         session,
         role=role.value if role is not None else None,
         kyc_status=kyc_status.value if kyc_status is not None else None,
+        search=search,
         page=page,
         per_page=per_page,
     )

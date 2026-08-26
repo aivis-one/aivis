@@ -227,8 +227,9 @@ async def select_role(
 
     Args:
         user: User object bound to write session.
-        role: Target role (investor, agent, company). Already
-              validated by SelectRoleRequest schema.
+        role: Target role. Only "investor" passes SelectRoleRequest
+              validation (TASK-30 gap fix) -- agent/company are no
+              longer self-selectable.
         session: Write session.
 
     Returns:

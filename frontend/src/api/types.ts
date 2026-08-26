@@ -680,6 +680,12 @@ export type { CompanyListResponse } from './generated'
 // backend/app/modules/companies/constants.py.
 export type { UpdateCompanyRequest } from './generated'
 
+// Promote an EXISTING user to company (TASK-30 admin-capability gap,
+// POST /staff/companies/assign). Mirrors CreateCompanyRequest minus
+// email/password, plus user_id. See backend/app/modules/companies/
+// schemas.py::AssignCompanyRequest.
+export type { AssignCompanyRequest } from './generated'
+
 export type { PriceHistoryListResponse } from './generated'
 
 // CompanyDetailResponse (staff): CompanyResponse + inline roadmap.

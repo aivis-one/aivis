@@ -26,7 +26,8 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "codeDigit": "Digit {n} of {total}",
-    "codeGroup": "Verification code"
+    "codeGroup": "Verification code",
+    "clear": "Clear"
   },
   "error": {
     "pageNotFound": "Page not found"
@@ -273,10 +274,15 @@
       "return": "Return to Staff",
       "start": "Start Session",
       "end": "End Session",
-      "enterUserId": "User ID",
+      "enterUserId": "Target user",
       "started": "Avatar session started",
       "ended": "Avatar session ended",
       "banner": "Avatar mode: {name} — Return to your account"
+    },
+    "userPicker": {
+      "searchPlaceholder": "Search by email or name...",
+      "hint": "Type at least 2 characters to search",
+      "noResults": "No users found"
     },
     "userDetail": {
       "title": "User Details",
@@ -344,7 +350,24 @@
         },
         "searchPlaceholder": "Search companies by name...",
         "empty": "No companies found",
-        "supply": "{n} supply"
+        "supply": "{n} supply",
+        "assign": {
+          "cta": "Assign company",
+          "title": "Assign existing user to company",
+          "hint": "Promotes an existing user account to company, with full commercial terms. Their password is never seen or set here.",
+          "fieldUser": "User",
+          "fieldName": "Company name",
+          "fieldDescription": "Description",
+          "fieldPrice": "Price per unit ($)",
+          "fieldTotalSupply": "Total supply",
+          "fieldSharesPerOption": "Shares per option",
+          "fieldCompanyPct": "Company share (%)",
+          "fieldAgentLevels": "Agent commission levels (%, comma-separated)",
+          "agentLevelsError": "Enter numbers between 0 and 100, separated by commas",
+          "distributionSumError": "Company share plus agent levels cannot exceed 100%",
+          "alreadyCompanyError": "This user is already a company",
+          "success": "Company assigned"
+        }
       },
       "company": {
         "backLink": "Back to companies",

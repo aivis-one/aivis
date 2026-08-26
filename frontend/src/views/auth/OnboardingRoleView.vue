@@ -1,7 +1,20 @@
 <script setup lang="ts">
-// Role selection — 3 cards (investor, agent, company) from mockup.
+// Role selection — investor only (TASK-30 admin-capability gap).
 // POST /api/v1/users/me/select-role { role }
 // After success: fetchMe() → router.push('/') → guard redirects.
+//
+// This used to show 3 cards (investor, agent, company) and bypassed
+// both intended paths for the other two: self-selecting "company" set
+// user.role with no CompanyProfile row (every self-service company
+// endpoint 403s without one -- a permanently broken account), and
+// self-selecting "agent" skipped the already-built POST
+// /agent-applications -> staff review queue entirely. Owner ruling:
+// only investor stays self-selectable; agent is reachable via the
+// application flow (InvestorMoreView -> agent application, unchanged),
+// company only via admin assignment (W0, StaffCompaniesListView's
+// Assign action). Backend enforces this too (users/schemas.py
+// SelectRoleRequest -- see _SELECTABLE_ROLES), so this UI change is
+// belt-and-braces, not the only guard.
 
 import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
@@ -17,7 +30,7 @@ const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
 
-type SelectableRole = 'investor' | 'agent' | 'company'
+type SelectableRole = 'investor'
 
 interface RoleOption {
   id: SelectableRole
@@ -37,30 +50,6 @@ const roles: RoleOption[] = [
       'auth.role.feat.portfolio',
       'auth.role.feat.installments',
       'auth.role.feat.balance',
-      'auth.role.feat.documents',
-    ],
-  },
-  {
-    id: 'agent',
-    icon: '🤝',
-    titleKey: 'auth.role.agent',
-    descKey: 'auth.role.agentDesc',
-    features: [
-      'auth.role.feat.referrals',
-      'auth.role.feat.commissions',
-      'auth.role.feat.leaderboard',
-      'auth.role.feat.certification',
-    ],
-  },
-  {
-    id: 'company',
-    icon: '🏢',
-    titleKey: 'auth.role.company',
-    descKey: 'auth.role.companyDesc',
-    features: [
-      'auth.role.feat.products',
-      'auth.role.feat.analytics',
-      'auth.role.feat.revenue',
       'auth.role.feat.documents',
     ],
   },

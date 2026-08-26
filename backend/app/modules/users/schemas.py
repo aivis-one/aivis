@@ -84,7 +84,18 @@ class UserUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 
 # Roles selectable during onboarding (staff and platform excluded).
-_SELECTABLE_ROLES = {"investor", "agent", "company"}
+#
+# Narrowed to investor-only (TASK-30 admin-capability gap, joint owner
+# investigation): self-selecting "company" set user.role with no
+# CompanyProfile row -- every self-service company endpoint requires one
+# and 403s without it, so that path produced a permanently broken
+# account. Self-selecting "agent" bypassed the already-built
+# POST /agent-applications -> staff review queue entirely. Company is
+# now reachable only via admin assignment (POST /staff/companies/assign);
+# agent stays reachable only via the application flow. Enforced here too
+# (not just by hiding the UI cards) so a direct API call can't recreate
+# either bug.
+_SELECTABLE_ROLES = {"investor"}
 
 
 class SelectRoleRequest(BaseModel):
@@ -92,13 +103,13 @@ class SelectRoleRequest(BaseModel):
 
     role: str = Field(
         ...,
-        description="Target role: investor, agent, or company",
+        description="Target role: investor (the only self-selectable role).",
     )
 
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str) -> str:
-        """Only investor, agent, company are selectable during onboarding."""
+        """Only investor is selectable during onboarding."""
         if v not in _SELECTABLE_ROLES:
             raise ValueError(
                 f"Invalid role: {v}. Must be one of: "

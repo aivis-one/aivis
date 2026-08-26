@@ -108,9 +108,11 @@ async def select_role_endpoint(
     Changes user.role and advances onboarding to role_selected.
 
     iter 2.6c B6: response uses build_user_response. The target role
-    is restricted to investor/agent/company by SelectRoleRequest, so
-    staff_profile in this response will always be None in practice --
-    we pipe through build_user_response anyway for surface consistency.
+    is restricted to investor by SelectRoleRequest (TASK-30 gap fix --
+    agent/company are no longer self-selectable, see admin capability
+    gap note there), so staff_profile in this response will always be
+    None in practice -- we pipe through build_user_response anyway for
+    surface consistency.
     """
     updated = await select_role(user, body.role, session)
     return await build_user_response(updated, session)

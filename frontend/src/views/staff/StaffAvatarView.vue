@@ -2,11 +2,17 @@
 // Staff avatar mode — start session form + restrictions info.
 // On start: composable handles token swap + redirect to target user dashboard.
 // Session management (banner, end) handled by App.vue + useAvatar composable.
+//
+// TASK-30 admin-capability gap: this used to be a bare "enter user ID"
+// CInput with no way to discover a target's UUID through the product.
+// UserPicker (search by email/name, built for W0's assign flow) is
+// reused here -- the same missing primitive, solved once.
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Ghost, Ban } from 'lucide-vue-next'
-import { CButton, CInput } from '@/components/ui'
+import { CButton } from '@/components/ui'
+import UserPicker from '@/components/staff/UserPicker.vue'
 import { useAvatar } from '@/composables/useAvatar'
 
 const { t } = useI18n()
@@ -41,11 +47,8 @@ async function handleStart(): Promise<void> {
 
     <!-- Start form -->
     <div class="avatar-form">
-      <CInput
-        v-model="targetUserId"
-        :label="t('staff.avatar.enterUserId')"
-        :placeholder="t('staff.avatar.selectUser')"
-      />
+      <label class="avatar-form__label">{{ t('staff.avatar.enterUserId') }}</label>
+      <UserPicker v-model="targetUserId" />
       <CButton
         variant="primary"
         size="sm"
@@ -102,6 +105,13 @@ async function handleStart(): Promise<void> {
 
 .avatar-form {
   margin-bottom: var(--space-5);
+}
+.avatar-form__label {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
 }
 
 .avatar-restrictions {
