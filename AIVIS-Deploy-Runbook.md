@@ -409,7 +409,7 @@ no request at all*, not a 401.
   accounts seeded"** (T-72). Both steps and the scripts behind them are gone. After an install the
   database holds bootstrap only: the Platform user, the legal documents and the platform default
   templates. An empty storefront and no test logins are the expected result, not a failure.
-- **Demo data is a separate, deliberate command.** `ADMIN_PASSWORD=... aivis seed` creates the first
+- **Demo data is a separate, deliberate command.** `aivis seed` creates the first
   admin, support staff, a demo company with products, an agent and a few investors from
   `backend/scripts/seed_profiles/default.json`. It refuses outright on `APP_ENV=production` (which
   this install sets) unless `AIVIS_SEED_DEMO=1` is exported — don't export that on a real cutover.

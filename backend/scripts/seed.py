@@ -67,12 +67,12 @@
 # three things create_staff does internally. Every later staff member
 # goes through create_staff with this admin as the actor.
 #
-# The admin's password is read from ADMIN_PASSWORD (or, interactively,
-# from a prompt) and never from the profile: a profile is a file in the
-# repository and a real credential does not belong in one. The demo
-# accounts' shared password does live in the profile, because it is a
-# fixture, not a secret -- and because the contour gate on `aivis seed`
-# is what keeps those fixtures off production.
+# The admin signs in with the profile's demo_password like everybody
+# else. This repository is the TEST server's, the seed refuses to run on
+# a production contour, and there is no production stand to protect --
+# so a separate secret for the admin would buy nothing and cost a
+# prompt, an environment variable and two code paths. It had all three
+# for a while; owner ruling: do not complicate for imagined safety.
 #
 # -----------------------------------------------------------------------------
 # PROFILES
@@ -137,9 +137,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import getpass
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -479,7 +477,6 @@ async def ensure_user(
     *,
     role: str,
     referral_code: str | None = None,
-    password: str | None = None,
 ) -> User:
     """Create one person through registration, or return the seeded one.
 
@@ -508,7 +505,7 @@ async def ensure_user(
 
     user = await register_email(
         email,
-        password or profile["demo_password"],
+        profile["demo_password"],
         session,
         BackgroundTasks(),
         referral_code=referral_code,
@@ -552,7 +549,7 @@ async def _find_any_admin(session: AsyncSession) -> User | None:
 
 
 async def ensure_admin(
-    session: AsyncSession, profile: dict[str, Any], password: str
+    session: AsyncSession, profile: dict[str, Any]
 ) -> User:
     """Return the admin every later call uses as its actor.
 
@@ -572,20 +569,7 @@ async def ensure_admin(
             "there is nobody to create staff, companies or products."
         )
 
-    if not password:
-        raise SeedRefusedError(
-            "This stand has no admin, so one has to be created, and its "
-            "password is not in the profile by design. Export "
-            "ADMIN_PASSWORD and run again."
-        )
-
-    user = await ensure_user(
-        session,
-        profile,
-        spec,
-        role=UserRole.INVESTOR,
-        password=password,
-    )
+    user = await ensure_user(session, profile, spec, role=UserRole.INVESTOR)
 
     # -- THE BYPASS. Three writes, and they are the three create_staff
     # makes internally: the role, the profile row, and the membership
@@ -1047,7 +1031,7 @@ async def reset_seed_data(
 
 
 async def seed_profile(
-    session: AsyncSession, profile: dict[str, Any], password: str
+    session: AsyncSession, profile: dict[str, Any]
 ) -> dict[str, int]:
     """Walk the profile top to bottom and report what was made."""
     marker = profile["marker"]
@@ -1060,7 +1044,7 @@ async def seed_profile(
         "purchases": 0,
     }
 
-    admin = await ensure_admin(session, profile, password)
+    admin = await ensure_admin(session, profile)
 
     for spec in profile.get("staff", []):
         await ensure_staff(session, profile, spec, admin)
@@ -1111,36 +1095,9 @@ async def seed_profile(
     return stats
 
 
-def _resolve_admin_password(profile: dict[str, Any]) -> str:
-    """ADMIN_PASSWORD, or a prompt, and never the profile.
-
-    Only needed when this stand has no admin yet, but it is resolved
-    before anything is written so that a run cannot die half-way for
-    want of a password.
-    """
-    password = os.environ.get("ADMIN_PASSWORD")
-    if password:
-        return password
-
-    if not sys.stdin.isatty():
-        raise SeedRefusedError(
-            "ADMIN_PASSWORD is not set and there is no terminal to ask "
-            "on. Export ADMIN_PASSWORD before running the seed."
-        )
-
-    first = getpass.getpass("Admin password: ")
-    second = getpass.getpass("Repeat: ")
-    if first != second:
-        raise SeedRefusedError("The two passwords do not match")
-    if len(first) < 8:
-        raise SeedRefusedError("The admin password must be at least 8 characters")
-    return first
-
-
 async def _run_profile(args: argparse.Namespace) -> int:
     profile = load_profile(args.profile)
     marker = profile["marker"]
-    password = ""
 
     factory = get_session_factory()
     async with factory() as session:
@@ -1148,16 +1105,6 @@ async def _run_profile(args: argparse.Namespace) -> int:
             await assert_no_live_staff(
                 session, marker, allow_live_staff=args.allow_live_staff
             )
-
-            # Resolved BEFORE anything is written, and also when
-            # --reset is in play: reset can delete the very admin that
-            # made this check pass a moment ago, and a run that dies
-            # between the delete and the bootstrap for want of a
-            # password would leave the stand with no administrator.
-            if profile.get("admin") and (
-                args.reset or await _find_any_admin(session) is None
-            ):
-                password = _resolve_admin_password(profile)
 
             if args.dry_run:
                 info(f"profile {args.profile!r}: {profile.get('description')}")
@@ -1181,7 +1128,7 @@ async def _run_profile(args: argparse.Namespace) -> int:
             if args.reset_only:
                 return 0
 
-            stats = await seed_profile(session, profile, password)
+            stats = await seed_profile(session, profile)
             await session.commit()
             ok(f"seeded: {stats}")
             return 0

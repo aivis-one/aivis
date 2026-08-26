@@ -150,7 +150,7 @@ async def test_seed_runs_with_comms_unconfigured_and_writes_no_outbox_rows(
     leaving it.
     """
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     users = await _seeded_users(db_session, profile["marker"])
@@ -175,7 +175,7 @@ async def test_seed_defers_recipients_to_outbox_when_comms_is_unreachable(
     monkeypatch.setattr(comms_sync, "upsert_recipient", _always_fail)
 
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     users = await _seeded_users(db_session, profile["marker"])
@@ -193,7 +193,7 @@ async def test_every_seeded_staff_member_is_declared_to_the_section(
     environment where the recipient test above asserts zero.
     """
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     users = await _seeded_users(db_session, profile["marker"])
@@ -214,11 +214,11 @@ async def test_second_run_without_reset_is_a_no_op(
     db_session: Any, clean_stand: None
 ) -> None:
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
     first = await _seeded_users(db_session, profile["marker"])
 
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
     second = await _seeded_users(db_session, profile["marker"])
 
@@ -235,7 +235,7 @@ async def test_seed_refuses_to_adopt_a_user_it_did_not_create(
     the seed never made.
     """
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     investor_email = seed._email(profile, "investor1")
@@ -245,7 +245,7 @@ async def test_seed_refuses_to_adopt_a_user_it_did_not_create(
     await db_session.flush()
 
     with pytest.raises(seed.SeedRefusedError):
-        await seed.seed_profile(db_session, profile, "adminpass123")
+        await seed.seed_profile(db_session, profile)
 
 
 # ---------------------------------------------------------------------------
@@ -314,7 +314,7 @@ async def test_refuses_when_active_staff_are_not_this_profiles(
     question it CAN answer and errs towards refusing.
     """
     other = _profile()
-    await seed.seed_profile(db_session, other, "adminpass123")
+    await seed.seed_profile(db_session, other)
     await db_session.flush()
 
     mine = _profile()
@@ -347,7 +347,7 @@ async def test_the_refusal_never_counts_this_profiles_own_staff(
     `IS DISTINCT FROM marker` -- and it holds in a dirty database.
     """
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     ours = {
@@ -386,7 +386,7 @@ async def test_reset_undeclares_staff_before_deleting_them(
     leave the section served by nobody at all.
     """
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     users = await _seeded_users(db_session, profile["marker"])
@@ -417,10 +417,8 @@ async def test_reset_deletes_only_rows_carrying_this_marker(
 ) -> None:
     mine = _profile()
     theirs = _profile()
-    await seed.seed_profile(db_session, mine, "adminpass123")
-    await seed.seed_profile(
-        db_session, theirs, "adminpass123"
-    )
+    await seed.seed_profile(db_session, mine)
+    await seed.seed_profile(db_session, theirs)
     await db_session.flush()
 
     theirs_ids = {u.id for u in await _seeded_users(db_session, theirs["marker"])}
@@ -439,7 +437,7 @@ async def test_reset_leaves_unmarked_people_alone(
     db_session: Any, clean_stand: None
 ) -> None:
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     investor_email = seed._email(profile, "investor1")
@@ -485,7 +483,7 @@ async def test_seeded_investor_finishes_the_onboarding_funnel(
     columns by hand; this one walks the steps.
     """
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     user = await seed.find_user_by_email(
@@ -506,11 +504,11 @@ async def test_an_existing_admin_is_reused_and_no_second_one_is_minted(
     seeded first is what makes it exist.
     """
     first = _profile()
-    await seed.seed_profile(db_session, first, "adminpass123")
+    await seed.seed_profile(db_session, first)
     await db_session.flush()
 
     second = _profile()
-    await seed.seed_profile(db_session, second, "adminpass123")
+    await seed.seed_profile(db_session, second)
     await db_session.flush()
 
     second_users = await _seeded_users(db_session, second["marker"])
@@ -528,7 +526,7 @@ async def test_the_bootstrapped_admin_has_every_permission(
     db_session: Any, clean_stand: None
 ) -> None:
     profile = _profile()
-    await seed.seed_profile(db_session, profile, "adminpass123")
+    await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
     admin = await seed.find_user_by_email(
