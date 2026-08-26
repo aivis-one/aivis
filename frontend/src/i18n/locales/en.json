@@ -1039,6 +1039,11 @@
       "errorRetry": "Retry"
     }
   },
+  "nav": {
+    "comp": {
+      "product_edit": "Edit product"
+    }
+  },
   "comp": {
     "dashboard": {
       "title": "Dashboard",
@@ -1546,7 +1551,14 @@
       "purchaseCTA": "Register to buy"
     },
     "productDetail": {
-      "purchaseCTA": "Register to buy"
+      "purchaseCTA": "Register to buy",
+      "backLink": "Back to company",
+      "errorTitle": "Couldn't load product",
+      "errorRetry": "Try again",
+      "notFound": {
+        "title": "Product not found",
+        "subtitle": "This product may have been removed or is no longer available."
+      }
     },
     "attachmentLanding": {
       "title": "Document",
