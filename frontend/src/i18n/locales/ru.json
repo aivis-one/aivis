@@ -253,7 +253,8 @@
       "sender": {
         "client": "Клиент",
         "operator": "Оператор"
-      }
+      },
+      "threadId": "Тред {id}"
     },
     "avatar": {
       "title": "Режим аватара",

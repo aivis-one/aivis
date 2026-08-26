@@ -99,8 +99,28 @@ export interface SupportThreadListResponse {
   threads: SupportThreadListItem[]
 }
 
+/**
+ * Who the client of a thread is, in this product's terms.
+ *
+ * NOT FROM comms (T-75). comms knows recipients by uuid and nothing
+ * else; the backend adds this key to operator queue rows from its own
+ * pointer table, which is why it is absent -- not null -- on a row
+ * whose thread the backend does not recognise.
+ *
+ * The pieces arrive separately and the view joins them, matching how
+ * the rest of the staff area renders a person (StaffUsersView.fullName).
+ * Every field is optional on purpose: a profile may be half filled in,
+ * and a Telegram-only account has no email at all.
+ */
+export interface SupportClientProfile {
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+}
+
 export interface SupportOperatorThreadRow extends SupportThreadResponse {
   unread?: number
+  client_profile?: SupportClientProfile
 }
 
 export interface SupportOperatorQueueResponse {

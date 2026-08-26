@@ -51,6 +51,35 @@
 #      special case, and there is deliberately no "reopen" endpoint here,
 #      because writing IS the reopen.
 #
+# THE OPERATOR SIDE IS NO LONGER A PLAIN PASSTHROUGH (T-75)
+# ---------------------------------------------------------
+# Everything above says "a proxy, not a store", and for the user side
+# that is still exactly true. The OPERATOR queue is not: its rows leave
+# here carrying `client_profile`, a key comms never sent and could not
+# send. Stated here rather than left to be discovered, because the next
+# reader looking at that field in a response has no other way to learn
+# it is ours.
+#
+# WHY THE ADDITION EXISTS. comms identifies people by recipient id and
+# nothing else -- that is the invariant, not a gap: the capability lives
+# in the service, the product fact lives in the product. So a queue
+# rendered from comms' own answer is a table of uuids, and the operator
+# reading it has no idea who is asking.
+#
+# WHY THE NAMES ARE RESOLVED THROUGH OUR OWN POINTER TABLE and not
+# through the `client` field of comms' row: the pointer is the boundary
+# this module already enforces everywhere else (see _require_known_thread),
+# it is local, and it answers both questions at once -- which of OUR
+# users a thread belongs to, and what that user is called. Reading the
+# id out of comms' payload instead would make the enrichment depend on
+# the spelling of somebody else's response, for the same result.
+#
+# ONE QUERY PER PAGE, and this is a requirement rather than an
+# optimisation: a per-row lookup turns a twenty-row queue into twenty-one
+# round trips, and the number would grow with the page size that the
+# operator controls. tests/test_support_client_profile.py counts the
+# statements rather than trusting the shape of the code.
+#
 # THE SECTION ID IS RESOLVED, NEVER STORED
 # ----------------------------------------
 # comms' create-or-find section endpoint is called for the key below and
@@ -497,8 +526,119 @@ async def _require_known_thread(
     return pointer
 
 
+CLIENT_PROFILE_KEY = "client_profile"
+
+
+def _display_profile(user: User) -> dict[str, Any]:
+    """The product's answer to "who is this", for one person.
+
+    THE PIECES, NOT A STRING. The staff area already ships people as
+    first_name / last_name and joins them in the view
+    (staff/admin_schemas.py, StaffUsersView.fullName); this screen lives
+    in that area, so a second joining rule here would be a second way to
+    render the same person on the same section of the product.
+
+    NOTHING IS MASKED. The downline endpoint in referrals/ masks names on
+    purpose -- an agent is not entitled to their downline's identity --
+    and the rule here is the opposite one for the opposite reason: an
+    operator is answering this person and needs to know who they are.
+    Two deliberate rules, not a divergence to reconcile.
+
+    `email` is None for a Telegram-only account and the view falls
+    through to the uuid; it costs nothing to include because User.email
+    reads the credentials document that is already loaded.
+    """
+    profile = user.profile or {}
+    return {
+        "first_name": profile.get("first_name") or None,
+        "last_name": profile.get("last_name") or None,
+        "email": user.email,
+    }
+
+
+async def _client_profiles_for_threads(
+    session: AsyncSession, thread_ids: list[UUID]
+) -> dict[UUID, dict[str, Any]]:
+    """comms thread id -> who that thread belongs to, for a whole page.
+
+    ONE statement for the page, or none at all when the page is empty --
+    an `IN ()` on an empty list is a round trip that returns nothing, and
+    the test that counts statements would count it.
+
+    The join is inner and that is not an oversight:
+    support_threads.user_id is ON DELETE CASCADE, so a pointer whose user
+    is gone does not exist to be found. A LEFT JOIN here would be a
+    branch for a state the schema forbids.
+    """
+    if not thread_ids:
+        return {}
+
+    rows = (
+        await session.execute(
+            select(SupportThread.comms_thread_id, User)
+            .join(User, User.id == SupportThread.user_id)
+            .where(SupportThread.comms_thread_id.in_(thread_ids))
+        )
+    ).all()
+
+    return {
+        comms_thread_id: _display_profile(user)
+        for comms_thread_id, user in rows
+    }
+
+
+async def attach_client_profiles(
+    session: AsyncSession, page: dict[str, Any]
+) -> dict[str, Any]:
+    """Add `client_profile` to every row of one page of operator threads.
+
+    Mutates and returns the page comms answered with. A row whose thread
+    this product does not know keeps no profile key at all rather than a
+    null one: the caller's fallback is the same in both cases, and an
+    explicit null would invite the reader to think the person exists and
+    has no name.
+
+    Defensive about the SHAPE of the answer, not about its content: comms
+    is a service this product deploys, but the queue is the one place
+    where its reply is reshaped rather than forwarded, so a reply without
+    `threads`, or with a row that is not an object, must leave the
+    operator with an unenriched list instead of a 500.
+    """
+    threads = page.get("threads")
+    if not isinstance(threads, list):
+        return page
+
+    thread_ids: list[UUID] = []
+    for row in threads:
+        if not isinstance(row, dict):
+            continue
+        try:
+            thread_ids.append(UUID(str(row.get("id"))))
+        except (ValueError, TypeError):
+            continue
+
+    profiles = await _client_profiles_for_threads(session, thread_ids)
+
+    for row in threads:
+        if not isinstance(row, dict):
+            continue
+        try:
+            thread_id = UUID(str(row.get("id")))
+        except (ValueError, TypeError):
+            continue
+        profile = profiles.get(thread_id)
+        if profile is not None:
+            row[CLIENT_PROFILE_KEY] = profile
+
+    return page
+
+
 async def list_operator_threads(
-    *, operator: SupportOperator, limit: int, cursor: str | None
+    session: AsyncSession,
+    *,
+    operator: SupportOperator,
+    limit: int,
+    cursor: str | None,
 ) -> dict[str, Any]:
     """The operator's queue, straight from comms.
 
@@ -521,7 +661,8 @@ async def list_operator_threads(
     }
     if cursor is not None:
         params["cursor"] = cursor
-    return await comms_request("GET", _THREADS_PATH, params=params)
+    page = await comms_request("GET", _THREADS_PATH, params=params)
+    return await attach_client_profiles(session, page)
 
 
 async def get_operator_thread_messages(

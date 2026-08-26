@@ -253,7 +253,8 @@
       "sender": {
         "client": "العميل",
         "operator": "الموظف"
-      }
+      },
+      "threadId": "المحادثة {id}"
     },
     "avatar": {
       "title": "وضع الأفاتار",

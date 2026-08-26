@@ -253,7 +253,8 @@
       "sender": {
         "client": "Client",
         "operator": "Staff"
-      }
+      },
+      "threadId": "Thread {id}"
     },
     "avatar": {
       "title": "Avatar Mode",

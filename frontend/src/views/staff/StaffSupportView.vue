@@ -165,6 +165,30 @@ const chronologicalMessages = computed<SupportMessageResponse[]>(() =>
   [...support.staffMessages].reverse(),
 )
 
+// -- Who is asking (T-75) -----------------------------------------------
+//
+// TWO IDENTIFIERS ON THIS SCREEN, and they are not interchangeable. The
+// THREAD id is what the operator quotes to a colleague or looks up in
+// comms, and it keeps its place. The CLIENT id identifies the person and
+// was never on screen at all -- it appears now, but only underneath the
+// name, and only when there is no name to show.
+//
+// The join rule is StaffUsersView.fullName's, deliberately: same section
+// of the product, same way of rendering a person. It differs in the
+// fallback only, because "—" tells an operator nothing they can act on
+// whereas an email or a uuid identifies the person they are answering.
+function clientName(row: SupportOperatorThreadRow): string {
+  const parts = [row.client_profile?.first_name, row.client_profile?.last_name].filter(Boolean)
+  if (parts.length > 0) return parts.join(' ')
+  return row.client_profile?.email ?? row.client
+}
+
+// True when the line above is already the client's identifier, so the
+// secondary line would repeat it.
+function clientNameIsIdentifier(row: SupportOperatorThreadRow): boolean {
+  return clientName(row) === row.client
+}
+
 // STAKE C: side by comparison with the thread's fixed client id, never
 // by identity -- see header.
 function isRight(message: SupportMessageResponse): boolean {
@@ -272,6 +296,7 @@ onMounted(() => {
             @keyup.space.prevent="openThread(row.id)"
           >
             <div class="ssup__row-body">
+              <span class="ssup__row-client">{{ clientName(row) }}</span>
               <span class="ssup__row-id">{{ row.id.slice(0, 8) }}</span>
               <span v-if="row.last_message_at" class="ssup__row-time">
                 {{ new Date(row.last_message_at).toLocaleString() }}
@@ -312,6 +337,7 @@ onMounted(() => {
             @keyup.space.prevent="openThread(row.id)"
           >
             <div class="ssup__row-body">
+              <span class="ssup__row-client">{{ clientName(row) }}</span>
               <span class="ssup__row-id">{{ row.id.slice(0, 8) }}</span>
               <span
                 v-if="typeof row.unread === 'number' && row.unread > 0"
@@ -338,6 +364,7 @@ onMounted(() => {
             @keyup.space.prevent="openThread(row.id)"
           >
             <div class="ssup__row-body">
+              <span class="ssup__row-client">{{ clientName(row) }}</span>
               <span class="ssup__row-id">{{ row.id.slice(0, 8) }}</span>
             </div>
           </div>
@@ -361,6 +388,18 @@ onMounted(() => {
       </div>
 
       <template v-else>
+        <div class="ssup__panel-head">
+          <span class="ssup__panel-client">{{ clientName(selectedThread) }}</span>
+          <span class="ssup__panel-ids">
+            <span v-if="!clientNameIsIdentifier(selectedThread)" class="ssup__panel-id">
+              {{ selectedThread.client }}
+            </span>
+            <span class="ssup__panel-id">
+              {{ t('staff.support.threadId', { id: selectedThread.id.slice(0, 8) }) }}
+            </span>
+          </span>
+        </div>
+
         <div v-if="isMine || isForeign" class="ssup__status-row">
           <CButton
             v-if="canChangeStatus"
@@ -549,10 +588,45 @@ onMounted(() => {
   gap: var(--space-1);
   min-width: 0;
 }
-.ssup__row-id {
-  font-family: var(--font-mono);
+.ssup__row-client {
   font-size: var(--fs-sm);
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Demoted from primary to tertiary by T-75: the name above is what the
+   operator reads, this is what they quote. */
+.ssup__row-id {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.ssup__panel-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-default);
+  min-width: 0;
+}
+.ssup__panel-client {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ssup__panel-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ssup__panel-id {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
 }
 .ssup__row-time {
   font-size: var(--fs-xs);

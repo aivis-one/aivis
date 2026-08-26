@@ -65,6 +65,7 @@ async def list_threads(
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
     operator: SupportOperator = Depends(get_support_operator),
+    session: AsyncSession = Depends(get_db_reader),
 ) -> Any:
     """The operator's queue, most recently active first.
 
@@ -72,10 +73,14 @@ async def list_threads(
     filter here: a plain operator sees the unclaimed pool and the threads
     they claimed; a supervisor sees everything. Pool rows carry no unread
     count -- nobody takes part in them yet.
+
+    A reader session, and it is not for reading a thread: T-75 adds
+    `client_profile` to every row it can, which is a local lookup through
+    the pointer table. Nothing is written here.
     """
     reject_actor_override(request)
     return await list_operator_threads(
-        operator=operator, limit=limit, cursor=cursor
+        session, operator=operator, limit=limit, cursor=cursor
     )
 
 
