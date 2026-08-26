@@ -330,16 +330,44 @@ async def test_refuses_when_active_staff_are_not_this_profiles(
     )
 
 
-async def test_no_refusal_when_the_only_active_staff_are_ours(
+async def test_the_refusal_never_counts_this_profiles_own_staff(
     db_session: Any, clean_stand: None
 ) -> None:
+    """Our own operators are not "live staff" to us.
+
+    NOT WRITTEN AS "no refusal happens", which is what it said first and
+    why it failed: conftest gives per-RUN isolation only, so by the time
+    this file runs, other test modules have promoted staff of their own
+    and the stand is never clean. A test that can only pass when it runs
+    first is a flake, not a guard.
+
+    So the assertion is on the PREDICATE instead of on the outcome: the
+    refusal may well fire because of somebody else's staff, but the ids
+    it names must never include ours. That is the actual contract --
+    `IS DISTINCT FROM marker` -- and it holds in a dirty database.
+    """
     profile = _profile()
     await seed.seed_profile(db_session, profile, "adminpass123")
     await db_session.flush()
 
-    await seed.assert_no_live_staff(
-        db_session, profile["marker"], allow_live_staff=False
-    )
+    ours = {
+        str(u.id)
+        for u in await _seeded_users(db_session, profile["marker"])
+        if u.role == UserRole.STAFF
+    }
+    assert ours, "the profile seeds staff; without them this proves nothing"
+
+    try:
+        await seed.assert_no_live_staff(
+            db_session, profile["marker"], allow_live_staff=False
+        )
+    except seed.SeedRefusedError as exc:
+        named = str(exc)
+        for staff_id in ours:
+            assert staff_id not in named, (
+                f"the guard named our own staff member {staff_id} as "
+                f"foreign; the marker comparison is not doing its job"
+            )
 
 
 # ---------------------------------------------------------------------------

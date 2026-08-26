@@ -591,6 +591,34 @@ async def ensure_admin(
     # makes internally: the role, the profile row, and the membership
     # event. The user above came through the ordinary ladder, so the
     # comms recipient is already there and is NOT part of this.
+    #
+    # GATED ON THE ROW IT WOULD WRITE, like every other step in this
+    # file. Reaching here does NOT prove there is no staff profile for
+    # this person: _find_any_admin answers "is there an ACTIVE profile
+    # whose permissions are all True", and a profile that is inactive,
+    # or that an operator has since taken a permission away from, makes
+    # it say None while staff_profiles.user_id -- which is UNIQUE --
+    # still holds a row. Without this check the insert dies on
+    # uq_staff_profiles_user_id and takes the whole run with it.
+    existing_profile = (
+        await session.execute(
+            select(StaffProfile).where(StaffProfile.user_id == user.id)
+        )
+    ).scalar_one_or_none()
+
+    if existing_profile is not None:
+        # Already promoted by an earlier run. The permissions are left
+        # exactly as they are: this function's job is to produce an
+        # actor, not to restore rights somebody may have removed on
+        # purpose. The membership event is not re-emitted either -- the
+        # first promotion already sent it, and a second one would make
+        # a repeat run write to the outbox, which is precisely what
+        # "a second run is a no-op" forbids.
+        user.role = UserRole.STAFF
+        await session.flush()
+        await session.refresh(user)
+        return user
+
     user.role = UserRole.STAFF
     staff_profile = StaffProfile(
         user_id=user.id,
