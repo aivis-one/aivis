@@ -96,6 +96,20 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# alembic_version.version_num is VARCHAR(32) unless this says otherwise,
+# and the revision ids in this tree are descriptive enough to reach that
+# in a single sprint: 0042_support_membership_backfill is exactly 32
+# characters and the one after it, at 34, could not write itself into
+# the table -- its migration rolled back on every box with a driver-level
+# "value too long" and no mention of which file it came from.
+#
+# THIS SETTING ONLY AFFECTS DATABASES ALEMBIC CREATES THE TABLE IN. An
+# existing database keeps whatever width it was made with, which is why
+# migration 0045_alembic_version_width does the ALTER for those. The two
+# have to agree, and the guard in tests/test_regression_guards.py reads
+# both rather than trusting them to.
+VERSION_TABLE_COLUMN_LENGTH = 64
+
 
 def run_migrations_offline() -> None:
     """Generate SQL without connecting to DB (--sql mode)."""
@@ -105,6 +119,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table_column_length=VERSION_TABLE_COLUMN_LENGTH,
     )
 
     with context.begin_transaction():
@@ -116,6 +131,7 @@ def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        version_table_column_length=VERSION_TABLE_COLUMN_LENGTH,
     )
 
     with context.begin_transaction():

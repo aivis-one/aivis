@@ -35,7 +35,7 @@
 #   True default for project_manage narrowed nothing -- ordinary staff
 #   could still write project data exactly as before, defeating the
 #   ruling. The correct fix is False here PLUS a one-time backfill
-#   migration (2026_08_26_0043_project_manage_admin_backfill) that
+#   migration (2026_08_26_0043_project_manage_backfill) that
 #   writes project_manage: true into every profile that was already an
 #   admin under the other 9 keys, so is_admin() reads the same for
 #   every pre-existing admin across the deploy. Ship this default flip

@@ -25,6 +25,7 @@
 #                  L4 platform+en) and frozen at purchase time
 # =============================================================================
 
+import re
 import uuid
 from pathlib import Path
 from uuid import UUID
@@ -885,3 +886,139 @@ def test_seed_creates_users_and_staff_only_through_application_paths() -> None:
         f"staff member must go through staff.service.create_staff, which "
         f"is what emits the support-section membership event."
     )
+
+
+# ---------------------------------------------------------------------------
+# Revision ids must fit the column that records them
+# ---------------------------------------------------------------------------
+
+
+def _revision_chain() -> list[tuple[str, str]]:
+    """Walk migrations/versions/ and return (revision, down_revision).
+
+    Parsed out of the source rather than imported: importing every
+    migration module pulls alembic's op context in, and these two
+    assignments are literals at module level in every file by
+    convention, so reading them is both cheaper and less fragile.
+
+    THREE ANNOTATION FORMS EXIST IN THIS TREE and all three are matched
+    here, because a parser that knew only the newest one would read
+    "this file declares no revision" as "this file has no revision" --
+    the same mistake in a guard as in a grep. The forms, counted:
+    `revision = "..."` (1 file), `revision: str = "..."` (the rest);
+    and for the parent link `down_revision = ...`,
+    `down_revision: Union[str, None] = ...` (the majority) and
+    `down_revision: str | None = ...`.
+    """
+    versions_dir = (
+        Path(__file__).resolve().parent.parent / "migrations" / "versions"
+    )
+    rev_re = re.compile(
+        r'^revision(?::[^=]+)?\s*=\s*(?:"([^"]*)"|\'([^\']*)\')\s*$'
+    )
+    down_re = re.compile(
+        r'^down_revision(?::[^=]+)?\s*=\s*'
+        r'(?:"([^"]*)"|\'([^\']*)\'|None)\s*$'
+    )
+
+    chain: list[tuple[str, str]] = []
+    for path in sorted(versions_dir.glob("*.py")):
+        rev = down = ""
+        for line in path.read_text(encoding="utf-8").splitlines():
+            match = rev_re.match(line)
+            if match:
+                rev = match.group(1) or match.group(2) or ""
+                continue
+            match = down_re.match(line)
+            if match:
+                down = match.group(1) or match.group(2) or ""
+        assert rev, (
+            f"{path.name} declares no revision id in any form this guard "
+            f"knows. Either the file is not a migration, or a fourth "
+            f"spelling has appeared and this parser has to learn it."
+        )
+        chain.append((rev, down))
+    return chain
+
+
+def test_every_revision_id_fits_the_version_column_of_its_time() -> None:
+    """No migration may have an id its own alembic_version cannot hold.
+
+    THIS IS A REAL FAILURE, NOT A HYPOTHETICAL ONE. alembic_version.
+    version_num was VARCHAR(32) by alembic's default and env.py did not
+    override it. 0042_support_membership_backfill is exactly 32
+    characters -- the ceiling was reached without anyone noticing -- and
+    the next revision, at 34, could not record itself: its body ran, the
+    version UPDATE raised StringDataRightTruncationError, and the step
+    rolled back. Every box stopped at 0042 with a message about a string
+    that named no file.
+
+    The rule is POSITIONAL because the ceiling moves partway through the
+    chain. 0045_alembic_version_width widens the column, so:
+
+        at or before it -> the id must fit in 32 characters, because a
+                           database applying it still has the old column
+        after it        -> up to 64
+
+    The width on both sides is read from the migration and from env.py
+    rather than written here, so a future change to either cannot leave
+    this test asserting a number nobody uses any more.
+    """
+    versions_dir = (
+        Path(__file__).resolve().parent.parent / "migrations" / "versions"
+    )
+    widener = versions_dir / "2026_08_26_0045_alembic_version_width.py"
+    assert widener.is_file(), (
+        "The migration that widens alembic_version is gone. If it was "
+        "renamed, this guard has to learn the new name -- and if it was "
+        "deleted, every revision id in the tree has to fit in 32 again."
+    )
+    widener_source = widener.read_text(encoding="utf-8")
+
+    def _const(name: str) -> int:
+        for line in widener_source.splitlines():
+            if line.startswith(f"{name} = "):
+                return int(line.split("=", 1)[1].strip())
+        raise AssertionError(f"{name} is not defined in {widener.name}")
+
+    new_width = _const("VERSION_NUM_WIDTH")
+    old_width = _const("LEGACY_VERSION_NUM_WIDTH")
+
+    env_source = (
+        Path(__file__).resolve().parent.parent / "migrations" / "env.py"
+    ).read_text(encoding="utf-8")
+    assert f"VERSION_TABLE_COLUMN_LENGTH = {new_width}" in env_source, (
+        "env.py and the widening migration disagree about the column "
+        "width. A fresh database would then get a different width from "
+        "an upgraded one, and only one of them would accept a long id."
+    )
+
+    chain = _revision_chain()
+    by_down = {down: rev for rev, down in chain}
+
+    # Order the chain by following down_revision from the root, so the
+    # split point is positional and not alphabetical: file names are a
+    # convention, the links are the truth.
+    roots = [rev for rev, down in chain if not down]
+    assert len(roots) == 1, f"expected one root migration, found {roots}"
+
+    ordered: list[str] = []
+    current: str | None = roots[0]
+    while current:
+        ordered.append(current)
+        current = by_down.get(current)
+    assert len(ordered) == len(chain), (
+        "The down_revision links do not form one chain -- some migration "
+        f"is unreachable: {sorted(set(r for r, _ in chain) - set(ordered))}"
+    )
+
+    split = ordered.index("0045_alembic_version_width")
+    for position, rev in enumerate(ordered):
+        limit = old_width if position <= split else new_width
+        assert len(rev) <= limit, (
+            f"Revision id {rev!r} is {len(rev)} characters and runs at "
+            f"position {position}, where alembic_version.version_num "
+            f"still holds {limit}. It will roll back on every database "
+            f"with a message that does not name this file. Shorten the "
+            f"id."
+        )
