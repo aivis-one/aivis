@@ -72,6 +72,11 @@ const sections = computed(() => {
       labelKey: 'staff.platform.company.tabs.roadmap',
     },
     {
+      id: 'audit',
+      path: `/staff/platform/companies/${id}/audit`,
+      labelKey: 'staff.platform.company.tabs.audit',
+    },
+    {
       id: 'posts',
       path: `/staff/platform/companies/${id}/posts`,
       labelKey: 'staff.platform.company.tabs.posts',
@@ -184,7 +189,7 @@ onMounted(loadCompany)
       </h1>
     </div>
 
-    <!-- Horizontal scrollable tab strip across the 6 sections. -->
+    <!-- Horizontal scrollable tab strip across the 7 sections. -->
     <nav class="scd__tabs" aria-label="Company sections">
       <button
         v-for="s in sections"

@@ -589,6 +589,14 @@ export type { PostResponse } from './generated'
 
 export type { PostListResponse } from './generated'
 
+// Company self-service post write bodies (TASK-30 W4, POST/PATCH
+// /api/v1/company/posts). Distinct from the staff CreatePostRequest/
+// UpdatePostRequest -- no owner_type/owner_id/is_banner, the caller's
+// own company is resolved server-side.
+export type { CreateCompanyPostRequest } from './generated'
+
+export type { UpdateCompanyPostRequest } from './generated'
+
 // ---------------------------------------------------------------------------
 // Events (declared for F9.2 completeness, not consumed in F4.4)
 // ---------------------------------------------------------------------------
@@ -687,6 +695,14 @@ export type { UpdateCompanyRequest } from './generated'
 export type { AssignCompanyRequest } from './generated'
 
 export type { PriceHistoryListResponse } from './generated'
+
+// Admin audit feed of project writes (TASK-30 W3, GET
+// /api/v1/staff/audit/companies). CompanyAuditEntryResponse mirrors one
+// AuditLog row recorded by record_audit(target_type="company");
+// CompanyAuditFeedResponse is the paginated envelope.
+export type { CompanyAuditEntryResponse } from './generated'
+
+export type { CompanyAuditFeedResponse } from './generated'
 
 // CompanyDetailResponse (staff): CompanyResponse + inline roadmap.
 // Backed by GET /staff/companies/{id} (iter 2.7 Block C enabler

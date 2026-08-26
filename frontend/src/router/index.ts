@@ -474,6 +474,14 @@ export const router = createRouter({
           name: 'company-attachments',
           component: () => import('@/views/company/CompanyAttachmentsView.vue'),
         },
+        {
+          // TASK-30 self-service: project-owned post CRUD (§4, W4).
+          // Same placement reasoning as 'roadmap' / 'attachments' above --
+          // see CompanyPostsView.vue's header comment.
+          path: 'posts',
+          name: 'company-posts',
+          component: () => import('@/views/company/CompanyPostsView.vue'),
+        },
       ],
     },
 
@@ -565,6 +573,15 @@ export const router = createRouter({
                   path: 'roadmap',
                   name: 'staff-platform-company-roadmap',
                   component: () => import('@/views/staff/platform/StaffCompanyRoadmapSection.vue'),
+                },
+                {
+                  // TASK-30 batch 1 W3: read-only admin audit feed of
+                  // this project's own writes (record_audit(target_type=
+                  // "company")). See StaffCompanyAuditSection.vue's
+                  // header comment.
+                  path: 'audit',
+                  name: 'staff-platform-company-audit',
+                  component: () => import('@/views/staff/platform/StaffCompanyAuditSection.vue'),
                 },
                 {
                   path: 'posts',

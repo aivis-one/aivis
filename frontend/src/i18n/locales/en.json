@@ -376,10 +376,16 @@
           "profile": "Profile",
           "price": "Price",
           "roadmap": "Roadmap",
+          "audit": "Audit",
           "posts": "Posts",
           "documents": "Documents",
           "templates": "Templates"
         }
+      },
+      "audit": {
+        "title": "Write history",
+        "empty": "No audit entries yet",
+        "viaAvatar": "via avatar"
       },
       "scaffolding": {
         "placeholder": "Coming up in the next commits of iter 2.7."
@@ -1083,7 +1089,7 @@
     },
     "settings": {
       "title": "Settings",
-      "subtitle": "Your company profile (read-only)",
+      "subtitle": "Your company profile",
       "errorTitle": "Could not load settings",
       "errorRetry": "Retry",
       "status": {
@@ -1095,6 +1101,10 @@
         "title": "Profile",
         "description": "Description",
         "status": "Status",
+        "editTitle": "Edit profile",
+        "editSuccess": "Company profile updated",
+        "editError": "Could not update company profile",
+        "urlFormatError": "Must start with http:// or https://",
         "withdrawCta": "Withdraw from marketplace",
         "withdrawConfirmTitle": "Withdraw from marketplace?",
         "withdrawConfirmBody": "Your project will be hidden from investors immediately. Only an AIVIS admin can republish it afterward.",
@@ -1126,11 +1136,15 @@
         "title": "Roadmap",
         "cta": "Manage roadmap"
       },
+      "posts": {
+        "title": "Posts",
+        "cta": "Manage posts"
+      },
       "attachments": {
         "title": "Attachments",
         "cta": "Manage attachments"
       },
-      "editViaSupport": "To edit your company profile, contact support.",
+      "adminManagedHint": "Pricing, supply, and distribution are managed by AIVIS staff. Contact support to request a change.",
       "actions": {
         "title": "Account",
         "logout": "Sign out"
@@ -1183,6 +1197,34 @@
         "removeTitle": "Remove cover image",
         "removeConfirm": "The cover image will be removed from this roadmap item."
       }
+    },
+    "posts": {
+      "title": "Posts",
+      "subtitle": "News and updates investors see on your project page",
+      "errorTitle": "Failed to load posts",
+      "errorRetry": "Retry",
+      "empty": "No posts yet",
+      "addCta": "Add post",
+      "filterAll": "All",
+      "published": "Published",
+      "draft": "Draft",
+      "searchPlaceholder": "Search by title",
+      "createTitle": "Create post",
+      "editTitle": "Edit post",
+      "fieldTitle": "Title",
+      "fieldBody": "Body",
+      "fieldCoverUrl": "Cover image URL",
+      "fieldCoverUrlPlaceholder": "https://...",
+      "coverUrlError": "Cover URL must start with http:// or https://.",
+      "fieldTags": "Tags",
+      "tagPlaceholder": "Type a tag, press Enter",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "created": "Post created",
+      "updated": "Post updated",
+      "deleted": "Post deleted",
+      "deleteTitle": "Delete post",
+      "deleteConfirm": "This post will be deleted. This action cannot be undone."
     },
     "attachments": {
       "title": "Attachments",

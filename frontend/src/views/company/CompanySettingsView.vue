@@ -10,43 +10,54 @@
 // only inline content with an <h1> + <p> page header, mirroring
 // InvestorSettingsView and the F5.1 dashboard.
 //
-// READ-ONLY POLICY (MVP, revised TASK-30 ruling 10/12).
-//   The company does NOT edit most of its profile from this UI; staff
-//   does, via the Sprint 4.1 staff endpoints. We render every field as
-//   a row, follow up with a static "contact support" hint, and wire
-//   one status-changing action. This matches Frontend.md §F5.2: "Note:
-//   для редактирования профиля обратитесь в support" for everything
-//   EXCEPT status.
+// READ-ONLY POLICY (MVP, revised TASK-30 ruling 10/12, W1 pass).
+//   Pricing & supply (price_per_unit_cents / total_supply /
+//   shares_per_option) and the distribution_config JSON stay
+//   staff/admin-only by deliberate ruling ("the project describes,
+//   the admin owns and prices") -- this view still renders them as
+//   plain read-only rows/JSON, backed by a short hint pointing at
+//   support, never an edit control.
 //
-//   TASK-30 ruling 12 carves out one narrow self-service write: while
-//   ACTIVE, the project may withdraw itself (status -> HIDDEN) via
-//   PATCH /api/v1/companies/me (api/companies.ts::updateOwnCompany).
-//   It may NOT republish itself (HIDDEN -> ACTIVE) or archive itself --
-//   both are staff-only, enforced server-side by update_own_company()
-//   which 400s any transition other than ACTIVE -> HIDDEN. This view
-//   mirrors that asymmetry: a HIDDEN or ARCHIVED company sees status as
-//   plain text with a short explanation, never a button that would
-//   just 400 when clicked. Other TASK-30 project-editable fields
-//   (description / logo_url / cover_url / promo_video_url /
-//   presentation_url) are NOT wired to editing here -- out of scope
-//   for this pass, still read-only, still covered by the support hint.
+//   TASK-30 ruling 12 carves out one narrow self-service write on
+//   STATUS: while ACTIVE, the project may withdraw itself
+//   (status -> HIDDEN) via PATCH /api/v1/companies/me
+//   (api/companies.ts::updateOwnCompany). It may NOT republish itself
+//   (HIDDEN -> ACTIVE) or archive itself -- both are staff-only,
+//   enforced server-side by update_own_company() which 400s any
+//   transition other than ACTIVE -> HIDDEN. This view mirrors that
+//   asymmetry: a HIDDEN or ARCHIVED company sees status as plain text
+//   with a short explanation, never a button that would just 400 when
+//   clicked.
+//
+//   W1 UPDATE: the other TASK-30 project-editable fields -- description /
+//   logo_url / cover_url / promo_video_url / presentation_url -- WERE
+//   flagged above as "not wired to editing here, out of scope for this
+//   pass". They now ARE wired: an edit pencil next to the Profile
+//   section title opens a form modal covering all five, PATCHes only
+//   the fields that actually changed (exclude_unset semantics --
+//   omitted fields are left alone server-side), and applies the
+//   response back onto the profile store on success. See the "Profile:
+//   self-service edit" block below for the diff-and-submit logic.
 //
 // SECTIONS, in render order:
 //   1. Hero card -- logo + name + status badge.
 //   2. Profile -- description, status (label + badge, or a "withdraw"
-//      CTA when ACTIVE -- see the Status self-service block below).
+//      CTA when ACTIVE -- see the Status self-service block below),
+//      plus an edit pencil that opens the profile/media form modal.
 //   3. Pricing & supply -- price_per_unit, total_supply,
-//      shares_per_option.
+//      shares_per_option. Read-only, staff/admin-only.
 //   4. Distribution config -- raw JSON view (<pre>) of the JSONB
 //      object. The platform's revenue-split contract changes over
 //      time without a frontend release; rendering as JSON keeps the
 //      view honest and forward-compatible. Empty `{}` shows the
-//      "empty" placeholder line.
+//      "empty" placeholder line. Read-only, staff/admin-only, followed
+//      by a short hint that pricing/supply/distribution stay
+//      staff-managed.
 //   5. Media -- logo / cover / promo video / presentation as
-//      "Open" links. Skipped entirely if every URL is null.
-//   6. Edit-via-support hint -- static line above the actions
-//      section so the user reads it before reaching for sign-out.
-//   7. Actions -- sign-out only. Without this, a company role has
+//      "Open" links. Skipped entirely if every URL is null -- these
+//      URLs are edited from the same modal as the Profile section
+//      (§2), not from a control in this section.
+//   6. Actions -- sign-out only. Without this, a company role has
 //      no way to leave the session.
 //
 // FIELDS DELIBERATELY OMITTED.
@@ -80,11 +91,13 @@ import {
   LogOut,
   Layers,
   Map as MapIcon,
+  Newspaper,
   Package,
+  Pencil,
   Video,
 } from 'lucide-vue-next'
 
-import { CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
+import { CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -93,6 +106,7 @@ import { formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import { updateOwnCompany } from '@/api/companies'
 import { ApiResponseError } from '@/api/client'
+import type { UpdateOwnCompanyRequest } from '@/api/types'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -196,6 +210,133 @@ async function handleWithdraw(): Promise<void> {
     showToast(message, 'error')
   } finally {
     withdrawing.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Profile: self-service edit (TASK-30 W1)
+// ---------------------------------------------------------------------------
+//
+// One modal covers description + the four media URLs. Submit sends only
+// the fields that actually changed, diffed against the loaded profile --
+// same exclude_unset contract the roadmap/attachments editors already
+// rely on (omit = keep, null = clear). Pricing/supply/distribution and
+// status are NOT part of this form -- pricing stays staff-only, status
+// has its own dedicated withdraw flow above.
+
+const showEditProfile = ref(false)
+const savingProfile = ref(false)
+
+const draftDescription = ref('')
+const draftLogoUrl = ref('')
+const draftCoverUrl = ref('')
+const draftPromoVideoUrl = ref('')
+const draftPresentationUrl = ref('')
+
+function openEditProfile(): void {
+  const p = profile.value
+  if (!p) return
+  draftDescription.value = p.description ?? ''
+  draftLogoUrl.value = p.logo_url ?? ''
+  draftCoverUrl.value = p.cover_url ?? ''
+  draftPromoVideoUrl.value = p.promo_video_url ?? ''
+  draftPresentationUrl.value = p.presentation_url ?? ''
+  showEditProfile.value = true
+}
+
+function closeEditProfile(): void {
+  showEditProfile.value = false
+}
+
+const trimmedDescription = computed<string>(() => draftDescription.value.trim())
+const trimmedLogoUrl = computed<string>(() => draftLogoUrl.value.trim())
+const trimmedCoverUrl = computed<string>(() => draftCoverUrl.value.trim())
+const trimmedPromoVideoUrl = computed<string>(() => draftPromoVideoUrl.value.trim())
+const trimmedPresentationUrl = computed<string>(() => draftPresentationUrl.value.trim())
+
+// Every media URL is optional, but if present must be http(s) -- mirror
+// the backend validator (and the roadmap section's externalUrlValid
+// pattern) so we don't round-trip a guaranteed 422.
+function isValidOptionalUrl(v: string): boolean {
+  if (!v) return true
+  return v.startsWith('http://') || v.startsWith('https://')
+}
+
+const logoUrlValid = computed<boolean>(() => isValidOptionalUrl(trimmedLogoUrl.value))
+const coverUrlValid = computed<boolean>(() => isValidOptionalUrl(trimmedCoverUrl.value))
+const promoVideoUrlValid = computed<boolean>(() => isValidOptionalUrl(trimmedPromoVideoUrl.value))
+const presentationUrlValid = computed<boolean>(() =>
+  isValidOptionalUrl(trimmedPresentationUrl.value),
+)
+
+const canSubmitProfile = computed<boolean>(
+  () =>
+    logoUrlValid.value &&
+    coverUrlValid.value &&
+    promoVideoUrlValid.value &&
+    presentationUrlValid.value,
+)
+
+// Diff against the loaded profile -- send only fields that changed.
+// Clearing a field sends explicit null; an untouched field is omitted
+// entirely so the backend's exclude_unset PATCH leaves it alone.
+function buildProfileUpdateBody(): UpdateOwnCompanyRequest {
+  const body: UpdateOwnCompanyRequest = {}
+  const p = profile.value
+  if (!p) return body
+
+  const origDescription = p.description ?? ''
+  if (trimmedDescription.value !== origDescription) {
+    body.description = trimmedDescription.value ? trimmedDescription.value : null
+  }
+
+  const origLogoUrl = p.logo_url ?? ''
+  if (trimmedLogoUrl.value !== origLogoUrl) {
+    body.logo_url = trimmedLogoUrl.value ? trimmedLogoUrl.value : null
+  }
+
+  const origCoverUrl = p.cover_url ?? ''
+  if (trimmedCoverUrl.value !== origCoverUrl) {
+    body.cover_url = trimmedCoverUrl.value ? trimmedCoverUrl.value : null
+  }
+
+  const origPromoVideoUrl = p.promo_video_url ?? ''
+  if (trimmedPromoVideoUrl.value !== origPromoVideoUrl) {
+    body.promo_video_url = trimmedPromoVideoUrl.value ? trimmedPromoVideoUrl.value : null
+  }
+
+  const origPresentationUrl = p.presentation_url ?? ''
+  if (trimmedPresentationUrl.value !== origPresentationUrl) {
+    body.presentation_url = trimmedPresentationUrl.value ? trimmedPresentationUrl.value : null
+  }
+
+  return body
+}
+
+async function handleSaveProfile(): Promise<void> {
+  if (!canSubmitProfile.value) return
+
+  const body = buildProfileUpdateBody()
+  // Nothing changed -- close without a redundant PATCH.
+  if (Object.keys(body).length === 0) {
+    showEditProfile.value = false
+    return
+  }
+
+  savingProfile.value = true
+  try {
+    const updated = await updateOwnCompany(body)
+    profileStore.applyProfile(updated)
+    showEditProfile.value = false
+    showToast(t('comp.settings.profile.editSuccess'), 'success')
+  } catch (err) {
+    const message =
+      err instanceof ApiResponseError && err.detail
+        ? err.detail
+        : t('comp.settings.profile.editError')
+    showToast(message, 'error')
+  } finally {
+    savingProfile.value = false
   }
 }
 
@@ -343,8 +484,16 @@ onMounted(() => {
 
       <!-- Profile -->
       <section v-if="profile.description || status" class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.profile.title') }}
+        <div class="cset__section-title cset__section-title--row">
+          <span>{{ t('comp.settings.profile.title') }}</span>
+          <button
+            type="button"
+            class="cset__edit-btn"
+            :aria-label="t('common.edit')"
+            @click="openEditProfile"
+          >
+            <Pencil :size="14" />
+          </button>
         </div>
         <div v-if="profile.description" class="cset__row cset__row--block">
           <span class="cset__row-label">
@@ -383,6 +532,20 @@ onMounted(() => {
           <span class="cset__row-label">
             <MapIcon :size="16" />
             {{ t('comp.settings.roadmap.cta') }}
+          </span>
+          <ChevronRight :size="16" />
+        </RouterLink>
+      </section>
+
+      <!-- Posts (TASK-30 self-service, §4, W4) -->
+      <section class="cset__section">
+        <div class="cset__section-title">
+          {{ t('comp.settings.posts.title') }}
+        </div>
+        <RouterLink to="/company/posts" class="cset__row cset__row--clickable">
+          <span class="cset__row-label">
+            <Newspaper :size="16" />
+            {{ t('comp.settings.posts.cta') }}
           </span>
           <ChevronRight :size="16" />
         </RouterLink>
@@ -448,6 +611,13 @@ onMounted(() => {
         <pre v-else class="cset__json">{{ distributionJson }}</pre>
       </section>
 
+      <!-- Pricing/supply/distribution stay staff/admin-only (TASK-30
+           ruling) -- this replaces the old page-wide "contact support
+           to edit" hint now that description/media are self-service. -->
+      <p class="cset__hint">
+        {{ t('comp.settings.adminManagedHint') }}
+      </p>
+
       <!-- Media links -->
       <section v-if="mediaLinks.length > 0" class="cset__section">
         <div class="cset__section-title">
@@ -471,12 +641,6 @@ onMounted(() => {
           </span>
         </a>
       </section>
-
-      <!-- Static support hint above the action section. Plain text,
-           not a toast: the user is not trying to tap anything yet. -->
-      <p class="cset__hint">
-        {{ t('comp.settings.editViaSupport') }}
-      </p>
 
       <!-- Actions -->
       <section class="cset__section">
@@ -512,6 +676,68 @@ onMounted(() => {
           </CButton>
           <CButton variant="primary" size="sm" :loading="withdrawing" @click="handleWithdraw">
             {{ t('comp.settings.profile.withdrawConfirmSubmit') }}
+          </CButton>
+        </div>
+      </CModal>
+
+      <!-- Profile edit modal (TASK-30 W1): description + the four media
+           URLs. Pricing/supply/distribution/status are NOT here. -->
+      <CModal :open="showEditProfile" @close="closeEditProfile">
+        <h3 class="cset__modal-title">
+          {{ t('comp.settings.profile.editTitle') }}
+        </h3>
+
+        <CTextarea
+          v-model="draftDescription"
+          :label="t('comp.settings.profile.description')"
+          :rows="5"
+          maxlength="5000"
+        />
+
+        <CInput
+          v-model="draftLogoUrl"
+          :label="t('comp.settings.links.logo')"
+          placeholder="https://..."
+          maxlength="2000"
+          :error="!logoUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+        />
+
+        <CInput
+          v-model="draftCoverUrl"
+          :label="t('comp.settings.links.cover')"
+          placeholder="https://..."
+          maxlength="2000"
+          :error="!coverUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+        />
+
+        <CInput
+          v-model="draftPromoVideoUrl"
+          :label="t('comp.settings.links.promoVideo')"
+          placeholder="https://..."
+          maxlength="2000"
+          :error="!promoVideoUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+        />
+
+        <CInput
+          v-model="draftPresentationUrl"
+          :label="t('comp.settings.links.presentation')"
+          placeholder="https://..."
+          maxlength="2000"
+          :error="!presentationUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+        />
+
+        <div class="cset__modal-actions">
+          <CButton variant="outline" size="sm" @click="closeEditProfile">
+            {{ t('common.cancel') }}
+          </CButton>
+          <CButton
+            variant="primary"
+            size="sm"
+            :loading="savingProfile"
+            :disabled="!canSubmitProfile"
+            @click="handleSaveProfile"
+          >
+            {{ t('common.save') }}
           </CButton>
         </div>
       </CModal>
@@ -667,6 +893,31 @@ onMounted(() => {
   letter-spacing: 0.12em;
   margin-bottom: var(--space-2);
   padding: 0 var(--space-1);
+}
+.cset__section-title--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cset__edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-md);
+  height: var(--size-sm);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+.cset__edit-btn:hover {
+  color: var(--primary);
+  background: var(--bg-subtle);
 }
 
 /* Row -- shared between <div> and <a>/<button> variants */
