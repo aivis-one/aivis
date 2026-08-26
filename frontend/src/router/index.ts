@@ -466,6 +466,14 @@ export const router = createRouter({
           name: 'company-roadmap',
           component: () => import('@/views/company/CompanyRoadmapView.vue'),
         },
+        {
+          // TASK-30 self-service: project-owned attachment CRUD (§4).
+          // Same placement reasoning as 'roadmap' above -- see
+          // CompanyAttachmentsView.vue's header comment.
+          path: 'attachments',
+          name: 'company-attachments',
+          component: () => import('@/views/company/CompanyAttachmentsView.vue'),
+        },
       ],
     },
 

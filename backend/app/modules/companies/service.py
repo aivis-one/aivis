@@ -45,6 +45,16 @@
 #   reorder_attachments()         -- iter 2.6c B5: bulk reorder inside
 #                                    one (company_id, category) scope
 #
+# TASK-30 ADDITIONS (Company Attachments self-service, §4):
+#   create_own_attachment()          -- mirrors create_attachment(), audited
+#                                        under target_type="company"/actor_type="user"
+#   patch_own_attachment_metadata()  -- mirrors patch_attachment_metadata()
+#   replace_own_attachment_file()    -- mirrors replace_attachment_file()
+#   soft_delete_own_attachment()     -- mirrors soft_delete_attachment()
+#   reorder_own_attachments()        -- mirrors reorder_attachments()
+#   No create_own_hard_delete_attachment(): TASK-30 gives the project
+#   soft-delete only -- see the section docstring above these functions.
+#
 # Refactor 2 iter 2.3 ADDITIONS (Company Document Templates):
 #   find_active_template()           -- 4-stage fallback lookup (R2 §4.7) in
 #                                       a single SQL query, prioritised by
@@ -2770,6 +2780,396 @@ async def reorder_attachments(
         category=category,
         count=len(item_ids),
         staff_id=str(staff.id),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Attachments (Company self-service, TASK-30)
+# ---------------------------------------------------------------------------
+#
+# create_own_attachment / patch_own_attachment_metadata /
+# replace_own_attachment_file / soft_delete_own_attachment /
+# reorder_own_attachments back the company-scoped write surface
+# (companies/attachments_company_router.py, prefix /api/v1/company/attachments).
+# `company_id` is always the caller's OWN company_profiles.id, resolved
+# server-side via get_current_company_profile -- never a path parameter --
+# so a project can never address another company's attachment row through
+# this surface (structural isolation, matching update_own_company /
+# roadmap_company_router's shape). get_attachment / shift_orders_to_make_room
+# above are shared as-is with the staff path -- they already take no
+# staff/actor argument and scope every lookup to (company_id, attachment_id).
+#
+# Upload / MIME / size-limit handling is IDENTICAL to the staff-side
+# functions (upload-before-write, extension-based MIME validation via
+# validate_attachment_mime_by_filename, streamed multipart via BinaryIO)
+# and is deliberately duplicated here rather than reused as a thin
+# wrapper -- same reasoning posts/service.py documents for
+# create_company_post et al., and roadmap's create_own_roadmap_item /
+# update_own_roadmap_item docstrings restate for this exact feature: the
+# staff functions always audit with actor_type="staff" and
+# target_type="attachment" (or "company" for reorder), while TASK-30's
+# ruling for every self-service write on this feature is
+# target_type="company", actor_type="user" (update_own_company /
+# posts/company_router.py / roadmap_company_router.py precedent) so these
+# events surface in GET /api/v1/staff/audit/companies?company_id=<id>.
+# Reusing the staff functions verbatim would either audit under the wrong
+# target_type or require threading an extra "who/what to audit as"
+# parameter through every staff call site for a distinction only this
+# surface needs. Event NAME strings are kept identical to the staff-side
+# ones ("company.attachment_created" etc.) -- only actor_type/target_type
+# differ -- mirroring the roadmap precedent exactly (see
+# create_roadmap_item vs create_own_roadmap_item).
+#
+# HARD DELETE IS DELIBERATELY ABSENT (Q-ATT-1, restated for self-service).
+# attachments_staff_router.py's hard-delete endpoint sits behind a full
+# is_admin() gate on TOP of project_manage, specifically because it is
+# irreversible (drops the row AND the MinIO object) and "soft-delete is
+# sufficient for almost every operational case" even for staff, who
+# already clear a higher bar than a project ever will on this surface.
+# There is no reasoning in that comment that argues FOR extending
+# irreversible deletion to the project itself -- if anything it argues
+# more strongly against it, since a project has no admin-equivalent
+# fallback to recover from its own mistake the way staff can escalate to
+# an admin. So this surface exposes soft_delete_own_attachment() only;
+# no reorder-adjacent "hard" route exists on attachments_company_router.py
+# at all (not merely unauthorized -- unroutable, verified by
+# tests/test_company_attachments.py's 404-on-unmatched-path check).
+# ---------------------------------------------------------------------------
+
+
+async def create_own_attachment(
+    session: AsyncSession,
+    company_id: UUID,
+    actor_user_id: UUID,
+    *,
+    file_data: bytes | BinaryIO,
+    file_size_bytes: int,
+    original_filename: str,
+    content_type: str,
+    metadata: AttachmentInboxMetadata,
+) -> CompanyAttachment:
+    """Create an attachment on the caller's OWN company (TASK-30 self-service).
+
+    Mirrors create_attachment's upload-then-insert flow and order
+    handling exactly. Only the actor and the audit target differ -- see
+    the section docstring above. `created_by` is set to the company
+    user's own user_id (CompanyAttachment.created_by is a plain FK to
+    users.id, not staff-specific).
+
+    Raises:
+        NotFoundError: If the company doesn't exist.
+        StorageError: On any MinIO failure (bubbled up from upload_object).
+    """
+    await get_company(company_id, session)
+
+    attachment_id = uuid4()
+    storage_key = build_storage_key(company_id, attachment_id, original_filename)
+
+    # Upload to MinIO first. A subsequent transaction rollback leaves an
+    # orphan that reconcile_attachments will reap.
+    await upload_object(
+        storage_key, file_data, content_type, content_length=file_size_bytes
+    )
+
+    await shift_orders_to_make_room(
+        session, company_id, metadata.category, metadata.order
+    )
+
+    attachment = CompanyAttachment(
+        id=attachment_id,
+        company_id=company_id,
+        category=metadata.category,
+        language=metadata.language,
+        title=metadata.title,
+        description=metadata.description,
+        storage_key=storage_key,
+        original_filename=original_filename,
+        mime_type=content_type,
+        file_size_bytes=file_size_bytes,
+        order=metadata.order,
+        is_published=metadata.is_published,
+        is_public=metadata.is_public,
+        created_by=actor_user_id,
+    )
+    session.add(attachment)
+    await session.flush()
+    await session.refresh(attachment)
+
+    await record_audit(
+        session=session,
+        event="company.attachment_created",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={
+            "attachment_id": str(attachment.id),
+            "category": metadata.category,
+            "language": metadata.language,
+            "mime_type": content_type,
+            "file_size_bytes": file_size_bytes,
+            "is_published": metadata.is_published,
+            "is_public": metadata.is_public,
+        },
+    )
+
+    logger.info(
+        "attachment_created",
+        attachment_id=str(attachment.id),
+        company_id=str(company_id),
+        actor_user_id=str(actor_user_id),
+        storage_key=storage_key,
+        size=file_size_bytes,
+    )
+
+    return attachment
+
+
+async def patch_own_attachment_metadata(
+    session: AsyncSession,
+    company_id: UUID,
+    attachment_id: UUID,
+    body: AttachmentPatchBody,
+    actor_user_id: UUID,
+) -> CompanyAttachment:
+    """Partially update metadata of an attachment owned by the caller's
+    OWN company. Mirrors patch_attachment_metadata exactly -- only the
+    actor and audit target differ.
+
+    Raises:
+        NotFoundError: If the attachment doesn't exist or belongs to a
+            different company (get_attachment scopes on company_id --
+            404, never 403).
+    """
+    attachment = await get_attachment(session, company_id, attachment_id)
+
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        return attachment
+
+    changed_fields = list(updates.keys())
+
+    new_category = updates.get("category", attachment.category)
+    new_order = updates.get("order")
+
+    if new_order is not None:
+        await shift_orders_to_make_room(
+            session, company_id, new_category, new_order
+        )
+
+    for field, value in updates.items():
+        setattr(attachment, field, value)
+
+    await session.flush()
+    await session.refresh(attachment)
+
+    await record_audit(
+        session=session,
+        event="company.attachment_updated",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"attachment_id": str(attachment.id), "fields": changed_fields},
+    )
+
+    logger.info(
+        "attachment_updated",
+        attachment_id=str(attachment.id),
+        company_id=str(company_id),
+        actor_user_id=str(actor_user_id),
+        fields=changed_fields,
+    )
+
+    return attachment
+
+
+async def replace_own_attachment_file(
+    session: AsyncSession,
+    company_id: UUID,
+    attachment_id: UUID,
+    actor_user_id: UUID,
+    *,
+    file_data: bytes | BinaryIO,
+    file_size_bytes: int,
+    original_filename: str,
+    content_type: str,
+) -> CompanyAttachment:
+    """Swap the binary content of an attachment owned by the caller's OWN
+    company. Mirrors replace_attachment_file's storage flow exactly
+    (upload-new-then-delete-old) -- only the actor and audit target
+    differ.
+
+    Raises:
+        NotFoundError: If the attachment doesn't exist or belongs to a
+            different company.
+        StorageError: On any MinIO failure.
+    """
+    attachment = await get_attachment(session, company_id, attachment_id)
+
+    new_storage_key = build_storage_key(
+        company_id, attachment.id, original_filename
+    )
+    old_storage_key = attachment.storage_key
+
+    await upload_object(
+        new_storage_key, file_data, content_type, content_length=file_size_bytes
+    )
+    if old_storage_key != new_storage_key:
+        await delete_object(old_storage_key)
+
+    attachment.storage_key = new_storage_key
+    attachment.original_filename = original_filename
+    attachment.mime_type = content_type
+    attachment.file_size_bytes = file_size_bytes
+
+    await session.flush()
+    await session.refresh(attachment)
+
+    await record_audit(
+        session=session,
+        event="company.attachment_replaced",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={
+            "attachment_id": str(attachment.id),
+            "old_storage_key": old_storage_key,
+            "new_storage_key": new_storage_key,
+            "mime_type": content_type,
+            "file_size_bytes": file_size_bytes,
+        },
+    )
+
+    logger.info(
+        "attachment_replaced",
+        attachment_id=str(attachment.id),
+        company_id=str(company_id),
+        actor_user_id=str(actor_user_id),
+        old_storage_key=old_storage_key,
+        new_storage_key=new_storage_key,
+        size=file_size_bytes,
+    )
+
+    return attachment
+
+
+async def soft_delete_own_attachment(
+    session: AsyncSession,
+    company_id: UUID,
+    attachment_id: UUID,
+    actor_user_id: UUID,
+) -> None:
+    """Mark an attachment owned by the caller's OWN company as deleted
+    (is_deleted=True). MinIO object stays -- mirrors soft_delete_attachment.
+
+    No hard-delete counterpart exists on this surface -- see the section
+    docstring above.
+
+    Raises:
+        NotFoundError: If the attachment doesn't exist, is already
+            soft-deleted, or belongs to a different company.
+    """
+    attachment = await get_attachment(session, company_id, attachment_id)
+
+    attachment.is_deleted = True
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="company.attachment_soft_deleted",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"attachment_id": str(attachment.id)},
+    )
+
+    logger.info(
+        "attachment_soft_deleted",
+        attachment_id=str(attachment.id),
+        company_id=str(company_id),
+        actor_user_id=str(actor_user_id),
+    )
+
+
+async def reorder_own_attachments(
+    session: AsyncSession,
+    company_id: UUID,
+    category: str,
+    item_ids: list[UUID],
+    actor_user_id: UUID,
+) -> None:
+    """Bulk reorder attachments inside one (company_id, category) scope,
+    for the caller's OWN company. Mirrors reorder_attachments exactly
+    (same set-match validation, same atomic single-flush update) -- only
+    the actor and audit target differ.
+
+    Raises:
+        NotFoundError: company not found.
+        BadRequestError: set mismatch or duplicate ids -- including when
+            `item_ids` references an attachment belonging to a different
+            company (it simply won't be part of this company's scope, so
+            it surfaces as "unknown").
+    """
+    await get_company(company_id, session)
+
+    stmt = (
+        select(CompanyAttachment)
+        .where(
+            CompanyAttachment.company_id == company_id,
+            CompanyAttachment.category == category,
+            CompanyAttachment.is_deleted == False,  # noqa: E712
+        )
+    )
+    result = await session.execute(stmt)
+    rows = {item.id: item for item in result.scalars().all()}
+
+    provided_ids = set(item_ids)
+    existing_ids = set(rows.keys())
+
+    if provided_ids != existing_ids:
+        missing = existing_ids - provided_ids
+        extra = provided_ids - existing_ids
+        parts = []
+        if missing:
+            parts.append(f"missing: {[str(i) for i in missing]}")
+        if extra:
+            parts.append(f"unknown: {[str(i) for i in extra]}")
+        raise BadRequestError(
+            f"attachments_reorder_set_mismatch: {', '.join(parts)}"
+        )
+
+    if len(item_ids) != len(set(item_ids)):
+        raise BadRequestError(
+            "attachments_reorder_set_mismatch: duplicate ids in payload"
+        )
+
+    for new_order, item_id in enumerate(item_ids):
+        rows[item_id].order = new_order
+
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="company.attachments_reordered",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={
+            "category": category,
+            "item_ids": [str(i) for i in item_ids],
+        },
+    )
+
+    logger.info(
+        "attachments_reordered",
+        company_id=str(company_id),
+        category=category,
+        count=len(item_ids),
+        actor_user_id=str(actor_user_id),
     )
 
 

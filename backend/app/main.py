@@ -154,6 +154,9 @@ from app.modules.commissions.worker import (
     run_monthly_payout,
     run_quarterly_payout,
 )
+from app.modules.companies.attachments_company_router import (
+    router as company_attachments_router,
+)
 from app.modules.companies.attachments_public_router import (
     router as public_attachments_router,
 )
@@ -561,6 +564,7 @@ app.include_router(staff_posts_router)
 app.include_router(staff_events_router)
 app.include_router(company_posts_router)
 app.include_router(company_roadmap_router)
+app.include_router(company_attachments_router)
 app.include_router(investor_dashboard_router)
 app.include_router(portfolio_router)
 # Refactor 2 iter 2.4: per-Purchase agreement + per-investor-company ownership

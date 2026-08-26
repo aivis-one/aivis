@@ -1098,6 +1098,10 @@
         "title": "Roadmap",
         "cta": "Manage roadmap"
       },
+      "attachments": {
+        "title": "Attachments",
+        "cta": "Manage attachments"
+      },
       "editViaSupport": "To edit your company profile, contact support.",
       "actions": {
         "title": "Account",
@@ -1151,6 +1155,37 @@
         "removeTitle": "Remove cover image",
         "removeConfirm": "The cover image will be removed from this roadmap item."
       }
+    },
+    "attachments": {
+      "title": "Attachments",
+      "subtitle": "Documents and images shown to investors",
+      "errorTitle": "Could not load attachments",
+      "errorRetry": "Retry",
+      "empty": "No attachments yet",
+      "addCta": "Upload attachment",
+      "chooseFile": "Choose file",
+      "reorderStale": "The attachment list changed while you were editing. Reloaded the latest order.",
+      "published": "Published",
+      "unpublished": "Unpublished",
+      "public": "Public",
+      "createTitle": "Upload attachment",
+      "editTitle": "Edit attachment",
+      "fieldTitle": "Title",
+      "fieldDescription": "Description",
+      "fieldCategory": "Category",
+      "categoryHint": "Lowercase path, e.g. legal/incorporation. Up to 5 levels separated by /.",
+      "categoryError": "Category must be lowercase letters, numbers, - or _, with / between up to 5 levels.",
+      "fieldLanguage": "Language",
+      "fieldPublished": "Visible to investors",
+      "fieldPublic": "Public (downloadable without sign-in)",
+      "fieldFile": "File",
+      "fieldReplaceFile": "Replace file",
+      "created": "Attachment uploaded",
+      "updated": "Attachment updated",
+      "fileReplaced": "File replaced",
+      "deleted": "Attachment deleted",
+      "deleteTitle": "Delete attachment",
+      "deleteConfirm": "This attachment will be hidden from all flows. The file stays in storage."
     },
     "analytics": {
       "title": "Analytics",

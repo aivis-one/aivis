@@ -75,6 +75,7 @@ import { useI18n } from 'vue-i18n'
 import {
   ChevronRight,
   ExternalLink,
+  FileText,
   Image as ImageIcon,
   LogOut,
   Layers,
@@ -382,6 +383,20 @@ onMounted(() => {
           <span class="cset__row-label">
             <MapIcon :size="16" />
             {{ t('comp.settings.roadmap.cta') }}
+          </span>
+          <ChevronRight :size="16" />
+        </RouterLink>
+      </section>
+
+      <!-- Attachments (TASK-30 self-service, §4) -->
+      <section class="cset__section">
+        <div class="cset__section-title">
+          {{ t('comp.settings.attachments.title') }}
+        </div>
+        <RouterLink to="/company/attachments" class="cset__row cset__row--clickable">
+          <span class="cset__row-label">
+            <FileText :size="16" />
+            {{ t('comp.settings.attachments.cta') }}
           </span>
           <ChevronRight :size="16" />
         </RouterLink>

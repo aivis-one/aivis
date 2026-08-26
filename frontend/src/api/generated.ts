@@ -140,7 +140,20 @@ export interface Body_create_attachment_staff_endpoint_api_v1_staff_companies__c
   file: string
 }
 
+export interface Body_create_own_attachment_endpoint_api_v1_company_attachments_post {
+  metadata: string
+  file: string
+}
+
 export interface Body_replace_attachment_staff_endpoint_api_v1_staff_companies__company_id__attachments__attachment_id__replace_patch {
+  file: string
+}
+
+export interface Body_replace_own_attachment_endpoint_api_v1_company_attachments__attachment_id__replace_patch {
+  file: string
+}
+
+export interface Body_set_own_roadmap_cover_endpoint_api_v1_company_roadmap__item_id__cover_put {
   file: string
 }
 

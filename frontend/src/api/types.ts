@@ -609,16 +609,20 @@ export type { EventListResponse } from './generated'
 // Source of truth: backend/app/modules/companies/attachments_router.py
 //   and backend/app/modules/companies/schemas.py::AttachmentResponse.
 //
-// AttachmentPatchBody is intentionally NOT re-exported here -- staff
-// UI (R2 §6.2) ships in iter 2.7 and will surface its own re-export
-// section.
+// AttachmentPatchBody was NOT re-exported here at first -- staff UI
+// (R2 §6.2) shipped read-only in iter 2.7 with no write form yet. TASK-30
+// company self-service (api/company-attachments.ts) is the first
+// consumer that needs it, so it is re-exported below alongside
+// ReorderAttachmentsRequest (already re-exported for staff, iter 2.7 C2).
 //
 // Public-flow variant (AttachmentResponse via /api/v1/public/...) uses
-// the same DTO shape; when iter 2.6 wires PublicShell, no new type
-// re-export is required.
+// the same DTO shape; when iter 2.6 wired PublicShell, no new type
+// re-export was required.
 // ===========================================================================
 
 export type { AttachmentResponse } from './generated'
+
+export type { AttachmentPatchBody } from './generated'
 
 // ===========================================================================
 // iter 2.7 Block B -- Staff Platform tab (posts / events / companies write
@@ -703,7 +707,12 @@ export type { TemplateDetailResponse } from './generated'
 // reorder + soft-delete. StaffAttachmentResponse carries storage_key
 // (MinIO deep-link) and operational flags hidden from the public
 // AttachmentResponse; ReorderAttachmentsRequest is the {category,
-// item_ids} body for the per-category reorder endpoint.
+// item_ids} body for the per-category reorder endpoint. TASK-30
+// company self-service (api/company-attachments.ts) reuses
+// ReorderAttachmentsRequest as-is -- same {category, item_ids} shape,
+// no company_id anywhere in it -- but uses the plain AttachmentResponse
+// (re-exported above) rather than StaffAttachmentResponse, since a
+// project has no use for storage_key / created_by_id / is_deleted.
 export type { StaffAttachmentResponse } from './generated'
 
 export type { ReorderAttachmentsRequest } from './generated'
