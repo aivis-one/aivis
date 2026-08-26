@@ -456,6 +456,16 @@ export const router = createRouter({
           name: 'company-settings',
           component: () => import('@/views/company/CompanySettingsView.vue'),
         },
+        {
+          // TASK-30 self-service: project-owned roadmap CRUD (§4).
+          // Reached from a row inside Settings, not a bottom tab --
+          // COMPANY_TABS already has 5 fixed slots. See
+          // CompanyRoadmapView.vue's header comment for the full
+          // placement rationale.
+          path: 'roadmap',
+          name: 'company-roadmap',
+          component: () => import('@/views/company/CompanyRoadmapView.vue'),
+        },
       ],
     },
 

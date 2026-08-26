@@ -78,6 +78,7 @@ import {
   Image as ImageIcon,
   LogOut,
   Layers,
+  Map as MapIcon,
   Package,
   Video,
 } from 'lucide-vue-next'
@@ -370,6 +371,20 @@ onMounted(() => {
         <p v-else-if="status === 'archived'" class="cset__status-hint">
           {{ t('comp.settings.profile.archivedHint') }}
         </p>
+      </section>
+
+      <!-- Roadmap (TASK-30 self-service, §4) -->
+      <section class="cset__section">
+        <div class="cset__section-title">
+          {{ t('comp.settings.roadmap.title') }}
+        </div>
+        <RouterLink to="/company/roadmap" class="cset__row cset__row--clickable">
+          <span class="cset__row-label">
+            <MapIcon :size="16" />
+            {{ t('comp.settings.roadmap.cta') }}
+          </span>
+          <ChevronRight :size="16" />
+        </RouterLink>
       </section>
 
       <!-- Pricing & supply -->

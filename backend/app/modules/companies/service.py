@@ -571,14 +571,18 @@ async def update_own_company(
     await session.flush()
     await session.refresh(profile)
 
-    # Audit. actor_type="company" -- the actor here is the project
-    # itself, not staff; actor_id is the project's own user_id (the
-    # authenticated identity that made this call).
+    # Audit. actor_type="user" -- record_audit()'s own contract is
+    # "user" | "staff" | "system" (app/core/audit.py); a company
+    # account is a User row with role=COMPANY, not a fourth kind of
+    # actor, and this now matches the convention every later
+    # self-service write on this task follows (posts, roadmap).
+    # actor_id is the project's own user_id (the authenticated
+    # identity that made this call).
     await record_audit(
         session=session,
         event="company.self_updated",
         actor_id=profile.user_id,
-        actor_type="company",
+        actor_type="user",
         target_type="company",
         target_id=profile.id,
         data={"fields": changed_fields, "changes": changes},
@@ -1623,6 +1627,462 @@ async def _get_roadmap_item(
         raise NotFoundError("Roadmap item not found")
 
     return item
+
+
+# ---------------------------------------------------------------------------
+# Roadmap CRUD (Company self-service, TASK-30 W5)
+# ---------------------------------------------------------------------------
+#
+# create_own_roadmap_item / update_own_roadmap_item / delete_own_roadmap_item /
+# reorder_own_roadmap / set_own_roadmap_cover / delete_own_roadmap_cover back
+# the company-scoped write surface (companies/roadmap_company_router.py,
+# prefix /api/v1/company/roadmap). `company_id` is always the caller's OWN
+# company_profiles.id, resolved server-side via get_current_company_profile
+# -- never a path parameter -- so a project can never address another
+# company's roadmap row through this surface (the isolation guarantee is
+# structural, matching update_own_company's shape, not merely a runtime
+# ownership check that could be forgotten). `_get_roadmap_item` above is
+# shared as-is between the staff and company paths -- it already takes no
+# staff/actor argument.
+#
+# Per-kind FK checks, order computation, and the milestone
+# completed-is-terminal state machine below are IDENTICAL to the
+# corresponding staff-side functions and are deliberately duplicated here
+# rather than reused as thin wrappers -- same reasoning posts/service.py
+# documents for create_company_post / update_company_post /
+# delete_company_post ("AUDIT DECISION" comment above _get_company_post_or_404):
+# the staff functions always audit with actor_type="staff" and (for the
+# per-item operations) target_type="roadmap_item", while TASK-30's ruling
+# for every self-service write on this feature is target_type="company",
+# actor_type="user" (see update_own_company / posts/company_router.py
+# precedent) so these events surface in
+# GET /api/v1/staff/audit/companies?company_id=<id>. Reusing the staff
+# functions verbatim would either audit under the wrong target_type or
+# require threading an extra "who/what to audit as" parameter through
+# every staff call site for a distinction only this surface needs.
+# ---------------------------------------------------------------------------
+
+
+async def create_own_roadmap_item(
+    company_id: UUID,
+    actor_user_id: UUID,
+    title: str,
+    session: AsyncSession,
+    *,
+    kind: str = RoadmapItemKind.MILESTONE.value,
+    description: str | None = None,
+    target_date=None,
+    valid_until=None,
+    status: str | None = None,
+    external_url: str | None = None,
+    post_id: UUID | None = None,
+    linked_product_id: UUID | None = None,
+) -> CompanyRoadmapItem:
+    """Add a roadmap item to the caller's OWN company (TASK-30 self-service).
+
+    Mirrors create_roadmap_item's validation and order-assignment exactly
+    (per-kind rules already enforced by CreateRoadmapItemRequest's
+    model_validator; FK checks on linked_product_id / post_id are
+    re-verified here as DB truth, same as the staff path). Only the actor
+    and the audit target differ -- see the section docstring above.
+
+    Raises:
+        NotFoundError: company / post not found.
+        BadRequestError: status invalid, or linked product belongs to
+                         a different company.
+    """
+    await get_company(company_id, session)
+
+    if status is not None:
+        valid_statuses = {s.value for s in RoadmapItemStatus}
+        if status not in valid_statuses:
+            raise BadRequestError(
+                f"Invalid roadmap item status: '{status}'. "
+                f"Valid: {valid_statuses}"
+            )
+
+    if linked_product_id is not None:
+        prod_stmt = select(Product).where(Product.id == linked_product_id)
+        product = (await session.execute(prod_stmt)).scalar_one_or_none()
+        if product is None:
+            raise NotFoundError(f"Product {linked_product_id} not found")
+        if product.company_id != company_id:
+            raise BadRequestError(
+                f"linked_product_id {linked_product_id} belongs to a "
+                f"different company"
+            )
+
+    if post_id is not None:
+        post_stmt = select(Post.id).where(
+            Post.id == post_id,
+            Post.is_deleted == False,  # noqa: E712
+        )
+        post_exists = (await session.execute(post_stmt)).scalar_one_or_none()
+        if post_exists is None:
+            raise NotFoundError(f"Post {post_id} not found")
+
+    max_order_stmt = (
+        select(func.coalesce(func.max(CompanyRoadmapItem.order), -1))
+        .where(
+            CompanyRoadmapItem.company_id == company_id,
+            CompanyRoadmapItem.is_deleted == False,  # noqa: E712
+        )
+    )
+    max_order = (await session.execute(max_order_stmt)).scalar_one()
+
+    item = CompanyRoadmapItem(
+        company_id=company_id,
+        kind=kind,
+        title=title,
+        description=description,
+        target_date=target_date,
+        valid_until=valid_until,
+        status=status or RoadmapItemStatus.PLANNED,
+        order=max_order + 1,
+        external_url=external_url,
+        post_id=post_id,
+        linked_product_id=linked_product_id,
+    )
+    session.add(item)
+    await session.flush()
+    await session.refresh(item)
+
+    await record_audit(
+        session=session,
+        event="company.roadmap_item_created",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"item_id": str(item.id), "kind": kind, "title": title},
+    )
+
+    return item
+
+
+async def update_own_roadmap_item(
+    company_id: UUID,
+    item_id: UUID,
+    actor_user_id: UUID,
+    session: AsyncSession,
+    *,
+    title: str | None = None,
+    description: str | None = ...,  # type: ignore[assignment]
+    target_date=...,
+    valid_until=...,
+    status: str | None = None,
+    external_url: str | None = ...,  # type: ignore[assignment]
+    post_id: UUID | None = ...,  # type: ignore[assignment]
+    linked_product_id: UUID | None = ...,  # type: ignore[assignment]
+) -> CompanyRoadmapItem:
+    """Partial update of a roadmap item owned by the caller's OWN company.
+
+    Sentinel-pattern semantics and the milestone completed-is-terminal
+    state machine are identical to update_roadmap_item -- see that
+    function's docstring. Only the actor and audit target differ.
+
+    Raises:
+        NotFoundError: company / item / post not found.
+        BadRequestError: status invalid, illegal status transition,
+                         or linked product belongs to a different
+                         company.
+    """
+    await get_company(company_id, session)
+    item = await _get_roadmap_item(company_id, item_id, session)
+
+    changed_fields: list[str] = []
+
+    if title is not None:
+        item.title = title
+        changed_fields.append("title")
+
+    if description is not ...:
+        item.description = description
+        changed_fields.append("description")
+
+    if target_date is not ...:
+        item.target_date = target_date
+        changed_fields.append("target_date")
+
+    if valid_until is not ...:
+        item.valid_until = valid_until
+        changed_fields.append("valid_until")
+
+    if external_url is not ...:
+        item.external_url = external_url
+        changed_fields.append("external_url")
+
+    if post_id is not ...:
+        if post_id is not None:
+            post_stmt = select(Post.id).where(
+                Post.id == post_id,
+                Post.is_deleted == False,  # noqa: E712
+            )
+            post_exists = (
+                await session.execute(post_stmt)
+            ).scalar_one_or_none()
+            if post_exists is None:
+                raise NotFoundError(f"Post {post_id} not found")
+        item.post_id = post_id
+        changed_fields.append("post_id")
+
+    if linked_product_id is not ...:
+        if linked_product_id is not None:
+            prod_stmt = select(Product).where(
+                Product.id == linked_product_id
+            )
+            product = (
+                await session.execute(prod_stmt)
+            ).scalar_one_or_none()
+            if product is None:
+                raise NotFoundError(
+                    f"Product {linked_product_id} not found"
+                )
+            if product.company_id != company_id:
+                raise BadRequestError(
+                    f"linked_product_id {linked_product_id} belongs to "
+                    f"a different company"
+                )
+        item.linked_product_id = linked_product_id
+        changed_fields.append("linked_product_id")
+
+    if status is not None:
+        valid_statuses = {s.value for s in RoadmapItemStatus}
+        if status not in valid_statuses:
+            raise BadRequestError(
+                f"Invalid roadmap item status: '{status}'. "
+                f"Valid: {valid_statuses}"
+            )
+        if (
+            item.kind == RoadmapItemKind.MILESTONE.value
+            and item.status == RoadmapItemStatus.COMPLETED.value
+            and status != RoadmapItemStatus.COMPLETED.value
+        ):
+            raise BadRequestError(
+                "Cannot move a completed milestone to another status. "
+                "Soft-delete and recreate if the change is intentional."
+            )
+        item.status = status
+        changed_fields.append("status")
+
+    if changed_fields:
+        await session.flush()
+        await session.refresh(item)
+
+        await record_audit(
+            session=session,
+            event="company.roadmap_item_updated",
+            actor_id=actor_user_id,
+            actor_type="user",
+            target_type="company",
+            target_id=company_id,
+            data={"item_id": str(item.id), "fields": changed_fields},
+        )
+
+    return item
+
+
+async def delete_own_roadmap_item(
+    company_id: UUID,
+    item_id: UUID,
+    actor_user_id: UUID,
+    session: AsyncSession,
+) -> None:
+    """Soft-delete a roadmap item owned by the caller's OWN company.
+
+    Raises:
+        NotFoundError: If company or item not found.
+    """
+    await get_company(company_id, session)
+
+    item = await _get_roadmap_item(company_id, item_id, session)
+    item.is_deleted = True
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="company.roadmap_item_deleted",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"item_id": str(item.id)},
+    )
+
+
+async def reorder_own_roadmap(
+    company_id: UUID,
+    item_ids: list[UUID],
+    actor_user_id: UUID,
+    session: AsyncSession,
+) -> list[CompanyRoadmapItem]:
+    """Reorder roadmap items belonging to the caller's OWN company.
+
+    Raises:
+        NotFoundError: If company not found.
+        BadRequestError: If item_ids don't match existing items.
+    """
+    await get_company(company_id, session)
+
+    stmt = (
+        select(CompanyRoadmapItem)
+        .where(
+            CompanyRoadmapItem.company_id == company_id,
+            CompanyRoadmapItem.is_deleted == False,  # noqa: E712
+        )
+    )
+    result = await session.execute(stmt)
+    items = {item.id: item for item in result.scalars().all()}
+
+    provided_ids = set(item_ids)
+    existing_ids = set(items.keys())
+
+    if provided_ids != existing_ids:
+        missing = existing_ids - provided_ids
+        extra = provided_ids - existing_ids
+        parts = []
+        if missing:
+            parts.append(f"missing: {[str(i) for i in missing]}")
+        if extra:
+            parts.append(f"unknown: {[str(i) for i in extra]}")
+        raise BadRequestError(f"Reorder mismatch: {', '.join(parts)}")
+
+    if len(item_ids) != len(set(item_ids)):
+        raise BadRequestError("Duplicate IDs in reorder list")
+
+    for new_order, item_id in enumerate(item_ids):
+        items[item_id].order = new_order
+
+    await session.flush()
+
+    ordered = [items[item_id] for item_id in item_ids]
+    for item in ordered:
+        await session.refresh(item)
+
+    await record_audit(
+        session=session,
+        event="company.roadmap_reordered",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"item_ids": [str(i) for i in item_ids]},
+    )
+
+    return ordered
+
+
+async def set_own_roadmap_cover(
+    session: AsyncSession,
+    company_id: UUID,
+    item_id: UUID,
+    actor_user_id: UUID,
+    *,
+    file_data: BinaryIO,
+    file_size_bytes: int,
+    content_type: str,
+    file_extension: str,
+) -> CompanyRoadmapItem:
+    """Upload / replace the cover image of a roadmap item owned by the
+    caller's OWN company. Mirrors set_roadmap_cover's storage flow
+    exactly (upload-before-write, best-effort old-object cleanup) --
+    only the actor and audit target differ.
+
+    Raises:
+        NotFoundError: company / item not found.
+        StorageError:  any MinIO failure on the upload step bubbles up
+                       (the DB write has not happened yet, so this is a
+                       clean rollback).
+    """
+    await get_company(company_id, session)
+    item = await _get_roadmap_item(company_id, item_id, session)
+
+    old_storage_key = item.cover_storage_key
+    new_storage_key = (
+        f"companies/{company_id}/roadmap/{item_id}/cover{file_extension}"
+    )
+
+    await upload_object(
+        new_storage_key,
+        file_data,
+        content_type,
+        content_length=file_size_bytes,
+    )
+
+    item.cover_storage_key = new_storage_key
+    await session.flush()
+    await session.refresh(item)
+
+    if old_storage_key and old_storage_key != new_storage_key:
+        try:
+            await delete_object(old_storage_key)
+        except StorageError as exc:
+            logger.warning(
+                "roadmap_cover_old_delete_failed",
+                item_id=str(item_id),
+                storage_key=old_storage_key,
+                error=str(exc),
+            )
+
+    await record_audit(
+        session=session,
+        event="company.roadmap_cover_uploaded",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={
+            "item_id": str(item.id),
+            "storage_key": new_storage_key,
+            "content_type": content_type,
+            "file_size_bytes": file_size_bytes,
+        },
+    )
+
+    return item
+
+
+async def delete_own_roadmap_cover(
+    company_id: UUID,
+    item_id: UUID,
+    actor_user_id: UUID,
+    session: AsyncSession,
+) -> None:
+    """Remove the cover image from a roadmap item owned by the caller's
+    OWN company. 404 when no cover is set, same as delete_roadmap_cover.
+
+    Raises:
+        NotFoundError: company / item not found, or item has no cover.
+    """
+    await get_company(company_id, session)
+    item = await _get_roadmap_item(company_id, item_id, session)
+
+    if item.cover_storage_key is None:
+        raise NotFoundError("Roadmap item has no cover image")
+
+    storage_key = item.cover_storage_key
+    item.cover_storage_key = None
+    await session.flush()
+
+    try:
+        await delete_object(storage_key)
+    except StorageError as exc:
+        logger.warning(
+            "roadmap_cover_delete_failed",
+            item_id=str(item_id),
+            storage_key=storage_key,
+            error=str(exc),
+        )
+
+    await record_audit(
+        session=session,
+        event="company.roadmap_cover_deleted",
+        actor_id=actor_user_id,
+        actor_type="user",
+        target_type="company",
+        target_id=company_id,
+        data={"item_id": str(item.id), "storage_key": storage_key},
+    )
 
 
 # ---------------------------------------------------------------------------

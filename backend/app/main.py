@@ -164,6 +164,9 @@ from app.modules.companies.attachments_staff_router import (
 from app.modules.companies.public_router import (
     router as public_companies_router,
 )
+from app.modules.companies.roadmap_company_router import (
+    router as company_roadmap_router,
+)
 from app.modules.companies.router import router as companies_router
 from app.modules.companies.staff_router import router as staff_companies_router
 from app.modules.companies.templates_staff_router import (
@@ -557,6 +560,7 @@ app.include_router(events_router)
 app.include_router(staff_posts_router)
 app.include_router(staff_events_router)
 app.include_router(company_posts_router)
+app.include_router(company_roadmap_router)
 app.include_router(investor_dashboard_router)
 app.include_router(portfolio_router)
 # Refactor 2 iter 2.4: per-Purchase agreement + per-investor-company ownership
