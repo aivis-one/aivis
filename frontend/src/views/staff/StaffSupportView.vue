@@ -285,6 +285,12 @@ onMounted(() => {
           <h2 class="ssup__group-title">
             {{ t('staff.support.groupPool') }}
           </h2>
+          <!-- Pool rows never carry an unread count, and that is a
+               property of comms rather than a gap on this screen: the
+               count is attached only to threads the operator takes part
+               in, and nobody takes part in an unclaimed one. Said on
+               screen because its absence is otherwise read as a bug. -->
+          <p class="ssup__group-note">{{ t('staff.support.poolNoUnread') }}</p>
           <div
             v-for="row in poolRows"
             :key="row.id"
@@ -587,6 +593,11 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
+}
+.ssup__group-note {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin: 0 0 var(--space-2);
 }
 .ssup__row-client {
   font-size: var(--fs-sm);

@@ -351,9 +351,54 @@ section "SSH Deploy Key & Repository"
 # test fails on a perfectly good key, every time. Capture the banner
 # instead; `|| true` keeps the assignment from tripping the ERR trap.
 github_probe() {
-    local alias="$1" banner
-    banner=$(ssh -T "git@${alias}" 2>&1 || true)
-    echo "$banner" | grep -q "successfully authenticated"
+    # SUCCESS IS STILL DECIDED BY THE BANNER, not by the exit code, and
+    # that has not changed: a working deploy key makes `ssh -T` exit 1,
+    # because GitHub authenticates you and then refuses the shell. The
+    # grep below is the same test it always was.
+    #
+    # WHAT CHANGED IS THE SILENCE. stderr went into the variable, so any
+    # question ssh asked was captured instead of shown, and there was no
+    # timeout -- the screen simply stopped, and the operator could not
+    # tell a slow network from a prompt nobody would ever answer. With
+    # twelve services in the registry that is twelve places to hang.
+    #
+    #   BatchMode=yes            -- an authentication question becomes a
+    #                               refusal instead of an invisible wait.
+    #   StrictHostKeyChecking=accept-new -- but NOT the host-key
+    #                               question: on a fresh machine that one
+    #                               is legitimate, and BatchMode alone
+    #                               would turn a first install into a
+    #                               refusal. provision_deploy_key seeds
+    #                               known_hosts with ssh-keyscan before
+    #                               this runs, and this is the belt for
+    #                               the case where that seeding silently
+    #                               failed.
+    #   ConnectTimeout / timeout -- an unreachable GitHub answers in
+    #                               seconds, not never. The outer
+    #                               `timeout` covers the whole exchange,
+    #                               the inner option only the TCP part.
+    local alias="$1" banner status
+    banner=$(timeout 25 ssh -T \
+        -o BatchMode=yes \
+        -o StrictHostKeyChecking=accept-new \
+        -o ConnectTimeout=10 \
+        "git@${alias}" 2>&1) && status=0 || status=$?
+
+    if echo "$banner" | grep -q "successfully authenticated"; then
+        return 0
+    fi
+
+    # Every failure path says something. `timeout` reports 124 when it
+    # had to kill the command, which is the one case the operator most
+    # needs named: it is indistinguishable from a hang otherwise.
+    if [ "$status" -eq 124 ]; then
+        warn "GitHub did not answer within 25s for ${alias} -- network or firewall, not the key"
+    elif [ -n "$banner" ]; then
+        warn "ssh to ${alias} said: ${banner}"
+    else
+        warn "ssh to ${alias} failed silently (exit ${status})"
+    fi
+    return 1
 }
 
 # Provision ONE GitHub deploy key: generate if absent, add the host alias
@@ -438,6 +483,14 @@ SSH_CONFIG_EOF
     echo -e "${CYAN}  GitHub Deploy Key -- ${name} repo${NC}"
     echo -e "${CYAN}===============================================${NC}"
     echo ""
+    # The public half is what the operator is about to paste. Without
+    # this guard a missing .pub -- half a key pair copied from another
+    # box, or one file deleted by hand -- makes `cat` fail under set -e
+    # and takes the whole install down on a line that says nothing about
+    # what to do next.
+    if [ ! -f "${key}.pub" ]; then
+        error "Private key ${key} exists but its public half ${key}.pub is missing. Restore it with: ssh-keygen -y -f ${key} > ${key}.pub"
+    fi
     cat "${key}.pub"
     echo ""
     echo -e "${YELLOW}Go to: https://github.com/${repo}/settings/keys${NC}"

@@ -254,7 +254,8 @@
         "client": "Client",
         "operator": "Staff"
       },
-      "threadId": "Thread {id}"
+      "threadId": "Thread {id}",
+      "poolNoUnread": "Unclaimed requests show no unread count -- nobody is following them yet."
     },
     "avatar": {
       "title": "Avatar Mode",

@@ -254,7 +254,8 @@
         "client": "Kunde",
         "operator": "Mitarbeiter"
       },
-      "threadId": "Thread {id}"
+      "threadId": "Thread {id}",
+      "poolNoUnread": "Nicht übernommene Anfragen zeigen keinen Ungelesen-Zähler -- niemand betreut sie bisher."
     },
     "avatar": {
       "title": "Avatar-Modus",

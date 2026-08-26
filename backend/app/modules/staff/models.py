@@ -58,16 +58,18 @@ class StaffProfile(JSONBMixin, UUIDMixin, Base):
     )
 
     # -- Permission matrix (JSONB) --
-    # Overrides config defaults per staff member.
-    # Schema: {
-    #   "avatar_mode": bool,
-    #   "kyc_approve": bool,
-    #   "payment_review": bool,
-    #   "user_block": bool,
-    #   "financial_operations": bool,
-    #   "agent_application_review": bool,
-    #   "translation_edit": bool
-    # }
+    # Overrides config defaults per staff member. One bool per key.
+    #
+    # THE KEYS ARE NOT LISTED HERE, and their absence is the point.
+    # staff/constants.py owns them -- DEFAULT_STAFF_PERMISSIONS defines
+    # the set and VALID_PERMISSION_KEYS is derived from it -- so a copy
+    # in this comment is a second source that can only ever fall behind
+    # the first. It did: the list that used to stand here named seven
+    # keys while the constant had grown to ten, and a handoff written
+    # from this comment inherited the wrong number.
+    #
+    # Read the set from staff/constants.py. Do not re-enumerate it here.
+    #
     # Use set_jsonb("permissions", value) for mutations.
     permissions: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
         JSONB,

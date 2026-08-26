@@ -24,6 +24,16 @@ build/
 .venv/
 venv/
 
+# -- Run artefacts --
+# Redis writes its snapshot into the working directory of whoever
+# started it, which on a bare stand is the repository root. It turned up
+# in four delivery reports as an unexplained untracked file before this
+# line existed; an untracked file in the root is not cosmetic here,
+# because `aivis update` reads `git status --porcelain` to decide the
+# tree is dirty and stops to ask.
+dump.rdb
+*.rdb
+
 # -- Tool caches --
 .mypy_cache/
 .pytest_cache/

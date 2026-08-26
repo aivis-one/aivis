@@ -268,10 +268,32 @@ case_test() {
             fi
             ;;
         frontend)
-            echo "=== Frontend Lint ==="
-            if ! docker compose exec -T frontend sh -c "cd /app 2>/dev/null && npx eslint . || true"; then
-                echo -e "${YELLOW}⚠ Frontend lint not available (container may lack source)${NC}"
-            fi
+            # THIS VERB CHECKED NOTHING AND SAID IT PASSED. It ran
+            # `npx eslint` inside the `frontend` container, and that
+            # container is nginx:alpine (frontend/Dockerfile, second
+            # stage): no /app, no node, no npx. The `cd /app` failed, the
+            # `|| true` swallowed it, and a green tick was printed for
+            # work that never happened -- which is how "aivis test
+            # frontend is green" ended up in delivery reports meaning
+            # nothing at all.
+            #
+            # Rather than build a node container per run (an npm install
+            # every time, minutes, for a check that already exists
+            # elsewhere), the verb now says where the frontend IS
+            # checked. A gate that prints green for an unperformed check
+            # is worse than no gate: it is a lie the next reader has no
+            # way to spot.
+            echo "=== Frontend ==="
+            echo "This box does not lint or type-check the frontend."
+            echo "The serving container is nginx with a built bundle -- no"
+            echo "sources and no node, so nothing here can run eslint."
+            echo ""
+            echo "Where the frontend IS checked:"
+            echo "  aivis update  -- rebuilds it, and 'npm run build' is"
+            echo "                   'vue-tsc --noEmit && vite build', so a"
+            echo "                   type error stops the update."
+            echo "  npm run lint  -- on a checkout with node_modules."
+            exit 1
             ;;
         all)
             echo "=== Backend Tests ==="
@@ -309,9 +331,10 @@ case_lint() {
     echo "=== Mypy ==="
     docker compose exec -T app python -m mypy app/
     echo ""
-    echo "=== Frontend ESLint ==="
-    docker compose exec -T frontend sh -c "cd /app 2>/dev/null && npx eslint . || true" 2>/dev/null \
-        || echo -e "${YELLOW}⚠ Frontend lint not available${NC}"
+    # No frontend section, deliberately -- see case_test. The line that
+    # used to be here could not run and reported success regardless.
+    echo "Frontend is not linted here: 'npm run lint' on a checkout, and"
+    echo "'aivis update' type-checks it as part of the build."
 }
 
 # ==============================================================================
@@ -1169,7 +1192,22 @@ case_db() {
     cd_compose
     case "${1:-connect}" in
         connect)
-            docker compose exec postgres psql -U aivis -d aivis
+            # Arguments after `connect` go through to psql. They used to
+            # be dropped: the case branch read $1 and nothing else, so
+            # `aivis db connect -c "SELECT ..."` opened an interactive
+            # session and threw the query away -- the operator saw a
+            # prompt where they expected a result, with nothing to say
+            # the flag had been ignored.
+            #
+            # -T only in the non-interactive form: psql -c wants no
+            # terminal, and an interactive session cannot live without
+            # one.
+            shift
+            if [ "$#" -gt 0 ]; then
+                docker compose exec -T postgres psql -U aivis -d aivis "$@"
+            else
+                docker compose exec postgres psql -U aivis -d aivis
+            fi
             ;;
         dump)
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -1203,7 +1241,8 @@ case_db() {
             ;;
         *)
             echo "Database commands:"
-            echo "  aivis db connect          — Connect to PostgreSQL (psql)"
+            echo "  aivis db connect [args]   — Open psql; any args go through to psql"
+            echo "                              e.g. aivis db connect -c \"SELECT 1;\""
             echo "  aivis db dump             — Create SQL dump"
             echo "  aivis db restore <file>   — Restore from dump"
             echo "  aivis db migrate          — Run Alembic migrations"
@@ -1718,8 +1757,11 @@ case "$CMD" in
         echo "  version                                   — Git log + runtime versions"
         echo ""
         echo "Testing:"
-        echo "  test [backend|frontend|all]               — Run tests (default: all)"
-        echo "  lint                                      — Run ruff + mypy + eslint"
+        echo "  test [backend|frontend|all]               — Backend tests only; 'frontend' explains why"
+        echo "  lint                                      — Run ruff + mypy (backend only)"
+        echo "    NOTE: nothing here checks the frontend. It is type-checked"
+        echo "    by 'aivis update' (npm run build = vue-tsc --noEmit &&"
+        echo "    vite build) and linted by 'npm run lint' on a checkout."
         echo ""
         echo "Deployment:"
         echo "  update                                    — Pull, rebuild, migrate, test, regen-types, restart"
@@ -1729,7 +1771,7 @@ case "$CMD" in
         echo "  restart [service]                         — Restart all or specific service"
         echo ""
         echo "Database:"
-        echo "  db connect                                — Open psql session"
+        echo "  db connect [psql args]                    — Open psql; args pass through (-c, -f, ...)"
         echo "  db dump                                   — Create SQL dump"
         echo "  db restore <file>                         — Restore from dump"
         echo "  db migrate                                — Run Alembic migrations"

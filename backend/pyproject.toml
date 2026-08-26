@@ -62,6 +62,8 @@ dependencies = [
 dev = [
     "pytest>=8.0.0,<9.0",
     "pytest-asyncio>=0.24.0,<1.0",
+    # A hang is not a test result. See [tool.pytest.ini_options] below.
+    "pytest-timeout>=2.3.0,<3.0",
     "httpx>=0.27.0,<1.0",
     "ruff>=0.7.0,<1.0",
     "mypy>=1.11.0,<2.0",
@@ -120,6 +122,24 @@ asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 pythonpath = ["."]
 cache_dir = "/tmp/.pytest_cache"
+
+# A RUN THAT HANGS REPORTS NOTHING. On a machine without MinIO the suite
+# produced 17 fixture errors and then stopped dead: no summary, no exit
+# code, no way to tell a slow run from a stuck one without attaching to
+# the process.
+#
+# WHERE 120 COMES FROM, and it is not a round number picked by feel: the
+# last full run was 311s for 518 tests, an average of 0.6s. A test twenty
+# times slower than average is 12s, and this is an order of magnitude
+# above that. Lower would start failing legitimate slow tests on a loaded
+# box; much higher and a stuck run looks like a hang again.
+timeout = 120
+
+# THREAD, NOT SIGNAL. The signal method interrupts the test function
+# only, and what hangs here is a FIXTURE waiting on a socket to a MinIO
+# that is not there -- the very case this setting exists for. The thread
+# method watches wall-clock time around the whole item, setup included.
+timeout_method = "thread"
 filterwarnings = [
     "ignore:A custom validator is returning a value other than `self`:UserWarning:pydantic_settings",
 ]

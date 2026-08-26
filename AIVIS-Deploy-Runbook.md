@@ -603,6 +603,18 @@ missing every object stored in MinIO; the only way to know is to read that log y
 
 ## 12. A few more worth knowing
 
+- **Nothing on this box checks the frontend, and `aivis test frontend` now says so instead of
+  printing a tick** (T-90). It used to run `npx eslint` inside the `frontend` container, which is
+  nginx with a built bundle — no sources, no node — so the command failed, a `|| true` swallowed it,
+  and the verb reported success for work that never ran. `aivis lint` is backend only for the same
+  reason. The frontend is type-checked where it is built: `aivis update` runs `npm run build`, which
+  is `vue-tsc --noEmit && vite build`, so a type error stops the update. Linting it needs a checkout
+  with `node_modules` and `npm run lint`.
+- **`aivis db connect` passes anything after it straight to psql** (T-90) — `aivis db connect -c
+  "SELECT version_num FROM alembic_version;"` prints the answer instead of opening a prompt. With no
+  arguments it is the interactive session it always was. Before T-90 the arguments were silently
+  dropped.
+
 - **`aivis seed --reset` has no confirmation prompt at all** — unlike the install wipe, `update`'s
   discard, and `db restore`, this one just runs. What it deletes is bounded rather than announced: only
   rows whose `users.seeded_profile` matches the profile being run, plus what hangs off them. A person
