@@ -21,8 +21,12 @@
 # acceptance is split three ways below: the unconfigured case asserts the
 # seed does not DEPEND on comms, the unreachable case asserts the
 # recipient path was actually walked, and membership is asserted
-# separately because emit_support_membership has no such gate and writes
-# every time.
+# separately because it answers a different question.
+#
+# T-93 UPDATE: emit_support_membership now carries the SAME gate as
+# ensure_recipient -- no comms address, no row -- so the membership
+# assertion below states the address it needs instead of relying on
+# whichever .env the box happens to run pytest with.
 #
 # ISOLATION. conftest gives per-RUN isolation only, so every test here
 # builds its own tiny profile with a uuid-suffixed marker and e-mail
@@ -40,6 +44,7 @@ import pytest
 from sqlalchemy import func, select
 
 import scripts.seed as seed
+from app.core.config import settings as seed_settings
 from app.core.events.models import OutboxEvent
 from app.core.events.service import (
     EVENT_SECTION_MEMBERSHIP_CHANGED,
@@ -184,14 +189,18 @@ async def test_seed_defers_recipients_to_outbox_when_comms_is_unreachable(
 
 
 async def test_every_seeded_staff_member_is_declared_to_the_section(
-    db_session: Any, clean_stand: None
+    db_session: Any, clean_stand: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Membership is emitted for the admin and for the support staff.
 
-    Unconditional on comms: emit_support_membership goes straight to the
-    outbox with no comms_configured gate, so this holds in the same
-    environment where the recipient test above asserts zero.
+    The comms address is set here rather than assumed. Until T-93 this
+    emitter wrote whatever the box was configured with, and the test
+    passed for that reason rather than for the reason it states; now the
+    gate is real, and the state the assertion needs is named.
     """
+    monkeypatch.setattr(seed_settings, "comms_api_url", "http://comms.test")
+    monkeypatch.setattr(seed_settings, "comms_service_token", "test-token")
+
     profile = _profile()
     await seed.seed_profile(db_session, profile)
     await db_session.flush()

@@ -33,9 +33,10 @@
 # =============================================================================
 
 from datetime import datetime, UTC
+from typing import Any, cast
 
 import structlog
-from sqlalchemy import delete, select, update
+from sqlalchemy import CursorResult, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session_factory
@@ -78,7 +79,14 @@ async def process_pending_notifications() -> int:
                 .values(status=NotificationStatus.EXPIRED)
             )
             expire_result = await session.execute(expire_stmt)
-            expired_count = expire_result.rowcount  # type: ignore[assignment]
+        # session.execute() is typed as returning Result, whose interface has
+        # no rowcount; a DML statement returns a CursorResult at runtime,
+        # which does. Same narrowing as core/events/relay.py, and by cast
+        # rather than getattr(..., 0) -- a default would turn a real
+        # breakage into a plausible zero.
+            expired_count = cast(
+                "CursorResult[Any]", expire_result
+            ).rowcount
             if expired_count:
                 logger.info("notifications_expired", count=expired_count)
             await session.commit()
@@ -187,7 +195,12 @@ async def cleanup_expired_notifications() -> int:
                 )
             )
             result = await session.execute(stmt)
-            deleted = result.rowcount  # type: ignore[assignment]
+        # session.execute() is typed as returning Result, whose interface has
+        # no rowcount; a DML statement returns a CursorResult at runtime,
+        # which does. Same narrowing as core/events/relay.py, and by cast
+        # rather than getattr(..., 0) -- a default would turn a real
+        # breakage into a plausible zero.
+            deleted = cast("CursorResult[Any]", result).rowcount
 
             if deleted:
                 logger.info("notifications_cleaned_up", count=deleted)

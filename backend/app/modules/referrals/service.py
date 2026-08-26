@@ -36,10 +36,11 @@
 # =============================================================================
 
 import secrets
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func, update
+from sqlalchemy import CursorResult, select, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -294,7 +295,12 @@ async def record_click(
         .values(click_count=ReferralLink.click_count + 1)
     )
     result = await session.execute(stmt)
-    matched = result.rowcount > 0
+    # session.execute() is typed as returning Result, whose interface has
+    # no rowcount; a DML statement returns a CursorResult at runtime,
+    # which does. Same narrowing as core/events/relay.py, and by cast
+    # rather than getattr(..., 0) -- a default would turn a real
+    # breakage into a plausible zero.
+    matched = cast("CursorResult[Any]", result).rowcount > 0
 
     if matched:
         logger.debug("referral_click_recorded", code=code)

@@ -102,6 +102,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.comms import (
     CommsRejectedError,
     CommsUnavailableError,
+    comms_configured,
     comms_request,
 )
 from app.core.exceptions import ConflictError, NotFoundError
@@ -837,6 +838,9 @@ async def emit_support_membership(
     without a membership event would be invisible to the queue until
     somebody noticed.
 
+    On a box with no comms address nothing is written at all -- the
+    reasoning is at the gate in the body, next to the check.
+
     THE SECTION TRAVELS AS A KEY, never as an id -- the same rule that
     made get_support_section_id an in-process cache. The label rides
     along because this event can be the FIRST mention of the section:
@@ -865,6 +869,32 @@ async def emit_support_membership(
         EVENT_SECTION_MEMBERSHIP_CHANGED,
         emit_event,
     )
+
+    if not comms_configured():
+        # NOTHING IS WRITTEN when this box has no comms address, and the
+        # reasoning is core.comms_sync.ensure_recipient's, applied to the
+        # second emitter rather than restated: the relay is disabled by
+        # the same empty address, so a row emitted here would sit in the
+        # table forever with nobody to ship it. That is table growth, not
+        # deferred delivery.
+        #
+        # The two emitters disagreed until T-93 -- the recipient one
+        # gated, this one did not -- and the difference was not a
+        # decision anybody had made. A stand run without comms
+        # accumulated membership rows that could never leave.
+        #
+        # NEITHER CALLER BREAKS. create_staff and deactivate_staff both
+        # await this function for its effect and neither reads a return
+        # value or depends on a row existing (checked by reading both
+        # bodies): the promotion and the deactivation are complete
+        # without it. What is lost is the announcement, and on a box
+        # without comms there is nobody to announce to.
+        logger.info(
+            "support_membership_skipped_no_comms",
+            user_id=str(user_id),
+            member=member,
+        )
+        return
 
     await emit_event(
         session,

@@ -28,9 +28,31 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.events.models import OutboxEvent
 from app.core.events.service import EVENT_SECTION_MEMBERSHIP_CHANGED
+from app.modules.support.service import emit_support_membership
 from tests.helpers import auth_headers, create_admin_user, register_user
+
+
+@pytest.fixture(autouse=True)
+def comms_is_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test in this file runs on a box that HAS a comms address.
+
+    Stated rather than inherited. T-93 gave emit_support_membership the
+    gate its sibling ensure_recipient always had -- no comms address, no
+    outbox row, because the relay is disabled by that same empty address
+    and the row could never leave. That makes "a promotion writes a
+    membership event" true only where comms is configured, and these
+    tests assert exactly that half.
+
+    Before T-93 they passed anywhere, which was not a stronger
+    guarantee -- it was the same guarantee resting on a box that
+    happened to have comms in its .env. The half where comms is absent
+    is asserted at the bottom of this file, on purpose and by name.
+    """
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    monkeypatch.setattr(settings, "comms_service_token", "test-token")
 
 
 async def _membership_events(
@@ -185,3 +207,80 @@ async def test_the_payload_is_json_the_relay_can_ship(
 
     payload = (await _membership_events(db_session))[-1].payload
     assert json.loads(json.dumps(payload)) == payload
+
+
+# ---------------------------------------------------------------------------
+# The gate that decides whether there is anywhere to write (T-93)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_no_comms_address_means_no_membership_row(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stand without comms writes nothing, and this is not a loss.
+
+    The relay is disabled by the same empty address, so a row emitted
+    here would sit in the table forever with nobody to ship it: growth,
+    not delayed delivery. core.comms_sync.ensure_recipient reasoned this
+    out first and refused to write; this emitter disagreed with its
+    neighbour until T-93, and the difference was nobody's decision.
+    """
+    monkeypatch.setattr(settings, "comms_api_url", "")
+
+    body = await register_user(client)
+    user_id = UUID(body["user"]["id"])
+    before = len(await _membership_events(db_session))
+
+    await emit_support_membership(db_session, user_id=user_id)
+    await db_session.flush()
+
+    assert len(await _membership_events(db_session)) == before
+
+
+@pytest.mark.asyncio
+async def test_a_comms_address_means_a_membership_row(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The other half of the same gate, so neither is assumed.
+
+    A test that only pinned the silent case would pass just as happily
+    against an emitter that had stopped writing altogether.
+    """
+    body = await register_user(client)
+    user_id = UUID(body["user"]["id"])
+    before = len(await _membership_events(db_session))
+
+    await emit_support_membership(db_session, user_id=user_id)
+    await db_session.flush()
+
+    events = await _membership_events(db_session)
+    assert len(events) == before + 1
+    assert events[-1].payload["operator_id"] == str(user_id)
+
+
+@pytest.mark.asyncio
+async def test_removing_a_member_obeys_the_same_gate(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """member=False is not a special case of the gate.
+
+    deactivate_staff is the caller, and a gate that let the removal
+    through while stopping the addition would leave comms holding an
+    operator this product had already let go -- the asymmetry would be
+    worse than either behaviour on its own.
+    """
+    monkeypatch.setattr(settings, "comms_api_url", "")
+
+    body = await register_user(client)
+    user_id = UUID(body["user"]["id"])
+    before = len(await _membership_events(db_session))
+
+    await emit_support_membership(db_session, user_id=user_id, member=False)
+    await db_session.flush()
+
+    assert len(await _membership_events(db_session)) == before

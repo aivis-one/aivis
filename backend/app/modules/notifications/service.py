@@ -28,10 +28,11 @@
 
 import asyncio
 from datetime import datetime, UTC
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select, update
+from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -612,4 +613,9 @@ async def mark_all_read(
     )
     result = await session.execute(stmt)
     await session.flush()
-    return result.rowcount
+    # session.execute() is typed as returning Result, whose interface has
+    # no rowcount; a DML statement returns a CursorResult at runtime,
+    # which does. Same narrowing as core/events/relay.py, and by cast
+    # rather than getattr(..., 0) -- a default would turn a real
+    # breakage into a plausible zero.
+    return cast("CursorResult[Any]", result).rowcount
