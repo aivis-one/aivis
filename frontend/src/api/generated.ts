@@ -52,6 +52,21 @@ export interface AgentApplicationResponse {
   created_at: string
 }
 
+/** Assign an EXISTING user to become a company (TASK-30 ruling 1 + 9). Mirrors CreateCompanyRequest minus the account-creation fields (email/password -- the admin never sees or sets the target's password, per ruling 1) plus `user_id` identifying the existing user to promote. Every commercial-terms field stays REQUIRED (revised ruling 9: the admin assigns WITH full commercial terms -- price, supply, distribution config -- there is no deferred-price state for this endpoint). What IS deferred is the OptionPool: this schema has no pool fields at all -- pool issuance stays a separate, later, explicit action via POST /staff/pools, exactly as it already is for create_company (see Sprint 4.3 module note in service.py). */
+export interface AssignCompanyRequest {
+  user_id: string
+  name: string
+  description?: string | null
+  logo_url?: string | null
+  cover_url?: string | null
+  promo_video_url?: string | null
+  presentation_url?: string | null
+  price_per_unit_cents: number
+  distribution_config: Record<string, unknown>
+  total_supply: number
+  shares_per_option?: number
+}
+
 /** Partial update of attachment metadata. Used by PATCH /staff/companies/{id}/attachments/{att_id}. Every field is optional; the service applies model_dump(exclude_unset=True) and only mutates fields that were explicitly sent. `description` accepts explicit null to clear the value. */
 export interface AttachmentPatchBody {
   title?: string | null
@@ -165,6 +180,27 @@ export interface CompanyAnalyticsResponse {
   total_options_sold: number
   sales_by_month: SalesByMonthEntry[]
   sales_by_product: SalesByProductEntry[]
+}
+
+/** One company (project) write, as recorded by record_audit(). `company_id` is AuditLog.target_id, renamed at the API boundary since target_type is constant ("company") for every row this feed returns and would add nothing by being surfaced. `actor_type` / `performed_by` / `on_behalf_of` are all exposed (rather than just actor_id) because the admin reading this feed needs to distinguish "the project account wrote this itself" from "a staff member wrote this on the project's behalf" -- including the avatar-mode case (Sprint 3.2: performed_by = staff acting, on_behalf_of = the identity they acted for), which record_audit() already auto-fills when the write happens inside an avatar session. Both are null for an ordinary (non-avatar) write. `data` defaults to {} rather than being Optional -- AuditLog.data is NOT NULL with a "{}" server_default, so the column is never actually null. */
+export interface CompanyAuditEntryResponse {
+  id: string
+  company_id: string
+  event: string
+  actor_id: string | null
+  actor_type: string
+  performed_by: string | null
+  on_behalf_of: string | null
+  data: Record<string, unknown>
+  created_at: string
+}
+
+/** Paginated feed of company (project) writes (F2). */
+export interface CompanyAuditFeedResponse {
+  items: CompanyAuditEntryResponse[]
+  total: number
+  page: number
+  per_page: number
 }
 
 /** Aggregated dashboard for the authenticated company. Fields: passive_balance: company's earnings ledger split by status. total_revenue_cents: SUM(Purchase.paid_cents) for active purchases of this company. Gift purchases naturally contribute 0 here. total_options_sold: SUM(Purchase.units WHERE legal_basis='sale') for active purchases. Gifts are excluded so the number reflects commercial activity, not pool consumption (pool consumption lives in pool.consumed below). products_count: COUNT(Product) for non-archived products. pool: active OptionPool snapshot, or None if the company hasn't had a pool created yet (newly created company before staff runs POST /staff/companies/{id}/pool). recent_transactions: last 20 Transaction rows for the company's user_id, newest first. */
@@ -291,6 +327,15 @@ export interface ConsistencyResponse {
 /** Request body for creating/getting a crypto deposit address. */
 export interface CreateAddressRequest {
   network: string
+}
+
+/** Company creates a post about itself (TASK-30). owner_type is always "company" and owner_id is always the caller's own company_id -- both are forced server-side in company_router.py, never taken from the client, so a project can never create a post for a different owner_id. is_banner is not exposed here: a site-wide homepage banner placement is a staff editorial decision (see PostListEditor.vue's staff.platform.post.bannerBadge), not something a project should be able to grant itself -- every company-authored post is created with is_banner=False. */
+export interface CreateCompanyPostRequest {
+  title: string
+  body: string
+  cover_url?: string | null
+  tags?: string[] | null
+  is_published?: boolean
 }
 
 /** Create a new company with user and profile. */
@@ -1205,6 +1250,15 @@ export interface UnreadCountResponse {
   count: number
 }
 
+/** Company partial update (PATCH) of its own post (TASK-30). Same field set as CreateCompanyPostRequest minus title/body being optional -- no owner_type/owner_id/is_banner. Ownership (the post must belong to the caller's own company_id) is enforced in service.update_company_post, not by this schema. */
+export interface UpdateCompanyPostRequest {
+  title?: string | null
+  body?: string | null
+  cover_url?: string | null
+  tags?: string[] | null
+  is_published?: boolean | null
+}
+
 /** Partial update of company profile. Only provided fields are updated. distribution_config triggers financial_operations permission check in router. Sprint 4.3: total_supply and shares_per_option are NOT in this schema. Pool size changes happen via PATCH /staff/companies/{id}/pool, and a shares_per_option change is a split (future scope). */
 export interface UpdateCompanyRequest {
   name?: string | null
@@ -1233,6 +1287,16 @@ export interface UpdateEventRequest {
 export interface UpdateInstallmentRequest {
   name?: string | null
   plan_config?: Record<string, unknown> | null
+}
+
+/** Partial self-update of the caller's OWN company profile. Backs PATCH /api/v1/companies/me. TASK-30 ruling 10: "the project describes; the admin owns and prices" -- this schema carries ONLY the project-editable field set from TASK-30-SPEC.md §4. It is a deliberately separate type from UpdateCompanyRequest (the staff-side partial update), not a reuse or a subclass: name, price_per_unit_cents, total_supply, shares_per_option and distribution_config do not exist as fields on this model at all. Combined with extra="forbid", a request body carrying any of them is rejected at the schema boundary (422) before any service code runs -- structurally impossible to submit, not merely ignored if present. `status` is present but heavily restricted at the service layer (update_own_company): the only legal transition through this endpoint is ACTIVE -> HIDDEN (ruling 12 -- the project may withdraw itself; only a staff admin may publish HIDDEN -> ACTIVE or set ARCHIVED). The type here stays `str | None` (matching UpdateCompanyRequest's own `status: str | None` -- no enum-level validation) because the real gate is the one-directional business rule, not the set of legal CompanyStatus values. */
+export interface UpdateOwnCompanyRequest {
+  description?: string | null
+  logo_url?: string | null
+  cover_url?: string | null
+  promo_video_url?: string | null
+  presentation_url?: string | null
+  status?: string | null
 }
 
 /** PUT /api/v1/users/me/payout-details -- set withdrawal payment methods. Free-form JSONB. Validation of specific methods (crypto, IBAN, etc.) will be added in future sprints when payment provider is integrated. */
