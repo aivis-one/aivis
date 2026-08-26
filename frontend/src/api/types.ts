@@ -337,6 +337,14 @@ export type { PublicCompanyListResponse } from './generated'
 
 export type { CompanyResponse } from './generated'
 
+// TASK-30 ruling 10/12: PATCH /api/v1/companies/me project self-service
+// body. Separate type from UpdateCompanyRequest (the staff-side PATCH
+// body, exported below in the staff-companies block) -- carries only
+// the project-editable field subset, with `status` restricted
+// server-side (update_own_company) to the single ACTIVE -> HIDDEN
+// transition. See generated.ts docstring for the full rationale.
+export type { UpdateOwnCompanyRequest } from './generated'
+
 export type { CompanyDashboardResponse } from './generated'
 
 export type { CompanyAnalyticsResponse } from './generated'
@@ -658,6 +666,15 @@ export type { UpdateEventRequest } from './generated'
 // ---------------------------------------------------------------------------
 
 export type { CompanyListResponse } from './generated'
+
+// Staff-side PATCH /api/v1/staff/companies/{id} body (name / description /
+// media / distribution_config / status). No direction restriction on
+// `status` at this type level -- update_company() validates against
+// VALID_COMPANY_STATUS_TRANSITIONS server-side: hidden -> {active,
+// archived}, active -> {hidden, archived}, archived -> {} (terminal,
+// no transition out of it for anyone, staff included). See
+// backend/app/modules/companies/constants.py.
+export type { UpdateCompanyRequest } from './generated'
 
 export type { PriceHistoryListResponse } from './generated'
 

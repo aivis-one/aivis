@@ -3,26 +3,62 @@
 // AIVIS.ONE Frontend -- StaffCompanyProfileSection (iter 2.7 Block C)
 // =============================================================================
 //
-// Read-only company profile inspection. Reads the company from the
-// shared STAFF_COMPANY_KEY context (PERF-40-01) -- the parent detail
-// view already loaded it for the header, so this section does not fire
-// its own detail GET. Renders name, description, status, cover, price,
-// supply, and the raw distribution_config.
+// Company profile inspection, plus (TASK-30 ruling 12) a status
+// control. Reads the company from the shared STAFF_COMPANY_KEY context
+// (PERF-40-01) -- the parent detail view already loaded it for the
+// header, so this section does not fire its own detail GET. Renders
+// name, description, status, cover, price, supply, and the raw
+// distribution_config.
 //
-// Editing is out of MVP scope (R1 §4.3) -- this surface is inspection
-// only. distribution_config is shown as pretty-printed JSON rather than
-// a structured editor for the same reason.
+// Editing most fields is out of MVP scope (R1 §4.3) -- this surface
+// stays inspection-only for them. distribution_config is shown as
+// pretty-printed JSON rather than a structured editor for the same
+// reason.
+//
+// STATUS CONTROL (TASK-30 ruling 12).
+//   Unlike everything else on this surface, `status` now has a real
+//   mutating control: PATCH /api/v1/staff/companies/{id} (update_company()
+//   server-side), gated on project_manage -- the same permission that
+//   gates the roadmap and attachment writes on the sibling sections
+//   (StaffCompanyRoadmapSection, StaffCompanyDocumentsSection). Unlike
+//   the price change (FP-23, gated on project_manage AND
+//   financial_operations because it also touches distribution_config's
+//   sibling money fields), status is project_manage alone --
+//   update_company_endpoint only requires financial_operations when
+//   `distribution_config` is present in the body, which it never is
+//   here.
+//
+//   Staff is NOT restricted to one direction (unlike the project's own
+//   ACTIVE -> HIDDEN-only self-service in CompanySettingsView): the
+//   server validates against VALID_COMPANY_STATUS_TRANSITIONS (hidden
+//   -> {active, archived}, active -> {hidden, archived}, archived -> {}
+//   terminal). STATUS_TRANSITIONS below mirrors that table client-side
+//   so the edit control only ever offers a legal target -- when the
+//   current status is 'archived' there are none, so the edit CTA does
+//   not render at all rather than opening a modal with an empty select.
 //
 // FP-25 self-hide: optional fields (description, cover) are omitted from
 // the render when absent rather than showing empty rows.
 // =============================================================================
 
-import { inject, computed } from 'vue'
+import { inject, computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CLoader, CBadge, CButton, CEmptyState } from '@/components/ui'
+import { CLoader, CBadge, CButton, CEmptyState, CModal, CSelect } from '@/components/ui'
+import { useToast } from '@/composables/useToast'
+import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import { updateStaffCompany } from '@/api/staff-companies'
+import { ApiResponseError } from '@/api/client'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const { t } = useI18n()
+const { showToast } = useToast()
+const route = useRoute()
+const { canDo } = useStaffPermissions()
+
+// project_manage only -- see STATUS CONTROL note above for why this
+// does NOT also require financial_operations the way price does.
+const canEditStatus = canDo('project_manage')
 
 // PERF-40-01: read the company the parent detail view already loaded
 // instead of firing a second GET /staff/companies/{id}. The injection
@@ -43,6 +79,87 @@ const statusVariant = (s: string) => {
   if (s === 'hidden') return 'warning'
   if (s === 'archived') return 'neutral'
   return 'neutral'
+}
+
+// ---------------------------------------------------------------------------
+// Status control (TASK-30 ruling 12)
+// ---------------------------------------------------------------------------
+
+const companyId = computed<string>(() => {
+  const raw = route.params.id
+  return typeof raw === 'string' ? raw : ''
+})
+
+// Mirrors backend/app/modules/companies/constants.py
+// VALID_COMPANY_STATUS_TRANSITIONS -- kept in sync manually (small,
+// stable table); the server is still the enforced source of truth,
+// this only decides what the select offers.
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  hidden: ['active', 'archived'],
+  active: ['hidden', 'archived'],
+  archived: [],
+}
+
+function statusValueLabel(s: string): string {
+  return t(`staff.platform.profile.statusValues.${s}`)
+}
+
+const availableTargets = computed<string[]>(() => {
+  const current = company.value?.status
+  if (!current) return []
+  return STATUS_TRANSITIONS[current] ?? []
+})
+
+// The edit CTA only renders when there IS a legal target -- 'archived'
+// is terminal, so a company in that state shows the badge with no
+// button at all rather than an edit modal with an empty select.
+const canShowStatusEdit = computed<boolean>(
+  () => canEditStatus.value && availableTargets.value.length > 0,
+)
+
+const statusOptions = computed<{ value: string; label: string }[]>(() =>
+  availableTargets.value.map((s) => ({ value: s, label: statusValueLabel(s) })),
+)
+
+const showStatusEdit = ref(false)
+const statusDraft = ref('')
+const savingStatus = ref(false)
+
+function openStatusEdit(): void {
+  if (!canShowStatusEdit.value) {
+    console.warn(
+      '[StaffCompanyProfileSection] openStatusEdit blocked: missing project_manage or no legal transition from the current status',
+    )
+    return
+  }
+  statusDraft.value = availableTargets.value[0] ?? ''
+  showStatusEdit.value = true
+}
+
+async function handleStatusSave(): Promise<void> {
+  if (!canEditStatus.value) {
+    console.warn('[StaffCompanyProfileSection] handleStatusSave blocked: missing project_manage')
+    return
+  }
+  const id = companyId.value
+  const next = statusDraft.value
+  if (!id || !next) return
+
+  savingStatus.value = true
+  try {
+    await updateStaffCompany(id, { status: next })
+    showStatusEdit.value = false
+    showToast(t('staff.platform.profile.statusUpdated'), 'success')
+    // Re-pull the detail through the shared context so every section
+    // (this one included) sees the new status -- same pattern the
+    // roadmap section uses after a mutation.
+    await ctx?.reload()
+  } catch (err) {
+    const message = err instanceof ApiResponseError ? err.detail : t('common.error')
+    showToast(message, 'error')
+  } finally {
+    savingStatus.value = false
+  }
 }
 
 function formatPrice(cents: number): string {
@@ -85,7 +202,12 @@ const distributionJson = computed<string>(() => {
       <!-- Status + price + supply rows -->
       <div class="scp__row">
         <span class="scp__label">{{ t('staff.platform.profile.status') }}</span>
-        <CBadge :variant="statusVariant(company.status)" :text="company.status" />
+        <div class="scp__status-cell">
+          <CBadge :variant="statusVariant(company.status)" :text="company.status" />
+          <CButton v-if="canShowStatusEdit" variant="outline" size="sm" @click="openStatusEdit">
+            {{ t('staff.platform.profile.statusEditCta') }}
+          </CButton>
+        </div>
       </div>
       <div class="scp__row">
         <span class="scp__label">{{ t('staff.platform.profile.price') }}</span>
@@ -148,6 +270,35 @@ const distributionJson = computed<string>(() => {
 
     <!-- Defensive empty (company null but no error/loading -- shouldn't happen) -->
     <CEmptyState v-else :title="t('common.noResults')" />
+
+    <!-- Status edit modal (project_manage-gated) -->
+    <CModal :open="showStatusEdit" @close="showStatusEdit = false">
+      <h3 class="scp__modal-title">
+        {{ t('staff.platform.profile.statusEditTitle') }}
+      </h3>
+      <p class="scp__modal-hint">
+        {{ t('staff.platform.profile.statusEditHint') }}
+      </p>
+      <CSelect
+        v-model="statusDraft"
+        :label="t('staff.platform.profile.status')"
+        :options="statusOptions"
+      />
+      <div class="scp__modal-actions">
+        <CButton variant="outline" size="sm" @click="showStatusEdit = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="savingStatus"
+          :disabled="!statusDraft"
+          @click="handleStatusSave"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 
@@ -191,6 +342,29 @@ const distributionJson = computed<string>(() => {
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.scp__status-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.scp__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+.scp__modal-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+}
+.scp__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
 .scp__section {

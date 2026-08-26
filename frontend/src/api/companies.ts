@@ -42,6 +42,7 @@ import type {
   CompanyResponse,
   PublicCompanyDetailResponse,
   PublicCompanyListResponse,
+  UpdateOwnCompanyRequest,
 } from '@/api/types'
 
 /**
@@ -91,6 +92,35 @@ export function listCompanies(params?: {
  */
 export function getMyCompany(): Promise<CompanyResponse> {
   return api.get<CompanyResponse>('/api/v1/companies/me')
+}
+
+/**
+ * PATCH /api/v1/companies/me -- project self-service partial update
+ * (TASK-30 ruling 10/12). Backed by update_own_company() server-side.
+ *
+ * Body carries ONLY the project-editable field subset (description,
+ * logo_url, cover_url, promo_video_url, presentation_url, status) --
+ * name / price_per_unit_cents / total_supply / shares_per_option /
+ * distribution_config are not on UpdateOwnCompanyRequest at all
+ * (schema-level `extra="forbid"` server-side, 422 if sent).
+ *
+ * `status` is the ONE field with an asymmetric rule: the only legal
+ * transition through this endpoint is ACTIVE -> HIDDEN (a project may
+ * withdraw itself). Any other status value -- including a same-state
+ * no-op, HIDDEN -> ACTIVE (publish), or anything -> ARCHIVED -- is
+ * rejected with a 400 by update_own_company(); publishing and
+ * archiving are staff-only, done via updateStaffCompany() in
+ * api/staff-companies.ts. The UI should only ever call this with
+ * `{ status: 'hidden' }` when the caller's current status is 'active'
+ * -- see CompanySettingsView's canWithdraw guard -- but the 400 is
+ * still the real gate; the UI check is just to not offer a request
+ * that would visibly fail.
+ *
+ * Errors: 400 (illegal status transition, or empty body), 401, 403
+ * (non-company role), 404 (defence-in-depth, should not be reachable).
+ */
+export function updateOwnCompany(body: UpdateOwnCompanyRequest): Promise<CompanyResponse> {
+  return api.patch<CompanyResponse>('/api/v1/companies/me', body)
 }
 
 /**

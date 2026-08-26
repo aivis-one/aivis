@@ -425,7 +425,17 @@
         "logoUrl": "Logo",
         "promoVideoUrl": "Promo video",
         "presentationUrl": "Presentation",
-        "distributionConfig": "Distribution config"
+        "distributionConfig": "Distribution config",
+        "statusEditCta": "Change status",
+        "statusEditTitle": "Change company status",
+        "statusEditHint": "Only the project itself may withdraw (active → hidden). Publishing (hidden → active) and archiving are staff-only actions.",
+        "statusNoTransitions": "Archived is a terminal state; status cannot be changed from here.",
+        "statusUpdated": "Status updated",
+        "statusValues": {
+          "active": "Active",
+          "hidden": "Hidden",
+          "archived": "Archived"
+        }
       },
       "price": {
         "current": "Current price",
@@ -1056,7 +1066,15 @@
       "profile": {
         "title": "Profile",
         "description": "Description",
-        "status": "Status"
+        "status": "Status",
+        "withdrawCta": "Withdraw from marketplace",
+        "withdrawConfirmTitle": "Withdraw from marketplace?",
+        "withdrawConfirmBody": "Your project will be hidden from investors immediately. Only an AIVIS admin can republish it afterward.",
+        "withdrawConfirmSubmit": "Withdraw",
+        "withdrawSuccess": "Project withdrawn from the marketplace",
+        "withdrawError": "Could not withdraw the project",
+        "hiddenHint": "This project is hidden from the marketplace. Only an AIVIS admin can republish it.",
+        "archivedHint": "This project is archived by an AIVIS admin."
       },
       "pricing": {
         "title": "Pricing & supply",

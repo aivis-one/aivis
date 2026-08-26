@@ -19,6 +19,7 @@
 // Endpoints covered here:
 //   GET /api/v1/staff/companies                     -- list (paginated)
 //   GET /api/v1/staff/companies/{id}                -- detail (+ roadmap)
+//   PATCH /api/v1/staff/companies/{id}               -- update (TASK-30: status only, so far)
 //   GET   /api/v1/staff/companies/{id}/price-history -- price history (B3)
 //   PATCH /api/v1/staff/companies/{id}/price         -- change price (C2)
 //   GET   /api/v1/staff/companies/{id}/templates     -- template list (C2)
@@ -31,9 +32,8 @@
 //   PATCH  /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update item (D1)
 //   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}   -- soft-delete (D1)
 //
-// Endpoints deferred to Block C / D:
+// Endpoints deferred (not yet needed by any staff view):
 //   POST   /api/v1/staff/companies
-//   PATCH  /api/v1/staff/companies/{id}
 //
 // Block D2 (cover upload) adds two more here -- they speak multipart
 // via fetch() (the JSON `api` client cannot send FormData), so they
@@ -63,6 +63,7 @@ import type {
   StaffAttachmentResponse,
   TemplateDetailResponse,
   TemplateResponse,
+  UpdateCompanyRequest,
   UpdatePriceRequest,
   UpdateRoadmapItemRequest,
 } from '@/api/types'
@@ -113,6 +114,31 @@ export function fetchStaffCompanies(params?: {
  */
 export function fetchStaffCompany(companyId: string): Promise<CompanyDetailResponse> {
   return api.get<CompanyDetailResponse>(`/api/v1/staff/companies/${companyId}`)
+}
+
+/**
+ * PATCH /api/v1/staff/companies/{id} -- staff partial update of a
+ * company profile. Requires project_manage server-side
+ * (require_staff_permission("project_manage")); if the body also
+ * carries `distribution_config` the router additionally requires
+ * financial_operations -- irrelevant to the status-only usage below,
+ * called out here so a future caller extending this body doesn't miss
+ * it (see backend/app/modules/companies/staff_router.py
+ * update_company_endpoint).
+ *
+ * Used today for `status` only (StaffCompanyProfileSection's status
+ * control, TASK-30 ruling 12): unlike the project's own
+ * updateOwnCompany() in api/companies.ts, staff is NOT restricted to a
+ * single direction -- update_company() validates against
+ * VALID_COMPANY_STATUS_TRANSITIONS (hidden -> {active, archived},
+ * active -> {hidden, archived}, archived -> {} terminal). A same-state
+ * no-op or a transition out of 'archived' is rejected 400.
+ */
+export function updateStaffCompany(
+  companyId: string,
+  body: UpdateCompanyRequest,
+): Promise<CompanyResponse> {
+  return api.patch<CompanyResponse>(`/api/v1/staff/companies/${companyId}`, body)
 }
 
 /**

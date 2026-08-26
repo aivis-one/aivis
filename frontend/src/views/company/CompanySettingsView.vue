@@ -10,16 +10,31 @@
 // only inline content with an <h1> + <p> page header, mirroring
 // InvestorSettingsView and the F5.1 dashboard.
 //
-// READ-ONLY POLICY (MVP).
-//   The company itself does NOT edit its profile from this UI; staff
-//   does, via the Sprint 4.1 staff endpoints. We render every field
-//   as a row, follow up with a static "contact support" hint, and
-//   wire only one action -- sign out. This matches Frontend.md §F5.2:
-//   "Note: для редактирования профиля обратитесь в support".
+// READ-ONLY POLICY (MVP, revised TASK-30 ruling 10/12).
+//   The company does NOT edit most of its profile from this UI; staff
+//   does, via the Sprint 4.1 staff endpoints. We render every field as
+//   a row, follow up with a static "contact support" hint, and wire
+//   one status-changing action. This matches Frontend.md §F5.2: "Note:
+//   для редактирования профиля обратитесь в support" for everything
+//   EXCEPT status.
+//
+//   TASK-30 ruling 12 carves out one narrow self-service write: while
+//   ACTIVE, the project may withdraw itself (status -> HIDDEN) via
+//   PATCH /api/v1/companies/me (api/companies.ts::updateOwnCompany).
+//   It may NOT republish itself (HIDDEN -> ACTIVE) or archive itself --
+//   both are staff-only, enforced server-side by update_own_company()
+//   which 400s any transition other than ACTIVE -> HIDDEN. This view
+//   mirrors that asymmetry: a HIDDEN or ARCHIVED company sees status as
+//   plain text with a short explanation, never a button that would
+//   just 400 when clicked. Other TASK-30 project-editable fields
+//   (description / logo_url / cover_url / promo_video_url /
+//   presentation_url) are NOT wired to editing here -- out of scope
+//   for this pass, still read-only, still covered by the support hint.
 //
 // SECTIONS, in render order:
 //   1. Hero card -- logo + name + status badge.
-//   2. Profile -- description, status (label + badge).
+//   2. Profile -- description, status (label + badge, or a "withdraw"
+//      CTA when ACTIVE -- see the Status self-service block below).
 //   3. Pricing & supply -- price_per_unit, total_supply,
 //      shares_per_option.
 //   4. Distribution config -- raw JSON view (<pre>) of the JSONB
@@ -67,17 +82,21 @@ import {
   Video,
 } from 'lucide-vue-next'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { useToast } from '@/composables/useToast'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
+import { updateOwnCompany } from '@/api/companies'
+import { ApiResponseError } from '@/api/client'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const profileStore = useCompanyProfileStore()
+const { showToast } = useToast()
 
 // ---------------------------------------------------------------------------
 // Derived view state
@@ -126,6 +145,57 @@ const statusBadgeClass = computed<string>(() => {
   if (status.value === 'hidden') return 'cset__status--warning'
   return 'cset__status--neutral'
 })
+
+// ---------------------------------------------------------------------------
+// Status: self-service withdraw (TASK-30 ruling 12)
+// ---------------------------------------------------------------------------
+//
+// The ONLY status transition a project may make on its own is
+// ACTIVE -> HIDDEN ("withdraw"). Publishing (HIDDEN -> ACTIVE) and
+// archiving are staff-only actions (done from
+// StaffCompanyProfileSection); this view never offers them. The
+// server (update_own_company) rejects everything else with a 400
+// regardless -- canWithdraw only decides whether the CTA is SHOWN, it
+// is not the safety mechanism.
+//
+// HIDDEN / ARCHIVED render as plain read-only text with a short
+// explanation instead of a button that would just 400 if clicked.
+
+const canWithdraw = computed<boolean>(() => status.value === 'active')
+
+const showWithdrawConfirm = ref(false)
+const withdrawing = ref(false)
+
+function openWithdrawConfirm(): void {
+  if (!canWithdraw.value) {
+    console.warn('[CompanySettingsView] openWithdrawConfirm blocked: status is not active')
+    return
+  }
+  showWithdrawConfirm.value = true
+}
+
+async function handleWithdraw(): Promise<void> {
+  if (!canWithdraw.value) {
+    console.warn('[CompanySettingsView] handleWithdraw blocked: status is not active')
+    return
+  }
+  withdrawing.value = true
+  try {
+    const updated = await updateOwnCompany({ status: 'hidden' })
+    profileStore.applyProfile(updated)
+    showWithdrawConfirm.value = false
+    showToast(t('comp.settings.profile.withdrawSuccess'), 'success')
+  } catch (err) {
+    // Server-side is the real gate (a stale client could still race
+    // an admin's concurrent publish/archive and hit the 400) -- show
+    // its message rather than swallowing it as an unhandled rejection.
+    const message =
+      err instanceof ApiResponseError ? err.detail : t('comp.settings.profile.withdrawError')
+    showToast(message, 'error')
+  } finally {
+    withdrawing.value = false
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Distribution config -- JSON view
@@ -286,8 +356,20 @@ onMounted(() => {
           <span class="cset__row-label">
             {{ t('comp.settings.profile.status') }}
           </span>
-          <span class="cset__row-value">{{ statusLabel }}</span>
+          <span v-if="!canWithdraw" class="cset__row-value">{{ statusLabel }}</span>
+          <CButton v-else variant="outline" size="sm" @click="openWithdrawConfirm">
+            {{ t('comp.settings.profile.withdrawCta') }}
+          </CButton>
         </div>
+        <!-- Hidden/archived: explain who can undo it, right under the
+             status row rather than only inside a modal the user may
+             never open. -->
+        <p v-if="status === 'hidden'" class="cset__status-hint">
+          {{ t('comp.settings.profile.hiddenHint') }}
+        </p>
+        <p v-else-if="status === 'archived'" class="cset__status-hint">
+          {{ t('comp.settings.profile.archivedHint') }}
+        </p>
       </section>
 
       <!-- Pricing & supply -->
@@ -385,6 +467,24 @@ onMounted(() => {
           <ChevronRight :size="16" />
         </button>
       </section>
+
+      <!-- Withdraw confirm modal (ACTIVE -> HIDDEN only) -->
+      <CModal :open="showWithdrawConfirm" @close="showWithdrawConfirm = false">
+        <h3 class="cset__modal-title">
+          {{ t('comp.settings.profile.withdrawConfirmTitle') }}
+        </h3>
+        <p class="cset__modal-hint">
+          {{ t('comp.settings.profile.withdrawConfirmBody') }}
+        </p>
+        <div class="cset__modal-actions">
+          <CButton variant="outline" size="sm" @click="showWithdrawConfirm = false">
+            {{ t('common.cancel') }}
+          </CButton>
+          <CButton variant="primary" size="sm" :loading="withdrawing" @click="handleWithdraw">
+            {{ t('comp.settings.profile.withdrawConfirmSubmit') }}
+          </CButton>
+        </div>
+      </CModal>
     </template>
   </div>
 </template>
@@ -496,6 +596,32 @@ onMounted(() => {
   background: var(--bg-surface);
   color: var(--text-secondary);
   border: 1px solid var(--border-default);
+}
+
+/* Status hint (hidden / archived explanation, under the status row) */
+.cset__status-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-2);
+  padding: 0 var(--space-1);
+}
+
+/* Withdraw confirm modal */
+.cset__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+.cset__modal-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+}
+.cset__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
 /* Section */

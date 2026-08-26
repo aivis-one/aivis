@@ -12,8 +12,11 @@
 //   F5.1 CompanyDashboardView -- hero (logo + name) + companion
 //                                fetch alongside the dashboard refresh.
 //   F5.2 CompanyProductsView  -- needs `id` to filter products list.
-//   F5.2 CompanySettingsView  -- read-only render of the full profile
-//                                (distribution_config, payout, etc).
+//   F5.2 CompanySettingsView  -- mostly read-only render of the full
+//                                profile (distribution_config, payout,
+//                                etc), plus (TASK-30 ruling 12) the one
+//                                self-service write: withdraw
+//                                (status ACTIVE -> HIDDEN).
 //
 // STATE (snake_case server-side, kept as-is on the wire).
 //   profile  -- CompanyResponse | null. Null until first successful load.
@@ -22,17 +25,20 @@
 //
 // LOAD SEMANTICS -- CACHE-FIRST.
 //   loadIfMissing() returns immediately if `profile` is already set.
-//   The profile is owned by staff (no inline edits from F5.x), so a
-//   successful load stays valid for the session. Multiple call sites
-//   (Dashboard onMounted, Products onMounted, Settings onMounted) can
-//   all call loadIfMissing() without a coordinator; the second and
-//   later calls are no-ops once the first has resolved successfully.
+//   Almost every field is owned by staff (no inline edits from F5.x
+//   for those), so a successful load stays valid for the session.
+//   Multiple call sites (Dashboard onMounted, Products onMounted,
+//   Settings onMounted) can all call loadIfMissing() without a
+//   coordinator; the second and later calls are no-ops once the first
+//   has resolved successfully. The one write the project itself can
+//   make (self-service withdraw) updates the cache in place via
+//   applyProfile() rather than invalidating it -- see that function's
+//   docstring.
 //
-//   When the profile *does* need to be invalidated -- on logout,
-//   role switch, or (future) inline-edit completion -- callers use
-//   reset() which clears state AND bumps the epoch so any in-flight
-//   loadIfMissing() that resolves afterwards cannot repopulate the
-//   stale values.
+//   When the profile needs to be invalidated wholesale -- on logout,
+//   role switch -- callers use reset() which clears state AND bumps
+//   the epoch so any in-flight loadIfMissing() that resolves
+//   afterwards cannot repopulate the stale values.
 //
 // FAILURE RECOVERY.
 //   On error, `profile` stays null and `error` holds the message.
@@ -114,11 +120,28 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
     error.value = null
   }
 
+  /**
+   * Apply a successful PATCH /api/v1/companies/me response locally
+   * (TASK-30 ruling 12 self-service withdraw), without a full reload.
+   *
+   * The profile is otherwise a session-long cache (see LOAD SEMANTICS
+   * above) -- there is no generic "refetch" path for a single field
+   * change, so the caller (CompanySettingsView, after
+   * updateOwnCompany({status: 'hidden'}) succeeds) hands back the
+   * updated CompanyResponse and this replaces the cached object
+   * wholesale. No epoch bump: this is a same-tick local update, not an
+   * async fetch that could race a reset().
+   */
+  function applyProfile(next: CompanyResponse): void {
+    profile.value = next
+  }
+
   return {
     profile,
     loading,
     error,
     loadIfMissing,
     reset,
+    applyProfile,
   }
 })
