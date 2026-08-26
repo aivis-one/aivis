@@ -622,7 +622,7 @@ onMounted(() => {
   min-width: 0;
 }
 .ssup__panel-client {
-  font-size: var(--fs-md);
+  font-size: var(--fs-body);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
