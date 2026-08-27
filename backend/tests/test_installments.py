@@ -1052,3 +1052,116 @@ async def test_pay_tranche_overdue_emits_notification(
     await db_session.commit()
     assert was_paid_again is False
     assert len(await _notification_events(db_session)) == before + 1
+
+
+@pytest.mark.asyncio
+async def test_complete_plan_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Paying the last tranche completes the plan -> both
+    installment.tranche_paid (for that tranche) AND
+    installment.plan_completed (for the plan) land on the outbox."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+    template = await _create_installment_template(
+        client, admin_token, product["id"],
+        bonus_units=10, agent_bonus_units=0,
+    )
+
+    _, inv_id = await _create_investor_with_balance(client, db_session)
+
+    from app.modules.users.models import User
+    inv_user = await db_session.get(User, inv_id)
+
+    plan = await create_plan(
+        product_id=UUID(product["id"]),
+        product_installment_id=UUID(template["id"]),
+        investor=inv_user,
+        session=db_session,
+    )
+    await db_session.commit()
+
+    stmt = (
+        select(InstallmentTranche)
+        .where(
+            InstallmentTranche.plan_id == plan.id,
+            InstallmentTranche.number == 2,
+        )
+    )
+    tranche = (await db_session.execute(stmt)).scalar_one()
+
+    await pay_tranche(tranche, plan, db_session)
+    await db_session.commit()
+
+    await db_session.refresh(plan)
+    assert plan.status == InstallmentPlanStatus.COMPLETED
+
+    events = await _notification_events(db_session)
+    types = {e.payload["type"] for e in events}
+    assert "installment.tranche_paid" in types
+    assert "installment.plan_completed" in types
+
+    completed = next(
+        e for e in events if e.payload["type"] == "installment.plan_completed"
+    )
+    assert completed.payload["target_value"] == str(inv_id)
+    assert completed.payload["idempotency_key"] == f"plan-completed:{plan.id}"
+
+
+@pytest.mark.asyncio
+async def test_default_plan_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """default_plan -> installment.plan_defaulted on the outbox."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+    template = await _create_installment_template(client, admin_token, product["id"])
+
+    _, inv_id = await _create_investor_with_balance(
+        client, db_session, balance_cents=500_000
+    )
+
+    from app.modules.users.models import User
+    inv_user = await db_session.get(User, inv_id)
+
+    plan = await create_plan(
+        product_id=UUID(product["id"]),
+        product_installment_id=UUID(template["id"]),
+        investor=inv_user,
+        session=db_session,
+    )
+    await db_session.commit()
+
+    stmt = (
+        select(InstallmentTranche)
+        .where(
+            InstallmentTranche.plan_id == plan.id,
+            InstallmentTranche.number == 2,
+        )
+    )
+    tranche2 = (await db_session.execute(stmt)).scalar_one()
+    tranche2.status = InstallmentTrancheStatus.OVERDUE
+    await db_session.flush()
+    before = len(await _notification_events(db_session))
+
+    await default_plan(plan, tranche2, db_session)
+    await db_session.commit()
+
+    events = await _notification_events(db_session)
+    assert len(events) == before + 1
+    payload = events[-1].payload
+    assert payload["type"] == "installment.plan_defaulted"
+    assert payload["target_value"] == str(inv_id)
+    assert payload["idempotency_key"] == f"plan-defaulted:{plan.id}"

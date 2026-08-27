@@ -601,6 +601,32 @@ async def complete_plan(
         },
     )
 
+    # Batch 3 (2026-08-27), plan-level installment event -- the follow-up
+    # the per-tranche emitter named as not-yet-covered. Terminal, one-time:
+    # validate_plan_status_transition only allows the move into COMPLETED
+    # once, so plan.id is a permanent idempotency key.
+    if comms_configured():
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                "idempotency_key": f"plan-completed:{plan.id}",
+                "type": "installment.plan_completed",
+                "target_type": "user",
+                "target_value": str(plan.investor_id),
+                "title": "Installment plan complete",
+                "body": (
+                    f"Your installment plan is fully paid. You now hold all "
+                    f"{plan.total_units} units"
+                    + (
+                        f" plus {bonus_units} bonus units."
+                        if bonus_units > 0
+                        else "."
+                    )
+                ),
+            },
+        )
+
     logger.info(
         "installment_plan_completed",
         plan_id=str(plan.id),
@@ -696,6 +722,31 @@ async def default_plan(
             "product_id": str(plan.product_id),
         },
     )
+
+    # Batch 3 (2026-08-27), plan-level installment event. Terminal,
+    # one-time: validate_plan_status_transition only allows the move into
+    # DEFAULTED once, so plan.id is a permanent idempotency key. The body
+    # states the one fact the investor most needs -- units already paid
+    # for are kept (this function cancels only the UNpaid tranches), which
+    # is a real product rule they would otherwise not know from a bare
+    # "plan defaulted" line.
+    if comms_configured():
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                "idempotency_key": f"plan-defaulted:{plan.id}",
+                "type": "installment.plan_defaulted",
+                "target_type": "user",
+                "target_value": str(plan.investor_id),
+                "title": "Installment plan defaulted",
+                "body": (
+                    "Your installment plan was defaulted after a missed "
+                    "payment. You keep the units from tranches already "
+                    "paid; the remaining tranches were cancelled."
+                ),
+            },
+        )
 
     logger.info(
         "installment_plan_defaulted",

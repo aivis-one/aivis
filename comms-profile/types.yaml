@@ -195,6 +195,20 @@ installment.tranche_paid:
 installment.tranche_overdue:
   category: installments
 
+# Plan-level installment events (2026-08-27) -- the follow-up the
+# per-tranche block above named. Both from the same installments module:
+# plan_completed from complete_plan (last tranche paid, or the inline
+# first-tranche path completing a 1-tranche plan), plan_defaulted from
+# default_plan (the daemon defaulting an overdue plan past its grace
+# window). One category with the tranche events -- the whole installment
+# lifecycle mutes together.
+
+installment.plan_completed:
+  category: installments
+
+installment.plan_defaulted:
+  category: installments
+
 # =============================================================================
 # aivis product types -- phase 2, batch 3 continued (2026-08-27)
 # =============================================================================
