@@ -45,6 +45,7 @@ from app.modules.payments.models import CryptoInvoice, Payment
 from app.modules.payments.service import get_payment
 from tests.helpers import auth_headers, register_user
 
+_FAKE_BASE = "http://payments.test"
 _NETWORK = "USDT-TRC20"
 _ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
 
@@ -104,14 +105,33 @@ class _FakeClient:
     async def __aexit__(self, *_: object) -> None:
         return None
 
-    async def request(
-        self, method: str, url: str, *, json: object = None, headers: object = None
-    ) -> _FakeResponse:
-        self.calls.append((method, url, json))
+    async def request(self, method: str, url: str, **kwargs: object) -> _FakeResponse:
+        """Answer one payments call, and REFUSE to answer for anybody else.
+
+        THE SIGNATURE TAKES **kwargs BECAUSE THIS STANDS IN FOR
+        httpx.AsyncClient.request, NOT FOR ONE CALLER OF IT. The first
+        version named only the two arguments payments_client happens to
+        pass, which made every other httpx caller in the process fail
+        with a TypeError.
+
+        THE URL CHECK IS THE REAL FIX. `import httpx` yields the SAME
+        module object everywhere, so setting AsyncClient on it replaces
+        the class for the whole process -- comms included. That is not a
+        payments-specific hazard and it will not stay fixed by itself,
+        so a call arriving here from somewhere other than the payments
+        service fails loudly and says which URL it was, instead of being
+        quietly answered with an invoice.
+        """
+        assert url.startswith(_FAKE_BASE), (
+            f"the payments fake was reached by a non-payments call to {url!r}. "
+            "Patching httpx.AsyncClient replaces it process-wide; install "
+            "the fake only around the payments call under test."
+        )
+        self.calls.append((method, url, kwargs.get("json")))
         if isinstance(self._outcome, Exception):
             raise self._outcome
         if callable(self._outcome):
-            return self._outcome(method, url, json)
+            return self._outcome(method, url, kwargs.get("json"))
         assert isinstance(self._outcome, _FakeResponse)
         return self._outcome
 
@@ -123,11 +143,18 @@ def fake_payments(monkeypatch: pytest.MonkeyPatch):
     The URL and token are set because payments_configured() gates every
     call on the URL: without it the client short-circuits and no fake
     would ever be reached.
+
+    INSTALL THIS *AFTER* ANY USER REGISTRATION THE TEST NEEDS. The patch
+    is process-wide (see _FakeClient.request), and registering a user
+    calls comms synchronously -- so a fake installed first intercepts
+    that call too. Every test below therefore creates its users first
+    and installs the fake immediately before the payments call it is
+    actually about.
     """
 
     def _install(outcome: object) -> _FakeClient:
         holder = _FakeClient(outcome)
-        monkeypatch.setattr(settings, "payments_api_url", "http://payments.test")
+        monkeypatch.setattr(settings, "payments_api_url", _FAKE_BASE)
         monkeypatch.setattr(settings, "payments_service_token", "h7-token")
         monkeypatch.setattr(
             payments_client.httpx, "AsyncClient", lambda **_: holder
@@ -198,8 +225,10 @@ async def test_current_is_not_swallowed_by_the_parameterised_route(
     as a UUID, and answers 422 -- a working endpoint made unreachable by
     a line's position. A 422 here is the failure this pins.
     """
-    fake_payments(_FakeResponse(200, {}))
+    # User first, fake second: registration calls comms over httpx, and
+    # the patch is process-wide.
     _, token = await _create_user(client)
+    fake_payments(_FakeResponse(200, {}))
 
     resp = await client.get(
         f"/api/v1/payments/invoices/current?network={_NETWORK}",
@@ -229,8 +258,8 @@ async def test_amount_empty_and_short_are_refused_before_the_service(
     The fake records every call, so "did not reach the wire" is asserted
     rather than assumed.
     """
-    wire = fake_payments(_FakeResponse(201, _created_body()))
     _, token = await _create_user(client)
+    wire = fake_payments(_FakeResponse(201, _created_body()))
 
     for body in (
         {"network": _NETWORK, "amount_cents": 0},
@@ -257,8 +286,8 @@ async def test_amount_above_the_ceiling_is_refused(
     user was removed in this delivery, so without moving it the tree
     would have lost the guard while looking tidier.
     """
-    wire = fake_payments(_FakeResponse(201, _created_body()))
     _, token = await _create_user(client)
+    wire = fake_payments(_FakeResponse(201, _created_body()))
 
     resp = await client.post(
         "/api/v1/payments/invoices",
@@ -298,8 +327,8 @@ async def test_second_create_returns_the_open_invoice_and_calls_once(
             },
         )
 
-    wire = fake_payments(_outcome)
     _, token = await _create_user(client)
+    wire = fake_payments(_outcome)
 
     first = await client.post(
         "/api/v1/payments/invoices",
@@ -340,10 +369,9 @@ async def test_another_users_invoice_is_404_not_403(
     service before checking ownership would leak existence through
     timing even while answering 404.
     """
-    wire = fake_payments(_FakeResponse(200, {}))
-
     owner_id, _ = await _create_user(client)
     _, intruder_token = await _create_user(client)
+    wire = fake_payments(_FakeResponse(200, {}))
 
     invoice = CryptoInvoice(
         user_id=UUID(owner_id),
@@ -572,6 +600,7 @@ async def test_txid_is_stripped_but_not_otherwise_judged(
     under the one it is testing proves the stripping happens somewhere,
     not that it happens on the path a user takes.
     """
+    user_id, token = await _create_user(client)
     wire = fake_payments(
         _FakeResponse(
             200,
@@ -583,7 +612,6 @@ async def test_txid_is_stripped_but_not_otherwise_judged(
             },
         )
     )
-    user_id, token = await _create_user(client)
 
     invoice = CryptoInvoice(
         user_id=UUID(user_id),
