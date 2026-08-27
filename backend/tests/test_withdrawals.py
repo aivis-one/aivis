@@ -567,11 +567,16 @@ async def test_confirm_withdrawal_emits_processing_notification(
     )
     assert resp2.status_code == 200
 
+    # Shared test DB: select THIS withdrawal's own row by idempotency key,
+    # never an absolute count -- the outbox holds rows from every prior test.
     events = await _notification_events(db_session)
-    assert len(events) == 1
-    payload = events[0].payload
+    proc = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"withdrawal-processing:{withdrawal_id}"
+    ]
+    assert len(proc) == 1
+    payload = proc[0].payload
     assert payload["type"] == "withdrawal.processing"
-    assert payload["idempotency_key"] == f"withdrawal-processing:{withdrawal_id}"
     assert "200.00" in payload["body"]
 
 

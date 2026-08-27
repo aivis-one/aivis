@@ -728,13 +728,21 @@ async def test_purchase_with_gift_emits_both_notifications(
     sale_id = next(p for p in data if p["legal_basis"] == "sale")["id"]
     gift_id = next(p for p in data if p["legal_basis"] == "gift")["id"]
 
+    # Shared test DB: select THIS purchase's own rows by idempotency key,
+    # never "the first purchase.completed" -- the outbox holds rows from
+    # every prior test.
     events = await _notification_events(db_session)
-    assert len(events) == before + 2
-
-    completed = next(e for e in events if e.payload["type"] == "purchase.completed")
-    gift_event = next(e for e in events if e.payload["type"] == "purchase.gift_received")
-
-    assert completed.payload["idempotency_key"] == f"purchase-completed:{sale_id}"
-    assert gift_event.payload["idempotency_key"] == f"purchase-gift:{gift_id}"
-    assert gift_event.payload["target_value"] == str(inv_id)
-    assert "10" in gift_event.payload["body"]  # 10 bonus units (10% of 100)
+    completed = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"purchase-completed:{sale_id}"
+    ]
+    gift_event = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"purchase-gift:{gift_id}"
+    ]
+    assert len(completed) == 1
+    assert len(gift_event) == 1
+    assert completed[0].payload["type"] == "purchase.completed"
+    assert gift_event[0].payload["type"] == "purchase.gift_received"
+    assert gift_event[0].payload["target_value"] == str(inv_id)
+    assert "10" in gift_event[0].payload["body"]  # 10 bonus units (10% of 100)

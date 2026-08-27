@@ -977,19 +977,25 @@ async def test_pay_tranche_success_emits_notification(
     )
     result = await db_session.execute(stmt)
     tranche = result.scalar_one()
-    before = len(await _notification_events(db_session))
 
     was_paid = await pay_tranche(tranche, plan, db_session)
     await db_session.commit()
     assert was_paid is True
 
+    # Shared test DB: filter to THIS tranche's own notification by its
+    # idempotency key, never an absolute count -- paying the last tranche
+    # of a 2-tranche plan also completes the plan (a second event), and
+    # the outbox carries rows from every prior test.
     events = await _notification_events(db_session)
-    assert len(events) == before + 1
-    payload = events[-1].payload
+    paid = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"tranche-paid:{tranche.id}"
+    ]
+    assert len(paid) == 1
+    payload = paid[0].payload
     assert payload["type"] == "installment.tranche_paid"
     assert payload["target_type"] == "user"
     assert payload["target_value"] == str(inv_id)
-    assert payload["idempotency_key"] == f"tranche-paid:{tranche.id}"
 
 
 @pytest.mark.asyncio
@@ -1102,16 +1108,24 @@ async def test_complete_plan_emits_notification(
     await db_session.refresh(plan)
     assert plan.status == InstallmentPlanStatus.COMPLETED
 
+    # Shared test DB: select THIS plan's / THIS tranche's own rows by their
+    # idempotency keys, never "the first event of this type" -- the outbox
+    # holds plan_completed / tranche_paid rows from every prior test.
     events = await _notification_events(db_session)
-    types = {e.payload["type"] for e in events}
-    assert "installment.tranche_paid" in types
-    assert "installment.plan_completed" in types
+    completed = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"plan-completed:{plan.id}"
+    ]
+    assert len(completed) == 1
+    assert completed[0].payload["type"] == "installment.plan_completed"
+    assert completed[0].payload["target_value"] == str(inv_id)
 
-    completed = next(
-        e for e in events if e.payload["type"] == "installment.plan_completed"
-    )
-    assert completed.payload["target_value"] == str(inv_id)
-    assert completed.payload["idempotency_key"] == f"plan-completed:{plan.id}"
+    # the final tranche's own paid notification fired too
+    paid = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"tranche-paid:{tranche.id}"
+    ]
+    assert len(paid) == 1
 
 
 @pytest.mark.asyncio
