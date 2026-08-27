@@ -25,6 +25,7 @@ import structlog
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.client_ip import get_client_ip
 from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
@@ -94,10 +95,11 @@ async def sign_document_endpoint(
     Blocked in avatar mode (Sprint 3.2, R49 dependency guard) --
     staff cannot sign documents on behalf of users.
     """
-    ip_address = request.headers.get(
-        "X-Real-IP",
-        request.client.host if request.client else "unknown",
-    )
+    # TASK-6 4.1a: the shared Request-layer helper. This replaces an
+    # inline .get("X-Real-IP", <fallback>) whose default-arg spelling
+    # returned "" for a present-but-empty header instead of falling
+    # through to the peer -- now consistent with every other site.
+    ip_address = get_client_ip(request)
     user_agent = request.headers.get("User-Agent", "")
 
     signing = await sign_document(

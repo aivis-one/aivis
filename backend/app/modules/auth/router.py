@@ -31,6 +31,7 @@
 # =============================================================================
 
 import structlog
+from app.core.client_ip import get_client_ip
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.exceptions import BadRequestError
@@ -71,22 +72,6 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _get_client_ip(request: Request) -> str:
-    """Extract client IP from X-Real-IP header (set by Nginx).
-
-    Falls back to request.client.host for dev/test environments.
-    """
-    return (
-        request.headers.get("X-Real-IP")
-        or (request.client.host if request.client else "unknown")
-    )
-
-
-# ---------------------------------------------------------------------------
 # Email Auth (Sprint 1.1)
 # ---------------------------------------------------------------------------
 
@@ -104,7 +89,7 @@ async def auth_email_register(
 ) -> AuthResponse:
     """Register a new user via email + password."""
     # Rate limit by IP (SEC-5).
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     await check_rate_limit(f"email_auth:{ip}")
 
     user = await register_email(
@@ -134,7 +119,7 @@ async def auth_email_login(
 ) -> AuthResponse:
     """Login via email + password."""
     # Rate limit by IP (SEC-5).
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     await check_rate_limit(f"email_auth:{ip}")
 
     user = await login_email(body.email, body.password, session, background_tasks)

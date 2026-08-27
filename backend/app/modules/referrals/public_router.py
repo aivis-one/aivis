@@ -26,6 +26,7 @@ import structlog
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.client_ip import get_client_ip
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.rate_limit import check_rate_limit
@@ -38,24 +39,6 @@ router = APIRouter(
     prefix="/api/v1/public",
     tags=["referrals-public"],
 )
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _get_client_ip(request: Request) -> str:
-    """Extract client IP from X-Real-IP header (set by Nginx).
-
-    Falls back to request.client.host for dev/test environments.
-    Mirrors auth/router._get_client_ip so the rate-limit key shape
-    stays consistent across the codebase.
-    """
-    return (
-        request.headers.get("X-Real-IP")
-        or (request.client.host if request.client else "unknown")
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +62,7 @@ async def referral_click(
     are 422 (payload fails the Pydantic schema, e.g. code longer than
     20 chars) and 429 (per-IP rate limit exceeded).
     """
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     await check_rate_limit(
         f"public_referral_click:{ip}",
         max_requests=settings.referral_click_rate_limit_max_requests,

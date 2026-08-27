@@ -77,6 +77,10 @@ class TraceIdMiddleware:
         # Use X-Real-IP set by Nginx ($remote_addr) -- cannot be spoofed by client.
         # Nginx config: proxy_set_header X-Real-IP $remote_addr;
         # Fallback to REMOTE_ADDR from ASGI scope for non-proxied requests (tests).
+        # This is the SAME rule as core.client_ip.get_client_ip, deliberately
+        # implemented a second time: that helper takes a FastAPI Request, which
+        # does not yet exist at this raw-ASGI layer -- here the header is read
+        # off the byte-level scope. Keep the two in step by intent (TASK-6 4.1a).
         real_ip = headers.get(b"x-real-ip", b"").decode("latin-1", errors="replace").strip()
         if real_ip:
             ip_address = real_ip

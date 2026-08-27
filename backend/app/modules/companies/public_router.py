@@ -50,6 +50,7 @@ import structlog
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.client_ip import get_client_ip
 from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
 from app.core.rate_limit import check_rate_limit
@@ -82,18 +83,6 @@ router = APIRouter(
 # ---------------------------------------------------------------------------
 
 
-def _get_client_ip(request: Request) -> str:
-    """Extract client IP from X-Real-IP (set by Nginx); fall back to
-    request.client.host for dev/test. Mirrors the same helper in
-    auth/router and attachments_public_router so the rate-limit key
-    shape stays consistent across the codebase.
-    """
-    return (
-        request.headers.get("X-Real-IP")
-        or (request.client.host if request.client else "unknown")
-    )
-
-
 async def _public_companies_rate_limit(request: Request) -> None:
     """Apply the shared `public_companies:` bucket per request.
 
@@ -103,7 +92,7 @@ async def _public_companies_rate_limit(request: Request) -> None:
     list + detail + product detail under the storefront stays within
     one 60-per-minute budget rather than three independent ones.
     """
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     max_req, window = PUBLIC_COMPANIES_RATE_LIMIT
     await check_rate_limit(
         f"public_companies:{ip}",

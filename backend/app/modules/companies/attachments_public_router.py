@@ -39,6 +39,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.client_ip import get_client_ip
 from app.core.config import settings
 from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
@@ -64,24 +65,6 @@ router = APIRouter(
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _get_client_ip(request: Request) -> str:
-    """Extract client IP from X-Real-IP header (set by Nginx).
-
-    Falls back to request.client.host for dev/test environments.
-    Mirrors auth/router._get_client_ip so the rate-limit key shape
-    stays consistent across the codebase.
-    """
-    return (
-        request.headers.get("X-Real-IP")
-        or (request.client.host if request.client else "unknown")
-    )
-
-
-# ---------------------------------------------------------------------------
 # List
 # ---------------------------------------------------------------------------
 
@@ -104,7 +87,7 @@ async def list_public_attachments_endpoint(
     Filters (category / category_prefix / language) match the auth-flow
     endpoint signature so the same Vue store can drive both views.
     """
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     max_req, window = PUBLIC_LIST_RATE_LIMIT
     await check_rate_limit(
         f"public_attach_list:{ip}",
@@ -152,7 +135,7 @@ async def download_public_attachment_endpoint(
     404 (not 403), matching R2 §3.4 so a probe can't distinguish "the
     attachment exists but is private" from "it doesn't exist".
     """
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     max_req, window = PUBLIC_DOWNLOAD_RATE_LIMIT
     await check_rate_limit(
         f"public_attach_dl:{ip}",

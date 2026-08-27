@@ -53,6 +53,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.client_ip import get_client_ip
 from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
 from app.core.rate_limit import check_rate_limit
@@ -81,18 +82,6 @@ router = APIRouter(
 # ---------------------------------------------------------------------------
 
 
-def _get_client_ip(request: Request) -> str:
-    """X-Real-IP (Nginx) with request.client.host fallback for dev/test.
-
-    Mirrors auth/router._get_client_ip + attachments_public_router so
-    every rate-limit key in the codebase is built the same way.
-    """
-    return (
-        request.headers.get("X-Real-IP")
-        or (request.client.host if request.client else "unknown")
-    )
-
-
 async def _public_products_rate_limit(request: Request) -> None:
     """Apply the shared `public_companies:` bucket per request.
 
@@ -100,7 +89,7 @@ async def _public_products_rate_limit(request: Request) -> None:
     is the canonical limit for the public storefront-browse experience
     regardless of which resource (company or product) is being fetched.
     """
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     max_req, window = PUBLIC_COMPANIES_RATE_LIMIT
     await check_rate_limit(
         f"public_companies:{ip}",
