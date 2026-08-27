@@ -68,9 +68,6 @@ from app.modules.referrals.models import ReferralLink, ReferralAttribution  # no
 # Sprint 7.3: Commissions
 from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout  # noqa: F401
 
-# Sprint 8.1: Notifications
-from app.modules.notifications.models import Notification, NotificationDelivery  # noqa: F401
-
 # Sprint 9.1: Posts
 from app.modules.posts.models import Post, PostDismiss, Event  # noqa: F401
 

@@ -51,8 +51,6 @@
 #   referrals_router          -> /api/v1/referrals/* (Sprint 7.2)
 #   referrals_public_router   -> /api/v1/public/referral-click (Task 1 Block B)
 #   commissions_router        -> /api/v1/agent/* (Sprint 7.3)
-#   notifications_router      -> /api/v1/notifications/* (Sprint 8.3)
-#   staff_notifications_router -> /api/v1/staff/notifications/* (Sprint 8.2)
 #   posts_router              -> /api/v1/posts/* (Sprint 9.1)
 #   events_router             -> /api/v1/events/* (Sprint 9.1)
 #   staff_posts_router        -> /api/v1/staff/posts/* (Sprint 9.1)
@@ -122,7 +120,6 @@
 #   payment_confirmation_worker -- calls run_confirmation_batch() (Sprint 5.3)
 #   installment_payment_worker  -- calls run_installment_batch() (Sprint 6.2)
 #   leaderboard_worker          -- calls run_leaderboard_update() + payouts (Sprint 7.3)
-#   notification_worker         -- calls run_notification_batch() (Sprint 8.1)
 #
 # MIDDLEWARE (applied in reverse order -- outermost last):
 #   CORSMiddleware -> TraceIdMiddleware
@@ -187,9 +184,6 @@ from app.modules.installments.router import (
 )
 from app.modules.installments.worker import run_installment_batch
 from app.modules.kyc.router import router as kyc_router
-from app.modules.notifications.router import router as notifications_router
-from app.modules.notifications.staff_router import router as staff_notifications_router
-from app.modules.notifications.worker import run_notification_batch
 from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
@@ -342,38 +336,6 @@ async def _leaderboard_worker() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Notification daemon (Sprint 8.1)
-# ---------------------------------------------------------------------------
-
-
-async def _notification_worker() -> None:
-    """Background task: process pending notifications.
-
-    Runs every NOTIFICATION_WORKER_INTERVAL_MINUTES. Each cycle:
-    1. Process pending notifications (resolve -> deliver -> rollup).
-    2. Cleanup expired delivered notifications.
-
-    Batch-first: process immediately on startup.
-    """
-    interval = settings.notification_worker_interval_minutes * 60
-    logger.info(
-        "notification_worker_started",
-        interval_minutes=settings.notification_worker_interval_minutes,
-    )
-
-    while True:
-        try:
-            await run_notification_batch()
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            logger.info("notification_worker_stopped")
-            break
-        except Exception:
-            logger.exception("notification_worker_error")
-            await asyncio.sleep(interval)
-
-
-# ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
 
@@ -417,10 +379,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _leaderboard_worker(),
         name="leaderboard_worker",
     )
-    notification_task = asyncio.create_task(
-        _notification_worker(),
-        name="notification_worker",
-    )
 
     logger.info(
         "app_started",
@@ -443,15 +401,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     confirmation_task.cancel()
     installment_task.cancel()
     leaderboard_task.cancel()
-    notification_task.cancel()
     with suppress(asyncio.CancelledError):
         await confirmation_task
     with suppress(asyncio.CancelledError):
         await installment_task
     with suppress(asyncio.CancelledError):
         await leaderboard_task
-    with suppress(asyncio.CancelledError):
-        await notification_task
 
     await close_redis()
     await dispose_engine()
@@ -556,8 +511,6 @@ app.include_router(referrals_router)
 # the OpenAPI doc.
 app.include_router(referrals_public_router)
 app.include_router(commissions_router)
-app.include_router(notifications_router)
-app.include_router(staff_notifications_router)
 app.include_router(posts_router)
 app.include_router(events_router)
 app.include_router(staff_posts_router)

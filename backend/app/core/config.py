@@ -152,10 +152,6 @@ class Settings(BaseSettings):
     # -- Social proof cache --
     social_proof_cache_ttl: int = 300
 
-    # -- Notifications (Sprint 8.1) --
-    notification_max_delivery_attempts: int = 3
-    notification_worker_interval_minutes: int = 1
-
     # -- Volume Bonuses (Sprint 7.3) --
     # Basis points: 200 = 2.00%, 100 = 1.00%.
     volume_bonus_monthly_bp: int = 200
