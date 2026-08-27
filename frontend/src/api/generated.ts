@@ -732,29 +732,6 @@ export interface LeaderboardResponse {
   period_start: string
 }
 
-/** Single delivery with parent notification data. */
-export interface NotificationDeliveryResponse {
-  id: string
-  channel: string
-  status: string
-  read_at?: string | null
-  sent_at?: string | null
-  created_at: string
-  type: string
-  title: string
-  body: string
-  action_data?: Record<string, unknown> | null
-  priority: number
-}
-
-/** Paginated list of deliveries. */
-export interface NotificationListResponse {
-  items: NotificationDeliveryResponse[]
-  total: number
-  page: number
-  per_page: number
-}
-
 /** Paginated payment history response. */
 export interface PaymentHistoryResponse {
   items: PaymentResponse[]
@@ -999,11 +976,6 @@ export interface PurchaseReversalResponse {
   passive_entries_reversed: number
   units_returned: number
   affected_user_ids: string[]
-}
-
-/** Result of mark-all-read operation. */
-export interface ReadAllResponse {
-  marked: number
 }
 
 /** Public referral-click payload (Task 1 Block B). max_length mirrors ReferralLink.code String(20); min_length=1 rejects empty strings at the framework edge instead of spending a no-op UPDATE (STYLE-44-01). Fire-and-forget: the endpoint replies 204 whether or not the code matches a link. */
@@ -1256,11 +1228,6 @@ export interface TransactionResponse {
   reference_type?: string | null
   details?: Record<string, unknown> | null
   created_at: string
-}
-
-/** Badge counter for unread deliveries. */
-export interface UnreadCountResponse {
-  count: number
 }
 
 /** Company partial update (PATCH) of its own post (TASK-30). Same field set as CreateCompanyPostRequest minus title/body being optional -- no owner_type/owner_id/is_banner. Ownership (the post must belong to the caller's own company_id) is enforced in service.update_company_post, not by this schema. */
