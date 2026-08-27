@@ -78,6 +78,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.documents.service import maybe_complete_onboarding
 from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
@@ -90,6 +92,24 @@ logger = structlog.get_logger()
 _VALID_WEBHOOK_STATUSES = {
     KYCApplicationStatus.APPROVED,
     KYCApplicationStatus.REJECTED,
+}
+
+# Batch 3 (2026-08-27), the first aivis producer of notification_request --
+# see comms-profile/types.yaml for the type registration this depends on.
+# English only: no backend-authored user-facing text is localized today
+# (core/email.py has no locale branching either), so this does not newly
+# create a gap, it inherits one.
+_KYC_DECISION_COPY = {
+    KYCApplicationStatus.APPROVED: (
+        "KYC verification approved",
+        "Your identity verification has been approved. You now have "
+        "full access to the platform.",
+    ),
+    KYCApplicationStatus.REJECTED: (
+        "KYC verification rejected",
+        "Your identity verification was not approved. Please review "
+        "your details and resubmit.",
+    ),
 }
 
 
@@ -321,6 +341,29 @@ async def process_webhook(
         target_id=user.id,
         data={"from": old_status, "to": new_status},
     )
+
+    if comms_configured():
+        # Same gate as comms_sync.ensure_recipient / support.service's
+        # emit_support_membership: without a comms address the relay is
+        # disabled too (same empty setting), so a row emitted here would
+        # sit in the outbox forever with nobody to ship it.
+        title, body = _KYC_DECISION_COPY[new_status]
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                # One decision per application row, ever (process_webhook
+                # only matches a SUBMITTED application, and a status write
+                # here moves it out of that set) -- the application id
+                # alone is a safe, permanent dedup key.
+                "idempotency_key": f"kyc-decision:{application.id}",
+                "type": f"kyc.{new_status}",
+                "target_type": "user",
+                "target_value": str(user.id),
+                "title": title,
+                "body": body,
+            },
+        )
 
     logger.info(
         "kyc_webhook_processed",

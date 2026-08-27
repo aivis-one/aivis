@@ -10,6 +10,11 @@
 #   5: Rejected -> resubmit -> approved (history: 2 applications)
 #   6: Webhook with non-existent user_id -> 404
 #   7: Webhook with invalid status -> 422
+#   8: Webhook approved/rejected -> notification_request on the outbox
+#      (TASK-24 batch 3, 2026-08-27 -- the first aivis producer of this
+#      event; see comms-profile/types.yaml)
+#   9: Webhook with comms NOT configured -> no outbox row (same gate as
+#      comms_sync.ensure_recipient / support.service's membership emitter)
 #
 # Email prefix: "s21_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -22,6 +27,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.events.models import OutboxEvent
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 from app.modules.kyc.models import KYCApplication
 from tests.helpers import auth_headers, register_user
 
@@ -240,3 +247,103 @@ async def test_webhook_invalid_status(client: AsyncClient) -> None:
     )
     # Pydantic schema regex rejects "bogus" -> 422.
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Notification emission (TASK-24 batch 3)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_events(session: AsyncSession) -> list[OutboxEvent]:
+    """Every notification_request event on the outbox, oldest first."""
+    result = await session.execute(
+        select(OutboxEvent)
+        .where(OutboxEvent.event_type == EVENT_NOTIFICATION_REQUEST)
+        .order_by(OutboxEvent.id)
+    )
+    return list(result.scalars().all())
+
+
+@pytest.mark.asyncio
+async def test_webhook_approved_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Approved webhook, with comms configured, puts kyc.approved on the
+    outbox -- through the transaction, not a direct call, same discipline
+    as every other emitter in this tree."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    data = await register_user(client)
+    token = data["session_token"]
+    user_id = data["user"]["id"]
+    before = len(await _notification_events(db_session))
+
+    await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    resp = await client.post(
+        "/api/v1/kyc/webhook",
+        json={"user_id": user_id, "status": "approved"},
+        headers=webhook_headers(),
+    )
+    assert resp.status_code == 200
+
+    events = await _notification_events(db_session)
+    assert len(events) == before + 1
+    payload = events[-1].payload
+    assert payload["type"] == "kyc.approved"
+    assert payload["target_type"] == "user"
+    assert payload["target_value"] == user_id
+    assert payload["idempotency_key"].startswith("kyc-decision:")
+    assert payload["title"] and payload["body"]
+
+
+@pytest.mark.asyncio
+async def test_webhook_rejected_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rejected webhook emits kyc.rejected, not the approved type key."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    data = await register_user(client)
+    token = data["session_token"]
+    user_id = data["user"]["id"]
+
+    await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    resp = await client.post(
+        "/api/v1/kyc/webhook",
+        json={"user_id": user_id, "status": "rejected"},
+        headers=webhook_headers(),
+    )
+    assert resp.status_code == 200
+
+    events = await _notification_events(db_session)
+    assert events[-1].payload["type"] == "kyc.rejected"
+
+
+@pytest.mark.asyncio
+async def test_webhook_without_comms_emits_nothing(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No comms address -> no outbox row, same gate as the two existing
+    emitters (ensure_recipient, emit_support_membership): the relay is
+    disabled by the same empty setting, so a row here would sit unshipped
+    forever -- growth, not delivery, exactly the reasoning comms_sync.py
+    states for its own gate."""
+    monkeypatch.setattr(settings, "comms_api_url", "")
+    data = await register_user(client)
+    token = data["session_token"]
+    user_id = data["user"]["id"]
+    before = len(await _notification_events(db_session))
+
+    await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    resp = await client.post(
+        "/api/v1/kyc/webhook",
+        json={"user_id": user_id, "status": "approved"},
+        headers=webhook_headers(),
+    )
+    assert resp.status_code == 200
+
+    assert len(await _notification_events(db_session)) == before

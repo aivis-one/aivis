@@ -13,16 +13,20 @@
 # Widths from comms app/core/constants.py: a type key is <= 50 chars
 # (MAX_TYPE_KEY_LEN), a category <= 50 chars (MAX_CATEGORY_LEN).
 #
-# WHY ONLY THREE TYPES, AND WHY THEY CANNOT WAIT
-# ----------------------------------------------
+# WHY THE FIRST THREE TYPES EXISTED BEFORE ANY OF THIS PRODUCT'S OWN, AND
+# WHY THEY COULD NOT WAIT
+# -------------------------------------------------------------------------
 # aivis product types (bookings, wallet, verification and the rest of the
-# domain dictionary) arrive in phase 2, together with the emitters that
-# raise them. Nothing emits them yet, so declaring them now would describe
-# behaviour that does not exist.
+# domain dictionary) arrive incrementally, together with the emitters that
+# raise them -- declaring a type before its emitter exists would describe
+# behaviour that does not. Batch 3 (2026-08-27) is the first delivery: the
+# `kyc.*` pair below, emitted from `kyc/service.py::process_webhook`. Read
+# its own section for what is specific to it; this section is about the
+# three msg.* keys only.
 #
-# These three are different: they are not aivis types at all. comms emits
-# them ITSELF, unconditionally -- chat is a core capability of the service,
-# not a feature of the product wired to it. Its loader enforces that in
+# The three msg.* keys are different: they are not aivis types at all. comms
+# emits them ITSELF, unconditionally -- chat is a core capability of the
+# service, not a feature of the product wired to it. Its loader enforces that in
 # _require_msg_type_categories, which runs before templates are even
 # parsed: every one of MSG_TYPE_KEYS must be declared here WITH a non-empty
 # category, or the profile is rejected and comms does not start. The reason
@@ -93,3 +97,31 @@ msg.thread_closed:
 
 msg.support_message:
   category: staff_messages
+
+# =============================================================================
+# aivis product types -- phase 2, batch 3 (2026-08-27)
+# =============================================================================
+#
+# THE FIRST AIVIS DOMAIN EVENT. Emitted by `kyc/service.py::process_webhook`
+# on the ONE existing decision path (there is no separate staff-driven
+# approve/reject endpoint today -- measured before writing this section, see
+# TASK-REGISTRY.md batch 3). One type per outcome rather than one shared
+# `kyc.decision` type: it lets a future preference screen mute a rejection
+# notice differently from an approval one, and it matches the msg.* shape
+# above (one type = one specific meaning) rather than inventing a new one.
+# Both share ONE category so today they mute together; splitting the
+# category is free later if that turns out to be wanted.
+#
+# title/body are sent as literal English strings by the emitter, not through
+# a per-locale template in this profile (no templates/ directory exists yet
+# in this repo) -- this matches every other backend-authored user-facing
+# string today (core/email.py has no locale branching either). Localizing
+# outbound notification copy is a real gap, but it is a PRE-EXISTING one
+# this batch does not newly create, and it is out of scope for a delivery
+# whose job is standing the pipe up, not building backend i18n from zero.
+
+kyc.approved:
+  category: kyc
+
+kyc.rejected:
+  category: kyc
