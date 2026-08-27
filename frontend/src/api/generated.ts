@@ -337,11 +337,6 @@ export interface ConsistencyResponse {
   results: SemaphoreResult[]
 }
 
-/** Request body for creating/getting a crypto deposit address. */
-export interface CreateAddressRequest {
-  network: string
-}
-
 /** Company creates a post about itself (TASK-30). owner_type is always "company" and owner_id is always the caller's own company_id -- both are forced server-side in company_router.py, never taken from the client, so a project can never create a post for a different owner_id. is_banner is not exposed here: a site-wide homepage banner placement is a staff editorial decision (see PostListEditor.vue's staff.platform.post.bannerBadge), not something a project should be able to grant itself -- every company-authored post is created with is_banner=False. */
 export interface CreateCompanyPostRequest {
   title: string
@@ -389,6 +384,12 @@ export interface CreateInstallmentPlanRequest {
 export interface CreateInstallmentRequest {
   name: string
   plan_config: Record<string, unknown>
+}
+
+/** Request body for opening a deposit invoice. ``network`` is a plain string and is NOT checked against a local list. Which networks are served is the payments service's fact; it answers 400 network_not_supported with the offending value echoed back (TOR section 8), and a second list here would be a second source of truth that drifts silently (TOR section 11 p.12). ``amount_cents`` is floored at 1 because the service floors it at 1 (``invoice_amount_cents: int = Field(ge=1)``). Validating it here as well is not duplication of the service's rule -- it is the difference between a user seeing "enter an amount" and a user seeing an opaque 422 relayed from a system they do not know exists. */
+export interface CreateInvoiceRequest {
+  network: string
+  amount_cents: number
 }
 
 /** Create a new active pool for a company. equity_percent: percentage of company.total_supply to allocate for sale. Must be > 0 and <= 100. The actual total_options is computed server-side as floor(company.total_supply * equity_percent / 100). */
@@ -446,18 +447,6 @@ export interface CreateWithdrawalRequest {
   amount_cents: number
 }
 
-/** Incoming crypto webhook payload. Stub schema -- real provider will have different fields. This captures the minimum needed to create a Payment and record an active_ledger entry. */
-export interface CryptoWebhookRequest {
-  network: string
-  to_address: string
-  from_address: string
-  tx_hash: string
-  amount_crypto: string
-  amount_usd_cents: number
-  confirmed_block?: number | null
-  exchange_rate?: string
-}
-
 /** Platform-wide statistics for staff dashboard. */
 export interface DashboardStatsResponse {
   total_users: number
@@ -475,13 +464,6 @@ export interface DashboardSummaryResponse {
   current_value_cents: number
   companies_count: number
   companies: CompanySummaryResponse[]
-}
-
-/** Response for crypto deposit address endpoint. */
-export interface DepositAddressResponse {
-  address: string
-  network: string
-  user_id: string
 }
 
 /** Staff creates a new document. */
@@ -670,6 +652,20 @@ export interface InstallmentTrancheResponse {
   status: string
   paid_at: string | null
   purchase_id: string | null
+}
+
+/** One deposit invoice as the investor screen needs it. ``id`` IS THE PRODUCT'S ROW ID, NOT THE SERVICE'S. The service's id is never handed to a browser: the routes below take this one, look the row up scoped to the authenticated user, and use the service id internally. That is what makes an unowned id a 404 instead of a successful read of somebody else's invoice. The optional fields are optional for one reason each, not as a blanket "may be absent": creation does not yet know ``attempts_remaining`` (the service returns it on read and on submission), and ``credited_amount_cents`` / ``underpaid`` exist only once an invoice is confirmed. */
+export interface InvoiceResponse {
+  id: string
+  network: string
+  address: string | null
+  invoice_amount_cents: number
+  status: string
+  expires_at: string | null
+  attempts_remaining?: number | null
+  active_txid?: string | null
+  credited_amount_cents?: number | null
+  underpaid?: boolean | null
 }
 
 /** Compact KYCApplication row for the user detail history. Mirrors the columns the staff detail modal actually renders: id (for action endpoints), status (badge color), created_at (timeline ordering / submission date), updated_at (when the status changed for terminal statuses). Distinct from KYCQueueItem -- that one carries denormalized user info for the global queue, this one is already nested inside a per-user response so user_id / email / name would duplicate the parent. */
@@ -1169,6 +1165,11 @@ export interface StaffReversePurchaseRequest {
   reason?: string | null
 }
 
+/** Request body for handing one transaction hash to the service. No ``min_length``. An empty or malformed hash is not a schema error: the service answers 200 with result_code=invalid_format and spends no attempt, and turning that into a 422 here would move a documented outcome into a different status class and cost the user the explanation that comes with it. */
+export interface SubmitTxidRequest {
+  txid: string
+}
+
 /** POST /api/v1/auth/telegram -- request body. */
 export interface TelegramAuthRequest {
   init_data: string
@@ -1228,6 +1229,14 @@ export interface TransactionResponse {
   reference_type?: string | null
   details?: Record<string, unknown> | null
   created_at: string
+}
+
+/** Outcome of one TXID submission. ``result_code`` is relayed verbatim from the service and is the only thing that says WHY: a submission can be rejected while the invoice stays ``created``, and the status alone cannot tell "not found on chain" from "wrong address" from "malformed hash". A caller must not derive the attempt counter from the result code. ``invalid_format`` and ``api_error`` reach an explorer never and therefore spend nothing, so ``attempts_remaining`` is reported by the service rather than computed here. */
+export interface TxidResultResponse {
+  status: string
+  result_code: string
+  attempts_used: number
+  attempts_remaining: number
 }
 
 /** Company partial update (PATCH) of its own post (TASK-30). Same field set as CreateCompanyPostRequest minus title/body being optional -- no owner_type/owner_id/is_banner. Ownership (the post must belong to the caller's own company_id) is enforced in service.update_company_post, not by this schema. */
