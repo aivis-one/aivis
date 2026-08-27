@@ -38,8 +38,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
 from app.core.config import settings
 from app.core.constants import LedgerReason
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
@@ -53,6 +55,76 @@ from app.modules.withdrawals.constants import (
 from app.modules.withdrawals.models import Withdrawal
 
 logger = structlog.get_logger()
+
+# Batch 3 (2026-08-27), second aivis producer of notification_request (see
+# comms-profile/types.yaml). Titles keyed by the withdrawal's CURRENT
+# status -- confirm_withdrawal's MVP cascade means a withdrawal is never
+# actually left sitting in CONFIRMED, so PROCESSING is the status a user
+# is notified about, not CONFIRMED. English only: same pre-existing gap
+# as the kyc.* emitter, not a new one (core/email.py has no locale
+# branching either).
+_WITHDRAWAL_NOTIFICATION_TITLES = {
+    WithdrawalStatus.PROCESSING: "Withdrawal approved",
+    WithdrawalStatus.REJECTED: "Withdrawal rejected",
+    WithdrawalStatus.COMPLETED: "Withdrawal completed",
+    WithdrawalStatus.FAILED: "Withdrawal failed",
+}
+
+
+async def _notify_withdrawal(
+    session: AsyncSession,
+    withdrawal: Withdrawal,
+    *,
+    reason: str | None = None,
+) -> None:
+    """Emit notification_request for a withdrawal's CURRENT status.
+
+    Same gate as every other emitter in this tree: without a comms
+    address the relay is disabled too (same empty setting), so a row
+    emitted here would sit in the outbox forever with nobody to ship it.
+
+    Each of the four call sites below reaches a status the state
+    machine (constants.VALID_WITHDRAWAL_STATUS_TRANSITIONS) only ever
+    lets a withdrawal enter ONCE -- PROCESSING, REJECTED, COMPLETED and
+    FAILED are either reachable through exactly one inbound edge or are
+    terminal with no outbound edges at all -- so
+    f"withdrawal-{status}:{id}" is a safe, permanent dedup key without
+    needing a transition counter.
+    """
+    if not comms_configured():
+        return
+
+    amount = f"{withdrawal.amount_cents / 100:,.2f}"
+    if withdrawal.status == WithdrawalStatus.PROCESSING:
+        body = (
+            f"Your withdrawal of ${amount} has been approved and is "
+            f"now processing."
+        )
+    elif withdrawal.status == WithdrawalStatus.REJECTED:
+        body = (
+            f"Your withdrawal of ${amount} was rejected: {reason}. "
+            f"The amount has been returned to your balance."
+        )
+    elif withdrawal.status == WithdrawalStatus.COMPLETED:
+        body = f"Your withdrawal of ${amount} has been sent."
+    else:
+        body = (
+            f"Your withdrawal of ${amount} could not be completed. "
+            f"The amount has been returned to your balance."
+        )
+
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            "idempotency_key": f"withdrawal-{withdrawal.status}:{withdrawal.id}",
+            "type": f"withdrawal.{withdrawal.status}",
+            "target_type": "user",
+            "target_value": str(withdrawal.user_id),
+            "title": _WITHDRAWAL_NOTIFICATION_TITLES[withdrawal.status],
+            "body": body,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +333,8 @@ async def confirm_withdrawal(
         details={"staff_id": str(staff.id)},
     )
 
+    await _notify_withdrawal(session, withdrawal)
+
     logger.info(
         "withdrawal_confirmed",
         withdrawal_id=str(withdrawal.id),
@@ -356,6 +430,8 @@ async def reject_withdrawal(
         details={"reason": reason, "staff_id": str(staff.id)},
     )
 
+    await _notify_withdrawal(session, withdrawal, reason=reason)
+
     logger.info(
         "withdrawal_rejected",
         withdrawal_id=str(withdrawal.id),
@@ -421,6 +497,8 @@ async def complete_withdrawal(
         reference_id=withdrawal.id,
         reference_type=ReferenceType.WITHDRAWAL,
     )
+
+    await _notify_withdrawal(session, withdrawal)
 
     logger.info(
         "withdrawal_completed",
@@ -502,6 +580,8 @@ async def fail_withdrawal(
         reference_id=withdrawal.id,
         reference_type=ReferenceType.WITHDRAWAL,
     )
+
+    await _notify_withdrawal(session, withdrawal)
 
     logger.info(
         "withdrawal_failed",

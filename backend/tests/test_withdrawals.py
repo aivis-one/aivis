@@ -15,6 +15,9 @@
 #   10: Fail withdrawal -> passive balance restored
 #   11: Reject -> compensating transaction has positive amount (TEST-01)
 #   12: Fail   -> compensating transaction has positive amount (TEST-01)
+#   13: Confirm/reject/complete/fail -> notification_request on the outbox,
+#       one per CURRENT status (TASK-24 batch 3, 2026-08-27)
+#   14: Confirm with comms NOT configured -> no outbox row
 # =============================================================================
 
 from uuid import UUID
@@ -24,6 +27,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.events.models import OutboxEvent
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
 from app.modules.transactions.constants import TransactionType
@@ -31,7 +37,7 @@ from app.modules.transactions.models import Transaction
 from app.modules.users.models import User
 from app.modules.withdrawals.constants import WithdrawalStatus
 from app.modules.withdrawals.models import Withdrawal
-from app.modules.withdrawals.service import fail_withdrawal
+from app.modules.withdrawals.service import complete_withdrawal, fail_withdrawal
 from tests.helpers import (
     auth_headers,
     create_admin_user,
@@ -518,3 +524,175 @@ async def test_fail_withdrawal_records_positive_compensating_transaction(
         "Compensating amount must exactly match the original withdrawal "
         f"amount {amount}; got {txn.amount_cents}."
     )
+
+
+# ---------------------------------------------------------------------------
+# 13-14. Notification emission (TASK-24 batch 3)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_events(session: AsyncSession) -> list[OutboxEvent]:
+    """Every notification_request event on the outbox, oldest first."""
+    result = await session.execute(
+        select(OutboxEvent)
+        .where(OutboxEvent.event_type == EVENT_NOTIFICATION_REQUEST)
+        .order_by(OutboxEvent.id)
+    )
+    return list(result.scalars().all())
+
+
+@pytest.mark.asyncio
+async def test_confirm_withdrawal_emits_processing_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Staff confirm -> withdrawal.processing on the outbox, not
+    withdrawal.confirmed -- the MVP cascade never leaves a withdrawal
+    sitting in CONFIRMED, so PROCESSING is what the user is told."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    _, token = await _create_user_with_balance(client, db_session, balance_cents=50000)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    withdrawal_id = resp.json()["id"]
+
+    resp2 = await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+
+    events = await _notification_events(db_session)
+    assert len(events) == 1
+    payload = events[0].payload
+    assert payload["type"] == "withdrawal.processing"
+    assert payload["idempotency_key"] == f"withdrawal-processing:{withdrawal_id}"
+    assert "200.00" in payload["body"]
+
+
+@pytest.mark.asyncio
+async def test_reject_withdrawal_emits_notification_with_reason(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Staff reject -> withdrawal.rejected, body carries the staff's
+    reason text (already user-facing today via GET /withdrawals)."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    _, token = await _create_user_with_balance(client, db_session, balance_cents=50000)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    withdrawal_id = resp.json()["id"]
+
+    resp2 = await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/reject",
+        json={"reason": "Invalid bank details"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+
+    events = await _notification_events(db_session)
+    payload = events[-1].payload
+    assert payload["type"] == "withdrawal.rejected"
+    assert payload["idempotency_key"] == f"withdrawal-rejected:{withdrawal_id}"
+    assert "Invalid bank details" in payload["body"]
+
+
+@pytest.mark.asyncio
+async def test_complete_withdrawal_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """complete_withdrawal (system/webhook path, no HTTP endpoint yet)
+    emits withdrawal.completed."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    _, token = await _create_user_with_balance(client, db_session, balance_cents=50000)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    withdrawal_id = UUID(resp.json()["id"])
+
+    await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+
+    await complete_withdrawal(withdrawal_id, db_session)
+    await db_session.commit()
+
+    events = await _notification_events(db_session)
+    assert events[-1].payload["type"] == "withdrawal.completed"
+
+
+@pytest.mark.asyncio
+async def test_fail_withdrawal_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """fail_withdrawal (system/webhook path) emits withdrawal.failed."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    _, token = await _create_user_with_balance(client, db_session, balance_cents=50000)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    withdrawal_id = UUID(resp.json()["id"])
+
+    await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+
+    await fail_withdrawal(withdrawal_id, db_session)
+    await db_session.commit()
+
+    events = await _notification_events(db_session)
+    assert events[-1].payload["type"] == "withdrawal.failed"
+
+
+@pytest.mark.asyncio
+async def test_confirm_withdrawal_without_comms_emits_nothing(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No comms address -> no outbox row, same gate as every other
+    emitter in this tree."""
+    monkeypatch.setattr(settings, "comms_api_url", "")
+    _, token = await _create_user_with_balance(client, db_session, balance_cents=50000)
+    _, admin_token = await create_admin_user(client, db_session)
+    before = len(await _notification_events(db_session))
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    withdrawal_id = resp.json()["id"]
+
+    resp2 = await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+
+    assert len(await _notification_events(db_session)) == before

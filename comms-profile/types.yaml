@@ -125,3 +125,29 @@ kyc.approved:
 
 kyc.rejected:
   category: kyc
+
+# =============================================================================
+# aivis product types -- phase 2, batch 3 continued (2026-08-27)
+# =============================================================================
+#
+# SECOND aivis PRODUCER. Emitted by `withdrawals/service.py::_notify_withdrawal`,
+# called from all four staff/system withdrawal-lifecycle functions. Keyed by
+# the withdrawal's CURRENT status, not the audit-event name -- confirm's MVP
+# cascade (confirmed -> processing, immediate) means a withdrawal is never
+# actually left sitting in "confirmed", so PROCESSING is the type a user
+# receives, not "withdrawal.confirmed". One shared category: all four are the
+# same real-money lifecycle from the user's side, and a future preference
+# screen has no reason yet to let someone mute "your money was sent" while
+# keeping "your money didn't go through".
+
+withdrawal.processing:
+  category: withdrawals
+
+withdrawal.rejected:
+  category: withdrawals
+
+withdrawal.completed:
+  category: withdrawals
+
+withdrawal.failed:
+  category: withdrawals
