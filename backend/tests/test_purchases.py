@@ -19,6 +19,9 @@
 #   14: POST /products/{id}/purchase non-investor -> 403
 #   15: POST /products/{id}/purchase without KYC -> 400
 #   16: POST /products/{id}/purchase with gift bonus -> 201 + 2 purchases
+#   17: POST /products/{id}/purchase -> notification_request on the outbox
+#       (TASK-24 batch 3, 2026-08-27)
+#   18: Purchase with comms NOT configured -> no outbox row
 #
 # Email prefix: "s61_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
@@ -31,6 +34,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.events.models import OutboxEvent
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 from app.core.exceptions import BadRequestError
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import record_active_ledger
@@ -589,4 +595,90 @@ async def test_purchase_with_gift_bonus(
     assert sale["units"] == 100
     assert sale["paid_cents"] == 100 * 10000
     assert gift["units"] == 10  # 10% of 100
+
+
+# ---------------------------------------------------------------------------
+# 17-18. Notification emission (TASK-24 batch 3)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_events(session: AsyncSession) -> list[OutboxEvent]:
+    """Every notification_request event on the outbox, oldest first."""
+    result = await session.execute(
+        select(OutboxEvent)
+        .where(OutboxEvent.event_type == EVENT_NOTIFICATION_REQUEST)
+        .order_by(OutboxEvent.id)
+    )
+    return list(result.scalars().all())
+
+
+@pytest.mark.asyncio
+async def test_purchase_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Instant purchase, with comms configured, puts purchase.completed
+    on the outbox -- one row, about the sale purchase (not a gift row
+    even when the config would create one; covered by the gift-bonus
+    fixture above's shape, single-purchase here keeps this test focused
+    on the notification, not the gift math)."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, inv_id = await _create_investor_with_balance(
+        client, db_session
+    )
+    before = len(await _notification_events(db_session))
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 201, f"Purchase failed: {resp.text}"
+    sale_purchase_id = resp.json()[0]["id"]
+
+    events = await _notification_events(db_session)
+    assert len(events) == before + 1
+    payload = events[-1].payload
+    assert payload["type"] == "purchase.completed"
+    assert payload["target_type"] == "user"
+    assert payload["target_value"] == str(inv_id)
+    assert payload["idempotency_key"] == f"purchase-completed:{sale_purchase_id}"
+    assert product["name"] in payload["body"]
+
+
+@pytest.mark.asyncio
+async def test_purchase_without_comms_emits_nothing(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No comms address -> no outbox row, same gate as every other
+    emitter in this tree."""
+    monkeypatch.setattr(settings, "comms_api_url", "")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, _ = await _create_investor_with_balance(
+        client, db_session
+    )
+    before = len(await _notification_events(db_session))
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 201, f"Purchase failed: {resp.text}"
+
+    assert len(await _notification_events(db_session)) == before
     assert gift["paid_cents"] == 0

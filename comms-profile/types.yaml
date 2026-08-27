@@ -151,3 +151,19 @@ withdrawal.completed:
 
 withdrawal.failed:
   category: withdrawals
+
+# =============================================================================
+# aivis product types -- phase 2, batch 3 continued (2026-08-27)
+# =============================================================================
+#
+# THIRD aivis PRODUCER. Emitted by `purchases/service.py::execute_purchase`,
+# once per call, about the SALE purchase only. SCOPED, NOT COMPLETE:
+# installments/service.py's pay_tranche() reaches the SAME purchase engine
+# for tranche payments -- a distinct product moment (a plan payment, not a
+# purchase confirmation) -- and is not covered by this type; neither is a
+# "gift" allocation (a real, separate piece of information a purchase can
+# carry). Both are flagged as open follow-ups in the emitter's own comment,
+# not silently absent from a type name that implied otherwise.
+
+purchase.completed:
+  category: purchases

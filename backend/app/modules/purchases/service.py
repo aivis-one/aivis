@@ -87,6 +87,8 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.comms import comms_configured
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.constants import CompanyStatus
@@ -496,6 +498,32 @@ async def execute_purchase(
         (p for p in purchases if p.legal_basis != "gift"), purchases[0]
     )
     await create_attribution(sale_purchase.id, validated_link_id, session)
+
+    # Batch 3 (2026-08-27), third aivis producer of notification_request.
+    # Scoped to the instant-purchase path only -- installments/service.py's
+    # pay_tranche() reaches this same engine.execute() for tranche payments,
+    # which are a distinct product moment (a plan payment, not a purchase
+    # confirmation) and are NOT covered here; flagged, not silently missed.
+    # One notification per call, about the SALE purchase only -- a "gift"
+    # allocation (legal_basis == "gift") is real, product-visible bonus
+    # information a user would want to know about too, but is left for a
+    # later delivery rather than doubling this one's scope.
+    if comms_configured():
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                "idempotency_key": f"purchase-completed:{sale_purchase.id}",
+                "type": "purchase.completed",
+                "target_type": "user",
+                "target_value": str(investor.id),
+                "title": "Purchase confirmed",
+                "body": (
+                    f"Your purchase of {product.name} for "
+                    f"${sale_purchase.paid_cents / 100:,.2f} is confirmed."
+                ),
+            },
+        )
 
     logger.info(
         "purchase_executed",
