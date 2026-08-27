@@ -9,7 +9,10 @@
 #   POST /api/v1/auth/verify-email        -- Verify 6-digit email code (G1)
 #   POST /api/v1/auth/verify-email/resend -- Resend verification code (G1)
 #   POST /api/v1/auth/logout              -- Logout current session
-#   POST /api/v1/auth/logout-all          -- Logout all sessions
+#   POST /api/v1/auth/logout-all          -- Logout all sessions (blocked in
+#                                             avatar mode, R49 -- see
+#                                             auth/avatar_guard.py's
+#                                             logout_all note)
 #
 # RATE LIMITING (SEC-5):
 #   Email register and login are rate-limited by IP address.
@@ -32,6 +35,7 @@ from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.exceptions import BadRequestError
 from app.core.rate_limit import check_rate_limit
+from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.auth.schemas import (
     AuthResponse,
@@ -261,7 +265,13 @@ async def auth_logout(
     logger.info("user_logout", user_id=str(user.id))
 
 
-@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/logout-all",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # R49 / STAGE-III-FINDINGS.md #19: an avatar must not be able to end
+    # every session the REAL owner holds while its own session survives.
+    dependencies=[Depends(forbid_avatar("logout_all"))],
+)
 async def auth_logout_all(
     user: User = Depends(get_current_user),
 ) -> None:

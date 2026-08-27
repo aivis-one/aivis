@@ -47,7 +47,14 @@
 #   /advance intentionally NOT guarded -- it is an idempotent
 #   onboarding unstick helper, and blocking it would prevent staff
 #   from legitimately unsticking users via avatar; boss decision,
-#   see R-2.2 session report Open Notes).
+#   see R-2.2 session report Open Notes), logout_all (auth/router.py
+#   /logout-all -- STAGE-III-FINDINGS.md #19: unguarded, this route let
+#   an avatar end every session the REAL owner holds on every device
+#   while its own avatar session survives, a disruption vector with no
+#   legitimate avatar-mode use case. /logout does NOT need this: it
+#   only ever deletes the caller's own current session, which under
+#   avatar mode is the avatar's token -- it just ends the impersonation
+#   and touches nothing of the target's).
 #
 #   The set is SELF-CHECKING: test_avatar.py walks app.routes and
 #   asserts every operation above carries its forbid_avatar_*
@@ -80,6 +87,7 @@ RESTRICTED_OPERATIONS = frozenset({
     "create_purchase",
     "access_staff_shell",
     "modify_kyc",
+    "logout_all",
 })
 
 

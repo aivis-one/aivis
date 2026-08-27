@@ -178,6 +178,19 @@ async def _load_user_from_request(
             avatar_session_id=avatar_session_id,
             avatar_staff_id=avatar_staff_id,
         )
+    elif avatar_session_id or avatar_staff_id:
+        # Fail closed (STAGE-III-FINDINGS.md #18). Normal code always
+        # writes both keys together in one Redis SET (avatar_service.py) --
+        # a session carrying exactly one of the two is an invariant
+        # violation reachable only from outside this pipeline (an ops
+        # script, a restored backup). Silently falling through to
+        # ordinary-user treatment would leave the request unbound: none
+        # of avatar_guard.py's forbid_avatar restrictions would apply, and
+        # record_audit() would attribute the action to this user as their
+        # own rather than to whichever staff member actually holds the
+        # session -- the two halves of finding #18 in one root cause.
+        # Refuse outright rather than guess which half is the truth.
+        raise UnauthorizedError("Invalid or expired session")
 
     return user
 

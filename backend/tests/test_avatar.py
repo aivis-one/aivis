@@ -23,6 +23,10 @@
 #       is self-checking: removing one from a route fails the suite)
 #   17: 2026-08-17 -- with the switch OFF (the shipped default), a
 #       restricted operation is NOT blocked in avatar mode
+#   18: STAGE-III-FINDINGS.md #19 -- logout_all blocked in avatar mode
+#   19: STAGE-III-FINDINGS.md #18 -- a Redis session carrying
+#       avatar_session_id without avatar_staff_id is refused outright
+#       (401), not silently treated as an ordinary session
 #
 # THE SWITCH, owner-ruled 2026-08-17 -- read this before editing tests 10-15.
 #   settings.avatar_restrictions_enabled defaults to False, so an admin in
@@ -546,6 +550,29 @@ async def test_avatar_blocked_create_purchase(
 
 
 @pytest.mark.asyncio
+async def test_avatar_blocked_logout_all(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """STAGE-III-FINDINGS.md #19: POST /auth/logout-all in avatar mode -> 403.
+
+    Before this guard, an avatar could end every session the REAL
+    owner holds on every device while its own avatar session survived
+    -- a disruption vector, not a money-path one, but real and
+    reachable with no legitimate avatar-mode use case.
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/auth/logout-all",
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
 async def test_shipped_default_leaves_avatar_restrictions_off() -> None:
     """2026-08-17, owner-ruled: the switch ships OFF.
 
@@ -725,6 +752,72 @@ async def test_avatar_token_refused_when_row_ended_but_redis_key_lives(
     )
 
 
+# ---------------------------------------------------------------------------
+# STAGE-III-FINDINGS.md #18 -- the partial avatar-key state, 2026-08-27
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_avatar_session_missing_staff_id_is_refused(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A Redis session carrying avatar_session_id WITHOUT avatar_staff_id
+    must be refused outright (401), not silently treated as an ordinary
+    session.
+
+    Normal code always writes both keys together in one json.dumps blob
+    (avatar_service.py's start_avatar) -- this state is reachable only
+    from outside this pipeline (an ops script, a restored backup).
+    Before dependencies.py's fail-closed branch, the binder's `if
+    avatar_session_id and avatar_staff_id:` silently skipped binding when
+    exactly one was present, so the request fell through as an ordinary
+    user: none of avatar_guard.py's forbid_avatar restrictions applied,
+    and record_audit() would have attributed the action to this user as
+    their own rather than to any staff member.
+    """
+    import json
+
+    from app.core.redis import get_redis
+
+    admin_token = await _admin_token(client, db_session)
+    investor_id, _ = await _investor_id_and_token(client)
+
+    start = await client.post(
+        "/api/v1/staff/avatar/start",
+        json={"target_user_id": investor_id},
+        headers=auth_headers(admin_token),
+    )
+    assert start.status_code == 200
+    avatar_token = start.json()["session_token"]
+
+    # CONTROL: the token works before the tamper, so the 401 below proves
+    # the tamper was the cause, not a broken token.
+    alive = await client.get("/api/v1/users/me", headers=auth_headers(avatar_token))
+    assert alive.status_code == 200, (
+        "the avatar token must work BEFORE the tamper -- otherwise the "
+        "401 below proves nothing"
+    )
+
+    # Tamper: strip avatar_staff_id, leaving avatar_session_id alone --
+    # exactly the partial state finding #18 describes. TTL preserved via
+    # KEEPTTL so this isn't mistaken for testing plain expiry.
+    redis = get_redis()
+    session_key = f"session:{avatar_token}"
+    raw = await redis.get(session_key)
+    assert raw is not None, "the session key must exist to tamper with it"
+    data = json.loads(raw)
+    assert "avatar_staff_id" in data, "sanity: the key we're about to strip must be present"
+    del data["avatar_staff_id"]
+    await redis.set(session_key, json.dumps(data), keepttl=True)
+
+    tampered = await client.get("/api/v1/users/me", headers=auth_headers(avatar_token))
+    assert tampered.status_code == 401, (
+        f"a session carrying avatar_session_id without avatar_staff_id must "
+        f"be refused outright, not treated as an ordinary session; "
+        f"got {tampered.status_code}"
+    )
+
+
 def test_every_restricted_operation_endpoint_carries_guard() -> None:
     """R50: the avatar guard is self-checking (reviewer R50-3.1).
 
@@ -735,7 +828,9 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
 
     Operations without live endpoints (change_password, change_email,
     delete_account, access_staff_shell) are intentionally absent from
-    the expected set; extend it when their endpoints appear.
+    the expected set; extend it when their endpoints appear. logout_all
+    (STAGE-III-FINDINGS.md #19) was added to the expected set the same
+    day its guard was wired, not left for a later pass.
 
     The walk is recursive: since FastAPI 0.137 include_router no longer
     flattens a sub-router's routes into app.routes -- it inserts a lazy
@@ -776,6 +871,7 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_create_purchase",
         "forbid_avatar_modify_kyc",
         "forbid_avatar_sign_document",
+        "forbid_avatar_logout_all",
     }
     missing = expected - guarded
     assert not missing, (
