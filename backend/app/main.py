@@ -36,7 +36,6 @@
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
 #   company_dashboard_router  -> /api/v1/company/* (Sprint 4.3 / B5)
 #   payments_router           -> /api/v1/payments/* (Sprint 5.1)
-#   payments_webhook_router   -> /api/v1/payments/webhooks/* (Sprint 5.2)
 #   staff_payments_router     -> /api/v1/staff/payments/* (Sprint 5.3)
 #   purchases_router          -> /api/v1/purchases/* (Sprint 6.1)
 #   staff_purchases_router    -> /api/v1/staff/purchases/* (R-2.2)
@@ -187,7 +186,6 @@ from app.modules.kyc.router import router as kyc_router
 from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
-from app.modules.payments.webhook_router import router as payments_webhook_router
 from app.modules.pools.router import router as staff_pools_router
 from app.modules.portfolio.router import router as portfolio_router
 from app.modules.posts.company_router import router as company_posts_router
@@ -493,7 +491,6 @@ app.include_router(staff_pools_router)
 # Sprint 4.3 / B5: company self-service dashboard + analytics.
 app.include_router(company_dashboard_router)
 app.include_router(payments_router)
-app.include_router(payments_webhook_router)
 app.include_router(staff_payments_router)
 app.include_router(purchases_router)
 app.include_router(staff_purchases_router)

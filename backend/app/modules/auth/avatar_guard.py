@@ -39,7 +39,10 @@
 #
 # GUARDED OPERATIONS (R49 + R50): sign_document (documents/router.py),
 #   create_withdrawal (withdrawals/router.py), create_payment
-#   (payments/router.py crypto-address), create_installment
+#   (payments/router.py -- BOTH invoice creation and TXID submission
+#   since H7: claiming a transfer finishes a deposit somebody else
+#   started, so guarding only the first half would leave the second
+#   open), create_installment
 #   (installments/router.py), create_purchase (purchases/router.py --
 #   R50 boss decision: spending the user's balance is exactly the
 #   threat class this guard exists for; reversibility via R-2.2 is

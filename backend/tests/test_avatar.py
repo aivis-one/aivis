@@ -14,7 +14,8 @@
 #   9:  Re-start avatar auto-closes previous session
 #   10: Avatar guard blocks restricted operation in avatar mode
 #   11: R49 -- create_withdrawal blocked in avatar mode (403)
-#   12: R49 -- create_payment (crypto-address) blocked in avatar mode (403)
+#   12: R49 -- create_payment blocked in avatar mode (403): both the
+#       invoice-creation and the TXID-submission surfaces
 #   13: R49 -- create_installment blocked in avatar mode (403)
 #   14: R49 -- modify_kyc (/kyc/submit) blocked in avatar mode (403)
 #   15: R50 -- create_purchase blocked in avatar mode (403)
@@ -465,12 +466,54 @@ async def test_avatar_blocked_create_payment(
     db_session: AsyncSession,
     avatar_restrictions_on: None,
 ) -> None:
-    """R49: POST /payments/crypto-address in avatar mode -> 403."""
+    """R49: POST /payments/invoices in avatar mode -> 403.
+
+    RETARGETED, NOT WEAKENED. The old assertion aimed at
+    POST /payments/crypto-address and was right about the rule: staff
+    in avatar mode must not initiate a deposit on somebody's behalf.
+    What ended it was the route, not the rule -- the stub deposit-address
+    contour was removed in H7 and invoice creation took its place as the
+    user-facing payment-creation surface. Left pointing at the old path
+    this test would have gone green on a 404 while the guard it exists
+    for went unchecked.
+
+    The 403 must arrive before any call to the payments service, which
+    is why no service is configured in tests and this still passes: the
+    avatar guard is a route dependency and runs ahead of the handler.
+    """
     avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
 
     resp = await client.post(
-        "/api/v1/payments/crypto-address",
-        json={"network": "TRC20"},
+        "/api/v1/payments/invoices",
+        json={"network": "USDT-TRC20", "amount_cents": 10000},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_submit_txid(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """R49: POST /payments/invoices/{id}/txid in avatar mode -> 403.
+
+    NEW SURFACE, SAME RULE. Claiming a transfer by submitting its hash
+    is the second half of initiating a deposit, and it did not exist
+    when R49 was written. A guard on creation alone would let staff in
+    avatar mode finish a deposit somebody else started.
+
+    The invoice id is a random uuid on purpose: a 403 that depended on
+    the invoice existing would be a weaker assertion, because it could
+    not tell "the guard ran" from "the lookup failed".
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        f"/api/v1/payments/invoices/{uuid.uuid4()}/txid",
+        json={"txid": "0x" + "a" * 64},
         headers=auth_headers(avatar_token),
     )
     assert resp.status_code == 403

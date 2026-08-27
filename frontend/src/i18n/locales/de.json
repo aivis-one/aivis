@@ -421,17 +421,55 @@
     },
     "deposit": {
       "title": "Einzahlung",
-      "subtitle": "Senden Sie USDT über TRC20 an die untenstehende Adresse. Nach der Netzwerk-Bestätigung erscheint das Guthaben auf Ihrem Konto.",
       "network": "Netzwerk",
+      "amountIntro": "Geben Sie den Einzahlungsbetrag an. Die Rechnung ist zeitlich begrenzt gültig; danach müssen Sie eine neue erstellen.",
+      "amountLabel": "Betrag",
+      "amountPlaceholder": "100.00",
+      "amountRequired": "Bitte geben Sie einen Betrag an",
+      "amountInvalid": "Bitte geben Sie einen Betrag größer als null an",
+      "amountTooLarge": "Dieser Betrag ist zu hoch",
+      "createCta": "Rechnung erstellen",
+      "createFailed": "Die Rechnung konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+      "expiresAt": "Gültig bis",
       "copy": "Adresse kopieren",
       "copied": "Adresse kopiert",
       "copyError": "Adresse konnte nicht kopiert werden",
       "warning": "Senden Sie nur USDT über TRC20 an diese Adresse. Mittel, die über andere Netzwerke gesendet werden, können nicht wiederhergestellt werden.",
       "qrUnavailable": "QR-Code nicht verfügbar — verwenden Sie bitte die Adresse unten.",
       "backToBalance": "Zurück zum Kontostand",
-      "loadError": {
-        "title": "Einzahlungsadresse konnte nicht abgerufen werden",
-        "desc": "Bitte versuchen Sie es erneut"
+      "backLink": "Zurück zum Kontostand",
+      "txidIntro": "Geben Sie nach der Überweisung den Transaktions-Hash an, damit die Zahlung im Netzwerk gefunden werden kann.",
+      "txidLabel": "Transaktions-Hash",
+      "txidPlaceholder": "Hash aus Ihrer Wallet oder dem Explorer einfügen",
+      "txidRequired": "Bitte geben Sie den Transaktions-Hash an",
+      "txidCta": "Hash senden",
+      "txidAccepted": "Transaktion gefunden. Warten auf Netzwerk-Bestätigungen.",
+      "txidRefused": "Der Status der Rechnung hat sich geändert, der Hash wurde nicht angenommen.",
+      "txidFailed": "Der Hash konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+      "txidUnavailable": "Der Dienst hat nicht geantwortet. Es wurde kein Versuch verbraucht — bitte erneut senden.",
+      "attemptsRemaining": "Verbleibende Versuche: {n}",
+      "statusStale": "Der Status ist möglicherweise veraltet — er konnte gerade nicht aktualisiert werden.",
+      "creditedAmount": "Gutgeschrieben: {amount} USDT.",
+      "underpaid": "Das ist weniger als der Rechnungsbetrag — gutgeschrieben wurde, was eingegangen ist.",
+      "newDeposit": "Neue Einzahlung",
+      "unavailable": {
+        "title": "Einzahlungen sind vorübergehend nicht verfügbar",
+        "desc": "Krypto-Einzahlungen werden derzeit nicht angenommen. Mit Ihrem Konto stimmt alles — bitte versuchen Sie es später erneut."
+      },
+      "status": {
+        "awaiting_confirmations": "Transaktion gefunden, warten auf Netzwerk-Bestätigungen.",
+        "attempts_exhausted": "Keine Versuche mehr übrig. Bitte wenden Sie sich an den Support.",
+        "confirmed": "Zahlung bestätigt",
+        "expired": "Diese Rechnung ist abgelaufen",
+        "stalled": "Die Zahlung wurde nicht rechtzeitig bestätigt"
+      },
+      "verdict": {
+        "not_found": "Diese Transaktion wurde im Netzwerk nicht gefunden. Prüfen Sie den Hash und versuchen Sie es erneut.",
+        "wrong_address": "Die Transaktion existiert, ging aber nicht an diese Adresse.",
+        "already_used": "Dieser Hash wurde bereits für eine andere Rechnung verwendet.",
+        "invalid_format": "Das sieht nicht nach einem Transaktions-Hash dieses Netzwerks aus. Es wurde kein Versuch verbraucht.",
+        "api_error": "Der Blockchain-Explorer hat nicht geantwortet. Es wurde kein Versuch verbraucht — bitte später erneut versuchen.",
+        "unknown": "Der Hash wurde nicht angenommen."
       }
     },
     "transactions": {

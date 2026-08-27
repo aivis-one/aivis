@@ -5,18 +5,16 @@
 # Request/response schemas for payment endpoints.
 #
 # SCHEMAS:
-#   CreateAddressRequest      -- POST /payments/crypto-address
-#   DepositAddressResponse    -- POST /payments/crypto-address response
+#   CreateInvoiceRequest      -- POST /payments/invoices
+#   InvoiceResponse           -- invoice surface (create / read / current)
+#   SubmitTxidRequest         -- POST /payments/invoices/{id}/txid
+#   TxidResultResponse        -- TXID submission outcome
 #   PaymentResponse           -- individual payment in history (investor)
 #   PaymentHistoryResponse    -- GET /payments/history (paginated)
-#   CryptoWebhookRequest      -- POST /payments/crypto/webhook
 #
 # Sprint 5.3:
 #   ReversePaymentRequest     -- POST /staff/payments/{id}/reverse
 #   ReversalResponse          -- reversal result summary
-#
-# Sprint 6.1 FIX:
-#   CryptoWebhookRequest.amount_usd_cents -- added upper bound (MAX_DEPOSIT_CENTS)
 #
 # G2:
 #   StaffPaymentResponse      -- payment with user_id (staff view)
@@ -29,24 +27,94 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 # Maximum single deposit: $10M (sanity guard against data errors).
-# Adjustable in config if needed for larger deposits.
+#
+# KEPT, AND IT MOVED RATHER THAN SURVIVED. Its only user was the removed
+# webhook's amount field. It now bounds the amount a user types into the
+# deposit form, which is the same guard against a fat finger that it
+# always was -- the removal of the webhook must not silently remove the
+# ceiling on a deposit.
 MAX_DEPOSIT_CENTS: int = 1_000_000_000
 
 
-class CreateAddressRequest(BaseModel):
-    """Request body for creating/getting a crypto deposit address."""
+class CreateInvoiceRequest(BaseModel):
+    """Request body for opening a deposit invoice.
 
-    network: str = Field(..., description="Crypto network: TRC20, ERC20, BEP20, PoS")
+    ``network`` is a plain string and is NOT checked against a local
+    list. Which networks are served is the payments service's fact; it
+    answers 400 network_not_supported with the offending value echoed
+    back (TOR section 8), and a second list here would be a second
+    source of truth that drifts silently (TOR section 11 p.12).
+
+    ``amount_cents`` is floored at 1 because the service floors it at 1
+    (``invoice_amount_cents: int = Field(ge=1)``). Validating it here as
+    well is not duplication of the service's rule -- it is the
+    difference between a user seeing "enter an amount" and a user seeing
+    an opaque 422 relayed from a system they do not know exists.
+    """
+
+    network: str = Field(..., min_length=1, max_length=32)
+    amount_cents: int = Field(..., ge=1, le=MAX_DEPOSIT_CENTS)
 
 
-class DepositAddressResponse(BaseModel):
-    """Response for crypto deposit address endpoint."""
+class SubmitTxidRequest(BaseModel):
+    """Request body for handing one transaction hash to the service.
 
-    address: str
+    No ``min_length``. An empty or malformed hash is not a schema
+    error: the service answers 200 with result_code=invalid_format and
+    spends no attempt, and turning that into a 422 here would move a
+    documented outcome into a different status class and cost the user
+    the explanation that comes with it.
+    """
+
+    txid: str
+
+
+class InvoiceResponse(BaseModel):
+    """One deposit invoice as the investor screen needs it.
+
+    ``id`` IS THE PRODUCT'S ROW ID, NOT THE SERVICE'S. The service's id
+    is never handed to a browser: the routes below take this one, look
+    the row up scoped to the authenticated user, and use the service id
+    internally. That is what makes an unowned id a 404 instead of a
+    successful read of somebody else's invoice.
+
+    The optional fields are optional for one reason each, not as a
+    blanket "may be absent": creation does not yet know
+    ``attempts_remaining`` (the service returns it on read and on
+    submission), and ``credited_amount_cents`` / ``underpaid`` exist
+    only once an invoice is confirmed.
+    """
+
+    id: UUID
     network: str
-    user_id: UUID
+    address: str | None
+    invoice_amount_cents: int
+    status: str
+    expires_at: datetime | None
+    attempts_remaining: int | None = None
+    active_txid: str | None = None
+    credited_amount_cents: int | None = None
+    underpaid: bool | None = None
 
-    model_config = ConfigDict(from_attributes=True)
+
+class TxidResultResponse(BaseModel):
+    """Outcome of one TXID submission.
+
+    ``result_code`` is relayed verbatim from the service and is the only
+    thing that says WHY: a submission can be rejected while the invoice
+    stays ``created``, and the status alone cannot tell "not found on
+    chain" from "wrong address" from "malformed hash".
+
+    A caller must not derive the attempt counter from the result code.
+    ``invalid_format`` and ``api_error`` reach an explorer never and
+    therefore spend nothing, so ``attempts_remaining`` is reported by
+    the service rather than computed here.
+    """
+
+    status: str
+    result_code: str
+    attempts_used: int
+    attempts_remaining: int
 
 
 class PaymentResponse(BaseModel):
@@ -72,33 +140,6 @@ class PaymentHistoryResponse(BaseModel):
     total: int
     page: int
     per_page: int
-
-
-class CryptoWebhookRequest(BaseModel):
-    """Incoming crypto webhook payload.
-
-    Stub schema -- real provider will have different fields.
-    This captures the minimum needed to create a Payment and
-    record an active_ledger entry.
-    """
-
-    network: str = Field(..., description="Crypto network: TRC20, ERC20, etc.")
-    to_address: str = Field(..., description="Our deposit address")
-    from_address: str = Field(..., description="Sender wallet address")
-    tx_hash: str = Field(..., description="Blockchain transaction hash")
-    amount_crypto: str = Field(..., description="Amount in crypto units (string)")
-    amount_usd_cents: int = Field(
-        ...,
-        gt=0,
-        le=MAX_DEPOSIT_CENTS,
-        description="Amount in USD cents (max $10M per deposit)",
-    )
-    confirmed_block: int | None = Field(
-        default=None, description="Block number where tx was confirmed"
-    )
-    exchange_rate: str = Field(
-        default="1.00", description="Crypto to USD exchange rate"
-    )
 
 
 # ---------------------------------------------------------------------------

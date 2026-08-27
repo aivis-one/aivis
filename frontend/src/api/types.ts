@@ -412,8 +412,9 @@ export type { DashboardSummaryResponse } from './generated'
 // Phase F4.3 -- Investor payments (deposit) + transactions event log
 //
 // Matches:
-//   backend/app/modules/payments/schemas.py       (Sprint 5.2)
-//     CreateAddressRequest, DepositAddressResponse,
+//   backend/app/modules/payments/schemas.py       (Sprint 5.2, H7)
+//     CreateInvoiceRequest, InvoiceResponse,
+//     SubmitTxidRequest, TxidResultResponse,
 //     PaymentResponse (investor view -- no user_id/provider_data),
 //     PaymentHistoryResponse
 //   backend/app/modules/transactions/schemas.py   (Sprint 6.4)
@@ -429,19 +430,51 @@ export type { DashboardSummaryResponse } from './generated'
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
-// Crypto deposit address (Sprint 5.2)
+// Crypto deposit invoices (H7)
 //
-// Supported networks on backend: TRC20, ERC20, BEP20, PoS. F4.3
-// hardcodes TRC20; the full selector is deferred (see F4.3 plan).
-// CreateAddressRequest uses the strict CryptoNetwork union -- the
-// frontend owns what it sends, so a compile-time typo catch wins
-// over a `| string` escape hatch. DepositAddressResponse.network
-// stays plain `string` since it comes from the backend.
+// THERE IS NO CryptoNetwork UNION AND THERE MUST NOT BE ONE. The note
+// that stood here promised a strict union over TRC20 | ERC20 | BEP20 |
+// PoS on the grounds that "the frontend owns what it sends". It does
+// not: which networks are served is the payments service's fact, it
+// refuses the rest with 400 network_not_supported, and a union here
+// would be a second list that disagrees with that one silently -- the
+// disagreement surfacing only as a user's refused deposit.
+//
+// For the record, no such union was ever declared. The note described a
+// type that did not exist and both `network` fields were plain strings
+// the whole time, which is why removing the note removes nothing.
+//
+// The one network name this frontend sends lives in
+// InvestorDepositView.vue as a const. That const says what this screen
+// asks for; it is not a registry of what is available.
 // ---------------------------------------------------------------------------
 
-export type { CreateAddressRequest } from './generated'
+// THESE FOUR RE-EXPORTS DO NOT RESOLVE UNTIL THE GENERATOR HAS RUN, AND
+// THAT IS THE INTENDED STATE OF THIS COMMIT. generated.ts is machine
+// -owned and says so in its own header; H7 changed the backend schemas
+// these names come from, so the file is simply behind until
+// backend/scripts/generate_ts_types.py is run against a live instance
+// and its output is committed.
+//
+// Declaring the four shapes by hand here would have made the tree
+// type-check today and left a permanent duplicate: the generator emits
+// the same four names, so after the next run there would be two
+// declarations of each, drifting silently and with nothing in the tree
+// to remind anyone to remove one. A build that fails loudly for one
+// cycle was chosen over a duplicate that fails quietly forever.
+//
+// What this costs, precisely: `npm run type-check` fails, and
+// `npm run build` fails because it runs the type-check first. `vite
+// build` on its own still produces a working bundle -- these are
+// type-only exports and are erased before bundling -- so the failure is
+// a gate, not a broken application.
+export type { CreateInvoiceRequest } from './generated'
 
-export type { DepositAddressResponse } from './generated'
+export type { InvoiceResponse } from './generated'
+
+export type { SubmitTxidRequest } from './generated'
+
+export type { TxidResultResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Payment history (Sprint 5.2) -- investor view

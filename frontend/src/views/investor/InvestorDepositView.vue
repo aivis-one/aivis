@@ -1,70 +1,117 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- InvestorDepositView (Phase F4.3 B2)
+// AIVIS.ONE Frontend -- InvestorDepositView (H7)
 // =============================================================================
 //
-// Dedicated /investor/balance/deposit screen. Requests a TRC20 USDT
-// deposit address (backend endpoint is idempotent -- same user +
-// same network always returns the same address), renders it as a
-// QR for external wallet scanning plus a Copy button for desktop
-// paste flows.
+// WHAT REPLACED WHAT. This screen used to request a per-user deposit
+// address and draw it as a QR. There is no such thing any more: the
+// payments service owns the wallets, one static address per network,
+// and the unit of work is an INVOICE -- an amount, an address, a
+// deadline, and a transaction hash the user submits by hand so their
+// transfer can be told apart from everybody else's on the same address.
+//
+// So the screen is a small state machine, and every branch below
+// corresponds to a status the service can report. The statuses are the
+// service's (TOR section 5) and are never invented here.
 //
 // Network:
-//   Hardcoded to 'TRC20' per F4.3 plan. The backend supports
-//   ERC20/BEP20/PoS too; the multi-network selector is explicitly
-//   deferred -- see `AIVIS-Frontend.md` F4.3 scope.
+//   Hardcoded to one network, as before. NETWORK is a statement about
+//   what THIS SCREEN ASKS FOR -- it is not a registry of what the
+//   service serves. Which networks are served is the service's fact; it
+//   refuses the rest with 400 network_not_supported, and a list here
+//   would be a second answer that drifts. Whoever adds a selector
+//   should ask the service, not extend this const.
 //
-// QR generation:
-//   `qrcode` package renders an inline SVG string. Forced light
-//   background (white fill, black modules) because camera scanners
-//   expect that contrast regardless of the host UI theme. The SVG
-//   is injected via v-html onto an outer white-backed container.
+// THE COUNTER IS NEVER COMPUTED HERE. `attempts_remaining` comes from
+// the server on every read and on every submission, because two of the
+// six verdicts -- invalid_format and api_error -- never reach an
+// explorer and spend no attempt. Counting submissions locally would
+// show a budget the user has not spent.
+//
+// A 200 FROM THE SUBMIT CALL IS NOT A SUCCESS. It carries a verdict;
+// five of the six mean the hash was not accepted. The screen reads
+// result_code, not the absence of an exception.
 //
 // Error strategy:
-//   - Address fetch fail -> inline CEmptyState + retry + back link.
-//     No toast (the screen is empty until the address lands; a
-//     disappearing toast would leave the user confused).
-//   - Copy fail (navigator.clipboard unavailable or denied) ->
-//     error toast; the address is still visible and selectable.
+//   - Unavailable / misconfigured / unknown network -> the SAME
+//     "temporarily unavailable" panel. All three are true statements
+//     about the deployment and none of them is something the user did,
+//     so none of them says "error". A support queue full of reports
+//     about a fault that does not exist is the failure mode being
+//     avoided here.
+//   - Submit failures -> inline under the field; the invoice stays.
+//   - Copy fail -> toast; the address is still visible and selectable.
 //
-// Security note:
-//   The `warning` block below explicitly tells the user to send
-//   only USDT via TRC20. Cross-network transfers to the wrong
-//   address lose funds permanently on most chains -- a prominent
-//   warning is the only realistic mitigation at the UI layer.
-//
-// TD-F08c:
-//   Error handler for POST /payments/crypto-address narrows on
-//   `ApiResponseError` + status. Backend does not emit a rich
-//   error_code today (TD-F08c backlog). Current backend behaviour
-//   is 400 for unsupported network only; UI stays defensive with a
-//   generic fallback.
+// QR generation:
+//   `qrcode` renders an inline SVG string. Forced light background
+//   (white fill, black modules) because camera scanners expect that
+//   contrast regardless of the host UI theme.
 // =============================================================================
 
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { ArrowLeft, Copy, ShieldAlert } from 'lucide-vue-next'
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBackLink, CButton, CEmptyState, CInput, CLoader } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
-import { createCryptoAddress } from '@/api/payments'
+import {
+  createInvoice,
+  getCurrentInvoice,
+  getInvoice,
+  submitInvoiceTxid,
+} from '@/api/payments'
+import type { InvoiceResponse } from '@/api/types'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useToast } from '@/composables/useToast'
 
-// Locked to TRC20 for F4.3; the backend `CryptoNetwork` union is
-// TRC20 | ERC20 | BEP20 | PoS, future selector replaces this const.
-const NETWORK = 'TRC20' as const
+// See the header: what this screen asks for, not what is available.
+const NETWORK = 'USDT-TRC20' as const
+
+// Statuses the service never leaves on its own. attempts_exhausted is
+// deliberately absent: such an invoice takes no more hashes but is
+// still waiting for its TTL to turn it into expired, so offering a new
+// invoice would strand it.
+const TERMINAL = ['confirmed', 'expired', 'stalled']
 
 const router = useRouter()
 const { t } = useI18n()
 const { showToast } = useToast()
 
-const address = ref<string | null>(null)
-const qrSvg = ref<string | null>(null)
 const loading = ref(true)
-const errored = ref(false)
-const copying = ref(false)
+// `unavailable` is not `errored`. It is the deployment saying it cannot
+// serve deposits right now, which is a different sentence to the user.
+const unavailable = ref(false)
+const invoice = ref<InvoiceResponse | null>(null)
+const qrSvg = ref<string | null>(null)
+
+const amountInput = ref('')
+const amountError = ref('')
+const creating = ref(false)
+
+const txidInput = ref('')
+const txidError = ref('')
+const txidNotice = ref('')
+const submitting = ref(false)
+
+const status = computed(() => invoice.value?.status ?? null)
+const isTerminal = computed(() => !!status.value && TERMINAL.includes(status.value))
+// Only `created` takes a hash. Every other status is refused by the
+// service with one of five 409s, so the field is hidden rather than
+// offered and then rejected.
+const acceptsTxid = computed(() => status.value === 'created')
+
+const amountDisplay = computed(() =>
+  invoice.value ? (invoice.value.invoice_amount_cents / 100).toFixed(2) : '',
+)
+const creditedDisplay = computed(() =>
+  invoice.value?.credited_amount_cents != null
+    ? (invoice.value.credited_amount_cents / 100).toFixed(2)
+    : null,
+)
+const expiresDisplay = computed(() =>
+  invoice.value?.expires_at ? new Date(invoice.value.expires_at).toLocaleString() : null,
+)
 
 async function generateQr(value: string): Promise<string | null> {
   try {
@@ -74,10 +121,7 @@ async function generateQr(value: string): Promise<string | null> {
       width: 240,
       // Forced light palette -- camera scanners need high contrast,
       // theme-matching dark QRs fail on most wallet cameras.
-      color: {
-        dark: '#000000',
-        light: '#ffffff',
-      },
+      color: { dark: '#000000', light: '#ffffff' },
       errorCorrectionLevel: 'M',
     })
   } catch {
@@ -85,47 +129,189 @@ async function generateQr(value: string): Promise<string | null> {
   }
 }
 
+/**
+ * Every failure that means "this deployment cannot serve deposits".
+ *
+ * 503 and 504 are the client's own verdicts for an unreachable or
+ * unconfigured service; 502 is a service answer we could not use. 400
+ * lands here too, and that is the least obvious one: it means the
+ * service does not serve the network this screen asks for, which is a
+ * deployment mismatch and not something the user chose -- they never
+ * picked a network.
+ */
+function isUnavailable(err: unknown): boolean {
+  return (
+    err instanceof ApiResponseError &&
+    (err.status === 400 || err.status === 502 || err.status === 503 || err.status === 504)
+  )
+}
+
+async function showInvoice(next: InvoiceResponse | null): Promise<void> {
+  invoice.value = next
+  qrSvg.value = next?.address ? await generateQr(next.address) : null
+}
+
 async function load(): Promise<void> {
   loading.value = true
-  errored.value = false
-  address.value = null
-  qrSvg.value = null
+  unavailable.value = false
+  txidError.value = ''
+  txidNotice.value = ''
   try {
-    const resp = await createCryptoAddress({ network: NETWORK })
-    address.value = resp.address
-    qrSvg.value = await generateQr(resp.address)
+    await showInvoice(await getCurrentInvoice(NETWORK))
   } catch (err: unknown) {
-    // TD-F08c: narrow on ApiResponseError + status, but the backend
-    // has no fine-grained discriminator for this endpoint today, so
-    // a single generic banner is enough. We still record the error
-    // class so the retry path stays consistent with F4.2 patterns.
-    if (err instanceof ApiResponseError) {
-      // Specific branches reserved for future backend error_codes.
-    }
-    errored.value = true
+    // No branch on 404 here: `current` answers null for "no invoice",
+    // so a 404 would mean the route is gone -- an unavailability, not
+    // an empty state.
+    unavailable.value = isUnavailable(err)
+    if (!unavailable.value) unavailable.value = true
+    invoice.value = null
   } finally {
     loading.value = false
   }
 }
 
-async function copyAddress(): Promise<void> {
-  if (!address.value || copying.value) return
-  copying.value = true
+async function refresh(): Promise<void> {
+  if (!invoice.value) return
   try {
-    await navigator.clipboard.writeText(address.value)
+    await showInvoice(await getInvoice(invoice.value.id))
+  } catch (err: unknown) {
+    // A refresh that fails leaves the last known invoice on screen
+    // rather than blanking it: the address and the deadline are still
+    // the right ones to act on, only the status may be stale.
+    if (isUnavailable(err)) {
+      txidNotice.value = t('inv.deposit.statusStale')
+    }
+  }
+}
+
+function validateAmount(): number | null {
+  const raw = amountInput.value.trim().replace(',', '.')
+  if (!raw) {
+    amountError.value = t('inv.deposit.amountRequired')
+    return null
+  }
+  const parsed = Number(raw)
+  // Number('') is 0 and Number('12abc') is NaN -- both are checked, and
+  // the zero case is checked separately below because the service
+  // floors the amount at one cent and would answer 422 to a zero.
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    amountError.value = t('inv.deposit.amountInvalid')
+    return null
+  }
+  const cents = Math.round(parsed * 100)
+  if (cents < 1) {
+    amountError.value = t('inv.deposit.amountInvalid')
+    return null
+  }
+  // Mirrors MAX_DEPOSIT_CENTS on the backend. Duplicated on purpose:
+  // the alternative is relaying a 422 the user cannot interpret.
+  if (cents > 1_000_000_000) {
+    amountError.value = t('inv.deposit.amountTooLarge')
+    return null
+  }
+  amountError.value = ''
+  return cents
+}
+
+async function create(): Promise<void> {
+  // Guarded against the double click: the service has no dedupe on
+  // product_ref, so two creating calls make two invoices and a user who
+  // pays one leaves us waiting on the other.
+  if (creating.value) return
+  const cents = validateAmount()
+  if (cents === null) return
+
+  creating.value = true
+  try {
+    await showInvoice(await createInvoice({ network: NETWORK, amount_cents: cents }))
+    amountInput.value = ''
+  } catch (err: unknown) {
+    if (isUnavailable(err)) {
+      unavailable.value = true
+    } else {
+      amountError.value = t('inv.deposit.createFailed')
+    }
+  } finally {
+    creating.value = false
+  }
+}
+
+async function submitTxid(): Promise<void> {
+  if (submitting.value || !invoice.value) return
+  const value = txidInput.value.trim()
+  txidError.value = ''
+  txidNotice.value = ''
+
+  if (!value) {
+    // Stopped here rather than sent. The service would answer 200 with
+    // invalid_format and spend nothing, so nothing is lost -- but a
+    // round trip to be told the field is empty is worse than saying so.
+    txidError.value = t('inv.deposit.txidRequired')
+    return
+  }
+
+  submitting.value = true
+  try {
+    const result = await submitInvoiceTxid(invoice.value.id, value)
+
+    if (result.result_code === 'matched') {
+      txidInput.value = ''
+      txidNotice.value = t('inv.deposit.txidAccepted')
+    } else {
+      // One message per verdict. A single "rejected" would leave the
+      // user unable to tell a typo from a transfer to the wrong chain,
+      // and those have opposite next actions.
+      const key = `inv.deposit.verdict.${result.result_code}`
+      const message = t(key)
+      txidError.value = message === key ? t('inv.deposit.verdict.unknown') : message
+    }
+
+    // Refreshed rather than patched from the submission response: the
+    // response carries the verdict, the invoice carries the state, and
+    // the counter shown must be the one the service reports.
+    await refresh()
+  } catch (err: unknown) {
+    if (isUnavailable(err)) {
+      // The attempt was NOT spent: the call did not reach a verdict.
+      // Said explicitly, because a user who thinks they burned one of
+      // three tries behaves differently.
+      txidError.value = t('inv.deposit.txidUnavailable')
+    } else if (err instanceof ApiResponseError && err.status === 409) {
+      // The five refusals: the invoice moved under the user. Re-reading
+      // is what makes the screen agree with the refusal it just got.
+      txidError.value = t('inv.deposit.txidRefused')
+      await refresh()
+    } else {
+      txidError.value = t('inv.deposit.txidFailed')
+    }
+  } finally {
+    submitting.value = false
+  }
+}
+
+function startOver(): void {
+  invoice.value = null
+  qrSvg.value = null
+  txidInput.value = ''
+  txidError.value = ''
+  txidNotice.value = ''
+}
+
+async function copyAddress(): Promise<void> {
+  const value = invoice.value?.address
+  if (!value) return
+  try {
+    await navigator.clipboard.writeText(value)
     showToast(t('inv.deposit.copied'), 'success')
   } catch {
     showToast(t('inv.deposit.copyError'), 'error')
-  } finally {
-    copying.value = false
   }
 }
 
 function goBack(): void {
-  // Prefer router.back() -- restores BalanceView scroll/state and
-  // matches the cancel-path fix we made in PurchaseView/InstallmentView.
-  // Fallback to explicit push only when vue-router has no prior
-  // entry (user deep-linked straight to /investor/balance/deposit).
+  // Prefer router.back() -- restores BalanceView scroll/state.
+  // Fallback to explicit push only when vue-router has no prior entry
+  // (user deep-linked straight to /investor/balance/deposit).
   if (window.history.state?.back) {
     router.back()
     return
@@ -143,32 +329,28 @@ onMounted(load)
       <CLoader :size="28" />
     </div>
 
-    <!-- Error -->
-    <template v-else-if="errored || !address">
+    <!-- Temporarily unavailable: unreachable, unconfigured, or a network
+         this deployment's service does not serve. Deliberately not
+         worded as an error -- see the script header. -->
+    <template v-else-if="unavailable">
       <div class="dv__center">
         <CEmptyState
-          :title="t('inv.deposit.loadError.title')"
-          :description="t('inv.deposit.loadError.desc')"
+          :title="t('inv.deposit.unavailable.title')"
+          :description="t('inv.deposit.unavailable.desc')"
         />
         <div class="dv__error-actions">
-          <CButton variant="outline" size="sm" @click="goBack">
+          <CButton variant="outline" size="sm" inline @click="goBack">
             <ArrowLeft :size="16" />
             {{ t('inv.deposit.backToBalance') }}
           </CButton>
-          <CButton variant="primary" size="sm" @click="load">
+          <CButton variant="primary" size="sm" inline @click="load">
             {{ t('common.retry') }}
           </CButton>
         </div>
       </div>
     </template>
 
-    <!-- Loaded -->
     <template v-else>
-      <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
-           No hero on this view, so the title lives in a header block
-           with the back-link. Reuses existing history-aware goBack().
-           B3: button shape extracted to CBackLink; .dv__page-header
-           padding handles spacing. -->
       <div class="dv__page-header">
         <CBackLink :label="t('inv.deposit.backLink')" @click="goBack" />
         <h1 class="dv__page-title">
@@ -177,39 +359,128 @@ onMounted(load)
       </div>
 
       <div class="dv__body">
-        <!-- Network + hint -->
-        <section class="dv__card">
-          <div class="dv__network-row">
-            <span class="dv__network-label">
-              {{ t('inv.deposit.network') }}
-            </span>
-            <span class="dv__network-value">{{ NETWORK }}</span>
-          </div>
+        <!-- No invoice open: ask for an amount. The service will not
+             open one without it (invoice_amount_cents >= 1). -->
+        <section v-if="!invoice" class="dv__card">
           <p class="dv__hint">
-            {{ t('inv.deposit.subtitle') }}
+            {{ t('inv.deposit.amountIntro') }}
           </p>
-        </section>
-
-        <!-- QR + address -->
-        <section class="dv__card dv__qr-section">
-          <div v-if="qrSvg" class="dv__qr" v-html="qrSvg" />
-          <div v-else class="dv__qr dv__qr--fallback">
-            <!-- QR library failed but address still loaded: the text
-                 form below is enough to complete a deposit. -->
-            <span>{{ t('inv.deposit.qrUnavailable') }}</span>
-          </div>
-
-          <div class="dv__address">
-            {{ address }}
-          </div>
-
-          <CButton variant="primary" class="dv__copy" :disabled="copying" @click="copyAddress">
-            <Copy :size="16" />
-            {{ t('inv.deposit.copy') }}
+          <CInput
+            v-model="amountInput"
+            type="text"
+            inputmode="decimal"
+            :label="t('inv.deposit.amountLabel')"
+            :error="amountError"
+            :placeholder="t('inv.deposit.amountPlaceholder')"
+          />
+          <CButton
+            variant="primary"
+            class="dv__cta"
+            :loading="creating"
+            :disabled="creating"
+            @click="create"
+          >
+            {{ t('inv.deposit.createCta') }}
           </CButton>
         </section>
 
-        <!-- Security warning -->
+        <template v-else>
+          <!-- Network + amount + deadline -->
+          <section class="dv__card">
+            <div class="dv__row">
+              <span class="dv__row-label">{{ t('inv.deposit.network') }}</span>
+              <span class="dv__row-value">{{ invoice.network }}</span>
+            </div>
+            <div class="dv__row">
+              <span class="dv__row-label">{{ t('inv.deposit.amountLabel') }}</span>
+              <span class="dv__row-value">{{ amountDisplay }} USDT</span>
+            </div>
+            <div v-if="expiresDisplay" class="dv__row">
+              <span class="dv__row-label">{{ t('inv.deposit.expiresAt') }}</span>
+              <span class="dv__row-value">{{ expiresDisplay }}</span>
+            </div>
+          </section>
+
+          <!-- Terminal statuses. Each is its own message: "confirmed"
+               and "stalled" have nothing in common for the user. -->
+          <section v-if="isTerminal" class="dv__card dv__terminal">
+            <p class="dv__terminal-title">
+              {{ t(`inv.deposit.status.${status}`) }}
+            </p>
+            <p v-if="status === 'confirmed'" class="dv__hint">
+              <!-- credited, not invoiced: the service credits what
+                   actually arrived, which may be less -- and may be
+                   zero for a dust transfer. Zero is a legitimate
+                   outcome, so it is shown rather than suppressed. -->
+              {{ t('inv.deposit.creditedAmount', { amount: creditedDisplay ?? '0.00' }) }}
+              <span v-if="invoice.underpaid"> {{ t('inv.deposit.underpaid') }}</span>
+            </p>
+            <CButton variant="primary" class="dv__cta" @click="startOver">
+              {{ t('inv.deposit.newDeposit') }}
+            </CButton>
+          </section>
+
+          <template v-else>
+            <!-- QR + address -->
+            <section class="dv__card dv__qr-section">
+              <div v-if="qrSvg" class="dv__qr" v-html="qrSvg" />
+              <div v-else class="dv__qr dv__qr--fallback">
+                <span>{{ t('inv.deposit.qrUnavailable') }}</span>
+              </div>
+
+              <div class="dv__address">
+                {{ invoice.address }}
+              </div>
+
+              <CButton variant="primary" class="dv__cta" @click="copyAddress">
+                <Copy :size="16" />
+                {{ t('inv.deposit.copy') }}
+              </CButton>
+            </section>
+
+            <!-- TXID submission. Only `created` accepts one. -->
+            <section class="dv__card">
+              <p class="dv__hint">
+                {{ t('inv.deposit.txidIntro') }}
+              </p>
+
+              <template v-if="acceptsTxid">
+                <CInput
+                  v-model="txidInput"
+                  :label="t('inv.deposit.txidLabel')"
+                  :error="txidError"
+                  :placeholder="t('inv.deposit.txidPlaceholder')"
+                />
+                <p
+                  v-if="invoice.attempts_remaining != null"
+                  class="dv__attempts"
+                >
+                  {{ t('inv.deposit.attemptsRemaining', { n: invoice.attempts_remaining }) }}
+                </p>
+                <CButton
+                  variant="primary"
+                  class="dv__cta"
+                  :loading="submitting"
+                  :disabled="submitting"
+                  @click="submitTxid"
+                >
+                  {{ t('inv.deposit.txidCta') }}
+                </CButton>
+              </template>
+
+              <!-- awaiting_confirmations / attempts_exhausted -->
+              <p v-else class="dv__notice">
+                {{ t(`inv.deposit.status.${status}`) }}
+              </p>
+
+              <p v-if="txidNotice" class="dv__notice">{{ txidNotice }}</p>
+              <p v-if="!acceptsTxid && txidError" class="dv__error">{{ txidError }}</p>
+            </section>
+          </template>
+        </template>
+
+        <!-- Security warning. Still the only realistic mitigation at
+             the UI layer for a cross-network transfer. -->
         <section class="dv__card dv__warning">
           <ShieldAlert :size="16" class="dv__warning-icon" />
           <p class="dv__warning-text">
@@ -244,9 +515,6 @@ onMounted(load)
   gap: var(--space-2);
 }
 
-/* iter 2.7 batch B2 -- inline page-header (back-link + title) replaces
-   the previous view-CHeader. No hero on this view, so the title lives
-   inside a header block at the top of the loaded branch. */
 .dv__page-header {
   display: flex;
   flex-direction: column;
@@ -267,126 +535,109 @@ onMounted(load)
   padding: var(--space-4);
 }
 
-/* Card base */
 .dv__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   padding: var(--space-4);
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
 }
 
-/* Network row */
-.dv__network-row {
+.dv__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
-.dv__network-label {
+.dv__row-label {
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.dv__network-value {
-  /* A6: --accent (#B1581B) as TEXT measures 4.32 on a card (--bg-subtle
-     #EDF1F5). It passes on --bg-page (4.61) and fails on the surface it is
-     actually drawn on. --accent-hover is the darker amber that already
-     exists: 5.77 there. Second site of this exact shape after
-     InvestorEventsView's active filter chip. Found only by a DIRECT LOAD --
-     under router.push this page renders 7 of its 9 controls. */
+.dv__row-value {
   font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--accent);
-  font-family: var(--font-mono);
+  color: var(--text-primary);
 }
 
 .dv__hint {
-  margin: var(--space-3) 0 0;
-  font-size: var(--fs-xs);
+  margin: 0;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
-  line-height: 1.4;
 }
 
-/* QR section */
+.dv__cta {
+  margin-top: var(--space-1);
+}
+
 .dv__qr-section {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
 }
-
 .dv__qr {
-  padding: var(--space-4);
-  background: #ffffff;
-  border-radius: var(--radius-md);
+  width: 240px;
+  max-width: 100%;
+  padding: var(--space-3);
+  background: var(--neutral-0);
+  border-radius: var(--radius-sm);
+}
+.dv__qr--fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Keep the QR square regardless of the inner SVG sizing. */
-  min-width: 272px;
-  min-height: 272px;
-}
-.dv__qr :deep(svg) {
-  display: block;
-  width: 240px;
-  height: 240px;
-}
-
-.dv__qr--fallback {
-  color: #333;
-  font-size: var(--fs-xs);
-  text-align: center;
-  padding: var(--space-6-lg) var(--space-5);
+  min-height: 120px;
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
 }
 
 .dv__address {
   width: 100%;
-  padding: var(--space-3);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   color: var(--text-primary);
   word-break: break-all;
   text-align: center;
-  user-select: all;
 }
 
-.dv__copy {
-  width: 100%;
+.dv__attempts {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
 }
 
-/* Warning */
-.dv__warning {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  background: var(--warning-subtle);
-  border: 1px solid var(--warning);
-}
-
-.dv__warning-icon {
-  flex-shrink: 0;
-  color: var(--warning);
-  margin-top: var(--space-1);
-}
-
-.dv__warning-text {
+.dv__notice {
   margin: 0;
   font-size: var(--fs-sm);
-  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.dv__error {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--danger);
+}
+
+.dv__terminal-title {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
   color: var(--text-primary);
 }
 
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.dv__hint {
-  max-width: var(--maxw-prose);
+.dv__warning {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-2);
+  background: var(--warning-subtle);
+}
+.dv__warning-icon {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+.dv__warning-text {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
 }
 </style>

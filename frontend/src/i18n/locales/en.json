@@ -679,18 +679,55 @@
     },
     "deposit": {
       "title": "Deposit",
-      "subtitle": "Send USDT via TRC20 to the address below. Funds appear in your balance after network confirmation.",
       "network": "Network",
+      "amountIntro": "Enter the amount you are depositing. The invoice is valid for a limited time, after which you will need a new one.",
+      "amountLabel": "Amount",
+      "amountPlaceholder": "100.00",
+      "amountRequired": "Enter an amount",
+      "amountInvalid": "Enter an amount greater than zero",
+      "amountTooLarge": "That amount is too large",
+      "createCta": "Create invoice",
+      "createFailed": "Could not create the invoice. Please try again.",
+      "expiresAt": "Valid until",
       "copy": "Copy address",
       "copied": "Address copied",
-      "copyError": "Could not copy address",
+      "copyError": "Could not copy the address",
       "warning": "Send only USDT via TRC20 to this address. Funds sent on other networks cannot be recovered.",
       "qrUnavailable": "QR code unavailable — please use the address below.",
       "backToBalance": "Back to balance",
       "backLink": "Back to balance",
-      "loadError": {
-        "title": "Could not get your deposit address",
-        "desc": "Please try again"
+      "txidIntro": "After sending the transfer, submit its transaction hash so the payment can be found on chain.",
+      "txidLabel": "Transaction hash",
+      "txidPlaceholder": "Paste the hash from your wallet or explorer",
+      "txidRequired": "Enter the transaction hash",
+      "txidCta": "Submit hash",
+      "txidAccepted": "Transaction found. Waiting for network confirmations.",
+      "txidRefused": "The invoice status changed, so the hash was not accepted.",
+      "txidFailed": "Could not submit the hash. Please try again.",
+      "txidUnavailable": "The service did not answer. No attempt was used — please try again.",
+      "attemptsRemaining": "Attempts remaining: {n}",
+      "statusStale": "The status may be out of date — it could not be refreshed just now.",
+      "creditedAmount": "Credited: {amount} USDT.",
+      "underpaid": "That is less than the invoice amount — you were credited what arrived.",
+      "newDeposit": "New deposit",
+      "unavailable": {
+        "title": "Deposits are temporarily unavailable",
+        "desc": "Crypto deposits are not being accepted right now. Nothing is wrong with your account — please try again later."
+      },
+      "status": {
+        "awaiting_confirmations": "Transaction found, waiting for network confirmations.",
+        "attempts_exhausted": "No attempts left. Please contact support.",
+        "confirmed": "Payment confirmed",
+        "expired": "This invoice has expired",
+        "stalled": "The payment did not confirm in time"
+      },
+      "verdict": {
+        "not_found": "That transaction was not found on chain. Check the hash and try again.",
+        "wrong_address": "The transaction exists but was not sent to this address.",
+        "already_used": "That hash has already been used for another invoice.",
+        "invalid_format": "That does not look like a transaction hash for this network. No attempt was used.",
+        "api_error": "The blockchain explorer did not answer. No attempt was used — please try again later.",
+        "unknown": "The hash was not accepted."
       }
     },
     "transactions": {

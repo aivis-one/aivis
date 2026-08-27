@@ -652,7 +652,6 @@ DB_PASS=$(gen_password)
 REDIS_PASS=$(gen_password)
 SECRET=$(gen_secret)
 KYC_SECRET=$(gen_password)
-CRYPTO_SECRET=$(gen_password)
 
 # MinIO secrets. Root credentials are used by MinIO server itself and by
 # minio-init to bootstrap; service account (ACCESS/SECRET) is what backend
@@ -733,9 +732,6 @@ SUMSUB_API_KEY=PLACEHOLDER
 SUMSUB_SECRET_KEY=PLACEHOLDER
 KYC_WEBHOOK_SECRET=${KYC_SECRET}
 
-# -- Crypto Webhook --
-CRYPTO_WEBHOOK_SECRET=${CRYPTO_SECRET}
-
 # -- Email (SMTP primary, Mailgun fallback) --
 SMTP_HOST=host.docker.internal
 SMTP_PORT=25
@@ -748,9 +744,21 @@ MAILGUN_DOMAIN=${MAIL_DOMAIN}
 MAILGUN_API_URL=https://api.eu.mailgun.net
 HIGH_SECURED_DOMAINS=t-online.de,web.de,online.de,kabelmail.de,kabelbw.de,gmx.de,arcor.de
 
-# -- Crypto --
-CRYPTO_NETWORKS=TRC20,ERC20,BEP20,PoS
-FREEZING_HOURS_CRYPTO=1
+# -- Crypto payments service (H7) --
+# Rendered EMPTY. The service issues both values on its own first
+# install pass (deploy contract, section 9 of the payments TOR) and
+# that hand-over does not exist yet, so there is nothing to write here.
+# An empty URL is a supported configuration: no call is made and the
+# deposit screen says it is temporarily unavailable.
+#
+# CRYPTO_NETWORKS was rendered here with the value TRC20,ERC20,BEP20,PoS
+# and had to go, not for tidiness: a rendered .env overrides the
+# application default, so leaving this line would have re-imposed the
+# old network names on every fresh install and made every invoice
+# creation fail with network_not_supported -- while the repository
+# looked correct.
+PAYMENTS_API_URL=
+PAYMENTS_SERVICE_TOKEN=
 
 # -- Installments --
 INSTALLMENT_DEFAULT_DAYS=7

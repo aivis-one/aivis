@@ -1,145 +1,49 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Payment Service (Sprint 5.2, updated Sprint 6.4, G2)
+# AIVIS.ONE Backend -- Payment Service (Sprint 5.2, updated Sprint 6.4, G2, H7)
 # =============================================================================
 #
 # RESPONSIBILITIES:
-#   get_or_create_deposit_address() -- idempotent crypto address per user+network
-#   get_payment()                   -- load Payment by id
-#   process_crypto_webhook()        -- create Payment, write active_ledger
-#   list_payments()                 -- paginated history for an investor
-#   list_all_payments()             -- paginated history for staff (all users, G2)
+#   open_invoice()      -- write the local row, then ask the service for
+#                          an invoice against it
+#   read_invoice()      -- refresh one invoice from the service
+#   submit_invoice_txid()-- forward one TXID to the service
+#   current_invoice()   -- the user's open invoice on a network, if any
+#   get_payment()       -- load Payment by id
+#   list_payments()     -- paginated history for an investor
+#   list_all_payments() -- paginated history for staff (all users, G2)
 #
-# CLOSED MODULE:
-#   Internal logic (provider selection, retry, fallback) is hidden.
-#   External modules use PaymentServiceProtocol only.
+# THE SERVICE DECIDES, THIS MODULE RELAYS. No status machine lives here,
+# no attempt budget, no network list, no expiry arithmetic. Every one of
+# those is a fact of the payments service, and a copy of any of them
+# here would be a second answer to a question that already has one
+# (TOR section 11 p.12).
 #
-# WEBHOOK FLOW:
-#   1. Look up CryptoAddress by (to_address, network)
-#   2. Create Payment with provider_data in constructor (single flush)
-#   3. tx_hash uniqueness enforced by DB partial unique index (uq_payments_tx_hash)
-#   4. Write active_ledger entry (frozen) via ledger service
-#   5. Audit: payment.crypto_received
-#   6. Transaction log: deposit:received (Sprint 6.4)
+# WHY THE ROW IS WRITTEN FIRST. The service has no dedupe on product_ref
+# (TOR section 11 p.11): two creating calls make two invoices, and a
+# call that times out may have made one we never learn the id of.
+# Writing the row before the call means such an invoice is always
+# traceable back to a user, and holding the row means the second call is
+# not made at all while an invoice is open. That narrows the window; it
+# does not close it, and closing it is service-side work (P-23).
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
-#
-# STUB:
-#   Address generation returns a deterministic placeholder.
-#   Real integration will call blockchain provider API.
 # =============================================================================
 
-from datetime import datetime, timedelta, UTC
+from datetime import datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.audit import record_audit
-from app.core.config import settings
-from app.core.constants import LedgerReason
-from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
-from app.modules.ledgers.models import LedgerStatus
-from app.modules.ledgers.service import record_active_ledger
-from app.modules.payments.constants import PaymentStatus, PaymentType
-from app.modules.payments.interface import DepositAddress
-from app.modules.payments.models import CryptoAddress, Payment
-from app.modules.payments.schemas import CryptoWebhookRequest
-from app.modules.transactions.constants import ReferenceType, TransactionType
-from app.modules.transactions.service import record_transaction
+from app.core import payments_client
+from app.core.exceptions import NotFoundError
+from app.modules.payments.models import CryptoInvoice, Payment
+from app.modules.payments.schemas import InvoiceResponse, TxidResultResponse
 
 logger = structlog.get_logger()
-
-
-# ---------------------------------------------------------------------------
-# Deposit addresses
-# ---------------------------------------------------------------------------
-
-
-async def get_or_create_deposit_address(
-    user_id: UUID,
-    network: str,
-    session: AsyncSession,
-) -> DepositAddress:
-    """Get or create a crypto deposit address for a user + network.
-
-    Idempotent: returns existing address if one exists.
-    Stub: generates a placeholder address (real integration in Phase 2).
-
-    Uses begin_nested() (SAVEPOINT) for race condition handling (P-05).
-
-    Args:
-        user_id: The investor's user ID.
-        network: Crypto network (TRC20, ERC20, BEP20, PoS).
-        session: Active DB session.
-
-    Returns:
-        DepositAddress with the assigned wallet address.
-
-    Raises:
-        BadRequestError: If network is not supported.
-    """
-    # Validate network against config.
-    if network not in settings.crypto_network_list:
-        raise BadRequestError(
-            f"Unsupported network: {network!r}. "
-            f"Supported: {settings.crypto_network_list}"
-        )
-
-    # Check for existing address.
-    stmt = select(CryptoAddress).where(
-        CryptoAddress.user_id == user_id,
-        CryptoAddress.network == network,
-    )
-    result = await session.execute(stmt)
-    existing = result.scalar_one_or_none()
-
-    if existing is not None:
-        return DepositAddress(
-            address=existing.address,
-            network=existing.network,
-            user_id=existing.user_id,
-        )
-
-    # Generate stub address (placeholder for real provider integration).
-    stub_address = f"AIVIS_{network}_{uuid4().hex[:16]}"
-
-    new_addr = CryptoAddress(
-        user_id=user_id,
-        network=network,
-        address=stub_address,
-    )
-
-    try:
-        async with session.begin_nested():
-            session.add(new_addr)
-            await session.flush()
-    except IntegrityError as exc:
-        # Race condition: another request created the address first (P-05).
-        if "uq_crypto_addresses_user_network" in str(exc.orig):
-            result = await session.execute(stmt)
-            existing = result.scalar_one()
-            return DepositAddress(
-                address=existing.address,
-                network=existing.network,
-                user_id=existing.user_id,
-            )
-        raise
-
-    logger.info(
-        "crypto_address_created",
-        user_id=str(user_id),
-        network=network,
-        address=stub_address,
-    )
-
-    return DepositAddress(
-        address=new_addr.address,
-        network=new_addr.network,
-        user_id=new_addr.user_id,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -256,147 +160,286 @@ async def list_all_payments(
 
 
 # ---------------------------------------------------------------------------
-# Crypto webhook processing
+# Deposit invoices
 # ---------------------------------------------------------------------------
 
+#: Statuses the service never leaves on its own (TOR section 5).
+#:
+#: ``attempts_exhausted`` is NOT here, and the omission is the service's
+#: rule rather than an oversight: such an invoice accepts no further
+#: TXID but is still waiting for its TTL to turn it into ``expired``.
+#: Treating it as terminal here would offer the user a new invoice while
+#: the old one can still expire underneath them.
+_TERMINAL_STATUSES = frozenset({"confirmed", "expired", "stalled"})
 
-async def process_crypto_webhook(
-    body: CryptoWebhookRequest,
-    session: AsyncSession,
-) -> Payment:
-    """Process an incoming crypto payment webhook.
 
-    Creates a Payment (status=frozen) and writes an active_ledger entry.
+def _parse_timestamp(value: Any) -> datetime:
+    """Parse one timestamptz the service sent.
 
-    Flow:
-      1. Look up CryptoAddress by (to_address, network)
-      2. Create Payment with provider_data (single flush)
-      3. tx_hash uniqueness enforced by partial unique index uq_payments_tx_hash
-         Race condition handled via begin_nested() + IntegrityError (P-05)
-      4. Write active_ledger entry (frozen)
-      5. Audit event
-      6. Transaction log: deposit:received (Sprint 6.4)
-
-    Args:
-        body: Parsed webhook payload.
-        session: Active DB session.
-
-    Returns:
-        The created Payment.
-
-    Raises:
-        ConflictError: If tx_hash already processed (duplicate webhook).
-        NotFoundError: If to_address/network not found in crypto_addresses.
+    Raises rather than defaulting on anything unparseable. A deposit
+    screen shows this as the deadline by which the transfer must be
+    made; substituting "now" or None for a value we failed to read
+    would put a wrong deadline in front of somebody about to move
+    money, and a wrong deadline is worse than a refused screen.
     """
-    # 1. Look up our deposit address.
-    addr_stmt = select(CryptoAddress).where(
-        CryptoAddress.address == body.to_address,
-        CryptoAddress.network == body.network,
-    )
-    addr_result = await session.execute(addr_stmt)
-    crypto_addr = addr_result.scalar_one_or_none()
+    if not isinstance(value, str):
+        raise payments_client.PaymentsMalformedError()
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        raise payments_client.PaymentsMalformedError() from None
 
-    if crypto_addr is None:
-        raise NotFoundError(
-            f"Deposit address not found: {body.to_address!r} "
-            f"on network {body.network!r}"
+
+def _to_response(
+    invoice: CryptoInvoice,
+    *,
+    remote: dict[str, Any] | None = None,
+) -> InvoiceResponse:
+    """Render one invoice, preferring the service's answer to the row.
+
+    ``remote`` is what the service just said. When it is present it wins
+    every field it carries -- the row is a cache and the caller has the
+    truth in hand. When it is absent the row is all there is.
+
+    ``attempts_remaining`` is never filled from the row because the row
+    does not hold it and must not: deriving it locally would mean
+    hard-coding MAX_TXID_ATTEMPTS, which lives in the service's config
+    and is exactly the kind of value TOR section 11 p.12 forbids the
+    product to compute.
+    """
+    if remote is None:
+        return InvoiceResponse(
+            id=invoice.id,
+            network=invoice.network,
+            address=invoice.address,
+            invoice_amount_cents=invoice.invoice_amount_cents,
+            status=invoice.status,
+            expires_at=invoice.expires_at,
         )
 
-    user_id = crypto_addr.user_id
-
-    # 2. Create Payment with provider_data in constructor (single flush).
-    now = datetime.now(UTC)
-    frozen_until = now + timedelta(hours=settings.freezing_hours_crypto)
-
-    provider = f"crypto_usdt_{body.network.lower()}"
-
-    payment = Payment(
-        user_id=user_id,
-        amount_cents=body.amount_usd_cents,
-        currency="USD",
-        payment_type=PaymentType.CRYPTO,
-        provider=provider,
-        status=PaymentStatus.FROZEN,
-        frozen_until=frozen_until,
-        provider_data={
-            "network": body.network,
-            "to_address": body.to_address,
-            "from_address": body.from_address,
-            "tx_hash": body.tx_hash,
-            "confirmed_block": body.confirmed_block,
-            "amount_crypto": body.amount_crypto,
-            "exchange_rate": body.exchange_rate,
-        },
+    return InvoiceResponse(
+        id=invoice.id,
+        network=remote.get("network") or invoice.network,
+        address=remote.get("address") or invoice.address,
+        invoice_amount_cents=remote.get("invoice_amount_cents")
+        or invoice.invoice_amount_cents,
+        status=str(remote["status"]),
+        expires_at=invoice.expires_at,
+        attempts_remaining=remote.get("attempts_remaining"),
+        active_txid=remote.get("active_txid"),
+        credited_amount_cents=remote.get("credited_amount_cents"),
+        underpaid=remote.get("underpaid"),
     )
 
-    # 3. Insert with DB-level tx_hash uniqueness (partial unique index).
-    # begin_nested() = SAVEPOINT -- only rolls back the INSERT on conflict,
-    # outer transaction stays valid for ConflictError response (P-05).
-    try:
-        async with session.begin_nested():
-            session.add(payment)
-            await session.flush()
-    except IntegrityError as exc:
-        if "uq_payments_tx_hash" in str(exc.orig):
-            raise ConflictError(
-                f"Payment with tx_hash {body.tx_hash!r} already exists"
-            ) from exc
-        raise
 
-    await session.refresh(payment)
+def _cache_status(invoice: CryptoInvoice, remote: dict[str, Any]) -> None:
+    """Copy the service's status onto the row.
 
-    # 4. Write active_ledger entry.
-    reason = LedgerReason.DEPOSIT_CRYPTO.format(tx_hash=body.tx_hash)
+    A CACHE UPDATE AND NOTHING ELSE. No money moves from here, no other
+    path reads the result to decide anything -- see the column docstring
+    in models.py. It exists so a screen has something to draw when the
+    service cannot be reached, and for no other reason.
+    """
+    status = remote.get("status")
+    if isinstance(status, str) and status:
+        invoice.status = status
 
-    await record_active_ledger(
-        session,
-        user_id=user_id,
-        amount_cents=body.amount_usd_cents,
-        status=LedgerStatus.FROZEN,
-        reason=reason,
-        frozen_until=frozen_until,
-        origin_payment_id=payment.id,
+
+async def _load_owned(
+    invoice_id: UUID,
+    user_id: UUID,
+    session: AsyncSession,
+) -> CryptoInvoice:
+    """Load one invoice, scoped to its owner.
+
+    404 RATHER THAN 403 ON SOMEBODY ELSE'S INVOICE, and the ownership
+    filter is in the WHERE clause rather than in a check afterwards.
+    A 403 would confirm that the id exists, which is the whole prize
+    for anyone walking the id space; filtering in SQL means the answer
+    to "not yours" and "not a thing" is produced by the same query and
+    cannot drift apart.
+    """
+    stmt = select(CryptoInvoice).where(
+        CryptoInvoice.id == invoice_id,
+        CryptoInvoice.user_id == user_id,
     )
+    result = await session.execute(stmt)
+    invoice = result.scalar_one_or_none()
 
-    # 5. Audit.
-    await record_audit(
-        session=session,
-        event="payment.crypto_received",
-        actor_id=None,
-        actor_type="system",
-        target_type="payment",
-        target_id=payment.id,
-        data={
-            "user_id": str(user_id),
-            "amount_cents": body.amount_usd_cents,
-            "network": body.network,
-            "tx_hash": body.tx_hash,
-            "provider": provider,
-        },
-    )
+    if invoice is None:
+        raise NotFoundError("Invoice not found")
 
-    # 6. Transaction log (Sprint 6.4).
-    await record_transaction(
-        session,
-        user_id=user_id,
-        type=TransactionType.DEPOSIT_RECEIVED,
-        amount_cents=body.amount_usd_cents,
-        reference_id=payment.id,
-        reference_type=ReferenceType.PAYMENT,
-        details={
-            "network": body.network,
-            "tx_hash": body.tx_hash,
-            "from_address": body.from_address,
-        },
+    return invoice
+
+
+async def current_invoice(
+    user_id: UUID,
+    network: str,
+    session: AsyncSession,
+) -> InvoiceResponse | None:
+    """The user's open invoice on this network, refreshed, or None.
+
+    THE ROW ALONE CANNOT ANSWER THIS. A row cached as ``created`` may
+    have expired since it was last read: the service resolves expiry
+    lazily on read, so its answer is current and ours is merely the last
+    thing it said (TOR section 11 p.7). The newest non-terminal
+    candidate is therefore re-read from the service before it is called
+    open, and a candidate that comes back terminal is cached as such and
+    reported as no open invoice.
+
+    Only the newest candidate is checked. Older ones cannot be open
+    while a newer exists, because a new invoice is only ever created
+    when no open one was found.
+    """
+    stmt = (
+        select(CryptoInvoice)
+        .where(
+            CryptoInvoice.user_id == user_id,
+            CryptoInvoice.network == network,
+            CryptoInvoice.status.not_in(_TERMINAL_STATUSES),
+        )
+        .order_by(CryptoInvoice.created_at.desc())
+        .limit(1)
     )
+    result = await session.execute(stmt)
+    invoice = result.scalar_one_or_none()
+
+    if invoice is None:
+        return None
+
+    remote = await payments_client.get_invoice(invoice.service_invoice_id)
+    _cache_status(invoice, remote)
+
+    if invoice.status in _TERMINAL_STATUSES:
+        return None
+
+    return _to_response(invoice, remote=remote)
+
+
+async def open_invoice(
+    user_id: UUID,
+    network: str,
+    amount_cents: int,
+    session: AsyncSession,
+) -> InvoiceResponse:
+    """Return the user's open invoice, or ask the service for a new one.
+
+    THE EXISTING-INVOICE CHECK IS THE IDEMPOTENCY NARROWING AND NOT A
+    CONVENIENCE. The service creates a second invoice for a repeated
+    product_ref without complaint (TOR section 11 p.11), and a user who
+    then pays the first one leaves the product waiting on the second.
+    Not making the second call is the only part of that a client can
+    do; the part it cannot do is survive a call that timed out, because
+    a timeout does not say whether the invoice was created. Closing
+    that is service-side work (P-23).
+
+    The amount is ignored when an invoice is already open -- an open
+    invoice has an address and a deadline the user may already have
+    acted on, and quietly replacing it with a differently-priced one
+    would invalidate a payment in flight.
+    """
+    existing = await current_invoice(user_id, network, session)
+    if existing is not None:
+        return existing
+
+    # Minted before the call so the service is given a reference that
+    # becomes this row's key on success. See the model docstring on why
+    # no row is written for a call that fails.
+    product_ref = uuid4()
 
     logger.info(
-        "crypto_payment_received",
-        payment_id=str(payment.id),
+        "crypto_invoice_requested",
+        product_ref=str(product_ref),
         user_id=str(user_id),
-        amount_cents=body.amount_usd_cents,
-        network=body.network,
-        tx_hash=body.tx_hash,
+        network=network,
+        amount_cents=amount_cents,
     )
 
-    return payment
+    remote = await payments_client.create_invoice(
+        product_ref=str(product_ref),
+        network=network,
+        invoice_amount_cents=amount_cents,
+    )
+
+    invoice = CryptoInvoice(
+        id=product_ref,
+        user_id=user_id,
+        service_invoice_id=UUID(str(remote["id"])),
+        network=str(remote["network"]),
+        address=str(remote["address"]),
+        invoice_amount_cents=int(remote["invoice_amount_cents"]),
+        status=str(remote["status"]),
+        expires_at=_parse_timestamp(remote["expires_at"]),
+    )
+    session.add(invoice)
+    await session.flush()
+
+    logger.info(
+        "crypto_invoice_opened",
+        invoice_id=str(invoice.id),
+        service_invoice_id=str(invoice.service_invoice_id),
+        user_id=str(user_id),
+        network=invoice.network,
+    )
+
+    return _to_response(invoice, remote=remote)
+
+
+async def read_invoice(
+    invoice_id: UUID,
+    user_id: UUID,
+    session: AsyncSession,
+) -> InvoiceResponse:
+    """One invoice as the service currently sees it.
+
+    A terminal status from here can arrive before any event for it
+    does, and that is correct rather than a race: expiry is resolved on
+    read and the matching event is emitted later by the service's
+    sweeper (TOR section 8).
+    """
+    invoice = await _load_owned(invoice_id, user_id, session)
+    remote = await payments_client.get_invoice(invoice.service_invoice_id)
+    _cache_status(invoice, remote)
+    return _to_response(invoice, remote=remote)
+
+
+async def submit_invoice_txid(
+    invoice_id: UUID,
+    user_id: UUID,
+    txid: str,
+    session: AsyncSession,
+) -> TxidResultResponse:
+    """Forward one TXID and relay what the service made of it.
+
+    THE COUNTERS COME BACK FROM THE SERVICE AND ARE NOT COMPUTED HERE.
+    Two of the six outcomes -- ``invalid_format`` and ``api_error`` --
+    never reach an explorer and spend no attempt, so any local
+    "one submission, one attempt" arithmetic would report a budget the
+    user has not actually spent.
+
+    The TXID is whitespace-stripped and otherwise handed over
+    untouched. Stripping is done because a hash pasted from a block
+    explorer routinely arrives with a trailing newline and the service
+    would rightly call that malformed; anything beyond stripping would
+    be this product forming an opinion about a format the service owns.
+    """
+    invoice = await _load_owned(invoice_id, user_id, session)
+    remote = await payments_client.submit_txid(
+        invoice.service_invoice_id, txid.strip()
+    )
+    _cache_status(invoice, remote)
+
+    logger.info(
+        "crypto_invoice_txid_submitted",
+        invoice_id=str(invoice.id),
+        user_id=str(user_id),
+        result_code=remote.get("result_code"),
+        status=remote.get("status"),
+    )
+
+    return TxidResultResponse(
+        status=str(remote["status"]),
+        result_code=str(remote["result_code"]),
+        attempts_used=int(remote["attempts_used"]),
+        attempts_remaining=int(remote["attempts_remaining"]),
+    )

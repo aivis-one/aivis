@@ -45,7 +45,7 @@ from app.modules.products.models import Product, ProductInstallment  # noqa: F40
 from app.modules.pools.models import OptionPool  # noqa: F401
 
 # Sprint 5.2: Payments
-from app.modules.payments.models import Payment, CryptoAddress  # noqa: F401
+from app.modules.payments.models import Payment, CryptoInvoice  # noqa: F401
 
 # Sprint 6.1: Purchases
 from app.modules.purchases.models import Purchase  # noqa: F401
