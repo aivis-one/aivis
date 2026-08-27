@@ -38,9 +38,11 @@ from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
 from app.core.config import settings
 from app.core.constants import LedgerReason
 from app.core.database import get_session_factory
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.modules.commissions.constants import PeriodType, current_month_start
 from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout
 from app.modules.ledgers.models import LedgerStatus, PassiveLedger
@@ -563,6 +565,34 @@ async def _distribute_pool(
                 amount_cents=entry.amount_cents,
                 status=LedgerStatus.CONFIRMED,
                 reason=reason,
+            )
+
+        # Batch 3 (2026-08-27), fourth aivis producer of notification_request.
+        # One per credited agent per period -- payout.id is a fresh row per
+        # (agent, period_type, period_start), so it is a safe permanent
+        # idempotency key without a separate counter, same reasoning as the
+        # withdrawals delivery. Placed inside this loop (not after it) so a
+        # partial run that fails partway still leaves each already-written
+        # payout's own notification already emitted alongside it, in the
+        # same transaction as that agent's ledger entries -- consistent
+        # with every other emitter in this tree writing inside its own
+        # domain transaction, not as an afterthought pass over the batch.
+        if comms_configured():
+            await emit_event(
+                session,
+                EVENT_NOTIFICATION_REQUEST,
+                {
+                    "idempotency_key": f"commission-credit:{payout.id}",
+                    "type": "commission.credited",
+                    "target_type": "user",
+                    "target_value": str(agent_id),
+                    "title": "Commission credited",
+                    "body": (
+                        f"You earned a ${payout.amount_cents / 100:,.2f} "
+                        f"{period_type} volume commission (rank "
+                        f"#{payout.rank})."
+                    ),
+                },
             )
 
     # -- 8. Audit --

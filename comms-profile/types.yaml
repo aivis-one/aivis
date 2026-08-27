@@ -157,13 +157,56 @@ withdrawal.failed:
 # =============================================================================
 #
 # THIRD aivis PRODUCER. Emitted by `purchases/service.py::execute_purchase`,
-# once per call, about the SALE purchase only. SCOPED, NOT COMPLETE:
-# installments/service.py's pay_tranche() reaches the SAME purchase engine
-# for tranche payments -- a distinct product moment (a plan payment, not a
-# purchase confirmation) -- and is not covered by this type; neither is a
-# "gift" allocation (a real, separate piece of information a purchase can
-# carry). Both are flagged as open follow-ups in the emitter's own comment,
-# not silently absent from a type name that implied otherwise.
+# once per call, about the SALE purchase. A "gift" allocation on the same
+# purchase (legal_basis == "gift") gets its OWN type, purchase.gift_received,
+# one per gift row -- a purchase_config can carry more than one bonus
+# condition, so a single "you got a bonus" body could not describe an
+# unknown-length list. STILL NOT COVERED, flagged in the emitter's own
+# comment: installments/service.py's pay_tranche() reaches the SAME
+# purchase engine for tranche payments, a distinct product moment (a plan
+# payment, not a purchase confirmation) -- see that emitter's own type,
+# installment.tranche_paid, batch 3 continued below.
 
 purchase.completed:
   category: purchases
+
+purchase.gift_received:
+  category: purchases
+
+# =============================================================================
+# aivis product types -- phase 2, batch 3 continued (2026-08-27)
+# =============================================================================
+#
+# FIFTH aivis PRODUCER. Emitted by `installments/service.py::pay_tranche`,
+# the distinct product moment purchase.completed's own comment named as not
+# covered: a plan payment, not a purchase confirmation. Two outcomes, both
+# from the SAME function: `installment.tranche_paid` on success, and
+# `installment.tranche_overdue` on insufficient balance -- the daemon
+# retries an overdue tranche on every scheduled run, so the overdue
+# notification fires only on the FIRST transition into OVERDUE (same guard
+# the existing audit-trail call already used), never on a retry. Plan-level
+# events (complete_plan's completion, default_plan's default) are NOT
+# covered by this delivery -- named here as the next open follow-up, not
+# silently absent.
+
+installment.tranche_paid:
+  category: installments
+
+installment.tranche_overdue:
+  category: installments
+
+# =============================================================================
+# aivis product types -- phase 2, batch 3 continued (2026-08-27)
+# =============================================================================
+#
+# FOURTH aivis PRODUCER. Emitted by
+# `commissions/worker.py::_distribute_pool`, a scheduled background worker
+# (run_monthly_payout / run_quarterly_payout, called from main.py's lifespan
+# on their own interval, not from an HTTP request) -- the first type in this
+# profile with no request/response cycle behind it. One notification per
+# credited agent per period, written inside the same per-agent loop that
+# writes that agent's VolumePayout row and passive-ledger entries, so a
+# partial-batch failure never leaves a payout without its notification.
+
+commission.credited:
+  category: commissions

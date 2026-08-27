@@ -36,6 +36,11 @@
 #   19: all tranches paid -> plan completed + bonus purchase
 #   20: overdue default -> plan defaulted + remaining cancelled
 #
+#   -- Integration: notification emission (TASK-24 batch 3, 2026-08-27) --
+#   21: pay_tranche success -> installment.tranche_paid on the outbox
+#   22: pay_tranche insufficient -> installment.tranche_overdue on the
+#       outbox, once (not on a repeated retry of the same tranche)
+#
 # Email prefix: "s62_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
@@ -47,6 +52,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.events.models import OutboxEvent
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 from app.core.exceptions import BadRequestError
 from app.modules.installments.constants import (
     InstallmentPlanStatus,
@@ -914,3 +922,133 @@ async def test_default_plan(
     result1 = await db_session.execute(stmt1)
     tranche1 = result1.scalar_one()
     assert tranche1.status == InstallmentTrancheStatus.PAID
+
+
+# ---------------------------------------------------------------------------
+# 21-22. Notification emission (TASK-24 batch 3)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_events(session: AsyncSession) -> list[OutboxEvent]:
+    """Every notification_request event on the outbox, oldest first."""
+    result = await session.execute(
+        select(OutboxEvent)
+        .where(OutboxEvent.event_type == EVENT_NOTIFICATION_REQUEST)
+        .order_by(OutboxEvent.id)
+    )
+    return list(result.scalars().all())
+
+
+@pytest.mark.asyncio
+async def test_pay_tranche_success_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """pay_tranche success -> installment.tranche_paid on the outbox,
+    keyed to the tranche, not the plan (a plan has many tranches)."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+    template = await _create_installment_template(client, admin_token, product["id"])
+
+    _, inv_id = await _create_investor_with_balance(client, db_session)
+
+    from app.modules.users.models import User
+    inv_user = await db_session.get(User, inv_id)
+
+    plan = await create_plan(
+        product_id=UUID(product["id"]),
+        product_installment_id=UUID(template["id"]),
+        investor=inv_user,
+        session=db_session,
+    )
+    await db_session.commit()
+
+    stmt = (
+        select(InstallmentTranche)
+        .where(
+            InstallmentTranche.plan_id == plan.id,
+            InstallmentTranche.number == 2,
+        )
+    )
+    result = await db_session.execute(stmt)
+    tranche = result.scalar_one()
+    before = len(await _notification_events(db_session))
+
+    was_paid = await pay_tranche(tranche, plan, db_session)
+    await db_session.commit()
+    assert was_paid is True
+
+    events = await _notification_events(db_session)
+    assert len(events) == before + 1
+    payload = events[-1].payload
+    assert payload["type"] == "installment.tranche_paid"
+    assert payload["target_type"] == "user"
+    assert payload["target_value"] == str(inv_id)
+    assert payload["idempotency_key"] == f"tranche-paid:{tranche.id}"
+
+
+@pytest.mark.asyncio
+async def test_pay_tranche_overdue_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """pay_tranche insufficient balance -> installment.tranche_overdue,
+    once -- a second pay_tranche attempt on the same already-OVERDUE
+    tranche must NOT emit a second one (mirrors the audit-trail call's
+    own SCHEDULED-only guard)."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    await _activate_company(client, admin_token, company["id"])
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+    template = await _create_installment_template(client, admin_token, product["id"])
+
+    _, inv_id = await _create_investor_with_balance(
+        client, db_session, balance_cents=500_000
+    )
+
+    from app.modules.users.models import User
+    inv_user = await db_session.get(User, inv_id)
+
+    plan = await create_plan(
+        product_id=UUID(product["id"]),
+        product_installment_id=UUID(template["id"]),
+        investor=inv_user,
+        session=db_session,
+    )
+    await db_session.commit()
+
+    stmt = (
+        select(InstallmentTranche)
+        .where(
+            InstallmentTranche.plan_id == plan.id,
+            InstallmentTranche.number == 2,
+        )
+    )
+    result = await db_session.execute(stmt)
+    tranche = result.scalar_one()
+    before = len(await _notification_events(db_session))
+
+    was_paid = await pay_tranche(tranche, plan, db_session)
+    await db_session.commit()
+    assert was_paid is False
+
+    events = await _notification_events(db_session)
+    assert len(events) == before + 1
+    payload = events[-1].payload
+    assert payload["type"] == "installment.tranche_overdue"
+    assert payload["idempotency_key"] == f"tranche-overdue:{tranche.id}"
+
+    # Retry on the same (already OVERDUE) tranche -- still insufficient,
+    # must not emit a second notification.
+    was_paid_again = await pay_tranche(tranche, plan, db_session)
+    await db_session.commit()
+    assert was_paid_again is False
+    assert len(await _notification_events(db_session)) == before + 1

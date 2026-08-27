@@ -503,11 +503,8 @@ async def execute_purchase(
     # Scoped to the instant-purchase path only -- installments/service.py's
     # pay_tranche() reaches this same engine.execute() for tranche payments,
     # which are a distinct product moment (a plan payment, not a purchase
-    # confirmation) and are NOT covered here; flagged, not silently missed.
-    # One notification per call, about the SALE purchase only -- a "gift"
-    # allocation (legal_basis == "gift") is real, product-visible bonus
-    # information a user would want to know about too, but is left for a
-    # later delivery rather than doubling this one's scope.
+    # confirmation) and are NOT covered here; flagged, not silently missed
+    # (see installments/service.py's own emitter, batch 3 continued).
     if comms_configured():
         await emit_event(
             session,
@@ -524,6 +521,30 @@ async def execute_purchase(
                 ),
             },
         )
+        # One notification per GIFT row (legal_basis == "gift") -- a
+        # purchase can carry more than one bonus allocation depending on
+        # purchase_config, and each is its own row with its own units,
+        # so each gets its own idempotency key and its own message
+        # rather than folding an unknown-length list into the sale
+        # notification's body.
+        for gift in purchases:
+            if gift.legal_basis != "gift":
+                continue
+            await emit_event(
+                session,
+                EVENT_NOTIFICATION_REQUEST,
+                {
+                    "idempotency_key": f"purchase-gift:{gift.id}",
+                    "type": "purchase.gift_received",
+                    "target_type": "user",
+                    "target_value": str(investor.id),
+                    "title": "Bonus units received",
+                    "body": (
+                        f"You received {gift.units} bonus units of "
+                        f"{product.name} as a gift with your purchase."
+                    ),
+                },
+            )
 
     logger.info(
         "purchase_executed",

@@ -595,10 +595,11 @@ async def test_purchase_with_gift_bonus(
     assert sale["units"] == 100
     assert sale["paid_cents"] == 100 * 10000
     assert gift["units"] == 10  # 10% of 100
+    assert gift["paid_cents"] == 0
 
 
 # ---------------------------------------------------------------------------
-# 17-18. Notification emission (TASK-24 batch 3)
+# 17-19. Notification emission (TASK-24 batch 3)
 # ---------------------------------------------------------------------------
 
 
@@ -681,4 +682,59 @@ async def test_purchase_without_comms_emits_nothing(
     assert resp.status_code == 201, f"Purchase failed: {resp.text}"
 
     assert len(await _notification_events(db_session)) == before
-    assert gift["paid_cents"] == 0
+
+
+@pytest.mark.asyncio
+async def test_purchase_with_gift_emits_both_notifications(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A purchase with a bonus config -> purchase.completed AND
+    purchase.gift_received, each keyed to its own Purchase row."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(
+        client,
+        admin_token,
+        company["id"],
+        units=100,
+        purchase_config={
+            "bonuses": [
+                {
+                    "condition": "always",
+                    "bonus_units_percent": 10,
+                    "funded_by": "company",
+                },
+            ],
+        },
+    )
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    inv_token, inv_id = await _create_investor_with_balance(
+        client, db_session
+    )
+    before = len(await _notification_events(db_session))
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 201, f"Purchase failed: {resp.text}"
+    data = resp.json()
+    sale_id = next(p for p in data if p["legal_basis"] == "sale")["id"]
+    gift_id = next(p for p in data if p["legal_basis"] == "gift")["id"]
+
+    events = await _notification_events(db_session)
+    assert len(events) == before + 2
+
+    completed = next(e for e in events if e.payload["type"] == "purchase.completed")
+    gift_event = next(e for e in events if e.payload["type"] == "purchase.gift_received")
+
+    assert completed.payload["idempotency_key"] == f"purchase-completed:{sale_id}"
+    assert gift_event.payload["idempotency_key"] == f"purchase-gift:{gift_id}"
+    assert gift_event.payload["target_value"] == str(inv_id)
+    assert "10" in gift_event.payload["body"]  # 10 bonus units (10% of 100)

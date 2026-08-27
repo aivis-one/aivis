@@ -63,7 +63,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
 from app.core.constants import LedgerReason
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, InsufficientBalanceError, NotFoundError
 from app.modules.companies.models import CompanyProfile
 from app.modules.installments.constants import (
@@ -410,6 +412,31 @@ async def pay_tranche(
                 },
             )
 
+            # Batch 3 (2026-08-27), fifth aivis producer of
+            # notification_request. Inside the SCHEDULED-only guard on
+            # purpose, same as the audit call above: the daemon retries
+            # an overdue tranche on every run, and only the FIRST
+            # transition into OVERDUE is a new fact worth telling the
+            # user about.
+            if comms_configured():
+                await emit_event(
+                    session,
+                    EVENT_NOTIFICATION_REQUEST,
+                    {
+                        "idempotency_key": f"tranche-overdue:{tranche.id}",
+                        "type": "installment.tranche_overdue",
+                        "target_type": "user",
+                        "target_value": str(plan.investor_id),
+                        "title": "Installment payment overdue",
+                        "body": (
+                            f"Tranche #{tranche.number} of "
+                            f"${tranche.amount_cents / 100:,.2f} could not "
+                            f"be charged due to insufficient balance. "
+                            f"Please top up your balance."
+                        ),
+                    },
+                )
+
         logger.info(
             "installment_tranche_overdue",
             tranche_id=str(tranche.id),
@@ -468,6 +495,29 @@ async def pay_tranche(
     if tranche.number == 1:
         await create_attribution(
             tranche_purchase.id, plan.referral_link_id, session
+        )
+
+    # Batch 3 (2026-08-27), fifth aivis producer of notification_request
+    # (paired with the overdue branch above). This is the distinct product
+    # moment execute_purchase's own emitter comment named as NOT covered by
+    # purchase.completed -- a plan payment, not a purchase confirmation.
+    # tranche.id is a permanent one-time key: validate_tranche_status_
+    # transition only allows SCHEDULED/OVERDUE -> PAID once, never back.
+    if comms_configured():
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                "idempotency_key": f"tranche-paid:{tranche.id}",
+                "type": "installment.tranche_paid",
+                "target_type": "user",
+                "target_value": str(plan.investor_id),
+                "title": "Installment payment received",
+                "body": (
+                    f"Tranche #{tranche.number} of "
+                    f"${tranche.amount_cents / 100:,.2f} has been charged."
+                ),
+            },
         )
 
     logger.info(
