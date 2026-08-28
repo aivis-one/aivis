@@ -675,6 +675,55 @@
         "crypto": "Crypto",
         "bank": "Bank",
         "card": "Card"
+      },
+      "withdrawals": {
+        "cardTitle": "Available to withdraw",
+        "title": "Withdrawal history",
+        "empty": "No withdrawals yet",
+        "newButton": "Request withdrawal",
+        "setupPayout": "Set up payout details",
+        "needPayout": "Add payout details before you can withdraw",
+        "lowBalance": "Balance is below the minimum withdrawal",
+        "loadMoreError": "Couldn't load more withdrawals",
+        "status": {
+          "pending": "Pending",
+          "confirmed": "Confirmed",
+          "processing": "Processing",
+          "completed": "Completed",
+          "rejected": "Rejected",
+          "failed": "Failed"
+        },
+        "form": {
+          "title": "Request withdrawal",
+          "amountLabel": "Amount (USD)",
+          "amountPlaceholder": "0.00",
+          "amountHint": "Min {min} · Max {max} · Available {available}",
+          "errorBelowMin": "Below the minimum withdrawal ({min})",
+          "errorAboveMax": "Above the maximum withdrawal ({max})",
+          "errorInsuff": "Exceeds your available balance ({available})",
+          "submit": "Request",
+          "cancel": "Cancel",
+          "successToast": "Withdrawal requested",
+          "error": "Couldn't request the withdrawal"
+        }
+      },
+      "payout": {
+        "title": "Payout details",
+        "empty": "No payout details set yet",
+        "editButton": "Edit details",
+        "form": {
+          "title": "Payout details",
+          "label": "Details (JSON)",
+          "placeholder": "{ \"method\": \"bank\", \"iban\": \"...\" }",
+          "hint": "Enter your payout details as a JSON object.",
+          "errorJson": "Not valid JSON",
+          "errorObject": "Must be a JSON object",
+          "errorEmpty": "Add at least one payout field",
+          "submit": "Save",
+          "cancel": "Cancel",
+          "successToast": "Payout details updated",
+          "error": "Could not save payout details"
+        }
       }
     },
     "deposit": {
