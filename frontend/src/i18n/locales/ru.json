@@ -1095,8 +1095,16 @@
       },
       "profile": {
         "title": "Профиль",
+        "firstName": "Имя",
+        "lastName": "Фамилия",
         "phone": "Телефон",
-        "country": "Страна"
+        "country": "Страна",
+        "language": "Язык",
+        "notSet": "Не указано",
+        "editTitle": "Редактировать профиль",
+        "editSuccess": "Профиль обновлён",
+        "editError": "Не удалось обновить профиль",
+        "requiredError": "Обязательное поле"
       },
       "prefs": {
         "title": "Предпочтения",
@@ -1771,6 +1779,19 @@
       "unnamed": "Агент",
       "role": {
         "agent": "Агент"
+      },
+      "profile": {
+        "title": "Профиль",
+        "firstName": "Имя",
+        "lastName": "Фамилия",
+        "phone": "Телефон",
+        "country": "Страна",
+        "language": "Язык",
+        "notSet": "Не указано",
+        "editTitle": "Редактировать профиль",
+        "editSuccess": "Профиль обновлён",
+        "editError": "Не удалось обновить профиль",
+        "requiredError": "Обязательное поле"
       },
       "payout": {
         "title": "Платёжные реквизиты",

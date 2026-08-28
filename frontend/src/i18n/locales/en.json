@@ -1095,8 +1095,16 @@
       },
       "profile": {
         "title": "Profile",
+        "firstName": "First name",
+        "lastName": "Last name",
         "phone": "Phone",
-        "country": "Country"
+        "country": "Country",
+        "language": "Language",
+        "notSet": "Not set",
+        "editTitle": "Edit profile",
+        "editSuccess": "Profile updated",
+        "editError": "Could not update your profile",
+        "requiredError": "Required"
       },
       "prefs": {
         "title": "Preferences",
@@ -1771,6 +1779,19 @@
       "unnamed": "Agent",
       "role": {
         "agent": "Agent"
+      },
+      "profile": {
+        "title": "Profile",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "phone": "Phone",
+        "country": "Country",
+        "language": "Language",
+        "notSet": "Not set",
+        "editTitle": "Edit profile",
+        "editSuccess": "Profile updated",
+        "editError": "Could not update your profile",
+        "requiredError": "Required"
       },
       "payout": {
         "title": "Payout details",

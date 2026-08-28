@@ -14,15 +14,31 @@
 //
 // SECTIONS.
 //   1. Profile card -- avatar (via CAvatar, URL from profile.avatar_url
-//      with initials fallback), full name, email, role badge. All
-//      READ-ONLY. Per F4.4 B5 scope: personal data (name, phone,
-//      country, language) is NOT editable from Settings. Any future
-//      edit flow lives elsewhere (KYC re-submit, staff avatar mode).
-//   2. Profile details -- phone and country, each rendered as a
-//      single read-only row. Hidden if both are absent. Language is
-//      intentionally omitted: locale is locked at registration and
-//      the Settings page cannot change it, so showing it read-only
-//      adds noise without action.
+//      with initials fallback), full name, email, role badge. Avatar,
+//      email and role stay READ-ONLY here.
+//   2. Profile details -- phone, country and language, plus an edit
+//      pencil that opens the profile form modal (TASK-38 item 3).
+//
+//      TASK-38 UPDATE (supersedes the old F4.4 B5 ruling below): name /
+//      phone / country / language are now self-service editable. The old
+//      scope note read "personal data ... is NOT editable from Settings
+//      ... locale is locked at registration and the Settings page cannot
+//      change it" -- that was a frontend-only gap, not a backend
+//      constraint: PATCH /api/v1/users/me already accepted `profile`
+//      (first_name/last_name/phone/country, TD-024 whitelist in
+//      users/service.py) and `language` (a plain, NOT NULL User column)
+//      for every role. This view now exposes the missing editor. See the
+//      "Profile: self-service edit" block below for the diff-and-submit
+//      logic -- same shape as CompanySettingsView's TASK-30 W1 pattern.
+//
+//      Saving a language change ALSO calls the shared `setLocale()` (the
+//      same function CAppControls' header picker uses) right after a
+//      successful PATCH, so the current tab's UI switches immediately
+//      instead of only taking effect on the next login -- keeping the
+//      persisted `user.language` and the live session locale in sync
+//      rather than leaving a saved-but-invisible change (see CAppControls'
+//      own header comment: "the locale was set exclusively from
+//      `user.language` at login").
 //   3. Preferences -- theme selector (3 chips: auto / light / dark,
 //      driven by useTheme -- client-only, no backend round-trip) and
 //      a marketing consent toggle backed by profile.marketing_consent
@@ -89,13 +105,14 @@ import {
   LogOut,
   Monitor,
   Moon,
+  Pencil,
   RefreshCw,
   Shield,
   Sun,
   UserPlus,
 } from 'lucide-vue-next'
 
-import { CAvatar, CButton, CLoader } from '@/components/ui'
+import { CAvatar, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
@@ -106,7 +123,11 @@ import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { tOrRaw } from '@/utils/i18n'
-import type { AgentApplicationResponse } from '@/api/types'
+import { setLocale } from '@/i18n'
+import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
+import { COUNTRIES } from '@/utils/countries'
+import { ApiResponseError } from '@/api/client'
+import type { AgentApplicationResponse, UserUpdate } from '@/api/types'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -122,11 +143,18 @@ function _profile(): Record<string, unknown> {
   return p && typeof p === 'object' ? (p as Record<string, unknown>) : {}
 }
 
+const firstName = computed<string>(() => {
+  const v = _profile().first_name
+  return typeof v === 'string' ? v : ''
+})
+
+const lastName = computed<string>(() => {
+  const v = _profile().last_name
+  return typeof v === 'string' ? v : ''
+})
+
 const fullName = computed<string>(() => {
-  const p = _profile()
-  const first = typeof p.first_name === 'string' ? p.first_name : ''
-  const last = typeof p.last_name === 'string' ? p.last_name : ''
-  const name = [first, last].filter(Boolean).join(' ').trim()
+  const name = [firstName.value, lastName.value].filter(Boolean).join(' ').trim()
   return name || t('inv.settings.unnamed')
 })
 
@@ -153,9 +181,148 @@ const country = computed<string>(() => {
   return typeof v === 'string' ? v : ''
 })
 
-const hasProfileDetails = computed<boolean>(
-  () => phone.value.length > 0 || country.value.length > 0,
+const countryLabel = computed<string>(() => {
+  const code = country.value
+  if (!code) return t('inv.settings.profile.notSet')
+  return COUNTRIES.find((c) => c.value === code)?.label ?? code
+})
+
+const phoneDisplay = computed<string>(() => phone.value || t('inv.settings.profile.notSet'))
+
+const currentLanguage = computed<string>(() => authStore.user?.language ?? '')
+
+const languageLabel = computed<string>(() => {
+  const code = currentLanguage.value
+  return SUPPORTED_LOCALES.find((l) => l.code === code)?.label ?? code
+})
+
+// ---------------------------------------------------------------------------
+// Profile: self-service edit (TASK-38 item 3)
+// ---------------------------------------------------------------------------
+//
+// Covers name/phone/country/language -- the fields the F4.4 B5 scope note
+// used to call out as read-only. Same diff-and-submit discipline as
+// CompanySettingsView's TASK-30 W1 profile editor: drafts seeded from the
+// loaded profile on open, submit sends only fields that actually changed
+// (omitted = untouched, backend's exclude_unset leaves it alone), response
+// re-synced into the auth store on success.
+//
+// Language options offer the FULL SUPPORTED_LOCALES set (including the
+// still-partial de/ar translations), not just the complete en/ru pair --
+// deliberately, for consistency with the two pickers that already offer
+// all four with no restriction: CAppControls' header picker and this same
+// user's own OnboardingProfileView language step (i.e. a user who
+// registered with de/ar could otherwise never select it again here). No
+// file in this codebase documents de/ar as excluded from user selection;
+// restricting only this picker would introduce a new inconsistency rather
+// than fix one.
+
+const showEditProfile = ref(false)
+const savingProfile = ref(false)
+
+const draftFirstName = ref('')
+const draftLastName = ref('')
+const draftPhone = ref('')
+const draftCountry = ref('')
+const draftLanguage = ref('')
+
+function openEditProfile(): void {
+  draftFirstName.value = firstName.value
+  draftLastName.value = lastName.value
+  draftPhone.value = phone.value
+  draftCountry.value = country.value
+  draftLanguage.value = currentLanguage.value
+  showEditProfile.value = true
+}
+
+function closeEditProfile(): void {
+  showEditProfile.value = false
+}
+
+const trimmedFirstName = computed<string>(() => draftFirstName.value.trim())
+const trimmedLastName = computed<string>(() => draftLastName.value.trim())
+const trimmedPhone = computed<string>(() => draftPhone.value.trim())
+
+// first_name/last_name/country: backend applies no length/format
+// validation beyond the profile-keys whitelist (any string is accepted),
+// but leaving them non-empty mirrors what OnboardingProfileView already
+// required at initial setup -- not a stricter rule, the SAME one, just
+// re-applied to editing. Phone stays optional, also matching onboarding.
+const firstNameValid = computed<boolean>(() => trimmedFirstName.value.length > 0)
+const lastNameValid = computed<boolean>(() => trimmedLastName.value.length > 0)
+const countryValid = computed<boolean>(() => draftCountry.value.length > 0)
+
+const canSubmitProfile = computed<boolean>(
+  () => firstNameValid.value && lastNameValid.value && countryValid.value,
 )
+
+const countryOptions = COUNTRIES
+const languageOptions = SUPPORTED_LOCALES.map((l) => ({ value: l.code, label: l.label }))
+
+function buildProfileUpdateBody(): UserUpdate {
+  const body: UserUpdate = {}
+  const profileUpdates: Record<string, unknown> = {}
+
+  if (trimmedFirstName.value !== firstName.value) {
+    profileUpdates.first_name = trimmedFirstName.value
+  }
+  if (trimmedLastName.value !== lastName.value) {
+    profileUpdates.last_name = trimmedLastName.value
+  }
+  if (trimmedPhone.value !== phone.value) {
+    // Clearing an existing phone sends an explicit null (JSONB merge
+    // semantics: omitted key = untouched, present null = cleared) --
+    // same rule CompanySettingsView's media-URL fields use.
+    profileUpdates.phone = trimmedPhone.value ? trimmedPhone.value : null
+  }
+  if (draftCountry.value !== country.value) {
+    profileUpdates.country = draftCountry.value
+  }
+
+  if (Object.keys(profileUpdates).length > 0) {
+    body.profile = profileUpdates
+  }
+
+  if (draftLanguage.value && draftLanguage.value !== currentLanguage.value) {
+    body.language = draftLanguage.value
+  }
+
+  return body
+}
+
+async function handleSaveProfile(): Promise<void> {
+  if (!canSubmitProfile.value) return
+
+  const body = buildProfileUpdateBody()
+  // Nothing changed -- close without a redundant PATCH.
+  if (Object.keys(body).length === 0) {
+    showEditProfile.value = false
+    return
+  }
+
+  const newLanguage = body.language
+  savingProfile.value = true
+  try {
+    await updateMe(body)
+    await authStore.fetchMe()
+    // Persisted (user.language) and live session locale are two separate
+    // mechanisms -- see the header comment. Switch the active session
+    // right away so the change is visible now, not only on next login.
+    if (newLanguage) {
+      await setLocale(newLanguage)
+    }
+    showEditProfile.value = false
+    showToast(t('inv.settings.profile.editSuccess'), 'success')
+  } catch (err) {
+    const message =
+      err instanceof ApiResponseError && err.detail
+        ? err.detail
+        : t('inv.settings.profile.editError')
+    showToast(message, 'error')
+  } finally {
+    savingProfile.value = false
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Theme (3-state chips)
@@ -352,22 +519,37 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Profile details (read-only) -->
-    <section v-if="hasProfileDetails" class="sett__section">
-      <div class="sett__section-title">
-        {{ t('inv.settings.profile.title') }}
+    <!-- Profile details -- phone/country/language, edit pencil opens the
+         profile form modal (TASK-38 item 3). -->
+    <section class="sett__section">
+      <div class="sett__section-title sett__section-title--row">
+        <span>{{ t('inv.settings.profile.title') }}</span>
+        <button
+          type="button"
+          class="sett__edit-btn"
+          :aria-label="t('common.edit')"
+          @click="openEditProfile"
+        >
+          <Pencil :size="14" />
+        </button>
       </div>
-      <div v-if="phone" class="sett__row">
+      <div class="sett__row">
         <span class="sett__row-label">
           {{ t('inv.settings.profile.phone') }}
         </span>
-        <span class="sett__row-value">{{ phone }}</span>
+        <span class="sett__row-value">{{ phoneDisplay }}</span>
       </div>
-      <div v-if="country" class="sett__row">
+      <div class="sett__row">
         <span class="sett__row-label">
           {{ t('inv.settings.profile.country') }}
         </span>
-        <span class="sett__row-value">{{ country }}</span>
+        <span class="sett__row-value">{{ countryLabel }}</span>
+      </div>
+      <div class="sett__row">
+        <span class="sett__row-label">
+          {{ t('inv.settings.profile.language') }}
+        </span>
+        <span class="sett__row-value">{{ languageLabel }}</span>
       </div>
     </section>
 
@@ -518,6 +700,66 @@ onMounted(() => {
         <ChevronRight :size="16" />
       </button>
     </section>
+
+    <!-- Profile edit modal (TASK-38 item 3): first/last name, phone,
+         country, language. -->
+    <CModal :open="showEditProfile" @close="closeEditProfile">
+      <h3 class="sett__modal-title">
+        {{ t('inv.settings.profile.editTitle') }}
+      </h3>
+
+      <div class="sett__modal-row">
+        <CInput
+          v-model="draftFirstName"
+          class="sett__modal-col"
+          :label="t('inv.settings.profile.firstName')"
+          :error="!firstNameValid ? t('inv.settings.profile.requiredError') : ''"
+        />
+        <CInput
+          v-model="draftLastName"
+          class="sett__modal-col"
+          :label="t('inv.settings.profile.lastName')"
+          :error="!lastNameValid ? t('inv.settings.profile.requiredError') : ''"
+        />
+      </div>
+
+      <CInput
+        v-model="draftPhone"
+        :label="t('inv.settings.profile.phone')"
+        type="tel"
+        placeholder="+49 XXX XXXXXXXX"
+        autocomplete="tel"
+      />
+
+      <CSelect
+        v-model="draftCountry"
+        :label="t('inv.settings.profile.country')"
+        :options="countryOptions"
+        placeholder="—"
+        :error="!countryValid ? t('inv.settings.profile.requiredError') : ''"
+      />
+
+      <CSelect
+        v-model="draftLanguage"
+        :label="t('inv.settings.profile.language')"
+        :options="languageOptions"
+      />
+
+      <div class="sett__modal-actions">
+        <CButton variant="outline" size="sm" @click="closeEditProfile">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="savingProfile"
+          :disabled="!canSubmitProfile"
+          @click="handleSaveProfile"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 
@@ -594,6 +836,31 @@ onMounted(() => {
   letter-spacing: 0.12em;
   margin-bottom: var(--space-2);
   padding: 0 var(--space-1);
+}
+.sett__section-title--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sett__edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-md);
+  height: var(--size-sm);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+.sett__edit-btn:hover {
+  color: var(--primary);
+  background: var(--bg-subtle);
 }
 
 /*
@@ -756,5 +1023,25 @@ button.sett__row:last-child {
 .sett__toggle:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Profile edit modal (TASK-38 item 3) */
+.sett__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.sett__modal-row {
+  display: flex;
+  gap: var(--space-3);
+}
+.sett__modal-col {
+  flex: 1;
+}
+.sett__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 </style>

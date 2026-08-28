@@ -5,14 +5,26 @@
 //
 // Reached from the More tab (AgentMoreView -> Settings tile). Replaces
 // the F6.2 stub. Kept deliberately thin (decision in chat):
-//   1. Profile card -- avatar / name / email / role badge. READ-ONLY,
-//      same scope as InvestorSettingsView (no name/phone/locale edit).
-//   2. Payout details -- preview (JSON) + add/edit via a bottom-sheet
+//   1. Profile card -- avatar / name / email / role badge. Avatar,
+//      email and role stay READ-ONLY here.
+//   2. Profile details -- phone/country/language, edit pencil opens the
+//      profile form modal (TASK-38 item 3).
+//
+//      TASK-38 UPDATE (supersedes the "no name/phone/locale edit" line
+//      that used to sit above): that was a frontend-only gap, not a
+//      backend constraint -- PATCH /api/v1/users/me already accepted
+//      `profile` and `language` for every role, agent included. This
+//      view now exposes the same self-service editor
+//      InvestorSettingsView got, same diff-and-submit shape (see that
+//      view's "Profile: self-service edit" block for the full
+//      rationale, including why the language picker offers the full
+//      SUPPORTED_LOCALES set).
+//   3. Payout details -- preview (JSON) + add/edit via a bottom-sheet
 //      JSON editor (GET/PUT /users/me/payout-details). This is the
 //      payout home for the agent: AgentBalanceView only reads it as a
 //      gate and links here (decision B). Editor pattern lifted from
 //      CompanyBalanceView.
-//   3. Sign out -- authStore.logout then /login, with a double-click
+//   4. Sign out -- authStore.logout then /login, with a double-click
 //      guard.
 //
 // DELIBERATELY ABSENT.
@@ -37,15 +49,30 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight, CreditCard, LogOut, Pencil } from 'lucide-vue-next'
 
-import { CAvatar, CBackLink, CBottomSheet, CButton, CLoader, CTextarea } from '@/components/ui'
+import {
+  CAvatar,
+  CBackLink,
+  CBottomSheet,
+  CButton,
+  CInput,
+  CLoader,
+  CModal,
+  CSelect,
+  CTextarea,
+} from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
-import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
+import { getPayoutDetails, updateMe, updatePayoutDetails } from '@/api/users'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { tOrRaw } from '@/utils/i18n'
+import { setLocale } from '@/i18n'
+import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
+import { COUNTRIES } from '@/utils/countries'
+import { ApiResponseError } from '@/api/client'
+import type { UserUpdate } from '@/api/types'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -61,11 +88,18 @@ function _profile(): Record<string, unknown> {
   return p && typeof p === 'object' ? (p as Record<string, unknown>) : {}
 }
 
+const firstName = computed<string>(() => {
+  const v = _profile().first_name
+  return typeof v === 'string' ? v : ''
+})
+
+const lastName = computed<string>(() => {
+  const v = _profile().last_name
+  return typeof v === 'string' ? v : ''
+})
+
 const fullName = computed<string>(() => {
-  const p = _profile()
-  const first = typeof p.first_name === 'string' ? p.first_name : ''
-  const last = typeof p.last_name === 'string' ? p.last_name : ''
-  const name = [first, last].filter(Boolean).join(' ').trim()
+  const name = [firstName.value, lastName.value].filter(Boolean).join(' ').trim()
   return name || t('agent.settings.unnamed')
 })
 
@@ -80,6 +114,135 @@ const avatarUrl = computed<string | undefined>(() => {
   const v = _profile().avatar_url
   return typeof v === 'string' && v.length > 0 ? v : undefined
 })
+
+const phone = computed<string>(() => {
+  const v = _profile().phone
+  return typeof v === 'string' ? v : ''
+})
+
+const country = computed<string>(() => {
+  const v = _profile().country
+  return typeof v === 'string' ? v : ''
+})
+
+const phoneDisplay = computed<string>(() => phone.value || t('agent.settings.profile.notSet'))
+
+const countryLabel = computed<string>(() => {
+  const code = country.value
+  if (!code) return t('agent.settings.profile.notSet')
+  return COUNTRIES.find((c) => c.value === code)?.label ?? code
+})
+
+const currentLanguage = computed<string>(() => authStore.user?.language ?? '')
+
+const languageLabel = computed<string>(() => {
+  const code = currentLanguage.value
+  return SUPPORTED_LOCALES.find((l) => l.code === code)?.label ?? code
+})
+
+// ---------------------------------------------------------------------------
+// Profile: self-service edit (TASK-38 item 3)
+// ---------------------------------------------------------------------------
+//
+// Identical shape to InvestorSettingsView's editor -- see that view's
+// header comment and its own "Profile: self-service edit" block for the
+// full rationale (diff-and-submit discipline, why phone clears to null,
+// why the language picker offers the full SUPPORTED_LOCALES set).
+
+const showEditProfile = ref(false)
+const savingProfile = ref(false)
+
+const draftFirstName = ref('')
+const draftLastName = ref('')
+const draftPhone = ref('')
+const draftCountry = ref('')
+const draftLanguage = ref('')
+
+function openEditProfile(): void {
+  draftFirstName.value = firstName.value
+  draftLastName.value = lastName.value
+  draftPhone.value = phone.value
+  draftCountry.value = country.value
+  draftLanguage.value = currentLanguage.value
+  showEditProfile.value = true
+}
+
+function closeEditProfile(): void {
+  showEditProfile.value = false
+}
+
+const trimmedFirstName = computed<string>(() => draftFirstName.value.trim())
+const trimmedLastName = computed<string>(() => draftLastName.value.trim())
+const trimmedPhone = computed<string>(() => draftPhone.value.trim())
+
+const firstNameValid = computed<boolean>(() => trimmedFirstName.value.length > 0)
+const lastNameValid = computed<boolean>(() => trimmedLastName.value.length > 0)
+const countryValid = computed<boolean>(() => draftCountry.value.length > 0)
+
+const canSubmitProfile = computed<boolean>(
+  () => firstNameValid.value && lastNameValid.value && countryValid.value,
+)
+
+const countryOptions = COUNTRIES
+const languageOptions = SUPPORTED_LOCALES.map((l) => ({ value: l.code, label: l.label }))
+
+function buildProfileUpdateBody(): UserUpdate {
+  const body: UserUpdate = {}
+  const profileUpdates: Record<string, unknown> = {}
+
+  if (trimmedFirstName.value !== firstName.value) {
+    profileUpdates.first_name = trimmedFirstName.value
+  }
+  if (trimmedLastName.value !== lastName.value) {
+    profileUpdates.last_name = trimmedLastName.value
+  }
+  if (trimmedPhone.value !== phone.value) {
+    profileUpdates.phone = trimmedPhone.value ? trimmedPhone.value : null
+  }
+  if (draftCountry.value !== country.value) {
+    profileUpdates.country = draftCountry.value
+  }
+
+  if (Object.keys(profileUpdates).length > 0) {
+    body.profile = profileUpdates
+  }
+
+  if (draftLanguage.value && draftLanguage.value !== currentLanguage.value) {
+    body.language = draftLanguage.value
+  }
+
+  return body
+}
+
+async function handleSaveProfile(): Promise<void> {
+  if (!canSubmitProfile.value) return
+
+  const body = buildProfileUpdateBody()
+  if (Object.keys(body).length === 0) {
+    showEditProfile.value = false
+    return
+  }
+
+  const newLanguage = body.language
+  savingProfile.value = true
+  try {
+    await updateMe(body)
+    await authStore.fetchMe()
+    if (newLanguage) {
+      await setLocale(newLanguage)
+    }
+    showEditProfile.value = false
+    showToast(t('agent.settings.profile.editSuccess'), 'success')
+  } catch (err) {
+    const message =
+      err instanceof ApiResponseError && err.detail
+        ? err.detail
+        : t('agent.settings.profile.editError')
+    showToast(message, 'error')
+  } finally {
+    savingProfile.value = false
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Payout details
@@ -275,6 +438,40 @@ onMounted(() => {
       </div>
     </section>
 
+    <!-- Profile details -- phone/country/language, edit pencil opens the
+         profile form modal (TASK-38 item 3). -->
+    <section class="sett__section">
+      <div class="sett__section-title sett__section-title--row">
+        <span>{{ t('agent.settings.profile.title') }}</span>
+        <button
+          type="button"
+          class="sett__edit-btn"
+          :aria-label="t('common.edit')"
+          @click="openEditProfile"
+        >
+          <Pencil :size="14" />
+        </button>
+      </div>
+      <div class="sett__row sett__row--static">
+        <span class="sett__row-label">
+          {{ t('agent.settings.profile.phone') }}
+        </span>
+        <span class="sett__row-value">{{ phoneDisplay }}</span>
+      </div>
+      <div class="sett__row sett__row--static">
+        <span class="sett__row-label">
+          {{ t('agent.settings.profile.country') }}
+        </span>
+        <span class="sett__row-value">{{ countryLabel }}</span>
+      </div>
+      <div class="sett__row sett__row--static">
+        <span class="sett__row-label">
+          {{ t('agent.settings.profile.language') }}
+        </span>
+        <span class="sett__row-value">{{ languageLabel }}</span>
+      </div>
+    </section>
+
     <!-- Payout details -->
     <section class="sett__section">
       <div class="sett__section-title">
@@ -396,6 +593,66 @@ onMounted(() => {
         </div>
       </form>
     </CBottomSheet>
+
+    <!-- Profile edit modal (TASK-38 item 3): first/last name, phone,
+         country, language. -->
+    <CModal :open="showEditProfile" @close="closeEditProfile">
+      <h3 class="sett__modal-title">
+        {{ t('agent.settings.profile.editTitle') }}
+      </h3>
+
+      <div class="sett__modal-row">
+        <CInput
+          v-model="draftFirstName"
+          class="sett__modal-col"
+          :label="t('agent.settings.profile.firstName')"
+          :error="!firstNameValid ? t('agent.settings.profile.requiredError') : ''"
+        />
+        <CInput
+          v-model="draftLastName"
+          class="sett__modal-col"
+          :label="t('agent.settings.profile.lastName')"
+          :error="!lastNameValid ? t('agent.settings.profile.requiredError') : ''"
+        />
+      </div>
+
+      <CInput
+        v-model="draftPhone"
+        :label="t('agent.settings.profile.phone')"
+        type="tel"
+        placeholder="+49 XXX XXXXXXXX"
+        autocomplete="tel"
+      />
+
+      <CSelect
+        v-model="draftCountry"
+        :label="t('agent.settings.profile.country')"
+        :options="countryOptions"
+        placeholder="—"
+        :error="!countryValid ? t('agent.settings.profile.requiredError') : ''"
+      />
+
+      <CSelect
+        v-model="draftLanguage"
+        :label="t('agent.settings.profile.language')"
+        :options="languageOptions"
+      />
+
+      <div class="sett__modal-actions">
+        <CButton variant="outline" size="sm" @click="closeEditProfile">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="savingProfile"
+          :disabled="!canSubmitProfile"
+          @click="handleSaveProfile"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 
@@ -477,6 +734,31 @@ onMounted(() => {
   letter-spacing: 0.12em;
   padding: 0 var(--space-1);
 }
+.sett__section-title--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sett__edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-md);
+  height: var(--size-sm);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+.sett__edit-btn:hover {
+  color: var(--primary);
+  background: var(--bg-subtle);
+}
 .sett__section-desc {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
@@ -540,6 +822,12 @@ onMounted(() => {
   opacity: 0.6;
   pointer-events: none;
 }
+/* Plain read-only row (profile phone/country/language) -- same box as
+   the clickable rows above, minus the pointer affordance that would
+   otherwise wrongly suggest these display-only rows are tappable. */
+.sett__row--static {
+  cursor: default;
+}
 .sett__row-label {
   display: inline-flex;
   align-items: center;
@@ -550,6 +838,32 @@ onMounted(() => {
 .sett__row-label--danger {
   color: var(--danger);
   font-weight: 600;
+}
+.sett__row-value {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  text-align: right;
+  word-break: break-word;
+}
+
+/* Profile edit modal (TASK-38 item 3) */
+.sett__modal-title {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+.sett__modal-row {
+  display: flex;
+  gap: var(--space-3);
+}
+.sett__modal-col {
+  flex: 1;
+}
+.sett__modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
 /* Payout form */

@@ -11,6 +11,7 @@ import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/c
 import { safeNavigate } from '@/composables/safeNavigate'
 import type { UserResponse } from '@/api/types'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
+import { COUNTRIES } from '@/utils/countries'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput, CSelect } from '@/components/ui'
@@ -27,13 +28,9 @@ const language = ref(locale.value)
 const loading = ref(false)
 const error = ref('')
 
-const countries = [
-  { value: 'DE', label: 'Deutschland' },
-  { value: 'CH', label: 'Schweiz' },
-  { value: 'AT', label: 'Österreich' },
-  { value: 'RU', label: 'Россия' },
-  { value: 'OTHER', label: 'Other' },
-]
+// Shared with the settings self-service profile editors (TASK-38 item 3) --
+// see @/utils/countries for why this moved out of a page-local const.
+const countries = COUNTRIES
 
 // Derived from SUPPORTED_LOCALES so adding a new language requires
 // only one change (the config file + its JSON) and the picker picks
