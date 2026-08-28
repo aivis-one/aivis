@@ -39,6 +39,7 @@ import { ChevronRight, CreditCard, LogOut, Pencil } from 'lucide-vue-next'
 
 import { CAvatar, CBackLink, CBottomSheet, CButton, CLoader, CTextarea } from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
+import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
@@ -324,6 +325,7 @@ onMounted(() => {
         {{ t('agent.settings.actions.title') }}
       </div>
       <EmailChangeSection tPrefix="agent.settings.actions" />
+      <ActiveSessionsSection tPrefix="agent.settings.actions" />
       <DeactivateAccountSection tPrefix="agent.settings.actions" />
       <button
         type="button"

@@ -10,7 +10,13 @@
 # G1 fix: +VerifyEmailRequest for email verification
 # Password reset: +PasswordResetRequest / PasswordResetConfirmRequest
 #   (both unauthenticated -- see auth/service.py module note)
+# TASK-38: +SessionItemResponse / SessionListResponse -- GET /sessions.
+#   session_id is a non-reversible public id (SHA-256 of the bearer
+#   token, see auth/service.py's "PUBLIC SESSION ID" module note) --
+#   never the raw token itself.
 # =============================================================================
+
+from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -152,3 +158,38 @@ class AuthResponse(BaseModel):
 
     user: UserResponse
     session_token: str
+
+
+# ---------------------------------------------------------------------------
+# Active sessions (TASK-38)
+# ---------------------------------------------------------------------------
+
+
+class SessionItemResponse(BaseModel):
+    """One entry in GET /api/v1/auth/sessions.
+
+    session_id is DELIBERATELY NOT the bearer token -- it is a
+    non-reversible SHA-256 hash of it (auth/service.py's
+    _session_public_id). Holding this value grants no access; it only
+    identifies which session to target in
+    DELETE /api/v1/auth/sessions/{session_id}.
+    """
+
+    session_id: str = Field(
+        ...,
+        description="Non-reversible public id for this session (not the bearer token)",
+    )
+    created_at: datetime
+    auth_method: str
+    ip: str
+    user_agent: str
+    is_current: bool = Field(
+        ...,
+        description="True for the session making this very request",
+    )
+
+
+class SessionListResponse(BaseModel):
+    """GET /api/v1/auth/sessions -- response body."""
+
+    items: list[SessionItemResponse]

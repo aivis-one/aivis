@@ -97,6 +97,7 @@ import {
 
 import { CAvatar, CButton, CLoader } from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
+import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { updateMe } from '@/api/users'
@@ -500,6 +501,7 @@ onMounted(() => {
       </button>
 
       <EmailChangeSection tPrefix="inv.settings.actions" />
+      <ActiveSessionsSection tPrefix="inv.settings.actions" />
       <DeactivateAccountSection tPrefix="inv.settings.actions" />
 
       <button

@@ -17,6 +17,18 @@
 #                                             avatar mode, R49 -- see
 #                                             auth/avatar_guard.py's
 #                                             logout_all note)
+#   GET /api/v1/auth/sessions             -- List caller's own active
+#                                             sessions (TASK-38)
+#   DELETE /api/v1/auth/sessions/{id}     -- Revoke one session by its
+#                                             public id (TASK-38, blocked
+#                                             in avatar mode -- see
+#                                             avatar_guard.py's
+#                                             revoke_session note)
+#
+# ACTIVE SESSIONS (TASK-38): session_id in the list/revoke pair below is
+# NEVER the bearer token -- see auth/service.py's "PUBLIC SESSION ID"
+# module note for the exact SHA-256 mechanism and why a response body
+# must never carry a live credential.
 #
 # PASSWORD RESET is deliberately UNAUTHENTICATED (no get_current_user_write):
 #   the entire premise is that the caller is locked out and has no
@@ -56,7 +68,7 @@ import structlog
 from app.core.client_ip import get_client_ip
 from app.core.config import settings
 from app.core.database import get_db_session
-from app.core.exceptions import BadRequestError
+from app.core.exceptions import BadRequestError, NotFoundError
 from app.core.rate_limit import check_rate_limit
 from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
@@ -67,6 +79,8 @@ from app.modules.auth.schemas import (
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     PasswordResetRequestResponse,
+    SessionItemResponse,
+    SessionListResponse,
     TelegramAuthRequest,
     VerifyEmailRequest,
 )
@@ -75,10 +89,12 @@ from app.modules.auth.service import (
     create_session,
     delete_all_sessions,
     delete_session,
+    list_sessions,
     login_email,
     register_email,
     request_password_reset,
     resend_verification_code,
+    revoke_session,
     upsert_telegram_user,
     verify_email_code,
 )
@@ -126,7 +142,12 @@ async def auth_email_register(
         background_tasks,
         referral_code=body.referral_code,
     )
-    token = await create_session(user, auth_method="email")
+    token = await create_session(
+        user,
+        auth_method="email",
+        ip=ip,
+        user_agent=request.headers.get("User-Agent", ""),
+    )
 
     return AuthResponse(
         user=UserResponse.model_validate(user),
@@ -150,7 +171,12 @@ async def auth_email_login(
     await check_rate_limit(f"email_auth:{ip}")
 
     user = await login_email(body.email, body.password, session, background_tasks)
-    token = await create_session(user, auth_method="email")
+    token = await create_session(
+        user,
+        auth_method="email",
+        ip=ip,
+        user_agent=request.headers.get("User-Agent", ""),
+    )
 
     return AuthResponse(
         user=UserResponse.model_validate(user),
@@ -263,6 +289,7 @@ async def auth_password_reset_confirm(
 )
 async def auth_telegram(
     body: TelegramAuthRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> AuthResponse:
     """Authenticate via Telegram WebApp.
@@ -274,6 +301,12 @@ async def auth_telegram(
       4. Find or create User by telegram_id in credentials JSONB
       5. Create Redis session
       6. Return AuthResponse
+
+    request (TASK-38): this endpoint had no Request param before --
+    the other two create_session() call sites already had one in scope
+    for get_client_ip() rate-limiting, this one did not since Telegram
+    auth is rate-limited per telegram_id (check_auth_rate_limit), not
+    per IP. Added solely to capture ip/user_agent for the session list.
     """
     # Step 1: Validate initData from Telegram.
     try:
@@ -309,7 +342,12 @@ async def auth_telegram(
     )
 
     # Step 5: Create Redis session.
-    token = await create_session(user, auth_method="telegram")
+    token = await create_session(
+        user,
+        auth_method="telegram",
+        ip=get_client_ip(request),
+        user_agent=request.headers.get("User-Agent", ""),
+    )
 
     return AuthResponse(
         user=UserResponse.model_validate(user),
@@ -355,3 +393,89 @@ async def auth_logout_all(
         user_id=str(user.id),
         sessions_invalidated=count,
     )
+
+
+# ---------------------------------------------------------------------------
+# Active sessions (TASK-38)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/sessions",
+    response_model=SessionListResponse,
+)
+async def auth_list_sessions(
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> SessionListResponse:
+    """List the caller's own active sessions, newest-first.
+
+    is_current is computed by comparing each session's (internal-only)
+    token against the caller's own bearer token, extracted the same way
+    /logout already does it (Authorization header, "Bearer " prefix
+    stripped). That raw token is used ONLY for this comparison and is
+    never placed on the response model -- see service.py's
+    "PUBLIC SESSION ID" module note and SessionItemResponse's docstring
+    for why a live credential must never appear in this response.
+
+    Not gated by forbid_avatar -- read-only visibility, same category
+    as the rest of what avatar mode already exposes about the target
+    user (see avatar_guard.py's revoke_session note for the asymmetry
+    with the DELETE endpoint below).
+    """
+    auth_header = request.headers.get("Authorization", "")
+    current_token = auth_header[7:] if auth_header.startswith("Bearer ") else ""
+
+    sessions = await list_sessions(user.id)
+
+    items = [
+        SessionItemResponse(
+            session_id=s["session_id"],
+            created_at=s["created_at"],
+            auth_method=s["auth_method"],
+            ip=s["ip"],
+            user_agent=s["user_agent"],
+            is_current=(s["token"] == current_token),
+        )
+        for s in sessions
+    ]
+
+    return SessionListResponse(items=items)
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # Same disruption-vector reasoning as logout_all, at single-device
+    # granularity -- see avatar_guard.py's revoke_session note.
+    dependencies=[Depends(forbid_avatar("revoke_session"))],
+)
+async def auth_revoke_session(
+    session_id: str,
+    user: User = Depends(get_current_user),
+) -> None:
+    """Revoke one of the caller's own sessions by its public id.
+
+    Revoking the CALLER'S OWN current session is deliberately ALLOWED
+    (not special-cased to redirect to /logout): revoke_session() is
+    already scoped to this user's own sessions, so there is no extra
+    privilege it grants over /logout -- self-revoking the current
+    session here has the exact same effect. The frontend simply does
+    not render a Revoke button on the is_current row (there is nothing
+    unsafe about the backend allowing it if some other client did).
+
+    404 -- not 403 -- when session_id does not resolve to one of the
+    caller's own sessions. This covers two cases identically on
+    purpose: the id does not exist at all, and the id belongs to a
+    DIFFERENT user's session. revoke_session() scopes its scan to this
+    user_id's own ZSET, so a foreign id can never match -- there is
+    nothing here for a caller to distinguish, same "don't confirm what
+    you can't prove the caller owns" discipline used across this
+    codebase's other auth-adjacent 404s (see auth/dependencies.py's
+    401-not-404 comment on a deleted user's session).
+    """
+    revoked = await revoke_session(user.id, session_id)
+    if not revoked:
+        raise NotFoundError("Session not found")
+
+    logger.info("user_session_revoked", user_id=str(user.id))

@@ -68,6 +68,17 @@
 #   (users/router.py). The remaining RESTRICTED_OPERATIONS entries
 #   still have no live endpoints (change_password / access_staff_shell)
 #   -- apply forbid_avatar when they appear.
+#
+#   revoke_session (auth/router.py DELETE /sessions/{session_id},
+#   TASK-38): same disruption-vector reasoning as logout_all, at
+#   single-device granularity -- an avatar session is NOT added to the
+#   target user's own user_sessions:{user_id} ZSET (avatar_service.py),
+#   so GET /sessions run by an avatar lists only the REAL owner's
+#   sessions, on devices the avatar has no legitimate reason to end.
+#   GET /sessions itself is left UNGUARDED: it is read-only visibility,
+#   the same category of access avatar mode already grants over the
+#   target's other data (KYC, financials, etc.) elsewhere in this
+#   codebase -- only the destructive half is restricted.
 # =============================================================================
 
 from typing import Callable
@@ -94,6 +105,7 @@ RESTRICTED_OPERATIONS = frozenset({
     "access_staff_shell",
     "modify_kyc",
     "logout_all",
+    "revoke_session",
 })
 
 

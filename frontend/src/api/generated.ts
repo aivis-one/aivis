@@ -1165,6 +1165,21 @@ export interface SendMessageIn {
   body: string
 }
 
+/** One entry in GET /api/v1/auth/sessions. session_id is DELIBERATELY NOT the bearer token -- it is a non-reversible SHA-256 hash of it (auth/service.py's _session_public_id). Holding this value grants no access; it only identifies which session to target in DELETE /api/v1/auth/sessions/{session_id}. */
+export interface SessionItemResponse {
+  session_id: string
+  created_at: string
+  auth_method: string
+  ip: string
+  user_agent: string
+  is_current: boolean
+}
+
+/** GET /api/v1/auth/sessions -- response body. */
+export interface SessionListResponse {
+  items: SessionItemResponse[]
+}
+
 /** An operator moving a conversation along (T-66). `open` IS NOT AN OPTION, and its absence is the point. comms allows no manual reopen whatsoever -- `closed` has an empty set of allowed manual transitions, and a thread comes back to life only when the CLIENT writes into it. Offering `open` here would be a field that always yields a 422 from comms: an endpoint documenting a state change that cannot be made. */
 export interface SetStatusIn {
   status: 'resolved' | 'closed'

@@ -8,6 +8,9 @@
 #   create_session()              -- Redis session with ZSET index
 #   delete_session()              -- single session logout
 #   delete_all_sessions()         -- logout-all via Lua script
+#   list_sessions()               -- enumerate active sessions (TASK-38)
+#   revoke_session()              -- kill one session by its public id
+#                                     (TASK-38)
 #   upsert_telegram_user()        -- Telegram WebApp auth (Sprint 1.2)
 #   verify_email_code()           -- verify 6-digit email code (G1)
 #   resend_verification_code()    -- regenerate + resend code (G1)
@@ -105,6 +108,7 @@
 # =============================================================================
 
 import asyncio
+import hashlib
 import json
 import secrets
 from datetime import datetime, timedelta, UTC
@@ -1101,6 +1105,33 @@ async def upsert_telegram_user(
 # ---------------------------------------------------------------------------
 # Session management
 # ---------------------------------------------------------------------------
+#
+# PUBLIC SESSION ID (TASK-38, list_sessions/revoke_session):
+#   The Redis key for a live session IS the bearer token
+#   (session:{token}) -- anyone holding that string authenticates as
+#   the user until it expires. GET /sessions must show the caller a
+#   list they can act on WITHOUT ever putting a working credential in
+#   a response body (browser history, devtools network tab, any
+#   response-body-logging middleware would all leak a live token).
+#
+#   _session_public_id() derives a non-reversible id via
+#   SHA-256(token), hex-encoded. This is deliberately a stateless HASH,
+#   not a second stored random id issued alongside the token:
+#     - No extra Redis write at create_session() time, no second key
+#       to keep in sync / evict / GC alongside session:{token}.
+#     - Deterministic: list_sessions() computes it while it is already
+#       iterating tokens off the ZSET for other fields; revoke_session()
+#       recomputes it per-candidate token to find the match -- no
+#       reverse-index lookup structure needed.
+#     - One-way: SHA-256 cannot be inverted, and the input (a 48-byte
+#       secrets.token_urlsafe value, ~64 bytes of base64) has far more
+#       entropy than any offline dictionary/rainbow-table attack could
+#       cover -- publishing the hash does not weaken the token.
+#   revoke_session() is O(n) over the caller's own session tokens
+#   (n <= MAX_CONCURRENT_SESSIONS, 5 by default) -- cheap, and avoids
+#   maintaining a second Redis structure purely to make an operation
+#   that already runs at most 5 times ever slightly faster.
+# =============================================================================
 
 
 def _get_session_ttl() -> int:
@@ -1108,7 +1139,19 @@ def _get_session_ttl() -> int:
     return settings.session_ttl_days * 86400
 
 
-async def create_session(user: User, auth_method: str = "email") -> str:
+def _session_public_id(token: str) -> str:
+    """Derive the non-reversible public id shown to the client for a
+    session token. See the "PUBLIC SESSION ID" module note above.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+async def create_session(
+    user: User,
+    auth_method: str = "email",
+    ip: str = "unknown",
+    user_agent: str = "",
+) -> str:
     """Create a new session in Redis and return the token.
 
     All Redis writes (SET + ZADD + GC + EXPIRE) execute in a single
@@ -1116,6 +1159,19 @@ async def create_session(user: User, auth_method: str = "email") -> str:
 
     MAX_CONCURRENT_SESSIONS: if the user exceeds the limit, the oldest
     session is evicted via ZPOPMIN.
+
+    ip / user_agent (TASK-38): captured at login/register/telegram-auth
+    time so list_sessions() can show the user something recognizable
+    ("Chrome on Windows, 1.2.3.4") instead of a bare timestamp.
+    user_agent is truncated to 400 chars -- it is display-only, never
+    parsed for a security decision, so an oversized header is just
+    noise to cap, not a validation concern. 400, not the original 200:
+    an adversarial review sampled real in-app-webview UA strings
+    (Instagram/WeChat Android browsers, both reachable via a shared
+    Telegram Mini App link) at 235-265 chars -- comfortably past 200,
+    which would have visibly garbled exactly the device labels a user
+    most needs to recognize (an unfamiliar in-app browser, not their
+    own desktop Chrome).
     """
     token = secrets.token_urlsafe(48)
     redis = get_redis()
@@ -1127,6 +1183,8 @@ async def create_session(user: User, auth_method: str = "email") -> str:
         "user_id": str(user.id),
         "auth_method": auth_method,
         "created_at": now.isoformat(),
+        "ip": ip,
+        "user_agent": user_agent[:400],
     })
 
     session_key = f"{_SESSION_PREFIX}{token}"
@@ -1240,3 +1298,82 @@ async def delete_all_sessions(user_id: UUID) -> int:
     )
 
     return int(count)
+
+
+async def list_sessions(user_id: UUID) -> list[dict]:
+    """List a user's active sessions, newest-first.
+
+    Each dict carries: session_id (public, see module note), token
+    (INTERNAL ONLY -- the router uses it to determine is_current by
+    comparing against the caller's own bearer token, then MUST discard
+    it before building the response; never let it reach a schema/JSON
+    body), created_at, auth_method, ip, user_agent.
+
+    ZREVRANGE (not ZRANGE) -- the index's score is created_at.timestamp()
+    (see create_session), so highest score = most recently created =
+    first in the list. Matches this codebase's other lists' newest-first
+    convention (e.g. get_my_applications).
+
+    GC note: a token can be in the ZSET with its session:{token} key
+    already gone (Redis TTL fired between the ZADD and now -- the two
+    do not expire atomically). Those entries are skipped from the
+    result AND swept from the ZSET here, same spirit as create_session's
+    session_index_gc -- best effort, not required for correctness since
+    _enforce_session_limit/create_session also GC on their own paths.
+    """
+    redis = get_redis()
+    index_key = f"{_USER_SESSIONS_PREFIX}{user_id}"
+
+    tokens = await redis.zrevrange(index_key, 0, -1)
+
+    sessions: list[dict] = []
+    stale_tokens: list[str] = []
+
+    for token in tokens:
+        raw = await redis.get(f"{_SESSION_PREFIX}{token}")
+        if raw is None:
+            stale_tokens.append(token)
+            continue
+        data = json.loads(raw)
+        sessions.append({
+            "session_id": _session_public_id(token),
+            "token": token,
+            "created_at": data.get("created_at"),
+            "auth_method": data.get("auth_method", "email"),
+            "ip": data.get("ip", "unknown"),
+            "user_agent": data.get("user_agent", ""),
+        })
+
+    if stale_tokens:
+        await redis.zrem(index_key, *stale_tokens)
+
+    return sessions
+
+
+async def revoke_session(user_id: UUID, session_id: str) -> bool:
+    """Revoke exactly one of a user's own sessions by its public id.
+
+    Scans the caller's own ZSET members (n <= MAX_CONCURRENT_SESSIONS,
+    5 by default -- see the module's "PUBLIC SESSION ID" note for why
+    this is a scan rather than a reverse-index lookup) and deletes the
+    token whose SHA-256 matches session_id.
+
+    Returns True if a session was found and deleted, False otherwise.
+    The router maps False -> 404 without distinguishing "no session
+    with that id exists at all" from "that id belongs to a different
+    user" -- scoping the scan to THIS user_id's own ZSET already makes
+    that distinction impossible to leak; a foreign session_id simply
+    never matches any token in this scan.
+    """
+    redis = get_redis()
+    index_key = f"{_USER_SESSIONS_PREFIX}{user_id}"
+
+    tokens = await redis.zrange(index_key, 0, -1)
+
+    for token in tokens:
+        if _session_public_id(token) == session_id:
+            await delete_session(token, user_id=user_id)
+            logger.info("session_revoked", user_id=str(user_id))
+            return True
+
+    return False

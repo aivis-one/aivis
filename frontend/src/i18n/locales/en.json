@@ -1146,6 +1146,24 @@
           "errorCode": "Invalid or expired code",
           "errorGeneric": "Something went wrong. Please try again."
         },
+        "sessions": {
+          "cta": "Active sessions",
+          "title": "Active sessions",
+          "loadError": "Couldn't load your sessions",
+          "retry": "Retry",
+          "current": "This device",
+          "createdAt": "Signed in {date}",
+          "revokeBtn": "Revoke",
+          "revokeConfirmTitle": "Sign out this device?",
+          "cancelBtn": "Cancel",
+          "confirmBtn": "Sign out",
+          "revokeSuccess": "Session revoked",
+          "errorGeneric": "Something went wrong. Please try again.",
+          "authMethod": {
+            "email": "Email",
+            "telegram": "Telegram"
+          }
+        },
         "deactivate": {
           "cta": "Deactivate account",
           "title": "Deactivate your account?",
@@ -1346,6 +1364,24 @@
           "errorEmailTaken": "This email is already registered",
           "errorCode": "Invalid or expired code",
           "errorGeneric": "Something went wrong. Please try again."
+        },
+        "sessions": {
+          "cta": "Active sessions",
+          "title": "Active sessions",
+          "loadError": "Couldn't load your sessions",
+          "retry": "Retry",
+          "current": "This device",
+          "createdAt": "Signed in {date}",
+          "revokeBtn": "Revoke",
+          "revokeConfirmTitle": "Sign out this device?",
+          "cancelBtn": "Cancel",
+          "confirmBtn": "Sign out",
+          "revokeSuccess": "Session revoked",
+          "errorGeneric": "Something went wrong. Please try again.",
+          "authMethod": {
+            "email": "Email",
+            "telegram": "Telegram"
+          }
         },
         "deactivate": {
           "cta": "Deactivate account",
@@ -1782,6 +1818,24 @@
           "errorEmailTaken": "This email is already registered",
           "errorCode": "Invalid or expired code",
           "errorGeneric": "Something went wrong. Please try again."
+        },
+        "sessions": {
+          "cta": "Active sessions",
+          "title": "Active sessions",
+          "loadError": "Couldn't load your sessions",
+          "retry": "Retry",
+          "current": "This device",
+          "createdAt": "Signed in {date}",
+          "revokeBtn": "Revoke",
+          "revokeConfirmTitle": "Sign out this device?",
+          "cancelBtn": "Cancel",
+          "confirmBtn": "Sign out",
+          "revokeSuccess": "Session revoked",
+          "errorGeneric": "Something went wrong. Please try again.",
+          "authMethod": {
+            "email": "Email",
+            "telegram": "Telegram"
+          }
         },
         "deactivate": {
           "cta": "Deactivate account",

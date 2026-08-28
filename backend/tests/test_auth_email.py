@@ -9,6 +9,12 @@
 #   13:    Session limit eviction (MAX_CONCURRENT_SESSIONS)
 #
 # Email prefix: "s11_" -- unique to this test file, cleaned up in fixture.
+#
+# TASK-38: 14-16 cover GET /sessions + DELETE /sessions/{id} (list,
+# is_current marking, revoke-kills-target-only, revoke 404 on a
+# nonexistent/foreign id). Row selection is by fresh-per-test data
+# (each test registers its own unique user(s)), never by absolute
+# count against shared state -- LESSONS.md.
 # =============================================================================
 
 import pytest
@@ -419,3 +425,137 @@ async def test_session_limit_evicts_oldest(client: AsyncClient) -> None:
         headers=auth_headers(first_token),
     )
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Active sessions (TASK-38)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_sessions_marks_current(client: AsyncClient) -> None:
+    """GET /sessions returns both sessions, newest first, is_current
+    correctly marking only the one whose token made the request.
+
+    Also asserts the response never contains a `token` or
+    `session_token` key -- the whole point of the public session_id
+    mechanism (auth/service.py's "PUBLIC SESSION ID" note) is that a
+    live bearer token must never appear in this body.
+    """
+    email = f"s11_sesslist_{uuid.uuid4().hex[:12]}@example.com"
+    password = "testpass123"
+
+    data1 = await register_user(client, email=email, password=password)
+    token1 = data1["session_token"]
+    data2 = await login_user(client, email=email, password=password)
+    token2 = data2["session_token"]
+
+    resp = await client.get("/api/v1/auth/sessions", headers=auth_headers(token2))
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    items = body["items"]
+    assert len(items) == 2
+
+    for item in items:
+        assert "token" not in item
+        assert "session_token" not in item
+        assert set(item.keys()) == {
+            "session_id",
+            "created_at",
+            "auth_method",
+            "ip",
+            "user_agent",
+            "is_current",
+        }
+
+    # Newest-first: session #2 (this request's own token) is items[0].
+    assert items[0]["is_current"] is True
+    assert items[1]["is_current"] is False
+    assert items[0]["auth_method"] == "email"
+
+    # Exactly one item is marked current, and it must be session #2 --
+    # asking the same endpoint with token1 flips which one that is.
+    resp1 = await client.get("/api/v1/auth/sessions", headers=auth_headers(token1))
+    body1 = resp1.json()
+    current_ids = [i["session_id"] for i in body1["items"] if i["is_current"]]
+    assert len(current_ids) == 1
+
+    current_ids_2 = [i["session_id"] for i in items if i["is_current"]]
+    # The two requests were made with different tokens -- their "current"
+    # session_id must differ (each token hashes to a distinct public id).
+    assert current_ids != current_ids_2
+
+
+@pytest.mark.asyncio
+async def test_revoke_session_kills_target_not_current(client: AsyncClient) -> None:
+    """DELETE /sessions/{id} kills exactly the targeted session --
+    the caller's own (current) session survives, and a subsequent
+    authenticated request with the revoked token gets 401.
+    """
+    email = f"s11_revoke_{uuid.uuid4().hex[:12]}@example.com"
+    password = "testpass123"
+
+    data1 = await register_user(client, email=email, password=password)
+    token1 = data1["session_token"]
+    data2 = await login_user(client, email=email, password=password)
+    token2 = data2["session_token"]
+
+    # List via token1 -- find the OTHER session's public id (is_current=False).
+    resp = await client.get("/api/v1/auth/sessions", headers=auth_headers(token1))
+    assert resp.status_code == 200
+    other = next(i for i in resp.json()["items"] if not i["is_current"])
+
+    # Revoke it.
+    resp = await client.delete(
+        f"/api/v1/auth/sessions/{other['session_id']}",
+        headers=auth_headers(token1),
+    )
+    assert resp.status_code == 204
+
+    # token2 (the revoked one) is now dead.
+    resp = await client.post("/api/v1/auth/logout", headers=auth_headers(token2))
+    assert resp.status_code == 401
+
+    # token1 (caller's own session) survived the revoke of the OTHER one.
+    resp = await client.get("/api/v1/auth/sessions", headers=auth_headers(token1))
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert len(items) == 1
+    assert items[0]["is_current"] is True
+
+
+@pytest.mark.asyncio
+async def test_revoke_session_nonexistent_and_foreign_id_404(client: AsyncClient) -> None:
+    """DELETE /sessions/{id} 404s on a made-up id AND on a real id that
+    belongs to a DIFFERENT user -- never distinguishing the two (same
+    "don't confirm what you can't prove the caller owns" discipline as
+    the router docstring).
+    """
+    data_a = await register_user(client)
+    token_a = data_a["session_token"]
+
+    # A syntactically-plausible but nonexistent session_id (64 hex
+    # chars, matching the SHA-256 hex digest shape).
+    resp = await client.delete(
+        f"/api/v1/auth/sessions/{'0' * 64}",
+        headers=auth_headers(token_a),
+    )
+    assert resp.status_code == 404
+
+    # A real session_id -- but belonging to user B, not user A.
+    data_b = await register_user(client)
+    token_b = data_b["session_token"]
+    resp = await client.get("/api/v1/auth/sessions", headers=auth_headers(token_b))
+    b_session_id = resp.json()["items"][0]["session_id"]
+
+    resp = await client.delete(
+        f"/api/v1/auth/sessions/{b_session_id}",
+        headers=auth_headers(token_a),
+    )
+    assert resp.status_code == 404
+
+    # User B's session is untouched by A's failed attempt.
+    resp = await client.get("/api/v1/auth/sessions", headers=auth_headers(token_b))
+    assert resp.status_code == 200
+    assert len(resp.json()["items"]) == 1

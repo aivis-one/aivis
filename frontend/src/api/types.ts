@@ -865,3 +865,15 @@ export type { RequestEmailChangeRequest } from './generated'
 export type { ConfirmEmailChangeRequest } from './generated'
 
 export type { DeactivateAccountRequest } from './generated'
+
+// ---------------------------------------------------------------------------
+// Active sessions (TASK-38)
+//
+// Consumed by api/auth.ts + ActiveSessionsSection.vue. session_id is
+// NEVER the bearer token -- see auth/service.py's "PUBLIC SESSION ID"
+// module note on the backend for the exact non-reversible mechanism.
+// ---------------------------------------------------------------------------
+
+export type { SessionItemResponse } from './generated'
+
+export type { SessionListResponse } from './generated'

@@ -1146,6 +1146,24 @@
           "errorCode": "Неверный или просроченный код",
           "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
         },
+        "sessions": {
+          "cta": "Активные сеансы",
+          "title": "Активные сеансы",
+          "loadError": "Не удалось загрузить список сеансов",
+          "retry": "Повторить",
+          "current": "Это устройство",
+          "createdAt": "Вход выполнен {date}",
+          "revokeBtn": "Завершить",
+          "revokeConfirmTitle": "Завершить сеанс на этом устройстве?",
+          "cancelBtn": "Отмена",
+          "confirmBtn": "Завершить",
+          "revokeSuccess": "Сеанс завершён",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз.",
+          "authMethod": {
+            "email": "Email",
+            "telegram": "Telegram"
+          }
+        },
         "deactivate": {
           "cta": "Деактивировать аккаунт",
           "title": "Деактивировать аккаунт?",
@@ -1346,6 +1364,24 @@
           "errorEmailTaken": "Этот email уже зарегистрирован",
           "errorCode": "Неверный или просроченный код",
           "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        },
+        "sessions": {
+          "cta": "Активные сеансы",
+          "title": "Активные сеансы",
+          "loadError": "Не удалось загрузить список сеансов",
+          "retry": "Повторить",
+          "current": "Это устройство",
+          "createdAt": "Вход выполнен {date}",
+          "revokeBtn": "Завершить",
+          "revokeConfirmTitle": "Завершить сеанс на этом устройстве?",
+          "cancelBtn": "Отмена",
+          "confirmBtn": "Завершить",
+          "revokeSuccess": "Сеанс завершён",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз.",
+          "authMethod": {
+            "email": "Email",
+            "telegram": "Telegram"
+          }
         },
         "deactivate": {
           "cta": "Деактивировать аккаунт",
@@ -1782,6 +1818,24 @@
           "errorEmailTaken": "Этот email уже зарегистрирован",
           "errorCode": "Неверный или просроченный код",
           "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        },
+        "sessions": {
+          "cta": "Активные сеансы",
+          "title": "Активные сеансы",
+          "loadError": "Не удалось загрузить список сеансов",
+          "retry": "Повторить",
+          "current": "Это устройство",
+          "createdAt": "Вход выполнен {date}",
+          "revokeBtn": "Завершить",
+          "revokeConfirmTitle": "Завершить сеанс на этом устройстве?",
+          "cancelBtn": "Отмена",
+          "confirmBtn": "Завершить",
+          "revokeSuccess": "Сеанс завершён",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз.",
+          "authMethod": {
+            "email": "Email",
+            "telegram": "Telegram"
+          }
         },
         "deactivate": {
           "cta": "Деактивировать аккаунт",

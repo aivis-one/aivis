@@ -667,6 +667,63 @@ async def test_avatar_blocked_deactivate_account(
 
 
 @pytest.mark.asyncio
+async def test_avatar_blocked_revoke_session(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """TASK-38: DELETE /auth/sessions/{id} in avatar mode -> 403.
+
+    An adversarial review of the active-sessions build caught that the
+    self-checking guard-walk test (which only confirms the dependency
+    NAME is wired on the route) was the only coverage for this endpoint
+    in avatar mode -- every OTHER forbid_avatar-gated endpoint has a
+    real end-to-end test like this one, this was the gap.
+
+    Uses the investor's OWN real session_id (fetched via GET
+    /auth/sessions with their own token, before avataring in) rather
+    than a placeholder id -- proves a genuine target session survives
+    the blocked attempt, not merely that a nonsense id gets rejected
+    before the handler runs.
+    """
+    admin_token = await _admin_token(client, db_session)
+    investor_id, investor_token = await _investor_id_and_token(client)
+
+    sessions_resp = await client.get(
+        "/api/v1/auth/sessions",
+        headers=auth_headers(investor_token),
+    )
+    assert sessions_resp.status_code == 200
+    session_id = sessions_resp.json()["items"][0]["session_id"]
+
+    start_resp = await client.post(
+        "/api/v1/staff/avatar/start",
+        json={"target_user_id": investor_id},
+        headers=auth_headers(admin_token),
+    )
+    assert start_resp.status_code == 200
+    avatar_token = start_resp.json()["session_token"]
+
+    resp = await client.delete(
+        f"/api/v1/auth/sessions/{session_id}",
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+    # The targeted session must genuinely survive -- the guard blocked
+    # the whole request, not merely returned an error status while the
+    # revoke happened anyway.
+    still_there = await client.get(
+        "/api/v1/auth/sessions",
+        headers=auth_headers(investor_token),
+    )
+    assert any(
+        s["session_id"] == session_id for s in still_there.json()["items"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_shipped_default_leaves_avatar_restrictions_off() -> None:
     """2026-08-17, owner-ruled: the switch ships OFF.
 
@@ -924,9 +981,10 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
     access_staff_shell) are intentionally absent from the expected set;
     extend it when their endpoints appear. logout_all
     (STAGE-III-FINDINGS.md #19) was added to the expected set the same
-    day its guard was wired, not left for a later pass -- change_email
-    and delete_account (TASK-38, users/router.py) follow the same rule:
-    added here the same change that wired their guards.
+    day its guard was wired, not left for a later pass -- change_email,
+    delete_account, and revoke_session (TASK-38, users/router.py and
+    auth/router.py DELETE /sessions/{id}) follow the same rule: added
+    here the same change that wired their guards.
 
     The walk is recursive: since FastAPI 0.137 include_router no longer
     flattens a sub-router's routes into app.routes -- it inserts a lazy
@@ -970,6 +1028,7 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_logout_all",
         "forbid_avatar_change_email",
         "forbid_avatar_delete_account",
+        "forbid_avatar_revoke_session",
     }
     missing = expected - guarded
     assert not missing, (
