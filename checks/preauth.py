@@ -55,6 +55,14 @@ REGISTER = {
     "onboarding-kyc": "a centred auth card at --maxw-form (360px).",
     "onboarding-docs": "a centred document list at --maxw-form-wide (400px); measured with eight "
                        "rows, centred and un-clipped from 390 to 1920.",
+    "password-reset-request": "a centred auth card at --maxw-form (360px) -- the same shape as login "
+                              "and register, which it sits between in the funnel. Measured: "
+                              ".auth-form caps at var(--maxw-form) and .auth-content centres it with "
+                              "align-items:center, identical to LoginView's registered treatment.",
+    "password-reset-confirm": "a centred auth card at --maxw-form (360px), same treatment as its "
+                              "request sibling above -- .auth-form capped at var(--maxw-form), "
+                              "centred by .auth-content's align-items:center. The new-password pair "
+                              "is a plain stacked field group, nothing that reflows.",
     "public-attachment-landing": "it renders inside PublicShell, which caps content at --maxw "
                                  "(1080px) and centres it. PublicShell carries no tier gate ON "
                                  "PURPOSE -- whether the storefront joins the tier system is the "
