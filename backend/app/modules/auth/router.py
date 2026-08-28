@@ -8,11 +8,23 @@
 #   POST /api/v1/auth/telegram            -- Login via Telegram WebApp (Sprint 1.2)
 #   POST /api/v1/auth/verify-email        -- Verify 6-digit email code (G1)
 #   POST /api/v1/auth/verify-email/resend -- Resend verification code (G1)
+#   POST /api/v1/auth/password-reset/request -- Request password reset link
+#                                                (UNAUTHENTICATED, see note)
+#   POST /api/v1/auth/password-reset/confirm -- Consume token, set new
+#                                                password (UNAUTHENTICATED)
 #   POST /api/v1/auth/logout              -- Logout current session
 #   POST /api/v1/auth/logout-all          -- Logout all sessions (blocked in
 #                                             avatar mode, R49 -- see
 #                                             auth/avatar_guard.py's
 #                                             logout_all note)
+#
+# PASSWORD RESET is deliberately UNAUTHENTICATED (no get_current_user_write):
+#   the entire premise is that the caller is locked out and has no
+#   session. Anti-enumeration lives in the router, not the service --
+#   auth_password_reset_request() returns the same status + body whether
+#   or not the email matched, regardless of what request_password_reset()
+#   did internally. See auth/service.py's "PASSWORD RESET" module note
+#   for the token design (Redis reverse-index, not credentials JSONB).
 #
 # RATE LIMITING (SEC-5):
 #   Email register and login are rate-limited by IP address.
@@ -20,6 +32,11 @@
 #   auth_rate_limit_window_seconds.
 #   Key: "email_auth:{ip}" -- shared between register and login.
 #   Resend: rate-limited per user_id (1 per 60s).
+#   Key: "password_reset:{ip}" -- shared between request and confirm,
+#   same shared-key shape as email_auth above. Both endpoints send no
+#   auth-required signal an attacker could be blocked on otherwise (no
+#   session, no password to get wrong) -- IP rate limiting is the only
+#   throttle available on either one.
 #
 # REFERRAL (Sprint 7.2):
 #   referral_code is passed from request body to service layer.
@@ -42,15 +59,20 @@ from app.modules.auth.schemas import (
     AuthResponse,
     EmailLoginRequest,
     EmailRegisterRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    PasswordResetRequestResponse,
     TelegramAuthRequest,
     VerifyEmailRequest,
 )
 from app.modules.auth.service import (
+    confirm_password_reset,
     create_session,
     delete_all_sessions,
     delete_session,
     login_email,
     register_email,
+    request_password_reset,
     resend_verification_code,
     upsert_telegram_user,
     verify_email_code,
@@ -163,6 +185,66 @@ async def auth_resend_verification(
     # Uses default auth rate limit config (5 per 60s). Acceptable for MVP.
     await check_rate_limit(f"email_verify_resend:{user.id}")
     await resend_verification_code(user, session, background_tasks)
+
+
+# ---------------------------------------------------------------------------
+# Password Reset
+# ---------------------------------------------------------------------------
+
+# Fixed response instance for BOTH branches (anti-enumeration) -- built
+# once, returned unchanged whether or not the email matched. See the
+# router header note and PasswordResetRequestResponse's docstring.
+_PASSWORD_RESET_REQUEST_RESPONSE = PasswordResetRequestResponse()
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetRequestResponse,
+)
+async def auth_password_reset_request(
+    body: PasswordResetRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+) -> PasswordResetRequestResponse:
+    """Request a password reset link. UNAUTHENTICATED -- no session exists.
+
+    Rate limited by IP (shared "password_reset:{ip}" key with confirm,
+    see router header). Anti-enumeration: request_password_reset()
+    internally branches on whether the email matched, but this handler
+    does not -- it always returns the same fixed response object, so
+    there is nothing here for a caller to distinguish.
+    """
+    ip = get_client_ip(request)
+    await check_rate_limit(f"password_reset:{ip}")
+
+    await request_password_reset(body.email, session, background_tasks)
+
+    return _PASSWORD_RESET_REQUEST_RESPONSE
+
+
+@router.post(
+    "/password-reset/confirm",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def auth_password_reset_confirm(
+    body: PasswordResetConfirmRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Consume a reset token and set a new password. UNAUTHENTICATED.
+
+    Rate limited by IP (shared "password_reset:{ip}" key with request,
+    see router header). Unlike request, this endpoint's response DOES
+    reveal whether the token was valid (400 vs 204) -- that is
+    unavoidable and not an enumeration risk: the token is a 256-bit
+    secret only the recipient of the reset email ever saw, not
+    something derivable from an email address.
+    """
+    ip = get_client_ip(request)
+    await check_rate_limit(f"password_reset:{ip}")
+
+    await confirm_password_reset(body.token, body.new_password, session)
 
 
 # ---------------------------------------------------------------------------

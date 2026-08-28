@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     app_env: str = ""
     log_level: str = "INFO"
     cors_origins: str = "*"
+    # Base URL of the deployed frontend SPA (no trailing slash). Used to
+    # build absolute links the backend emails out -- currently only the
+    # password-reset confirm link (auth/service.py::_send_password_reset_email
+    # -> f"{frontend_base_url}/password-reset/confirm?token=..."). Not
+    # gated behind the is_dev validator like secret_key/database_url:
+    # an unset value in production degrades to a broken (but harmless,
+    # non-secret-leaking) link in one email body, not an open security
+    # hole -- so this stays a plain default rather than a hard failure.
+    frontend_base_url: str = "http://localhost:5173"
 
     # -- Database --
     database_url: str = ""

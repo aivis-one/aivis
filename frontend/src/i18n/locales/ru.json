@@ -131,13 +131,37 @@
       "complete": "Онбординг завершён",
       "completeText": "Всё готово! Перенаправление на главную..."
     },
+    "passwordReset": {
+      "requestTitle": "Восстановление пароля",
+      "requestSubtitle": "Введите email, привязанный к вашему аккаунту, и мы отправим ссылку для сброса пароля.",
+      "email": "Email",
+      "requestBtn": "Отправить ссылку",
+      "requestSuccessTitle": "Проверьте почту",
+      "requestSuccessText": "Если такой email зарегистрирован, мы отправили ссылку для сброса пароля. Ссылка действительна 30 минут.",
+      "backToLogin": "Вернуться ко входу",
+      "confirmTitle": "Новый пароль",
+      "confirmSubtitle": "Придумайте новый пароль для вашего аккаунта.",
+      "newPassword": "Новый пароль",
+      "newPasswordHint": "Минимум 8 символов, буквы и цифры",
+      "newPassPlaceholder": "Минимум 8 символов",
+      "confirmPassword": "Подтверждение пароля",
+      "confirmPassPlaceholder": "Повторите пароль",
+      "confirmBtn": "Сохранить пароль",
+      "confirmSuccessTitle": "Пароль изменён",
+      "confirmSuccessText": "Ваш пароль изменён, и все остальные сеансы завершены. Войдите с новым паролем.",
+      "invalidLinkTitle": "Ссылка недействительна",
+      "invalidLinkText": "Эта ссылка для сброса пароля недействительна или устарела. Запросите новую.",
+      "requestNewLink": "Запросить новую ссылку",
+      "signInBtn": "Войти"
+    },
     "error": {
       "invalidCredentials": "Неверный email или пароль",
       "emailTaken": "Этот email уже зарегистрирован",
       "passwordMismatch": "Пароли не совпадают",
       "fillAllFields": "Заполните все поля",
       "networkError": "Ошибка соединения. Проверьте интернет",
-      "timeout": "Сервер не ответил. Попробуйте ещё раз"
+      "timeout": "Сервер не ответил. Попробуйте ещё раз",
+      "rateLimited": "Слишком много попыток. Попробуйте позже"
     }
   },
   "tab": {

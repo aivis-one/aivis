@@ -33,6 +33,12 @@ export type { AuthResponse } from './generated'
 
 export type { VerifyEmailRequest } from './generated'
 
+export type { PasswordResetRequest } from './generated'
+
+export type { PasswordResetConfirmRequest } from './generated'
+
+export type { PasswordResetRequestResponse } from './generated'
+
 // ---------------------------------------------------------------------------
 // KYC
 // ---------------------------------------------------------------------------

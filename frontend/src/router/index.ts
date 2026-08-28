@@ -154,6 +154,18 @@ export const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/password-reset',
+      name: 'password-reset-request',
+      component: () => import('@/views/auth/PasswordResetRequestView.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/password-reset/confirm',
+      name: 'password-reset-confirm',
+      component: () => import('@/views/auth/PasswordResetConfirmView.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/loading',
       name: 'loading',
       component: () => import('@/views/auth/LoadingView.vue'),

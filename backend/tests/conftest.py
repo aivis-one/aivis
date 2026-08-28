@@ -179,17 +179,28 @@ async def db_session() -> AsyncGenerator[Any, None]:
 
 @pytest.fixture(autouse=True)
 def mock_email(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Replace the verification-email sender with a no-op.
+    """Replace the verification-email and password-reset-email senders
+    with no-ops.
 
-    Without this, registration tests would block trying to reach
-    Mailgun / Postfix from inside the test container.
+    Without this, registration / password-reset-request tests would
+    block trying to reach Mailgun / Postfix from inside the test
+    container. Tests that need the actual token/code (e.g. to drive a
+    confirm call) monkeypatch these same targets again themselves with
+    a capturing fake -- monkeypatch.setattr layers cleanly, the last
+    one applied wins for that test.
     """
 
-    async def _noop(_email: str, _code: str) -> None:
+    async def _noop_code(_email: str, _code: str) -> None:
+        return None
+
+    async def _noop_token(_email: str, _token: str) -> None:
         return None
 
     monkeypatch.setattr(
-        "app.modules.auth.service._send_verification_email", _noop
+        "app.modules.auth.service._send_verification_email", _noop_code
+    )
+    monkeypatch.setattr(
+        "app.modules.auth.service._send_password_reset_email", _noop_token
     )
 
 
@@ -213,12 +224,19 @@ async def clear_rate_limit() -> None:
 
     A single test that exceeds settings.auth_rate_limit_max_requests
     would otherwise hit a 429 and fail for no real reason.
+
+      password_reset:127.0.0.1
+          -- password-reset request/confirm, shared key (same shape as
+          email_auth above -- see auth/router.py header). Cleared for
+          the same reason: a rate-limit test earlier in the run must
+          not bleed a 429 into an unrelated password-reset test.
     """
     try:
         from app.core.redis import get_redis
 
         redis = get_redis()
         await redis.delete("email_auth:127.0.0.1")
+        await redis.delete("password_reset:127.0.0.1")
         async for key in redis.scan_iter(match="auth_rate:*"):
             await redis.delete(key)
     except RuntimeError:

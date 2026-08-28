@@ -11,6 +11,8 @@
 #   upsert_telegram_user()        -- Telegram WebApp auth (Sprint 1.2)
 #   verify_email_code()           -- verify 6-digit email code (G1)
 #   resend_verification_code()    -- regenerate + resend code (G1)
+#   request_password_reset()      -- request a reset link (unauthenticated)
+#   confirm_password_reset()      -- consume the reset token, set new password
 #
 # FAILED LOGIN AUDIT (SEC-7, timing fix TASK-6 4.1c):
 #   login_email() records failed attempts in audit_log via a dedicated
@@ -43,6 +45,59 @@
 #   6-digit numeric code, stored in credentials.onboarding.email_token.
 #   TTL: 10 minutes. Max 5 attempts per code. Resend has rate limit.
 #   Verification email sent via core/email.py (SMTP + Mailgun fallback).
+#
+# PASSWORD RESET:
+#   Deliberately NOT built as a copy of email verification -- that flow
+#   runs behind get_current_user_write (verify_email_code/
+#   resend_verification_code take `user: User` straight from a session
+#   dependency). Password reset is requested by someone WITHOUT a
+#   session -- that is the entire point of the feature -- so both
+#   endpoints are unauthenticated, and the lookup problem is the
+#   opposite of email verification's: given a bare token and nothing
+#   else, find the one user it belongs to.
+#
+#   credentials JSONB (used for onboarding.* above) is a per-ROW column
+#   reachable only once you already have a `user: User` in hand -- it
+#   has no reverse index from token -> user, and email lookups only
+#   work because ix_users_email exists; there is no equivalent index
+#   over an arbitrary JSONB token field, so a bare-token lookup against
+#   it would be a full sequential scan of every user row on every
+#   confirm attempt, worse under load exactly when an attacker is
+#   hammering the endpoint.
+#
+#   Instead the token lives in REDIS as the reverse index --
+#   password_reset:{token} -> {"user_id": ...} -- the same mechanism
+#   this file already uses for session tokens (create_session /
+#   delete_session below), for the same reasons: O(1) lookup by a bare
+#   opaque token, and TTL is native (EXPIRE) instead of a manually
+#   checked expires_at column that would need its own cleanup job to
+#   avoid growing forever. Single-use is enforced by GETDEL: the
+#   read and the invalidation are one atomic Redis op, so two
+#   concurrent confirm calls with the same token can never both
+#   succeed -- exactly the replay window a DB "used" flag would have
+#   to guard with its own row lock.
+#
+#   credentials.password_reset is STILL written (requested_at /
+#   expires_at only, no token) purely so the request is visible on the
+#   user row for support/audit -- mirroring the onboarding.* shape
+#   cosmetically -- but it is never read back on confirm. Redis is the
+#   only source of truth for validity; the JSONB copy could be deleted
+#   entirely without breaking the flow.
+#
+#   Token: secrets.token_urlsafe(32) (~256 bits), NOT a 6-digit code --
+#   an unauthenticated endpoint has no attempt cap protecting it the way
+#   verify_email_code's 5-attempt limit does, so the token itself must
+#   be infeasible to guess. TTL: 30 minutes (longer than the 10-minute
+#   email-verification code -- that TTL assumes the user is already
+#   mid-session watching for a code; a reset link assumes the user has
+#   just been locked out and needs to go find their inbox first).
+#
+#   On successful confirm: new password hashed via hash_password()
+#   (same argon2 path as everywhere else -- no second hashing scheme),
+#   token GETDEL'd (single-use), and delete_all_sessions() invalidates
+#   every session that existed before the user regained control -- a
+#   session opened by whoever locked the real owner out must not
+#   survive their own reset.
 #
 # COMMIT RULE (P-01):
 #   Service never commits or rolls back. Caller manages the transaction.
@@ -82,6 +137,12 @@ _USER_SESSIONS_PREFIX = "user_sessions:"
 # Email verification constants.
 _VERIFICATION_CODE_TTL_MINUTES = 10
 _VERIFICATION_MAX_ATTEMPTS = 5
+
+# Password reset constants. See "PASSWORD RESET" module note above for
+# why this is a long URL-safe token in Redis rather than a 6-digit code
+# in credentials JSONB.
+_PASSWORD_RESET_TOKEN_TTL_MINUTES = 30
+_PASSWORD_RESET_REDIS_PREFIX = "password_reset:"
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +224,40 @@ async def _send_verification_email(email: str, code: str) -> None:
     except Exception:
         logger.error(
             "verification_email_send_failed",
+            recipient=email[:3] + "***",
+        )
+
+
+async def _send_password_reset_email(email: str, token: str) -> None:
+    """Send the password reset link via email. Errors logged, not raised.
+
+    Same fire-and-forget contract as _send_verification_email -- this
+    runs inside a BackgroundTasks call, after the request's transaction
+    already committed, so there is nothing left to roll back if the
+    send fails.
+    """
+    from app.core.email import send_email
+
+    reset_link = (
+        f"{settings.frontend_base_url}/password-reset/confirm?token={token}"
+    )
+
+    try:
+        await send_email(
+            recipient=email,
+            subject="AIVIS.ONE - Password Reset",
+            body=(
+                "We received a request to reset your AIVIS.ONE password.\n\n"
+                f"Reset your password: {reset_link}\n\n"
+                f"This link expires in {_PASSWORD_RESET_TOKEN_TTL_MINUTES} "
+                "minutes and can only be used once.\n\n"
+                "If you did not request this, you can safely ignore this "
+                "email -- your password will not be changed."
+            ),
+        )
+    except Exception:
+        logger.error(
+            "password_reset_email_send_failed",
             recipient=email[:3] + "***",
         )
 
@@ -584,6 +679,186 @@ async def resend_verification_code(
 
     # Schedule for after commit -- see docstring.
     background_tasks.add_task(_send_verification_email, email_address, new_code)
+
+
+# ---------------------------------------------------------------------------
+# Password Reset
+# ---------------------------------------------------------------------------
+
+
+async def request_password_reset(
+    email: str,
+    session: AsyncSession,
+    background_tasks: BackgroundTasks,
+) -> None:
+    """Request a password reset link. Unauthenticated -- no `user` in hand.
+
+    Anti-enumeration (mirrors login_email's dummy-hash discipline, see
+    module note above): this function returns None whether or not the
+    email matches a real account, and the router builds the exact same
+    response either way -- the caller must not branch on this
+    function's behaviour. A dummy Redis SET pays the same round-trip
+    cost as the real branch's token write so response timing does not
+    leak the match either.
+
+    On a match: generates a token, stores it in Redis as the reverse
+    index (token -> user_id, see module note for why Redis and not
+    credentials JSONB), writes requested_at/expires_at onto
+    credentials.password_reset for visibility, and schedules the email
+    for after this transaction commits (P-01 -- same background_tasks
+    pattern as register_email).
+
+    Does NOT commit or rollback -- caller (get_db_session) manages the
+    transaction (P-01).
+    """
+    email_lower = email.strip().lower()
+    token = secrets.token_urlsafe(32)
+
+    stmt = select(User).where(
+        User.credentials["email"]["email"].as_string() == email_lower
+    )
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    redis = get_redis()
+    ttl_seconds = _PASSWORD_RESET_TOKEN_TTL_MINUTES * 60
+
+    if user is None:
+        # Timing-safe dummy: a throwaway key under a separate prefix so
+        # it can never collide with (or be mistaken for) a real reset
+        # token, expired quickly since nothing depends on it existing.
+        await redis.set(f"password_reset_dummy:{token}", "1", ex=10)
+        logger.debug("password_reset_requested_unknown_email")
+        return
+
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(minutes=_PASSWORD_RESET_TOKEN_TTL_MINUTES)
+
+    await redis.set(
+        f"{_PASSWORD_RESET_REDIS_PREFIX}{token}",
+        json.dumps({"user_id": str(user.id)}),
+        ex=ttl_seconds,
+    )
+
+    # Visible on the user row for support/audit only -- see module note,
+    # Redis above is the only thing confirm_password_reset() reads. Wrapped
+    # in a SAVEPOINT (begin_nested(), same pattern as
+    # agent_applications/pools/posts/referrals/support/withdrawals
+    # services): an unhandled exception here would otherwise abort the
+    # WHOLE transaction at the DB level, so a bare try/except would not
+    # be enough -- get_db_session()'s own `await session.commit()` after
+    # this function returns would then fail too and the 500 would
+    # propagate anyway, past the router's bare `await
+    # request_password_reset(...)` call to FastAPI's default handler --
+    # a status-code divergence from the not-found branch's fixed 200
+    # that would itself be a (narrow, DB-fault-triggered, but real)
+    # enumeration side-channel. The Redis token above already exists and
+    # is independently sufficient for confirm_password_reset() (it looks
+    # the user up by id, not via this JSONB field), so a failure here
+    # degrades the audit trail only, never the reset itself.
+    try:
+        async with session.begin_nested():
+            creds = dict(user.credentials or {})
+            creds["password_reset"] = {
+                "requested_at": now.isoformat(),
+                "expires_at": expires_at.isoformat(),
+            }
+            user.set_jsonb("credentials", creds)
+            await session.flush()
+
+            await record_audit(
+                session=session,
+                event="user.password_reset_requested",
+                actor_id=user.id,
+                actor_type="user",
+                target_type="user",
+                target_id=user.id,
+                data={},
+            )
+    except Exception:
+        logger.error(
+            "password_reset_audit_write_failed", user_id=str(user.id)
+        )
+
+    logger.info("password_reset_requested", user_id=str(user.id))
+
+    # Schedule for after commit -- see register_email docstring for why.
+    background_tasks.add_task(_send_password_reset_email, email_lower, token)
+
+
+async def confirm_password_reset(
+    token: str,
+    new_password: str,
+    session: AsyncSession,
+) -> None:
+    """Consume a password reset token and set a new password.
+
+    Redis GETDEL is the single-use enforcement: the lookup and the
+    invalidation are one atomic op, so a replayed or concurrently-raced
+    token can never succeed twice (see module note above for why Redis
+    is the source of truth here, not a DB "used" flag).
+
+    On success: hashes the new password via hash_password() (same
+    argon2 path as register_email -- no second hashing scheme),
+    replaces credentials.email.password_hash, clears
+    credentials.password_reset, and invalidates every session that
+    existed before this reset via delete_all_sessions().
+
+    Does NOT commit or rollback -- caller (get_db_session) manages the
+    transaction (P-01). delete_all_sessions() is Redis-only so it is
+    safe to call before that commit lands.
+
+    Raises:
+        BadRequestError: Token missing, expired, already used, or the
+            user it pointed to no longer exists.
+    """
+    redis = get_redis()
+    key = f"{_PASSWORD_RESET_REDIS_PREFIX}{token}"
+
+    raw = await redis.getdel(key)
+    if raw is None:
+        raise BadRequestError("Invalid or expired reset token")
+
+    try:
+        user_id = UUID(json.loads(raw)["user_id"])
+    except (KeyError, ValueError, TypeError) as exc:
+        # Defensive only -- this process is the only writer of this key
+        # shape. A malformed payload means data corruption, not user
+        # error; still surfaces as the same generic 400 rather than 500.
+        logger.error("password_reset_token_payload_corrupt")
+        raise BadRequestError("Invalid or expired reset token") from exc
+
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise BadRequestError("Invalid or expired reset token")
+
+    new_hash = await hash_password(new_password)
+
+    creds = dict(user.credentials or {})
+    email_creds = dict(creds.get("email", {}))
+    email_creds["password_hash"] = new_hash
+    creds["email"] = email_creds
+    creds["password_reset"] = None
+    user.set_jsonb("credentials", creds)
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="user.password_reset_completed",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={},
+    )
+
+    # A session opened by whoever locked the real owner out must not
+    # survive their own reset -- see module note above.
+    await delete_all_sessions(user.id)
+
+    logger.info("password_reset_completed", user_id=str(user.id))
 
 
 # ---------------------------------------------------------------------------

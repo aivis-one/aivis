@@ -728,6 +728,22 @@ export interface LeaderboardResponse {
   period_start: string
 }
 
+/** POST /api/v1/auth/password-reset/confirm -- request body. `new_password` reuses EmailRegisterRequest.password's exact constraints (min 8 / max 128 chars) -- password strength rules live in one place, not duplicated per endpoint. */
+export interface PasswordResetConfirmRequest {
+  token: string
+  new_password: string
+}
+
+/** POST /api/v1/auth/password-reset/request -- request body. Unauthenticated (no `user`, no session -- that is the whole point). The router returns the exact same response regardless of whether `email` matches a real account (anti-enumeration -- see auth/service.py::request_password_reset). */
+export interface PasswordResetRequest {
+  email: string
+}
+
+/** POST /api/v1/auth/password-reset/request -- response body. The router returns this EXACT SAME instance (same `message`, same 200 status) whether or not `email` matched an account -- there is no field here that could vary and leak the match either. */
+export interface PasswordResetRequestResponse {
+  message?: string
+}
+
 /** Paginated payment history response. */
 export interface PaymentHistoryResponse {
   items: PaymentResponse[]

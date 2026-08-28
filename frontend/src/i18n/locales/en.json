@@ -131,13 +131,37 @@
       "complete": "Onboarding Complete",
       "completeText": "You're all set! Redirecting to your dashboard..."
     },
+    "passwordReset": {
+      "requestTitle": "Reset your password",
+      "requestSubtitle": "Enter the email address on your account and we'll send you a link to reset your password.",
+      "email": "Email",
+      "requestBtn": "Send reset link",
+      "requestSuccessTitle": "Check your email",
+      "requestSuccessText": "If that email is registered, we've sent a link to reset your password. The link expires in 30 minutes.",
+      "backToLogin": "Back to sign in",
+      "confirmTitle": "Set a new password",
+      "confirmSubtitle": "Choose a new password for your account.",
+      "newPassword": "New password",
+      "newPasswordHint": "Minimum 8 characters, letters and numbers",
+      "newPassPlaceholder": "Minimum 8 characters",
+      "confirmPassword": "Confirm new password",
+      "confirmPassPlaceholder": "Repeat password",
+      "confirmBtn": "Reset password",
+      "confirmSuccessTitle": "Password updated",
+      "confirmSuccessText": "Your password has been changed and you've been signed out everywhere else. Sign in with your new password.",
+      "invalidLinkTitle": "Invalid or expired link",
+      "invalidLinkText": "This password reset link is invalid or has expired. Request a new one.",
+      "requestNewLink": "Request a new link",
+      "signInBtn": "Sign in"
+    },
     "error": {
       "invalidCredentials": "Incorrect email or password",
       "emailTaken": "This email is already registered",
       "passwordMismatch": "Passwords do not match",
       "fillAllFields": "Please fill in all fields",
       "networkError": "Connection error. Check your internet",
-      "timeout": "Server did not respond. Try again"
+      "timeout": "Server did not respond. Try again",
+      "rateLimited": "Too many attempts. Please try again later"
     }
   },
   "tab": {

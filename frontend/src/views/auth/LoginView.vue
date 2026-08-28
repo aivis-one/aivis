@@ -93,6 +93,13 @@ function getValidatedNext(): string | null {
   return raw
 }
 
+function goToPasswordReset(): void {
+  void safeNavigate(
+    router.push({ name: 'password-reset-request' }),
+    '[LoginView] to password reset',
+  )
+}
+
 function goToRegister(): void {
   // Forward the entire `?next=...` query so the visitor's intended
   // destination survives the login <-> register pivot.
@@ -190,6 +197,12 @@ async function handleLogin(): Promise<void> {
           @keydown.enter="handleLogin"
         />
 
+        <div class="forgot-row">
+          <button type="button" class="btn-link" @click="goToPasswordReset">
+            {{ t('auth.login.forgot') }}
+          </button>
+        </div>
+
         <div v-if="error" class="auth-error">
           {{ error }}
         </div>
@@ -267,6 +280,12 @@ async function handleLogin(): Promise<void> {
 .auth-form {
   width: 100%;
   max-width: var(--maxw-form);
+}
+
+.forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
 }
 
 .auth-error {
