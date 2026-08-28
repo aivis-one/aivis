@@ -746,3 +746,88 @@ async def test_purchase_with_gift_emits_both_notifications(
     assert gift_event[0].payload["type"] == "purchase.gift_received"
     assert gift_event[0].payload["target_value"] == str(inv_id)
     assert "10" in gift_event[0].payload["body"]  # 10 bonus units (10% of 100)
+
+
+# ---------------------------------------------------------------------------
+# 20. Per-purchase commission notification (batch 6, 2026-08-28)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_purchase_with_agent_chain_emits_commission_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An instant purchase referred to an agent -> commission.purchase_
+    credited on the outbox, targeting the AGENT (not the investor who
+    paid), body carrying the level-1 commission amount. DISTINCT from
+    purchase.completed (asserted separately above) and from
+    commission.credited (the periodic volume-bonus worker, untouched by
+    this delivery, covered by test_volume_worker.py)."""
+    from tests.helpers import create_agent_with_link
+
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    company = await _create_company(client, admin_token)
+    product = await _create_product(client, admin_token, company["id"])
+    await _activate_company(client, admin_token, company["id"])
+    await _activate_product(client, admin_token, product["id"])
+
+    agent, _agent_token, _link = await create_agent_with_link(
+        client, db_session
+    )
+
+    inv_token, inv_id = await _create_investor_with_balance(
+        client, db_session
+    )
+    # Attribute the investor to the agent directly -- get_agent_chain
+    # walks User.referred_by, and this is the cheapest way to reach a
+    # non-empty agent_chain without exercising the referral-link click
+    # flow (covered elsewhere, e.g. test_referral_registration.py).
+    investor = await db_session.get(User, inv_id)
+    investor.referred_by = agent.id
+    await db_session.commit()
+
+    before = len(await _notification_events(db_session))
+
+    resp = await client.post(
+        f"/api/v1/products/{product['id']}/purchase",
+        json={},
+        headers=auth_headers(inv_token),
+    )
+    assert resp.status_code == 201, f"Purchase failed: {resp.text}"
+
+    # Selected by (type, target_value) rather than a pre-computed
+    # idempotency key: the referral commission's own Purchase row (the
+    # zero-unit row write_transactions() creates for the ReferralProcessor
+    # Transaction, distinct from the real sale Purchase at index 0) is an
+    # internal id this test should not need to predict. agent.id is a
+    # fresh UUID from register_user for THIS test, so filtering on it is
+    # exactly as safe as filtering on an idempotency key (never an
+    # absolute count of the shared outbox).
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("type") == "commission.purchase_credited"
+        and e.payload.get("target_value") == str(agent.id)
+    ]
+    assert len(matches) == 1
+    payload = matches[0].payload
+    assert payload["idempotency_key"].startswith("commission-purchase:")
+    assert payload["target_type"] == "user"
+    # company distribution_config from _create_company: agent_levels =
+    # [0.10, 0.03, 0.01], product price 100 * 10000 = 1_000_000 cents ->
+    # level-1 commission = 10% = 100_000 cents = $1,000.00.
+    assert "1,000.00" in payload["body"]
+    assert "level-1" in payload["body"]
+
+    # The investor who paid is NOT the target of this notification (the
+    # investor's own purchase.completed was already asserted above).
+    assert len(events) > before
+    investor_targeted = [
+        e for e in events
+        if e.payload.get("type") == "commission.purchase_credited"
+        and e.payload.get("target_value") == str(inv_id)
+    ]
+    assert investor_targeted == []

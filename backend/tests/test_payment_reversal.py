@@ -34,6 +34,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.events.models import OutboxEvent
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus
 from app.modules.ledgers.service import get_active_balance, record_active_ledger
 from app.modules.payments.constants import PaymentStatus, PaymentType
@@ -840,4 +843,112 @@ async def test_reverse_payment_flags_completed_plan_is07(
         is07_after["details"]["completed_plans_with_reversed_funding"]
         == baseline + 1
     )
+
+
+# ---------------------------------------------------------------------------
+# Notification emission (batch 6, 2026-08-28)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_events(session: AsyncSession) -> list[OutboxEvent]:
+    """Every notification_request event on the outbox, oldest first."""
+    result = await session.execute(
+        select(OutboxEvent)
+        .where(OutboxEvent.event_type == EVENT_NOTIFICATION_REQUEST)
+        .order_by(OutboxEvent.id)
+    )
+    return list(result.scalars().all())
+
+
+@pytest.mark.asyncio
+async def test_reverse_payment_emits_notification_to_payer_only(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reversal -> payment.reversed on the outbox, targeting ONLY
+    payment.user_id (the payer) -- not the agent whose commission was
+    clawed back in the same reversal. Also asserts the body's dollar
+    amount is payment.amount_cents, not total_reversed_cents (which
+    would double-count the agent's clawed-back commission -- a
+    different user's money)."""
+    from uuid import uuid4 as _uuid4
+
+    from app.modules.ledgers.service import record_passive_ledger
+
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    agent_id = await _create_investor(client)
+    payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
+
+    # Frozen-funded commission credit on the SAME payment (shaped like
+    # ReferralProcessor output), so affected_user_ids includes agent_id
+    # too -- this is exactly the scenario the recipient-scope judgment
+    # call is about.
+    await record_passive_ledger(
+        db_session,
+        user_id=agent_id,
+        amount_cents=500,
+        status=LedgerStatus.FROZEN,
+        reason=f"commission:l1:{agent_id}:{_uuid4()}",
+        frozen_until=datetime.now(UTC) + timedelta(hours=24),
+        origin_payment_id=payment_id,
+    )
+    await db_session.commit()
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={"reason": "chargeback"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["total_reversed_cents"] == 10050 + 500
+
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"payment-reversed:{payment_id}"
+    ]
+    assert len(matches) == 1
+    payload = matches[0].payload
+    assert payload["type"] == "payment.reversed"
+    assert payload["target_type"] == "user"
+    assert payload["target_value"] == str(user_id)
+    # payment.amount_cents (100.50), NOT total_reversed_cents (105.50).
+    assert "100.50" in payload["body"]
+    assert "chargeback" in payload["body"]
+
+    # No notification was emitted targeting the agent for this reversal.
+    agent_matches = [
+        e for e in events if e.payload.get("target_value") == str(agent_id)
+    ]
+    assert agent_matches == []
+
+
+@pytest.mark.asyncio
+async def test_reverse_without_comms_emits_no_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No comms address -> no outbox row."""
+    monkeypatch.setattr(settings, "comms_api_url", "")
+    admin_token = await _admin_token(client, db_session)
+    user_id = await _create_investor(client)
+    payment_id = await _create_frozen_payment_with_ledger(user_id, db_session)
+
+    resp = await client.post(
+        f"/api/v1/staff/payments/{payment_id}/reverse",
+        json={"reason": "chargeback"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"payment-reversed:{payment_id}"
+    ]
+    assert matches == []
     assert is07_after["status"] == "fail"

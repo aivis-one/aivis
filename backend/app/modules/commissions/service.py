@@ -41,7 +41,14 @@ from app.modules.users.models import User
 logger = structlog.get_logger()
 
 # Regex to parse commission reason: "commission:l{level}:{agent_id}:{purchase_id}"
-_COMMISSION_RE = re.compile(
+# PUBLIC (no leading underscore): purchases/engine.py's per-purchase
+# commission notification reuses this to identify a commission-credit
+# ledger entry, rather than duplicating the pattern. Renamed from
+# COMMISSION_REASON_RE (adversarial review of the notification build flagged
+# the underscore as a private-name import across a module boundary --
+# a shape change here now has a real, explicit second caller to keep in
+# sync with, not a hidden one).
+COMMISSION_REASON_RE = re.compile(
     r"^commission:l(\d+):([0-9a-f-]+):([0-9a-f-]+)$"
 )
 
@@ -173,7 +180,7 @@ async def get_my_commissions(
     payout_ids: list[UUID] = []
     for entry in ledger_entries:
         reason = entry.reason or ""
-        if (m := _COMMISSION_RE.match(reason)) is not None:
+        if (m := COMMISSION_REASON_RE.match(reason)) is not None:
             try:
                 purchase_ids.append(UUID(m.group(3)))
             except ValueError:
@@ -208,7 +215,7 @@ async def get_my_commissions(
     items: list[CommissionEntry] = []
 
     for entry in ledger_entries:
-        commission_match = _COMMISSION_RE.match(entry.reason)
+        commission_match = COMMISSION_REASON_RE.match(entry.reason)
         volume_match = _VOLUME_BONUS_RE.match(entry.reason)
 
         if commission_match:

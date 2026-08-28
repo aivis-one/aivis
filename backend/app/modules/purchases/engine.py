@@ -71,7 +71,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import InsufficientBalanceError
+from app.modules.commissions.service import COMMISSION_REASON_RE
 from app.modules.companies.constants import DocumentTemplateKind
 from app.modules.companies.service import find_active_template
 from app.modules.ledgers.models import LedgerStatus
@@ -343,6 +346,7 @@ async def write_transactions(
 
         # Write ledger entries with real purchase_id in reason.
         purchase_id_str = str(purchase.id)
+        notify_commissions = comms_configured()
 
         for entry in txn.entries:
             reason = entry.reason.replace("{purchase_id}", purchase_id_str)
@@ -374,6 +378,50 @@ async def write_transactions(
                     frozen_until=entry.frozen_until,
                     origin_payment_id=entry.origin_payment_id,
                 )
+
+                # Batch 6 (2026-08-28): commission.purchase_credited --
+                # the per-purchase L1/L2/L3 referral split (referral.py),
+                # DISTINCT from commission.credited (the periodic volume
+                # bonus payout worker, a different code path entirely).
+                # ReferralProcessor writes TWO passive entries per level
+                # sharing one reason -- a Platform debit and an Agent
+                # credit -- and only the credit side should be notified
+                # (the debit is Platform's own internal ledger, not a
+                # user-facing event). COMMISSION_REASON_RE (reused from
+                # commissions/service.py, not reinvented) matches the
+                # post-replace reason "commission:l{level}:{agent_id}:
+                # {purchase_id}"; entry.amount_cents > 0 selects the
+                # credit side (the debit is negative by construction in
+                # referral.py). entry.user_id IS the agent_id here --
+                # ReferralProcessor sets it directly when building the
+                # credit LedgerEntry, so there is no need to re-parse it
+                # out of the reason string, only to confirm the format.
+                if notify_commissions and entry.amount_cents > 0:
+                    match = COMMISSION_REASON_RE.match(reason)
+                    if match is not None:
+                        level = match.group(1)
+                        amount = f"{entry.amount_cents / 100:,.2f}"
+                        await emit_event(
+                            session,
+                            EVENT_NOTIFICATION_REQUEST,
+                            {
+                                # One credit entry per (level, purchase),
+                                # ever -- reason embeds the real
+                                # purchase_id post-replace and a
+                                # Transaction is written exactly once per
+                                # purchase, so the reason string alone is
+                                # a safe, permanent dedup key.
+                                "idempotency_key": f"commission-purchase:{reason}",
+                                "type": "commission.purchase_credited",
+                                "target_type": "user",
+                                "target_value": str(entry.user_id),
+                                "title": "Commission earned",
+                                "body": (
+                                    f"You earned a ${amount} level-{level} "
+                                    f"commission on a purchase."
+                                ),
+                            },
+                        )
 
         # Sprint 6.4: Transaction log entry.
         # INSTALLMENT_TRANCHE is recorded by installments/service.py

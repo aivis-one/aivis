@@ -87,6 +87,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import NotFoundError
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.ledgers.service import record_active_ledger, record_passive_ledger
@@ -412,6 +414,47 @@ async def reverse_payment(
             "affected_user_ids": [str(uid) for uid in affected_user_ids],
         },
     )
+
+    # 10. Notification (batch 6, 2026-08-28).
+    # Judgment call: notify ONLY payment.user_id, the person whose deposit
+    # was charged back -- not every id in affected_user_ids. A reversal
+    # can also claw back downstream agent commission-mirror entries for
+    # OTHER users (mirror ledger writes for every active/passive row
+    # linked to the payment, see step 5/6 above); this delivery does not
+    # notify those agents. Reasoning: (a) matches the withdrawal-emitter
+    # precedent of one clear recipient per event; (b) matches the backlog
+    # item's plain description, "payment reversal", which names the
+    # payer's own event; (c) a commission clawback needs different,
+    # non-confusing copy for someone who never made the reversed payment
+    # ("your payment was reversed" would be nonsense to them) -- a
+    # multi-recipient clawback notice is a distinct, more nuanced feature
+    # not built here. idempotency_key uses payment_id: reverse_payment()
+    # is the only path to REVERSED and validate_payment_status_transition
+    # makes it a terminal, one-way transition, so the payment id alone is
+    # a safe, permanent dedup key (same reasoning as withdrawal.rejected).
+    if comms_configured():
+        # payment.amount_cents, NOT total_reversed_cents: the latter sums
+        # every captured entry across BOTH originals and their mirrors,
+        # which can include a downstream agent's commission-clawback
+        # amount (a different user's money, see the judgment-call note
+        # above) -- payment.amount_cents is what the recipient actually
+        # paid and had reversed.
+        amount = f"{payment.amount_cents / 100:,.2f}"
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                "idempotency_key": f"payment-reversed:{payment_id}",
+                "type": "payment.reversed",
+                "target_type": "user",
+                "target_value": str(payment.user_id),
+                "title": "Payment reversed",
+                "body": (
+                    f"Your payment of ${amount} was reversed"
+                    + (f": {reason}." if reason else ".")
+                ),
+            },
+        )
 
     logger.info(
         "payment_reversed",

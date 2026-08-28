@@ -28,6 +28,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.events.models import OutboxEvent
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.payments.constants import PaymentStatus, PaymentType
 from app.modules.payments.models import Payment
@@ -185,6 +188,83 @@ async def test_frozen_future_not_confirmed(
         select(ActiveLedger).where(ActiveLedger.id == ledger_id)
     )).scalar_one()
     assert al.status == LedgerStatus.FROZEN
+
+
+# ---------------------------------------------------------------------------
+# Notification emission (batch 6, 2026-08-28)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_events(session: AsyncSession) -> list[OutboxEvent]:
+    """Every notification_request event on the outbox, oldest first."""
+    result = await session.execute(
+        select(OutboxEvent)
+        .where(OutboxEvent.event_type == EVENT_NOTIFICATION_REQUEST)
+        .order_by(OutboxEvent.id)
+    )
+    return list(result.scalars().all())
+
+
+@pytest.mark.asyncio
+async def test_confirm_expired_payment_emits_deposit_confirmed_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Confirming a frozen payment -> deposit.confirmed on the outbox,
+    keyed by the payment's own id (shared test DB: select THIS payment's
+    row by idempotency key, never an absolute count)."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    user_id = await _create_user(client)
+    past = datetime.now(UTC) - timedelta(hours=1)
+
+    payment = _make_payment(user_id, frozen_until=past)
+    db_session.add(payment)
+    await db_session.commit()
+    payment_id = payment.id
+
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
+
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"deposit-confirmed:{payment_id}"
+    ]
+    assert len(matches) == 1
+    payload = matches[0].payload
+    assert payload["type"] == "deposit.confirmed"
+    assert payload["target_type"] == "user"
+    assert payload["target_value"] == str(user_id)
+    assert "100.00" in payload["body"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_without_comms_emits_no_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No comms address -> no outbox row, same gate as every other
+    emitter in this tree."""
+    monkeypatch.setattr(settings, "comms_api_url", "")
+    user_id = await _create_user(client)
+    past = datetime.now(UTC) - timedelta(hours=1)
+
+    payment = _make_payment(user_id, frozen_until=past)
+    db_session.add(payment)
+    await db_session.commit()
+    payment_id = payment.id
+
+    from app.modules.payments.confirmation import run_confirmation_batch
+    await run_confirmation_batch()
+
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("idempotency_key") == f"deposit-confirmed:{payment_id}"
+    ]
+    assert len(matches) == 0
 
 
 @pytest.mark.asyncio

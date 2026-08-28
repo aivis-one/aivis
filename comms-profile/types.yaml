@@ -224,3 +224,61 @@ installment.plan_defaulted:
 
 commission.credited:
   category: commissions
+
+# =============================================================================
+# aivis product types -- batch 6 (2026-08-28), last item of this delivery
+# =============================================================================
+#
+# FOUR NEW PRODUCERS, closing the "notification emitters" backlog item.
+#
+# deposit.confirmed -- run_confirmation_batch() (payments/confirmation.py),
+# a background daemon with no HTTP request behind it (same shape as
+# commission.credited above: no request/response cycle). NEW category
+# `deposits` rather than folding into `withdrawals` or `purchases` --
+# a confirmed deposit is its own money moment (funds became spendable),
+# distinct from what a user spends them on.
+#
+# payment.reversed -- reverse_payment() (payments/reversal.py). Notifies
+# ONLY payment.user_id, the person whose deposit was charged back -- not
+# every id in the function's affected_user_ids set. A chargeback can also
+# claw back downstream agent commission-mirror entries for OTHER users;
+# those recipients get no notification from this delivery. Judgment call
+# (see reversal.py's own comment at the emit site for the full reasoning):
+# matches the withdrawal-notification precedent of one clear recipient,
+# and a multi-recipient clawback notice needs different, non-confusing
+# copy per audience -- a distinct feature, not built here. NEW category
+# `payments` -- a chargeback is the payments domain's own event, not a
+# deposit-lifecycle or withdrawal-lifecycle moment.
+#
+# commission.purchase_credited -- referral.py's per-purchase L1/L2/L3
+# split, written by purchases/engine.py::write_transactions(). DISTINCT
+# from commission.credited above (that one is the periodic volume-bonus
+# payout worker; this one is the immediate per-sale referral commission,
+# a different code path entirely) -- kept as its own type key rather than
+# merged, so a future preference screen can mute the two independently.
+# Shares the EXISTING `commissions` category with commission.credited:
+# both are "an agent got paid" from the recipient's side, and today
+# neither has a reason to mute separately from the other.
+#
+# agent_application.approved / agent_application.rejected --
+# staff_service.py's agent_application_approve() / _reject(). Mirrors the
+# kyc.approved/kyc.rejected shape one level up: one type per outcome
+# (lets a future preference screen mute a rejection differently from an
+# approval), one shared NEW category `agent_applications` -- today there
+# is no reason to let someone mute "you're now an agent" while keeping
+# "your application was rejected", same reasoning as the kyc.* pair.
+
+deposit.confirmed:
+  category: deposits
+
+payment.reversed:
+  category: payments
+
+commission.purchase_credited:
+  category: commissions
+
+agent_application.approved:
+  category: agent_applications
+
+agent_application.rejected:
+  category: agent_applications

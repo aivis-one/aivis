@@ -36,6 +36,9 @@ from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.events.models import OutboxEvent
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 from app.modules.agent_applications.constants import AgentApplicationStatus
 from app.modules.agent_applications.models import AgentApplication
 from app.modules.users.models import User, UserRole
@@ -366,3 +369,120 @@ async def test_non_staff_cannot_reach_queue(client: AsyncClient) -> None:
         headers=auth_headers(token),
     )
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# 14-16. Notification emission (batch 6, 2026-08-28)
+# ---------------------------------------------------------------------------
+
+
+async def _notification_events(session: AsyncSession) -> list[OutboxEvent]:
+    """Every notification_request event on the outbox, oldest first."""
+    result = await session.execute(
+        select(OutboxEvent)
+        .where(OutboxEvent.event_type == EVENT_NOTIFICATION_REQUEST)
+        .order_by(OutboxEvent.id)
+    )
+    return list(result.scalars().all())
+
+
+@pytest.mark.asyncio
+async def test_staff_approve_emits_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Approve -> agent_application.approved on the outbox, keyed by the
+    application's own id (shared test DB: select THIS application's row
+    by idempotency key, never an absolute count)."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    user_id, token = await _investor(client)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    submit = await _submit(client, token)
+    application_id = submit.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/staff/agent-applications/{application_id}/approve",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 204
+
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("idempotency_key")
+        == f"agent-application-approved:{application_id}"
+    ]
+    assert len(matches) == 1
+    payload = matches[0].payload
+    assert payload["type"] == "agent_application.approved"
+    assert payload["target_type"] == "user"
+    assert payload["target_value"] == str(user_id)
+
+
+@pytest.mark.asyncio
+async def test_staff_reject_emits_notification_with_reason(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reject -> agent_application.rejected, body carries the staff's
+    reason text (already user-facing today via GET /me, same precedent
+    withdrawal.rejected's emitter relies on)."""
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+    user_id, token = await _investor(client)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    submit = await _submit(client, token)
+    application_id = submit.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/staff/agent-applications/{application_id}/reject",
+        json={"reason": "Portfolio too small"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 204
+
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("idempotency_key")
+        == f"agent-application-rejected:{application_id}"
+    ]
+    assert len(matches) == 1
+    payload = matches[0].payload
+    assert payload["type"] == "agent_application.rejected"
+    assert payload["target_type"] == "user"
+    assert payload["target_value"] == str(user_id)
+    assert "Portfolio too small" in payload["body"]
+
+
+@pytest.mark.asyncio
+async def test_approve_without_comms_emits_no_notification(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No comms address -> no outbox row, same gate as every other
+    emitter in this tree."""
+    monkeypatch.setattr(settings, "comms_api_url", "")
+    _, token = await _investor(client)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    submit = await _submit(client, token)
+    application_id = submit.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/staff/agent-applications/{application_id}/approve",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 204
+
+    events = await _notification_events(db_session)
+    matches = [
+        e for e in events
+        if e.payload.get("idempotency_key")
+        == f"agent-application-approved:{application_id}"
+    ]
+    assert matches == []

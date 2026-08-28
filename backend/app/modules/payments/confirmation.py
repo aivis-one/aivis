@@ -30,6 +30,15 @@
 #   After confirming payments, write deposit:confirmed Transaction entries
 #   for each confirmed payment. RETURNING includes user_id, amount_cents, id
 #   so we can create transaction log entries without extra queries.
+#
+# Batch 6 (2026-08-28):
+#   Same loop also emits notification_request (deposit.confirmed), one per
+#   confirmed payment. Same session as the Transaction write above -- no
+#   extra query, no extra commit (the batch commits once at the end, same
+#   as everything else this daemon writes). idempotency_key uses the
+#   payment id: a Payment only ever crosses FROZEN -> CONFIRMED once (no
+#   transition back to FROZEN exists), so the row is a safe, permanent
+#   dedup key without a status suffix.
 # =============================================================================
 
 from datetime import UTC, datetime
@@ -37,7 +46,9 @@ from datetime import UTC, datetime
 import structlog
 from sqlalchemy import update
 
+from app.core.comms import comms_configured
 from app.core.database import get_session_factory
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.modules.ledgers.models import ActiveLedger, LedgerStatus, PassiveLedger
 from app.modules.payments.constants import PaymentStatus
 from app.modules.payments.models import Payment
@@ -74,6 +85,12 @@ async def run_confirmation_batch() -> None:
         confirmed_payments = payment_result.all()
 
         # Sprint 6.4: write deposit:confirmed transaction log entries.
+        # Batch 6: emit deposit.confirmed notification_request alongside
+        # each one -- same loop, same session, same comms_configured()
+        # gate every other emitter in this tree uses (without a comms
+        # address the relay is disabled too, so a row emitted here would
+        # sit in the outbox forever with nobody to ship it).
+        notify = comms_configured()
         for row in confirmed_payments:
             txn_entry = Transaction(
                 user_id=row.user_id,
@@ -84,6 +101,21 @@ async def run_confirmation_batch() -> None:
                 reference_type=ReferenceType.PAYMENT,
             )
             session.add(txn_entry)
+
+            if notify:
+                amount = f"{row.amount_cents / 100:,.2f}"
+                await emit_event(
+                    session,
+                    EVENT_NOTIFICATION_REQUEST,
+                    {
+                        "idempotency_key": f"deposit-confirmed:{row.id}",
+                        "type": "deposit.confirmed",
+                        "target_type": "user",
+                        "target_value": str(row.user_id),
+                        "title": "Deposit confirmed",
+                        "body": f"Your deposit of ${amount} is confirmed and available.",
+                    },
+                )
 
         if confirmed_payments:
             await session.flush()

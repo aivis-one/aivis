@@ -24,7 +24,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
 from app.core.config import settings
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import NotFoundError
 from app.modules.agent_applications.constants import (
     AgentApplicationStatus,
@@ -98,6 +100,27 @@ async def agent_application_approve(
         },
     )
 
+    # Batch 6 (2026-08-28): mirrors kyc.approved/kyc.rejected one level up
+    # -- one decision per application row, ever (validate_transition only
+    # allows PENDING -> APPROVED, a one-way edge), so the application id
+    # alone is a safe, permanent dedup key.
+    if comms_configured():
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                "idempotency_key": f"agent-application-approved:{application.id}",
+                "type": "agent_application.approved",
+                "target_type": "user",
+                "target_value": str(application.user_id),
+                "title": "Agent application approved",
+                "body": (
+                    "Your agent application has been approved. "
+                    "You are now an agent."
+                ),
+            },
+        )
+
     logger.info(
         "agent_application_approved",
         application_id=str(application_id),
@@ -151,6 +174,28 @@ async def agent_application_reject(
             "cooldown_days": settings.agent_application_cooldown_days,
         },
     )
+
+    # Batch 6 (2026-08-28): mirrors kyc.approved/kyc.rejected. Body
+    # includes the staff reason (already user-facing via GET /me, same
+    # precedent withdrawal.rejected's emitter relies on) and the
+    # cooldown_until date so the applicant knows when they can reapply.
+    if comms_configured():
+        await emit_event(
+            session,
+            EVENT_NOTIFICATION_REQUEST,
+            {
+                "idempotency_key": f"agent-application-rejected:{application.id}",
+                "type": "agent_application.rejected",
+                "target_type": "user",
+                "target_value": str(application.user_id),
+                "title": "Agent application rejected",
+                "body": (
+                    f"Your agent application was rejected: {reason}. "
+                    f"You can reapply after "
+                    f"{application.cooldown_until.date().isoformat()}."
+                ),
+            },
+        )
 
     logger.info(
         "agent_application_rejected",
