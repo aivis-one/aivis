@@ -843,6 +843,7 @@ async def test_reverse_payment_flags_completed_plan_is07(
         is07_after["details"]["completed_plans_with_reversed_funding"]
         == baseline + 1
     )
+    assert is07_after["status"] == "fail"
 
 
 # ---------------------------------------------------------------------------
@@ -951,4 +952,3 @@ async def test_reverse_without_comms_emits_no_notification(
         if e.payload.get("idempotency_key") == f"payment-reversed:{payment_id}"
     ]
     assert matches == []
-    assert is07_after["status"] == "fail"
