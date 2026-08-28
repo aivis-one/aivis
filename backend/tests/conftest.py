@@ -211,6 +211,20 @@ def mock_email(monkeypatch: pytest.MonkeyPatch) -> None:
         _noop_code,
     )
 
+    async def _noop_two_emails(_old_email: str, _new_email: str) -> None:
+        return None
+
+    # Navigator-30's review of TASK-38: confirm_email_change() now also
+    # notifies the OLD address on success (_send_email_changed_notice,
+    # different signature from the code-carrying senders above -- two
+    # email addresses, no code) -- without this no-op, any test driving
+    # a real confirm would schedule a genuine outbound send the same
+    # way the fixture's own docstring warns about for the others.
+    monkeypatch.setattr(
+        "app.modules.users.service._send_email_changed_notice",
+        _noop_two_emails,
+    )
+
 
 @pytest.fixture(autouse=True)
 async def clear_rate_limit() -> None:

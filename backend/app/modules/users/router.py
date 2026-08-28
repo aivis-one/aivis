@@ -97,7 +97,16 @@ async def get_me(
     return await build_user_response(user, session)
 
 
-@router.patch("/me", response_model=UserResponse)
+@router.patch(
+    "/me",
+    response_model=UserResponse,
+    # R49 (Navigator-30's TASK-38 review): profile.country/phone are
+    # AML/KYC-significant fields per this module's own header comment,
+    # and a write here outlives the avatar session the same way every
+    # other guarded identity-mutating endpoint does -- see
+    # avatar_guard.py's update_profile note.
+    dependencies=[Depends(forbid_avatar("update_profile"))],
+)
 async def update_me(
     body: UserUpdate,
     user: User = Depends(get_current_user_write),
@@ -229,11 +238,17 @@ async def resend_email_change_endpoint(
 )
 async def confirm_email_change_endpoint(
     body: ConfirmEmailChangeRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user_write),
     session: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
-    """Confirm the pending email change with its 6-digit code."""
-    updated = await confirm_email_change(user, body.code, session)
+    """Confirm the pending email change with its 6-digit code.
+
+    On success: every session (including this request's own) is
+    killed and the OLD address is notified -- see
+    confirm_email_change()'s module note.
+    """
+    updated = await confirm_email_change(user, body.code, session, background_tasks)
     return await build_user_response(updated, session)
 
 

@@ -455,6 +455,40 @@ async def _send_email_change_verification_email(email: str, code: str) -> None:
         )
 
 
+async def _send_email_changed_notice(old_email: str, new_email: str) -> None:
+    """Notify the OLD address after a successful email change. Errors
+    logged, not raised -- same fire-and-forget contract as every other
+    outbound mail helper in this module.
+
+    Navigator-30's review of TASK-38: only the NEW address ever heard
+    about an email change in the original delivery -- the old address
+    (the account owner's one remaining trusted channel if the change
+    was not theirs) was never told anything happened. Standard
+    industry practice for this exact action; closes a silent-takeover
+    gap where an attacker with a stolen session + the current password
+    could move the account onto an address only they control with no
+    notice anywhere the real owner would see it.
+    """
+    from app.core.email import send_email
+
+    try:
+        await send_email(
+            recipient=old_email,
+            subject="AIVIS.ONE - Your Account Email Was Changed",
+            body=(
+                f"Your AIVIS.ONE account email was changed to {new_email}.\n\n"
+                "If you made this change, no action is needed.\n\n"
+                "If you did NOT make this change, your account may be "
+                "compromised -- contact support immediately."
+            ),
+        )
+    except Exception:
+        logger.error(
+            "email_changed_notice_send_failed",
+            recipient=old_email[:3] + "***",
+        )
+
+
 async def request_email_change(
     user: User,
     current_password: str,
@@ -565,6 +599,7 @@ async def confirm_email_change(
     user: User,
     code: str,
     session: AsyncSession,
+    background_tasks: BackgroundTasks,
 ) -> User:
     """Verify the 6-digit code and, on success, swap the login email.
 
@@ -572,6 +607,19 @@ async def confirm_email_change(
     On success: credentials.email.email <- pending new_email,
     credentials.email_change cleared. Does NOT commit -- caller manages
     the transaction (P-01).
+
+    Navigator-30's review of TASK-38 caught two gaps, both closed here:
+    - delete_all_sessions() now runs on success, same as
+      confirm_password_reset()/deactivate_own_account() for the
+      identical reason -- a stolen write-session token + the current
+      password (already required to REACH this point, see
+      request_email_change's _require_current_password call) could
+      otherwise move the account onto an attacker-controlled email and
+      leave every other session, including the real owner's, alive
+      with no notice.
+    - The OLD address is now notified after a successful change (see
+      _send_email_changed_notice) -- previously only the NEW address
+      ever heard anything.
 
     Raises:
         BadRequestError: No pending change, too many attempts, expired,
@@ -625,6 +673,12 @@ async def confirm_email_change(
 
     await session.refresh(user)
 
+    # Every other session (including this request's own) dies with the
+    # old identity -- see the module note above. Redis-only, safe to
+    # call before the DB commit lands (same reasoning as
+    # confirm_password_reset/deactivate_own_account).
+    killed = await delete_all_sessions(user.id)
+
     await record_audit(
         session=session,
         event="user.email_changed",
@@ -632,10 +686,21 @@ async def confirm_email_change(
         actor_type="user",
         target_type="user",
         target_id=user.id,
-        data={"old_email": old_email, "new_email": pending_email},
+        data={
+            "old_email": old_email,
+            "new_email": pending_email,
+            "sessions_killed": killed,
+        },
     )
 
-    logger.info("email_changed", user_id=str(user.id))
+    logger.info(
+        "email_changed", user_id=str(user.id), sessions_killed=killed
+    )
+
+    if old_email:
+        background_tasks.add_task(
+            _send_email_changed_notice, old_email, pending_email
+        )
 
     return user
 

@@ -780,6 +780,52 @@ async def test_avatar_blocked_mute_notifications(
 
 
 @pytest.mark.asyncio
+async def test_avatar_blocked_update_profile(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """TASK-38: PATCH /users/me in avatar mode -> 403.
+
+    Navigator-30's review of the batch caught this endpoint as the one
+    identity-mutating route left ungated -- it writes profile.country/
+    profile.phone, fields this codebase's own users/router.py header
+    comment calls AML/KYC-significant. Confirms both the 403 AND that
+    the target's profile genuinely stays unchanged, not just that the
+    request itself was refused.
+    """
+    admin_token = await _admin_token(client, db_session)
+    investor_id, investor_token = await _investor_id_and_token(client)
+
+    before = await client.get(
+        "/api/v1/users/me", headers=auth_headers(investor_token)
+    )
+    assert before.status_code == 200
+    original_country = before.json().get("profile", {}).get("country")
+
+    start_resp = await client.post(
+        "/api/v1/staff/avatar/start",
+        json={"target_user_id": investor_id},
+        headers=auth_headers(admin_token),
+    )
+    assert start_resp.status_code == 200
+    avatar_token = start_resp.json()["session_token"]
+
+    resp = await client.patch(
+        "/api/v1/users/me",
+        json={"profile": {"country": "ZZ-avatar-should-not-land"}},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+    after = await client.get(
+        "/api/v1/users/me", headers=auth_headers(investor_token)
+    )
+    assert after.json().get("profile", {}).get("country") == original_country
+
+
+@pytest.mark.asyncio
 async def test_avatar_blocked_2fa_setup(
     client: AsyncClient,
     db_session: AsyncSession,
@@ -1142,6 +1188,7 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_revoke_session",
         "forbid_avatar_mute_notifications",
         "forbid_avatar_manage_2fa",
+        "forbid_avatar_update_profile",
     }
     missing = expected - guarded
     assert not missing, (

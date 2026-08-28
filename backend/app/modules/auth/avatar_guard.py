@@ -111,6 +111,16 @@
 #   contextvars to read -- the whole point of the endpoint is that the
 #   caller has no session yet), the same reason PASSWORD_RESET's two
 #   endpoints have never carried one either.
+#
+#   update_profile (users/router.py PATCH /me, TASK-38 -- Navigator-30's
+#   review of the batch, verified directly against the code rather than
+#   relayed from a worker): this route was the one identity-mutating
+#   endpoint the batch left ungated. It writes profile.country /
+#   profile.phone, fields this same module's own header comment calls
+#   AML/KYC-significant, and outlives the avatar session by construction
+#   (a JSONB write on the target's own row) -- the same reasoning
+#   already applied to change_email/delete_account/mute_notifications
+#   fits this endpoint at least as well, not less.
 # =============================================================================
 
 from typing import Callable
@@ -140,6 +150,7 @@ RESTRICTED_OPERATIONS = frozenset({
     "revoke_session",
     "mute_notifications",
     "manage_2fa",
+    "update_profile",
 })
 
 

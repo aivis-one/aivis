@@ -16,6 +16,9 @@
 #   8: Confirm attempts cap -> 400 after 5 wrong codes
 #   9: Rate limit on the request endpoint (email_change_request:{user.id})
 #  10: Malformed new_email -> 422
+#  11: Confirm success kills EVERY session (including a second, separate
+#      one for the same user) and schedules a notice to the OLD address
+#      (Navigator-30's TASK-38 review -- both were missing originally)
 #
 # Email prefix: "echange_" -- unique to this test file.
 #
@@ -411,3 +414,65 @@ async def test_email_change_request_rate_limit(client: AsyncClient) -> None:
         headers=auth_headers(token),
     )
     assert resp.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# Session invalidation + old-address notice (Navigator-30's TASK-38 review)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_email_change_confirm_kills_every_session_and_notifies_old_address(
+    client: AsyncClient, capture_change_email: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A successful confirm must (a) kill EVERY session for this user --
+    including one that never touched the email-change flow at all, not
+    just the requesting token -- and (b) schedule a notice to the OLD
+    address. Neither happened in the original TASK-38 delivery;
+    Navigator-30's review caught both as a silent-takeover gap (a
+    stolen session + the current password could move the account onto
+    an attacker email with every other session, including the real
+    owner's, left alive and nobody told).
+    """
+    old_email = f"echange_kill_{uuid.uuid4().hex[:12]}@example.com"
+    password = "Password123!"
+    data = await register_user(client, email=old_email, password=password)
+    token_a = data["session_token"]
+
+    # A SECOND, independent session for the same user -- e.g. another
+    # device -- that never makes an email-change request itself.
+    login_b = await login_user(client, email=old_email, password=password)
+    token_b = login_b["session_token"]
+
+    captured_notice: dict = {}
+
+    async def _fake_notice(old: str, new: str) -> None:
+        captured_notice["old_email"] = old
+        captured_notice["new_email"] = new
+
+    monkeypatch.setattr(
+        "app.modules.users.service._send_email_changed_notice", _fake_notice
+    )
+
+    new_email = f"echange_kill_new_{uuid.uuid4().hex[:12]}@example.com"
+    await _request_change(
+        client, token_a, current_password=password, new_email=new_email
+    )
+    code = capture_change_email["code"]
+
+    resp = await client.post(
+        "/api/v1/users/me/email-change/confirm",
+        json={"code": code},
+        headers=auth_headers(token_a),
+    )
+    assert resp.status_code == 200, resp.text
+
+    # (a) Both sessions are dead -- the requesting one AND the unrelated one.
+    me_a = await client.get("/api/v1/users/me", headers=auth_headers(token_a))
+    assert me_a.status_code == 401
+    me_b = await client.get("/api/v1/users/me", headers=auth_headers(token_b))
+    assert me_b.status_code == 401
+
+    # (b) The OLD address was notified, with the right pair of addresses.
+    assert captured_notice["old_email"] == old_email
+    assert captured_notice["new_email"] == new_email
