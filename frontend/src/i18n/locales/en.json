@@ -707,6 +707,65 @@
         "generic": "Could not create the plan. Please try again"
       }
     },
+    "installmentPlans": {
+      "list": {
+        "title": "Installment Plans",
+        "subtitle": "Your active and past installment plans",
+        "errorTitle": "Could not load your installment plans",
+        "loadMoreError": "Could not load more, try again",
+        "empty": {
+          "title": "No installment plans yet",
+          "description": "Choose a product with an installment option to start a plan.",
+          "cta": "Browse companies"
+        },
+        "item": {
+          "label": "Plan {id}",
+          "totalPrice": "Total price",
+          "units": "Units",
+          "created": "Started"
+        }
+      },
+      "detail": {
+        "title": "Installment Plan",
+        "backLink": "Back to plans",
+        "errorTitle": "Could not load this plan",
+        "notFoundTitle": "Plan not found",
+        "notFoundDesc": "This plan does not exist or is not yours.",
+        "defaultedBanner": "This plan defaulted after a missed payment. Units from tranches already paid are kept; the remaining tranches were cancelled.",
+        "summary": {
+          "totalPrice": "Total price",
+          "totalUnits": "Total units",
+          "pricePerUnit": "Price per unit",
+          "created": "Started",
+          "completed": "Completed",
+          "defaulted": "Defaulted"
+        },
+        "schedule": {
+          "title": "Payment schedule",
+          "tranche": "Tranche {n}",
+          "due": "Due date",
+          "amount": "Amount",
+          "units": "Units",
+          "paidOn": "Paid on {date}"
+        }
+      },
+      "status": {
+        "plan": {
+          "active": "Active",
+          "completed": "Completed",
+          "defaulted": "Defaulted",
+          "cancelled": "Cancelled"
+        },
+        "tranche": {
+          "scheduled": "Scheduled",
+          "paid": "Paid",
+          "overdue": "Overdue",
+          "defaulted": "Defaulted",
+          "cancelled": "Cancelled",
+          "reversed": "Reversed"
+        }
+      }
+    },
     "balance": {
       "title": "Balance",
       "active": "Active balance",
@@ -1290,6 +1349,10 @@
       "notifications": {
         "title": "Notifications",
         "desc": "Updates on deposits, withdrawals, and KYC"
+      },
+      "installments": {
+        "title": "Installment plans",
+        "desc": "Track payments, due dates, and overdue tranches"
       }
     },
     "support": {
@@ -1928,6 +1991,10 @@
       "notifications": {
         "title": "Notifications",
         "desc": "Updates on your account and commissions"
+      },
+      "installments": {
+        "title": "Installment plans",
+        "desc": "Track payments, due dates, and overdue tranches"
       }
     },
     "settings": {

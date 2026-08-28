@@ -78,8 +78,9 @@ async def create_installment_plan(
     """Create an installment plan for a product.
 
     Investor selects a ProductInstallment template. Plan_config is
-    snapshot-copied, tranches are expanded. First tranche is paid
-    by the daemon (not immediately).
+    snapshot-copied, tranches are expanded, and the first tranche is
+    paid inline in the same transaction (UX-01) -- not by the daemon.
+    Tranches 2..N are paid by the daemon as they come due.
 
     Requires: authenticated investor or agent.
     """

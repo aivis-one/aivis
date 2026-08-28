@@ -9,9 +9,11 @@
 // under the top-level /installments namespace. That split mirrors
 // the backend's two routers and keeps the URL shape predictable.
 //
-// listMyPlans / getPlanDetail are unused by F4.2 itself but land
-// here now so F4.4 (Portfolio) can consume them without a second
-// round-trip to the API layer.
+// listMyPlans / getPlanDetail were unused by F4.2 itself when this
+// file was written -- they landed ahead of their own consumers so a
+// later screen could use them without a second round-trip to the API
+// layer. TASK-39 item 1 is that consumer: InstallmentPlansView.vue /
+// InstallmentPlanDetailView.vue.
 //
 // F4.3 B1.1: inline URLSearchParams replaced with buildQueryString
 // (TD-F08e closure). No behavioural change.
@@ -30,8 +32,11 @@ import type {
  * POST /api/v1/products/{product_id}/installment
  *
  * Creates a new installment plan by snapshotting the selected
- * ProductInstallment template. The first tranche is NOT paid
- * inline -- the installments worker picks it up on its next tick.
+ * ProductInstallment template. The first tranche IS paid inline in
+ * the same request (UX-01, see backend service.py::create_plan) --
+ * the balance is debited and the Purchase row exists before this
+ * call resolves. Tranches 2..N are paid by the installments worker
+ * as they come due.
  *
  * 4xx conditions the caller must be ready to handle:
  *   - 400 "KYC verification required ..."            -- investor not KYC-approved

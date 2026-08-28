@@ -269,6 +269,24 @@ export const router = createRouter({
           component: () => import('@/views/investor/InstallmentView.vue'),
         },
         {
+          // TASK-39 item 1: list of the buyer's ALREADY-CREATED
+          // installment plans (GET /installments/me). Distinct from
+          // 'investor-installment' above (plan CREATION, path
+          // installment/:id where :id is a PRODUCT id) -- plural path
+          // segment, no id. Reached from the "Installment plans" tile
+          // in InvestorMoreView.
+          path: 'installments',
+          name: 'investor-installment-plans',
+          component: () => import('@/views/investor/InstallmentPlansView.vue'),
+        },
+        {
+          // TASK-39 item 1: single plan + tranche schedule
+          // (GET /installments/{plan_id}). :id here is a PLAN id.
+          path: 'installments/:id',
+          name: 'investor-installment-plan-detail',
+          component: () => import('@/views/investor/InstallmentPlanDetailView.vue'),
+        },
+        {
           path: 'balance',
           name: 'investor-balance',
           component: () => import('@/views/investor/BalanceView.vue'),
@@ -421,6 +439,21 @@ export const router = createRouter({
           path: 'installment/:id',
           name: 'agent-installment',
           component: () => import('@/views/investor/InstallmentView.vue'),
+        },
+        {
+          // TASK-39 item 1: mirror of investor-installment-plans --
+          // same InstallmentPlansView, agent layout. An agent is a
+          // buyer too (_BUYER_ROLES on the backend) and holds their
+          // own installment plans.
+          path: 'installments',
+          name: 'agent-installment-plans',
+          component: () => import('@/views/investor/InstallmentPlansView.vue'),
+        },
+        {
+          // TASK-39 item 1: mirror of investor-installment-plan-detail.
+          path: 'installments/:id',
+          name: 'agent-installment-plan-detail',
+          component: () => import('@/views/investor/InstallmentPlanDetailView.vue'),
         },
         {
           // iter 2.7b C: events mirror -- same InvestorEventsView,

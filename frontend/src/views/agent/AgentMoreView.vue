@@ -35,7 +35,14 @@
 
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Bell, ChevronRight, Settings as SettingsIcon, Trophy, Users } from 'lucide-vue-next'
+import {
+  Bell,
+  ChevronRight,
+  CreditCard,
+  Settings as SettingsIcon,
+  Trophy,
+  Users,
+} from 'lucide-vue-next'
 import { safeNavigate } from '@/composables/safeNavigate'
 
 interface Tile {
@@ -72,6 +79,18 @@ const TILES: readonly Tile[] = [
     descKey: 'agent.more.settings.desc',
     route: '/agent/settings',
     icon: SettingsIcon,
+  },
+  // TASK-39 item 1: an agent is a buyer too (_BUYER_ROLES on the
+  // backend) and can hold their own installment plans -- same tile,
+  // same route shape as InvestorMoreView's mirror
+  // (/agent/installments -> the same InstallmentPlansView.vue every
+  // shell reuses).
+  {
+    id: 'installments',
+    labelKey: 'agent.more.installments.title',
+    descKey: 'agent.more.installments.desc',
+    route: '/agent/installments',
+    icon: CreditCard,
   },
   {
     id: 'notifications',

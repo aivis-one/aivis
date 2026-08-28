@@ -56,6 +56,7 @@ import { useI18n } from 'vue-i18n'
 import {
   Bell,
   ChevronRight,
+  CreditCard,
   FileText,
   MessageCircle,
   Settings as SettingsIcon,
@@ -90,6 +91,19 @@ const TILES: readonly Tile[] = [
     descKey: 'inv.more.settings.desc',
     route: '/investor/settings',
     icon: SettingsIcon,
+  },
+  // TASK-39 item 1: installment plans had ZERO frontend entry point
+  // before this -- listMyPlans/getPlanDetail existed unused since
+  // F4.2. Portfolio (holdings-adjacent) was considered as the host
+  // but a plan is a payment obligation, not a holding, so this tile
+  // is the more honest placement; same tile-grid pattern as its
+  // neighbours, one-line addition per the TILES comment above.
+  {
+    id: 'installments',
+    labelKey: 'inv.more.installments.title',
+    descKey: 'inv.more.installments.desc',
+    route: '/investor/installments',
+    icon: CreditCard,
   },
   // Ф-2: the comment above TILES promised this would be a one-line
   // addition, not a template rewrite -- it is.
