@@ -465,6 +465,16 @@ export const router = createRouter({
           component: () => import('@/views/investor/InvestorEventsView.vue'),
         },
         {
+          // TASK-39 item 4: mirror of investor-support -- same
+          // InvestorSupportView, agent layout. Reached from the
+          // Support tile in AgentMoreView. The backend already served
+          // this role with no gap (support/router.py has no role
+          // check); this route is what makes it reachable.
+          path: 'support',
+          name: 'agent-support',
+          component: () => import('@/views/investor/InvestorSupportView.vue'),
+        },
+        {
           // Phase 6: the bell mirror -- same NotificationsInboxView,
           // agent layout. Parallel to /investor/notifications.
           path: 'notifications',
@@ -549,6 +559,19 @@ export const router = createRouter({
           path: 'notifications',
           name: 'company-notifications',
           component: () => import('@/views/investor/NotificationsInboxView.vue'),
+        },
+        {
+          // TASK-39 item 4: mirror of investor-support -- same
+          // InvestorSupportView, company layout. CompanyShell has no
+          // More tab (COMPANY_TABS has 5 fixed slots), so this is
+          // reached from a row inside CompanySettingsView, same
+          // placement reasoning as the roadmap/posts/attachments/
+          // notifications rows above. The backend already served this
+          // role with no gap (support/router.py has no role check);
+          // this route is what makes it reachable.
+          path: 'support',
+          name: 'company-support',
+          component: () => import('@/views/investor/InvestorSupportView.vue'),
         },
       ],
     },

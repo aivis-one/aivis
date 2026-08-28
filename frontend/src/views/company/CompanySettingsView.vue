@@ -92,6 +92,7 @@ import {
   LogOut,
   Layers,
   Map as MapIcon,
+  MessageCircle,
   Newspaper,
   Package,
   Pencil,
@@ -587,6 +588,24 @@ onMounted(() => {
           <span class="cset__row-label">
             <FileText :size="16" />
             {{ t('comp.settings.attachments.cta') }}
+          </span>
+          <ChevronRight :size="16" />
+        </RouterLink>
+      </section>
+
+      <!-- Support (TASK-39 item 4) -- same "no dead 6th tab-bar slot"
+           reasoning as Notifications/Roadmap/Posts/Attachments above:
+           CompanyShell has no More tab, so the entry point is a row
+           here instead. Measured gap: a company user had no path to
+           support anywhere in the product before this. -->
+      <section class="cset__section">
+        <div class="cset__section-title">
+          {{ t('comp.settings.support.title') }}
+        </div>
+        <RouterLink to="/company/support" class="cset__row cset__row--clickable">
+          <span class="cset__row-label">
+            <MessageCircle :size="16" />
+            {{ t('comp.settings.support.cta') }}
           </span>
           <ChevronRight :size="16" />
         </RouterLink>

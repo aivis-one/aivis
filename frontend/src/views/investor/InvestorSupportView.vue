@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- InvestorSupportView (Ф-2)
+// AIVIS.ONE Frontend -- InvestorSupportView (Ф-2, shared TASK-39 item 4)
 // =============================================================================
 //
 // One conversation: feed + composer. Reached from the Support tile in
@@ -9,6 +9,30 @@
 // inline <h1> since this is a detail screen reached from "More", not
 // a tab-bar top level (contrast InvestorDocsView, which dropped its
 // back-link when it was promoted to a tab).
+//
+// TASK-39 item 4: also mounted at /agent/support (AgentMoreView's
+// Support tile) and /company/support (a row inside
+// CompanySettingsView) -- same "shared component lives physically
+// under views/investor/, other shells' route records import it
+// directly" convention as PortfolioView / NotificationsInboxView /
+// InstallmentPlansView. The backend gates every /api/v1/support/*
+// route on plain get_current_user[_write] with no role check
+// (backend/app/modules/support/router.py), so this was a pure
+// frontend-surface gap, not a backend change.
+//
+// SHELL-SAFETY AUDIT (TASK-39 item 4).
+//   Everything else in this file is role-agnostic: the store/api layer
+//   carry no role assumption, and the visible copy ("Write to support
+//   here...", sender labels, error text) reads fine for any role. The
+//   ONE thing that was NOT shell-safe: goBack()'s deep-link fallback
+//   hardcoded `{ name: 'investor-more' }` and the back-link label said
+//   "Back to more" -- both true only for investor/agent (which have a
+//   More tab) and wrong for company (no More tab; this screen is
+//   reached from a Settings row instead). Fixed below by reading
+//   route.meta.shell (getShell) to pick investor-more / agent-more /
+//   company-settings, and by switching the label to the generic
+//   t('common.back') (same key NotificationsInboxView's CBackLink
+//   uses) instead of a "to more" phrase that doesn't hold for company.
 //
 // STATE IS THE STORE'S, EXCEPT ONE LOCAL ID.
 //   `knownThreadId` is the only piece of state this component owns:
@@ -75,17 +99,19 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { RefreshCw } from 'lucide-vue-next'
 import { CBackLink, CButton, CEmptyState, CLoader, CTextarea } from '@/components/ui'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { getShell } from '@/router/helpers'
 import { useSupportStore } from '@/stores/support'
 import { useAuthStore } from '@/stores/auth'
 import type { SupportActionError } from '@/stores/support'
 import type { SupportMessageResponse } from '@/api/support'
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const support = useSupportStore()
 const auth = useAuthStore()
@@ -190,15 +216,35 @@ function retryFeed(): void {
   void loadFeed()
 }
 
+// Deep-link fallback target, one per shell that hosts this screen.
+// investor/agent land back on their More tab (where the Support tile
+// lives); company has no More tab -- its entry point is a row inside
+// Settings, so that's where a deep-linked company user goes back to.
+// The final return serves TWO cases at once: the investor shell (the
+// normal, reachable path) and a shell of undefined -- the latter only
+// if this screen were ever mounted outside a shell wrapper, which no
+// current route does. Both want the investor More tab, so they share
+// one branch rather than pretending the second one is unreachable.
+const backFallbackRouteName = computed<string>(() => {
+  const shell = getShell(route)
+  if (shell === 'agent') return 'agent-more'
+  if (shell === 'company') return 'company-settings'
+  return 'investor-more'
+})
+
 function goBack(): void {
   // Same history-aware pattern as CBackLink's other consumers
-  // (InstallmentView etc.): prefer router.back() so More restores its
-  // scroll for free, fall back to a push only for a deep-linked entry.
+  // (InstallmentView etc.): prefer router.back() so the screen this
+  // was reached from restores its scroll for free, fall back to a
+  // push only for a deep-linked entry.
   if (window.history.state?.back) {
     router.back()
     return
   }
-  void safeNavigate(router.push({ name: 'investor-more' }), '[InvestorSupportView] back')
+  void safeNavigate(
+    router.push({ name: backFallbackRouteName.value }),
+    '[InvestorSupportView] back',
+  )
 }
 
 onMounted(() => {
@@ -209,7 +255,7 @@ onMounted(() => {
 <template>
   <div class="isup">
     <div class="isup__back-row">
-      <CBackLink :label="t('inv.support.backLink')" @click="goBack" />
+      <CBackLink :label="t('common.back')" @click="goBack" />
     </div>
 
     <header class="isup__header">

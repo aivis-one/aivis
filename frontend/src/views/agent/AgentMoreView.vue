@@ -39,6 +39,7 @@ import {
   Bell,
   ChevronRight,
   CreditCard,
+  MessageCircle,
   Settings as SettingsIcon,
   Trophy,
   Users,
@@ -98,6 +99,19 @@ const TILES: readonly Tile[] = [
     descKey: 'agent.more.notifications.desc',
     route: '/agent/notifications',
     icon: Bell,
+  },
+  // TASK-39 item 4: an agent has no path to support anywhere in the
+  // product today (measured gap) -- same tile, same route shape as
+  // InvestorMoreView's mirror (/agent/support -> the same
+  // InvestorSupportView.vue every shell reuses). The backend already
+  // serves this role (support/router.py has no role check); this
+  // tile is what makes it reachable.
+  {
+    id: 'support',
+    labelKey: 'agent.more.support.title',
+    descKey: 'agent.more.support.desc',
+    route: '/agent/support',
+    icon: MessageCircle,
   },
 ] as const
 

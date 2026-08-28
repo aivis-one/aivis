@@ -1357,7 +1357,6 @@
     },
     "support": {
       "title": "Support",
-      "backLink": "Back to more",
       "invite": "Write to support here. Send your first message and we'll answer.",
       "placeholder": "Your message",
       "send": "Send",
@@ -1495,6 +1494,10 @@
       "attachments": {
         "title": "Attachments",
         "cta": "Manage attachments"
+      },
+      "support": {
+        "title": "Support",
+        "cta": "Contact support"
       },
       "adminManagedHint": "Pricing, supply, and distribution are managed by AIVIS staff. Contact support to request a change.",
       "actions": {
@@ -1995,6 +1998,10 @@
       "installments": {
         "title": "Installment plans",
         "desc": "Track payments, due dates, and overdue tranches"
+      },
+      "support": {
+        "title": "Support",
+        "desc": "Message us if you have a question"
       }
     },
     "settings": {
