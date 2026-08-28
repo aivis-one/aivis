@@ -308,6 +308,14 @@ export const router = createRouter({
           component: () => import('@/views/investor/InvestorSupportView.vue'),
         },
         {
+          // Phase 6: the bell -- reached from CHeader's notifications
+          // icon (every shell) and from the Notifications tile in
+          // InvestorMoreView. Same shell/guard as its neighbours above.
+          path: 'notifications',
+          name: 'investor-notifications',
+          component: () => import('@/views/investor/NotificationsInboxView.vue'),
+        },
+        {
           path: 'more',
           name: 'investor-more',
           component: () => import('@/views/investor/InvestorMoreView.vue'),
@@ -423,6 +431,13 @@ export const router = createRouter({
           name: 'agent-events',
           component: () => import('@/views/investor/InvestorEventsView.vue'),
         },
+        {
+          // Phase 6: the bell mirror -- same NotificationsInboxView,
+          // agent layout. Parallel to /investor/notifications.
+          path: 'notifications',
+          name: 'agent-notifications',
+          component: () => import('@/views/investor/NotificationsInboxView.vue'),
+        },
       ],
     },
 
@@ -493,6 +508,14 @@ export const router = createRouter({
           path: 'posts',
           name: 'company-posts',
           component: () => import('@/views/company/CompanyPostsView.vue'),
+        },
+        {
+          // Phase 6: the bell -- reached from CHeader's notifications
+          // icon. Reuses the same investor-owned view as every other
+          // shell (see router notes on investor-notifications).
+          path: 'notifications',
+          name: 'company-notifications',
+          component: () => import('@/views/investor/NotificationsInboxView.vue'),
         },
       ],
     },
@@ -646,6 +669,15 @@ export const router = createRouter({
           path: 'avatar',
           name: 'staff-avatar',
           component: () => import('@/views/staff/StaffAvatarView.vue'),
+        },
+        {
+          // Phase 6: the bell -- reached from CHeader's notifications
+          // icon and from the Notifications entry in StaffMoreView's
+          // Tools section. Reuses the same investor-owned view as
+          // every other shell.
+          path: 'notifications',
+          name: 'staff-notifications',
+          component: () => import('@/views/investor/NotificationsInboxView.vue'),
         },
       ],
     },

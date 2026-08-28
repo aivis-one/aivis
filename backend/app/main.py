@@ -183,6 +183,7 @@ from app.modules.installments.router import (
 )
 from app.modules.installments.worker import run_installment_batch
 from app.modules.kyc.router import router as kyc_router
+from app.modules.notifications.router import router as notifications_router
 from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
@@ -531,6 +532,12 @@ app.include_router(support_router)
 # close. Wired next to its user-side twin so the two halves of one
 # conversation sit together in the OpenAPI document.
 app.include_router(staff_support_router)
+
+# Phase 6: the bell. A proxy to comms' frozen inbox contract, same shape
+# as support_router above -- the data lives in comms, this module only
+# knows who the caller is. Wired next to support since both are thin
+# comms-proxy modules with no native storage of their own.
+app.include_router(notifications_router)
 
 
 # ---------------------------------------------------------------------------

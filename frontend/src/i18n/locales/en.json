@@ -27,7 +27,8 @@
     "hidePassword": "Hide password",
     "codeDigit": "Digit {n} of {total}",
     "codeGroup": "Verification code",
-    "clear": "Clear"
+    "clear": "Clear",
+    "notifications": "Notifications"
   },
   "error": {
     "pageNotFound": "Page not found"
@@ -298,6 +299,9 @@
       },
       "threadId": "Thread {id}",
       "poolNoUnread": "Unclaimed requests show no unread count -- nobody is following them yet."
+    },
+    "notifications": {
+      "title": "Notifications"
     },
     "avatar": {
       "title": "Avatar Mode",
@@ -1134,6 +1138,10 @@
       "support": {
         "title": "Support",
         "desc": "Message us if you have a question"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "desc": "Updates on deposits, withdrawals, and KYC"
       }
     },
     "support": {
@@ -1153,6 +1161,15 @@
         "me": "You",
         "operator": "Support"
       }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Updates about your account, deposits, and requests",
+      "markAllRead": "Mark all read",
+      "errorTitle": "Couldn't load your notifications",
+      "errorDesc": "Something went wrong, try again",
+      "empty": "You're all caught up",
+      "loadMoreError": "Couldn't load more, try again"
     },
     "productsByCompany": {
       "title": "Products",
@@ -1251,6 +1268,10 @@
         "promoVideo": "Promo video",
         "presentation": "Presentation",
         "open": "Open"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "cta": "View notifications"
       },
       "roadmap": {
         "title": "Roadmap",
@@ -1632,6 +1653,10 @@
       "settings": {
         "title": "Settings",
         "desc": "Profile, payout details and sign out"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "desc": "Updates on your account and commissions"
       }
     },
     "settings": {

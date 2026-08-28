@@ -20,6 +20,13 @@
 //   InvestorMoreView, a finance app should not surface logout on a tab
 //   that can be hit by accident).
 //
+// Phase 6: +Notifications tile, mirroring InvestorMoreView's restored
+// tile -- same tile-grid pattern, same route shape
+// (/agent/notifications -> the same NotificationsInboxView.vue every
+// shell reuses). A second entry point to what CHeader's bell already
+// opens, kept here for the same "More tab as a catch-all" reason
+// Settings/network/leaderboard are.
+//
 // FP notes:
 //   FP-19 -- shell owns the header; inline more__header h1. No back-link:
 //            /agent/more is a top-level tab (AGENT_TABS).
@@ -28,7 +35,7 @@
 
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Settings as SettingsIcon, Trophy, Users } from 'lucide-vue-next'
+import { Bell, ChevronRight, Settings as SettingsIcon, Trophy, Users } from 'lucide-vue-next'
 import { safeNavigate } from '@/composables/safeNavigate'
 
 interface Tile {
@@ -65,6 +72,13 @@ const TILES: readonly Tile[] = [
     descKey: 'agent.more.settings.desc',
     route: '/agent/settings',
     icon: SettingsIcon,
+  },
+  {
+    id: 'notifications',
+    labelKey: 'agent.more.notifications.title',
+    descKey: 'agent.more.notifications.desc',
+    route: '/agent/notifications',
+    icon: Bell,
   },
 ] as const
 

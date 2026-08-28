@@ -41,6 +41,7 @@ import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useNotificationsStore } from '@/stores/notifications'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useProductsStore } from '@/stores/products'
 import { useSupportStore } from '@/stores/support'
@@ -73,6 +74,11 @@ import { useTransactionsStore } from '@/stores/transactions'
  * left unreset would survive into the next session behind the same
  * tab -- exactly the class of bug this file exists to close, one line
  * to add rather than a store quietly missing from the list.
+ *
+ * Phase 6: +useNotificationsStore (the bell's badge + inbox feed).
+ * Its reset() also stops the poll timer -- see that store's header --
+ * so this is the one call site a next signed-in user's badge depends
+ * on not being skipped.
  */
 export function resetAllDataStores(): void {
   useDashboardStore().reset()
@@ -85,4 +91,5 @@ export function resetAllDataStores(): void {
   useCompanyDashboardStore().reset()
   useAgentStore().reset()
   useSupportStore().reset()
+  useNotificationsStore().reset()
 }

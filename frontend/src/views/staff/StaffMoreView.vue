@@ -5,7 +5,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Banknote, FileText, Ghost, LogOut, MessageCircle } from 'lucide-vue-next'
+import { Banknote, Bell, FileText, Ghost, LogOut, MessageCircle } from 'lucide-vue-next'
 import { CAvatar, CBadge } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -50,6 +50,13 @@ function goAvatar(): void {
 function goSupport(): void {
   void safeNavigate(router.push('/staff/support'), '[StaffMoreView] to support')
 }
+
+// Phase 6: a second entry point to the same screen CHeader's bell
+// already opens on every shell -- see notifications-touching call
+// sites' comments in router/index.ts.
+function goNotifications(): void {
+  void safeNavigate(router.push('/staff/notifications'), '[StaffMoreView] to notifications')
+}
 </script>
 
 <template>
@@ -91,6 +98,13 @@ function goSupport(): void {
       <button type="button" class="staff-more__nav-item" @click="goSupport">
         <span class="staff-more__nav-left">
           <MessageCircle :size="16" /> {{ t('staff.support.title') }}
+        </span>
+        <span class="staff-more__nav-right">&rarr;</span>
+      </button>
+
+      <button type="button" class="staff-more__nav-item" @click="goNotifications">
+        <span class="staff-more__nav-left">
+          <Bell :size="16" /> {{ t('staff.notifications.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </button>

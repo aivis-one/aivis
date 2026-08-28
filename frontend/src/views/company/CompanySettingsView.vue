@@ -84,6 +84,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
+  Bell,
   ChevronRight,
   ExternalLink,
   FileText,
@@ -521,6 +522,27 @@ onMounted(() => {
         <p v-else-if="status === 'archived'" class="cset__status-hint">
           {{ t('comp.settings.profile.archivedHint') }}
         </p>
+      </section>
+
+      <!-- Notifications (Phase 6, the bell) -- same "no dead 6th tab-bar
+           slot" reasoning as the Roadmap/Posts/Attachments rows below:
+           COMPANY_TABS has 5 fixed slots, so a route not on the tab bar
+           gets a settings row instead. Investor/Agent/StaffMoreView all
+           got an equivalent tile added for this same route; this row is
+           company's version of the same entry point (an adversarial
+           review of the notifications build caught that company had
+           been left without one, reachable only via the header bell). -->
+      <section class="cset__section">
+        <div class="cset__section-title">
+          {{ t('comp.settings.notifications.title') }}
+        </div>
+        <RouterLink to="/company/notifications" class="cset__row cset__row--clickable">
+          <span class="cset__row-label">
+            <Bell :size="16" />
+            {{ t('comp.settings.notifications.cta') }}
+          </span>
+          <ChevronRight :size="16" />
+        </RouterLink>
       </section>
 
       <!-- Roadmap (TASK-30 self-service, §4) -->

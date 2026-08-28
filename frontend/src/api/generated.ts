@@ -565,6 +565,13 @@ export interface EventResponse {
   updated_at?: string | null
 }
 
+/** GET /api/v1/notifications -- newest-first feed plus the badge. `unread` rides along in the same round trip as comms' own contract promises, so a page render never needs a second call just to paint the badge next to the list it is already fetching. */
+export interface InboxPageOut {
+  items: NotificationItemOut[]
+  next_cursor?: string | null
+  unread: number
+}
+
 /** Installment plan with tranches (for detail endpoint). */
 export interface InstallmentPlanDetailResponse {
   id: string
@@ -726,6 +733,25 @@ export interface LeaderboardResponse {
   entries: LeaderboardEntry[]
   snapshot_at?: string | null
   period_start: string
+}
+
+/** Navigational intent for one inbox item, or nothing. comms' frozen contract calls this `action_data`: {"action": ..., "params": {...}} | null. None of AIVIS's 16 event producers populate it today (checked at the emit_event call sites, e.g. withdrawals/service.py ~line 117 -- the payload carries no action_data key at all), so every item this proxy serves right now has it as null. Typed here anyway: comms may start sending it at any point and an untyped field showing up later would be a schema break for the frontend, not a feature. Wiring an actual navigation target from `action` + `params` is explicitly out of scope -- see the module header on notifications/service.py. */
+export interface NotificationActionOut {
+  action: string
+  params?: Record<string, unknown>
+}
+
+/** One row of the bell feed -- comms' delivery, typed. */
+export interface NotificationItemOut {
+  id: string
+  type: string
+  title: string
+  body: string
+  action_data?: NotificationActionOut | null
+  priority: number
+  sent_at: string
+  read_at?: string | null
+  created_at: string
 }
 
 /** POST /api/v1/auth/password-reset/confirm -- request body. `new_password` reuses EmailRegisterRequest.password's exact constraints (min 8 / max 128 chars) -- password strength rules live in one place, not duplicated per endpoint. */
@@ -1261,6 +1287,11 @@ export interface TxidResultResponse {
   result_code: string
   attempts_used: number
   attempts_remaining: number
+}
+
+/** The badge alone -- GET /unread-count and both mark-read verbs. */
+export interface UnreadCountOut {
+  unread: number
 }
 
 /** Company partial update (PATCH) of its own post (TASK-30). Same field set as CreateCompanyPostRequest minus title/body being optional -- no owner_type/owner_id/is_banner. Ownership (the post must belong to the caller's own company_id) is enforced in service.update_company_post, not by this schema. */

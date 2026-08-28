@@ -13,13 +13,19 @@
 //   MarketView / TransactionsView / BalanceView convention.
 //
 // SCOPE (Q1 = c in chat).
-//   Three live tiles: Documents, Settings, Support (Ф-2). Notifications
-//   and the agent-application entry were considered and dropped:
-//     - Notifications: no route exists yet, module lands in F9.2.
+//   Four live tiles: Documents, Notifications, Settings, Support (Ф-2).
+//   The agent-application entry was considered and dropped:
 //     - Agent application: already lives inside InvestorSettingsView
 //       as a dedicated section, so a parallel top-level entry here
 //       would split the mental model and make two tap paths for the
 //       same action.
+//   Notifications (Phase 6): originally dropped here with "no route
+//   exists yet, module lands in F9.2" -- that module has landed
+//   (/investor/notifications, NotificationsInboxView.vue) and the tile
+//   is back. It is a SECOND entry point to the same screen the header
+//   bell already opens on every shell (CHeader.vue) -- kept for
+//   discoverability from the More tab the same way Support and
+//   Documents are, not because the bell is hard to find.
 //   Sign-out is intentionally NOT surfaced here (Q2 = b): it lives in
 //   Settings as a rare / deliberate action. Adding it to a tab that
 //   can be hit accidentally is the wrong risk trade-off for a finance
@@ -47,7 +53,13 @@
 
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, FileText, MessageCircle, Settings as SettingsIcon } from 'lucide-vue-next'
+import {
+  Bell,
+  ChevronRight,
+  FileText,
+  MessageCircle,
+  Settings as SettingsIcon,
+} from 'lucide-vue-next'
 import { safeNavigate } from '@/composables/safeNavigate'
 
 interface Tile {
@@ -87,6 +99,15 @@ const TILES: readonly Tile[] = [
     descKey: 'inv.more.support.desc',
     route: '/investor/support',
     icon: MessageCircle,
+  },
+  // Phase 6: restored -- see the header note above on why it was
+  // dropped and why it is back.
+  {
+    id: 'notifications',
+    labelKey: 'inv.more.notifications.title',
+    descKey: 'inv.more.notifications.desc',
+    route: '/investor/notifications',
+    icon: Bell,
   },
 ] as const
 
