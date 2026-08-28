@@ -780,6 +780,61 @@ async def test_avatar_blocked_mute_notifications(
 
 
 @pytest.mark.asyncio
+async def test_avatar_blocked_2fa_setup(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """TASK-38: POST /auth/2fa/setup in avatar mode -> 403.
+
+    An avatar must not be able to plant a TOTP secret on the real
+    owner's account that only the avatar has ever seen -- see
+    avatar_guard.py's manage_2fa note. A bogus current_password in the
+    body never matters here: the guard is a route dependency and fires
+    before the handler even parses it, same pattern as every other
+    forbid_avatar test in this file.
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/auth/2fa/setup",
+        json={"current_password": "whatever-the-avatar-does-not-know-it"},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_2fa_disable(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """TASK-38: POST /auth/2fa/disable in avatar mode -> 403.
+
+    Same reasoning as test_avatar_blocked_2fa_setup, opposite
+    direction: an avatar must not be able to strip a security control
+    the real owner deliberately turned on. Uses a fresh investor with
+    no 2FA configured at all -- the guard fires before the handler ever
+    reaches disable_totp()'s "not enabled" check, so the account's real
+    2FA state is irrelevant to this test.
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/auth/2fa/disable",
+        json={
+            "current_password": "whatever-the-avatar-does-not-know-it",
+            "code": "000000",
+        },
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
 async def test_shipped_default_leaves_avatar_restrictions_off() -> None:
     """2026-08-17, owner-ruled: the switch ships OFF.
 
@@ -1086,6 +1141,7 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_delete_account",
         "forbid_avatar_revoke_session",
         "forbid_avatar_mute_notifications",
+        "forbid_avatar_manage_2fa",
     }
     missing = expected - guarded
     assert not missing, (

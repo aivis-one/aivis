@@ -33,6 +33,24 @@ export type { AuthResponse } from './generated'
 
 export type { VerifyEmailRequest } from './generated'
 
+// TASK-38 (2FA). LoginResponse replaces AuthResponse as the response
+// shape for /email/login and /telegram -- see generated.ts's
+// LoginResponse docstring (mirrored from backend/app/modules/auth/
+// schemas.py) for the mfa_required discriminant.
+export type { LoginResponse } from './generated'
+
+export type { TwoFactorSetupRequest } from './generated'
+
+export type { TwoFactorSetupResponse } from './generated'
+
+export type { TwoFactorConfirmRequest } from './generated'
+
+export type { TwoFactorConfirmResponse } from './generated'
+
+export type { TwoFactorDisableRequest } from './generated'
+
+export type { TwoFactorLoginVerifyRequest } from './generated'
+
 export type { PasswordResetRequest } from './generated'
 
 export type { PasswordResetConfirmRequest } from './generated'

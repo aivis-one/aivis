@@ -38,6 +38,12 @@ class UserResponse(BaseModel):
     Profile is returned as-is from JSONB.
     Email is extracted from credentials via User.email property.
 
+    two_factor_enabled (TASK-38): extracted from credentials.totp.enabled
+    via User.two_factor_enabled -- same from_attributes mechanism as
+    `email`. Lets any UserResponse consumer (Settings screens in
+    particular, see components/shared/TwoFactorSection.vue) know
+    whether 2FA is currently on without a dedicated status endpoint.
+
     iter 2.6c B6:
       `staff_profile` is populated by the service layer when
       `role == "staff"` -- it carries the staff profile id, is_active
@@ -50,6 +56,9 @@ class UserResponse(BaseModel):
     id: UUID
     role: str
     email: str | None = Field(default=None, description="User email address")
+    two_factor_enabled: bool = Field(
+        default=False, description="Whether TOTP 2FA is currently active"
+    )
     is_active: bool
     onboarding_step: str
     kyc_status: str

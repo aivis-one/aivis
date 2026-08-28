@@ -96,7 +96,7 @@ export interface AttachmentResponse {
   updated_at: string | null
 }
 
-/** Response for all auth endpoints (register, login, telegram). */
+/** Response for POST /auth/email/register and POST /auth/2fa/login-verify. Also the shape of a SUCCESSFUL (mfa_required=False) email/telegram login before TASK-38 2FA -- login and telegram now respond with LoginResponse instead (see module note above), but its "real session" branch carries the exact same two fields. */
 export interface AuthResponse {
   user: UserResponse
   session_token: string
@@ -745,6 +745,14 @@ export interface LeaderboardResponse {
   period_start: string
 }
 
+/** Response for POST /auth/email/login and POST /auth/telegram. Two mutually exclusive shapes, discriminated by `mfa_required`: - mfa_required=False (the common case, no 2FA on this account): `user` + `session_token` populated -- a real, usable session, identical to what AuthResponse used to carry from these two endpoints. - mfa_required=True (credentials.totp.enabled on this account): `mfa_token` populated, `user`/`session_token` are null. NO session has been created. The caller must complete POST /auth/2fa/login-verify with this mfa_token plus a live TOTP code (or an unused backup code) before a session exists -- see auth/service.py's 2FA module note for the full flow and why a session is not issued at this point. */
+export interface LoginResponse {
+  mfa_required?: boolean
+  mfa_token?: string | null
+  user?: UserResponse | null
+  session_token?: string | null
+}
+
 /** Navigational intent for one inbox item, or nothing. comms' frozen contract calls this `action_data`: {"action": ..., "params": {...}} | null. None of AIVIS's 16 event producers populate it today (checked at the emit_event call sites, e.g. withdrawals/service.py ~line 117 -- the payload carries no action_data key at all), so every item this proxy serves right now has it as null. Typed here anyway: comms may start sending it at any point and an untyped field showing up later would be a schema break for the frontend, not a feature. Wiring an actual navigation target from `action` + `params` is explicitly out of scope -- see the module header on notifications/service.py. */
 export interface NotificationActionOut {
   action: string
@@ -1343,6 +1351,39 @@ export interface TransactionResponse {
   created_at: string
 }
 
+/** POST /api/v1/auth/2fa/confirm -- request body. Same 6-digit numeric shape as VerifyEmailRequest -- this is the first LIVE code computed from the pending secret, proving the user actually set up their authenticator app correctly before 2FA is switched on. */
+export interface TwoFactorConfirmRequest {
+  code: string
+}
+
+/** POST /api/v1/auth/2fa/confirm -- response body. THE BACKUP CODES ARE SHOWN EXACTLY ONCE, HERE, IN PLAINTEXT. Only their argon2 hashes are stored (users/service.py::confirm_totp_setup) -- there is no "view my backup codes again" endpoint and there never will be with this storage shape. The frontend MUST treat this response as a "save these now" moment (a persistent, copyable / printable list), not a toast that can be dismissed and lost -- see components/shared/TwoFactorSection.vue. */
+export interface TwoFactorConfirmResponse {
+  backup_codes: string[]
+}
+
+/** POST /api/v1/auth/2fa/disable -- request body. BOTH factors required, not either/or: disabling removes a security control, so proof of the password alone (which a stolen session already implies the caller has authenticated with) is not enough -- see auth/router.py's 2FA section header for the full reasoning. `code` accepts either a live 6-digit TOTP code or an unused backup code (see users/service.py::disable_totp), hence the looser length bound than TwoFactorConfirmRequest's strict 6-digit pattern. */
+export interface TwoFactorDisableRequest {
+  current_password: string
+  code: string
+}
+
+/** POST /api/v1/auth/2fa/login-verify -- request body. UNAUTHENTICATED (no session exists yet -- that is the entire point, same discipline as PasswordResetRequest/Confirm). `mfa_token` is the opaque value returned by LoginResponse.mfa_token; `code` is either a live TOTP code or an unused backup code, same acceptance as TwoFactorDisableRequest.code. */
+export interface TwoFactorLoginVerifyRequest {
+  mfa_token: string
+  code: string
+}
+
+/** POST /api/v1/auth/2fa/setup -- request body. Re-authentication (current password) before a new pending TOTP secret can even be generated -- mirrors users/service.py::_require_current_password's use in request_email_change / deactivate_own_account. */
+export interface TwoFactorSetupRequest {
+  current_password: string
+}
+
+/** POST /api/v1/auth/2fa/setup -- response body. `secret` is the raw base32 TOTP secret -- standard practice to return it alongside the QR-encodable `provisioning_uri` so an authenticator app that cannot scan a QR code (or a user without a camera-equipped device) can enter it manually. Neither value is retrievable again after this response; a caller that loses it must call /2fa/setup again, which overwrites the pending secret (see users/service.py::setup_totp). */
+export interface TwoFactorSetupResponse {
+  secret: string
+  provisioning_uri: string
+}
+
 /** Outcome of one TXID submission. ``result_code`` is relayed verbatim from the service and is the only thing that says WHY: a submission can be rejected while the invoice stays ``created``, and the status alone cannot tell "not found on chain" from "wrong address" from "malformed hash". A caller must not derive the attempt counter from the result code. ``invalid_format`` and ``api_error`` reach an explorer never and therefore spend nothing, so ``attempts_remaining`` is reported by the service rather than computed here. */
 export interface TxidResultResponse {
   status: string
@@ -1508,11 +1549,12 @@ export interface UserListResponse {
   per_page: number
 }
 
-/** User representation in API responses. Excludes credentials (sensitive: password hashes, tokens). Profile is returned as-is from JSONB. Email is extracted from credentials via User.email property. iter 2.6c B6: `staff_profile` is populated by the service layer when `role == "staff"` -- it carries the staff profile id, is_active flag, and the EFFECTIVE permission matrix (defaults merged with per-staff overrides). For non-staff users the field is null. The frontend Staff Platform tab keys off this field to gate the whole surface. */
+/** User representation in API responses. Excludes credentials (sensitive: password hashes, tokens). Profile is returned as-is from JSONB. Email is extracted from credentials via User.email property. two_factor_enabled (TASK-38): extracted from credentials.totp.enabled via User.two_factor_enabled -- same from_attributes mechanism as `email`. Lets any UserResponse consumer (Settings screens in particular, see components/shared/TwoFactorSection.vue) know whether 2FA is currently on without a dedicated status endpoint. iter 2.6c B6: `staff_profile` is populated by the service layer when `role == "staff"` -- it carries the staff profile id, is_active flag, and the EFFECTIVE permission matrix (defaults merged with per-staff overrides). For non-staff users the field is null. The frontend Staff Platform tab keys off this field to gate the whole surface. */
 export interface UserResponse {
   id: string
   role: string
   email?: string | null
+  two_factor_enabled?: boolean
   is_active: boolean
   onboarding_step: string
   kyc_status: string

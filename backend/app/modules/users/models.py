@@ -220,3 +220,18 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     def email(self) -> str | None:
         """Email extracted from credentials JSONB. None for Telegram-only users."""
         return (self.credentials or {}).get("email", {}).get("email")
+
+    @property
+    def two_factor_enabled(self) -> bool:
+        """Whether TOTP 2FA is active (TASK-38).
+
+        Derived from credentials.totp.enabled -- see
+        users/service.py's "Two-Factor Authentication (TOTP)" module
+        note for the full storage shape. Surfaced on UserResponse
+        (users/schemas.py) via Pydantic's from_attributes=True, the
+        same mechanism that already exposes the `email` property above
+        -- no separate status endpoint needed for
+        components/shared/TwoFactorSection.vue to know which UI state
+        (enable vs. disable) to render.
+        """
+        return bool(((self.credentials or {}).get("totp") or {}).get("enabled"))

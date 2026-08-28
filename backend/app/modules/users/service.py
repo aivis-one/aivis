@@ -49,15 +49,23 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pyotp
 import structlog
+from cryptography.fernet import InvalidToken
 from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.crypto import decrypt_secret, encrypt_secret
 from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError
-from app.modules.auth.service import delete_all_sessions, verify_password
+from app.modules.auth.service import (
+    delete_all_sessions,
+    hash_password,
+    verify_password,
+    verify_totp_or_backup_code,
+)
 from app.modules.staff.schemas import StaffProfileResponse
 from app.modules.staff.service import (
     get_effective_permissions,
@@ -89,6 +97,21 @@ _REQUIRED_PROFILE_FIELDS = frozenset({"first_name", "last_name", "country"})
 # already-verified email) stay independently tunable.
 _EMAIL_CHANGE_CODE_TTL_MINUTES = 10
 _EMAIL_CHANGE_MAX_ATTEMPTS = 5
+
+# Two-Factor Authentication (TOTP) constants (TASK-38).
+_TOTP_ISSUER = "AIVIS.ONE"
+# Backup codes: generated once, at confirm_totp_setup() success, hashed
+# with the same argon2 wrappers passwords use (hash_password/
+# verify_password imported above -- no second hashing scheme). 10 is
+# enough that a user spending one every so often (a lost device, a
+# reinstalled authenticator app) across years does not run out, without
+# printing an unreasonably long list.
+_TOTP_BACKUP_CODE_COUNT = 10
+_TOTP_BACKUP_CODE_LENGTH = 10
+# Excludes 0/O/1/I/L -- visually ambiguous in a printed/handwritten
+# recovery-code context, where the whole point is that the user can
+# still type one correctly weeks later from a piece of paper.
+_TOTP_BACKUP_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 
 # ---------------------------------------------------------------------------
@@ -705,3 +728,260 @@ async def deactivate_own_account(
         user_id=str(user.id),
         sessions_killed=killed,
     )
+
+
+# ---------------------------------------------------------------------------
+# Two-Factor Authentication (TOTP) -- TASK-38
+# ---------------------------------------------------------------------------
+#
+# STORAGE SHAPE (credentials JSONB), mirroring the email_change pending-
+# slot precedent above:
+#   credentials.totp_pending = {secret_encrypted, created_at}
+#     -- written by setup_totp(), cleared/replaced by confirm_totp_setup().
+#        A setup abandoned partway (never confirmed) never enables
+#        anything -- there is no `enabled` flag in this slot at all.
+#   credentials.totp = {
+#     secret_encrypted, enabled: true, enabled_at,
+#     backup_codes: [{hash, used_at: null|iso}, ...],
+#   }
+#     -- the ACTIVE slot, written only by confirm_totp_setup(), read by
+#        auth/service.py's verify_totp_or_backup_code() on every login
+#        and by disable_totp() below. None (not a partial dict) when
+#        2FA has never been enabled or was disabled -- callers check
+#        `.get("totp") or {}` then `.get("enabled")`, same discipline
+#        as credentials.email_change's `or {}` guards above.
+#
+# `secret_encrypted` is a Fernet token (app/core/crypto.py) -- reversible,
+# because a TOTP secret must be usable to COMPUTE a fresh code on every
+# login, unlike a password. Backup codes ARE one-way hashed (argon2,
+# same hash_password/verify_password as everywhere else) because they
+# are compared once and never need to be shown again.
+#
+# AVATAR GUARD: all three functions below are called from routes
+# carrying forbid_avatar("manage_2fa") (auth/router.py + avatar_guard.py)
+# -- an avatar setting up, confirming, or disabling 2FA on the real
+# owner's account is at least as severe as the disruption-vector class
+# already guarded (logout_all/revoke_session/mute_notifications): it
+# either plants a second factor only the avatar knows, or strips one
+# the real owner relies on, and either persists past the avatar session.
+
+
+async def setup_totp(
+    user: User,
+    current_password: str,
+    session: AsyncSession,
+) -> tuple[str, str]:
+    """Start (or restart) TOTP setup: re-auth, generate a secret, store it
+    PENDING (not yet enabled), build the provisioning URI.
+
+    Re-callable at any time, including when 2FA is already enabled
+    (credentials.totp.enabled=True) -- this only ever writes the PENDING
+    slot; the active slot is untouched until confirm_totp_setup()
+    succeeds. That makes this endpoint double as a "rotate my secret"
+    entry point with no separate rotation flow needed, at the cost of a
+    caller being able to leave a stale, never-confirmed pending secret
+    behind harmlessly (setup_totp() called again simply overwrites it).
+
+    Does NOT commit -- caller (get_db_session) manages the transaction
+    (P-01).
+
+    Returns:
+        (secret, provisioning_uri) -- secret is the raw base32 value,
+        returned in plaintext ONCE (see TwoFactorSetupResponse's
+        docstring) alongside the QR-encodable URI.
+
+    Raises:
+        ForbiddenError: current_password does not match
+            (code="incorrect_password", via _require_current_password).
+    """
+    await _require_current_password(user, current_password)
+
+    secret = pyotp.random_base32()
+    now = datetime.now(UTC)
+
+    updated_creds = dict(user.credentials or {})
+    updated_creds["totp_pending"] = {
+        "secret_encrypted": encrypt_secret(secret),
+        "created_at": now.isoformat(),
+    }
+    user.set_jsonb("credentials", updated_creds)
+    await session.flush()
+
+    provisioning_uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=user.email or str(user.id),
+        issuer_name=_TOTP_ISSUER,
+    )
+
+    await record_audit(
+        session=session,
+        event="user.2fa_setup_started",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={},
+    )
+
+    logger.info("totp_setup_started", user_id=str(user.id))
+
+    return secret, provisioning_uri
+
+
+def _generate_backup_codes() -> list[str]:
+    """Generate _TOTP_BACKUP_CODE_COUNT random alphanumeric codes.
+
+    secrets.choice over a restricted alphabet (see the module constants
+    above) -- NOT the `random` module, which is not cryptographically
+    secure and must never generate anything that gates account access.
+    """
+    return [
+        "".join(
+            secrets.choice(_TOTP_BACKUP_CODE_ALPHABET)
+            for _ in range(_TOTP_BACKUP_CODE_LENGTH)
+        )
+        for _ in range(_TOTP_BACKUP_CODE_COUNT)
+    ]
+
+
+async def confirm_totp_setup(
+    user: User,
+    code: str,
+    session: AsyncSession,
+) -> list[str]:
+    """Verify a live code against the PENDING secret; on success, generate
+    backup codes and switch 2FA on.
+
+    On a WRONG code: the pending secret is left untouched (BadRequestError
+    only) so the user can simply retry entering the next code their
+    authenticator app shows -- unlike email verification's attempt
+    counter, there is no stored attempts field here; POST /2fa/confirm
+    is rate-limited per-user instead (auth/router.py).
+
+    On success: generates _TOTP_BACKUP_CODE_COUNT backup codes, hashes
+    each via hash_password() (argon2 -- same path as everywhere else),
+    writes the ACTIVE slot (secret_encrypted carried over unchanged from
+    pending, enabled=true, enabled_at=now, backup_codes=[...]), clears
+    the pending slot. Does NOT commit -- caller (get_db_session) manages
+    the transaction (P-01).
+
+    THE PLAINTEXT BACKUP CODES ARE RETURNED HERE ONLY. Nothing this
+    module stores can reconstruct them afterward -- only their argon2
+    hashes persist. The router must return them to the caller verbatim,
+    and the frontend must treat that response as the one and only chance
+    to save them (see TwoFactorConfirmResponse's docstring).
+
+    Raises:
+        BadRequestError: No pending setup, the pending secret is
+            undecryptable (corrupted data), or the code does not verify.
+    """
+    totp_pending = (user.credentials or {}).get("totp_pending") or {}
+    secret_encrypted = totp_pending.get("secret_encrypted")
+
+    if not secret_encrypted:
+        raise BadRequestError("No pending 2FA setup. Call /2fa/setup first.")
+
+    try:
+        secret = decrypt_secret(secret_encrypted)
+    except InvalidToken as exc:
+        # Corrupted pending secret -- cannot be the user's fault. Clear
+        # it so a retry from /2fa/setup starts clean rather than
+        # re-hitting the same undecryptable value forever.
+        logger.error("totp_pending_secret_undecryptable", user_id=str(user.id))
+        updated_creds = dict(user.credentials or {})
+        updated_creds["totp_pending"] = None
+        user.set_jsonb("credentials", updated_creds)
+        await session.flush()
+        raise BadRequestError(
+            "Your pending 2FA setup is invalid. Please start setup again."
+        ) from exc
+
+    if not pyotp.totp.TOTP(secret).verify(code, valid_window=1):
+        logger.warning("totp_confirm_wrong_code", user_id=str(user.id))
+        raise BadRequestError("Invalid verification code")
+
+    backup_codes = _generate_backup_codes()
+    now = datetime.now(UTC)
+
+    updated_creds = dict(user.credentials or {})
+    updated_creds["totp"] = {
+        "secret_encrypted": secret_encrypted,
+        "enabled": True,
+        "enabled_at": now.isoformat(),
+        "backup_codes": [
+            {"hash": await hash_password(plain), "used_at": None}
+            for plain in backup_codes
+        ],
+    }
+    updated_creds["totp_pending"] = None
+    user.set_jsonb("credentials", updated_creds)
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="user.2fa_enabled",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={"backup_codes_issued": len(backup_codes)},
+    )
+
+    logger.info("totp_enabled", user_id=str(user.id))
+
+    return backup_codes
+
+
+async def disable_totp(
+    user: User,
+    current_password: str,
+    code: str,
+    session: AsyncSession,
+) -> None:
+    """Turn 2FA off: BOTH the current password AND a live code (or an
+    unused backup code) are required -- see TwoFactorDisableRequest's
+    docstring for why either/or is not enough.
+
+    consume_backup_code=False when checking the code: the entire
+    credentials.totp slot is cleared unconditionally on success a few
+    lines below, so marking one backup code used_at first would be
+    wasted work on a dict about to be discarded.
+
+    Does NOT commit -- caller (get_db_session) manages the transaction
+    (P-01).
+
+    Raises:
+        ForbiddenError: current_password does not match
+            (code="incorrect_password").
+        BadRequestError: 2FA is not enabled on this account, or `code`
+            does not verify against the active secret or any unused
+            backup code.
+    """
+    await _require_current_password(user, current_password)
+
+    totp_creds = (user.credentials or {}).get("totp") or {}
+    if not totp_creds.get("enabled"):
+        raise BadRequestError("Two-factor authentication is not enabled")
+
+    if not await verify_totp_or_backup_code(
+        user, code, session, consume_backup_code=False
+    ):
+        logger.warning("totp_disable_wrong_code", user_id=str(user.id))
+        raise BadRequestError("Invalid verification code")
+
+    updated_creds = dict(user.credentials or {})
+    updated_creds["totp"] = None
+    updated_creds["totp_pending"] = None
+    user.set_jsonb("credentials", updated_creds)
+    await session.flush()
+
+    await record_audit(
+        session=session,
+        event="user.2fa_disabled",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={},
+    )
+
+    logger.info("totp_disabled", user_id=str(user.id))

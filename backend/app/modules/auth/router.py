@@ -24,11 +24,79 @@
 #                                             in avatar mode -- see
 #                                             avatar_guard.py's
 #                                             revoke_session note)
+#   POST /api/v1/auth/2fa/setup           -- Start/restart TOTP setup
+#                                             (TASK-38, avatar-blocked)
+#   POST /api/v1/auth/2fa/confirm         -- Confirm setup, turn 2FA on,
+#                                             issue backup codes ONCE
+#                                             (TASK-38, avatar-blocked)
+#   POST /api/v1/auth/2fa/disable         -- Turn 2FA off (TASK-38,
+#                                             avatar-blocked)
+#   POST /api/v1/auth/2fa/login-verify    -- Complete a 2FA-gated login
+#                                             (TASK-38, UNAUTHENTICATED,
+#                                             see note below)
 #
 # ACTIVE SESSIONS (TASK-38): session_id in the list/revoke pair below is
 # NEVER the bearer token -- see auth/service.py's "PUBLIC SESSION ID"
 # module note for the exact SHA-256 mechanism and why a response body
 # must never carry a live credential.
+#
+# TWO-FACTOR AUTHENTICATION (TOTP, TASK-38):
+#   Storage shape, verification logic, and the setup/confirm/disable
+#   service functions are documented in users/service.py's "Two-Factor
+#   Authentication (TOTP)" module note (setup/confirm/disable live
+#   there, not in auth/service.py -- see that note for why: they need
+#   users/service.py::_require_current_password, and auth/service.py
+#   cannot import back from users/service.py without a circular
+#   import). auth/service.py owns the login-time half:
+#   verify_totp_or_backup_code (shared by disable_totp there and
+#   verify_2fa_login here) and the pending-MFA-token mechanism below.
+#
+#   THE LOGIN-TIME GATE. auth_email_login and auth_telegram both used to
+#   call create_session() the moment login_email()/upsert_telegram_user()
+#   succeeded and return AuthResponse unconditionally. Now: if the
+#   authenticated account has credentials.totp.enabled=True, NEITHER
+#   endpoint creates a session. Instead each mints a short-lived,
+#   single-use "pending MFA" token (create_mfa_pending_token,
+#   auth/service.py -- a SEPARATE Redis mechanism from a real session,
+#   5-minute TTL) and returns LoginResponse(mfa_required=True,
+#   mfa_token=...) with `user`/`session_token` left null. The caller
+#   then calls POST /2fa/login-verify with that token plus a live code;
+#   ONLY on success does a real session get created there.
+#
+#   BOTH auth_email_login AND auth_telegram now respond with
+#   LoginResponse instead of AuthResponse (see schemas.py's LoginResponse
+#   docstring for why a flat model, not a Union). register_email is
+#   UNCHANGED (still AuthResponse) -- a brand-new account cannot have
+#   2FA enabled yet, so there is nothing to gate.
+#
+#   TELEGRAM ALSO HONOURS 2FA, DELIBERATELY, NOT JUST EMAIL/PASSWORD.
+#   A Telegram-linked account can independently have email+password+2FA
+#   set up (upsert_telegram_user only ever touches credentials.telegram,
+#   never credentials.totp) -- gating only the email/password path would
+#   leave a real, silent bypass: anyone who could authenticate as that
+#   Telegram identity (a stolen Telegram session, a SIM-swap-adjacent
+#   takeover of the linked Telegram account, or simply the account
+#   owner using both surfaces) would walk straight past a 2FA control
+#   the account owner deliberately turned on, defeating the entire
+#   point of building it. The cost: the standalone SPA (not the
+#   Telegram Mini App context) is where 2FA code entry actually lives
+#   today (LoginView.vue) -- a Telegram Mini App user with 2FA enabled
+#   currently sees useAuth.ts surface an honest "complete verification
+#   in a browser" message rather than either a silent bypass or a
+#   broken hang. See useAuth.ts's own note for that tradeoff, flagged
+#   as a known gap rather than shipped silently.
+#
+#   POST /2fa/login-verify IS UNAUTHENTICATED -- same discipline as
+#   password-reset's pair of endpoints (see that section below): the
+#   caller has no session by construction, that is the entire point.
+#   Rate-limited aggressively and independently of the token's own
+#   single-use consumption -- see auth/service.py's
+#   _MFA_PENDING_TTL_SECONDS module note for the full reasoning
+#   (a 6-digit TOTP code is a small space, and the token being consumed
+#   on every outcome -- success OR failure -- is the primary defense;
+#   the IP rate limit below is the second, independent layer, capping
+#   how fast fresh tokens can be minted via repeated correct-password
+#   logins in the first place).
 #
 # PASSWORD RESET is deliberately UNAUTHENTICATED (no get_current_user_write):
 #   the entire premise is that the caller is locked out and has no
@@ -76,16 +144,24 @@ from app.modules.auth.schemas import (
     AuthResponse,
     EmailLoginRequest,
     EmailRegisterRequest,
+    LoginResponse,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     PasswordResetRequestResponse,
     SessionItemResponse,
     SessionListResponse,
     TelegramAuthRequest,
+    TwoFactorConfirmRequest,
+    TwoFactorConfirmResponse,
+    TwoFactorDisableRequest,
+    TwoFactorLoginVerifyRequest,
+    TwoFactorSetupRequest,
+    TwoFactorSetupResponse,
     VerifyEmailRequest,
 )
 from app.modules.auth.service import (
     confirm_password_reset,
+    create_mfa_pending_token,
     create_session,
     delete_all_sessions,
     delete_session,
@@ -96,6 +172,7 @@ from app.modules.auth.service import (
     resend_verification_code,
     revoke_session,
     upsert_telegram_user,
+    verify_2fa_login,
     verify_email_code,
 )
 from app.modules.auth.telegram import (
@@ -106,6 +183,7 @@ from app.modules.auth.telegram import (
 )
 from app.modules.users.models import User
 from app.modules.users.schemas import UserResponse
+from app.modules.users.service import confirm_totp_setup, disable_totp, setup_totp
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -157,20 +235,33 @@ async def auth_email_register(
 
 @router.post(
     "/email/login",
-    response_model=AuthResponse,
+    response_model=LoginResponse,
 )
 async def auth_email_login(
     body: EmailLoginRequest,
     request: Request,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db_session),
-) -> AuthResponse:
-    """Login via email + password."""
+) -> LoginResponse:
+    """Login via email + password.
+
+    TASK-38: if this account has 2FA enabled (credentials.totp.enabled),
+    NO session is created here -- see the module header's "TWO-FACTOR
+    AUTHENTICATION" note. LoginResponse.mfa_required=True carries a
+    pending token for POST /2fa/login-verify instead of a session_token.
+    """
     # Rate limit by IP (SEC-5).
     ip = get_client_ip(request)
     await check_rate_limit(f"email_auth:{ip}")
 
     user = await login_email(body.email, body.password, session, background_tasks)
+
+    totp_creds = (user.credentials or {}).get("totp") or {}
+    if totp_creds.get("enabled"):
+        mfa_token = await create_mfa_pending_token(user.id, auth_method="email")
+        logger.info("login_requires_2fa", user_id=str(user.id), auth_method="email")
+        return LoginResponse(mfa_required=True, mfa_token=mfa_token)
+
     token = await create_session(
         user,
         auth_method="email",
@@ -178,7 +269,7 @@ async def auth_email_login(
         user_agent=request.headers.get("User-Agent", ""),
     )
 
-    return AuthResponse(
+    return LoginResponse(
         user=UserResponse.model_validate(user),
         session_token=token,
     )
@@ -285,13 +376,13 @@ async def auth_password_reset_confirm(
 
 @router.post(
     "/telegram",
-    response_model=AuthResponse,
+    response_model=LoginResponse,
 )
 async def auth_telegram(
     body: TelegramAuthRequest,
     request: Request,
     session: AsyncSession = Depends(get_db_session),
-) -> AuthResponse:
+) -> LoginResponse:
     """Authenticate via Telegram WebApp.
 
     Flow:
@@ -299,8 +390,11 @@ async def auth_telegram(
       2. Anti-replay: reject reused initData (Redis SET NX)
       3. Rate limit per telegram_id (Redis INCR + EXPIRE)
       4. Find or create User by telegram_id in credentials JSONB
-      5. Create Redis session
-      6. Return AuthResponse
+      5. TASK-38: if this account has 2FA enabled, return
+         mfa_required=True instead of creating a session -- see the
+         module header's "TELEGRAM ALSO HONOURS 2FA" note for why this
+         path is gated too, not just email/password.
+      6. Otherwise create Redis session, return LoginResponse
 
     request (TASK-38): this endpoint had no Request param before --
     the other two create_session() call sites already had one in scope
@@ -341,7 +435,18 @@ async def auth_telegram(
         referral_code=body.referral_code,
     )
 
-    # Step 5: Create Redis session.
+    # Step 5 (TASK-38): 2FA gate -- see module header note. A brand-new
+    # user (is_new=True) can never reach this branch: upsert_telegram_user
+    # only sets credentials.telegram, never credentials.totp.
+    totp_creds = (user.credentials or {}).get("totp") or {}
+    if totp_creds.get("enabled"):
+        mfa_token = await create_mfa_pending_token(user.id, auth_method="telegram")
+        logger.info(
+            "login_requires_2fa", user_id=str(user.id), auth_method="telegram"
+        )
+        return LoginResponse(mfa_required=True, mfa_token=mfa_token)
+
+    # Step 6: Create Redis session.
     token = await create_session(
         user,
         auth_method="telegram",
@@ -349,7 +454,7 @@ async def auth_telegram(
         user_agent=request.headers.get("User-Agent", ""),
     )
 
-    return AuthResponse(
+    return LoginResponse(
         user=UserResponse.model_validate(user),
         session_token=token,
     )
@@ -478,4 +583,119 @@ async def auth_revoke_session(
     if not revoked:
         raise NotFoundError("Session not found")
 
-    logger.info("user_session_revoked", user_id=str(user.id))
+
+# ---------------------------------------------------------------------------
+# Two-Factor Authentication (TOTP) -- TASK-38
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/2fa/setup",
+    response_model=TwoFactorSetupResponse,
+    dependencies=[Depends(forbid_avatar("manage_2fa"))],
+)
+async def auth_2fa_setup(
+    body: TwoFactorSetupRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> TwoFactorSetupResponse:
+    """Start (or restart) TOTP setup. Requires the current password.
+
+    Rate-limited per user (repeated calls regenerate a fresh pending
+    secret -- real cost/abuse surface even though each call is
+    individually harmless). Shared default cap
+    (auth_rate_limit_max_requests / window_seconds, 5 per 60s out of
+    the box), same shape as email_change_request's rate limit.
+    """
+    await check_rate_limit(f"totp_setup:{user.id}")
+    secret, provisioning_uri = await setup_totp(user, body.current_password, session)
+    return TwoFactorSetupResponse(secret=secret, provisioning_uri=provisioning_uri)
+
+
+@router.post(
+    "/2fa/confirm",
+    response_model=TwoFactorConfirmResponse,
+    dependencies=[Depends(forbid_avatar("manage_2fa"))],
+)
+async def auth_2fa_confirm(
+    body: TwoFactorConfirmRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> TwoFactorConfirmResponse:
+    """Confirm setup with a live code, turn 2FA on, issue backup codes.
+
+    THE RESPONSE'S backup_codes ARE SHOWN EXACTLY ONCE -- see
+    TwoFactorConfirmResponse's docstring. Rate-limited per user, same
+    shared default cap as /2fa/setup above.
+    """
+    await check_rate_limit(f"totp_confirm:{user.id}")
+    backup_codes = await confirm_totp_setup(user, body.code, session)
+    return TwoFactorConfirmResponse(backup_codes=backup_codes)
+
+
+@router.post(
+    "/2fa/disable",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(forbid_avatar("manage_2fa"))],
+)
+async def auth_2fa_disable(
+    body: TwoFactorDisableRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Turn 2FA off. Requires BOTH the current password AND a live code
+    (or an unused backup code) -- see TwoFactorDisableRequest's
+    docstring. Rate-limited per user, same shared default cap as
+    /2fa/setup above.
+    """
+    await check_rate_limit(f"totp_disable:{user.id}")
+    await disable_totp(user, body.current_password, body.code, session)
+
+
+@router.post(
+    "/2fa/login-verify",
+    response_model=AuthResponse,
+)
+async def auth_2fa_login_verify(
+    body: TwoFactorLoginVerifyRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+) -> AuthResponse:
+    """Complete a 2FA-gated login. UNAUTHENTICATED -- no session exists
+    yet, see the module header's "TWO-FACTOR AUTHENTICATION" note.
+
+    Rate limited by IP, TIGHTER than the shared auth default (5/60s):
+    5 per 300s (5 minutes). A 6-digit TOTP code is a 1,000,000-value
+    space and the pending token's own single-use-on-any-outcome
+    consumption (auth/service.py::verify_2fa_login) is the PRIMARY
+    defense -- this IP limit is the second, independent layer, and it
+    is deliberately stricter than password_reset's/email_auth's 5/60s
+    because TOTP's whole security model rests on the guess RATE, not
+    the code space alone (unlike a 256-bit reset token, which is
+    infeasible to guess regardless of rate). Keyed by IP rather than by
+    mfa_token: the token is already destroyed after exactly one attempt
+    (success or failure) by GETDEL, so a per-token limit would be
+    redundant with that; IP is what actually caps how fast a caller can
+    mint FRESH tokens via repeated correct-password logins and spend
+    each one's single guess.
+    """
+    ip = get_client_ip(request)
+    await check_rate_limit(
+        f"totp_login_verify:{ip}",
+        max_requests=5,
+        window_seconds=300,
+        error_message="Too many verification attempts. Please try again later.",
+    )
+
+    user, auth_method = await verify_2fa_login(body.mfa_token, body.code, session)
+    token = await create_session(
+        user,
+        auth_method=auth_method,
+        ip=ip,
+        user_agent=request.headers.get("User-Agent", ""),
+    )
+
+    return AuthResponse(
+        user=UserResponse.model_validate(user),
+        session_token=token,
+    )

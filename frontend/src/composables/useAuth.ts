@@ -41,6 +41,7 @@ import { ref, watch } from 'vue'
 
 import { platform } from '@/platform'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
+import { i18n } from '@/i18n'
 
 // Marketing referral path: `/r/AGENT_CODE`. Matches the route
 // registered as `referral-link` in router/index.ts; the regex is the
@@ -95,7 +96,22 @@ export function useAuth() {
         const initData = platform.getInitData()
         if (initData) {
           const referralCode = sessionStorage.getItem(REFERRAL_KEY)
-          await authStore.loginViaTelegram(initData, referralCode)
+          const result = await authStore.loginViaTelegram(initData, referralCode)
+
+          // TASK-38: this account has 2FA enabled. KNOWN GAP -- there is
+          // no in-Mini-App code-entry UI in this delivery (the code-entry
+          // step, LoginView.vue, lives on the standalone web flow only).
+          // The backend refuses to issue a session without the second
+          // factor regardless (see auth/router.py's "TELEGRAM ALSO
+          // HONOURS 2FA" note) -- so the account stays SECURE either
+          // way; what's missing here is only the convenience of
+          // finishing verification inside the Telegram webview. Surface
+          // an honest, translated message via the existing authError
+          // screen (App.vue) rather than silently hanging or -- worse --
+          // treating this as a successful sign-in.
+          if (result.mfaRequired) {
+            authError.value = i18n.global.t('auth.error.telegramMfaRequired')
+          }
         } else {
           authError.value = 'Telegram initData not available'
         }

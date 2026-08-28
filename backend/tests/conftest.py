@@ -238,6 +238,17 @@ async def clear_rate_limit() -> None:
           email_auth above -- see auth/router.py header). Cleared for
           the same reason: a rate-limit test earlier in the run must
           not bleed a 429 into an unrelated password-reset test.
+
+      totp_login_verify:127.0.0.1
+          -- TASK-38 2FA POST /auth/2fa/login-verify, IP-keyed same
+          shape as email_auth/password_reset above (and deliberately
+          tighter: 5 per 300s, not 5 per 60s -- see auth/router.py's
+          auth_2fa_login_verify docstring). The OTHER three 2FA rate
+          limits (totp_setup/totp_confirm/totp_disable) are keyed by
+          user.id, not IP -- every test registers its own fresh user,
+          so those are naturally isolated per test and need no cleanup
+          here, same reason email_change_request's per-user key isn't
+          listed either.
     """
     try:
         from app.core.redis import get_redis
@@ -245,6 +256,7 @@ async def clear_rate_limit() -> None:
         redis = get_redis()
         await redis.delete("email_auth:127.0.0.1")
         await redis.delete("password_reset:127.0.0.1")
+        await redis.delete("totp_login_verify:127.0.0.1")
         async for key in redis.scan_iter(match="auth_rate:*"):
             await redis.delete(key)
     except RuntimeError:

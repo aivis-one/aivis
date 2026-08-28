@@ -68,11 +68,13 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 
 import { api, setAuthToken, setOnUnauthorized } from '@/api/client'
+import { verifyTwoFactorLogin } from '@/api/auth'
 import {
   asKycStatus,
   asUserRole,
   type AuthResponse,
   type KycStatus,
+  type LoginResponse,
   type UserResponse,
   type UserRole,
 } from '@/api/types'
@@ -80,6 +82,18 @@ import { platform } from '@/platform'
 import { setAvatarActive } from '@/composables/avatarState'
 import { setLocale } from '@/i18n'
 import { resetAllDataStores } from '@/stores/sessionReset'
+
+/**
+ * Discriminated result of loginViaEmail / loginViaTelegram (TASK-38).
+ *
+ * Both used to be `Promise<void>` -- a resolved promise always meant
+ * "signed in". With 2FA, a resolved promise now means "the password
+ * (or Telegram identity) checked out", which is a real but incomplete
+ * outcome: `mfaRequired: true` means NO session exists yet, and the
+ * caller must drive the caller-visible code-entry step (LoginView.vue)
+ * before calling completeMfaLogin() with the returned `mfaToken`.
+ */
+export type LoginResult = { mfaRequired: false } | { mfaRequired: true; mfaToken: string }
 
 const TOKEN_KEY = 'aivis_token'
 
@@ -168,17 +182,62 @@ export const useAuthStore = defineStore('auth', () => {
   // Login flows
   // ---------------------------------------------------------------------------
 
-  /** Email + password login. */
-  async function loginViaEmail(email: string, password: string): Promise<void> {
+  /**
+   * Email + password login (TASK-38: now 2FA-aware).
+   *
+   * Resolves to `{ mfaRequired: false }` after a real session is
+   * established (referral cleanup + _setSession run exactly as
+   * before), or `{ mfaRequired: true, mfaToken }` when the account has
+   * 2FA enabled -- in that branch NO session is created and the
+   * referral code is deliberately left untouched (the login has not
+   * actually completed yet; clearing it here would burn the one-shot
+   * credit before the visitor ever finishes signing in). The caller
+   * (LoginView.vue) shows a code-entry step and calls
+   * completeMfaLogin() with the token.
+   */
+  async function loginViaEmail(email: string, password: string): Promise<LoginResult> {
     loading.value = true
     try {
-      const response = await api.post<AuthResponse>('/api/v1/auth/email/login', { email, password })
-      _setSession(response)
+      const response = await api.post<LoginResponse>('/api/v1/auth/email/login', {
+        email,
+        password,
+      })
+      if (response.mfa_required) {
+        return { mfaRequired: true, mfaToken: response.mfa_token as string }
+      }
+      _setSession(response as AuthResponse)
       // iter 2.6 batch 2: clear the one-shot referral code on
       // successful sign-in. Closes the hygiene gap where a visitor
       // who followed a referral link but then signed into an existing
       // account left a stale code lingering in their tab. Matches the
       // cleanup already done by registerViaEmail / loginViaTelegram.
+      sessionStorage.removeItem(REFERRAL_KEY)
+      return { mfaRequired: false }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * TASK-38: complete a 2FA-gated login. Call after loginViaEmail /
+   * loginViaTelegram resolved with `mfaRequired: true`, once the
+   * caller has a live code (or an unused backup code) from the user.
+   *
+   * On success, establishes a real session exactly like a normal
+   * login (_setSession + referral cleanup -- this IS the point where
+   * the login actually completes, so the one-shot referral credit is
+   * consumed here instead of at the mfa_required branch above).
+   *
+   * Throws ApiResponseError on a wrong/expired code or an
+   * invalid/expired mfa_token (400) -- see api/auth.ts's
+   * verifyTwoFactorLogin docstring for why a retry needs a FRESH
+   * mfa_token, not the same one again.
+   */
+  async function completeMfaLogin(mfaToken: string, code: string): Promise<void> {
+    loading.value = true
+    try {
+      const response = await verifyTwoFactorLogin({ mfa_token: mfaToken, code })
+      _setSession(response)
       sessionStorage.removeItem(REFERRAL_KEY)
     } finally {
       loading.value = false
@@ -213,21 +272,38 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** Telegram WebApp login. */
-  async function loginViaTelegram(initData: string, referralCode?: string | null): Promise<void> {
+  /**
+   * Telegram WebApp login (TASK-38: now 2FA-aware).
+   *
+   * A Telegram-linked account can independently have email+password+2FA
+   * configured -- upsert_telegram_user (backend) never touches
+   * credentials.totp, so gating only the email/password path would
+   * leave a real bypass. Same mfaRequired branch as loginViaEmail;
+   * see useAuth.ts for how the composable that drives Telegram
+   * auto-login handles that branch (there is no in-Mini-App code-entry
+   * UI yet -- see that module's note for the tradeoff).
+   */
+  async function loginViaTelegram(
+    initData: string,
+    referralCode?: string | null,
+  ): Promise<LoginResult> {
     loading.value = true
     try {
-      const response = await api.post<AuthResponse>(
+      const response = await api.post<LoginResponse>(
         '/api/v1/auth/telegram',
         // `|| null` -- same rationale as registerViaEmail above.
         { init_data: initData, referral_code: referralCode || null },
       )
-      _setSession(response)
+      if (response.mfa_required) {
+        return { mfaRequired: true, mfaToken: response.mfa_token as string }
+      }
+      _setSession(response as AuthResponse)
       // Same cleanup as the email register path -- the Telegram login
       // endpoint also creates a User on first call (when there is no
       // matching telegram credential), so the referral attribution
       // applies and must be one-shot.
       sessionStorage.removeItem(REFERRAL_KEY)
+      return { mfaRequired: false }
     } finally {
       loading.value = false
     }
@@ -292,6 +368,7 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     kycStatus,
     loginViaEmail,
+    completeMfaLogin,
     registerViaEmail,
     loginViaTelegram,
     restoreSession,

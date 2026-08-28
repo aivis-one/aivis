@@ -56,6 +56,20 @@ dependencies = [
     # POST and PATCH /replace endpoints. FastAPI 0.115+ does NOT bundle
     # this -- it must be declared explicitly.
     "python-multipart>=0.0.9,<1.0",
+    # TASK-38 (2FA): RFC 6238 TOTP code generation/verification --
+    # app/modules/users/service.py (setup_totp/confirm_totp_setup) and
+    # app/modules/auth/service.py (login-time verification). Small,
+    # dependency-free, widely used; deliberately NOT hand-rolled.
+    "pyotp>=2.9.0,<3.0",
+    # TASK-38 (2FA): was already importable transitively (pulled in by
+    # httpx/aiobotocore's TLS stack) but undeclared. Now that
+    # app/core/crypto.py imports it directly for at-rest encryption of
+    # the TOTP secret (Fernet + HKDF), it needs to be a direct
+    # dependency -- an undeclared transitive import can disappear on any
+    # unrelated dependency bump. Floor/cap set around the version
+    # actually installed in this seat (50.0.0, checked via
+    # `python -c "import cryptography; print(cryptography.__version__)"`).
+    "cryptography>=42.0.0,<51.0",
 ]
 
 [project.optional-dependencies]

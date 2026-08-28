@@ -92,6 +92,25 @@
 #   its effect is to blind the real owner to exactly the events this
 #   whole notification system exists to surface. GET /preferences
 #   (read-only) stays unguarded, same reasoning as GET /sessions above.
+#
+#   manage_2fa (auth/router.py POST /2fa/setup, /2fa/confirm,
+#   /2fa/disable, TASK-38): ONE operation name covering all three
+#   verbs, not three separate ones -- every one of them is at least as
+#   severe as the persists-past-the-session class above, just from
+#   opposite directions. setup+confirm let an avatar plant a TOTP
+#   secret (and backup codes) on the real owner's account that only the
+#   avatar has ever seen -- functionally a silent account takeover that
+#   outlives the impersonation, since the real owner would not even
+#   know 2FA is now on, let alone have the secret to satisfy it. disable
+#   strips a security control the real owner deliberately turned on.
+#   Both directions persist past the avatar session and both are the
+#   exact shape this guard exists for, so gating only "disable" (the
+#   more obviously destructive half) would leave the setup/confirm
+#   half wide open. POST /2fa/login-verify carries NO forbid_avatar
+#   guard: it is UNAUTHENTICATED (no session, no user, no avatar
+#   contextvars to read -- the whole point of the endpoint is that the
+#   caller has no session yet), the same reason PASSWORD_RESET's two
+#   endpoints have never carried one either.
 # =============================================================================
 
 from typing import Callable
@@ -120,6 +139,7 @@ RESTRICTED_OPERATIONS = frozenset({
     "logout_all",
     "revoke_session",
     "mute_notifications",
+    "manage_2fa",
 })
 
 

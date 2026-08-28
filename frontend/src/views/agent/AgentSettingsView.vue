@@ -61,6 +61,7 @@ import {
   CTextarea,
 } from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
+import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
@@ -523,6 +524,7 @@ onMounted(() => {
         {{ t('agent.settings.actions.title') }}
       </div>
       <EmailChangeSection tPrefix="agent.settings.actions" />
+      <TwoFactorSection tPrefix="agent.settings.actions" />
       <ActiveSessionsSection tPrefix="agent.settings.actions" />
       <NotificationPreferencesSection tPrefix="agent.settings.actions" />
       <DeactivateAccountSection tPrefix="agent.settings.actions" />

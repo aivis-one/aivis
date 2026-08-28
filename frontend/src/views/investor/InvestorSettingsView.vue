@@ -114,6 +114,7 @@ import {
 
 import { CAvatar, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
+import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
@@ -684,6 +685,7 @@ onMounted(() => {
       </button>
 
       <EmailChangeSection tPrefix="inv.settings.actions" />
+      <TwoFactorSection tPrefix="inv.settings.actions" />
       <ActiveSessionsSection tPrefix="inv.settings.actions" />
       <NotificationPreferencesSection tPrefix="inv.settings.actions" />
       <DeactivateAccountSection tPrefix="inv.settings.actions" />

@@ -16,6 +16,10 @@
 #   resend_verification_code()    -- regenerate + resend code (G1)
 #   request_password_reset()      -- request a reset link (unauthenticated)
 #   confirm_password_reset()      -- consume the reset token, set new password
+#   verify_totp_or_backup_code()  -- shared 2FA code check (TASK-38)
+#   create_mfa_pending_token()    -- mint the post-password, pre-2FA bridge token
+#   verify_2fa_login()            -- consume it, verify the 2nd factor,
+#                                     hand the User back for create_session()
 #
 # FAILED LOGIN AUDIT (SEC-7, timing fix TASK-6 4.1c):
 #   login_email() records failed attempts in audit_log via a dedicated
@@ -114,9 +118,11 @@ import secrets
 from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
+import pyotp
 import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
+from cryptography.fernet import InvalidToken
 from fastapi import BackgroundTasks
 from sqlalchemy import BigInteger, cast, select
 from sqlalchemy.exc import IntegrityError
@@ -125,6 +131,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.comms_sync import ensure_recipient
 from app.core.config import settings
+from app.core.crypto import decrypt_secret
 from app.core.database import get_session_factory
 from app.core.exceptions import (
     BadRequestError,
@@ -152,6 +159,46 @@ _VERIFICATION_MAX_ATTEMPTS = 5
 # in credentials JSONB.
 _PASSWORD_RESET_TOKEN_TTL_MINUTES = 30
 _PASSWORD_RESET_REDIS_PREFIX = "password_reset:"
+
+# Two-Factor Authentication (TOTP) -- TASK-38.
+#
+# Pending-MFA token: minted by the router (auth_email_login /
+# auth_telegram) the moment login_email()/upsert_telegram_user()
+# succeeds on an account with credentials.totp.enabled=True, in place
+# of create_session(). Same shape as PASSWORD_RESET's Redis
+# reverse-index above (opaque token -> {"user_id": ...}, O(1) lookup,
+# native TTL) and for the identical reason: a bare-token lookup has no
+# equivalent index into credentials JSONB.
+#
+# 5 MINUTES, not session_ttl_days: this token exists only to bridge
+# "password just verified" to "second factor just verified" -- a
+# single round trip to an authenticator app, not a standing credential.
+#
+# SINGLE-USE VIA GETDEL, AND DELETED ON EVERY OUTCOME -- SUCCESS *OR*
+# FAILURE (verify_2fa_login below). This is deliberately stricter than
+# password-reset's GETDEL, which is single-use but only ever consumed
+# once (a wrong token there is simply "not found"). Here a WRONG CODE
+# against a token that DOES exist still consumes it: a 6-digit TOTP
+# code is a 1-in-1,000,000 space, live for ~30-90s under the 1-step
+# verify_window -- if a token survived a failed guess, an attacker
+# holding a stolen (but not-yet-2FA-verified) session token could
+# retry indefinitely within that window. Consuming it on every outcome
+# means each successful password-authenticated login buys exactly ONE
+# code guess; a mistyped code costs the user a fresh login, which is a
+# real UX cost, but the alternative -- multiple free guesses per stolen
+# credential -- would undermine the entire reason 2FA exists. The
+# per-IP rate limit on POST /2fa/login-verify (auth/router.py) is the
+# second, independent layer: it caps how fast an attacker can mint
+# fresh tokens via repeated correct-password logins in the first place.
+_MFA_PENDING_TTL_SECONDS = 5 * 60
+_MFA_PENDING_REDIS_PREFIX = "mfa_pending:"
+
+# Backup-code GENERATION constants (count, length, alphabet) live in
+# users/service.py, next to confirm_totp_setup() -- the only function
+# that creates them. Nothing on this side of the module boundary needs
+# to know their shape: verify_totp_or_backup_code() below only ever
+# calls verify_password(code, stored_hash), which makes no assumption
+# about length or character set.
 
 
 # ---------------------------------------------------------------------------
@@ -918,6 +965,215 @@ async def confirm_password_reset(
     await delete_all_sessions(user.id)
 
     logger.info("password_reset_completed", user_id=str(user.id))
+
+
+# ---------------------------------------------------------------------------
+# Two-Factor Authentication (TOTP) -- TASK-38
+# ---------------------------------------------------------------------------
+#
+# setup_totp() / confirm_totp_setup() / disable_totp() -- the account-
+# management half of 2FA (generate a secret, confirm it works, turn it
+# off) -- live in users/service.py, NOT here, alongside
+# request_email_change/deactivate_own_account: they need
+# _require_current_password() (users/service.py), and users/service.py
+# already imports FROM this module (verify_password, delete_all_sessions)
+# -- this module importing back from users/service.py would be a
+# circular import. verify_totp_or_backup_code() below is the one piece
+# BOTH sides need (disable_totp there, verify_2fa_login here), so it
+# lives on this side of that one-way edge and users/service.py imports
+# it, the same direction it already imports verify_password/
+# hash_password from.
+#
+# The LOGIN-TIME half -- create_mfa_pending_token / verify_2fa_login --
+# lives here because it is genuinely part of the login flow: it is the
+# second half of what login_email()/upsert_telegram_user() start, and
+# it calls create_session() the same way every other successful auth
+# path in this file does.
+
+
+async def verify_totp_or_backup_code(
+    user: User,
+    code: str,
+    session: AsyncSession,
+    *,
+    consume_backup_code: bool,
+) -> bool:
+    """Verify `code` against the user's ACTIVE TOTP secret or an unused
+    backup code. Returns False (never raises) on any mismatch -- callers
+    decide what that means (BadRequestError with their own message).
+
+    Tries the live TOTP code first, then falls back to scanning unused
+    backup codes -- `code`'s shape (6 digits vs. a longer alphanumeric
+    backup code, see TwoFactorDisableRequest/TwoFactorLoginVerifyRequest)
+    naturally fails the wrong branch's comparison, so no upfront format
+    dispatch is needed.
+
+    consume_backup_code: True marks the matched backup code's used_at
+    (login-verify -- a backup code is a one-shot credential, this IS a
+    real use of it) and flushes the write. False leaves backup_codes
+    untouched (disable_totp -- the whole credentials.totp slot is about
+    to be wiped by the caller regardless, so writing a used_at into a
+    value that is seconds from deletion would be pure waste, and it
+    would ALSO desync from that in-flight caller's own `user.credentials`
+    dict if both mutations touched the same dict without a re-read).
+
+    Does NOT commit -- caller manages the transaction (P-01). A flush
+    only happens on the consume_backup_code=True success path, where
+    there is something new to persist.
+    """
+    totp_creds = (user.credentials or {}).get("totp") or {}
+    if not totp_creds.get("enabled"):
+        return False
+
+    secret_encrypted = totp_creds.get("secret_encrypted")
+    if secret_encrypted:
+        try:
+            secret = decrypt_secret(secret_encrypted)
+        except InvalidToken:
+            # Corrupted/undecryptable stored secret -- data problem, not
+            # a codepath a live user attempt should ever surface as a
+            # crash. Falls through to the backup-code scan below.
+            logger.error("totp_secret_undecryptable", user_id=str(user.id))
+            secret = None
+        if secret and pyotp.totp.TOTP(secret).verify(code, valid_window=1):
+            return True
+
+    backup_codes = totp_creds.get("backup_codes") or []
+    for index, entry in enumerate(backup_codes):
+        if entry.get("used_at"):
+            continue
+        if await verify_password(code, entry.get("hash", "")):
+            if consume_backup_code:
+                updated_creds = dict(user.credentials or {})
+                totp_copy = dict(totp_creds)
+                codes_copy = list(backup_codes)
+                codes_copy[index] = {
+                    **entry,
+                    "used_at": datetime.now(UTC).isoformat(),
+                }
+                totp_copy["backup_codes"] = codes_copy
+                updated_creds["totp"] = totp_copy
+                user.set_jsonb("credentials", updated_creds)
+                await session.flush()
+            return True
+
+    return False
+
+
+async def create_mfa_pending_token(user_id: UUID, auth_method: str) -> str:
+    """Mint a single-use, short-lived token bridging "password verified"
+    to "second factor verified". See the _MFA_PENDING_* module note above.
+
+    auth_method ("email" or "telegram") is carried through the pending
+    token so verify_2fa_login() can hand it back to the router for
+    create_session() and the completed login's own audit row -- an
+    adversarial review caught that the first draft dropped this,
+    hardcoding "email" for every 2FA-completed login regardless of
+    which path it actually came through. On a platform that audits
+    every auth event, mislabeling a Telegram login as email in both
+    the session list AND the audit log is a real defect, not cosmetic.
+    """
+    token = secrets.token_urlsafe(32)
+    redis = get_redis()
+    await redis.set(
+        f"{_MFA_PENDING_REDIS_PREFIX}{token}",
+        json.dumps({"user_id": str(user_id), "auth_method": auth_method}),
+        ex=_MFA_PENDING_TTL_SECONDS,
+    )
+    return token
+
+
+async def verify_2fa_login(
+    mfa_token: str,
+    code: str,
+    session: AsyncSession,
+) -> tuple[User, str]:
+    """Consume a pending-MFA token and verify the second factor.
+
+    GETDEL up front: the token is gone after this call NO MATTER WHAT
+    happens next -- success, wrong code, unknown user, 2FA no longer
+    enabled. See the _MFA_PENDING_TTL_SECONDS module note for why this
+    is deliberately stricter than every other single-use-token pattern
+    in this file.
+
+    Does NOT create a session -- the caller (auth_2fa_login_verify in
+    auth/router.py) does that, exactly the way every other successful
+    auth path in this module hands the User back to its router for
+    create_session(). Does NOT commit -- caller (get_db_session)
+    manages the transaction (P-01); the only write this function can
+    cause (marking a backup code used, via verify_totp_or_backup_code)
+    is safe to leave uncommitted the same way confirm_password_reset's
+    delete_all_sessions is safe to call pre-commit -- Redis is already
+    the authority on the token, and the backup-code flush is ordinary
+    P-01 deferral.
+
+    Returns:
+        (user, auth_method) -- auth_method ("email"/"telegram") is
+        whatever create_mfa_pending_token() was minted with, so the
+        router's create_session() and this function's own audit row
+        both reflect the login's REAL originating path, not a
+        hardcoded guess.
+
+    Raises:
+        BadRequestError: Token missing/expired/already used, the user
+            it pointed to no longer exists or is inactive, 2FA is no
+            longer enabled on that account (defensive -- a pending
+            token should only ever exist for a 2FA account, see
+            auth/router.py's mfa_required branch), or the code does
+            not verify.
+    """
+    redis = get_redis()
+    raw = await redis.getdel(f"{_MFA_PENDING_REDIS_PREFIX}{mfa_token}")
+    if raw is None:
+        raise BadRequestError("Invalid or expired login token")
+
+    try:
+        payload = json.loads(raw)
+        user_id = UUID(payload["user_id"])
+        # Older tokens minted before this field existed would KeyError
+        # here -- none can still be live given the short TTL, but
+        # falling back to "email" rather than raising keeps this
+        # forward-compatible with any pending token already in flight
+        # at deploy time.
+        auth_method = payload.get("auth_method", "email")
+    except (KeyError, ValueError, TypeError) as exc:
+        # Defensive only -- this process is the only writer of this key
+        # shape (same reasoning as confirm_password_reset's identical
+        # guard).
+        logger.error("mfa_pending_token_payload_corrupt")
+        raise BadRequestError("Invalid or expired login token") from exc
+
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise BadRequestError("Invalid or expired login token")
+
+    totp_creds = (user.credentials or {}).get("totp") or {}
+    if not totp_creds.get("enabled"):
+        raise BadRequestError("Invalid or expired login token")
+
+    if not await verify_totp_or_backup_code(
+        user, code, session, consume_backup_code=True
+    ):
+        logger.warning("mfa_login_verify_wrong_code", user_id=str(user.id))
+        raise BadRequestError("Invalid verification code")
+
+    await record_audit(
+        session=session,
+        event="user.login",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={"auth_method": auth_method, "mfa_verified": True},
+    )
+
+    logger.info(
+        "mfa_login_verified", user_id=str(user.id), auth_method=auth_method
+    )
+
+    return user, auth_method
 
 
 # ---------------------------------------------------------------------------

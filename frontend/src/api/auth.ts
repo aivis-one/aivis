@@ -18,7 +18,16 @@
 // =============================================================================
 
 import { api } from '@/api/client'
-import type { SessionListResponse } from '@/api/types'
+import type {
+  AuthResponse,
+  SessionListResponse,
+  TwoFactorConfirmRequest,
+  TwoFactorConfirmResponse,
+  TwoFactorDisableRequest,
+  TwoFactorLoginVerifyRequest,
+  TwoFactorSetupRequest,
+  TwoFactorSetupResponse,
+} from '@/api/types'
 
 /**
  * GET /api/v1/auth/sessions -- list the caller's own active sessions,
@@ -39,4 +48,76 @@ export function listSessions(): Promise<SessionListResponse> {
  */
 export function revokeSession(sessionId: string): Promise<void> {
   return api.delete(`/api/v1/auth/sessions/${encodeURIComponent(sessionId)}`)
+}
+
+// ---------------------------------------------------------------------------
+// Two-Factor Authentication (TOTP) -- TASK-38
+// ---------------------------------------------------------------------------
+//
+// Source of truth: backend/app/modules/auth/router.py "Two-Factor
+// Authentication (TOTP)" section + schemas.py. `stores/auth.ts` owns
+// the LOGIN-TIME half (loginViaEmail/loginViaTelegram detecting
+// mfa_required, completeMfaLogin calling the verify endpoint below) --
+// these four wrappers are the account-management half, called from
+// components/shared/TwoFactorSection.vue.
+
+/**
+ * POST /api/v1/auth/2fa/setup -- start (or restart) TOTP setup.
+ * Requires the current password. Returns the raw secret (shown once,
+ * for manual entry) plus a provisioning_uri to render as a QR code.
+ * Throws ApiResponseError on:
+ *   403 incorrect_password -- current_password did not match.
+ *   429 -- rate limited.
+ */
+export function setupTwoFactor(body: TwoFactorSetupRequest): Promise<TwoFactorSetupResponse> {
+  return api.post<TwoFactorSetupResponse>('/api/v1/auth/2fa/setup', body)
+}
+
+/**
+ * POST /api/v1/auth/2fa/confirm -- confirm setup with a live code.
+ *
+ * On success, 2FA is switched ON and backup_codes are returned --
+ * ONCE. There is no endpoint to retrieve them again; the caller MUST
+ * treat this response as a "save these now" moment. Throws
+ * ApiResponseError on:
+ *   400 -- no pending setup, or the code did not verify (2FA stays off).
+ *   429 -- rate limited.
+ */
+export function confirmTwoFactor(
+  body: TwoFactorConfirmRequest,
+): Promise<TwoFactorConfirmResponse> {
+  return api.post<TwoFactorConfirmResponse>('/api/v1/auth/2fa/confirm', body)
+}
+
+/**
+ * POST /api/v1/auth/2fa/disable -- turn 2FA off.
+ *
+ * Requires BOTH the current password AND a live TOTP code or an
+ * unused backup code -- either alone is rejected. 204 No Content on
+ * success. Throws ApiResponseError on:
+ *   403 incorrect_password -- current_password did not match.
+ *   400 -- 2FA is not enabled, or the code did not verify.
+ *   429 -- rate limited.
+ */
+export function disableTwoFactor(body: TwoFactorDisableRequest): Promise<void> {
+  return api.post<void>('/api/v1/auth/2fa/disable', body)
+}
+
+/**
+ * POST /api/v1/auth/2fa/login-verify -- complete a 2FA-gated login.
+ *
+ * UNAUTHENTICATED (no Authorization header sent -- the api client only
+ * adds one when a token is set, and none exists at this point). Takes
+ * the mfa_token from a LoginResponse(mfa_required=true) plus a live
+ * code or unused backup code; on success returns a real AuthResponse
+ * (same shape as a normal login/register). Throws ApiResponseError on:
+ *   400 -- invalid/expired token, or the code did not verify. The
+ *          pending token is consumed either way -- a retry with the
+ *          SAME mfa_token, even with the correct code, will also fail;
+ *          the caller must sign in again to get a fresh token.
+ *   429 -- rate limited (tighter than the default auth rate limit,
+ *          see the backend docstring for why).
+ */
+export function verifyTwoFactorLogin(body: TwoFactorLoginVerifyRequest): Promise<AuthResponse> {
+  return api.post<AuthResponse>('/api/v1/auth/2fa/login-verify', body)
 }
