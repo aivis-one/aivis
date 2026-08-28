@@ -18,6 +18,9 @@
 #   13: Confirm/reject/complete/fail -> notification_request on the outbox,
 #       one per CURRENT status (TASK-24 batch 3, 2026-08-27)
 #   14: Confirm with comms NOT configured -> no outbox row
+#   15: Staff list withdrawals -> 200, paginated, sees other users' rows
+#   16: Staff list withdrawals filtered by status -> only matching rows
+#   17: Staff list withdrawals -- non-staff caller -> 403
 # =============================================================================
 
 from uuid import UUID
@@ -701,3 +704,95 @@ async def test_confirm_withdrawal_without_comms_emits_nothing(
     assert resp2.status_code == 200
 
     assert len(await _notification_events(db_session)) == before
+
+
+# ---------------------------------------------------------------------------
+# 15-17. Staff list (discovery)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_staff_list_withdrawals(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /staff/withdrawals returns a paginated view across users --
+    the gap this endpoint closes: before it existed, staff had no way
+    to discover a pending withdrawal_id to confirm/reject against."""
+    user_id, token = await _create_user_with_balance(
+        client, db_session, balance_cents=50000
+    )
+    _, admin_token = await create_admin_user(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201
+    withdrawal_id = resp.json()["id"]
+
+    resp2 = await client.get(
+        "/api/v1/staff/withdrawals",
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+    body = resp2.json()
+    assert body["page"] == 1
+    assert body["per_page"] == 20
+    assert body["total"] >= 1
+
+    # This withdrawal is present, carries user_id, and status=pending.
+    matches = [item for item in body["items"] if item["id"] == withdrawal_id]
+    assert len(matches) == 1
+    assert matches[0]["user_id"] == str(user_id)
+    assert matches[0]["status"] == WithdrawalStatus.PENDING
+
+
+@pytest.mark.asyncio
+async def test_staff_list_withdrawals_status_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """?status=processing returns only withdrawals in that status."""
+    _, token = await _create_user_with_balance(
+        client, db_session, balance_cents=50000
+    )
+    _, admin_token = await create_admin_user(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    withdrawal_id = resp.json()["id"]
+
+    await client.post(
+        f"/api/v1/staff/withdrawals/{withdrawal_id}/confirm",
+        headers=auth_headers(admin_token),
+    )
+
+    resp2 = await client.get(
+        "/api/v1/staff/withdrawals",
+        params={"status": "processing"},
+        headers=auth_headers(admin_token),
+    )
+    assert resp2.status_code == 200
+    body = resp2.json()
+    assert all(item["status"] == "processing" for item in body["items"])
+    assert any(item["id"] == withdrawal_id for item in body["items"])
+
+
+@pytest.mark.asyncio
+async def test_staff_list_withdrawals_requires_staff(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A plain investor token is refused (payment_review permission gate,
+    same as confirm/reject)."""
+    _, token = await _create_user_with_balance(
+        client, db_session, balance_cents=50000
+    )
+
+    resp = await client.get(
+        "/api/v1/staff/withdrawals",
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 403

@@ -3,10 +3,15 @@
 # =============================================================================
 #
 # SCHEMAS:
-#   CreateWithdrawalRequest -- amount_cents for withdrawal
-#   RejectWithdrawalRequest -- rejection_reason (required)
-#   WithdrawalResponse      -- single withdrawal representation
-#   WithdrawalListResponse  -- paginated list
+#   CreateWithdrawalRequest    -- amount_cents for withdrawal
+#   RejectWithdrawalRequest    -- rejection_reason (required)
+#   WithdrawalResponse         -- single withdrawal representation
+#   WithdrawalListResponse     -- paginated list (GET /withdrawals/me)
+#   StaffWithdrawalListResponse -- paginated list for staff (GET
+#     /staff/withdrawals). WithdrawalResponse already carries user_id
+#     (unlike PaymentResponse, which needed a StaffPaymentResponse
+#     subclass to add it) -- so the staff list only needs page/per_page
+#     added alongside items/total, not a new item schema.
 # =============================================================================
 
 from datetime import datetime
@@ -52,3 +57,15 @@ class WithdrawalListResponse(BaseModel):
 
     items: list[WithdrawalResponse]
     total: int
+
+
+class StaffWithdrawalListResponse(BaseModel):
+    """GET /api/v1/staff/withdrawals -- paginated list for staff.
+
+    Mirrors StaffPaymentListResponse's shape (items/total/page/per_page).
+    """
+
+    items: list[WithdrawalResponse]
+    total: int
+    page: int
+    per_page: int

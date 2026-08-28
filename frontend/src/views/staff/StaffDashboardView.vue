@@ -6,7 +6,15 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Users, ShieldAlert, CreditCard, UserCheck, ShieldCheck, Ghost } from 'lucide-vue-next'
+import {
+  Users,
+  ShieldAlert,
+  CreditCard,
+  UserCheck,
+  ShieldCheck,
+  Ghost,
+  Banknote,
+} from 'lucide-vue-next'
 import { CStatCard, CIconBox, CLoader, CButton, CBadge } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -76,6 +84,10 @@ function goKyc(): void {
 
 function goPayments(): void {
   void safeNavigate(router.push('/staff/payments'), '[StaffDashboardView] to payments')
+}
+
+function goWithdrawals(): void {
+  void safeNavigate(router.push('/staff/withdrawals'), '[StaffDashboardView] to withdrawals')
 }
 
 function goAgentApps(): void {
@@ -199,6 +211,9 @@ onMounted(loadStats)
       </CButton>
       <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goPayments">
         <CreditCard :size="16" /> {{ t('staff.checkPayments') }}
+      </CButton>
+      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goWithdrawals">
+        <Banknote :size="16" /> {{ t('staff.checkWithdrawals') }}
       </CButton>
       <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goAvatar">
         <Ghost :size="16" /> Avatar Mode

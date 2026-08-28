@@ -515,6 +515,14 @@ export const router = createRouter({
           name: 'staff-payments',
           component: () => import('@/views/staff/StaffPaymentsView.vue'),
         },
+        {
+          // Reached from the Tools section of StaffMoreView (not a bottom
+          // tab -- STAFF_TABS already has 5 fixed slots, same placement
+          // reasoning as agent-apps/support/avatar below).
+          path: 'withdrawals',
+          name: 'staff-withdrawals',
+          component: () => import('@/views/staff/StaffWithdrawalsView.vue'),
+        },
         // -----------------------------------------------------------
         // Platform tab (iter 2.7 Block B onwards)
         //

@@ -9,6 +9,7 @@
 #   complete_withdrawal()-- processing -> completed (webhook/system)
 #   fail_withdrawal()    -- processing -> failed + compensating ledger entry
 #   get_my_withdrawals() -- paginated list for authenticated user
+#   list_all_withdrawals()-- paginated list for staff (discovery, filters)
 #   get_withdrawal()     -- load single withdrawal by id
 #
 # LEDGER MECHANICS:
@@ -627,6 +628,63 @@ async def get_my_withdrawals(
     items = list(result.scalars().all())
 
     return items, total
+
+
+async def list_all_withdrawals(
+    session: AsyncSession,
+    *,
+    page: int = 1,
+    per_page: int = 20,
+    status: str | None = None,
+    user_id: UUID | None = None,
+) -> tuple[list[Withdrawal], int]:
+    """List all withdrawals for staff view with optional filters.
+
+    Mirrors payments/service.py's list_all_payments() query shape
+    (count + offset/limit, ordered by created_at desc) -- this is the
+    staff-facing discovery endpoint that confirm/reject need: without
+    it, staff have no way to find a pending withdrawal_id to act on.
+
+    Args:
+        session: Active DB session (reader is fine -- staff list is
+            read-only).
+        page: Page number (1-based).
+        per_page: Items per page.
+        status: Optional status filter (pending, confirmed, processing,
+            completed, rejected, failed).
+        user_id: Optional user filter.
+
+    Returns:
+        (withdrawals, total_count).
+    """
+    # Build filters.
+    filters = []
+    if status is not None:
+        filters.append(Withdrawal.status == status)
+    if user_id is not None:
+        filters.append(Withdrawal.user_id == user_id)
+
+    # Count total.
+    count_stmt = select(func.count()).select_from(Withdrawal)
+    if filters:
+        count_stmt = count_stmt.where(*filters)
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    # Fetch page.
+    offset = (page - 1) * per_page
+    stmt = (
+        select(Withdrawal)
+        .order_by(Withdrawal.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    if filters:
+        stmt = stmt.where(*filters)
+
+    result = await session.execute(stmt)
+    withdrawals = list(result.scalars().all())
+
+    return withdrawals, total
 
 
 async def get_withdrawal(

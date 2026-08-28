@@ -1165,6 +1165,14 @@ export interface StaffReversePurchaseRequest {
   reason?: string | null
 }
 
+/** GET /api/v1/staff/withdrawals -- paginated list for staff. Mirrors StaffPaymentListResponse's shape (items/total/page/per_page). */
+export interface StaffWithdrawalListResponse {
+  items: WithdrawalResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
 /** Request body for handing one transaction hash to the service. No ``min_length``. An empty or malformed hash is not a schema error: the service answers 200 with result_code=invalid_format and spends no attempt, and turning that into a 422 here would move a documented outcome into a different status class and cost the user the explanation that comes with it. */
 export interface SubmitTxidRequest {
   txid: string

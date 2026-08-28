@@ -37,6 +37,7 @@ import type {
   ReversalResponse,
   WithdrawalResponse,
   RejectWithdrawalRequest,
+  StaffWithdrawalListResponse,
   AvatarStartResponse,
   AvatarSessionResponse,
   AgentApplicationResponse,
@@ -162,6 +163,22 @@ export function reversePayment(
 // ---------------------------------------------------------------------------
 // Withdrawals (Sprint 6.3)
 // ---------------------------------------------------------------------------
+
+/** GET /api/v1/staff/withdrawals — paginated withdrawal list with filters. */
+export function fetchWithdrawalsStaff(params?: {
+  status?: string
+  user_id?: string
+  page?: number
+  per_page?: number
+}): Promise<StaffWithdrawalListResponse> {
+  const qs = buildQueryString({
+    status: params?.status,
+    user_id: params?.user_id,
+    page: params?.page,
+    per_page: params?.per_page,
+  })
+  return api.get<StaffWithdrawalListResponse>(`/api/v1/staff/withdrawals${qs}`)
+}
 
 /** POST /api/v1/staff/withdrawals/{id}/confirm — approve withdrawal. */
 export function confirmWithdrawal(withdrawalId: string): Promise<WithdrawalResponse> {

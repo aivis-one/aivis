@@ -191,11 +191,28 @@
       "reverseConfirm": "Are you sure you want to reverse this payment?",
       "reason": "Reason (optional)"
     },
+    "withdrawals": {
+      "stat": "Withdrawals",
+      "title": "Withdrawals",
+      "hint": "Verify payout details before confirming. Confirmed withdrawals move to processing and are paid out by the payout provider.",
+      "noWithdrawals": "No withdrawals found",
+      "confirm": "Confirm",
+      "confirmConfirm": "Are you sure you want to confirm this withdrawal?",
+      "confirmed": "Withdrawal confirmed",
+      "reject": "Reject",
+      "rejectConfirm": "Are you sure you want to reject this withdrawal?",
+      "rejected": "Withdrawal rejected",
+      "reason": "Reason",
+      "reasonRequired": "A reason is required to reject a withdrawal",
+      "processingNote": "Processing — awaiting payout provider",
+      "payoutDetails": "Payout details"
+    },
     "awaitingConfirm": "Awaiting Confirmation",
     "agentApps": "Agent Applications",
     "quickActions": "Quick Actions",
     "processKyc": "Process KYC",
     "checkPayments": "Check Payments",
+    "checkWithdrawals": "Check Withdrawals",
     "searchPlaceholder": "Search by name, email...",
     "kyc": {
       "title": "KYC Queue",
@@ -320,13 +337,6 @@
         "approvedToast": "KYC application approved",
         "rejectedToast": "KYC application rejected"
       }
-    },
-    "withdrawals": {
-      "confirm": "Confirm",
-      "reject": "Reject",
-      "rejectReason": "Rejection reason (required)",
-      "confirmed": "Withdrawal confirmed",
-      "rejected": "Withdrawal rejected"
     },
     "platform": {
       "tabs": {

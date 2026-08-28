@@ -237,7 +237,8 @@ export type { ReversalResponse } from './generated'
 //   - User:  WithdrawalResponse, WithdrawalListResponse,
 //            PayoutDetailsResponse  (consumed by F5.2 B3/B4 in
 //            CompanyBalanceView and api/{withdrawals,users}.ts)
-//   - Staff: RejectWithdrawalRequest (consumed by staff queue UI)
+//   - Staff: RejectWithdrawalRequest, StaffWithdrawalListResponse
+//            (consumed by staff queue UI)
 // ---------------------------------------------------------------------------
 
 export type { WithdrawalResponse } from './generated'
@@ -247,6 +248,8 @@ export type { WithdrawalListResponse } from './generated'
 export type { PayoutDetailsResponse } from './generated'
 
 export type { RejectWithdrawalRequest } from './generated'
+
+export type { StaffWithdrawalListResponse } from './generated'
 
 // ---------------------------------------------------------------------------
 // Staff: avatar (Sprint 3.2)

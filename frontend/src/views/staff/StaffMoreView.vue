@@ -5,7 +5,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { FileText, Ghost, LogOut, MessageCircle } from 'lucide-vue-next'
+import { Banknote, FileText, Ghost, LogOut, MessageCircle } from 'lucide-vue-next'
 import { CAvatar, CBadge } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -37,6 +37,10 @@ async function handleLogout(): Promise<void> {
 // the InvestorDashboardView `goPortfolio/goBalance/...` paradigm.
 function goAgentApps(): void {
   void safeNavigate(router.push('/staff/agent-apps'), '[StaffMoreView] to agent apps')
+}
+
+function goWithdrawals(): void {
+  void safeNavigate(router.push('/staff/withdrawals'), '[StaffMoreView] to withdrawals')
 }
 
 function goAvatar(): void {
@@ -73,6 +77,13 @@ function goSupport(): void {
       <button type="button" class="staff-more__nav-item" @click="goAgentApps">
         <span class="staff-more__nav-left">
           <FileText :size="16" /> {{ t('staff.agentApps2.title') }}
+        </span>
+        <span class="staff-more__nav-right">&rarr;</span>
+      </button>
+
+      <button type="button" class="staff-more__nav-item" @click="goWithdrawals">
+        <span class="staff-more__nav-left">
+          <Banknote :size="16" /> {{ t('staff.withdrawals.title') }}
         </span>
         <span class="staff-more__nav-right">&rarr;</span>
       </button>
