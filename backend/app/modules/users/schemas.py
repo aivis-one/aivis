@@ -26,7 +26,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.modules.staff.schemas import StaffProfileResponse
 
@@ -139,3 +139,87 @@ class PayoutDetailsResponse(BaseModel):
     payout_details: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Email change (TASK-38)
+# ---------------------------------------------------------------------------
+#
+# Three-step flow, mirroring auth/service.py's onboarding email
+# verification shape but kept ENTIRELY SEPARATE from it (own JSONB
+# slot: credentials.email_change, own endpoints under /me/email-change):
+#   1. POST /me/email-change          -- current password + new email.
+#      Verifies the password, checks the new email isn't already taken,
+#      generates a 6-digit code, emails it to the NEW address, stores
+#      the pending change (never touches credentials.email.email yet).
+#   2. POST /me/email-change/resend   -- regenerate + resend the code.
+#   3. POST /me/email-change/confirm  -- 6-digit code. On match, swaps
+#      credentials.email.email to the pending value and clears the
+#      pending slot.
+# See users/service.py for why this is a separate endpoint rather than
+# folded into UserUpdate/update_user -- email lives in credentials
+# JSONB, not a plain User column, and changing the LOGIN identifier
+# needs its own re-authentication + re-verification gate that has no
+# equivalent for the profile fields UserUpdate covers.
+
+
+class RequestEmailChangeRequest(BaseModel):
+    """POST /api/v1/users/me/email-change -- request body.
+
+    current_password re-authenticates the request (changing the login
+    identifier is sensitive -- see users/service.py module note).
+    new_email is normalized to lowercase in the service layer, same as
+    register_email.
+    """
+
+    current_password: str = Field(..., min_length=1)
+    new_email: EmailStr = Field(
+        ...,
+        description="New email address to move the account to",
+    )
+
+
+class ResendEmailChangeRequest(BaseModel):
+    """POST /api/v1/users/me/email-change/resend -- empty body.
+
+    No fields: the pending change (and its recipient) is already on
+    the authenticated user's own credentials.email_change -- nothing
+    for the caller to supply. Kept as an explicit model (rather than no
+    body at all) for parity with VerifyEmailRequest's sibling shape and
+    so FastAPI's OpenAPI schema documents the endpoint consistently.
+    """
+
+    model_config = {"extra": "forbid"}
+
+
+class ConfirmEmailChangeRequest(BaseModel):
+    """POST /api/v1/users/me/email-change/confirm -- request body.
+
+    Same 6-digit shape as auth.VerifyEmailRequest -- deliberately not
+    imported from there to keep the two verification flows
+    independently evolvable (users vs auth domain).
+    """
+
+    code: str = Field(
+        ...,
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+        description="6-digit verification code sent to the new email",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Self-deactivation (TASK-38)
+# ---------------------------------------------------------------------------
+
+
+class DeactivateAccountRequest(BaseModel):
+    """POST /api/v1/users/me/deactivate -- request body.
+
+    current_password confirms a destructive-feeling (though reversible
+    -- see users/service.py module note) action, same re-auth pattern
+    as RequestEmailChangeRequest.
+    """
+
+    current_password: str = Field(..., min_length=1)

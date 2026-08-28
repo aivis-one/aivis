@@ -31,7 +31,12 @@
 #   Uses same config as Telegram auth: auth_rate_limit_max_requests /
 #   auth_rate_limit_window_seconds.
 #   Key: "email_auth:{ip}" -- shared between register and login.
-#   Resend: rate-limited per user_id (1 per 60s).
+#   Resend: rate-limited per user_id, same shared auth_rate_limit_max_requests
+#   / window_seconds default as above (5 per 60s out of the box, not a
+#   bespoke 1-per-60s -- a stale docstring claiming otherwise, directly
+#   contradicting the comment beside its own check_rate_limit() call, was
+#   caught and fixed while a later batch built an adjacent email-change
+#   flow that copied the same wrong figure into a new docstring).
 #   Key: "password_reset:{ip}" -- shared between request and confirm,
 #   same shared-key shape as email_auth above. Both endpoints send no
 #   auth-required signal an attacker could be blocked on otherwise (no
@@ -181,8 +186,8 @@ async def auth_resend_verification(
     user: User = Depends(get_current_user_write),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    """Resend verification code. Rate-limited: 1 per 60 seconds."""
-    # Uses default auth rate limit config (5 per 60s). Acceptable for MVP.
+    """Resend verification code. Rate-limited via the shared default auth
+    rate limit config (5 per 60s out of the box). Acceptable for MVP."""
     await check_rate_limit(f"email_verify_resend:{user.id}")
     await resend_verification_code(user, session, background_tasks)
 

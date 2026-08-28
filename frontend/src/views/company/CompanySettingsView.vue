@@ -99,6 +99,8 @@ import {
 } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
+import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
+import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -669,6 +671,8 @@ onMounted(() => {
         <div class="cset__section-title">
           {{ t('comp.settings.actions.title') }}
         </div>
+        <EmailChangeSection tPrefix="comp.settings.actions" />
+        <DeactivateAccountSection tPrefix="comp.settings.actions" />
         <button
           type="button"
           class="cset__row cset__row--clickable"

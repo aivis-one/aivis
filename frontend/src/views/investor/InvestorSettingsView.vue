@@ -96,6 +96,8 @@ import {
 } from 'lucide-vue-next'
 
 import { CAvatar, CButton, CLoader } from '@/components/ui'
+import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
+import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { updateMe } from '@/api/users'
 import { getMyAgentApplications, submitAgentApplication } from '@/api/agent-apps'
@@ -496,6 +498,9 @@ onMounted(() => {
         </span>
         <ChevronRight :size="16" />
       </button>
+
+      <EmailChangeSection tPrefix="inv.settings.actions" />
+      <DeactivateAccountSection tPrefix="inv.settings.actions" />
 
       <button
         type="button"

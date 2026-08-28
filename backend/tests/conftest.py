@@ -202,6 +202,14 @@ def mock_email(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app.modules.auth.service._send_password_reset_email", _noop_token
     )
+    # TASK-38: email-change verification code, same shape as the
+    # onboarding _send_verification_email above but a separate function
+    # in users/service.py -- see that module's header for why the two
+    # flows are kept independent.
+    monkeypatch.setattr(
+        "app.modules.users.service._send_email_change_verification_email",
+        _noop_code,
+    )
 
 
 @pytest.fixture(autouse=True)

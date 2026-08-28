@@ -62,9 +62,12 @@
 #   The set is SELF-CHECKING: test_avatar.py walks app.routes and
 #   asserts every operation above carries its forbid_avatar_*
 #   dependency -- removing a guard from a route fails the suite.
-#   The remaining RESTRICTED_OPERATIONS entries have no live endpoints
-#   yet (change_password / change_email / delete_account /
-#   access_staff_shell) -- apply forbid_avatar when they appear.
+#   change_email and delete_account (TASK-38) now have live endpoints
+#   too -- POST /api/v1/users/me/email-change (request step only, see
+#   users/router.py header) and POST /api/v1/users/me/deactivate
+#   (users/router.py). The remaining RESTRICTED_OPERATIONS entries
+#   still have no live endpoints (change_password / access_staff_shell)
+#   -- apply forbid_avatar when they appear.
 # =============================================================================
 
 from typing import Callable

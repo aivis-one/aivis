@@ -8,6 +8,12 @@
 #   POST  /api/v1/users/me/select-role    -- Select role during onboarding (F2.3)
 #   GET   /api/v1/users/me/payout-details -- Get payout details (Sprint 6.3)
 #   PUT   /api/v1/users/me/payout-details -- Set payout details (Sprint 6.3)
+#   POST  /api/v1/users/me/email-change         -- Request an email change
+#                                                   (TASK-38, avatar-blocked)
+#   POST  /api/v1/users/me/email-change/resend  -- Resend the change code
+#   POST  /api/v1/users/me/email-change/confirm -- Confirm with the code
+#   POST  /api/v1/users/me/deactivate     -- Self-deactivate (TASK-38,
+#                                             avatar-blocked)
 #
 # TD-029 PATTERN:
 #   PATCH/PUT/POST use get_current_user_write (write session). Both the
@@ -16,17 +22,35 @@
 #
 # GET uses get_current_user (read-only session) -- no extra DB query,
 # user is already loaded by the dependency.
+#
+# AVATAR GUARD (TASK-38, R49):
+#   change_email and delete_account were pre-declared in
+#   avatar_guard.RESTRICTED_OPERATIONS with no live endpoint yet. Now
+#   that they exist: forbid_avatar("change_email") guards the REQUEST
+#   step only (POST /me/email-change), not resend/confirm -- mirrors
+#   create_withdrawal being guarded at creation, not at any later step.
+#   forbid_avatar("delete_account") guards the single deactivate
+#   endpoint. Both also require the caller's current password
+#   (_require_current_password in users/service.py) -- belt AND
+#   suspenders, since avatar mode does not hand staff the target's real
+#   password.
 # =============================================================================
 
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.rate_limit import check_rate_limit
+from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.users.models import User
 from app.modules.users.schemas import (
+    ConfirmEmailChangeRequest,
+    DeactivateAccountRequest,
     PayoutDetailsResponse,
+    RequestEmailChangeRequest,
+    ResendEmailChangeRequest,
     SelectRoleRequest,
     UpdatePayoutDetailsRequest,
     UserResponse,
@@ -34,6 +58,10 @@ from app.modules.users.schemas import (
 )
 from app.modules.users.service import (
     build_user_response,
+    confirm_email_change,
+    deactivate_own_account,
+    request_email_change,
+    resend_email_change_code,
     select_role,
     update_payout_details,
     update_user,
@@ -140,3 +168,96 @@ async def set_payout_details(
     """Set the authenticated user's payout details (full replacement)."""
     updated = await update_payout_details(user, body.payout_details, session)
     return PayoutDetailsResponse(payout_details=updated.payout_details)
+
+
+# ---------------------------------------------------------------------------
+# Email change (TASK-38)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/me/email-change",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # R49: an avatar must not be able to move the account onto an email
+    # only it controls. See router header note for why only this step
+    # (not resend/confirm) carries the guard.
+    dependencies=[Depends(forbid_avatar("change_email"))],
+)
+async def request_email_change_endpoint(
+    body: RequestEmailChangeRequest,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Request an email change. Rate-limited (auth_rate_limit_max_requests
+    per auth_rate_limit_window_seconds, the same shared default every
+    other check_rate_limit call in this codebase uses when not
+    overridden -- 5 per 60s out of the box, not a bespoke 1-per-60s;
+    stated as the setting name, not a hardcoded figure, so this
+    docstring cannot go stale if the default is ever tuned).
+
+    Requires the current password (re-auth) and sends a 6-digit code to
+    the NEW address -- the active login email is untouched until the
+    code is confirmed via POST /me/email-change/confirm.
+    """
+    await check_rate_limit(f"email_change_request:{user.id}")
+    await request_email_change(
+        user, body.current_password, body.new_email, session, background_tasks
+    )
+
+
+@router.post(
+    "/me/email-change/resend",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def resend_email_change_endpoint(
+    body: ResendEmailChangeRequest,  # empty body, kept for OpenAPI parity
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Resend the pending email-change code. Rate-limited via the same
+    shared auth_rate_limit_max_requests/window_seconds default as the
+    request step above (5 per 60s out of the box, not a bespoke 1)."""
+    await check_rate_limit(f"email_change_resend:{user.id}")
+    await resend_email_change_code(user, session, background_tasks)
+
+
+@router.post(
+    "/me/email-change/confirm",
+    response_model=UserResponse,
+)
+async def confirm_email_change_endpoint(
+    body: ConfirmEmailChangeRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> UserResponse:
+    """Confirm the pending email change with its 6-digit code."""
+    updated = await confirm_email_change(user, body.code, session)
+    return await build_user_response(updated, session)
+
+
+# ---------------------------------------------------------------------------
+# Self-deactivation (TASK-38)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/me/deactivate",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # R49: an avatar must not be able to deactivate the account it is
+    # impersonating.
+    dependencies=[Depends(forbid_avatar("delete_account"))],
+)
+async def deactivate_account_endpoint(
+    body: DeactivateAccountRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Self-deactivate the account. Requires the current password.
+
+    Soft/reversible: is_active=False + credentials.account.deactivated_by
+    ="self" (see users/service.py module note). Kills every session --
+    the caller's own request included, since the token dies with it.
+    """
+    await deactivate_own_account(user, body.current_password, session)

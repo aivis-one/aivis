@@ -1123,7 +1123,40 @@
       "actions": {
         "title": "Actions",
         "docs": "My documents",
-        "logout": "Sign out"
+        "logout": "Sign out",
+        "emailChange": {
+          "cta": "Change email",
+          "title": "Change your email",
+          "passwordLabel": "Current password",
+          "passwordPlaceholder": "Enter your current password",
+          "newEmailLabel": "New email",
+          "newEmailPlaceholder": "you@example.com",
+          "continueBtn": "Send code",
+          "cancelBtn": "Cancel",
+          "codeTitle": "Enter the code",
+          "codeSubtitle": "We sent a 6-digit code to {email}",
+          "codeLabel": "Verification code",
+          "codePlaceholder": "123456",
+          "confirmBtn": "Confirm",
+          "resendBtn": "Resend code",
+          "resendSuccess": "Code resent",
+          "successToast": "Email changed",
+          "errorIncorrectPassword": "Incorrect password",
+          "errorEmailTaken": "This email is already registered",
+          "errorCode": "Invalid or expired code",
+          "errorGeneric": "Something went wrong. Please try again."
+        },
+        "deactivate": {
+          "cta": "Deactivate account",
+          "title": "Deactivate your account?",
+          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
+          "passwordLabel": "Current password",
+          "passwordPlaceholder": "Enter your current password",
+          "cancelBtn": "Cancel",
+          "confirmBtn": "Deactivate",
+          "errorIncorrectPassword": "Incorrect password",
+          "errorGeneric": "Something went wrong. Please try again."
+        }
       },
       "subtitle": "Manage your profile and preferences"
     },
@@ -1291,7 +1324,40 @@
       "adminManagedHint": "Pricing, supply, and distribution are managed by AIVIS staff. Contact support to request a change.",
       "actions": {
         "title": "Account",
-        "logout": "Sign out"
+        "logout": "Sign out",
+        "emailChange": {
+          "cta": "Change email",
+          "title": "Change your email",
+          "passwordLabel": "Current password",
+          "passwordPlaceholder": "Enter your current password",
+          "newEmailLabel": "New email",
+          "newEmailPlaceholder": "you@example.com",
+          "continueBtn": "Send code",
+          "cancelBtn": "Cancel",
+          "codeTitle": "Enter the code",
+          "codeSubtitle": "We sent a 6-digit code to {email}",
+          "codeLabel": "Verification code",
+          "codePlaceholder": "123456",
+          "confirmBtn": "Confirm",
+          "resendBtn": "Resend code",
+          "resendSuccess": "Code resent",
+          "successToast": "Email changed",
+          "errorIncorrectPassword": "Incorrect password",
+          "errorEmailTaken": "This email is already registered",
+          "errorCode": "Invalid or expired code",
+          "errorGeneric": "Something went wrong. Please try again."
+        },
+        "deactivate": {
+          "cta": "Deactivate account",
+          "title": "Deactivate your account?",
+          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
+          "passwordLabel": "Current password",
+          "passwordPlaceholder": "Enter your current password",
+          "cancelBtn": "Cancel",
+          "confirmBtn": "Deactivate",
+          "errorIncorrectPassword": "Incorrect password",
+          "errorGeneric": "Something went wrong. Please try again."
+        }
       }
     },
     "roadmap": {
@@ -1694,7 +1760,40 @@
       },
       "actions": {
         "title": "Account",
-        "logout": "Sign out"
+        "logout": "Sign out",
+        "emailChange": {
+          "cta": "Change email",
+          "title": "Change your email",
+          "passwordLabel": "Current password",
+          "passwordPlaceholder": "Enter your current password",
+          "newEmailLabel": "New email",
+          "newEmailPlaceholder": "you@example.com",
+          "continueBtn": "Send code",
+          "cancelBtn": "Cancel",
+          "codeTitle": "Enter the code",
+          "codeSubtitle": "We sent a 6-digit code to {email}",
+          "codeLabel": "Verification code",
+          "codePlaceholder": "123456",
+          "confirmBtn": "Confirm",
+          "resendBtn": "Resend code",
+          "resendSuccess": "Code resent",
+          "successToast": "Email changed",
+          "errorIncorrectPassword": "Incorrect password",
+          "errorEmailTaken": "This email is already registered",
+          "errorCode": "Invalid or expired code",
+          "errorGeneric": "Something went wrong. Please try again."
+        },
+        "deactivate": {
+          "cta": "Deactivate account",
+          "title": "Deactivate your account?",
+          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
+          "passwordLabel": "Current password",
+          "passwordPlaceholder": "Enter your current password",
+          "cancelBtn": "Cancel",
+          "confirmBtn": "Deactivate",
+          "errorIncorrectPassword": "Incorrect password",
+          "errorGeneric": "Something went wrong. Please try again."
+        }
       }
     }
   },

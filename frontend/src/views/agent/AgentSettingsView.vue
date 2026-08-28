@@ -38,6 +38,8 @@ import { useI18n } from 'vue-i18n'
 import { ChevronRight, CreditCard, LogOut, Pencil } from 'lucide-vue-next'
 
 import { CAvatar, CBackLink, CBottomSheet, CButton, CLoader, CTextarea } from '@/components/ui'
+import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
+import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useToast } from '@/composables/useToast'
@@ -321,6 +323,8 @@ onMounted(() => {
       <div class="sett__section-title">
         {{ t('agent.settings.actions.title') }}
       </div>
+      <EmailChangeSection tPrefix="agent.settings.actions" />
+      <DeactivateAccountSection tPrefix="agent.settings.actions" />
       <button
         type="button"
         class="sett__row sett__row--clickable"

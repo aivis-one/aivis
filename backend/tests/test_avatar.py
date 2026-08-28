@@ -616,6 +616,57 @@ async def test_avatar_blocked_logout_all(
 
 
 @pytest.mark.asyncio
+async def test_avatar_blocked_email_change_request(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """TASK-38: POST /users/me/email-change in avatar mode -> 403.
+
+    An avatar must not be able to move the account's login email onto
+    an address only it controls. The guard fires as a route dependency
+    ahead of the handler, so a bogus current_password in the body
+    (which the guard never inspects) does not matter here -- same
+    pattern as test_avatar_blocked_create_withdrawal's `{"amount_cents":
+    1000}` body never reaching the withdrawal service.
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/users/me/email-change",
+        json={
+            "current_password": "whatever-the-avatar-does-not-know-it",
+            "new_email": f"hijack_{uuid.uuid4().hex[:12]}@example.com",
+        },
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_avatar_blocked_deactivate_account(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """TASK-38: POST /users/me/deactivate in avatar mode -> 403.
+
+    An avatar must not be able to deactivate the account it is
+    impersonating.
+    """
+    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
+
+    resp = await client.post(
+        "/api/v1/users/me/deactivate",
+        json={"current_password": "whatever-the-avatar-does-not-know-it"},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+
+@pytest.mark.asyncio
 async def test_shipped_default_leaves_avatar_restrictions_off() -> None:
     """2026-08-17, owner-ruled: the switch ships OFF.
 
@@ -869,11 +920,13 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
     guard from a route -- or adding a new endpoint for a restricted
     operation without wiring the guard -- fails this test.
 
-    Operations without live endpoints (change_password, change_email,
-    delete_account, access_staff_shell) are intentionally absent from
-    the expected set; extend it when their endpoints appear. logout_all
+    Operations without live endpoints (change_password,
+    access_staff_shell) are intentionally absent from the expected set;
+    extend it when their endpoints appear. logout_all
     (STAGE-III-FINDINGS.md #19) was added to the expected set the same
-    day its guard was wired, not left for a later pass.
+    day its guard was wired, not left for a later pass -- change_email
+    and delete_account (TASK-38, users/router.py) follow the same rule:
+    added here the same change that wired their guards.
 
     The walk is recursive: since FastAPI 0.137 include_router no longer
     flattens a sub-router's routes into app.routes -- it inserts a lazy
@@ -915,6 +968,8 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_modify_kyc",
         "forbid_avatar_sign_document",
         "forbid_avatar_logout_all",
+        "forbid_avatar_change_email",
+        "forbid_avatar_delete_account",
     }
     missing = expected - guarded
     assert not missing, (

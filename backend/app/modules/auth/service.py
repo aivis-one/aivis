@@ -539,6 +539,30 @@ async def login_email(
         raise UnauthorizedError("Invalid email or password")
 
     if not user.is_active:
+        # TASK-38: is_active=False now has TWO distinct causes -- staff
+        # block_user() (staff/admin_service.py, untouched) and this
+        # module's own deactivate_own_account() (users/service.py). Both
+        # write is_active=False; only self-deactivation additionally
+        # writes credentials.account.deactivated_by="self". Reusing the
+        # bare flag without this discriminator would tell a user who
+        # deactivated their OWN account that they were "suspended" --
+        # wrong and alarming. See users/service.py's self-deactivation
+        # module note for the KNOWN EDGE CASE this discriminator does
+        # NOT cover (unblock -> re-block after a self-deactivation
+        # leaves it stale).
+        account_meta = (user.credentials or {}).get("account", {})
+        deactivated_by = account_meta.get("deactivated_by")
+
+        if deactivated_by == "self":
+            background_tasks.add_task(
+                _audit_login_failure, user.id, "account_self_deactivated"
+            )
+            raise ForbiddenError(
+                "Your account is deactivated. Contact support to "
+                "reactivate it.",
+                code="account_self_deactivated",
+            )
+
         background_tasks.add_task(
             _audit_login_failure, user.id, "account_deactivated"
         )

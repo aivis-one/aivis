@@ -1123,7 +1123,40 @@
       "actions": {
         "title": "Действия",
         "docs": "Мои документы",
-        "logout": "Выйти"
+        "logout": "Выйти",
+        "emailChange": {
+          "cta": "Изменить email",
+          "title": "Изменение email",
+          "passwordLabel": "Текущий пароль",
+          "passwordPlaceholder": "Введите текущий пароль",
+          "newEmailLabel": "Новый email",
+          "newEmailPlaceholder": "you@example.com",
+          "continueBtn": "Отправить код",
+          "cancelBtn": "Отмена",
+          "codeTitle": "Введите код",
+          "codeSubtitle": "Мы отправили 6-значный код на {email}",
+          "codeLabel": "Код подтверждения",
+          "codePlaceholder": "123456",
+          "confirmBtn": "Подтвердить",
+          "resendBtn": "Отправить код повторно",
+          "resendSuccess": "Код отправлен повторно",
+          "successToast": "Email изменён",
+          "errorIncorrectPassword": "Неверный пароль",
+          "errorEmailTaken": "Этот email уже зарегистрирован",
+          "errorCode": "Неверный или просроченный код",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        },
+        "deactivate": {
+          "cta": "Деактивировать аккаунт",
+          "title": "Деактивировать аккаунт?",
+          "warning": "Ваш сеанс будет немедленно завершён на всех устройствах. Чтобы снова пользоваться AIVIS.ONE, обратитесь в поддержку.",
+          "passwordLabel": "Текущий пароль",
+          "passwordPlaceholder": "Введите текущий пароль",
+          "cancelBtn": "Отмена",
+          "confirmBtn": "Деактивировать",
+          "errorIncorrectPassword": "Неверный пароль",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        }
       },
       "subtitle": "Управление профилем и предпочтениями"
     },
@@ -1291,7 +1324,40 @@
       "adminManagedHint": "Цена, объём выпуска и распределение управляются командой AIVIS. Чтобы изменить их, обратитесь в поддержку.",
       "actions": {
         "title": "Аккаунт",
-        "logout": "Выйти"
+        "logout": "Выйти",
+        "emailChange": {
+          "cta": "Изменить email",
+          "title": "Изменение email",
+          "passwordLabel": "Текущий пароль",
+          "passwordPlaceholder": "Введите текущий пароль",
+          "newEmailLabel": "Новый email",
+          "newEmailPlaceholder": "you@example.com",
+          "continueBtn": "Отправить код",
+          "cancelBtn": "Отмена",
+          "codeTitle": "Введите код",
+          "codeSubtitle": "Мы отправили 6-значный код на {email}",
+          "codeLabel": "Код подтверждения",
+          "codePlaceholder": "123456",
+          "confirmBtn": "Подтвердить",
+          "resendBtn": "Отправить код повторно",
+          "resendSuccess": "Код отправлен повторно",
+          "successToast": "Email изменён",
+          "errorIncorrectPassword": "Неверный пароль",
+          "errorEmailTaken": "Этот email уже зарегистрирован",
+          "errorCode": "Неверный или просроченный код",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        },
+        "deactivate": {
+          "cta": "Деактивировать аккаунт",
+          "title": "Деактивировать аккаунт?",
+          "warning": "Ваш сеанс будет немедленно завершён на всех устройствах. Чтобы снова пользоваться AIVIS.ONE, обратитесь в поддержку.",
+          "passwordLabel": "Текущий пароль",
+          "passwordPlaceholder": "Введите текущий пароль",
+          "cancelBtn": "Отмена",
+          "confirmBtn": "Деактивировать",
+          "errorIncorrectPassword": "Неверный пароль",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        }
       }
     },
     "roadmap": {
@@ -1694,7 +1760,40 @@
       },
       "actions": {
         "title": "Аккаунт",
-        "logout": "Выйти"
+        "logout": "Выйти",
+        "emailChange": {
+          "cta": "Изменить email",
+          "title": "Изменение email",
+          "passwordLabel": "Текущий пароль",
+          "passwordPlaceholder": "Введите текущий пароль",
+          "newEmailLabel": "Новый email",
+          "newEmailPlaceholder": "you@example.com",
+          "continueBtn": "Отправить код",
+          "cancelBtn": "Отмена",
+          "codeTitle": "Введите код",
+          "codeSubtitle": "Мы отправили 6-значный код на {email}",
+          "codeLabel": "Код подтверждения",
+          "codePlaceholder": "123456",
+          "confirmBtn": "Подтвердить",
+          "resendBtn": "Отправить код повторно",
+          "resendSuccess": "Код отправлен повторно",
+          "successToast": "Email изменён",
+          "errorIncorrectPassword": "Неверный пароль",
+          "errorEmailTaken": "Этот email уже зарегистрирован",
+          "errorCode": "Неверный или просроченный код",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        },
+        "deactivate": {
+          "cta": "Деактивировать аккаунт",
+          "title": "Деактивировать аккаунт?",
+          "warning": "Ваш сеанс будет немедленно завершён на всех устройствах. Чтобы снова пользоваться AIVIS.ONE, обратитесь в поддержку.",
+          "passwordLabel": "Текущий пароль",
+          "passwordPlaceholder": "Введите текущий пароль",
+          "cancelBtn": "Отмена",
+          "confirmBtn": "Деактивировать",
+          "errorIncorrectPassword": "Неверный пароль",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        }
       }
     }
   },

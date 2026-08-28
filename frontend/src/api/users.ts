@@ -30,7 +30,14 @@
 // =============================================================================
 
 import { api } from '@/api/client'
-import type { PayoutDetailsResponse, UserResponse, UserUpdate } from '@/api/types'
+import type {
+  ConfirmEmailChangeRequest,
+  DeactivateAccountRequest,
+  PayoutDetailsResponse,
+  RequestEmailChangeRequest,
+  UserResponse,
+  UserUpdate,
+} from '@/api/types'
 
 /**
  * GET /api/v1/users/me -- authenticated user profile.
@@ -74,4 +81,78 @@ export function updatePayoutDetails(
   payout_details: Record<string, unknown>,
 ): Promise<PayoutDetailsResponse> {
   return api.put<PayoutDetailsResponse>('/api/v1/users/me/payout-details', { payout_details })
+}
+
+// ---------------------------------------------------------------------------
+// Email change (TASK-38)
+// ---------------------------------------------------------------------------
+//
+// Three-step flow -- see users/schemas.py's "Email change" section for
+// the full contract:
+//   1. requestEmailChange -- current password + new email. Sends a
+//      6-digit code to the NEW address. Rate-limited server-side via
+//      the shared auth_rate_limit_max_requests/window_seconds default
+//      (5 per 60s out of the box, not a bespoke 1) under key
+//      email_change_request:{user.id}.
+//   2. resendEmailChangeCode -- regenerate + resend. Same rate limit
+//      family, its own key (email_change_resend:{user.id}).
+//   3. confirmEmailChange -- the 6-digit code. On success the login
+//      email has already moved server-side; the caller's own session
+//      stays valid (unlike a password reset, nothing is invalidated).
+
+/**
+ * POST /api/v1/users/me/email-change -- request an email change.
+ *
+ * 204 No Content on success (no body). Throws ApiResponseError on:
+ *   403 incorrect_password -- current_password did not match.
+ *   400 -- new_email equals the current login email.
+ *   409 -- new_email already belongs to another account.
+ *   429 -- rate limited.
+ */
+export function requestEmailChange(body: RequestEmailChangeRequest): Promise<void> {
+  return api.post<void>('/api/v1/users/me/email-change', body)
+}
+
+/**
+ * POST /api/v1/users/me/email-change/resend -- resend the pending code.
+ *
+ * 204 No Content on success. Throws ApiResponseError on:
+ *   400 -- no pending email change on this account.
+ *   429 -- rate limited.
+ */
+export function resendEmailChangeCode(): Promise<void> {
+  return api.post<void>('/api/v1/users/me/email-change/resend', {})
+}
+
+/**
+ * POST /api/v1/users/me/email-change/confirm -- confirm with the code.
+ *
+ * Returns the updated UserResponse (email already moved) so the caller
+ * can sync the auth store the same way updateMe() does. Throws
+ * ApiResponseError on:
+ *   400 -- no pending change, expired, too many attempts, or wrong code.
+ *   409 -- the pending email was claimed by another account in the interim.
+ */
+export function confirmEmailChange(body: ConfirmEmailChangeRequest): Promise<UserResponse> {
+  return api.post<UserResponse>('/api/v1/users/me/email-change/confirm', body)
+}
+
+// ---------------------------------------------------------------------------
+// Self-deactivation (TASK-38)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/v1/users/me/deactivate -- self-deactivate the account.
+ *
+ * Soft/reversible: is_active=False + a "self" discriminator server-side
+ * (see users/service.py). Kills every session, including the one that
+ * made this call -- the caller should treat any response (success or
+ * not) as "assume logged out" and clear local session state, mirroring
+ * how confirm_password_reset's frontend counterpart behaves. 204 No
+ * Content on success. Throws ApiResponseError on:
+ *   403 incorrect_password -- current_password did not match.
+ *   400 -- staff/platform accounts cannot self-deactivate.
+ */
+export function deactivateAccount(body: DeactivateAccountRequest): Promise<void> {
+  return api.post<void>('/api/v1/users/me/deactivate', body)
 }

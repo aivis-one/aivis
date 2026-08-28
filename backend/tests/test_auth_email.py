@@ -254,6 +254,51 @@ async def test_login_blocked_user(
     assert "suspended" in body["message"].lower()
 
 
+@pytest.mark.asyncio
+async def test_login_self_deactivated_user(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    """TASK-38: is_active=False + credentials.account.deactivated_by="self"
+    -> 403 with a DIFFERENT code/message than test_login_blocked_user's
+    staff-block branch above.
+
+    Reusing is_active=False as a bare flag (staff's block_user() shape)
+    without this discriminator would tell a user who deactivated their
+    OWN account that they were "suspended" -- wrong and alarming. This
+    pins the login_email() branch that reads
+    credentials.account.deactivated_by and picks the honest copy.
+
+    The row is written directly here (bypassing POST /users/me/deactivate)
+    so this test exercises ONLY the login-side branch -- the deactivate
+    endpoint itself is covered in test_users_deactivate.py.
+    """
+    email = f"selfdeact_{uuid.uuid4().hex[:12]}@example.com"
+    await register_user(client, email=email)
+
+    stmt = select(User).where(
+        User.credentials["email"]["email"].as_string() == email
+    )
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    updated_creds = dict(user.credentials)
+    updated_creds["account"] = {"deactivated_by": "self"}
+    user.set_jsonb("credentials", updated_creds)
+    user.is_active = False
+    await db_session.commit()
+
+    resp = await client.post(
+        "/api/v1/auth/email/login",
+        json={"email": email, "password": "testpass123"},
+    )
+    assert resp.status_code == 403
+    body = resp.json()
+    assert body["error"] == "account_self_deactivated"
+    assert body["error"] != "account_blocked"
+    assert "suspended" not in body["message"].lower()
+    assert "deactivated" in body["message"].lower()
+
+
 # NOTE: test_login_platform_user was removed. It mutated a regular
 # investor into role=PLATFORM and never reverted, leaving the DB with
 # two Platform users -- causing MultipleResultsFound cascades in 111
