@@ -62,6 +62,7 @@ import {
 } from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
+import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { getPayoutDetails, updateMe, updatePayoutDetails } from '@/api/users'
@@ -523,6 +524,7 @@ onMounted(() => {
       </div>
       <EmailChangeSection tPrefix="agent.settings.actions" />
       <ActiveSessionsSection tPrefix="agent.settings.actions" />
+      <NotificationPreferencesSection tPrefix="agent.settings.actions" />
       <DeactivateAccountSection tPrefix="agent.settings.actions" />
       <button
         type="button"

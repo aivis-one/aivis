@@ -724,6 +724,62 @@ async def test_avatar_blocked_revoke_session(
 
 
 @pytest.mark.asyncio
+async def test_avatar_blocked_mute_notifications(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """TASK-38: PATCH /notifications/preferences in avatar mode -> 403.
+
+    An adversarial review of the notification-preferences build caught
+    that its first draft tested only "does this move money or
+    identity" and missed the threat class logout_all/revoke_session
+    guard for: a mutation that PERSISTS past the avatar session and
+    suppresses the channel the real owner would use to notice
+    unauthorized activity on their money/identity. Confirms both the
+    403 AND that a targeted category genuinely stays unmuted -- the
+    guard blocked the whole request, not merely returned an error
+    while the write happened anyway.
+    """
+    admin_token = await _admin_token(client, db_session)
+    investor_id, investor_token = await _investor_id_and_token(client)
+
+    before = await client.get(
+        "/api/v1/notifications/preferences",
+        headers=auth_headers(investor_token),
+    )
+    assert before.status_code == 200
+    categories = before.json()["categories"]
+    assert categories, "fixture assumption: at least one category exists"
+    target_category = next(iter(categories))
+    assert categories[target_category] is True, (
+        "fixture assumption: target category starts enabled"
+    )
+
+    start_resp = await client.post(
+        "/api/v1/staff/avatar/start",
+        json={"target_user_id": investor_id},
+        headers=auth_headers(admin_token),
+    )
+    assert start_resp.status_code == 200
+    avatar_token = start_resp.json()["session_token"]
+
+    resp = await client.patch(
+        "/api/v1/notifications/preferences",
+        json={"categories": {target_category: False}},
+        headers=auth_headers(avatar_token),
+    )
+    assert resp.status_code == 403
+    assert "avatar" in resp.json()["message"].lower()
+
+    after = await client.get(
+        "/api/v1/notifications/preferences",
+        headers=auth_headers(investor_token),
+    )
+    assert after.json()["categories"][target_category] is True
+
+
+@pytest.mark.asyncio
 async def test_shipped_default_leaves_avatar_restrictions_off() -> None:
     """2026-08-17, owner-ruled: the switch ships OFF.
 
@@ -1029,6 +1085,7 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_change_email",
         "forbid_avatar_delete_account",
         "forbid_avatar_revoke_session",
+        "forbid_avatar_mute_notifications",
     }
     missing = expected - guarded
     assert not missing, (

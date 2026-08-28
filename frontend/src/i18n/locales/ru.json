@@ -1172,6 +1172,44 @@
             "telegram": "Telegram"
           }
         },
+        "notifications": {
+          "cta": "Уведомления",
+          "title": "Настройки уведомлений",
+          "loadError": "Не удалось загрузить настройки уведомлений",
+          "retry": "Повторить",
+          "categoriesTitle": "О чём вас уведомлять",
+          "categories": {
+            "deposits": "Пополнения",
+            "payments": "Проблемы с платежами",
+            "commissions": "Комиссионные",
+            "agent_applications": "Заявки на статус агента",
+            "withdrawals": "Выводы средств",
+            "purchases": "Покупки",
+            "installments": "Платежи по рассрочке",
+            "kyc": "Верификация личности",
+            "support_messages": "Ответы поддержки",
+            "staff_messages": "Сообщения от клиентов"
+          },
+          "scheduleEnableLabel": "Включить тихие часы",
+          "scheduleDescription": "Приостановить уведомления на выбранный ежедневный период.",
+          "fromLabel": "С",
+          "toLabel": "До",
+          "daysLabel": "Повторять по дням",
+          "days": {
+            "mon": "Пн",
+            "tue": "Вт",
+            "wed": "Ср",
+            "thu": "Чт",
+            "fri": "Пт",
+            "sat": "Сб",
+            "sun": "Вс"
+          },
+          "timezoneNote": "Время указано по часовому поясу {timezone}",
+          "cancelBtn": "Отмена",
+          "saveBtn": "Сохранить",
+          "saveSuccess": "Настройки уведомлений сохранены",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
+        },
         "deactivate": {
           "cta": "Деактивировать аккаунт",
           "title": "Деактивировать аккаунт?",
@@ -1390,6 +1428,44 @@
             "email": "Email",
             "telegram": "Telegram"
           }
+        },
+        "notifications": {
+          "cta": "Уведомления",
+          "title": "Настройки уведомлений",
+          "loadError": "Не удалось загрузить настройки уведомлений",
+          "retry": "Повторить",
+          "categoriesTitle": "О чём вас уведомлять",
+          "categories": {
+            "deposits": "Пополнения",
+            "payments": "Проблемы с платежами",
+            "commissions": "Комиссионные",
+            "agent_applications": "Заявки на статус агента",
+            "withdrawals": "Выводы средств",
+            "purchases": "Покупки",
+            "installments": "Платежи по рассрочке",
+            "kyc": "Верификация личности",
+            "support_messages": "Ответы поддержки",
+            "staff_messages": "Сообщения от клиентов"
+          },
+          "scheduleEnableLabel": "Включить тихие часы",
+          "scheduleDescription": "Приостановить уведомления на выбранный ежедневный период.",
+          "fromLabel": "С",
+          "toLabel": "До",
+          "daysLabel": "Повторять по дням",
+          "days": {
+            "mon": "Пн",
+            "tue": "Вт",
+            "wed": "Ср",
+            "thu": "Чт",
+            "fri": "Пт",
+            "sat": "Сб",
+            "sun": "Вс"
+          },
+          "timezoneNote": "Время указано по часовому поясу {timezone}",
+          "cancelBtn": "Отмена",
+          "saveBtn": "Сохранить",
+          "saveSuccess": "Настройки уведомлений сохранены",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
         },
         "deactivate": {
           "cta": "Деактивировать аккаунт",
@@ -1857,6 +1933,44 @@
             "email": "Email",
             "telegram": "Telegram"
           }
+        },
+        "notifications": {
+          "cta": "Уведомления",
+          "title": "Настройки уведомлений",
+          "loadError": "Не удалось загрузить настройки уведомлений",
+          "retry": "Повторить",
+          "categoriesTitle": "О чём вас уведомлять",
+          "categories": {
+            "deposits": "Пополнения",
+            "payments": "Проблемы с платежами",
+            "commissions": "Комиссионные",
+            "agent_applications": "Заявки на статус агента",
+            "withdrawals": "Выводы средств",
+            "purchases": "Покупки",
+            "installments": "Платежи по рассрочке",
+            "kyc": "Верификация личности",
+            "support_messages": "Ответы поддержки",
+            "staff_messages": "Сообщения от клиентов"
+          },
+          "scheduleEnableLabel": "Включить тихие часы",
+          "scheduleDescription": "Приостановить уведомления на выбранный ежедневный период.",
+          "fromLabel": "С",
+          "toLabel": "До",
+          "daysLabel": "Повторять по дням",
+          "days": {
+            "mon": "Пн",
+            "tue": "Вт",
+            "wed": "Ср",
+            "thu": "Чт",
+            "fri": "Пт",
+            "sat": "Сб",
+            "sun": "Вс"
+          },
+          "timezoneNote": "Время указано по часовому поясу {timezone}",
+          "cancelBtn": "Отмена",
+          "saveBtn": "Сохранить",
+          "saveSuccess": "Настройки уведомлений сохранены",
+          "errorGeneric": "Что-то пошло не так. Попробуйте ещё раз."
         },
         "deactivate": {
           "cta": "Деактивировать аккаунт",

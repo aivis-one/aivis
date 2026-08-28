@@ -79,6 +79,19 @@
 #   the same category of access avatar mode already grants over the
 #   target's other data (KYC, financials, etc.) elsewhere in this
 #   codebase -- only the destructive half is restricted.
+#
+#   mute_notifications (notifications/router.py PATCH /preferences,
+#   TASK-38): an adversarial review caught that the first draft of this
+#   module tested only "does this move money or identity," missing a
+#   different threat class the logout_all/revoke_session guards were
+#   already built for -- an action that PERSISTS past the avatar
+#   session and specifically suppresses the channel the real owner
+#   would use to notice unauthorized activity. Muting withdrawals/kyc/
+#   payments categories fits that shape exactly: the mute is written to
+#   the recipient's row in comms and outlives the impersonation, and
+#   its effect is to blind the real owner to exactly the events this
+#   whole notification system exists to surface. GET /preferences
+#   (read-only) stays unguarded, same reasoning as GET /sessions above.
 # =============================================================================
 
 from typing import Callable
@@ -106,6 +119,7 @@ RESTRICTED_OPERATIONS = frozenset({
     "modify_kyc",
     "logout_all",
     "revoke_session",
+    "mute_notifications",
 })
 
 

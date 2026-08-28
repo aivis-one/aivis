@@ -867,6 +867,19 @@ export interface PostSnippetResponse {
   excerpt: string
 }
 
+/** GET /api/v1/notifications/preferences and the PATCH round-trip. `timezone` is READ-ONLY context (comms' own contract: sync-owned, rejected with 422 if a client tries to set it) -- present here only so the settings screen can caption the schedule with it. */
+export interface PreferencesOut {
+  categories: Record<string, unknown>
+  schedule?: ScheduleOut | null
+  timezone?: string | null
+}
+
+/** PATCH /api/v1/notifications/preferences request body. extra="forbid" at this level too -- rejects a stray "timezone" (or any typo) with a 422 from THIS product's own validation, before a round trip to comms is spent proving the same thing. Mirrors comms' own PreferencesPatch field-for-field; see notifications/service.py's header for how `categories` (partial) and `schedule` (full-replace-or-clear, presence-sensitive via model_fields_set) are forwarded. */
+export interface PreferencesPatchIn {
+  categories?: Record<string, unknown> | null
+  schedule?: ScheduleIn | null
+}
+
 /** Paginated price-history list (iter 2.6c B3). Wraps PriceHistoryResponse with the same pagination envelope used by CompanyListResponse and every other staff list endpoint, so the frontend table component can drive both list flows with one pagination contract. */
 export interface PriceHistoryListResponse {
   items: PriceHistoryResponse[]
@@ -1145,6 +1158,20 @@ export interface SalesByProductEntry {
   product_name: string
   revenue_cents: number
   options_sold: number
+}
+
+/** Quiet-hours window as the CLIENT sends it -- always a full replace. All three fields are required when `schedule` is present at all (comms' contract: PATCH .../preferences' schedule key is FULL REPLACE, never a partial merge). Local time strings, "HH:MM" -- left as `str` rather than `datetime.time` deliberately: this proxy does not re-validate the format, comms already does (a malformed string round-trips to comms and comes back as a 422 CommsRejectedError, forwarded as-is), and a plain string is what `<input type="time">` on the frontend already produces without any local conversion. */
+export interface ScheduleIn {
+  from: string
+  to: string
+  days: string[]
+}
+
+/** Quiet-hours window as comms answers it -- same shape, read-only side. */
+export interface ScheduleOut {
+  from: string
+  to: string
+  days: string[]
 }
 
 /** POST /api/v1/users/me/select-role -- onboarding role selection. */

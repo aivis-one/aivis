@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NotificationActionOut(BaseModel):
@@ -82,3 +82,91 @@ class UnreadCountOut(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     unread: int
+
+
+# =============================================================================
+# Preferences (TASK-38 item 4) -- comms' E8-shaped facade, typed both ways
+# =============================================================================
+#
+# comms' contract (D:/02_Projects/comms/app/api/prefs.py, FROZEN):
+#   GET/PATCH .../preferences -> {categories: {<category>: bool, ...},
+#   schedule: {from, to, days} | null, timezone: <IANA> | null}. Mirrored
+# here as real Pydantic models rather than forwarded as `-> Any` (the
+# support module's choice for its still-frontend-less threads/messages
+# endpoints) because this DOES have a frontend consumer -- generated.ts
+# needs a real interface, same reasoning notifications/schemas.py's own
+# header gives for InboxPageOut / UnreadCountOut above.
+#
+# `from` is a Python keyword, hence `from_` + Field(alias="from") on both
+# the inbound and outbound schedule shapes -- exactly comms' own
+# ScheduleIn does it. Two separate schedule classes rather than one
+# reused both ways: ScheduleIn is a CLIENT REQUEST (extra="forbid" --
+# an unknown key, most importantly "timezone", must 422 immediately
+# rather than being silently dropped and round-tripped to comms as a
+# request that looks like it worked); ScheduleOut is comms' ANSWER
+# (extra="ignore" -- comms adding a field later must not 502 every
+# request the day it ships, same rule InboxPageOut's header states).
+# =============================================================================
+
+
+class ScheduleIn(BaseModel):
+    """Quiet-hours window as the CLIENT sends it -- always a full replace.
+
+    All three fields are required when `schedule` is present at all
+    (comms' contract: PATCH .../preferences' schedule key is FULL
+    REPLACE, never a partial merge). Local time strings, "HH:MM" --
+    left as `str` rather than `datetime.time` deliberately: this proxy
+    does not re-validate the format, comms already does (a malformed
+    string round-trips to comms and comes back as a 422 CommsRejectedError,
+    forwarded as-is), and a plain string is what `<input type="time">`
+    on the frontend already produces without any local conversion.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    from_: str = Field(alias="from")
+    to: str
+    days: list[str]
+
+
+class ScheduleOut(BaseModel):
+    """Quiet-hours window as comms answers it -- same shape, read-only side."""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    from_: str = Field(alias="from")
+    to: str
+    days: list[str]
+
+
+class PreferencesPatchIn(BaseModel):
+    """PATCH /api/v1/notifications/preferences request body.
+
+    extra="forbid" at this level too -- rejects a stray "timezone" (or
+    any typo) with a 422 from THIS product's own validation, before a
+    round trip to comms is spent proving the same thing. Mirrors
+    comms' own PreferencesPatch field-for-field; see
+    notifications/service.py's header for how `categories` (partial)
+    and `schedule` (full-replace-or-clear, presence-sensitive via
+    model_fields_set) are forwarded.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    categories: dict[str, bool] | None = None
+    schedule: ScheduleIn | None = None
+
+
+class PreferencesOut(BaseModel):
+    """GET /api/v1/notifications/preferences and the PATCH round-trip.
+
+    `timezone` is READ-ONLY context (comms' own contract: sync-owned,
+    rejected with 422 if a client tries to set it) -- present here only
+    so the settings screen can caption the schedule with it.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    categories: dict[str, bool]
+    schedule: ScheduleOut | None = None
+    timezone: str | None = None

@@ -61,11 +61,17 @@ import structlog
 from pydantic import ValidationError
 
 from app.core.comms import (
+    CommsRejectedError,
     CommsUnavailableError,
     comms_configured,
     comms_request,
 )
-from app.modules.notifications.schemas import InboxPageOut, UnreadCountOut
+from app.modules.notifications.schemas import (
+    InboxPageOut,
+    PreferencesOut,
+    PreferencesPatchIn,
+    UnreadCountOut,
+)
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -162,3 +168,172 @@ async def mark_all_read(*, user: User) -> UnreadCountOut:
         return UnreadCountOut.model_validate(payload)
     except ValidationError:
         raise _malformed("mark_all_read", user, payload) from None
+
+
+# =============================================================================
+# Preferences (TASK-38 item 4) -- comms/app/api/prefs.py, FROZEN CONTRACT
+# =============================================================================
+#
+# Same proxy discipline as the inbox above: no local table, `user.id`
+# read from the session only (never accepted from client input --
+# comms' own header on this endpoint repeats the trust-model
+# requirement verbatim), one path builder so there is exactly one line
+# that turns a session into a comms path.
+#
+# WHY THE 404 CASE IS *NOT* HANDLED THE INBOX'S WAY.
+#
+#   The inbox's not-configured/down split (this module's top header)
+#   does not fully cover preferences, because preferences has a THIRD
+#   failure shape the inbox does not: a 404 from comms *while comms is
+#   configured and reachable*, meaning "this user has no recipient row
+#   yet" (registration's synchronous upsert failed and the outbox
+#   relay has not caught up -- see core/comms.py's own module header).
+#   comms' prefs.py is explicit that this is not the inbox's "empty"
+#   case: "preferences of a nonexistent recipient are not empty --
+#   there is no row to hang them on". Fabricating a plausible-looking
+#   "everything enabled" page here would be actively misleading in a
+#   way the inbox's empty page is not: a GET that lies "here are your
+#   settings" followed by a PATCH that then hard-fails against the
+#   same missing row (see update_preferences below -- the write cannot
+#   silently succeed against a row that isn't there) reads to a user as
+#   "it saved, then broke" rather than "this isn't ready yet". So GET's
+#   404 is translated to the SAME clean, honest refusal PATCH's 404
+#   produces -- deliberately reusing support/service.py's
+#   create_thread precedent (its own comment, same failure) rather than
+#   inventing a second policy for the same underlying condition.
+#
+#   comms NOT CONFIGURED on this box (permanent, box-wide -- local dev,
+#   CI) is still handled the inbox's way for GET only: an honestly
+#   default form (nothing muted, no quiet hours, no timezone) instead
+#   of a 502 on every settings-screen load. PATCH does NOT get this
+#   fallback: comms_request's default not-configured behaviour (a
+#   loud CommsUnavailableError, policy B) is left untouched, because
+#   "saving" a preference with nowhere to persist it would be a lie a
+#   default GET response is not -- GET shows a state, PATCH promises a
+#   write actually happened.
+#
+# WHY THIS STAYS OFF avatar_guard's RESTRICTED_OPERATIONS.
+#   Two independent reasons, either one sufficient on its own:
+#     1. Not a money- or identity-mutating action, and not the kind of
+#        disruption vector revoke_session/logout_all are (ending a
+#        session an avatar has no legitimate reason to touch). Muting
+#        a notification category or setting quiet hours affects only
+#        what a person is *told*, not what they *have*.
+#     2. Structural: forbid_avatar() requires Depends(get_current_user_write)
+#        (avatar_guard.py's own docstring on why -- ordering + caching
+#        guarantees). This module makes no local DB write on ANY of its
+#        verbs, mutating or not (it is a pure comms proxy), which is
+#        exactly why mark_read/mark_all_read above -- themselves
+#        mutating, from the user's perspective -- already use plain
+#        get_current_user rather than get_current_user_write. Guarding
+#        just the new PATCH would mean this one verb alone switches
+#        dependencies for a guard whose two independent grounds above
+#        do not support adding it in the first place.
+# =============================================================================
+
+_PREFS_PATH_TMPL = "/api/v1/recipients/{recipient_id}/preferences"
+
+# Mirrors comms-profile/types.yaml's declared category set (see that
+# file's own header for the full reasoning behind each one). Used
+# ONLY for the two fallback forms below (comms not configured on this
+# box; a recipient comms has not synced yet is NOT a fallback case --
+# see the header above) -- comms itself is the source of truth for
+# this list on every real answer it gives (its own facade emits it off
+# `registry.registered_categories()`), this tuple exists purely so an
+# honestly-default fallback form has *a* category list to show instead
+# of an empty one. Keep in sync with comms-profile/types.yaml if a
+# category is ever added there.
+_KNOWN_CATEGORIES = (
+    "agent_applications",
+    "commissions",
+    "deposits",
+    "installments",
+    "kyc",
+    "payments",
+    "purchases",
+    "staff_messages",
+    "support_messages",
+    "withdrawals",
+)
+
+
+def _prefs_path(user: User) -> str:
+    """comms' preferences path for THIS caller, and only this caller.
+
+    The only place user.id is read for preferences -- both functions
+    below call through here, matching _inbox_path's discipline above.
+    """
+    return _PREFS_PATH_TMPL.format(recipient_id=user.id)
+
+
+def _default_preferences() -> PreferencesOut:
+    """The honest answer for a box with no comms to ask: nothing muted,
+    no quiet hours, no timezone context to show."""
+    return PreferencesOut(
+        categories=dict.fromkeys(_KNOWN_CATEGORIES, True),
+        schedule=None,
+        timezone=None,
+    )
+
+
+def _recipient_not_ready(user: User) -> CommsUnavailableError:
+    """comms is up but has no recipient row for this user yet.
+
+    Same translation support/service.py's create_thread applies to the
+    identical condition: comms' own wording about a missing recipient
+    row is an internal detail, not a message for this user, and the
+    502 code marks it as retry-later rather than "you did
+    something wrong" -- true on both counts, since the outbox relay
+    (core/comms.py) is expected to catch this up on its own.
+    """
+    logger.warning("comms_prefs_recipient_not_synced", user_id=str(user.id))
+    return CommsUnavailableError(
+        message="Notification preferences are not ready for this account yet",
+        code="comms_recipient_pending",
+    )
+
+
+async def get_preferences(*, user: User) -> PreferencesOut:
+    """The settings screen's GET: category toggles + schedule + timezone."""
+    if not comms_configured():
+        return _default_preferences()
+
+    try:
+        payload = await comms_request("GET", _prefs_path(user))
+    except CommsRejectedError as exc:
+        if exc.status_code == 404:
+            raise _recipient_not_ready(user) from exc
+        raise
+    try:
+        return PreferencesOut.model_validate(payload)
+    except ValidationError:
+        raise _malformed("preferences", user, payload) from None
+
+
+async def update_preferences(
+    *, user: User, patch: PreferencesPatchIn
+) -> PreferencesOut:
+    """Partial write: listed category toggles change, schedule replaces
+    whole (or clears, on an explicit null) -- comms' own PATCH contract,
+    forwarded through unconverted.
+
+    `exclude_unset=True` is what makes "clear the schedule" (an
+    explicit `schedule: null` in the request) distinct from "leave the
+    schedule alone" (the key omitted entirely): pydantic tracks which
+    fields the client actually sent (comms' own PreferencesPatch does
+    the equivalent check via `model_fields_set` on its side), so a
+    field present with value null still serializes, while an absent
+    field does not -- exactly the presence-sensitive semantics comms'
+    contract requires and PreferencesPatchIn's docstring names.
+    """
+    body = patch.model_dump(mode="json", by_alias=True, exclude_unset=True)
+    try:
+        payload = await comms_request("PATCH", _prefs_path(user), json=body)
+    except CommsRejectedError as exc:
+        if exc.status_code == 404:
+            raise _recipient_not_ready(user) from exc
+        raise
+    try:
+        return PreferencesOut.model_validate(payload)
+    except ValidationError:
+        raise _malformed("preferences_patch", user, payload) from None

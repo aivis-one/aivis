@@ -101,6 +101,7 @@ import {
 import { CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
 import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
+import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
@@ -674,6 +675,7 @@ onMounted(() => {
         </div>
         <EmailChangeSection tPrefix="comp.settings.actions" />
         <ActiveSessionsSection tPrefix="comp.settings.actions" />
+        <NotificationPreferencesSection tPrefix="comp.settings.actions" />
         <DeactivateAccountSection tPrefix="comp.settings.actions" />
         <button
           type="button"

@@ -1172,6 +1172,44 @@
             "telegram": "Telegram"
           }
         },
+        "notifications": {
+          "cta": "Notification preferences",
+          "title": "Notification preferences",
+          "loadError": "Couldn't load your notification preferences",
+          "retry": "Retry",
+          "categoriesTitle": "What you're notified about",
+          "categories": {
+            "deposits": "Deposits",
+            "payments": "Payment issues",
+            "commissions": "Commissions",
+            "agent_applications": "Agent applications",
+            "withdrawals": "Withdrawals",
+            "purchases": "Purchases",
+            "installments": "Installment payments",
+            "kyc": "Identity verification",
+            "support_messages": "Support replies",
+            "staff_messages": "Client messages"
+          },
+          "scheduleEnableLabel": "Enable quiet hours",
+          "scheduleDescription": "Pause notifications during a daily window you choose.",
+          "fromLabel": "From",
+          "toLabel": "To",
+          "daysLabel": "Repeat on",
+          "days": {
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri",
+            "sat": "Sat",
+            "sun": "Sun"
+          },
+          "timezoneNote": "Times shown in {timezone}",
+          "cancelBtn": "Cancel",
+          "saveBtn": "Save",
+          "saveSuccess": "Notification preferences saved",
+          "errorGeneric": "Something went wrong. Please try again."
+        },
         "deactivate": {
           "cta": "Deactivate account",
           "title": "Deactivate your account?",
@@ -1390,6 +1428,44 @@
             "email": "Email",
             "telegram": "Telegram"
           }
+        },
+        "notifications": {
+          "cta": "Notification preferences",
+          "title": "Notification preferences",
+          "loadError": "Couldn't load your notification preferences",
+          "retry": "Retry",
+          "categoriesTitle": "What you're notified about",
+          "categories": {
+            "deposits": "Deposits",
+            "payments": "Payment issues",
+            "commissions": "Commissions",
+            "agent_applications": "Agent applications",
+            "withdrawals": "Withdrawals",
+            "purchases": "Purchases",
+            "installments": "Installment payments",
+            "kyc": "Identity verification",
+            "support_messages": "Support replies",
+            "staff_messages": "Client messages"
+          },
+          "scheduleEnableLabel": "Enable quiet hours",
+          "scheduleDescription": "Pause notifications during a daily window you choose.",
+          "fromLabel": "From",
+          "toLabel": "To",
+          "daysLabel": "Repeat on",
+          "days": {
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri",
+            "sat": "Sat",
+            "sun": "Sun"
+          },
+          "timezoneNote": "Times shown in {timezone}",
+          "cancelBtn": "Cancel",
+          "saveBtn": "Save",
+          "saveSuccess": "Notification preferences saved",
+          "errorGeneric": "Something went wrong. Please try again."
         },
         "deactivate": {
           "cta": "Deactivate account",
@@ -1857,6 +1933,44 @@
             "email": "Email",
             "telegram": "Telegram"
           }
+        },
+        "notifications": {
+          "cta": "Notification preferences",
+          "title": "Notification preferences",
+          "loadError": "Couldn't load your notification preferences",
+          "retry": "Retry",
+          "categoriesTitle": "What you're notified about",
+          "categories": {
+            "deposits": "Deposits",
+            "payments": "Payment issues",
+            "commissions": "Commissions",
+            "agent_applications": "Agent applications",
+            "withdrawals": "Withdrawals",
+            "purchases": "Purchases",
+            "installments": "Installment payments",
+            "kyc": "Identity verification",
+            "support_messages": "Support replies",
+            "staff_messages": "Client messages"
+          },
+          "scheduleEnableLabel": "Enable quiet hours",
+          "scheduleDescription": "Pause notifications during a daily window you choose.",
+          "fromLabel": "From",
+          "toLabel": "To",
+          "daysLabel": "Repeat on",
+          "days": {
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri",
+            "sat": "Sat",
+            "sun": "Sun"
+          },
+          "timezoneNote": "Times shown in {timezone}",
+          "cancelBtn": "Cancel",
+          "saveBtn": "Save",
+          "saveSuccess": "Notification preferences saved",
+          "errorGeneric": "Something went wrong. Please try again."
         },
         "deactivate": {
           "cta": "Deactivate account",
