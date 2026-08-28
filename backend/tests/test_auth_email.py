@@ -223,7 +223,15 @@ async def test_login_blocked_user(
     client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    """Login with is_active=False -> 401."""
+    """Login with is_active=False -> 403, not the generic 401.
+
+    Deliberately distinct from wrong-password/unknown-email (both 401,
+    both the generic "Invalid email or password"): this branch is only
+    reachable AFTER the real password already verified, so only the
+    account's own holder can ever see it -- confirming "blocked" here
+    costs no enumeration protection a password-guessing attacker could
+    exploit. See auth/service.py's login_email is_active branch.
+    """
     email = f"blocked_{uuid.uuid4().hex[:12]}@example.com"
     await register_user(client, email=email)
 
@@ -240,7 +248,10 @@ async def test_login_blocked_user(
         "/api/v1/auth/email/login",
         json={"email": email, "password": "testpass123"},
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 403
+    body = resp.json()
+    assert body["error"] == "account_blocked"
+    assert "suspended" in body["message"].lower()
 
 
 # NOTE: test_login_platform_user was removed. It mutated a regular

@@ -247,6 +247,127 @@ async def test_block_staff_fails(
 
 
 # ---------------------------------------------------------------------------
+# PATCH /staff/users/{id}/unblock
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unblock_investor(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Unblock a blocked investor -> 204, is_active=true, can log in again."""
+    admin_token = await _admin_token(client, db_session)
+    inv_data = await register_user(client)
+    user_id = inv_data["user"]["id"]
+
+    # Block first.
+    block_resp = await client.patch(
+        f"/api/v1/staff/users/{user_id}/block",
+        json={"reason": "test block"},
+        headers=auth_headers(admin_token),
+    )
+    assert block_resp.status_code == 204
+
+    detail_resp = await client.get(
+        f"/api/v1/staff/users/{user_id}",
+        headers=auth_headers(admin_token),
+    )
+    assert detail_resp.json()["is_active"] is False
+
+    # Unblock.
+    unblock_resp = await client.patch(
+        f"/api/v1/staff/users/{user_id}/unblock",
+        headers=auth_headers(admin_token),
+    )
+    assert unblock_resp.status_code == 204
+
+    # is_active flips back to true.
+    detail_resp = await client.get(
+        f"/api/v1/staff/users/{user_id}",
+        headers=auth_headers(admin_token),
+    )
+    assert detail_resp.json()["is_active"] is True
+
+    # The user can authenticate again (a fresh login succeeds -- the
+    # is_active gate other code checks no longer refuses them). The
+    # old session_token was already killed by block and stays dead;
+    # what matters is is_active no longer blocks a *new* login.
+    login_resp = await client.post(
+        "/api/v1/auth/email/login",
+        json={"email": inv_data["email"], "password": "Password123!"},
+    )
+    assert login_resp.status_code == 200, login_resp.text
+
+
+@pytest.mark.asyncio
+async def test_unblock_already_active_is_idempotent(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Unblocking a user who was never blocked -> 204, no-op success.
+
+    Mirrors block_user's own precedent: block_user has no "already
+    blocked" guard (it unconditionally sets is_active=False), so
+    unblock_user unconditionally sets is_active=True with no "already
+    active" guard either.
+    """
+    admin_token = await _admin_token(client, db_session)
+    inv_data = await register_user(client)
+    user_id = inv_data["user"]["id"]
+
+    resp = await client.patch(
+        f"/api/v1/staff/users/{user_id}/unblock",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 204
+
+    detail_resp = await client.get(
+        f"/api/v1/staff/users/{user_id}",
+        headers=auth_headers(admin_token),
+    )
+    assert detail_resp.json()["is_active"] is True
+
+
+@pytest.mark.asyncio
+async def test_unblock_nonexistent_user(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Unblock a non-existent user -> 404."""
+    admin_token = await _admin_token(client, db_session)
+
+    resp = await client.patch(
+        f"/api/v1/staff/users/{uuid4()}/unblock",
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_unblock_requires_permission(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A non-staff caller is refused /unblock -> 403.
+
+    Mirrors test_agent_applications.py's test_non_staff_cannot_reach_queue:
+    an ordinary investor has no staff permissions at all, so
+    require_staff_permission("user_block") refuses them the same way
+    it would refuse a staff member without the user_block permission
+    specifically -- both fail the same dependency check.
+    """
+    admin_token = await _admin_token(client, db_session)
+    inv_data = await register_user(client)
+    target_id = inv_data["user"]["id"]
+
+    non_staff_data = await register_user(client)
+    non_staff_token = non_staff_data["session_token"]
+
+    resp = await client.patch(
+        f"/api/v1/staff/users/{target_id}/unblock",
+        headers=auth_headers(non_staff_token),
+    )
+    assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
 # GET /staff/dashboard/stats
 # ---------------------------------------------------------------------------
 

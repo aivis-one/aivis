@@ -122,7 +122,12 @@ from app.core.audit import record_audit
 from app.core.comms_sync import ensure_recipient
 from app.core.config import settings
 from app.core.database import get_session_factory
-from app.core.exceptions import BadRequestError, ConflictError, UnauthorizedError
+from app.core.exceptions import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    UnauthorizedError,
+)
 from app.core.redis import get_redis
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
@@ -498,7 +503,11 @@ async def login_email(
     cost to the branch that didn't have it.
 
     Raises:
-        UnauthorizedError: If email not found, password mismatch, or account deactivated.
+        UnauthorizedError: If email not found or password mismatch.
+        ForbiddenError: If the account is deactivated (blocked) -- a
+            distinct 403/account_blocked, not the generic 401, since
+            this branch is only reachable after the real password
+            already verified (see the is_active check below).
     """
     email_lower = email.strip().lower()
 
@@ -533,7 +542,29 @@ async def login_email(
         background_tasks.add_task(
             _audit_login_failure, user.id, "account_deactivated"
         )
-        raise UnauthorizedError("Invalid email or password")
+        # Deliberately NOT the generic "Invalid email or password" the
+        # two branches above use. This is reached only AFTER the correct
+        # password has already been verified (see the verify_password
+        # check above) -- so the only caller who can ever see this
+        # message already knows the account's real credentials; a
+        # password-guessing attacker without them can never distinguish
+        # "wrong password" from "blocked account" via this branch, since
+        # they never pass the check that gates entry to it. Given that,
+        # confirming blocked status here (rather than hiding it behind
+        # the generic message the way CABINET-BASELINE-GAPS.md's
+        # original framing assumed was the only option) costs
+        # essentially nothing and fixes a real product gap: block
+        # kills every session immediately, so a blocked user almost
+        # always meets THIS branch, never the live-session
+        # ForbiddenError("Account is deactivated") in auth/dependencies.py
+        # -- 403, not 401, so it does not fall into api/client.ts's
+        # blanket "any 401 -> generic Unauthorized" handling, and
+        # LoginView.vue's existing catch already shows the raw
+        # backend message for anything that isn't a 401.
+        raise ForbiddenError(
+            "Your account has been suspended. Contact support for help.",
+            code="account_blocked",
+        )
 
     await record_audit(
         session=session,

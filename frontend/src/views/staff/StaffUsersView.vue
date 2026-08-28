@@ -7,6 +7,7 @@
 //   GET    /api/v1/staff/users (?role=, ?kyc_status=, ?page=, ?per_page=)
 //   GET    /api/v1/staff/users/{id}
 //   PATCH  /api/v1/staff/users/{id}/block
+//   PATCH  /api/v1/staff/users/{id}/unblock
 //   POST   /api/v1/staff/users (promote to staff, admin only)
 //   PATCH  /api/v1/staff/users/{id}/permissions (admin only)
 //   POST   /api/v1/staff/kyc/{application_id}/approve  (iter 2.7 A5)
@@ -77,6 +78,7 @@ import {
   fetchUsers,
   fetchUserDetail,
   blockUser,
+  unblockUser,
   createStaff,
   updatePermissions,
   approveKYC,
@@ -184,6 +186,12 @@ const actionLoading = ref(false)
 const showBlockModal = ref(false)
 const blockReason = ref('')
 
+// -- Unblock modal --
+// No reason input -- unblock only reverses a prior block and does not
+// need a fresh justification (mirrors the backend's unblock_user,
+// which drops block_user's `reason` field for the same rationale).
+const showUnblockModal = ref(false)
+
 // -- Promote modal --
 const showPromoteModal = ref(false)
 
@@ -276,6 +284,22 @@ async function handleBlock(): Promise<void> {
     showToast(t('staff.userDetail.unblockNote'), 'success')
     showBlockModal.value = false
     blockReason.value = ''
+    showDetail.value = false
+    await loadUsers()
+  } catch {
+    showToast(t('common.error'), 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleUnblock(): Promise<void> {
+  if (!detailUser.value) return
+  actionLoading.value = true
+  try {
+    await unblockUser(detailUser.value.id)
+    showToast(t('staff.userDetail.unblockedNote'), 'success')
+    showUnblockModal.value = false
     showDetail.value = false
     await loadUsers()
   } catch {
@@ -622,6 +646,19 @@ onMounted(loadUsers)
           >
             {{ t('staff.userDetail.block') }}
           </CButton>
+          <!-- Unblock: inverse of the block button's is_active gate.
+               Deliberately NOT restricted to role !== 'staff' -- a
+               user can be promoted to staff while still blocked
+               (create_staff does not check is_active on the backend),
+               and unblock must still be reachable for that account. -->
+          <CButton
+            v-if="!detailUser.is_active"
+            variant="primary"
+            size="sm"
+            @click="showUnblockModal = true"
+          >
+            {{ t('staff.userDetail.unblock') }}
+          </CButton>
           <CButton
             v-if="detailUser.role !== 'staff'"
             variant="secondary"
@@ -652,6 +689,25 @@ onMounted(loadUsers)
           {{ t('common.cancel') }}
         </CButton>
         <CButton variant="danger" size="sm" :loading="actionLoading" @click="handleBlock">
+          {{ t('common.confirm') }}
+        </CButton>
+      </div>
+    </CModal>
+
+    <!-- Unblock confirmation. No reason input -- see the handleUnblock
+         comment and the backend's unblock_user docstring. -->
+    <CModal :open="showUnblockModal" @close="showUnblockModal = false">
+      <h3 class="detail__title">
+        {{ t('staff.userDetail.unblock') }}
+      </h3>
+      <p class="detail__confirm-text">
+        {{ t('staff.userDetail.unblockConfirm') }}
+      </p>
+      <div class="detail__actions" style="margin-top: 16px">
+        <CButton variant="outline" size="sm" @click="showUnblockModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="primary" size="sm" :loading="actionLoading" @click="handleUnblock">
           {{ t('common.confirm') }}
         </CButton>
       </div>

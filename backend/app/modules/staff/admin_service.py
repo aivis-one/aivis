@@ -7,6 +7,7 @@
 #   list_users()          -- unified user list with pagination + role/kyc_status filter
 #   get_user_detail()     -- full user detail for staff view (incl. KYC history)
 #   block_user()          -- deactivate user + kill all sessions
+#   unblock_user()        -- reactivate a previously blocked user
 #   dashboard_stats()     -- platform-wide statistics
 #   kyc_queue()           -- pending KYC applications with user info
 #   kyc_approve()         -- approve KYC application (delegates to process_webhook)
@@ -19,6 +20,9 @@
 # BLOCK RULES:
 #   Only non-staff users can be blocked. Staff are trusted.
 #   Block sets is_active=false + kills all Redis sessions.
+#   Unblock sets is_active=true unconditionally by id -- see
+#   unblock_user()'s docstring for why it does not mirror block_user's
+#   staff/platform role guards.
 #
 # iter 2.6c B1:
 #   list_users() gains a kyc_status keyword argument. The router
@@ -373,6 +377,69 @@ async def block_user(
         target_user_id=str(target.id),
         staff_id=str(staff.id),
         sessions_killed=killed,
+    )
+
+
+async def unblock_user(
+    user_id: UUID,
+    staff: User,
+    session: AsyncSession,
+) -> None:
+    """Unblock a user: set is_active=True. Reverses block_user().
+
+    No session to kill -- a blocked user has none (block_user already
+    killed every Redis session, and is_active=False has kept the user
+    logged out ever since). Idempotent by the same precedent as
+    block_user: neither function checks the current is_active value
+    before writing, so unblocking an already-active user is a silent
+    no-op success rather than an error.
+
+    No `reason` field: block's reason justifies REVOKING access, a
+    judgment call staff must document. Unblock only reverses that
+    decision -- the original block's reason (still in its own audit
+    row) remains the historical record of why it happened. There is
+    nothing new to justify.
+
+    Deliberately does NOT mirror block_user's staff/platform role
+    guards ("Cannot block staff/platform user"). Those guards stop a
+    block from ever being *placed* on a staff/platform user, so in
+    principle an already-blocked user can never be either -- but that
+    invariant does not actually hold: create_staff() promotes a user
+    to staff without checking is_active, so a blocked investor can be
+    promoted to staff while still blocked (and, being blocked, cannot
+    log in to notice). For that user, unblocking is the ONLY way back
+    to a working account. Rejecting staff/platform here would turn an
+    edge case into a permanent lockout instead of preventing one, so
+    this function unblocks by id unconditionally.
+
+    Raises:
+        NotFoundError: If user not found.
+    """
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    target = result.scalar_one_or_none()
+
+    if target is None:
+        raise NotFoundError("User not found")
+
+    target.is_active = True
+    await session.flush()
+
+    # Audit.
+    await record_audit(
+        session=session,
+        event="user.unblocked",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="user",
+        target_id=target.id,
+        data={},
+    )
+
+    logger.info(
+        "user_unblocked",
+        target_user_id=str(target.id),
+        staff_id=str(staff.id),
     )
 
 

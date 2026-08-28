@@ -565,10 +565,16 @@ async def aivis_error_handler(request: Request, exc: AivisError) -> JSONResponse
     # RETURN, and an endpoint that raises never builds one -- this handler
     # did, with no `background` at all. That silently discarded the entire
     # failed-login audit trail (0 rows on the live database, whole lifetime).
-    # Routes opt in via Depends(surviving_background_tasks), which publishes
-    # the instance on request.state; getattr's default keeps every other
-    # route behaving exactly as before. Only one response is produced per
-    # request, so a task can never run twice.
+    # Fixed APP-WIDE via publish_background_tasks, wired as a global
+    # dependency on the FastAPI() constructor itself (see `app = FastAPI(...,
+    # dependencies=[Depends(publish_background_tasks)])` above) -- every
+    # route gets `request.state.background_tasks` published automatically,
+    # no per-route opt-in. getattr's default keeps this handler safe even
+    # for a request where that dependency somehow did not run. Only one
+    # response is produced per request, so a task can never run twice.
+    # (This comment named a since-renamed function, surviving_background_
+    # tasks, until an adversarial review of an unrelated change caught the
+    # drift -- the two names never referred to different mechanisms.)
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.code, "message": exc.message},

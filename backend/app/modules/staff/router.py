@@ -9,11 +9,14 @@
 #                                                    (?role=, ?kyc_status=, pagination)
 #   GET   /api/v1/staff/users/{id}                 -- user detail
 #   PATCH /api/v1/staff/users/{id}/block           -- block user (user_block perm)
+#   PATCH /api/v1/staff/users/{id}/unblock         -- unblock user (user_block perm)
 #
 # AUTH:
 #   POST/PATCH permissions: admin only (all permissions True).
 #   GET list/detail: any staff.
-#   PATCH block: requires user_block permission.
+#   PATCH block/unblock: requires user_block permission (same permission
+#     governs both directions -- reversing an action needs the same
+#     authority as taking it).
 #
 # iter 2.6c B1:
 #   GET /staff/users gains an optional ?kyc_status= filter so the
@@ -55,6 +58,7 @@ from app.modules.staff.admin_service import (
     block_user,
     get_user_detail,
     list_users,
+    unblock_user,
 )
 from app.modules.staff.constants import is_admin
 from app.modules.staff.schemas import (
@@ -260,3 +264,22 @@ async def user_block(
     Only non-staff users can be blocked. Requires user_block permission.
     """
     await block_user(user_id, staff, body.reason, session)
+
+
+@router.patch(
+    "/{user_id}/unblock",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def user_unblock(
+    user_id: UUID,
+    staff: User = Depends(require_staff_permission("user_block")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Unblock a user: reactivate a previously blocked account.
+
+    Reverses block_user() (deactivate + kill all sessions) -- there is
+    no request body: unblocking does not need a reason the way blocking
+    does. Requires user_block permission, the same permission that
+    gates /block.
+    """
+    await unblock_user(user_id, staff, session)

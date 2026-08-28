@@ -100,6 +100,16 @@ export function blockUser(userId: string, body?: BlockUserRequest): Promise<void
   return api.patch<void>(`/api/v1/staff/users/${userId}/block`, body ?? {})
 }
 
+/**
+ * PATCH /api/v1/staff/users/{id}/unblock — unblock user.
+ *
+ * No request body: unlike block, unblock does not take a `reason` --
+ * see admin_service.unblock_user's docstring on the backend for why.
+ */
+export function unblockUser(userId: string): Promise<void> {
+  return api.patch<void>(`/api/v1/staff/users/${userId}/unblock`, {})
+}
+
 /** POST /api/v1/staff/users — promote user to staff (admin only). */
 export function createStaff(body: CreateStaffRequest): Promise<StaffProfileResponse> {
   return api.post<StaffProfileResponse>('/api/v1/staff/users', body)
