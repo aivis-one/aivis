@@ -28,6 +28,9 @@
 #   19: STAGE-III-FINDINGS.md #18 -- a Redis session carrying
 #       avatar_session_id without avatar_staff_id is refused outright
 #       (401), not silently treated as an ordinary session
+#   20: owner-ruled -- GET /transactions/export blocked in avatar mode
+#       (403) with the switch on, and a normal (non-avatar) token still
+#       gets 200 on the same route (negative control)
 #
 # THE SWITCH, owner-ruled 2026-08-17 -- read this before editing tests 10-15.
 #   settings.avatar_restrictions_enabled defaults to False, so an admin in
@@ -881,6 +884,57 @@ async def test_avatar_blocked_2fa_disable(
 
 
 @pytest.mark.asyncio
+async def test_avatar_blocked_export_transactions(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    avatar_restrictions_on: None,
+) -> None:
+    """owner-ruled: GET /transactions/export in avatar mode -> 403.
+
+    export_transactions is the one READ-only entry in
+    RESTRICTED_OPERATIONS -- gated because the downloaded CSV file
+    outlives the avatar session on the impersonator's own disk, the same
+    "persists past the impersonation" shape as revoke_session/
+    mute_notifications/update_profile, even though this endpoint itself
+    makes no DB write (see avatar_guard.py's export_transactions note).
+    GET /transactions and GET /transactions/{id} are deliberately left
+    unguarded, so this test also asserts the NEGATIVE CONTROL: the same
+    export route under the investor's OWN (non-avatar) token still
+    returns 200 -- without that control, a route that was broken and
+    403'd for everyone would pass the blocked-case assertion below for
+    the wrong reason.
+    """
+    admin_token = await _admin_token(client, db_session)
+    investor_id, investor_token = await _investor_id_and_token(client)
+
+    # Negative control: ordinary token, same route -> 200.
+    control = await client.get(
+        "/api/v1/transactions/export",
+        headers=auth_headers(investor_token),
+    )
+    assert control.status_code == 200, (
+        f"negative control failed: a normal (non-avatar) token must still "
+        f"be able to export; got {control.status_code}"
+    )
+    assert control.headers["content-type"].startswith("text/csv")
+
+    start_resp = await client.post(
+        "/api/v1/staff/avatar/start",
+        json={"target_user_id": investor_id},
+        headers=auth_headers(admin_token),
+    )
+    assert start_resp.status_code == 200
+    avatar_token = start_resp.json()["session_token"]
+
+    blocked = await client.get(
+        "/api/v1/transactions/export",
+        headers=auth_headers(avatar_token),
+    )
+    assert blocked.status_code == 403
+    assert "avatar" in blocked.json()["message"].lower()
+
+
+@pytest.mark.asyncio
 async def test_shipped_default_leaves_avatar_restrictions_off() -> None:
     """2026-08-17, owner-ruled: the switch ships OFF.
 
@@ -1141,7 +1195,12 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
     day its guard was wired, not left for a later pass -- change_email,
     delete_account, and revoke_session (TASK-38, users/router.py and
     auth/router.py DELETE /sessions/{id}) follow the same rule: added
-    here the same change that wired their guards.
+    here the same change that wired their guards. export_transactions
+    (transactions/router.py GET /export, owner-ruled) is the newest --
+    the one READ-only entry in the set, guarded because the downloaded
+    CSV file outlives the avatar session on the impersonator's disk,
+    while GET /transactions and GET /transactions/{id} stay deliberately
+    unguarded; see avatar_guard.py's header for the full reasoning.
 
     The walk is recursive: since FastAPI 0.137 include_router no longer
     flattens a sub-router's routes into app.routes -- it inserts a lazy
@@ -1189,6 +1248,7 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_mute_notifications",
         "forbid_avatar_manage_2fa",
         "forbid_avatar_update_profile",
+        "forbid_avatar_export_transactions",
     }
     missing = expected - guarded
     assert not missing, (

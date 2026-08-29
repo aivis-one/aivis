@@ -485,7 +485,12 @@ async def auth_logout(
     status_code=status.HTTP_204_NO_CONTENT,
     # R49 / STAGE-III-FINDINGS.md #19: an avatar must not be able to end
     # every session the REAL owner holds while its own session survives.
-    dependencies=[Depends(forbid_avatar("logout_all"))],
+    # user_dep matches this endpoint's OWN get_current_user (read
+    # variant). Without it the guard defaults to
+    # get_current_user_write and FastAPI, which caches Depends BY
+    # CALLABLE, resolves the user twice per request -- opening a
+    # write session this route never asked for.
+    dependencies=[Depends(forbid_avatar("logout_all", user_dep=get_current_user))],
 )
 async def auth_logout_all(
     user: User = Depends(get_current_user),
@@ -553,7 +558,12 @@ async def auth_list_sessions(
     status_code=status.HTTP_204_NO_CONTENT,
     # Same disruption-vector reasoning as logout_all, at single-device
     # granularity -- see avatar_guard.py's revoke_session note.
-    dependencies=[Depends(forbid_avatar("revoke_session"))],
+    # user_dep matches this endpoint's OWN get_current_user (read
+    # variant). Without it the guard defaults to
+    # get_current_user_write and FastAPI, which caches Depends BY
+    # CALLABLE, resolves the user twice per request -- opening a
+    # write session this route never asked for.
+    dependencies=[Depends(forbid_avatar("revoke_session", user_dep=get_current_user))],
 )
 async def auth_revoke_session(
     session_id: str,

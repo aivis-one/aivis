@@ -121,6 +121,28 @@
 #   (a JSONB write on the target's own row) -- the same reasoning
 #   already applied to change_email/delete_account/mute_notifications
 #   fits this endpoint at least as well, not less.
+#
+#   export_transactions (transactions/router.py GET /export, owner-ruled):
+#   the ONE read-only entry in this list, and deliberately narrower than
+#   its sibling read endpoints -- GET /transactions and GET /transactions/
+#   {id} stay UNGUARDED, same "already-granted read visibility" class as
+#   GET /sessions and GET /preferences above. What makes /export
+#   different is not the data (identical rows) but the shape of the
+#   access: a CSV download LEAVES the platform and lands on the
+#   impersonator's disk, where it outlives the avatar session exactly
+#   the way revoke_session/mute_notifications/update_profile's writes
+#   outlive it -- a file on disk is a persistence mechanism same as a
+#   database row. Reading the same rows on screen is not, so only the
+#   export route is gated, not the list or detail routes. This dependency
+#   is the only one so far that declares get_current_user (read variant)
+#   instead of get_current_user_write, via forbid_avatar()'s user_dep
+#   parameter below -- export_transactions is a GET with no DB write, so
+#   matching its own get_current_user keeps FastAPI from resolving the
+#   user twice (see forbid_avatar()'s docstring). NOTE: as with every
+#   other entry here, this has ZERO practical effect while
+#   settings.avatar_restrictions_enabled is OFF (the shipped default) --
+#   it is being wired now because the file was already open for TASK-39,
+#   not because of any live incident.
 # =============================================================================
 
 from typing import Callable
@@ -151,6 +173,10 @@ RESTRICTED_OPERATIONS = frozenset({
     "mute_notifications",
     "manage_2fa",
     "update_profile",
+    # Read-only exception -- see the header note above (export_transactions):
+    # gated because the CSV FILE leaving the platform outlives the avatar
+    # session, not because reading the rows is itself the threat.
+    "export_transactions",
 })
 
 
@@ -164,7 +190,7 @@ def _get_avatar_session_id() -> str | None:
     return ctx.get("avatar_session_id")
 
 
-def forbid_avatar(operation: str) -> Callable:
+def forbid_avatar(operation: str, user_dep: Callable = get_current_user_write) -> Callable:
     """Factory: FastAPI dependency that blocks the operation in avatar mode.
 
     Apply at the route level so endpoint signatures stay clean:
@@ -174,12 +200,24 @@ def forbid_avatar(operation: str) -> Callable:
             dependencies=[Depends(forbid_avatar("create_withdrawal"))],
         )
 
-    The dependency loads the current user via get_current_user_write
-    (cached by FastAPI -- the endpoint's own user Depends reuses it),
-    which guarantees the avatar contextvars are bound before the check.
+    The dependency loads the current user via user_dep (default
+    get_current_user_write -- the variant every guarded mutating
+    endpoint uses). FastAPI caches Depends within a request BY THE
+    CALLABLE, so this only avoids a second user load / DB round-trip if
+    it is the SAME callable object the endpoint's own user Depends
+    already uses. ALWAYS pass user_dep= explicitly to match whatever the
+    endpoint declares -- a mismatch (e.g. this guard defaulting to the
+    write variant on a route that loads the user via get_current_user)
+    makes FastAPI resolve the user twice, once per variant, silently.
+    export_transactions (transactions/router.py, a GET with no DB write)
+    is the first caller to override this, via
+    Depends(forbid_avatar("export_transactions", user_dep=get_current_user)).
 
     Args:
         operation: Name of the operation (must be in RESTRICTED_OPERATIONS).
+        user_dep: The get_current_user* variant this route's own user
+            Depends already uses. Defaults to get_current_user_write,
+            matching every guard wired before export_transactions.
 
     Raises:
         ForbiddenError: If avatar_session_id is present in contextvars.
@@ -192,7 +230,7 @@ def forbid_avatar(operation: str) -> Callable:
         )
 
     async def _dependency(
-        user: User = Depends(get_current_user_write),
+        user: User = Depends(user_dep),
     ) -> None:
         # Owner-ruled 2026-08-17: the whole restriction set is OFF by
         # default. Read at request time, not at import time, so the switch

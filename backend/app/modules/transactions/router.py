@@ -38,19 +38,24 @@
 #   the default auth-flow wording ("Too many auth attempts...") reads
 #   oddly for a CSV download; the numeric cap is untouched by this.
 #
-#   AVATAR GUARD: deliberately NOT applied. This is a read of the exact
-#   same rows GET /transactions and GET /transactions/{id} already
-#   expose to an avatar session with no forbid_avatar dependency on
-#   either -- avatar_guard.py's own header calls that category
-#   ("financials") already-granted read-only visibility, same class as
-#   the unguarded GET /sessions and GET /preferences it cites as
-#   precedent. RESTRICTED_OPERATIONS's "persists past the avatar
-#   session" test (used to justify guarding logout_all/revoke_session/
-#   mute_notifications/manage_2fa) targets a MUTATION with an ongoing
-#   server-side effect on the platform -- a downloaded CSV is not a
-#   platform-state change, it is the same already-readable data leaving
-#   in a different, bulkier format. See the avatar_guard.py header
-#   itself for the full reasoning this leans on.
+#   AVATAR GUARD (owner-ruled, reverses this file's earlier reasoning):
+#   forbid_avatar("export_transactions") IS applied here, on this route
+#   ONLY -- GET /transactions and GET /transactions/{id} above/below
+#   stay UNGUARDED, same "already-granted read visibility" class as the
+#   unguarded GET /sessions and GET /preferences avatar_guard.py cites
+#   as precedent. The distinction the owner drew is not "is this a
+#   read" but "does the access outlast the impersonation session" -- a
+#   downloaded CSV file lands on the impersonator's disk and survives
+#   after the avatar session ends, the same shape as the writes
+#   revoke_session/mute_notifications/update_profile already guard
+#   against, even though export_transactions is itself read-only and
+#   makes no DB write. Paging the same rows on screen does not leave
+#   an artifact behind, so the list/detail routes are deliberately left
+#   as they were. See avatar_guard.py's header (export_transactions
+#   entry) for the full reasoning. This has ZERO practical effect while
+#   settings.avatar_restrictions_enabled is OFF (the shipped default);
+#   it is wired now because this file was already open for TASK-39, not
+#   because of any live incident.
 #
 # COMMIT RULE (P-01):
 #   Router never calls session.commit(). Read-only endpoints use
@@ -67,6 +72,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
 from app.core.rate_limit import check_rate_limit
+from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user
 from app.modules.transactions.schemas import (
     TransactionListResponse,
@@ -125,7 +131,13 @@ async def list_user_transactions(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/export", response_model=None)
+@router.get(
+    "/export",
+    response_model=None,
+    dependencies=[
+        Depends(forbid_avatar("export_transactions", user_dep=get_current_user))
+    ],
+)
 async def export_transactions(
     type: str | None = Query(None, alias="type"),
     date_from: datetime | None = Query(None),
