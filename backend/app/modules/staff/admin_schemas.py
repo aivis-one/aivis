@@ -160,6 +160,7 @@ class DashboardStatsResponse(BaseModel):
     users_by_role: dict[str, int]
     pending_kyc_count: int
     active_avatar_sessions: int
+    frozen_payments_count: int
 
 
 # ---------------------------------------------------------------------------

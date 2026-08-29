@@ -11,6 +11,8 @@
 #   6:  Block investor -> 204, is_active=false, sessions killed
 #   7:  Block staff user -> 400
 #   8:  Dashboard stats -> 200, correct counts
+#   8b: Dashboard stats frozen_payments_count -> moves by +1 when a FROZEN
+#       payment is seeded (shared-DB safe: delta, not absolute count)
 #   9:  KYC queue -> 200, pending applications with user info
 #   10: KYC approve -> 204, status updated
 #   11: KYC reject -> 204, status updated
@@ -35,13 +37,15 @@
 #   only configuration that actually exercises the new WHERE clause.
 # =============================================================================
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.payments.constants import PaymentStatus, PaymentType
+from app.modules.payments.models import Payment
 from app.modules.users.models import User, UserRole
 from tests.helpers import (
     auth_headers,
@@ -389,7 +393,55 @@ async def test_dashboard_stats(
     assert "users_by_role" in body
     assert "pending_kyc_count" in body
     assert "active_avatar_sessions" in body
+    assert "frozen_payments_count" in body
     assert body["total_users"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_dashboard_stats_frozen_payments_count(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Dashboard stats frozen_payments_count -> moves by exactly 1 when a
+    single FROZEN payment is seeded.
+
+    Shared-DB discipline: the dev DB accumulates payment rows across test
+    runs, so we never assert an absolute count. Instead we read the count
+    before seeding, add one FROZEN payment of our own (unique tx_hash via
+    uuid4), and assert the count increased by exactly 1 -- robust against
+    whatever pre-existing rows are already there.
+    """
+    admin_token = await _admin_token(client, db_session)
+    inv_data = await register_user(client)
+    user_id = UUID(inv_data["user"]["id"])
+
+    resp_before = await client.get(
+        "/api/v1/staff/dashboard/stats",
+        headers=auth_headers(admin_token),
+    )
+    assert resp_before.status_code == 200
+    count_before = resp_before.json()["frozen_payments_count"]
+
+    payment = Payment(
+        user_id=user_id,
+        amount_cents=10000,
+        currency="USD",
+        payment_type=PaymentType.CRYPTO,
+        provider="crypto_usdt_trc20",
+        status=PaymentStatus.FROZEN,
+        frozen_until=None,
+        provider_data={"tx_hash": f"0x_test_{uuid4().hex[:8]}"},
+    )
+    db_session.add(payment)
+    await db_session.commit()
+
+    resp_after = await client.get(
+        "/api/v1/staff/dashboard/stats",
+        headers=auth_headers(admin_token),
+    )
+    assert resp_after.status_code == 200
+    count_after = resp_after.json()["frozen_payments_count"]
+
+    assert count_after == count_before + 1
 
 
 # ---------------------------------------------------------------------------

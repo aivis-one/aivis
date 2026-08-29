@@ -157,7 +157,7 @@ onMounted(loadStats)
         </CStatCard>
 
         <CStatCard
-          :value="'—'"
+          :value="String(stats.frozen_payments_count)"
           :label="t('staff.payments.stat')"
           :sub="t('staff.awaitingConfirm')"
           @click="goPayments"

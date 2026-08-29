@@ -63,6 +63,8 @@ from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.auth.service import delete_all_sessions
 from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
 from app.modules.kyc.service import process_webhook
+from app.modules.payments.constants import PaymentStatus
+from app.modules.payments.models import Payment
 from app.modules.staff.admin_schemas import (
     KYC_HISTORY_LIMIT,
     DashboardStatsResponse,
@@ -485,11 +487,20 @@ async def dashboard_stats(
     )
     active_avatars = (await session.execute(avatar_stmt)).scalar_one()
 
+    # Frozen payments (money in flight, awaiting the confirmation daemon).
+    frozen_payments_stmt = (
+        select(func.count())
+        .select_from(Payment)
+        .where(Payment.status == PaymentStatus.FROZEN)
+    )
+    frozen_payments = (await session.execute(frozen_payments_stmt)).scalar_one()
+
     return DashboardStatsResponse(
         total_users=total,
         users_by_role=users_by_role,
         pending_kyc_count=pending_kyc,
         active_avatar_sessions=active_avatars,
+        frozen_payments_count=frozen_payments,
     )
 
 

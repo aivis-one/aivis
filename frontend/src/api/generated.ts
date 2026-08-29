@@ -475,6 +475,7 @@ export interface DashboardStatsResponse {
   users_by_role: Record<string, unknown>
   pending_kyc_count: number
   active_avatar_sessions: number
+  frozen_payments_count: number
 }
 
 /** Full dashboard summary for the authenticated user. */
