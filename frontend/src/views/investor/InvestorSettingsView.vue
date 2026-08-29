@@ -50,29 +50,29 @@
 //      /login).
 //
 // AGENT APPLICATION STATE MACHINE.
-//   fetched at mount via getMyAgentApplications (newest-first). The
-//   latest row drives the section:
-//     loading       -- in flight
+//   TASK-39 item 5: the derivation (loading / load_error / kyc_required /
+//   pending / cooldown / can_reapply / can_apply) moved out of this view
+//   into composables/useAgentApplicationStatus.ts, which fetches
+//   getMyAgentApplications (newest-first) and exposes the same `state` this
+//   section always rendered. See that file's header for the full state
+//   table. It moved so InvestorMoreView's new "Agent programme" tile (the
+//   discoverability entry point the owner asked for) reads the identical
+//   state instead of a second hand-rolled copy that could disagree with
+//   this one. This view remains the ONLY place that calls
+//   submitAgentApplication() -- the composable is read-only.
 //     load_error    -- fetch failed (B5-post). Inline retry button.
 //                      Without this, a network drop left the user
 //                      seeing an active "Apply" while they had a real
 //                      pending application server-side; clicking
 //                      caused a 409 with a generic toast. Showing the
 //                      retry surface keeps the UI honest.
-//     kyc_required  -- user.kyc_status != 'approved' (decision Q6 in
-//                      chat). Disabled row pointing to /onboarding/kyc.
-//     pending       -- latest status = pending. Disabled "under review"
-//                      line, no button.
-//     cooldown      -- latest status = rejected AND cooldown_until is
-//                      in the future. Disabled row with N-days-left
-//                      label (ceiling days to avoid "0 days left" on
-//                      the last hour).
-//     can_reapply   -- latest status = rejected AND cooldown expired.
-//                      Active button labelled "Apply again".
-//     can_apply     -- no applications on record. Active button labelled
-//                      "Become an agent".
-//   Approved is unreachable here: approval flips user.role to agent,
-//   which removes them from the InvestorShell route guard.
+//     kyc_required  -- Disabled row pointing to /onboarding/kyc (decision
+//                      Q6 in chat).
+//     pending       -- Disabled "under review" line, no button.
+//     cooldown      -- Disabled row with N-days-left label (ceiling days
+//                      to avoid "0 days left" on the last hour).
+//     can_reapply   -- Active button labelled "Apply again".
+//     can_apply     -- Active button labelled "Become an agent".
 //
 // MARKETING CONSENT OPTIMISM.
 //   toggleMarketing flips the local ref immediately, fires PATCH
@@ -91,9 +91,12 @@
 //     pressed/not pressed" rather than a bare toggle state.
 //   - Dead `if (err instanceof ApiResponseError) ... else ...` branch
 //     in applyForAgent removed; both arms showed the same toast.
-//   - getMyAgentApplications failure now surfaces `agentLoadErrored`
-//     with an inline retry row rather than silently falling through
-//     to can_apply.
+//   - getMyAgentApplications failure surfaces a load_error state with
+//     an inline retry row rather than silently falling through to
+//     can_apply. (The ref behind it was named `agentLoadErrored` when
+//     this note was written; TASK-39 item 5 moved it into
+//     useAgentApplicationStatus as `loadErrored` -- no such local
+//     exists in this file any more.)
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -120,7 +123,8 @@ import NotificationPreferencesSection from '@/components/shared/NotificationPref
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { updateMe } from '@/api/users'
-import { getMyAgentApplications, submitAgentApplication } from '@/api/agent-apps'
+import { submitAgentApplication } from '@/api/agent-apps'
+import { useAgentApplicationStatus } from '@/composables/useAgentApplicationStatus'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -129,7 +133,7 @@ import { setLocale } from '@/i18n'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import { COUNTRIES } from '@/utils/countries'
 import { ApiResponseError } from '@/api/client'
-import type { AgentApplicationResponse, UserUpdate } from '@/api/types'
+import type { UserUpdate } from '@/api/types'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -361,81 +365,22 @@ async function toggleMarketing(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Agent application
 // ---------------------------------------------------------------------------
+//
+// State derivation (loading/kyc_required/pending/cooldown/can_apply/
+// can_reapply) now lives in useAgentApplicationStatus (TASK-39 item 5) so
+// InvestorMoreView's new "Agent programme" tile reads the exact same state
+// machine instead of a second copy that could drift. This view keeps the
+// only submit control -- applyForAgent() is still the SOLE call site of
+// submitAgentApplication().
 
-type AgentState =
-  | 'loading'
-  | 'load_error'
-  | 'kyc_required'
-  | 'can_apply'
-  | 'pending'
-  | 'cooldown'
-  | 'can_reapply'
+const {
+  isInvestor,
+  state: agentState,
+  cooldownDaysLeft,
+  fetch: fetchAgentApps,
+} = useAgentApplicationStatus()
 
-const isInvestor = computed<boolean>(
-  // Sprint 4.4: typed compare via authStore.role (UserRole | null).
-  // A typo in the literal becomes a compile-time error rather than
-  // a silent runtime miss.
-  () => authStore.role === 'investor',
-)
-const kycApproved = computed<boolean>(
-  // Sprint 4.4: typed compare via authStore.kycStatus (KycStatus | null).
-  () => authStore.kycStatus === 'approved',
-)
-
-const agentApps = ref<AgentApplicationResponse[]>([])
-const agentLoading = ref<boolean>(false)
-const agentLoadErrored = ref<boolean>(false)
 const agentSubmitting = ref<boolean>(false)
-
-// Newest-first per backend contract (get_my_applications orders by
-// created_at DESC), so items[0] is always "the latest".
-const latestApp = computed<AgentApplicationResponse | null>(() => agentApps.value[0] ?? null)
-
-const agentState = computed<AgentState>(() => {
-  if (agentLoading.value) return 'loading'
-  if (agentLoadErrored.value) return 'load_error'
-  if (!kycApproved.value) return 'kyc_required'
-  const last = latestApp.value
-  if (!last) return 'can_apply'
-  if (last.status === 'pending') return 'pending'
-  if (last.status === 'rejected') {
-    if (last.cooldown_until) {
-      const until = new Date(last.cooldown_until).getTime()
-      if (!Number.isNaN(until) && Date.now() < until) return 'cooldown'
-    }
-    return 'can_reapply'
-  }
-  // Approved is unreachable in an investor shell (role would be
-  // agent). Defensive fallback -- treat as can_apply so the button
-  // stays visible rather than the UI going silent.
-  return 'can_apply'
-})
-
-// Ceiling so a user at "22 hours remaining" sees "1 day left", never
-// "0 days left".
-const cooldownDaysLeft = computed<number>(() => {
-  const last = latestApp.value
-  if (!last?.cooldown_until) return 0
-  const until = new Date(last.cooldown_until).getTime()
-  if (Number.isNaN(until)) return 0
-  const diff = until - Date.now()
-  if (diff <= 0) return 0
-  return Math.ceil(diff / (24 * 60 * 60 * 1000))
-})
-
-async function fetchAgentApps(): Promise<void> {
-  if (!isInvestor.value) return
-  agentLoading.value = true
-  agentLoadErrored.value = false
-  try {
-    const resp = await getMyAgentApplications()
-    agentApps.value = resp.items
-  } catch {
-    agentLoadErrored.value = true
-  } finally {
-    agentLoading.value = false
-  }
-}
 
 async function applyForAgent(): Promise<void> {
   if (agentSubmitting.value) return

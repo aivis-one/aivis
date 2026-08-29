@@ -1168,7 +1168,7 @@
       "unnamed": "No name",
       "role": {
         "investor": "Investor",
-        "agent": "Agent",
+        "agent": "Representative",
         "company": "Company",
         "staff": "Staff",
         "platform": "Platform"
@@ -1198,8 +1198,8 @@
         "marketingError": "Could not update your preference"
       },
       "agent": {
-        "title": "Agent programme",
-        "apply": "Become an agent",
+        "title": "Representative programme",
+        "apply": "Become a Representative",
         "reapply": "Apply again",
         "pending": "Your application is under review",
         "cooldown": "Available in {days} days",
@@ -1296,7 +1296,7 @@
             "deposits": "Deposits",
             "payments": "Payment issues",
             "commissions": "Commissions",
-            "agent_applications": "Agent applications",
+            "agent_applications": "Representative applications",
             "withdrawals": "Withdrawals",
             "purchases": "Purchases",
             "installments": "Installment payments",
@@ -1347,7 +1347,7 @@
       },
       "settings": {
         "title": "Settings",
-        "desc": "Profile, preferences, and agent programme"
+        "desc": "Profile, preferences, and Representative programme"
       },
       "support": {
         "title": "Support",
@@ -1360,6 +1360,17 @@
       "installments": {
         "title": "Installment plans",
         "desc": "Track payments, due dates, and overdue tranches"
+      },
+      "agent": {
+        "title": "Representative programme",
+        "desc": {
+          "kycRequired": "Complete KYC to apply",
+          "canApply": "Refer clients and earn commission",
+          "pending": "Your application is under review",
+          "cooldown": "Available in {days} days",
+          "canReapply": "You can apply again",
+          "loadError": "Tap to view status"
+        }
       }
     },
     "support": {

@@ -14,11 +14,30 @@
 //
 // SCOPE (Q1 = c in chat).
 //   Four live tiles: Documents, Notifications, Settings, Support (Ф-2).
-//   The agent-application entry was considered and dropped:
+//   The agent-application entry was considered and dropped at the time:
 //     - Agent application: already lives inside InvestorSettingsView
 //       as a dedicated section, so a parallel top-level entry here
 //       would split the mental model and make two tap paths for the
 //       same action.
+//
+//   TASK-39 item 5 REVISITS that call. The owner considered giving a
+//   plain investor a referral link of their own and ruled against it
+//   (option B) -- referral links stay representative-only. Instead:
+//   make the EXISTING "become a representative" path easier to find,
+//   because today it is buried a few sections down inside Settings
+//   with no hint from this hub that it exists. This is a discoverability
+//   fix, not the second flow the B6 note above worried about: the new
+//   `agentTile` below is a SIGNPOST, not a duplicate action -- it has no
+//   submit logic of its own, reads its label from the exact same
+//   composable (useAgentApplicationStatus) InvestorSettingsView now
+//   also uses, and its click handler just router.pushes to
+//   /investor/settings, the same screen, where applyForAgent() (the
+//   ONLY call site of submitAgentApplication()) still lives unchanged.
+//   Kept out of the static TILES array below because unlike its
+//   neighbours it must react to application state -- absent while
+//   still loading, and its desc line must never invite a tap to apply
+//   while an application is already pending/in cooldown.
+//
 //   Notifications (Phase 6): originally dropped here with "no route
 //   exists yet, module lands in F9.2" -- that module has landed
 //   (/investor/notifications, NotificationsInboxView.vue) and the tile
@@ -51,6 +70,7 @@
 //   here is what wires the route back into the UI.
 // =============================================================================
 
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -60,8 +80,10 @@ import {
   FileText,
   MessageCircle,
   Settings as SettingsIcon,
+  UserPlus,
 } from 'lucide-vue-next'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { useAgentApplicationStatus } from '@/composables/useAgentApplicationStatus'
 
 interface Tile {
   id: string
@@ -128,6 +150,52 @@ const TILES: readonly Tile[] = [
 function openTile(tile: Tile): void {
   void safeNavigate(router.push(tile.route), `[InvestorMoreView] to ${tile.route}`)
 }
+
+// ---------------------------------------------------------------------------
+// Agent programme tile (TASK-39 item 5) -- discoverability signpost only.
+// ---------------------------------------------------------------------------
+//
+// Reads the SAME state machine InvestorSettingsView's "Agent programme"
+// section renders from (see useAgentApplicationStatus.ts for the state
+// table) so this tile's status line can never disagree with what the user
+// sees one tap later. It never submits an application itself -- clicking it
+// just navigates to /investor/settings, where the one real submit control
+// (applyForAgent -> submitAgentApplication) lives.
+const { state: agentState, cooldownDaysLeft, fetch: fetchAgentStatus } = useAgentApplicationStatus()
+
+// descKey per state, deliberately worded so a pending/cooldown investor is
+// never invited to "apply" again -- it reads as a status line, not a CTA,
+// in those states.
+const agentDescKey = computed<string>(() => {
+  switch (agentState.value) {
+    case 'kyc_required':
+      return 'inv.more.agent.desc.kycRequired'
+    case 'pending':
+      return 'inv.more.agent.desc.pending'
+    case 'cooldown':
+      return 'inv.more.agent.desc.cooldown'
+    case 'can_reapply':
+      return 'inv.more.agent.desc.canReapply'
+    case 'load_error':
+      return 'inv.more.agent.desc.loadError'
+    case 'can_apply':
+    default:
+      return 'inv.more.agent.desc.canApply'
+  }
+})
+
+// Absent while the underlying fetch is still in flight -- showing a
+// placeholder status line for an instant reads worse than the tile simply
+// appearing a beat after its neighbours.
+const showAgentTile = computed<boolean>(() => agentState.value !== 'loading')
+
+function openAgentTile(): void {
+  void safeNavigate(router.push('/investor/settings'), '[InvestorMoreView] to agent programme')
+}
+
+onMounted(() => {
+  void fetchAgentStatus()
+})
 </script>
 
 <template>
@@ -159,6 +227,30 @@ function openTile(tile: Tile): void {
           </div>
           <div class="more__tile-desc">
             {{ t(tile.descKey) }}
+          </div>
+        </div>
+        <ChevronRight :size="16" class="more__tile-chev" />
+      </button>
+
+      <!-- TASK-39 item 5: discoverability signpost for the existing
+           "become a representative" path -- see the header comment
+           and openAgentTile() above. Not part of the static TILES
+           array because its label reacts to application state. -->
+      <button
+        v-if="showAgentTile"
+        type="button"
+        class="more__tile"
+        @click="openAgentTile"
+      >
+        <div class="more__tile-icon">
+          <UserPlus :size="24" />
+        </div>
+        <div class="more__tile-body">
+          <div class="more__tile-title">
+            {{ t('inv.more.agent.title') }}
+          </div>
+          <div class="more__tile-desc">
+            {{ t(agentDescKey, { days: cooldownDaysLeft }) }}
           </div>
         </div>
         <ChevronRight :size="16" class="more__tile-chev" />
