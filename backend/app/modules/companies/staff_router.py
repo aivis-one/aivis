@@ -12,6 +12,9 @@
 #                                                              (TASK-30 ruling 1+9)
 #   PATCH /api/v1/staff/companies/{id}                     -- update profile
 #   PATCH /api/v1/staff/companies/{id}/price               -- change price
+#   PATCH /api/v1/staff/companies/{id}/supply              -- change total_supply
+#                                                              (TASK-39 item 6
+#                                                              dilution ruling)
 #   GET   /api/v1/staff/companies/{id}/price-history       -- price history (B3)
 #   POST  /api/v1/staff/companies/{id}/roadmap             -- add roadmap item
 #   PATCH /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update roadmap item
@@ -95,6 +98,7 @@ from app.modules.companies.schemas import (
     UpdateCompanyRequest,
     UpdatePriceRequest,
     UpdateRoadmapItemRequest,
+    UpdateSupplyRequest,
 )
 from app.modules.companies.service import (
     assign_company,
@@ -111,6 +115,7 @@ from app.modules.companies.service import (
     update_company,
     update_price,
     update_roadmap_item,
+    update_supply,
     validate_roadmap_cover_mime_by_filename,
 )
 from app.modules.staff.constants import is_admin
@@ -314,6 +319,32 @@ async def update_price_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await update_price(company_id, body.price_per_unit_cents, staff, session)
+    return CompanyResponse.model_validate(profile)
+
+
+@router.patch(
+    "/{company_id}/supply",
+    response_model=CompanyResponse,
+)
+async def update_supply_endpoint(
+    company_id: UUID,
+    body: UpdateSupplyRequest,
+    staff: User = Depends(require_staff_permission("project_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> CompanyResponse:
+    """Change company total_supply (dilution ruling, TASK-39 item 6).
+
+    Requires: project_manage + financial_operations -- same bar as
+    /price, since this is equally a financial operation (arguably a
+    more consequential one: it changes what existing investors own).
+
+    If the company has an active option pool, its equity_percent is
+    recomputed from the UNCHANGED total_options in the same
+    transaction; see service.py::update_supply.
+    """
+    await require_financial_operations(staff, session)
+
+    profile = await update_supply(company_id, body.total_supply, staff, session)
     return CompanyResponse.model_validate(profile)
 
 

@@ -1532,6 +1532,11 @@ export interface UpdateRoadmapItemRequest {
   linked_product_id?: string | null
 }
 
+/** Change company.total_supply (dilution ruling, TASK-39 item 6, 2026-08-29). STAFF-ONLY, and deliberately its own endpoint rather than a field on UpdateCompanyRequest -- that schema excludes total_supply / shares_per_option on purpose (see its own Sprint 4.3 note above): "a change in total_supply is a pool-level operation". The owner ruled how: a total_supply change KEEPS the active pool's total_options and RECOMPUTES equity_percent from it. Investors keep the same option COUNT and their PERCENTAGE floats -- that is what dilution means here, as opposed to resizing the pool to hold the percentage fixed, which could force it below units already sold. See pools/service.py::recompute_equity_percent_for_new_supply for the arithmetic and the 100%-ceiling guard, and companies/service.py::update_own_company for why the PROJECT itself may only touch this field with NO active pool (unchanged by this ruling). shares_per_option is NOT here: it is a split (future scope, see AIVIS-Share-Pool-Refactor.md §4) and is out of scope for this ruling. */
+export interface UpdateSupplyRequest {
+  total_supply: number
+}
+
 /** Full user detail for staff view. iter 2.7 A5 additions (kyc-in-detail extension): - latest_application_id : newest KYCApplication.id or None. - latest_application_status : its status, mirroring user.kyc_status for non-trivial cases (and None for users who have never submitted). - kyc_applications_history : up to KYC_HISTORY_LIMIT newest rows, NEWEST FIRST. Empty list if the user has never submitted. */
 export interface UserDetailResponse {
   id: string

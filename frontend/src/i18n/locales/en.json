@@ -519,7 +519,18 @@
           "active": "Active",
           "hidden": "Hidden",
           "archived": "Archived"
-        }
+        },
+        "supplyEditCta": "Change supply",
+        "supplyEditTitle": "Change total supply",
+        "supplyEditHint": "Total supply is the company's full share count. If the company has an active option pool, its percentage of the company will be recalculated from this change.",
+        "supplyPoolLoading": "Checking for an active option pool…",
+        "supplyPoolLoadError": "Could not check whether this company has an active option pool. Saving is blocked until this succeeds — a supply change might otherwise skip its consequence confirmation.",
+        "supplyPoolActiveHint": "This company has an active option pool — the next step will show how its percentage changes.",
+        "supplyConfirmTitle": "Confirm supply change",
+        "supplyConfirmBody": "The active option pool keeps the same number of options, so its share of the company will move from {oldPct} to {newPct}.",
+        "supplyConfirmCeilingError": "This would push the pool above 100% of the company. Resize the pool first, or choose a larger total supply.",
+        "supplyConfirmSubmit": "Confirm change",
+        "supplyUpdated": "Total supply updated"
       },
       "price": {
         "current": "Current price",

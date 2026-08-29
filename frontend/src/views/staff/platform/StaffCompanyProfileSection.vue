@@ -15,6 +15,29 @@
 // pretty-printed JSON rather than a structured editor for the same
 // reason.
 //
+// SUPPLY CONTROL (TASK-39 item 6 dilution ruling, owner, 2026-08-29).
+//   total_supply now has a real mutating control too: PATCH
+//   /api/v1/staff/companies/{id}/supply (update_supply() server-side),
+//   gated on project_manage AND financial_operations -- same bar as the
+//   price change in StaffCompanyPriceSection (FP-23), since this is
+//   equally a financial operation and arguably a more consequential one
+//   (it changes what existing investors own).
+//
+//   Unlike price, a total_supply change may or may not have a
+//   consequence: it only recomputes something when the company HAS an
+//   active option pool. So the edit modal fetches GET .../pool
+//   (fetchStaffCompanyPool) when it opens: with no active pool, Save
+//   commits directly (a plain field write, nothing to disclose); with
+//   an active pool, a SEPARATE consequence-confirmation modal shows the
+//   equity_percent move in numbers (X% -> Y%) before the PATCH fires --
+//   the same two-step pattern CompanySettingsView.vue already uses for
+//   its own price-change confirmation, and for the same reason: a
+//   generic "are you sure?" is not this ruling's confirmation, a number
+//   is. The preview percentage is computed client-side with plain
+//   floating-point division for DISPLAY ONLY; the server (Decimal
+//   arithmetic, pools/service.py::_compute_equity_percent) is the
+//   authoritative value and the actual 100%-ceiling guard.
+//
 // STATUS CONTROL (TASK-30 ruling 12).
 //   Unlike everything else on this surface, `status` now has a real
 //   mutating control: PATCH /api/v1/staff/companies/{id} (update_company()
@@ -44,11 +67,16 @@
 import { inject, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CLoader, CBadge, CButton, CEmptyState, CModal, CSelect } from '@/components/ui'
+import { CLoader, CBadge, CButton, CEmptyState, CModal, CSelect, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
-import { updateStaffCompany } from '@/api/staff-companies'
+import {
+  updateStaffCompany,
+  updateStaffCompanySupply,
+  fetchStaffCompanyPool,
+} from '@/api/staff-companies'
 import { ApiResponseError } from '@/api/client'
+import type { PoolResponse } from '@/api/types'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const { t } = useI18n()
@@ -59,6 +87,14 @@ const { canDo } = useStaffPermissions()
 // project_manage only -- see STATUS CONTROL note above for why this
 // does NOT also require financial_operations the way price does.
 const canEditStatus = canDo('project_manage')
+
+// SUPPLY CONTROL: project_manage AND financial_operations, same bar as
+// StaffCompanyPriceSection's price edit (FP-23).
+const canManageSupply = canDo('project_manage')
+const canFinancialSupply = canDo('financial_operations')
+const canEditSupply = computed<boolean>(
+  () => canManageSupply.value && canFinancialSupply.value,
+)
 
 // PERF-40-01: read the company the parent detail view already loaded
 // instead of firing a second GET /staff/companies/{id}. The injection
@@ -166,6 +202,155 @@ function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
+// ---------------------------------------------------------------------------
+// Supply control (TASK-39 item 6 dilution ruling)
+// ---------------------------------------------------------------------------
+
+// Step 1: edit modal (draft input + pool lookup).
+const showSupplyEdit = ref(false)
+const supplyDraft = ref('') // as typed
+const loadingPool = ref(false)
+const activePool = ref<PoolResponse | null>(null)
+// A FAILED pool lookup is NOT "no active pool" -- conflating the two
+// (adversarial review finding) would let a transient network error
+// silently skip the consequence-confirmation modal for a company that
+// DOES have an active pool. Tracked separately so canSubmitSupply can
+// block submission until a retry succeeds, rather than falling back to
+// a plain-write path that assumes no dilution consequence exists.
+const poolFetchFailed = ref(false)
+const savingSupply = ref(false)
+
+// Step 2: consequence-confirmation modal (only reachable when
+// activePool is non-null -- see openSupplyEdit / handleSupplySave).
+const showSupplyConfirm = ref(false)
+const pendingTotalSupply = ref<number | null>(null)
+
+async function loadPoolForSupplyEdit(): Promise<void> {
+  loadingPool.value = true
+  poolFetchFailed.value = false
+  activePool.value = null
+  try {
+    activePool.value = await fetchStaffCompanyPool(companyId.value)
+  } catch {
+    // Do NOT fall back to "no active pool" here -- that would let a
+    // transient network error silently skip the consequence-confirmation
+    // modal for a company that DOES have one. canSubmitSupply blocks
+    // submission entirely until a retry succeeds.
+    poolFetchFailed.value = true
+  } finally {
+    loadingPool.value = false
+  }
+}
+
+async function openSupplyEdit(): Promise<void> {
+  if (!canEditSupply.value) {
+    console.warn(
+      '[StaffCompanyProfileSection] openSupplyEdit blocked: needs project_manage + financial_operations',
+    )
+    return
+  }
+  supplyDraft.value = company.value ? String(company.value.total_supply) : ''
+  showSupplyEdit.value = true
+  await loadPoolForSupplyEdit()
+}
+
+// Parse the draft into a positive integer. null blocks submission.
+const draftTotalSupply = computed<number | null>(() => {
+  const v = supplyDraft.value.trim()
+  if (!v) return null
+  const n = Number(v)
+  if (!Number.isInteger(n) || n <= 0) return null
+  return n
+})
+
+const canSubmitSupply = computed<boolean>(
+  () =>
+    draftTotalSupply.value !== null &&
+    draftTotalSupply.value !== company.value?.total_supply &&
+    !poolFetchFailed.value,
+)
+
+// Preview equity_percent for the confirmation modal. DISPLAY ONLY --
+// see the module header note on why floating-point division is fine
+// here but not on the server.
+const previewEquityPercent = computed<number | null>(() => {
+  const pool = activePool.value
+  const newSupply = pendingTotalSupply.value
+  if (!pool || newSupply === null || newSupply <= 0) return null
+  return (pool.total_options / newSupply) * 100
+})
+
+const previewExceedsCeiling = computed<boolean>(
+  () => previewEquityPercent.value !== null && previewEquityPercent.value > 100,
+)
+
+function formatPercent(pct: number): string {
+  return `${pct.toFixed(4)}%`
+}
+
+async function handleSupplySave(): Promise<void> {
+  if (!canEditSupply.value) {
+    console.warn('[StaffCompanyProfileSection] handleSupplySave blocked: missing permission')
+    return
+  }
+  const next = draftTotalSupply.value
+  if (next === null || poolFetchFailed.value) return
+
+  if (activePool.value === null) {
+    // No active pool (a SUCCESSFUL lookup that found none, never a
+    // failed one -- poolFetchFailed already blocked above): nothing
+    // recomputes, so no consequence to confirm -- this is a plain
+    // field write, matching the status control's own single-step save.
+    await submitSupply(next)
+    return
+  }
+
+  // Active pool: route through the consequence-confirmation modal
+  // instead of saving directly.
+  pendingTotalSupply.value = next
+  showSupplyEdit.value = false
+  showSupplyConfirm.value = true
+}
+
+async function handleConfirmSupply(): Promise<void> {
+  const next = pendingTotalSupply.value
+  if (next === null || previewExceedsCeiling.value) return
+  // Only close the confirmation and discard the draft on a SUCCESSFUL
+  // submit (adversarial review finding: submitSupply swallows its own
+  // errors for its toast, so "it returned" is not "it succeeded" --
+  // closing unconditionally here discarded a confirmed draft on a
+  // failed PATCH with no way to retry from this screen).
+  const ok = await submitSupply(next)
+  if (ok) {
+    showSupplyConfirm.value = false
+    pendingTotalSupply.value = null
+  }
+}
+
+function cancelSupplyConfirm(): void {
+  showSupplyConfirm.value = false
+  pendingTotalSupply.value = null
+}
+
+async function submitSupply(newTotalSupply: number): Promise<boolean> {
+  savingSupply.value = true
+  try {
+    await updateStaffCompanySupply(companyId.value, { total_supply: newTotalSupply })
+    showSupplyEdit.value = false
+    showToast(t('staff.platform.profile.supplyUpdated'), 'success')
+    // Re-pull the detail through the shared context so every section
+    // sees the new total_supply, same pattern the status control uses.
+    await ctx?.reload()
+    return true
+  } catch (err) {
+    const message = err instanceof ApiResponseError ? err.detail : t('common.error')
+    showToast(message, 'error')
+    return false
+  } finally {
+    savingSupply.value = false
+  }
+}
+
 // Pretty-print distribution_config for read-only inspection. It is a
 // free-form JSONB on the backend, so we show it verbatim rather than
 // assuming a fixed shape.
@@ -215,7 +400,12 @@ const distributionJson = computed<string>(() => {
       </div>
       <div class="scp__row">
         <span class="scp__label">{{ t('staff.platform.profile.totalSupply') }}</span>
-        <span class="scp__value">{{ company.total_supply.toLocaleString() }}</span>
+        <div class="scp__status-cell">
+          <span class="scp__value">{{ company.total_supply.toLocaleString() }}</span>
+          <CButton v-if="canEditSupply" variant="outline" size="sm" @click="openSupplyEdit">
+            {{ t('staff.platform.profile.supplyEditCta') }}
+          </CButton>
+        </div>
       </div>
       <div class="scp__row">
         <span class="scp__label">{{ t('staff.platform.profile.sharesPerOption') }}</span>
@@ -299,6 +489,83 @@ const distributionJson = computed<string>(() => {
         </CButton>
       </div>
     </CModal>
+
+    <!-- Supply edit modal (project_manage + financial_operations) -->
+    <CModal :open="showSupplyEdit" @close="showSupplyEdit = false">
+      <h3 class="scp__modal-title">
+        {{ t('staff.platform.profile.supplyEditTitle') }}
+      </h3>
+      <p class="scp__modal-hint">
+        {{ t('staff.platform.profile.supplyEditHint') }}
+      </p>
+      <CInput
+        v-model="supplyDraft"
+        type="number"
+        :label="t('staff.platform.profile.totalSupply')"
+      />
+      <p v-if="loadingPool" class="scp__modal-hint">
+        {{ t('staff.platform.profile.supplyPoolLoading') }}
+      </p>
+      <template v-else-if="poolFetchFailed">
+        <p class="scp__modal-error">
+          {{ t('staff.platform.profile.supplyPoolLoadError') }}
+        </p>
+        <CButton variant="outline" size="sm" @click="loadPoolForSupplyEdit">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+      <p v-else-if="activePool" class="scp__modal-hint">
+        {{ t('staff.platform.profile.supplyPoolActiveHint') }}
+      </p>
+      <div class="scp__modal-actions">
+        <CButton variant="outline" size="sm" @click="showSupplyEdit = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="savingSupply"
+          :disabled="!canSubmitSupply || loadingPool"
+          @click="handleSupplySave"
+        >
+          {{ activePool ? t('common.next') : t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
+
+    <!-- Supply-change consequence confirmation (only when an active pool
+         exists -- see the SUPPLY CONTROL header note). -->
+    <CModal :open="showSupplyConfirm" @close="cancelSupplyConfirm">
+      <h3 class="scp__modal-title">
+        {{ t('staff.platform.profile.supplyConfirmTitle') }}
+      </h3>
+      <p v-if="activePool && pendingTotalSupply !== null" class="scp__modal-hint">
+        {{
+          t('staff.platform.profile.supplyConfirmBody', {
+            oldPct: formatPercent(Number(activePool.equity_percent)),
+            newPct:
+              previewEquityPercent !== null ? formatPercent(previewEquityPercent) : '—',
+          })
+        }}
+      </p>
+      <p v-if="previewExceedsCeiling" class="scp__modal-error">
+        {{ t('staff.platform.profile.supplyConfirmCeilingError') }}
+      </p>
+      <div class="scp__modal-actions">
+        <CButton variant="outline" size="sm" @click="cancelSupplyConfirm">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="savingSupply"
+          :disabled="previewExceedsCeiling"
+          @click="handleConfirmSupply"
+        >
+          {{ t('staff.platform.profile.supplyConfirmSubmit') }}
+        </CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 
@@ -359,6 +626,11 @@ const distributionJson = computed<string>(() => {
 .scp__modal-hint {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+}
+.scp__modal-error {
+  font-size: var(--fs-xs);
+  color: var(--danger);
   margin: 0 0 var(--space-4);
 }
 .scp__modal-actions {

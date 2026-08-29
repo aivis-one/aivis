@@ -30,6 +30,11 @@
 #   update_price()         -- change price + cascade to Products + history
 #                             (staff path; shares _apply_price_change with
 #                             update_own_company's self-service price path)
+#   update_supply()        -- TASK-39 item 6 dilution ruling (2026-08-29,
+#                             staff-only): change total_supply, recomputing
+#                             the active pool's equity_percent from its
+#                             UNCHANGED total_options (pools/service.py::
+#                             recompute_equity_percent_for_new_supply).
 #   get_company()          -- load CompanyProfile by id
 #   list_companies()       -- paginated list (public: active only; staff: all;
 #                             optional case-insensitive name search)
@@ -870,6 +875,86 @@ async def update_price(
         company_id=str(company_id),
         old_price=old_price,
         new_price=new_price,
+        staff_id=str(staff.id),
+    )
+
+    return profile
+
+
+async def update_supply(
+    company_id: UUID,
+    new_total_supply: int,
+    staff: User,
+    session: AsyncSession,
+) -> CompanyProfile:
+    """Update company.total_supply, recomputing the active pool's equity_percent.
+
+    Dilution ruling, TASK-39 item 6 (owner, 2026-08-29): the active
+    pool's total_options stays UNCHANGED and equity_percent is
+    recomputed from it, rather than resizing the pool to hold the
+    percentage fixed. See pools/service.py::
+    recompute_equity_percent_for_new_supply for the arithmetic and the
+    100%-ceiling guard, run BEFORE this function writes the new
+    total_supply so the guard checks the state the write would actually
+    produce.
+
+    STAFF-ONLY. The project's own self-service path (update_own_company)
+    is unchanged by this ruling: it may still only touch total_supply
+    with NO active pool -- see that function's own guard.
+
+    Raises:
+        NotFoundError: If company not found.
+        BadRequestError: If new_total_supply equals the current value,
+            or (via pools.service) would push the active pool's
+            equity_percent above 100%.
+    """
+    profile = await get_company(company_id, session)
+
+    old_total_supply = profile.total_supply
+    if new_total_supply == old_total_supply:
+        raise BadRequestError("New total_supply is the same as the current value")
+
+    # Imported locally: pools/service.py already imports get_company from
+    # this module, so a module-level import here would be circular
+    # (matches update_own_company's own local import of get_active_pool
+    # further below).
+    from app.modules.pools.service import recompute_equity_percent_for_new_supply
+
+    old_pct, new_pct = await recompute_equity_percent_for_new_supply(
+        company_id, new_total_supply, session
+    )
+
+    profile.total_supply = new_total_supply
+
+    await session.flush()
+    await session.refresh(profile)
+
+    # Audit. old/new supply AND old/new equity_percent are all VALUE-only
+    # keys (audit/schemas.py::_VALUE_ONLY_KEYS) -- the company-facing
+    # audit feed must show "supply changed" without the numbers, exactly
+    # as company.price_updated already does for price.
+    await record_audit(
+        session=session,
+        event="company.supply_updated",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="company",
+        target_id=profile.id,
+        data={
+            "old_total_supply": old_total_supply,
+            "new_total_supply": new_total_supply,
+            "old_equity_percent": str(old_pct) if old_pct is not None else None,
+            "new_equity_percent": str(new_pct) if new_pct is not None else None,
+        },
+    )
+
+    logger.info(
+        "company_supply_updated",
+        company_id=str(company_id),
+        old_total_supply=old_total_supply,
+        new_total_supply=new_total_supply,
+        old_equity_percent=str(old_pct) if old_pct is not None else None,
+        new_equity_percent=str(new_pct) if new_pct is not None else None,
         staff_id=str(staff.id),
     )
 

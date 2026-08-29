@@ -790,6 +790,15 @@ export type { UpdatePriceRequest } from './generated'
 
 export type { PriceHistoryResponse } from './generated'
 
+// Supply change (TASK-39 item 6 dilution ruling, 2026-08-29).
+// UpdateSupplyRequest is the PATCH body for /staff/companies/{id}/supply;
+// PoolResponse is the GET /staff/companies/{id}/pool read used to preview
+// the equity_percent consequence before submitting. Both rendered by
+// StaffCompanyProfileSection.
+export type { UpdateSupplyRequest } from './generated'
+
+export type { PoolResponse } from './generated'
+
 // Templates (iter 2.7 C2, R2 §6.3). Read-only staff inspection.
 // TemplateResponse = list row (+ is_platform_default computed flag);
 // TemplateDetailResponse adds html_content + storage_prefix for the

@@ -3,14 +3,20 @@
 # =============================================================================
 #
 # ENDPOINTS:
+#   GET   /api/v1/staff/companies/{company_id}/pool   -- read active pool,
+#                                                         or null (TASK-39
+#                                                         item 6)
 #   POST  /api/v1/staff/companies/{company_id}/pool   -- create active pool
 #   PATCH /api/v1/staff/companies/{company_id}/pool   -- update total_options
 #                                                         (допэмиссия)
 #
 # PERMISSIONS:
-#   Both endpoints require project_manage + financial_operations.
-#   Mirrors POST /staff/companies and PATCH /staff/companies/{id}/price
-#   from Phase 4 -- creating or resizing a pool is a financial operation.
+#   POST/PATCH require project_manage + financial_operations. Mirrors
+#   POST /staff/companies and PATCH /staff/companies/{id}/price from
+#   Phase 4 -- creating or resizing a pool is a financial operation.
+#   GET requires company_manage only -- a read, mirrors GET
+#   .../price-history's same choice not to also gate on
+#   financial_operations.
 #
 # RESPONSE SHAPE:
 #   PoolResponse with computed `consumed` and `remaining`. The
@@ -40,8 +46,9 @@ import structlog
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db_session
+from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.dependencies import require_staff_permission
+from app.modules.companies.service import get_company
 from app.modules.pools.schemas import (
     CreatePoolRequest,
     PoolResponse,
@@ -49,6 +56,8 @@ from app.modules.pools.schemas import (
 )
 from app.modules.pools.service import (
     create_pool,
+    get_active_pool_or_none,
+    get_pool_consumed,
     update_pool,
     with_consumed_remaining,
 )
@@ -61,6 +70,36 @@ router = APIRouter(
     prefix="/api/v1/staff/companies",
     tags=["staff-pools"],
 )
+
+
+@router.get(
+    "/{company_id}/pool",
+    response_model=PoolResponse | None,
+)
+async def get_pool_endpoint(
+    company_id: UUID,
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_reader),
+) -> PoolResponse | None:
+    """Read the active pool for a company, or null if it has none yet.
+
+    Permission: company_manage only -- read-only, mirrors
+    GET .../price-history's choice not to also require
+    financial_operations for a read. TASK-39 item 6: this is the read
+    surface staff use to see the current total_options / equity_percent
+    before changing total_supply.
+
+    404 when the company itself does not exist (get_company); a company
+    with no active pool yet is a normal, legal state and returns 200
+    with a null body, not a 404.
+    """
+    await get_company(company_id, session)  # 404 on unknown company_id
+    pool = await get_active_pool_or_none(company_id, session)
+    if pool is None:
+        return None
+    consumed = await get_pool_consumed(pool.company_id, session)
+    payload = await with_consumed_remaining(pool, session, consumed=consumed)
+    return PoolResponse.model_validate(payload)
 
 
 @router.post(

@@ -22,6 +22,10 @@
 //   PATCH /api/v1/staff/companies/{id}               -- update (TASK-30: status only, so far)
 //   GET   /api/v1/staff/companies/{id}/price-history -- price history (B3)
 //   PATCH /api/v1/staff/companies/{id}/price         -- change price (C2)
+//   PATCH /api/v1/staff/companies/{id}/supply        -- change total_supply
+//                                                        (TASK-39 item 6 dilution ruling)
+//   GET   /api/v1/staff/companies/{id}/pool          -- read active pool, or
+//                                                        null (TASK-39 item 6)
 //   GET   /api/v1/staff/companies/{id}/templates     -- template list (C2)
 //   GET   /api/v1/staff/companies/{id}/templates/{tid} -- template detail (C2)
 //   GET    /api/v1/staff/companies/{id}/attachments         -- doc list (C2)
@@ -64,12 +68,14 @@ import type {
   ReorderAttachmentsRequest,
   ReorderRoadmapRequest,
   RoadmapItemResponse,
+  PoolResponse,
   StaffAttachmentResponse,
   TemplateDetailResponse,
   TemplateResponse,
   UpdateCompanyRequest,
   UpdatePriceRequest,
   UpdateRoadmapItemRequest,
+  UpdateSupplyRequest,
 } from '@/api/types'
 
 /**
@@ -198,6 +204,39 @@ export function updateStaffCompanyPrice(
   body: UpdatePriceRequest,
 ): Promise<CompanyResponse> {
   return api.patch<CompanyResponse>(`/api/v1/staff/companies/${companyId}/price`, body)
+}
+
+/**
+ * PATCH /api/v1/staff/companies/{id}/supply -- change the company's
+ * total_supply (TASK-39 item 6 dilution ruling, 2026-08-29). If the
+ * company has an active option pool, its equity_percent is recomputed
+ * server-side from the UNCHANGED total_options -- see
+ * backend/app/modules/pools/service.py::
+ * recompute_equity_percent_for_new_supply.
+ *
+ * Requires company_manage AND financial_operations server-side, same
+ * bar as /price. Returns the updated CompanyResponse (new total_supply
+ * reflected).
+ */
+export function updateStaffCompanySupply(
+  companyId: string,
+  body: UpdateSupplyRequest,
+): Promise<CompanyResponse> {
+  return api.patch<CompanyResponse>(`/api/v1/staff/companies/${companyId}/supply`, body)
+}
+
+/**
+ * GET /api/v1/staff/companies/{id}/pool -- the company's active pool, or
+ * null if it has none yet (TASK-39 item 6). Used to preview the
+ * equity_percent consequence of a total_supply change before it is
+ * submitted -- see StaffCompanyProfileSection's supply-edit modal.
+ *
+ * Requires company_manage only (read-only). 404 on an unknown
+ * company_id; a company with no active pool is a normal 200 with a
+ * null body, not a 404.
+ */
+export function fetchStaffCompanyPool(companyId: string): Promise<PoolResponse | null> {
+  return api.get<PoolResponse | null>(`/api/v1/staff/companies/${companyId}/pool`)
 }
 
 /**

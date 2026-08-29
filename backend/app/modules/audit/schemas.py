@@ -119,6 +119,15 @@ class CompanyAuditFeedResponse(BaseModel):
 #     ("company.price_updated") already tells the company that price
 #     changed, without saying to what value or via which field label.
 #
+#   - company.supply_updated (TASK-39 item 6 dilution ruling, staff-only,
+#     2026-08-29) writes {"old_total_supply", "new_total_supply",
+#     "old_equity_percent", "new_equity_percent"}. Same shape as
+#     price_updated and the same reasoning: all four keys exist only to
+#     carry a value, none names a field, so all four are denylisted and
+#     this event also yields changed_fields=[] -- the event name alone
+#     says the company's supply/pool percentage changed, never by how
+#     much or to what.
+#
 #   - every self-service roadmap_item_*/attachment_*/*_reordered
 #     event that also carries target_type="company" (companies/
 #     service.py's project-driven write paths) uses assorted
@@ -137,7 +146,18 @@ class CompanyAuditFeedResponse(BaseModel):
 # since .values() is never read below), and any new "old_x"/"new_x"
 # -style value-carrying pair should be added here defensively as soon
 # as it lands.
-_VALUE_ONLY_KEYS = frozenset({"old_price", "new_price", "changes", "products_updated"})
+_VALUE_ONLY_KEYS = frozenset(
+    {
+        "old_price",
+        "new_price",
+        "changes",
+        "products_updated",
+        "old_total_supply",
+        "new_total_supply",
+        "old_equity_percent",
+        "new_equity_percent",
+    }
+)
 
 
 def _derive_changed_fields(data: dict) -> list[str]:  # type: ignore[type-arg]

@@ -22,6 +22,9 @@
 #   get_active_pool()         -- load the single active pool for a company.
 #                                Used by products/service.py at create time and
 #                                by purchases/service.py at purchase time.
+#   get_active_pool_or_none() -- read-only counterpart: None instead of
+#                                raising. Used by GET .../pool (staff read
+#                                surface, TASK-39 item 6).
 #   get_pool_consumed()       -- SUM(Purchase.units) for active purchases of
 #                                the company (gifts included).
 #   get_pool_remaining()      -- pool.total_options - consumed. Sprint 4.4:
@@ -33,6 +36,14 @@
 #                                the helper is a pure transformation, never
 #                                runs an implicit SELECT. Callers compute
 #                                consumed once and pass it.
+#   recompute_equity_percent_for_new_supply() -- TASK-39 item 6 dilution
+#                                ruling (2026-08-29). Called by
+#                                companies.service.update_supply() before it
+#                                writes a new company.total_supply: keeps
+#                                the active pool's total_options fixed and
+#                                recomputes equity_percent from it, refusing
+#                                a result above 100%. (None, None) when the
+#                                company has no active pool.
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller (get_db_session) manages the transaction.
@@ -137,6 +148,23 @@ async def get_active_pool(
         )
 
     return pools[0]
+
+
+async def get_active_pool_or_none(
+    company_id: UUID,
+    session: AsyncSession,
+) -> OptionPool | None:
+    """Read-only counterpart to get_active_pool(): None instead of raising.
+
+    Used by GET /staff/companies/{id}/pool -- the read surface staff use
+    to see a company's current pool numbers (e.g. before a total_supply
+    change, TASK-39 item 6) without get_active_pool()'s BadRequestError
+    forcing a try/except at every read call site.
+    """
+    try:
+        return await get_active_pool(company_id, session)
+    except BadRequestError:
+        return None
 
 
 async def get_pool_consumed(
@@ -518,3 +546,66 @@ async def update_pool(
     )
 
     return pool, consumed
+
+
+async def recompute_equity_percent_for_new_supply(
+    company_id: UUID,
+    new_total_supply: int,
+    session: AsyncSession,
+) -> tuple[Decimal, Decimal] | tuple[None, None]:
+    """Recompute the active pool's equity_percent for a pending total_supply change.
+
+    Called by companies.service.update_supply() BEFORE it writes the new
+    total_supply onto the company row, in the SAME transaction (this
+    module never commits -- COMMIT RULE P-01 above; the caller's flush
+    covers both writes). total_options is left UNTOUCHED: the owner's
+    dilution ruling (TASK-39 item 6, 2026-08-29) keeps every investor's
+    option COUNT fixed and lets equity_percent float, rather than
+    resizing the pool to hold the percentage fixed -- the latter could
+    require shrinking total_options below units already sold, which is
+    exactly what update_pool()'s own "below consumed" guard above exists
+    to prevent, and this ruling does not reopen that question.
+
+    Returns (old_equity_percent, new_equity_percent), or (None, None) if
+    the company has no active pool: nothing to recompute, and the caller
+    is free to write the plain field with no further guard from here.
+
+    Raises:
+        BadRequestError: new_total_supply is below the active pool's
+            total_options (the pool would exceed 100% of the company)
+            -- resize the pool first via PATCH .../pool, or choose a
+            larger total_supply. Checked on the exact integers, never
+            on the rounded percentage -- see the inline comment above
+            the check for why the two are not equivalent.
+    """
+    try:
+        pool = await get_active_pool(company_id, session)
+    except BadRequestError:
+        return None, None
+
+    # The true invariant is the INTEGER one -- total_options may never
+    # exceed total_supply, matching update_pool()'s own
+    # "new_total > company.total_supply" guard above. Comparing the
+    # QUANTIZED percentage instead is not equivalent: _compute_equity_percent
+    # rounds to 4dp, so total_options exceeding total_supply by a small
+    # enough margin can round DOWN to exactly 100.0000% and slip past a
+    # `new_pct > 100` check (e.g. 2,000,002 options over a 2,000,001
+    # supply rounds to 100.0000%, not above it). Guard on the exact
+    # integers first; the percentage is a derived display value, never
+    # the source of truth for this check.
+    if pool.total_options > new_total_supply:
+        raise BadRequestError(
+            f"total_supply={new_total_supply} is below the active pool's "
+            f"total_options ({pool.total_options}); a pool cannot exceed "
+            f"100% of its company. Resize the pool first via "
+            f"PATCH .../pool, or choose a larger total_supply."
+        )
+
+    old_pct = pool.equity_percent
+    new_pct = _compute_equity_percent(pool.total_options, new_total_supply)
+
+    pool.equity_percent = new_pct
+    await session.flush()
+    await session.refresh(pool)
+
+    return old_pct, new_pct
