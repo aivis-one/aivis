@@ -240,13 +240,19 @@ def main() -> None:
     input_path = Path(sys.argv[1])
     output_path = Path(sys.argv[2])
 
-    with input_path.open() as f:
+    # encoding is explicit on BOTH ends: this file carries non-ASCII
+    # (section signs, Cyrillic docstrings) and Python otherwise falls
+    # back to the platform default, which on Windows is a codepage,
+    # not UTF-8. That made the result depend on which shell invoked
+    # the generator -- mojibake in one shell, clean in another, with
+    # nothing failing loudly either way.
+    with input_path.open(encoding="utf-8") as f:
         openapi = json.load(f)
 
     result = generate(openapi)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(result)
+    output_path.write_text(result, encoding="utf-8")
 
     # Stats for CI / aivis update output.
     schemas = openapi.get("components", {}).get("schemas", {})
