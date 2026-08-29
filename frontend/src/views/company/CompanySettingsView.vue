@@ -25,7 +25,7 @@
 //   TIME-BOXED, not a repeal of ruling 10 -- it holds only while that
 //   remains true, and admin-side price/volume validation must land
 //   before the first non-owner company is onboarded (see
-//   aivis_companies_owner_only_for_now.md). distribution_config stays
+//   TASK-39 item 6, owner ruling 2026-08-29). distribution_config stays
 //   read-only/admin-only, unaffected by this change -- still rendered
 //   as plain JSON with the support hint below it.
 //

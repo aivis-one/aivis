@@ -24,7 +24,7 @@
 #                             distribution_config and the OptionPool remain
 #                             admin-only. The name/price/supply widening
 #                             holds only while every company is the owner's
-#                             own (see aivis_companies_owner_only_for_now.md);
+#                             own (see TASK-39 item 6, owner ruling 2026-08-29);
 #                             admin-side price/volume validation must land
 #                             before the first non-owner company onboards.
 #   update_price()         -- change price + cascade to Products + history
@@ -593,7 +593,7 @@ async def update_own_company(
     not a repeal -- it holds only while that remains true, and
     admin-side price/volume validation must land before the first
     non-owner company is onboarded (see
-    aivis_companies_owner_only_for_now.md). distribution_config and the
+    TASK-39 item 6, owner ruling 2026-08-29). distribution_config and the
     OptionPool are UNCHANGED by this supersession: UpdateOwnCompanyRequest
     still cannot carry either at all (schema-level exclusion +
     extra="forbid"), so there is nothing admin-only left to strip for

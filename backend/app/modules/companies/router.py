@@ -112,7 +112,7 @@ async def update_my_company_endpoint(
     status set. This is TIME-BOXED, not a repeal -- it holds only while
     every company remains the owner's own, and admin-side price/volume
     validation must land before the first non-owner company is
-    onboarded (see aivis_companies_owner_only_for_now.md). A price
+    onboarded (see TASK-39 item 6, owner ruling 2026-08-29). A price
     change here is NOT a plain field write: update_own_company() routes
     it through cascade_price() via the same `_apply_price_change` helper
     the staff price endpoint uses, so it cascades to products,

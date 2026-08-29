@@ -25,7 +25,7 @@
 #                                 own, and admin-side price/volume
 #                                 validation must land before the first
 #                                 non-owner company is onboarded (see
-#                                 aivis_companies_owner_only_for_now.md).
+#                                 TASK-39 item 6, owner ruling 2026-08-29).
 #                                 distribution_config and the OptionPool
 #                                 stay admin-only and structurally
 #                                 unrepresentable here -- the publication
@@ -223,7 +223,7 @@ class UpdateOwnCompanyRequest(BaseModel):
     exception, not a repeal of ruling 10 -- it holds only while that
     remains true, and admin-side price/volume validation must land
     before the first non-owner company is onboarded (see
-    aivis_companies_owner_only_for_now.md). distribution_config and the
+    TASK-39 item 6, owner ruling 2026-08-29). distribution_config and the
     OptionPool are DELIBERATELY STILL ABSENT from this model -- those
     stay admin-only, unaffected by this supersession, and remain
     structurally unrepresentable here (not merely ignored if present,
