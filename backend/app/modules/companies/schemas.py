@@ -13,13 +13,25 @@
 #   UpdateOwnCompanyRequest   -- PATCH /companies/me (partial, project
 #                                 self-service; TASK-30 ruling 10/12 --
 #                                 "the project describes, the admin owns
-#                                 and prices". Deliberately NOT the same
-#                                 type as UpdateCompanyRequest: only the
-#                                 project-editable field subset exists on
-#                                 this model at all, so name / price /
-#                                 supply / distribution_config are
-#                                 structurally unrepresentable, not just
-#                                 ignored.)
+#                                 and prices". TASK-39 item 6 SUPERSEDES
+#                                 that ruling IN PART (owner decision,
+#                                 2026-08): every company on the platform
+#                                 today is the owner's own project, so
+#                                 name / price_per_unit_cents /
+#                                 total_supply / shares_per_option are now
+#                                 ALSO project-editable here. This is
+#                                 TIME-BOXED, not a repeal -- it holds
+#                                 only while every company is the owner's
+#                                 own, and admin-side price/volume
+#                                 validation must land before the first
+#                                 non-owner company is onboarded (see
+#                                 aivis_companies_owner_only_for_now.md).
+#                                 distribution_config and the OptionPool
+#                                 stay admin-only and structurally
+#                                 unrepresentable here -- the publication
+#                                 asymmetry (project may go ACTIVE->HIDDEN
+#                                 only) is unchanged too. See the class
+#                                 docstring below for the full ruling.)
 #   UpdatePriceRequest        -- PATCH /staff/companies/{id}/price
 #   CreateRoadmapItemRequest  -- POST /staff/companies/{id}/roadmap
 #   UpdateRoadmapItemRequest  -- PATCH /staff/companies/{id}/roadmap/{item_id}
@@ -197,34 +209,73 @@ class UpdateCompanyRequest(BaseModel):
 class UpdateOwnCompanyRequest(BaseModel):
     """Partial self-update of the caller's OWN company profile.
 
-    Backs PATCH /api/v1/companies/me. TASK-30 ruling 10: "the project
-    describes; the admin owns and prices" -- this schema carries ONLY
-    the project-editable field set from TASK-30-SPEC.md §4. It is a
-    deliberately separate type from UpdateCompanyRequest (the staff-side
-    partial update), not a reuse or a subclass: name, price_per_unit_cents,
-    total_supply, shares_per_option and distribution_config do not exist
-    as fields on this model at all. Combined with extra="forbid", a
-    request body carrying any of them is rejected at the schema boundary
-    (422) before any service code runs -- structurally impossible to
-    submit, not merely ignored if present.
+    Backs PATCH /api/v1/companies/me. Originally TASK-30 ruling 10: "the
+    project describes; the admin owns and prices" -- this schema carried
+    ONLY presentation fields, with name / price_per_unit_cents /
+    total_supply / shares_per_option / distribution_config structurally
+    absent.
 
-    `status` is present but heavily restricted at the service layer
-    (update_own_company): the only legal transition through this
-    endpoint is ACTIVE -> HIDDEN (ruling 12 -- the project may withdraw
-    itself; only a staff admin may publish HIDDEN -> ACTIVE or set
-    ARCHIVED). The type here stays `str | None` (matching
-    UpdateCompanyRequest's own `status: str | None` -- no enum-level
-    validation) because the real gate is the one-directional business
-    rule, not the set of legal CompanyStatus values.
+    TASK-39 item 6 SUPERSEDES that ruling IN PART (explicit owner
+    decision, 2026-08, recorded in the TASK-39 home docs): name,
+    price_per_unit_cents, total_supply and shares_per_option are now ALSO
+    on this schema, because every company on the platform today is the
+    owner's own project rather than a third party. This is a TIME-BOXED
+    exception, not a repeal of ruling 10 -- it holds only while that
+    remains true, and admin-side price/volume validation must land
+    before the first non-owner company is onboarded (see
+    aivis_companies_owner_only_for_now.md). distribution_config and the
+    OptionPool are DELIBERATELY STILL ABSENT from this model -- those
+    stay admin-only, unaffected by this supersession, and remain
+    structurally unrepresentable here (not merely ignored if present,
+    same as before): a request body carrying either 422s at the schema
+    boundary (extra="forbid") before any service code runs.
+
+    A price_per_unit_cents change is NOT a plain field write at the
+    service layer: update_own_company() routes it through the exact same
+    cascade_price() machinery as the staff price endpoint (product price
+    propagation + installment-template soft-delete + price history +
+    audit) -- see service.py's `_apply_price_change` helper, shared with
+    update_price(). total_supply / shares_per_option are plain field
+    writes ONLY BECAUSE THE SERVICE REFUSES THEM WHILE AN ACTIVE POOL
+    EXISTS: OptionPool.equity_percent is a stored column derived from
+    total_supply and recomputed nowhere but pool create/update, so
+    writing total_supply under a live pool would force an undecided
+    dilution question rather than merely leave a number stale. That is
+    the same reason the Sprint 4.3 note above keeps these two fields out
+    of the STAFF schema -- the supersession widened WHO may edit the
+    commercial terms, it did not decide dilution. See
+    service.py::update_own_company's volume guard. Validation
+    bounds here match the staff-side create/update schemas for the same
+    fields (CreateCompanyRequest / UpdatePriceRequest): name is
+    min_length=1/max_length=500, price_per_unit_cents and total_supply
+    and shares_per_option are all gt=0.
+
+    `status` is unaffected by this supersession and stays present but
+    heavily restricted at the service layer (update_own_company): the
+    only legal transition through this endpoint is ACTIVE -> HIDDEN
+    (ruling 12 -- the project may withdraw itself; only a staff admin
+    may publish HIDDEN -> ACTIVE or set ARCHIVED). The type here stays
+    `str | None` (matching UpdateCompanyRequest's own `status: str |
+    None` -- no enum-level validation) because the real gate is the
+    one-directional business rule, not the set of legal CompanyStatus
+    values.
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
     logo_url: str | None = Field(default=None, max_length=2000)
     cover_url: str | None = Field(default=None, max_length=2000)
     promo_video_url: str | None = Field(default=None, max_length=2000)
     presentation_url: str | None = Field(default=None, max_length=2000)
+    # TASK-39 item 6 (time-boxed supersession of TASK-30 ruling 10 --
+    # see class docstring). price_per_unit_cents changes are routed
+    # through cascade_price() by update_own_company(), never written
+    # directly.
+    price_per_unit_cents: int | None = Field(default=None, gt=0)
+    total_supply: int | None = Field(default=None, gt=0)
+    shares_per_option: int | None = Field(default=None, gt=0)
     status: str | None = None
 
 

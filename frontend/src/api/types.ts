@@ -364,12 +364,15 @@ export type { PublicCompanyListResponse } from './generated'
 
 export type { CompanyResponse } from './generated'
 
-// TASK-30 ruling 10/12: PATCH /api/v1/companies/me project self-service
+// TASK-30 ruling 10/12 + TASK-39 item 6 (time-boxed supersession, owner
+// decision 2026-08): PATCH /api/v1/companies/me project self-service
 // body. Separate type from UpdateCompanyRequest (the staff-side PATCH
-// body, exported below in the staff-companies block) -- carries only
-// the project-editable field subset, with `status` restricted
-// server-side (update_own_company) to the single ACTIVE -> HIDDEN
-// transition. See generated.ts docstring for the full rationale.
+// body, exported below in the staff-companies block) -- carries the
+// project-editable field subset, now including name / price_per_unit_cents
+// / total_supply / shares_per_option alongside the original presentation
+// fields (distribution_config stays admin-only, unaffected). `status` is
+// restricted server-side (update_own_company) to the single ACTIVE ->
+// HIDDEN transition. See generated.ts docstring for the full rationale.
 export type { UpdateOwnCompanyRequest } from './generated'
 
 export type { CompanyDashboardResponse } from './generated'

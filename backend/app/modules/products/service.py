@@ -512,7 +512,9 @@ async def cascade_price(
 ) -> int:
     """Update price on all active/hidden products and soft-delete their installments.
 
-    Called by companies/service.py update_price().
+    Called by companies/service.py via _apply_price_change(), which
+    both the STAFF price endpoint (update_price) and the project's own
+    self-service edit (update_own_company, TASK-39 item 6) go through.
 
     Returns number of products updated.
     """

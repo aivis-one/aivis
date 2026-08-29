@@ -12,11 +12,24 @@
 #                             terms required, no pool created here
 #   update_company()       -- partial update profile/media/distribution_config
 #                             (NO supply fields here -- see Sprint 4.3 note)
-#   update_own_company()   -- TASK-30 ruling 10/12: project self-service
-#                             partial update, project-editable fields only
-#                             (description/logo_url/cover_url/promo_video_url/
-#                             presentation_url + status ACTIVE->HIDDEN only)
+#   update_own_company()   -- TASK-30 ruling 10/12 + TASK-39 item 6
+#                             TIME-BOXED SUPERSESSION: project self-service
+#                             partial update. Project-editable fields are
+#                             description/logo_url/cover_url/promo_video_url/
+#                             presentation_url/name/price_per_unit_cents/
+#                             total_supply/shares_per_option + status
+#                             ACTIVE->HIDDEN only. A price change routes
+#                             through the SAME cascade_price() machinery as
+#                             update_price() below (see _apply_price_change).
+#                             distribution_config and the OptionPool remain
+#                             admin-only. The name/price/supply widening
+#                             holds only while every company is the owner's
+#                             own (see aivis_companies_owner_only_for_now.md);
+#                             admin-side price/volume validation must land
+#                             before the first non-owner company onboards.
 #   update_price()         -- change price + cascade to Products + history
+#                             (staff path; shares _apply_price_change with
+#                             update_own_company's self-service price path)
 #   get_company()          -- load CompanyProfile by id
 #   list_companies()       -- paginated list (public: active only; staff: all;
 #                             optional case-insensitive name search)
@@ -124,7 +137,11 @@
 # PRICE CASCADE:
 #   When price changes, all active/hidden Products of this company
 #   are updated and their installment templates soft-deleted.
-#   Implemented via products/service.py cascade_price().
+#   Implemented via products/service.py cascade_price(), invoked
+#   through the shared _apply_price_change() helper below -- used by
+#   BOTH update_price() (staff) and update_own_company() (project
+#   self-service, TASK-39 item 6). Never write price_per_unit_cents
+#   directly; always go through _apply_price_change().
 #
 # STORAGE FAILURE MODEL (Refactor 2 iter 2.2):
 #   create_attachment / replace_attachment_file upload to MinIO BEFORE
@@ -500,19 +517,97 @@ async def update_company(
     return profile
 
 
+async def _apply_price_change(
+    profile: CompanyProfile,
+    new_price: int,
+    changed_by: UUID,
+    session: AsyncSession,
+) -> tuple[int, int]:
+    """Shared price-change mechanics: profile column + cascade + history.
+
+    Factored out of update_price() (staff) so update_own_company()
+    (project self-service, TASK-39 item 6) can reuse the EXACT SAME
+    machinery instead of a second implementation. A company price
+    change is never a plain field write on either path: it must always
+    go through cascade_price() (app/modules/products/service.py), which
+    updates price_per_unit_cents on every active/hidden Product of this
+    company AND soft-deletes those products' installment templates, and
+    it must always append a CompanyPriceHistory row. See the module
+    PRICE CASCADE note above.
+
+    Does NOT flush, refresh, or write the audit event -- the two
+    callers flush at different points (update_price flushes
+    immediately; update_own_company batches this together with any
+    other fields in the same PATCH) and audit under different
+    event/actor_type shapes (see the two call sites).
+
+    Args:
+        changed_by: user id recorded on the CompanyPriceHistory row --
+            the staff member for update_price(), the project's own
+            user_id for update_own_company().
+
+    Raises:
+        BadRequestError: new_price equals the current price.
+
+    Returns:
+        (old_price, products_updated).
+    """
+    old_price = profile.price_per_unit_cents
+    if old_price == new_price:
+        raise BadRequestError("New price is the same as current price")
+
+    # Update company price.
+    profile.price_per_unit_cents = new_price
+
+    # Cascade to Products: update price + soft-delete installment templates.
+    from app.modules.products.service import cascade_price
+    products_updated = await cascade_price(profile.id, new_price, session)
+
+    # Record price history.
+    history = CompanyPriceHistory(
+        company_id=profile.id,
+        price_per_unit_cents=new_price,
+        changed_by=changed_by,
+    )
+    session.add(history)
+
+    return old_price, products_updated
+
+
 async def update_own_company(
     company_id: UUID,
     body: UpdateOwnCompanyRequest,
     session: AsyncSession,
 ) -> CompanyProfile:
-    """Partial self-update of a project's OWN profile (TASK-30 ruling 10/12).
+    """Partial self-update of a project's OWN profile.
 
-    Backs PATCH /api/v1/companies/me. Mirrors update_company()'s
-    partial-update-only-provided-fields shape, but scoped to the
-    project-editable field set: UpdateOwnCompanyRequest cannot carry
-    name / price_per_unit_cents / total_supply / shares_per_option /
-    distribution_config at all (schema-level exclusion + extra="forbid"),
-    so there is nothing admin-only left to strip here.
+    Backs PATCH /api/v1/companies/me. Originally TASK-30 ruling 10/12
+    (project-editable fields only: description/logo_url/cover_url/
+    promo_video_url/presentation_url + status ACTIVE->HIDDEN only).
+
+    TASK-39 item 6 SUPERSEDES that ruling IN PART, by explicit owner
+    decision (2026-08): name, price_per_unit_cents, total_supply, and
+    shares_per_option are now ALSO project-editable through this
+    endpoint, because every company on the platform today is the
+    owner's own project rather than a third party. This is TIME-BOXED,
+    not a repeal -- it holds only while that remains true, and
+    admin-side price/volume validation must land before the first
+    non-owner company is onboarded (see
+    aivis_companies_owner_only_for_now.md). distribution_config and the
+    OptionPool are UNCHANGED by this supersession: UpdateOwnCompanyRequest
+    still cannot carry either at all (schema-level exclusion +
+    extra="forbid"), so there is nothing admin-only left to strip for
+    those two.
+
+    A price_per_unit_cents change is NEVER a plain field write, on this
+    path any more than on the staff path: it is popped out of `updates`
+    and routed through _apply_price_change() -- the SAME cascade_price()
+    call, the SAME CompanyPriceHistory row shape, that update_price()
+    uses -- before the remaining scalar fields are touched. It also gets
+    its OWN audit event (company.price_updated, reusing the staff
+    event's exact data shape with actor_type="user") rather than being
+    folded into the company.self_updated "fields" list below: see the
+    audit section for why.
 
     `company_id` is re-resolved via get_company() against THIS call's
     own `session` rather than accepting a CompanyProfile instance handed
@@ -536,20 +631,53 @@ async def update_own_company(
     itself; only the admin may publish or archive"), so the check here
     does not defer to that table at all -- every other request,
     including a same-state ACTIVE->ACTIVE or HIDDEN->HIDDEN no-op, is
-    refused rather than silently accepted or ignored.
+    refused rather than silently accepted or ignored. This asymmetry is
+    NOT touched by TASK-39 item 6.
 
     Raises:
         NotFoundError: company not found (defence in depth -- company_id
             comes from the caller's own authenticated profile, so this
             should not be reachable in practice).
         BadRequestError: a status value other than the single legal
-            ACTIVE -> HIDDEN transition was requested.
+            ACTIVE -> HIDDEN transition was requested, or (via
+            _apply_price_change) new price equals current price.
     """
     profile = await get_company(company_id, session)
 
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         return profile
+
+    # -- Price change: popped BEFORE changed_fields/changes are built so
+    # it never enters company.self_updated's "fields" list below. It
+    # gets its own dedicated company.price_updated audit event instead
+    # (see the audit section) -- the same event name and data shape the
+    # staff price endpoint already writes, which the company-facing
+    # audit feed already denylists at the VALUE level (old_price /
+    # new_price / products_updated -- see
+    # audit/schemas.py::_VALUE_ONLY_KEYS). Reusing that exact shape
+    # means no new denylist entry is needed and no price VALUE can leak
+    # through either audit surface.
+    # AN UNCHANGED PRICE IS NOT AN ERROR ON THIS ENDPOINT, and that is a
+    # real difference from the staff one rather than an inconsistency.
+    # update_price() is a DEDICATED "set the price" call, so submitting
+    # the price it already has is a mistake worth reporting. This
+    # endpoint is a PARTIAL PATCH that bundles whatever the settings
+    # form holds, so an untouched price field arrives on every save. If
+    # it were routed into _apply_price_change() it would raise "New
+    # price is the same as current price" and 400 the WHOLE request --
+    # rolling back an entirely valid description or name change the user
+    # did make, for a field they did not touch. So an equal price is
+    # dropped here, before the shared helper ever sees it: nothing
+    # cascades, no history row, no audit event, exactly as if it had not
+    # been sent.
+    price_change: tuple[int, int] | None = None
+    if "price_per_unit_cents" in updates:
+        new_price = updates.pop("price_per_unit_cents")
+        if new_price != profile.price_per_unit_cents:
+            price_change = await _apply_price_change(
+                profile, new_price, profile.user_id, session
+            )
 
     changed_fields = list(updates.keys())
     changes: dict[str, dict[str, object]] = {}
@@ -573,7 +701,66 @@ async def update_own_company(
         changes["status"] = {"old": profile.status, "new": requested_status}
         profile.status = requested_status
 
-    # -- Scalar presentation fields --
+    # -- VOLUME FIELDS ARE REFUSED WHILE AN ACTIVE POOL EXISTS, and this
+    # guard is the difference between widening a permission and silently
+    # answering a question nobody has decided.
+    #
+    # OptionPool.equity_percent is a STORED Numeric(7,4) column whose
+    # invariant is equity_percent = total_options / company.total_supply
+    # * 100 (pools/models.py). It is computed at pool creation and
+    # recomputed by update_pool(), and by NOTHING ELSE. Writing
+    # total_supply as a plain field therefore does not merely leave a
+    # number stale -- it forces a dilution decision that has no answer in
+    # this codebase: keep total_options and every investor's PERCENTAGE
+    # silently drops, or keep equity_percent and the pool must be
+    # resized, possibly below units already consumed. That is the
+    # допэмиссия question, and it is the owner's, not this endpoint's.
+    #
+    # This is also why UpdateCompanyRequest excludes the same two fields
+    # for STAFF (schemas.py, Sprint 4.3 note): "a change in total_supply
+    # is a pool-level operation". The TASK-39 item 6 supersession widened
+    # WHO may edit the company's own commercial terms; it did not decide
+    # dilution, so routing a company around a constraint staff themselves
+    # observe would be inventing a ruling rather than applying one.
+    #
+    # With NO active pool there is no equity_percent in existence to
+    # desync, and "assigned, no pool" is an explicitly legal, modelled
+    # state (TASK-30 ruling 9, the "fresh start-state") -- so the edit is
+    # allowed there, which is where a project setting up its own terms
+    # actually needs it.
+    # shares_per_option is guarded alongside total_supply for a RELATED
+    # but distinct reason, and the distinction matters to whoever reads
+    # this next: it is not a term in equity_percent's formula at all --
+    # it is the options-to-shares denomination ratio, and changing it is
+    # a SPLIT (UpdateCompanyRequest's own docstring calls it "future
+    # scope"). It is blocked here not by copy-paste but because a split
+    # under a live pool is a strictly larger operation than a supply
+    # change, with even less machinery behind it.
+    volume_fields = [f for f in ("total_supply", "shares_per_option") if f in updates]
+    if volume_fields:
+        # Imported locally, matching this module's other pools.service use
+        # further down -- a module-level import here is circular.
+        from app.modules.pools.service import get_active_pool
+
+        try:
+            await get_active_pool(profile.id, session)
+        except BadRequestError:
+            pass  # no active pool -> nothing to desync, edit allowed
+        else:
+            raise BadRequestError(
+                f"{', '.join(volume_fields)} cannot be changed while an "
+                f"active option pool exists: the pool's equity_percent is "
+                f"derived from total_supply, and changing it is a "
+                f"pool-level operation (staff PATCH on the pool) so that "
+                f"the dilution is decided explicitly rather than applied "
+                f"silently. Editing these is available before a pool is "
+                f"created."
+            )
+
+    # -- Scalar fields: presentation fields + (TASK-39 item 6) name, and
+    # total_supply / shares_per_option once the guard above has cleared
+    # them. name and shares_per_option have no cascade; price never
+    # reaches here (handled by _apply_price_change above).
     for field, value in updates.items():
         changes[field] = {"old": getattr(profile, field), "new": value}
         setattr(profile, field, value)
@@ -585,23 +772,52 @@ async def update_own_company(
     # "user" | "staff" | "system" (app/core/audit.py); a company
     # account is a User row with role=COMPANY, not a fourth kind of
     # actor, and this now matches the convention every later
-    # self-service write on this task follows (posts, roadmap).
+    # self-service write on this task follows (posts, roadmap,
+    # attachments -- all reuse the STAFF event name with actor_type
+    # flipped to "user" rather than inventing a parallel event).
     # actor_id is the project's own user_id (the authenticated
     # identity that made this call).
-    await record_audit(
-        session=session,
-        event="company.self_updated",
-        actor_id=profile.user_id,
-        actor_type="user",
-        target_type="company",
-        target_id=profile.id,
-        data={"fields": changed_fields, "changes": changes},
-    )
+    #
+    # Up to TWO audit rows may be written for one PATCH: company.
+    # self_updated for the non-price fields provided (skipped entirely
+    # when price was the only field in the request), and
+    # company.price_updated for the price change (skipped when no price
+    # was provided). Keeping them separate -- rather than merging price
+    # into the "fields" list -- preserves the existing, already-reviewed
+    # guarantee that a price change is only ever visible via the event
+    # NAME, never a field label or a value (see the pop comment above).
+    if changed_fields:
+        await record_audit(
+            session=session,
+            event="company.self_updated",
+            actor_id=profile.user_id,
+            actor_type="user",
+            target_type="company",
+            target_id=profile.id,
+            data={"fields": changed_fields, "changes": changes},
+        )
+
+    if price_change is not None:
+        old_price, products_updated = price_change
+        await record_audit(
+            session=session,
+            event="company.price_updated",
+            actor_id=profile.user_id,
+            actor_type="user",
+            target_type="company",
+            target_id=profile.id,
+            data={
+                "old_price": old_price,
+                "new_price": profile.price_per_unit_cents,
+                "products_updated": products_updated,
+            },
+        )
 
     logger.info(
         "company_self_updated",
         company_id=str(company_id),
         fields=changed_fields,
+        price_changed=price_change is not None,
     )
 
     return profile
@@ -613,11 +829,17 @@ async def update_price(
     staff: User,
     session: AsyncSession,
 ) -> CompanyProfile:
-    """Update company share price with cascade and history.
+    """Update company share price with cascade and history (staff path).
 
     1. Update CompanyProfile.price_per_unit_cents
     2. Cascade to active/hidden Products
     3. Insert CompanyPriceHistory record
+
+    Steps 1-3 are shared with update_own_company()'s project self-service
+    price change (TASK-39 item 6) via _apply_price_change() -- see that
+    helper's docstring. This function's own job is just: resolve the
+    profile, delegate the cascade, then flush/audit/log under the
+    staff-specific actor_type.
 
     Raises:
         NotFoundError: If company not found.
@@ -625,24 +847,9 @@ async def update_price(
     """
     profile = await get_company(company_id, session)
 
-    old_price = profile.price_per_unit_cents
-    if old_price == new_price:
-        raise BadRequestError("New price is the same as current price")
-
-    # Update company price.
-    profile.price_per_unit_cents = new_price
-
-    # Cascade to Products: update price + soft-delete installment templates.
-    from app.modules.products.service import cascade_price
-    products_updated = await cascade_price(profile.id, new_price, session)
-
-    # Record price history.
-    history = CompanyPriceHistory(
-        company_id=profile.id,
-        price_per_unit_cents=new_price,
-        changed_by=staff.id,
+    old_price, products_updated = await _apply_price_change(
+        profile, new_price, staff.id, session
     )
-    session.add(history)
 
     await session.flush()
     await session.refresh(profile)

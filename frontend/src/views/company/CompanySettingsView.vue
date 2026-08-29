@@ -10,13 +10,38 @@
 // only inline content with an <h1> + <p> page header, mirroring
 // InvestorSettingsView and the F5.1 dashboard.
 //
-// READ-ONLY POLICY (MVP, revised TASK-30 ruling 10/12, W1 pass).
-//   Pricing & supply (price_per_unit_cents / total_supply /
-//   shares_per_option) and the distribution_config JSON stay
+// PRICING & SUPPLY EDIT POLICY (originally MVP READ-ONLY under TASK-30
+// ruling 10/12; TASK-39 item 6 supersedes that IN PART).
+//   Originally: Pricing & supply (price_per_unit_cents / total_supply /
+//   shares_per_option) and the distribution_config JSON stayed
 //   staff/admin-only by deliberate ruling ("the project describes,
-//   the admin owns and prices") -- this view still renders them as
-//   plain read-only rows/JSON, backed by a short hint pointing at
-//   support, never an edit control.
+//   the admin owns and prices") -- rendered as plain read-only
+//   rows/JSON, backed by a short hint pointing at support.
+//
+//   TASK-39 item 6 (explicit owner decision, 2026-08): name,
+//   price_per_unit_cents, total_supply, and shares_per_option are now
+//   SELF-SERVICE EDITABLE, because every company on the platform today
+//   is the owner's own project rather than a third party. This is
+//   TIME-BOXED, not a repeal of ruling 10 -- it holds only while that
+//   remains true, and admin-side price/volume validation must land
+//   before the first non-owner company is onboarded (see
+//   aivis_companies_owner_only_for_now.md). distribution_config stays
+//   read-only/admin-only, unaffected by this change -- still rendered
+//   as plain JSON with the support hint below it.
+//
+//   A price_per_unit_cents change is DESTRUCTIVE server-side: it
+//   cascades the new price to every active/hidden product and
+//   soft-deletes those products' installment plan templates
+//   (products/service.py::cascade_price(), reused as-is by the backend
+//   -- see companies/service.py::_apply_price_change). The edit flow
+//   below therefore shows a SEPARATE confirmation step naming that
+//   consequence before submitting a price change (see "Pricing &
+//   supply: self-service edit" below) -- the same withdraw/deactivate
+//   confirm-modal pattern already used elsewhere on this view, not a
+//   generic "Are you sure?". total_supply / shares_per_option changes
+//   are plain field writes with no cascade (nothing else in this
+//   codebase can change them post-creation either), so they submit
+//   directly like the Profile fields do.
 //
 //   TASK-30 ruling 12 carves out one narrow self-service write on
 //   STATUS: while ACTIVE, the project may withdraw itself
@@ -44,15 +69,17 @@
 //   2. Profile -- description, status (label + badge, or a "withdraw"
 //      CTA when ACTIVE -- see the Status self-service block below),
 //      plus an edit pencil that opens the profile/media form modal.
-//   3. Pricing & supply -- price_per_unit, total_supply,
-//      shares_per_option. Read-only, staff/admin-only.
+//   3. Pricing & supply -- name, price_per_unit, total_supply,
+//      shares_per_option. Self-service editable (TASK-39 item 6, see
+//      the PRICING & SUPPLY EDIT POLICY note above), via an edit
+//      pencil next to the section title -- price changes route through
+//      a dedicated consequence-confirmation modal first.
 //   4. Distribution config -- raw JSON view (<pre>) of the JSONB
 //      object. The platform's revenue-split contract changes over
 //      time without a frontend release; rendering as JSON keeps the
 //      view honest and forward-compatible. Empty `{}` shows the
 //      "empty" placeholder line. Read-only, staff/admin-only, followed
-//      by a short hint that pricing/supply/distribution stay
-//      staff-managed.
+//      by a short hint that distribution config stays staff-managed.
 //   5. Media -- logo / cover / promo video / presentation as
 //      "Open" links. Skipped entirely if every URL is null -- these
 //      URLs are edited from the same modal as the Profile section
@@ -347,6 +374,169 @@ async function handleSaveProfile(): Promise<void> {
   } finally {
     savingProfile.value = false
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pricing & supply: self-service edit (TASK-39 item 6)
+// ---------------------------------------------------------------------------
+//
+// Time-boxed supersession of TASK-30 ruling 10 (see the PRICING & SUPPLY
+// EDIT POLICY note at the top of this file): name, price_per_unit_cents,
+// total_supply, and shares_per_option are now project-editable.
+// distribution_config is NOT part of this form -- it stays read-only/
+// admin-only, unaffected.
+//
+// A price change is destructive server-side (cascade_price(): propagates
+// the new price to every active/hidden product and soft-deletes those
+// products' installment plan templates -- companies/service.py::
+// _apply_price_change reuses the exact same helper the staff price
+// endpoint uses). So the submit flow branches:
+//   - price UNCHANGED: PATCH fires immediately from the edit modal, same
+//     as the Profile edit flow above.
+//   - price CHANGED: the edit modal closes and a SEPARATE confirmation
+//     modal opens, naming that exact consequence (installment plan
+//     templates deleted) in place of a generic "Are you sure?" --
+//     mirrors the Withdraw confirm modal's two-step pattern above. The
+//     PATCH (covering the price change AND any other edited field in
+//     the same request) only fires after that second confirmation.
+
+const showEditPricing = ref(false)
+const savingPricing = ref(false)
+const showPriceChangeConfirm = ref(false)
+
+const draftName = ref('')
+const draftPriceDollars = ref('') // dollars, as typed -- converted to cents on submit
+const draftTotalSupply = ref('')
+const draftSharesPerOption = ref('')
+
+// Holds the diffed body while the price-change confirmation modal is
+// open, so "Confirm" can submit exactly what "Save" computed without
+// re-diffing against a profile that may have been re-rendered.
+const pendingPricingUpdate = ref<UpdateOwnCompanyRequest | null>(null)
+
+function openEditPricing(): void {
+  const p = profile.value
+  if (!p) return
+  draftName.value = p.name
+  draftPriceDollars.value = (p.price_per_unit_cents / 100).toFixed(2)
+  draftTotalSupply.value = String(p.total_supply)
+  draftSharesPerOption.value = String(p.shares_per_option)
+  showEditPricing.value = true
+}
+
+function closeEditPricing(): void {
+  showEditPricing.value = false
+}
+
+const trimmedName = computed<string>(() => draftName.value.trim())
+const nameValid = computed<boolean>(() => trimmedName.value.length > 0)
+
+// Parse the dollar draft into integer cents, same rule as
+// StaffCompanyPriceSection: null (invalid) when not a positive number.
+const draftPriceCents = computed<number | null>(() => {
+  const v = draftPriceDollars.value.trim()
+  if (!v) return null
+  const dollars = Number(v)
+  if (Number.isNaN(dollars) || dollars <= 0) return null
+  return Math.round(dollars * 100)
+})
+const priceValid = computed<boolean>(() => draftPriceCents.value !== null)
+
+const draftTotalSupplyInt = computed<number | null>(() => {
+  const v = draftTotalSupply.value.trim()
+  if (!v) return null
+  const n = Number(v)
+  if (!Number.isInteger(n) || n <= 0) return null
+  return n
+})
+const totalSupplyValid = computed<boolean>(() => draftTotalSupplyInt.value !== null)
+
+const draftSharesPerOptionInt = computed<number | null>(() => {
+  const v = draftSharesPerOption.value.trim()
+  if (!v) return null
+  const n = Number(v)
+  if (!Number.isInteger(n) || n <= 0) return null
+  return n
+})
+const sharesPerOptionValid = computed<boolean>(() => draftSharesPerOptionInt.value !== null)
+
+const canSubmitPricing = computed<boolean>(
+  () => nameValid.value && priceValid.value && totalSupplyValid.value && sharesPerOptionValid.value,
+)
+
+// Diff against the loaded profile -- send only fields that changed,
+// same exclude_unset contract as buildProfileUpdateBody above.
+function buildPricingUpdateBody(): UpdateOwnCompanyRequest {
+  const body: UpdateOwnCompanyRequest = {}
+  const p = profile.value
+  if (!p || draftPriceCents.value === null || draftTotalSupplyInt.value === null) return body
+  if (draftSharesPerOptionInt.value === null) return body
+
+  if (trimmedName.value !== p.name) {
+    body.name = trimmedName.value
+  }
+  if (draftPriceCents.value !== p.price_per_unit_cents) {
+    body.price_per_unit_cents = draftPriceCents.value
+  }
+  if (draftTotalSupplyInt.value !== p.total_supply) {
+    body.total_supply = draftTotalSupplyInt.value
+  }
+  if (draftSharesPerOptionInt.value !== p.shares_per_option) {
+    body.shares_per_option = draftSharesPerOptionInt.value
+  }
+
+  return body
+}
+
+async function handleSavePricing(): Promise<void> {
+  if (!canSubmitPricing.value) return
+
+  const body = buildPricingUpdateBody()
+  if (Object.keys(body).length === 0) {
+    showEditPricing.value = false
+    return
+  }
+
+  // Price is changing -- hand off to the dedicated consequence
+  // confirmation instead of PATCHing directly.
+  if (body.price_per_unit_cents !== undefined) {
+    pendingPricingUpdate.value = body
+    showEditPricing.value = false
+    showPriceChangeConfirm.value = true
+    return
+  }
+
+  await submitPricingUpdate(body)
+}
+
+async function submitPricingUpdate(body: UpdateOwnCompanyRequest): Promise<void> {
+  savingPricing.value = true
+  try {
+    const updated = await updateOwnCompany(body)
+    profileStore.applyProfile(updated)
+    showEditPricing.value = false
+    showPriceChangeConfirm.value = false
+    pendingPricingUpdate.value = null
+    showToast(t('comp.settings.pricing.editSuccess'), 'success')
+  } catch (err) {
+    const message =
+      err instanceof ApiResponseError && err.detail
+        ? err.detail
+        : t('comp.settings.pricing.editError')
+    showToast(message, 'error')
+  } finally {
+    savingPricing.value = false
+  }
+}
+
+async function handleConfirmPriceChange(): Promise<void> {
+  if (!pendingPricingUpdate.value) return
+  await submitPricingUpdate(pendingPricingUpdate.value)
+}
+
+function cancelPriceChangeConfirm(): void {
+  showPriceChangeConfirm.value = false
+  pendingPricingUpdate.value = null
 }
 
 // ---------------------------------------------------------------------------
@@ -651,10 +841,26 @@ onMounted(() => {
         </RouterLink>
       </section>
 
-      <!-- Pricing & supply -->
+      <!-- Pricing & supply (TASK-39 item 6: self-service editable) -->
       <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.pricing.title') }}
+        <div class="cset__section-title cset__section-title--row">
+          <span>{{ t('comp.settings.pricing.title') }}</span>
+          <button
+            type="button"
+            class="cset__edit-btn"
+            :aria-label="t('common.edit')"
+            @click="openEditPricing"
+          >
+            <Pencil :size="14" />
+          </button>
+        </div>
+        <div class="cset__row">
+          <span class="cset__row-label">
+            {{ t('comp.settings.pricing.name') }}
+          </span>
+          <span class="cset__row-value">
+            {{ profile.name }}
+          </span>
         </div>
         <div class="cset__row">
           <span class="cset__row-label">
@@ -697,9 +903,11 @@ onMounted(() => {
         <pre v-else class="cset__json">{{ distributionJson }}</pre>
       </section>
 
-      <!-- Pricing/supply/distribution stay staff/admin-only (TASK-30
-           ruling) -- this replaces the old page-wide "contact support
-           to edit" hint now that description/media are self-service. -->
+      <!-- Distribution config stays staff/admin-only (TASK-30 ruling,
+           unaffected by TASK-39 item 6's pricing/supply supersession
+           above) -- this replaces the old page-wide "contact support
+           to edit" hint now that description/media/pricing/supply are
+           all self-service. -->
       <p class="cset__hint">
         {{ t('comp.settings.adminManagedHint') }}
       </p>
@@ -829,6 +1037,90 @@ onMounted(() => {
             @click="handleSaveProfile"
           >
             {{ t('common.save') }}
+          </CButton>
+        </div>
+      </CModal>
+
+      <!-- Pricing & supply edit modal (TASK-39 item 6): name, price,
+           total supply, shares per option. distribution_config is NOT
+           here -- stays admin-only, unaffected. A price change does
+           NOT submit from here -- Save hands off to the price-change
+           confirmation modal below when the price was edited. -->
+      <CModal :open="showEditPricing" @close="closeEditPricing">
+        <h3 class="cset__modal-title">
+          {{ t('comp.settings.pricing.editTitle') }}
+        </h3>
+
+        <CInput
+          v-model="draftName"
+          :label="t('comp.settings.pricing.name')"
+          maxlength="500"
+          :error="!nameValid ? t('comp.settings.pricing.nameRequired') : ''"
+        />
+
+        <CInput
+          v-model="draftPriceDollars"
+          type="number"
+          :label="t('comp.settings.pricing.fieldPricePerUnit')"
+          :placeholder="t('staff.platform.price.fieldPricePlaceholder')"
+          :error="!priceValid ? t('comp.settings.pricing.priceInvalid') : ''"
+        />
+
+        <CInput
+          v-model="draftTotalSupply"
+          type="number"
+          :label="t('comp.settings.pricing.totalSupply')"
+          :error="!totalSupplyValid ? t('comp.settings.pricing.totalSupplyInvalid') : ''"
+        />
+
+        <CInput
+          v-model="draftSharesPerOption"
+          type="number"
+          :label="t('comp.settings.pricing.sharesPerOption')"
+          :error="!sharesPerOptionValid ? t('comp.settings.pricing.sharesPerOptionInvalid') : ''"
+        />
+
+        <div class="cset__modal-actions">
+          <CButton variant="outline" size="sm" @click="closeEditPricing">
+            {{ t('common.cancel') }}
+          </CButton>
+          <CButton
+            variant="primary"
+            size="sm"
+            :loading="savingPricing"
+            :disabled="!canSubmitPricing"
+            @click="handleSavePricing"
+          >
+            {{ t('common.save') }}
+          </CButton>
+        </div>
+      </CModal>
+
+      <!-- Price-change consequence confirmation (TASK-39 item 6). Only
+           shown when the pricing form's Save included a price change --
+           names the EXACT server-side consequence (cascade_price():
+           price propagated to every active/hidden product, their
+           installment plan templates deleted) rather than a generic
+           "Are you sure?". Mirrors the Withdraw confirm modal's
+           two-step pattern above. -->
+      <CModal :open="showPriceChangeConfirm" @close="cancelPriceChangeConfirm">
+        <h3 class="cset__modal-title">
+          {{ t('comp.settings.pricing.priceChangeConfirmTitle') }}
+        </h3>
+        <p class="cset__modal-hint">
+          {{ t('comp.settings.pricing.priceChangeConfirmBody') }}
+        </p>
+        <div class="cset__modal-actions">
+          <CButton variant="outline" size="sm" @click="cancelPriceChangeConfirm">
+            {{ t('common.cancel') }}
+          </CButton>
+          <CButton
+            variant="primary"
+            size="sm"
+            :loading="savingPricing"
+            @click="handleConfirmPriceChange"
+          >
+            {{ t('comp.settings.pricing.priceChangeConfirmSubmit') }}
           </CButton>
         </div>
       </CModal>

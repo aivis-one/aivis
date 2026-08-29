@@ -96,13 +96,26 @@ export function getMyCompany(): Promise<CompanyResponse> {
 
 /**
  * PATCH /api/v1/companies/me -- project self-service partial update
- * (TASK-30 ruling 10/12). Backed by update_own_company() server-side.
+ * (originally TASK-30 ruling 10/12; TASK-39 item 6 supersedes that IN
+ * PART -- see below). Backed by update_own_company() server-side.
  *
- * Body carries ONLY the project-editable field subset (description,
- * logo_url, cover_url, promo_video_url, presentation_url, status) --
- * name / price_per_unit_cents / total_supply / shares_per_option /
- * distribution_config are not on UpdateOwnCompanyRequest at all
- * (schema-level `extra="forbid"` server-side, 422 if sent).
+ * Body carries the project-editable field set: description, logo_url,
+ * cover_url, promo_video_url, presentation_url, status, and -- as of
+ * TASK-39 item 6, explicit owner decision (2026-08) -- ALSO name,
+ * price_per_unit_cents, total_supply, and shares_per_option. This
+ * widening is TIME-BOXED: it holds only while every company on the
+ * platform is the owner's own project rather than a third party, and
+ * admin-side price/volume validation must land before the first
+ * non-owner company is onboarded. distribution_config is UNCHANGED --
+ * still not on UpdateOwnCompanyRequest at all (schema-level
+ * `extra="forbid"` server-side, 422 if sent).
+ *
+ * A price_per_unit_cents change is destructive server-side: it cascades
+ * the new price to every active/hidden product and soft-deletes those
+ * products' installment plan templates (same cascade_price() machinery
+ * the staff price endpoint uses). CompanySettingsView shows a dedicated
+ * confirmation naming that consequence before calling this with a price
+ * change -- see its "Pricing & supply: self-service edit" block.
  *
  * `status` is the ONE field with an asymmetric rule: the only legal
  * transition through this endpoint is ACTIVE -> HIDDEN (a project may

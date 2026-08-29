@@ -5,12 +5,17 @@
 #
 # ENDPOINTS:
 #   GET   /api/v1/companies/me  -- authenticated company's full profile
-#   PATCH /api/v1/companies/me  -- TASK-30 ruling 10/12: project
-#                                   self-service partial update, restricted
-#                                   to the project-editable field set
-#                                   (description/logo_url/cover_url/
-#                                   promo_video_url/presentation_url +
-#                                   status ACTIVE->HIDDEN only). No
+#   PATCH /api/v1/companies/me  -- TASK-30 ruling 10/12, TIME-BOXED
+#                                   EXCEPTION added by TASK-39 item 6:
+#                                   project self-service partial update,
+#                                   restricted to the project-editable
+#                                   field set (description/logo_url/
+#                                   cover_url/promo_video_url/
+#                                   presentation_url/name/
+#                                   price_per_unit_cents/total_supply/
+#                                   shares_per_option + status
+#                                   ACTIVE->HIDDEN only). distribution_config
+#                                   and the OptionPool stay admin-only. No
 #                                   company_id path parameter exists on
 #                                   this route -- the row is entirely
 #                                   determined by get_current_company_profile's
@@ -98,13 +103,29 @@ async def update_my_company_endpoint(
     """Partial self-update of the authenticated company's own profile.
 
     TASK-30 ownership line (§4): "the project describes; the admin owns
-    and prices." UpdateOwnCompanyRequest carries only description,
-    logo_url, cover_url, promo_video_url, presentation_url, and status --
-    name / price_per_unit_cents / total_supply / shares_per_option /
-    distribution_config are not representable in the request body at all
-    (extra="forbid"), so a request carrying any of them 422s at the
-    schema boundary before this function body ever runs; there is
-    nothing to strip.
+    and prices." TASK-39 item 6 SUPERSEDES that line IN PART, by
+    explicit owner ruling (2026-08): because every company on the
+    platform today is the owner's own project rather than a third party,
+    UpdateOwnCompanyRequest now ALSO carries name, price_per_unit_cents,
+    total_supply, and shares_per_option, alongside the original
+    description/logo_url/cover_url/promo_video_url/presentation_url/
+    status set. This is TIME-BOXED, not a repeal -- it holds only while
+    every company remains the owner's own, and admin-side price/volume
+    validation must land before the first non-owner company is
+    onboarded (see aivis_companies_owner_only_for_now.md). A price
+    change here is NOT a plain field write: update_own_company() routes
+    it through cascade_price() via the same `_apply_price_change` helper
+    the staff price endpoint uses, so it cascades to products,
+    soft-deletes installment templates, and records price history +
+    audit exactly like the staff path (see companies/service.py).
+
+    distribution_config and the OptionPool are UNCHANGED by this
+    supersession -- they and any other field not listed above are not
+    representable in the request body at all (extra="forbid"), so a
+    request carrying any of them 422s at the schema boundary before this
+    function body ever runs; there is nothing to strip. The publication
+    asymmetry (a project may go ACTIVE->HIDDEN; only staff may publish
+    or archive) is also unchanged -- see the status paragraph below.
 
     Requires role=company, same as GET /me. No company_id path parameter:
     the row updated is entirely determined by get_current_company_profile's

@@ -1490,9 +1490,21 @@
       },
       "pricing": {
         "title": "Pricing & supply",
+        "name": "Company name",
         "pricePerUnit": "Price per unit",
         "totalSupply": "Total supply",
-        "sharesPerOption": "Shares per option"
+        "sharesPerOption": "Shares per option",
+        "editTitle": "Edit pricing & supply",
+        "editSuccess": "Pricing & supply updated",
+        "editError": "Could not update pricing & supply",
+        "fieldPricePerUnit": "Price per unit (USD)",
+        "nameRequired": "Company name is required",
+        "priceInvalid": "Enter a price greater than 0",
+        "totalSupplyInvalid": "Enter a whole number greater than 0",
+        "sharesPerOptionInvalid": "Enter a whole number greater than 0",
+        "priceChangeConfirmTitle": "Confirm price change",
+        "priceChangeConfirmBody": "This updates the price on every one of your products, including hidden ones, and deletes their installment plan templates. This cannot be undone.",
+        "priceChangeConfirmSubmit": "Change price"
       },
       "distribution": {
         "title": "Distribution config",
@@ -1534,7 +1546,7 @@
         "title": "Activity",
         "cta": "View activity history"
       },
-      "adminManagedHint": "Pricing, supply, and distribution are managed by AIVIS staff. Contact support to request a change.",
+      "adminManagedHint": "Distribution config is managed by AIVIS staff. Contact support to request a change.",
       "actions": {
         "title": "Account",
         "logout": "Sign out",
