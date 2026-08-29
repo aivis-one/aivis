@@ -39,6 +39,7 @@ import {
   Bell,
   ChevronRight,
   CreditCard,
+  HelpCircle,
   MessageCircle,
   Settings as SettingsIcon,
   Trophy,
@@ -112,6 +113,16 @@ const TILES: readonly Tile[] = [
     descKey: 'agent.more.support.desc',
     route: '/agent/support',
     icon: MessageCircle,
+  },
+  // TASK-39 item 3: FAQ framework -- one-line addition, same pattern
+  // as InvestorMoreView's mirror. Investor + agent share this FAQ
+  // (owner ruling); see InvestorFaqView.vue for the full ruling.
+  {
+    id: 'faq',
+    labelKey: 'agent.more.faq.title',
+    descKey: 'agent.more.faq.desc',
+    route: '/agent/faq',
+    icon: HelpCircle,
   },
 ] as const
 

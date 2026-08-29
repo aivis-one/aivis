@@ -88,6 +88,7 @@ import {
   ChevronRight,
   ExternalLink,
   FileText,
+  HelpCircle,
   History,
   Image as ImageIcon,
   LogOut,
@@ -607,6 +608,25 @@ onMounted(() => {
           <span class="cset__row-label">
             <MessageCircle :size="16" />
             {{ t('comp.settings.support.cta') }}
+          </span>
+          <ChevronRight :size="16" />
+        </RouterLink>
+      </section>
+
+      <!-- FAQ (TASK-39 item 3) -- same "no dead 6th tab-bar slot"
+           reasoning as Notifications/Roadmap/Posts/Attachments/Support
+           above: CompanyShell has no More tab, so the entry point is a
+           row here instead. This is the company's OWN, SEPARATE FAQ
+           (owner ruling) -- not the shared investor/agent one -- see
+           CompanyFaqView.vue for the full ruling. -->
+      <section class="cset__section">
+        <div class="cset__section-title">
+          {{ t('comp.settings.faq.title') }}
+        </div>
+        <RouterLink to="/company/faq" class="cset__row cset__row--clickable">
+          <span class="cset__row-label">
+            <HelpCircle :size="16" />
+            {{ t('comp.settings.faq.cta') }}
           </span>
           <ChevronRight :size="16" />
         </RouterLink>

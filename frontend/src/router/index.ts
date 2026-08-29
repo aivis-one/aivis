@@ -326,6 +326,15 @@ export const router = createRouter({
           component: () => import('@/views/investor/InvestorSupportView.vue'),
         },
         {
+          // TASK-39 item 3: FAQ framework. Investor + agent SHARE one
+          // FAQ (owner ruling) -- same InvestorFaqView, mirrored below
+          // under the agent shell as agent-faq. Reached from the FAQ
+          // tile in InvestorMoreView.
+          path: 'faq',
+          name: 'investor-faq',
+          component: () => import('@/views/investor/InvestorFaqView.vue'),
+        },
+        {
           // Phase 6: the bell -- reached from CHeader's notifications
           // icon (every shell) and from the Notifications tile in
           // InvestorMoreView. Same shell/guard as its neighbours above.
@@ -475,6 +484,15 @@ export const router = createRouter({
           component: () => import('@/views/investor/InvestorSupportView.vue'),
         },
         {
+          // TASK-39 item 3: mirror of investor-faq -- same
+          // InvestorFaqView, agent layout. Investor + agent SHARE one
+          // FAQ (owner ruling); reached from the FAQ tile in
+          // AgentMoreView.
+          path: 'faq',
+          name: 'agent-faq',
+          component: () => import('@/views/investor/InvestorFaqView.vue'),
+        },
+        {
           // Phase 6: the bell mirror -- same NotificationsInboxView,
           // agent layout. Parallel to /investor/notifications.
           path: 'notifications',
@@ -572,6 +590,19 @@ export const router = createRouter({
           path: 'support',
           name: 'company-support',
           component: () => import('@/views/investor/InvestorSupportView.vue'),
+        },
+        {
+          // TASK-39 item 3: FAQ framework. Company gets its OWN,
+          // SEPARATE FAQ from investor/agent (owner ruling) -- its
+          // own CompanyFaqView + its own file set under
+          // /faq/{lang}/company.html. CompanyShell has no More tab
+          // (COMPANY_TABS has 5 fixed slots), so this is reached from
+          // a row inside CompanySettingsView, same placement
+          // reasoning as the roadmap/posts/attachments/support rows
+          // above.
+          path: 'faq',
+          name: 'company-faq',
+          component: () => import('@/views/company/CompanyFaqView.vue'),
         },
         {
           // TASK-39 item 7: company self-service read of its own

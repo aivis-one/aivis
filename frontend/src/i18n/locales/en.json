@@ -1163,6 +1163,11 @@
         "close": "Close"
       }
     },
+    "faq": {
+      "title": "FAQ",
+      "errorTitle": "Could not load the FAQ",
+      "errorRetry": "Retry"
+    },
     "settings": {
       "title": "Settings",
       "unnamed": "No name",
@@ -1361,6 +1366,10 @@
         "title": "Installment plans",
         "desc": "Track payments, due dates, and overdue tranches"
       },
+      "faq": {
+        "title": "FAQ",
+        "desc": "Answers to common questions"
+      },
       "agent": {
         "title": "Representative programme",
         "desc": {
@@ -1516,6 +1525,10 @@
       "support": {
         "title": "Support",
         "cta": "Contact support"
+      },
+      "faq": {
+        "title": "FAQ",
+        "cta": "View FAQ"
       },
       "audit": {
         "title": "Activity",
@@ -1836,6 +1849,11 @@
         "order": "Display order"
       }
     },
+    "faq": {
+      "title": "FAQ",
+      "errorTitle": "Could not load the FAQ",
+      "errorRetry": "Retry"
+    },
     "analytics": {
       "title": "Analytics",
       "subtitle": "Sales performance",
@@ -2103,6 +2121,10 @@
       "support": {
         "title": "Support",
         "desc": "Message us if you have a question"
+      },
+      "faq": {
+        "title": "FAQ",
+        "desc": "Answers to common questions"
       }
     },
     "settings": {
