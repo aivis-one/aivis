@@ -19,9 +19,34 @@
 #
 # COMMIT RULE (P-01):
 #   Service never commits. Caller manages the transaction.
+#
+# EXPORT (TASK-39 item 2):
+#   export_transactions_csv() reuses list_transactions() with the SAME
+#   filters the screen uses, so a downloaded statement matches whatever
+#   the user was looking at. It does NOT reuse pagination -- an export
+#   has no page control, so it fetches up to EXPORT_MAX_ROWS rows in one
+#   shot (list_transactions's COUNT query is unaffected by LIMIT, so the
+#   row-cap check below sees the true total even when it exceeds the
+#   fetched page).
+#
+#   COLUMNS ARE DELIBERATELY NARROW: Date, Type, Amount, Currency,
+#   Reference Type, Reference ID. amount_cents is CENTS -- emitted as a
+#   decimal amount (2 dp) via Decimal quantize, never raw cents.
+#   `details` (free-form JSONB with internal fields) and `user_id` are
+#   NEVER emitted -- same leak class as the company audit feed fix.
+#
+#   CSV FORMULA INJECTION: every emitted cell goes through
+#   _sanitize_csv_cell() BEFORE csv.writer sees it. csv.writer's own
+#   quoting stops delimiter/quote breakage, not formula interpretation
+#   -- a cell starting with =, +, -, @, tab or CR still opens as a live
+#   formula in Excel/Sheets/LibreOffice regardless of how csv.writer
+#   quoted it. See _sanitize_csv_cell's docstring for the mitigation.
 # =============================================================================
 
+import csv
+import io
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -29,10 +54,91 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import BadRequestError, NotFoundError
+from app.modules.transactions.constants import EXPORT_MAX_ROWS
 from app.modules.transactions.models import Transaction
 
 logger = structlog.get_logger()
+
+# Leading characters that Excel / Google Sheets / LibreOffice interpret
+# as the start of a formula when a CSV cell opens with them. Tab and CR
+# are included per the OWASP CSV-injection guidance (a leading tab/CR
+# can also trigger formula evaluation in some spreadsheet parsers).
+_FORMULA_LEAD_CHARS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_csv_cell(value: str) -> str:
+    """Neutralise CSV formula injection for one cell.
+
+    A cell whose value starts with =, +, -, @, tab or CR is read as a
+    FORMULA by Excel/Sheets/LibreOffice when the file is opened, not as
+    literal text -- csv.writer's quoting (which guards against
+    delimiter/quote breakage) does nothing to stop this. Prefixing a
+    leading apostrophe is the standard mitigation: every mainstream
+    spreadsheet app renders an apostrophe-led cell as literal text
+    instead of evaluating it.
+
+    Applied uniformly to EVERY emitted cell (not just the columns that
+    look "risky") -- this project's transaction `type` and
+    `reference_type` columns are String(50)/String(30) with no DB-level
+    enum constraint, so defense-in-depth is cheap and the alternative
+    (guessing which columns can never contain a hostile value) is not.
+    A side effect: a legitimate negative amount ("-25.50") also gets the
+    apostrophe prefix and opens as text rather than a number in the
+    target spreadsheet -- an accepted trade-off for closing the
+    injection vector on every column uniformly.
+    """
+    if value and value[0] in _FORMULA_LEAD_CHARS:
+        return "'" + value
+    return value
+
+
+def _transaction_csv_row(txn: Transaction) -> list[str]:
+    """Map one Transaction to its sanitized CSV row.
+
+    Column order: Date, Type, Amount, Currency, Reference Type,
+    Reference ID. `details` and `user_id` are never included -- see
+    module header.
+    """
+    amount = (Decimal(txn.amount_cents) / Decimal(100)).quantize(Decimal("0.01"))
+
+    # THE AMOUNT COLUMN IS DELIBERATELY NOT SANITISED, and this is the
+    # difference between a statement you can use and one you cannot.
+    # Negative amounts are pervasive here -- installment tranches,
+    # reversals, purchases and commission debits all record a negative
+    # amount_cents -- so most real exports carry many rows starting with
+    # "-". Running those through _sanitize_csv_cell() prefixes an
+    # apostrophe, which every spreadsheet reads as "force this cell to
+    # TEXT": the column stops being numeric and the user can no longer
+    # SUM or chart their own statement, which is the main reason to
+    # export one at all.
+    # It is safe to exempt because this cell is not data we received --
+    # we BUILD it, one line above, as str() of a quantised Decimal. The
+    # only characters it can contain are digits, "-" and ".", so it
+    # cannot express a formula. "-" leads the OWASP list because a
+    # FREE-TEXT field may start "-1+cmd|...", not because a real
+    # negative number is dangerous.
+    # Every other column stays sanitised: they are DB-sourced strings.
+    date_cell, currency_cell = txn.created_at.isoformat(), txn.currency
+    ref_id_cell = str(txn.reference_id) if txn.reference_id else ""
+    return [
+        _sanitize_csv_cell(date_cell),
+        _sanitize_csv_cell(txn.type),
+        str(amount),
+        _sanitize_csv_cell(currency_cell),
+        _sanitize_csv_cell(txn.reference_type or ""),
+        _sanitize_csv_cell(ref_id_cell),
+    ]
+
+
+CSV_EXPORT_HEADER: list[str] = [
+    "Date",
+    "Type",
+    "Amount",
+    "Currency",
+    "Reference Type",
+    "Reference ID",
+]
 
 
 async def record_transaction(
@@ -184,3 +290,76 @@ async def get_transaction(
         raise NotFoundError("Transaction not found")
 
     return txn
+
+
+async def export_transactions_csv(
+    user_id: UUID,
+    session: AsyncSession,
+    *,
+    type_filter: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    amount_min: int | None = None,
+    amount_max: int | None = None,
+) -> str:
+    """Build a CSV statement of the user's own transaction history.
+
+    Reuses list_transactions() with the SAME filters the caller passed
+    (mirrors the screen), fetching up to EXPORT_MAX_ROWS rows in a
+    single unpaginated call -- an export has no page control. Ownership
+    is enforced the same way as every other call into
+    list_transactions(): user_id scopes the query, there is no
+    parameter by which a caller can request another user's rows.
+
+    Row cap: list_transactions()'s COUNT query is independent of its
+    LIMIT, so `total` here is the TRUE number of matching rows even
+    when it exceeds EXPORT_MAX_ROWS. If it does, this raises
+    BadRequestError (400) naming the actual count instead of silently
+    truncating the file -- the caller must narrow date_from/date_to or
+    the type filter and retry. The query itself is still bounded (LIMIT
+    EXPORT_MAX_ROWS) regardless of outcome, so this never holds an
+    unbounded result set in memory.
+
+    Returns:
+        CSV text (header row + one row per transaction, newest first --
+        same ordering as list_transactions()). Every cell has been
+        through _sanitize_csv_cell() to neutralise formula injection.
+
+    Raises:
+        BadRequestError: More than EXPORT_MAX_ROWS rows match the filters.
+    """
+    items, total = await list_transactions(
+        user_id,
+        session,
+        page=1,
+        per_page=EXPORT_MAX_ROWS,
+        type_filter=type_filter,
+        date_from=date_from,
+        date_to=date_to,
+        amount_min=amount_min,
+        amount_max=amount_max,
+    )
+
+    if total > EXPORT_MAX_ROWS:
+        raise BadRequestError(
+            message=(
+                f"{total} transactions match these filters, which exceeds "
+                f"the {EXPORT_MAX_ROWS}-row export limit. Narrow the date "
+                "range or type filter and try again."
+            ),
+            code="export_row_limit_exceeded",
+        )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(CSV_EXPORT_HEADER)
+    for txn in items:
+        writer.writerow(_transaction_csv_row(txn))
+
+    logger.info(
+        "transactions_exported",
+        user_id=str(user_id),
+        row_count=len(items),
+    )
+
+    return buffer.getvalue()

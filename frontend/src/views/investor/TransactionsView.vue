@@ -51,14 +51,18 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   CreditCard,
+  Download,
   RefreshCw,
   Repeat,
   ShoppingBag,
 } from 'lucide-vue-next'
 
+import { ApiResponseError } from '@/api/client'
+import { downloadTransactionsExport } from '@/api/transactions'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import TransactionDetailSheet from '@/components/shared/TransactionDetailSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
+import { useToast } from '@/composables/useToast'
 import { useTransactionsStore } from '@/stores/transactions'
 import { formatSignedPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
@@ -66,6 +70,7 @@ import type { TransactionResponse } from '@/api/types'
 
 const { t } = useI18n()
 const store = useTransactionsStore()
+const { showToast } = useToast()
 // storeToRefs keeps hasMore reactive when destructured -- matches
 // MarketView / productsStore pattern. Passing store.hasMore directly
 // would unwrap to a plain boolean; wrapping in computed(() => ...)
@@ -148,6 +153,47 @@ function selectTab(tab: Tab): void {
   void store.setTypeFilter(tab.filter)
 }
 
+// TASK-39 item 2: statement export. Passes whatever filter the screen
+// currently has applied -- today that is only store.typeFilter (the
+// active category tab); date/amount ranges are not wired into this
+// view yet (see file header CATEGORY TABS note) so they are not
+// threaded through here either. Every failure path shows a toast --
+// no silent no-op button.
+const exporting = ref(false)
+
+async function handleExport(): Promise<void> {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    await downloadTransactionsExport({ type: store.typeFilter ?? undefined })
+    showToast(t('inv.transactions.export.success'), 'success')
+  } catch (e) {
+    if (e instanceof ApiResponseError && e.status === 429) {
+      // Rate-limited (backend/app/modules/transactions/router.py --
+      // shared default cap, keyed per user). retryAfter is populated
+      // from the backend's Retry-After header when parseable.
+      const seconds = e.retryAfter
+      if (typeof seconds === 'number' && seconds > 0) {
+        showToast(t('inv.transactions.export.errorRateLimit', { seconds }), 'warning')
+      } else {
+        showToast(t('inv.transactions.export.errorRateLimitGeneric'), 'warning')
+      }
+    } else if (e instanceof ApiResponseError && e.detail) {
+      // Covers the row-cap boundary (400 -- backend's message already
+      // names the matched count and the cap, see
+      // export_transactions_csv()'s docstring) and any other backend-
+      // surfaced detail. Same pattern as CompanyAttachmentsView's
+      // save/replace error handling.
+      showToast(e.detail, 'error')
+    } else {
+      // ApiNetworkError / ApiTimeoutError / anything else unexpected.
+      showToast(t('inv.transactions.export.errorGeneric'), 'error')
+    }
+  } finally {
+    exporting.value = false
+  }
+}
+
 // Wire up infinite scroll to the store's loadMore. loadMoreErrored
 // is the `paused` brake -- see store header for the retry-storm
 // rationale. On user Retry below we clear the brake AND call
@@ -174,12 +220,26 @@ onMounted(() => {
   <div class="tv">
     <!-- Page header -->
     <div class="tv__header">
-      <h1 class="tv__title">
-        {{ t('inv.transactions.title') }}
-      </h1>
-      <p class="tv__subtitle">
-        {{ t('inv.transactions.subtitle') }}
-      </p>
+      <div class="tv__header-row">
+        <div class="tv__header-text">
+          <h1 class="tv__title">
+            {{ t('inv.transactions.title') }}
+          </h1>
+          <p class="tv__subtitle">
+            {{ t('inv.transactions.subtitle') }}
+          </p>
+        </div>
+        <CButton
+          variant="outline"
+          size="sm"
+          inline
+          :loading="exporting"
+          @click="handleExport"
+        >
+          <Download :size="14" />
+          {{ t('inv.transactions.export.button') }}
+        </CButton>
+      </div>
     </div>
 
     <!-- Category tabs -->
@@ -283,6 +343,15 @@ onMounted(() => {
 /* Page header */
 .tv__header {
   padding: var(--space-4) var(--space-4) var(--space-2);
+}
+.tv__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.tv__header-text {
+  min-width: 0;
 }
 .tv__title {
   font-size: var(--fs-lg);

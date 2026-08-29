@@ -24,9 +24,25 @@
 #
 # REFERENCE TYPES:
 #   payment, purchase, withdrawal, installment_plan
+#
+# EXPORT (TASK-39 item 2):
+#   EXPORT_MAX_ROWS -- hard cap on rows a single CSV export may contain.
+#   list_transactions() is paginated for the screen (<=100/page); an
+#   export has no page control on the client, so an unfiltered history
+#   for a very active account could otherwise mean an unbounded query
+#   and an unbounded in-memory CSV. The service layer counts matching
+#   rows FIRST (list_transactions's separate COUNT query, unaffected by
+#   LIMIT) and refuses the export with a 400 if the count exceeds this
+#   cap, naming the actual count so the user knows to narrow date_from/
+#   date_to or the type filter and retry -- never a silent truncation.
+#   5000 rows is generous for a personal statement (years of activity
+#   for an active investor) while keeping one export's CSV comfortably
+#   in the low hundreds of KB.
 # =============================================================================
 
 import enum
+
+EXPORT_MAX_ROWS = 5000
 
 
 class TransactionType(enum.StrEnum):

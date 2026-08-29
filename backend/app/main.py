@@ -453,6 +453,24 @@ app.add_middleware(
     allow_credentials=not _allow_all,
     allow_methods=["*"],
     allow_headers=["Authorization", "Content-Type", "X-Trace-ID"],
+    # Content-Disposition (TASK-39 item 2): NOT one of the CORS
+    # "safelisted" response headers browsers expose to JS by default
+    # (that list is Cache-Control/Content-Language/Content-Length/
+    # Content-Type/Expires/Last-Modified/Pragma only). Without this,
+    # frontend/src/api/transactions.ts's cross-origin fetch() to
+    # GET /transactions/export could never read the server-set
+    # filename -- response.headers.get('Content-Disposition') would
+    # silently return null for every caller, not just a broken one.
+    # Retry-After is likewise NOT safelisted, and the frontend has been
+    # parsing it app-wide since iter 2.6 (client.ts parseRetryAfterHeader)
+    # to say "try again in N seconds" on any 429. Cross-origin in
+    # production (the app is served from app.aivis.one, the API from
+    # api.aivis.one), that read has always returned null, so EVERY
+    # rate-limit message in the product silently degraded to the generic
+    # wording -- not just this export's. The error handler sets the
+    # header on every RateLimitError (see aivis_error_handler below);
+    # this is what lets the browser actually hand it to JS.
+    expose_headers=["Content-Disposition", "Retry-After"],
 )
 
 app.add_middleware(TraceIdMiddleware)

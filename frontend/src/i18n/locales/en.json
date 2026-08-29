@@ -899,6 +899,13 @@
       "empty": "No transactions yet",
       "errorTitle": "Could not load transactions",
       "errorDesc": "Please try again in a moment",
+      "export": {
+        "button": "Export CSV",
+        "success": "Statement downloaded",
+        "errorGeneric": "Could not export transactions",
+        "errorRateLimit": "Too many export requests. Try again in {seconds}s.",
+        "errorRateLimitGeneric": "Too many export requests. Please wait a moment and try again."
+      },
       "tabs": {
         "all": "All",
         "deposits": "Deposits",
