@@ -54,7 +54,8 @@
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { History } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { ArrowLeft, History } from 'lucide-vue-next'
 import { CEmptyState, CLoader, CButton } from '@/components/ui'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { fetchOwnAuditFeed } from '@/api/company-audit'
@@ -65,6 +66,17 @@ import type { CompanySelfAuditEntryResponse } from '@/api/types'
 const PER_PAGE = 20
 
 const { t, locale } = useI18n()
+const router = useRouter()
+
+// Back to Settings -- this screen has no tab-bar slot of its own
+// (CompanyShell's tab bar is five fixed tabs), so Settings, where its
+// entry row lives, is the only place "back" can honestly mean. Same
+// shape as CompanyPostsView / CompanyRoadmapView / CompanyFaqView; this
+// view shipped without one, leaving a company user who opened the audit
+// feed with no in-app way back.
+function goBack(): void {
+  void router.push('/company/settings')
+}
 
 const items = ref<CompanySelfAuditEntryResponse[]>([])
 const total = ref(0)
@@ -178,6 +190,10 @@ onMounted(() => {
 <template>
   <div class="caf">
     <div class="caf__header">
+      <button type="button" class="caf__back" @click="goBack">
+        <ArrowLeft :size="16" />
+        {{ t('comp.settings.title') }}
+      </button>
       <h1 class="caf__title">
         {{ t('comp.auditFeed.list.title') }}
       </h1>
@@ -250,6 +266,23 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.caf__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-bottom: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.caf__back:hover {
+  color: var(--text-primary);
 }
 
 .caf__header {
