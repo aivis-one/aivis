@@ -97,7 +97,7 @@
       "subtitle": "How do you plan to use the platform?",
       "investor": "Investor",
       "investorDesc": "Buy products, manage your portfolio and track investments",
-      "agent": "Agent",
+      "agent": "Representative",
       "agentDesc": "All investor features plus referral program and commissions",
       "company": "Company",
       "companyDesc": "List products, manage sales and earn revenue",
@@ -247,7 +247,7 @@
       "payoutDetails": "Payout details"
     },
     "awaitingConfirm": "Awaiting Confirmation",
-    "agentApps": "Agent Applications",
+    "agentApps": "Representative Applications",
     "quickActions": "Quick Actions",
     "processKyc": "Process KYC",
     "checkPayments": "Check Payments",
@@ -278,8 +278,8 @@
       "logout": "Sign out"
     },
     "agentApps2": {
-      "title": "Agent Applications",
-      "hint": "An investor can apply for agent status. Cooldown: 30 days after rejection. Review investment history.",
+      "title": "Representative Applications",
+      "hint": "An investor can apply for Representative status. Cooldown: 30 days after rejection. Review investment history.",
       "approved": "Application approved",
       "rejected": "Application rejected",
       "approve": "Approve",
@@ -417,9 +417,9 @@
           "fieldTotalSupply": "Total supply",
           "fieldSharesPerOption": "Shares per option",
           "fieldCompanyPct": "Company share (%)",
-          "fieldAgentLevels": "Agent commission levels (%, comma-separated)",
+          "fieldAgentLevels": "Representative commission levels (%, comma-separated)",
           "agentLevelsError": "Enter numbers between 0 and 100, separated by commas",
-          "distributionSumError": "Company share plus agent levels cannot exceed 100%",
+          "distributionSumError": "Company share plus Representative levels cannot exceed 100%",
           "alreadyCompanyError": "This user is already a company",
           "success": "Company assigned"
         }
@@ -1622,7 +1622,7 @@
             "deposits": "Deposits",
             "payments": "Payment issues",
             "commissions": "Commissions",
-            "agent_applications": "Agent applications",
+            "agent_applications": "Representative applications",
             "withdrawals": "Withdrawals",
             "purchases": "Purchases",
             "installments": "Installment payments",
@@ -1936,7 +1936,7 @@
   },
   "agent": {
     "dashboard": {
-      "title": "Agent Dashboard",
+      "title": "Representative Dashboard",
       "subtitle": "Your performance at a glance",
       "widgets": {
         "monthCommission": "Commission this month",
@@ -1959,7 +1959,7 @@
       }
     },
     "hub": {
-      "title": "Agent Hub",
+      "title": "Representative Hub",
       "subtitle": "Your referral links and earnings",
       "stats": {
         "title": "Overview",
@@ -1995,21 +1995,21 @@
     },
     "referrals": {
       "title": "My network",
-      "subtitle": "Investors and sub-agents in your downline",
+      "subtitle": "Investors and sub-representatives in your downline",
       "backLink": "Back",
       "errorTitle": "Couldn't load your network",
       "joined": "Joined",
       "level": "L{n}",
       "empty": {
         "title": "No downline yet",
-        "desc": "Investors and sub-agents you refer will appear here as your network grows."
+        "desc": "Investors and sub-representatives you refer will appear here as your network grows."
       },
       "investors": {
         "title": "Investors",
         "volume": "Purchase volume"
       },
       "subAgents": {
-        "title": "Sub-agents",
+        "title": "Sub-representatives",
         "recruited": "Recruited investors",
         "directVolume": "Direct investor volume",
         "ownVolume": "Own purchases"
@@ -2045,7 +2045,7 @@
     },
     "leaderboard": {
       "title": "Leaderboard",
-      "subtitle": "Top agents by referral volume",
+      "subtitle": "Top representatives by referral volume",
       "backLink": "Back",
       "errorTitle": "Couldn't load the leaderboard",
       "period": "Since {date}",
@@ -2100,11 +2100,11 @@
       "subtitle": "Your network, ranking and settings",
       "network": {
         "title": "My network",
-        "desc": "Investors and sub-agents in your downline"
+        "desc": "Investors and sub-representatives in your downline"
       },
       "leaderboard": {
         "title": "Leaderboard",
-        "desc": "See how you rank against other agents"
+        "desc": "See how you rank against other representatives"
       },
       "settings": {
         "title": "Settings",
@@ -2131,9 +2131,9 @@
       "title": "Settings",
       "subtitle": "Your profile and payout details",
       "backLink": "Back",
-      "unnamed": "Agent",
+      "unnamed": "Representative",
       "role": {
-        "agent": "Agent"
+        "agent": "Representative"
       },
       "profile": {
         "title": "Profile",
@@ -2257,7 +2257,7 @@
             "deposits": "Deposits",
             "payments": "Payment issues",
             "commissions": "Commissions",
-            "agent_applications": "Agent applications",
+            "agent_applications": "Representative applications",
             "withdrawals": "Withdrawals",
             "purchases": "Purchases",
             "installments": "Installment payments",
