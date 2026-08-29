@@ -306,6 +306,23 @@ export interface CompanyResponse {
   updated_at: string | null
 }
 
+/** One row of the CALLER'S OWN company write history. DELIBERATELY NARROWER than CompanyAuditEntryResponse (the staff schema above) -- built via from_entry(), never via model_validate()/from_attributes, so there is no way for a future edit to accidentally widen this by re-enabling attribute-based validation against AuditLog: - NO actor_id / performed_by / on_behalf_of. A company may learn THAT staff changed something (actor_type="staff") but never WHICH staff member -- those three fields are internal user ids, exactly the identity leak CompanyAuditEntryResponse's own docstring documents as the reason they exist for STAFF's benefit specifically. - NO raw `data`. changed_fields (below) is the sole derived view of it -- see _derive_changed_fields() for why no value from `data` can ever reach the wire through this schema. actor_type: the coarse "user" | "staff" | "system" string already on AuditLog -- not identity, just which side of the platform wrote the row. changed_fields: field NAMES only (never values) -- see _derive_changed_fields(). */
+export interface CompanySelfAuditEntryResponse {
+  id: string
+  event: string
+  created_at: string
+  actor_type: string
+  changed_fields: string[]
+}
+
+/** Paginated feed of the caller's own company writes (TASK-39 item 7). */
+export interface CompanySelfAuditFeedResponse {
+  items: CompanySelfAuditEntryResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
 /** Per-company aggregate for the dashboard widget. */
 export interface CompanySummaryResponse {
   company_id: string

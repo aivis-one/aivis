@@ -1499,6 +1499,10 @@
         "title": "Support",
         "cta": "Contact support"
       },
+      "audit": {
+        "title": "Activity",
+        "cta": "View activity history"
+      },
       "adminManagedHint": "Pricing, supply, and distribution are managed by AIVIS staff. Contact support to request a change.",
       "actions": {
         "title": "Account",
@@ -1734,6 +1738,85 @@
       "deleted": "Attachment deleted",
       "deleteTitle": "Delete attachment",
       "deleteConfirm": "This attachment will be hidden from all flows. The file stays in storage."
+    },
+    "auditFeed": {
+      "list": {
+        "title": "Activity",
+        "subtitle": "A history of writes made to your project",
+        "errorTitle": "Could not load your activity history",
+        "loadMoreError": "Could not load more, try again",
+        "empty": {
+          "title": "No activity yet",
+          "description": "Changes made to your project will appear here."
+        },
+        "item": {
+          "changedPrefix": "Changed:"
+        }
+      },
+      "actor": {
+        "user": "You",
+        "staff": "AIVIS staff",
+        "system": "System"
+      },
+      "event": {
+        "company": {
+          "created": "Project created",
+          "assigned": "Project assigned",
+          "updated": "Profile updated",
+          "self_updated": "Profile updated",
+          "price_updated": "Pricing updated",
+          "roadmap_reordered": "Roadmap reordered",
+          "roadmap_item_created": "Roadmap item added",
+          "roadmap_item_updated": "Roadmap item updated",
+          "roadmap_item_deleted": "Roadmap item removed",
+          "roadmap_cover_uploaded": "Roadmap cover image uploaded",
+          "roadmap_cover_deleted": "Roadmap cover image removed",
+          "attachments_reordered": "Documents reordered",
+          "attachment_created": "Document added",
+          "attachment_updated": "Document updated",
+          "attachment_replaced": "Document replaced",
+          "attachment_soft_deleted": "Document removed",
+          "post_created": "Update published",
+          "post_updated": "Update edited",
+          "post_deleted": "Update removed"
+        }
+      },
+      "field": {
+        "name": "Name",
+        "user_id": "Owner account",
+        "total_supply": "Total supply",
+        "shares_per_option": "Shares per option",
+        "description": "Description",
+        "logo_url": "Logo",
+        "cover_url": "Cover image",
+        "promo_video_url": "Promo video",
+        "presentation_url": "Presentation",
+        "distribution_config": "Distribution config",
+        "status": "Status",
+        "title": "Title",
+        "kind": "Type",
+        "target_date": "Target date",
+        "valid_until": "Valid until",
+        "external_url": "External link",
+        "post_id": "Linked post",
+        "linked_product_id": "Linked product",
+        "item_id": "Roadmap item",
+        "item_ids": "Order",
+        "storage_key": "File",
+        "old_storage_key": "Previous file",
+        "new_storage_key": "File",
+        "content_type": "File type",
+        "file_size_bytes": "File size",
+        "attachment_id": "Document",
+        "category": "Category",
+        "language": "Language",
+        "mime_type": "File type",
+        "is_published": "Visibility",
+        "is_public": "Public visibility",
+            "body": "Text",
+            "tags": "Tags",
+        "order": "Display order"
+      }
     },
     "analytics": {
       "title": "Analytics",

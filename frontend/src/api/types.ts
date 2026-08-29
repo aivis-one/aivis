@@ -764,6 +764,16 @@ export type { CompanyAuditEntryResponse } from './generated'
 
 export type { CompanyAuditFeedResponse } from './generated'
 
+// Company self-service audit feed (TASK-39 item 7, GET
+// /api/v1/company/audit). DELIBERATELY NARROWER than
+// CompanyAuditEntryResponse above -- no actor_id / performed_by /
+// on_behalf_of, no raw `data`, only changed_fields (field NAMES, never
+// values). See backend/app/modules/audit/schemas.py for the full
+// reasoning.
+export type { CompanySelfAuditEntryResponse } from './generated'
+
+export type { CompanySelfAuditFeedResponse } from './generated'
+
 // CompanyDetailResponse (staff): CompanyResponse + inline roadmap.
 // Backed by GET /staff/companies/{id} (iter 2.7 Block C enabler
 // mini-iter). Consumed by StaffCompanyDetailView (header name) and

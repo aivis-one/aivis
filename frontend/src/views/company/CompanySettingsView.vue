@@ -88,6 +88,7 @@ import {
   ChevronRight,
   ExternalLink,
   FileText,
+  History,
   Image as ImageIcon,
   LogOut,
   Layers,
@@ -606,6 +607,25 @@ onMounted(() => {
           <span class="cset__row-label">
             <MessageCircle :size="16" />
             {{ t('comp.settings.support.cta') }}
+          </span>
+          <ChevronRight :size="16" />
+        </RouterLink>
+      </section>
+
+      <!-- Audit feed (TASK-39 item 7) -- same "no dead 6th tab-bar
+           slot" reasoning as Notifications/Roadmap/Posts/Attachments/
+           Support above: CompanyShell has no More tab, so the entry
+           point is a row here instead. Measured gap: the project had
+           no way to see its own write history (who changed what and
+           when) anywhere in the product before this. -->
+      <section class="cset__section">
+        <div class="cset__section-title">
+          {{ t('comp.settings.audit.title') }}
+        </div>
+        <RouterLink to="/company/audit" class="cset__row cset__row--clickable">
+          <span class="cset__row-label">
+            <History :size="16" />
+            {{ t('comp.settings.audit.cta') }}
           </span>
           <ChevronRight :size="16" />
         </RouterLink>

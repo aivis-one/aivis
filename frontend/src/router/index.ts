@@ -573,6 +573,16 @@ export const router = createRouter({
           name: 'company-support',
           component: () => import('@/views/investor/InvestorSupportView.vue'),
         },
+        {
+          // TASK-39 item 7: company self-service read of its own
+          // write history (GET /api/v1/company/audit -- audit/
+          // company_router.py). Same placement reasoning as
+          // roadmap/posts/attachments/support above -- reached from a
+          // row inside CompanySettingsView, not a bottom tab.
+          path: 'audit',
+          name: 'company-audit',
+          component: () => import('@/views/company/CompanyAuditFeedView.vue'),
+        },
       ],
     },
 

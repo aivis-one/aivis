@@ -19,6 +19,11 @@
 #   staff_company_audit_router -> /api/v1/staff/audit/companies (TASK-30
 #                                 ruling 3 / F2, read-only feed over
 #                                 AuditLog target_type="company")
+#   company_audit_router       -> /api/v1/company/audit (TASK-39 item 7,
+#                                 the SAME feed narrowed to the caller's
+#                                 own company_id and a deliberately
+#                                 narrower response schema -- see
+#                                 audit/company_router.py header)
 #   attachments_router        -> /api/v1/companies/{id}/attachments/*
 #                                (Refactor 2 iter 2.2, auth-flow)
 #   public_attachments_router -> /api/v1/public/companies/{id}/attachments/*
@@ -142,6 +147,7 @@ from app.modules.agent_applications.router import router as agent_applications_r
 from app.modules.agent_applications.staff_router import (
     router as staff_agent_applications_router,
 )
+from app.modules.audit.company_router import router as company_audit_router
 from app.modules.audit.router import router as staff_company_audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.commissions.router import router as commissions_router
@@ -479,6 +485,11 @@ app.include_router(staff_companies_router)
 # so it never needs the "declare the literal path before the {id}
 # path" ordering trick transactions/router.py uses for /export.
 app.include_router(staff_company_audit_router)
+# TASK-39 item 7: company self-service read of the SAME feed, scoped
+# server-side to the caller's own company_id (get_current_company_profile)
+# with no company_id parameter for a client to override, and returned
+# through a deliberately narrower schema -- see company_router.py header.
+app.include_router(company_audit_router)
 # Refactor 2 iter 2.2: company attachments (auth-flow + public-flow + staff-flow).
 app.include_router(attachments_router)
 app.include_router(public_attachments_router)

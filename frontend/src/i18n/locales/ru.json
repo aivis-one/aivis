@@ -1499,6 +1499,10 @@
         "title": "Поддержка",
         "cta": "Написать в поддержку"
       },
+      "audit": {
+        "title": "История изменений",
+        "cta": "Смотреть историю изменений"
+      },
       "adminManagedHint": "Цена, объём выпуска и распределение управляются командой AIVIS. Чтобы изменить их, обратитесь в поддержку.",
       "actions": {
         "title": "Аккаунт",
@@ -1734,6 +1738,85 @@
       "deleted": "Вложение удалено",
       "deleteTitle": "Удалить вложение",
       "deleteConfirm": "Вложение будет скрыто везде. Файл останется в хранилище."
+    },
+    "auditFeed": {
+      "list": {
+        "title": "История изменений",
+        "subtitle": "История изменений, внесённых в ваш проект",
+        "errorTitle": "Не удалось загрузить историю изменений",
+        "loadMoreError": "Не удалось загрузить ещё, попробуйте снова",
+        "empty": {
+          "title": "Изменений пока нет",
+          "description": "Здесь будут отображаться изменения, внесённые в ваш проект."
+        },
+        "item": {
+          "changedPrefix": "Изменено:"
+        }
+      },
+      "actor": {
+        "user": "Вы",
+        "staff": "Команда AIVIS",
+        "system": "Система"
+      },
+      "event": {
+        "company": {
+          "created": "Проект создан",
+          "assigned": "Проект назначен",
+          "updated": "Профиль обновлён",
+          "self_updated": "Профиль обновлён",
+          "price_updated": "Цена изменена",
+          "roadmap_reordered": "Порядок дорожной карты изменён",
+          "roadmap_item_created": "Добавлен пункт дорожной карты",
+          "roadmap_item_updated": "Пункт дорожной карты обновлён",
+          "roadmap_item_deleted": "Пункт дорожной карты удалён",
+          "roadmap_cover_uploaded": "Загружена обложка пункта дорожной карты",
+          "roadmap_cover_deleted": "Обложка пункта дорожной карты удалена",
+          "attachments_reordered": "Порядок документов изменён",
+          "attachment_created": "Добавлен документ",
+          "attachment_updated": "Документ обновлён",
+          "attachment_replaced": "Документ заменён",
+          "attachment_soft_deleted": "Документ удалён",
+          "post_created": "Новость опубликована",
+          "post_updated": "Новость отредактирована",
+          "post_deleted": "Новость удалена"
+        }
+      },
+      "field": {
+        "name": "Название",
+        "user_id": "Аккаунт владельца",
+        "total_supply": "Общий объём выпуска",
+        "shares_per_option": "Долей за опцион",
+        "description": "Описание",
+        "logo_url": "Логотип",
+        "cover_url": "Обложка",
+        "promo_video_url": "Промо-видео",
+        "presentation_url": "Презентация",
+        "distribution_config": "Настройки распределения",
+        "status": "Статус",
+        "title": "Название",
+        "kind": "Тип",
+        "target_date": "Целевая дата",
+        "valid_until": "Действует до",
+        "external_url": "Внешняя ссылка",
+        "post_id": "Связанная публикация",
+        "linked_product_id": "Связанный продукт",
+        "item_id": "Пункт дорожной карты",
+        "item_ids": "Порядок",
+        "storage_key": "Файл",
+        "old_storage_key": "Предыдущий файл",
+        "new_storage_key": "Файл",
+        "content_type": "Тип файла",
+        "file_size_bytes": "Размер файла",
+        "attachment_id": "Документ",
+        "category": "Категория",
+        "language": "Язык",
+        "mime_type": "Тип файла",
+        "is_published": "Видимость",
+        "is_public": "Публичная видимость",
+            "body": "Текст",
+            "tags": "Теги",
+        "order": "Порядок отображения"
+      }
     },
     "analytics": {
       "title": "Аналитика",
