@@ -1449,6 +1449,132 @@ setup_comms() {
 
 setup_comms
 
+# ==============================================================================
+# PAYMENTS -- the second orchestrated third-party stack
+# ==============================================================================
+#
+# Same shape as setup_comms above, on purpose: registry record -> clone ->
+# pass 1 -> deliver what only this side knows -> pass 2 -> verify the seam.
+# Written out rather than folded together with setup_comms: the two differ in
+# what they deliver and in what "pass 1 succeeded" means, and a single
+# parameterised body would carry both sets of differences as flags.
+#
+# THREE DIFFERENCES FROM THE COMMS FLOW, all forced by the subject:
+#
+#   1. Pass 1 ASKS the operator for five values -- three wallet addresses and
+#      two explorer API keys. They are external facts no script can invent, and
+#      a placeholder in a wallet address is an address a human sends money to.
+#      This is what makes the payments part of the install interactive.
+#
+#   2. Pass 1 does NOT bring the payments stack up, and that is success rather
+#      than failure. The payments service treats its product webhook URL as
+#      mandatory and refuses to boot without one; on pass 1 nobody knows it
+#      yet. The stack comes up on pass 2, after the delivery below.
+#
+#   3. TWO values are delivered instead of one. comms needs only
+#      PRODUCT_ENV_PATH; payments also needs the URL of OUR receiver, because
+#      nothing in the payments repository is allowed to know an aivis path.
+# ==============================================================================
+
+# The path of our webhook receiver, on the shared docker network.
+#
+# CONTRACT WITH THE PRODUCT SIDE: the receiver lives at this exact path, on the
+# existing payments router, and declares NO user authentication -- the caller
+# is a service holding a shared secret, not a logged-in user. Change either and
+# deliveries land on 404, which payments reports as a retry and then, hours
+# later, as a permanently failed event with no automatic replay.
+#
+# Port 8000 is the port INSIDE the container, deliberately not $APP_PORT: that
+# one is the host-side publication (127.0.0.1:8000:8000) and means nothing on
+# aivis-shared.
+PAYMENTS_WEBHOOK_PATH="/api/v1/payments/webhook"
+PAYMENTS_PRODUCT_URL="http://aivis-app:8000${PAYMENTS_WEBHOOK_PATH}"
+
+setup_payments() {
+    log "Setting up the payments stack (orchestrated)..."
+
+    local record payments_dir payments_branch payments_slug payments_lifecycle
+    record=""
+    local r
+    for r in "${AIVIS_SERVICES[@]}"; do
+        [ "$(svc_field "$r" 1)" = "payments" ] && record="$r" && break
+    done
+    if [ -z "$record" ]; then
+        error "No 'payments' record in scripts/services.conf -- nothing to orchestrate."
+    fi
+    payments_slug=$(svc_field "$record" 2)
+    payments_dir=$(svc_field "$record" 3)
+    payments_branch=$(svc_branch "$(svc_field "$record" 4)" payments) || exit 1
+    payments_lifecycle=$(svc_field "$record" 5)
+
+    local payments_deploy="$payments_dir/$payments_lifecycle"
+    local aivis_env="$INSTALL_BASE/repo/backend/.env"
+    # Same derivation as comms: the env sits NEXT TO the checkout, outside it,
+    # so a `git pull` there can never touch secrets.
+    local payments_env
+    payments_env="$(dirname "$payments_dir")/.env"
+
+    # -- 1. Clone through its own read-only deploy key --------------------
+    if [ -d "$payments_dir" ]; then
+        warn "payments checkout already present at $payments_dir -- reusing it"
+    else
+        mkdir -p "$(dirname "$payments_dir")"
+        if ! git clone -b "$payments_branch" "git@github.com-payments:${payments_slug}.git" "$payments_dir"; then
+            error "Failed to clone $payments_slug (branch: $payments_branch)"
+        fi
+        success "payments cloned to $payments_dir (branch: $payments_branch)"
+    fi
+
+    if [ ! -f "$payments_deploy" ]; then
+        error "payments deploy CLI not found at $payments_deploy -- does branch '$payments_branch' carry deploy/?"
+    fi
+
+    # -- 2. Pass 1: network, mint secrets, ASK for wallets and keys -------
+    log "payments-deploy install, pass 1 (secrets + operator input)..."
+    warn "payments will now ask for three wallet addresses and two explorer API keys."
+    if ! bash "$payments_deploy" install; then
+        error "payments-deploy.sh install (pass 1) FAILED. Logs: bash $payments_deploy logs"
+    fi
+
+    # -- 3. Deliver the two values only this side knows -------------------
+    if [ ! -f "$payments_env" ]; then
+        error "$payments_env not found after pass 1 -- the payments install did not mint its env, so there is nowhere to write the seam."
+    fi
+    validate_deliverable "PRODUCT_ENV_PATH" "$aivis_env"
+    upsert_env_var "$payments_env" "PRODUCT_ENV_PATH" "$aivis_env"
+    validate_deliverable "PRODUCT_WEBHOOK_URL" "$PAYMENTS_PRODUCT_URL"
+    upsert_env_var "$payments_env" "PRODUCT_WEBHOOK_URL" "$PAYMENTS_PRODUCT_URL"
+    success "PRODUCT_ENV_PATH and PRODUCT_WEBHOOK_URL written into $payments_env"
+
+    # -- 4. Pass 2: hand-over, then the stack comes up --------------------
+    log "payments-deploy install, pass 2 (PAYMENTS_* hand-over + bring-up)..."
+    if ! bash "$payments_deploy" install; then
+        error "payments-deploy.sh install (pass 2) FAILED."
+    fi
+
+    # -- 5. Verify the seam actually closed -------------------------------
+    # Same reason as comms: the hand-over degrades to PRINTING its block when
+    # the target is unusable and still returns success, which for orchestration
+    # is silent failure. `.+` is the whole point -- `^KEY=` alone passes an
+    # empty value.
+    #
+    # Here the consequence is sharper than "unlinked". The product config
+    # refuses to start with PAYMENTS_API_URL set but PAYMENTS_SERVICE_TOKEN
+    # missing, or the other way round, so a half-written seam is not a degraded
+    # product -- it is a product that does not come up at all, discovered on
+    # the next restart instead of here.
+    local key
+    for key in PAYMENTS_SERVICE_TOKEN PAYMENTS_API_URL PAYMENTS_WEBHOOK_SECRET; do
+        if ! grep -Eq "^${key}=.+" "$aivis_env"; then
+            error "$key missing (or empty) in $aivis_env after the hand-over. The payments seam did not close -- with a partial seam aivis does not start at all, because its config refuses the URL and the token separately."
+        fi
+    done
+    success "PAYMENTS_* variables verified in $aivis_env"
+    success "payments stack is up and linked (webhook receiver: $PAYMENTS_PRODUCT_URL)"
+}
+
+setup_payments
+
 section "Docker Stack"
 
 cd "$INSTALL_BASE/repo"
