@@ -26,6 +26,9 @@ export type OwnerType = 'platform' | 'company'
 /** Roadmap item surface kind (R1 §5, iter 2.4). A roadmap row carries one of three shapes; the API surface differs per kind: milestone -- traditional planned-progress-completed item with target_date. Subject to the planned -> in_progress -> completed state machine. Most existing rows fall here; migration 0033 backfills the column to this value. event -- date-bound event (target_date required, valid_until required, valid_until > target_date). Status is irrelevant; events are shown as long as today <= valid_until. announcement -- dateless message (no target_date / valid_until / status). Visible until soft-deleted. `kind` is immutable after create. To switch kind, Staff soft-deletes the row and creates a fresh one with the new kind. */
 export type RoadmapItemKind = 'milestone' | 'event' | 'announcement'
 
+/** The four statuses the payments service emits events for. THE SERVICE HAS SIX INVOICE STATUSES AND EMITS EVENTS FOR FOUR: `created` and `awaiting_confirmations` are not terminal and produce no event (TOR section 8). Listing only the four here keeps the receiver's schema honest about what can actually arrive. Only CONFIRMED credits. The other three are still processed rather than ignored -- a non-2xx answer would make the service retry them until its outbox row goes `failed`, which is irreversible. */
+export type ServiceEventStatus = 'confirmed' | 'expired' | 'attempts_exhausted' | 'stalled'
+
 /** Template lifecycle status (R2 §4.2). State machine: draft <-> active draft -> archived active -> archived When reconcile activates a new template for a (company_id, kind, lang) triple, the previous active row is automatically archived. */
 export type TemplateStatus = 'draft' | 'active' | 'archived'
 
@@ -1602,6 +1605,16 @@ export interface UserUpdate {
 /** POST /api/v1/auth/verify-email -- request body. */
 export interface VerifyEmailRequest {
   code: string
+}
+
+/** One event delivered by the payments service (TOR section 8). AN ABSENT OPTIONAL KEY AND AN EXPLICIT null ARE DIFFERENT INPUTS HERE, AND THE DIFFERENCE IS LOAD-BEARING. The service omits `credited_amount_cents` and `underpaid` entirely when they do not apply -- it never sends them as null. So: * key absent -> the field keeps its default and the validator below never runs (pydantic does not validate defaults unless asked to); * key present null -> the validator runs and rejects, because a null is a body the service does not produce, and silently reading it as "absent" would hide whatever produced it. `credited_amount_cents = 0` is a legitimate value, not an absence: a dust transfer confirms an invoice and credits nothing. Anything that tests these fields for truthiness reads that zero as "no amount arrived", which is the defect this schema exists to make impossible. Use `model_fields_set` to ask whether a key was sent -- never `is None`, which cannot tell the two apart once a default is involved. UNKNOWN KEYS ARE IGNORED RATHER THAN REJECTED. The service may add a field to its event; a receiver that answered 422 to an unrecognised key would stop processing every event on the day that happened, and the money behind them would stop with it. */
+export interface WebhookEventRequest {
+  invoice_id: string
+  product_ref: string
+  status: ServiceEventStatus
+  credited_amount_cents?: number | null
+  underpaid?: boolean | null
+  occurred_at: string
 }
 
 /** GET /api/v1/withdrawals/me -- paginated list. */
