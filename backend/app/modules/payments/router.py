@@ -8,10 +8,18 @@
 #   GET  /api/v1/payments/invoices/{id}        -- one invoice, refreshed
 #   POST /api/v1/payments/invoices/{id}/txid   -- submit a transaction hash
 #   GET  /api/v1/payments/history              -- payment history (investor)
+#   POST /api/v1/payments/webhook              -- inbound event from the
+#                                                 payments service (H8)
 #
 # AUTH:
-#   All endpoints require authentication. Invoice creation is blocked in
-#   avatar mode (R49, forbid_avatar) -- see create_invoice below.
+#   Every USER-FACING endpoint requires authentication. Invoice creation
+#   is blocked in avatar mode (R49, forbid_avatar) -- see create_invoice
+#   below.
+#
+#   POST /webhook is the exception and is not a user-facing endpoint at
+#   all: its caller is the payments service. It authenticates with the
+#   shared X-Payments-Secret header and declares no user dependency,
+#   because there is no user in that request to resolve.
 #
 # ROUTE ORDER MATTERS HERE: /invoices/current is declared BEFORE
 # /invoices/{invoice_id}. FastAPI matches in declaration order, and the
@@ -46,6 +54,7 @@ from app.modules.payments.schemas import (
     PaymentResponse,
     SubmitTxidRequest,
     TxidResultResponse,
+    WebhookEventRequest,
 )
 from app.modules.payments.service import (
     current_invoice,
@@ -53,6 +62,10 @@ from app.modules.payments.service import (
     open_invoice,
     read_invoice,
     submit_invoice_txid,
+)
+from app.modules.payments.webhook import (
+    process_webhook_event,
+    verify_payments_secret,
 )
 from app.modules.users.models import User
 
@@ -169,3 +182,46 @@ async def get_payment_history(
         page=page,
         per_page=per_page,
     )
+
+
+# =============================================================================
+# Inbound: the payments service delivering an event (H8)
+# =============================================================================
+#
+# THE ONE ENDPOINT ON THIS ROUTER WITH NO USER BEHIND IT. Its caller is
+# the payments service, not a browser, so it declares neither
+# get_current_user* nor forbid_avatar -- there is no session to read and
+# no avatar to forbid. Authentication is the shared secret in
+# X-Payments-Secret, checked by verify_payments_secret.
+#
+# The router itself carries no dependencies=[...] (see its declaration
+# above), so this is a change of one endpoint's own guards rather than a
+# hole opened in a router-wide one -- and no second router is needed.
+@router.post(
+    "/webhook",
+    status_code=200,
+    dependencies=[Depends(verify_payments_secret)],
+)
+async def receive_payments_event(
+    body: WebhookEventRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, str]:
+    """Accept one event from the payments service.
+
+    ALWAYS 200 ON A BODY THAT COULD BE ACTED ON, INCLUDING THE CASES
+    WHERE NOTHING HAPPENED. A non-2xx makes the service retry, and after
+    WEBHOOK_MAX_ATTEMPTS its outbox row goes `failed` with no resend
+    command to undo it -- so answering non-2xx to a duplicate delivery,
+    or to an event for an invoice this product never recorded, would
+    burn a real payment's delivery budget over something no retry could
+    ever fix.
+
+    The refusals that DO answer 4xx are raised below this line, in
+    process_webhook_event and verify_payments_secret, and each is a body
+    this receiver cannot honour rather than a state it merely dislikes.
+
+    `outcome` is echoed for the service's logs and for tests; the
+    service does not branch on it.
+    """
+    outcome = await process_webhook_event(body, session)
+    return {"outcome": outcome.value if outcome is not None else "duplicate"}

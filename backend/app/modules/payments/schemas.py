@@ -5,6 +5,7 @@
 # Request/response schemas for payment endpoints.
 #
 # SCHEMAS:
+#   WebhookEventRequest       -- POST /payments/webhook (H8, inbound)
 #   CreateInvoiceRequest      -- POST /payments/invoices
 #   InvoiceResponse           -- invoice surface (create / read / current)
 #   SubmitTxidRequest         -- POST /payments/invoices/{id}/txid
@@ -22,9 +23,12 @@
 # =============================================================================
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.modules.payments.constants import ServiceEventStatus
 
 # Maximum single deposit: $10M (sanity guard against data errors).
 #
@@ -34,6 +38,65 @@ from pydantic import BaseModel, ConfigDict, Field
 # always was -- the removal of the webhook must not silently remove the
 # ceiling on a deposit.
 MAX_DEPOSIT_CENTS: int = 1_000_000_000
+
+
+class WebhookEventRequest(BaseModel):
+    """One event delivered by the payments service (TOR section 8).
+
+    AN ABSENT OPTIONAL KEY AND AN EXPLICIT null ARE DIFFERENT INPUTS
+    HERE, AND THE DIFFERENCE IS LOAD-BEARING. The service omits
+    `credited_amount_cents` and `underpaid` entirely when they do not
+    apply -- it never sends them as null. So:
+
+      * key absent      -> the field keeps its default and the validator
+                           below never runs (pydantic does not validate
+                           defaults unless asked to);
+      * key present null -> the validator runs and rejects, because a
+                           null is a body the service does not produce,
+                           and silently reading it as "absent" would
+                           hide whatever produced it.
+
+    `credited_amount_cents = 0` is a legitimate value, not an absence: a
+    dust transfer confirms an invoice and credits nothing. Anything that
+    tests these fields for truthiness reads that zero as "no amount
+    arrived", which is the defect this schema exists to make impossible.
+    Use `model_fields_set` to ask whether a key was sent -- never `is
+    None`, which cannot tell the two apart once a default is involved.
+
+    UNKNOWN KEYS ARE IGNORED RATHER THAN REJECTED. The service may add a
+    field to its event; a receiver that answered 422 to an unrecognised
+    key would stop processing every event on the day that happened, and
+    the money behind them would stop with it.
+    """
+
+    invoice_id: UUID
+    product_ref: UUID
+    # Constrained to the four statuses that carry events. A fifth value
+    # is a 422 rather than a silently ignored 200: it means this
+    # receiver and the service disagree about the vocabulary, and that
+    # is worth a failed outbox row somebody has to look at.
+    status: ServiceEventStatus
+    credited_amount_cents: int | None = None
+    underpaid: bool | None = None
+    occurred_at: datetime
+
+    @field_validator("credited_amount_cents", "underpaid")
+    @classmethod
+    def _reject_explicit_null(cls, value: Any) -> Any:
+        """Refuse an optional key sent as an explicit null.
+
+        Only reachable when the key WAS present in the body: pydantic
+        does not run field validators over defaults. So a None arriving
+        here was written as null by the sender, and the service does not
+        do that -- it omits the key.
+        """
+        if value is None:
+            raise ValueError(
+                "optional keys are omitted when they do not apply, never "
+                "sent as null -- an explicit null is not a body this "
+                "service produces"
+            )
+        return value
 
 
 class CreateInvoiceRequest(BaseModel):

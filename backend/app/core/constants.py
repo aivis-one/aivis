@@ -49,7 +49,24 @@ class LedgerReason:
     # ------------------------------------------------------------------
     # Deposits (active_ledger: +amount)
     # ------------------------------------------------------------------
+    # KEYED BY TX HASH, AND NOTHING WRITES IT ANY MORE. Its only writer
+    # was the stub crypto webhook removed in H7. It stays because rows
+    # already in active_ledger carry this format: the constant is the
+    # documentation of data on disk, not a live code path.
     DEPOSIT_CRYPTO: str = "deposit:crypto:{tx_hash}"
+    # THE LIVE CRYPTO DEPOSIT REASON (H8), keyed by the service's invoice
+    # id because a tx hash is not available: the payments service does
+    # not put one in its event (TOR section 8 -- invoice_id, product_ref,
+    # status, credited_amount_cents?, underpaid?, occurred_at) and does
+    # not expose one through its GET either.
+    #
+    # A SEPARATE PREFIX RATHER THAN A UUID IN THE OLD TEMPLATE. Reusing
+    # "deposit:crypto:{...}" would make deposit:crypto:0xabc... and
+    # deposit:crypto:<uuid> indistinguishable to anything that parses
+    # these strings, and they are parsed -- by prefix, for semaphore
+    # filtering (see the module header). DEPOSIT_BANK is the precedent
+    # for keying a reason by an internal id.
+    DEPOSIT_CRYPTO_INVOICE: str = "deposit:crypto:invoice:{invoice_id}"
     DEPOSIT_BANK: str = "deposit:bank:{payment_id}"
 
     # ------------------------------------------------------------------

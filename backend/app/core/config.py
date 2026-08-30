@@ -273,6 +273,19 @@ class Settings(BaseSettings):
     # wallet would accept and no transfer could reach.
     payments_api_url: str = ""
     payments_service_token: str = ""
+    # Shared secret of the INBOUND direction (H8): the service sends it in
+    # the X-Payments-Secret header of every webhook it delivers, and the
+    # receiver compares it whole via hmac.compare_digest. Not a signature
+    # over the body -- TOR section 8 chose a shared secret deliberately
+    # and the header name says so.
+    #
+    # The receiver is fail-closed on an empty value here: an empty
+    # configured secret rejects every event rather than accepting an
+    # empty header, because compare_digest("", "") is true. That check
+    # lives in the receiver and NOT in this validator, because this
+    # validator does not run on a dev box (see the `not is_dev` gate
+    # below) and a dev box must not become an open receiver.
+    payments_webhook_secret: str = ""
     # Per-request timeout. Longer than the comms one and not by feel:
     # POST /invoices/{id}/txid does a synchronous explorer lookup with
     # the service's own retry loop above it, which TOR section 7 bounds
@@ -406,32 +419,51 @@ class Settings(BaseSettings):
         # every comms-less deployment from starting, including in-place
         # upgrades whose .env has no COMMS_* yet. Dev stays optional so a
         # laptop needs no comms stack.
-        # -- payments_api_url / payments_service_token (H7) --
+        # -- the payments TRIPLE: url / token / webhook secret (H7, H8) --
         #
         # Same gate and same reasoning as the comms pair below: demanded
         # only when payments is INTENDED on this box, because a box with
         # no payments stack must still start -- and, until the section 9
         # hand-over exists, every box is one.
         #
-        # A URL without a token is the failure worth naming: the service
-        # answers 401 to every call, this client maps 401 to
-        # "unavailable" so that a misconfiguration is never shown to a
-        # user as their own authorisation problem, and the deposit screen
-        # would therefore report a transient outage forever.
-        if not is_dev and (self.payments_api_url or self.payments_service_token):
-            if self.payments_api_url and not self.payments_service_token:
-                raise ValueError(
-                    "PAYMENTS_API_URL is set but PAYMENTS_SERVICE_TOKEN "
-                    "is empty: the payments service would reject every "
-                    "call with 401 and every deposit would report itself "
-                    "as temporarily unavailable. Set the token or clear "
-                    "the URL."
+        # WHY ALL THREE OR NONE, RATHER THAN A REQUIRED SECRET. H8 added
+        # the third member. Making it required on its own would stop the
+        # product from booting the moment this code lands and before the
+        # installer that mints the value has landed -- and the installer
+        # is a different delivery that may arrive later. Gating all three
+        # on "any one of them is set" removes the ordering dependency
+        # completely: a box with none of them boots, a box with all three
+        # boots, and only a half-installed box is refused.
+        #
+        # Each member names what its absence breaks, because "half
+        # configured" alone does not tell an installer which half.
+        if not is_dev and (
+            self.payments_api_url
+            or self.payments_service_token
+            or self.payments_webhook_secret
+        ):
+            missing = [
+                name
+                for name, value in (
+                    ("PAYMENTS_API_URL", self.payments_api_url),
+                    ("PAYMENTS_SERVICE_TOKEN", self.payments_service_token),
+                    ("PAYMENTS_WEBHOOK_SECRET", self.payments_webhook_secret),
                 )
-            if self.payments_service_token and not self.payments_api_url:
+                if not value
+            ]
+            if missing:
                 raise ValueError(
-                    "PAYMENTS_SERVICE_TOKEN is set but PAYMENTS_API_URL "
-                    "is empty: half-configured payments client. Set the "
-                    "URL or clear the token."
+                    "Half-configured payments stack: "
+                    f"{', '.join(missing)} empty while the rest is set. "
+                    "PAYMENTS_API_URL missing -> the client has no address "
+                    "to call. PAYMENTS_SERVICE_TOKEN missing -> the service "
+                    "answers 401 to every call, which this client maps to "
+                    '"unavailable", so the deposit screen reports a '
+                    "transient outage forever. PAYMENTS_WEBHOOK_SECRET "
+                    "missing -> the receiver is fail-closed and rejects "
+                    "every event delivered to it, so confirmed payments "
+                    "never reach a balance. Set all three, or clear all "
+                    "three to run without payments."
                 )
 
         if not is_dev and (self.comms_api_url or self.comms_service_token):
