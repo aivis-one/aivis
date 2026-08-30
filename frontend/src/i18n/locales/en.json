@@ -422,6 +422,24 @@
           "distributionSumError": "Company share plus Representative levels cannot exceed 100%",
           "alreadyCompanyError": "This user is already a company",
           "success": "Company assigned"
+        },
+        "create": {
+          "cta": "Create company",
+          "title": "Create new company",
+          "hint": "Creates a brand-new company account and profile, then enters avatar mode as it immediately so you can fill in its project data.",
+          "fieldEmail": "Email",
+          "fieldPassword": "Password",
+          "generatePassword": "Generate",
+          "fieldName": "Company name",
+          "fieldDescription": "Description",
+          "fieldPrice": "Price per unit ($)",
+          "fieldTotalSupply": "Total supply",
+          "fieldSharesPerOption": "Shares per option",
+          "fieldCompanyPct": "Company share (%)",
+          "fieldAgentLevels": "Representative commission levels (%, comma-separated)",
+          "agentLevelsError": "Enter numbers between 0 and 100, separated by commas",
+          "distributionSumError": "Company share plus Representative levels cannot exceed 100%",
+          "success": "Company created — entering avatar mode..."
         }
       },
       "company": {

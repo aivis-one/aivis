@@ -34,9 +34,10 @@ import { Building2 } from 'lucide-vue-next'
 import { CBadge, CLoader, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import { useAvatar } from '@/composables/useAvatar'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { ApiResponseError } from '@/api/client'
-import { fetchStaffCompanies, assignCompany } from '@/api/staff-companies'
+import { fetchStaffCompanies, assignCompany, createCompany } from '@/api/staff-companies'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import type { CompanyResponse, UserListItem } from '@/api/types'
 
@@ -44,13 +45,15 @@ const { t } = useI18n()
 const { showToast } = useToast()
 const router = useRouter()
 const { canDo } = useStaffPermissions()
+const { startAvatarSession } = useAvatar()
 
-// FP-23: assign requires project_manage AND financial_operations, same
-// combination as the price change (StaffCompanyPriceSection) -- this
-// form sets price_per_unit_cents + distribution_config too.
+// FP-23: assign AND create both require project_manage AND
+// financial_operations, same combination as the price change
+// (StaffCompanyPriceSection) -- both forms set price_per_unit_cents +
+// distribution_config.
 const canManage = canDo('project_manage')
 const canFinancial = canDo('financial_operations')
-const canAssign = computed<boolean>(() => canManage.value && canFinancial.value)
+const canManageCompanies = computed<boolean>(() => canManage.value && canFinancial.value)
 
 const items = ref<CompanyResponse[]>([])
 const total = ref(0)
@@ -172,7 +175,7 @@ function resetAssignForm(): void {
 }
 
 function openAssign(): void {
-  if (!canAssign.value) {
+  if (!canManageCompanies.value) {
     console.warn(
       '[StaffCompaniesListView] openAssign blocked: needs project_manage + financial_operations',
     )
@@ -255,7 +258,7 @@ const canSubmitAssign = computed<boolean>(() => {
 })
 
 async function handleAssign(): Promise<void> {
-  if (!canAssign.value) {
+  if (!canManageCompanies.value) {
     console.warn(
       '[StaffCompaniesListView] handleAssign blocked: needs project_manage + financial_operations',
     )
@@ -291,6 +294,213 @@ async function handleAssign(): Promise<void> {
     assigning.value = false
   }
 }
+
+// ---------------------------------------------------------------------------
+// Create modal (2026-08-30, `№199`)
+//
+// Mints a BRAND-NEW company: a fresh account (email + password, set by
+// admin) plus its profile, in one call -- unlike Assign above, which
+// promotes an EXISTING user. Same commercial-terms fields and the same
+// company_pct/agent_levels percent-to-fraction handling as Assign.
+//
+// THE WORKFLOW THIS EXISTS FOR IS "CREATE, THEN IMMEDIATELY ENTER AVATAR
+// MODE AS IT" (the owner's own description of how he sets up a
+// project): on success this calls useAvatar().startAvatarSession with
+// the new account's user_id, which swaps the token and navigates to the
+// company dashboard itself -- there is no further click needed. The
+// list is reloaded BEFORE that call (not after) so the new company is
+// still visible here if the avatar swap itself fails; startAvatarSession
+// never rejects (it reports its own error toast and stays on this page
+// on failure), so nothing here needs a second catch around it.
+// ---------------------------------------------------------------------------
+
+const showCreate = ref(false)
+const creating = ref(false)
+
+const createEmail = ref('')
+const createPassword = ref('')
+const createName = ref('')
+const createDescription = ref('')
+const createPriceDollars = ref('')
+const createTotalSupply = ref('')
+const createSharesPerOption = ref('1')
+const createCompanyPct = ref('')
+const createAgentLevels = ref('')
+
+// Base64url alphabet (64 chars, a power of two) -- `byte & 63` indexes
+// it with ZERO modulo bias, unlike `byte % N` for a non-power-of-two N.
+const PASSWORD_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+const PASSWORD_LENGTH = 20
+
+function generatePassword(): string {
+  const bytes = new Uint8Array(PASSWORD_LENGTH)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => PASSWORD_CHARS[b & 63]).join('')
+}
+
+function resetCreateForm(): void {
+  createEmail.value = ''
+  createPassword.value = generatePassword()
+  createName.value = ''
+  createDescription.value = ''
+  createPriceDollars.value = ''
+  createTotalSupply.value = ''
+  createSharesPerOption.value = '1'
+  createCompanyPct.value = ''
+  createAgentLevels.value = ''
+}
+
+// Adversarial-review catch (2026-08-30): `handleCreate` awaits
+// `createCompany` then forces an avatar-mode navigation via
+// `startAvatarSession`. Without a way to tell a STALE in-flight request
+// apart from the current one, cancelling the modal (or worse, reopening
+// it for a second company) while the first request is still pending let
+// the first one complete later and forcibly redirect the admin into
+// avatar mode as a company they'd already moved on from -- their
+// SECOND form's in-progress input silently discarded. Every open/close
+// bumps this token; `handleCreate` compares it after the await to
+// decide whether it may still close the modal / force navigation.
+let createRequestToken = 0
+
+function openCreate(): void {
+  if (!canManageCompanies.value) {
+    console.warn(
+      '[StaffCompaniesListView] openCreate blocked: needs project_manage + financial_operations',
+    )
+    return
+  }
+  createRequestToken++
+  resetCreateForm()
+  showCreate.value = true
+}
+
+function closeCreate(): void {
+  createRequestToken++
+  showCreate.value = false
+}
+
+// RFC 5321's actual grammar is far looser than this, but a client-side
+// gate only needs to catch an obviously-wrong entry before the real
+// validation (Pydantic's EmailStr, server-side) rejects it with a 422 --
+// same division of labour as the price/supply numeric guards below.
+const createEmailValid = computed<boolean>(() =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createEmail.value.trim()),
+)
+
+const createPasswordValid = computed<boolean>(
+  () => createPassword.value.length >= 8 && createPassword.value.length <= 128,
+)
+
+// Price entered in dollars (mirrors Assign), converted to integer cents.
+const createPriceCents = computed<number | null>(() => {
+  const dollars = Number(createPriceDollars.value)
+  if (!Number.isFinite(dollars) || dollars <= 0) return null
+  return Math.round(dollars * 100)
+})
+
+const createTotalSupplyInt = computed<number | null>(() => {
+  const n = Number(createTotalSupply.value)
+  if (!Number.isInteger(n) || n <= 0) return null
+  return n
+})
+
+const createSharesPerOptionInt = computed<number | null>(() => {
+  const n = Number(createSharesPerOption.value)
+  if (!Number.isInteger(n) || n <= 0) return null
+  return n
+})
+
+// company_pct: percent input (0, 100) exclusive -> fraction (0, 1) exclusive.
+const createCompanyPctFraction = computed<number | null>(() => {
+  const n = Number(createCompanyPct.value)
+  if (!Number.isFinite(n) || n <= 0 || n >= 100) return null
+  return n / 100
+})
+
+// agent_levels: comma-separated percents -> fractions. Empty input is a
+// valid empty array (backend allows agent_levels: []).
+const createAgentLevelsFractions = computed<number[] | null>(() => {
+  const raw = createAgentLevels.value.trim()
+  if (!raw) return []
+  const parts = raw.split(',').map((p) => p.trim())
+  const nums: number[] = []
+  for (const p of parts) {
+    const n = Number(p)
+    if (!Number.isFinite(n) || n <= 0 || n >= 100) return null
+    nums.push(n / 100)
+  }
+  return nums
+})
+
+// Mirrors the backend's own invariant (validate_distribution_config):
+// company_pct + sum(agent_levels) <= 1.0. Checked client-side to avoid
+// an obvious 400, not a substitute for it.
+const createDistributionValid = computed<boolean>(() => {
+  const pct = createCompanyPctFraction.value
+  const levels = createAgentLevelsFractions.value
+  if (pct === null || levels === null) return false
+  const sum = pct + levels.reduce((a, b) => a + b, 0)
+  return sum <= 1.0
+})
+
+const canSubmitCreate = computed<boolean>(() => {
+  return (
+    createEmailValid.value &&
+    createPasswordValid.value &&
+    !!createName.value.trim() &&
+    createPriceCents.value !== null &&
+    createTotalSupplyInt.value !== null &&
+    createSharesPerOptionInt.value !== null &&
+    createDistributionValid.value
+  )
+})
+
+async function handleCreate(): Promise<void> {
+  if (!canManageCompanies.value) {
+    console.warn(
+      '[StaffCompaniesListView] handleCreate blocked: needs project_manage + financial_operations',
+    )
+    return
+  }
+  if (!canSubmitCreate.value) return
+  const pct = createCompanyPctFraction.value
+  const levels = createAgentLevelsFractions.value
+  if (pct === null || levels === null) return
+
+  const myToken = ++createRequestToken
+  creating.value = true
+  try {
+    const resp = await createCompany({
+      email: createEmail.value.trim(),
+      password: createPassword.value,
+      name: createName.value.trim(),
+      description: createDescription.value.trim() || undefined,
+      price_per_unit_cents: createPriceCents.value as number,
+      total_supply: createTotalSupplyInt.value as number,
+      shares_per_option: createSharesPerOptionInt.value as number,
+      distribution_config: { company_pct: pct, agent_levels: levels },
+    })
+    showToast(t('staff.platform.companies.create.success'), 'success')
+    // The company was created either way -- the call can't be un-sent --
+    // so the list always reloads to show it. But if the admin closed or
+    // reopened the modal while this request was in flight, this is a
+    // STALE response: it may not force-close a since-reopened form or
+    // force-navigate the admin away from wherever they've since gone.
+    const isStale = myToken !== createRequestToken
+    if (!isStale) showCreate.value = false
+    page.value = 1
+    await loadCompanies()
+    if (!isStale) await startAvatarSession(resp.user_id)
+  } catch (e) {
+    if (e instanceof ApiResponseError && e.detail) {
+      showToast(e.detail, 'error')
+    } else {
+      showToast(t('common.error'), 'error')
+    }
+  } finally {
+    if (myToken === createRequestToken) creating.value = false
+  }
+}
 </script>
 
 <template>
@@ -299,10 +509,15 @@ async function handleAssign(): Promise<void> {
       <h2 class="scl__title">
         {{ t('staff.platform.companies.title') }}
       </h2>
-      <!-- FP-23: Assign CTA (W0) requires project_manage + financial_operations. -->
-      <CButton v-if="canAssign" variant="primary" size="sm" @click="openAssign">
-        {{ t('staff.platform.companies.assign.cta') }}
-      </CButton>
+      <!-- FP-23: Create/Assign CTAs both require project_manage + financial_operations. -->
+      <div v-if="canManageCompanies" class="scl__header-actions">
+        <CButton variant="primary" size="sm" @click="openCreate">
+          {{ t('staff.platform.companies.create.cta') }}
+        </CButton>
+        <CButton variant="outline" size="sm" @click="openAssign">
+          {{ t('staff.platform.companies.assign.cta') }}
+        </CButton>
+      </div>
     </div>
 
     <!-- Status filter chips -->
@@ -477,6 +692,111 @@ async function handleAssign(): Promise<void> {
         </CButton>
       </div>
     </CModal>
+
+    <!-- Create modal (2026-08-30, `№199`) -->
+    <CModal :open="showCreate" @close="closeCreate">
+      <h3 class="scl__modal-title">
+        {{ t('staff.platform.companies.create.title') }}
+      </h3>
+      <p class="scl__modal-hint">
+        {{ t('staff.platform.companies.create.hint') }}
+      </p>
+
+      <CInput
+        v-model="createEmail"
+        type="email"
+        autocomplete="off"
+        :label="t('staff.platform.companies.create.fieldEmail')"
+      />
+
+      <div class="scl__password-row">
+        <CInput
+          v-model="createPassword"
+          type="password"
+          autocomplete="new-password"
+          maxlength="128"
+          :label="t('staff.platform.companies.create.fieldPassword')"
+        />
+        <CButton variant="outline" size="sm" @click="createPassword = generatePassword()">
+          {{ t('staff.platform.companies.create.generatePassword') }}
+        </CButton>
+      </div>
+
+      <CInput
+        v-model="createName"
+        :label="t('staff.platform.companies.create.fieldName')"
+        :placeholder="t('staff.platform.companies.create.fieldName')"
+      />
+
+      <CTextarea
+        v-model="createDescription"
+        :label="t('staff.platform.companies.create.fieldDescription')"
+        :rows="3"
+      />
+
+      <CInput
+        v-model="createPriceDollars"
+        type="number"
+        min="0"
+        step="0.01"
+        :label="t('staff.platform.companies.create.fieldPrice')"
+        placeholder="0.00"
+      />
+
+      <CInput
+        v-model="createTotalSupply"
+        type="number"
+        min="1"
+        step="1"
+        :label="t('staff.platform.companies.create.fieldTotalSupply')"
+      />
+
+      <CInput
+        v-model="createSharesPerOption"
+        type="number"
+        min="1"
+        step="1"
+        :label="t('staff.platform.companies.create.fieldSharesPerOption')"
+      />
+
+      <CInput
+        v-model="createCompanyPct"
+        type="number"
+        min="0"
+        max="100"
+        step="0.1"
+        :label="t('staff.platform.companies.create.fieldCompanyPct')"
+        placeholder="65"
+      />
+
+      <CInput
+        v-model="createAgentLevels"
+        :label="t('staff.platform.companies.create.fieldAgentLevels')"
+        placeholder="10, 3, 1"
+        :error="
+          createAgentLevelsFractions === null
+            ? t('staff.platform.companies.create.agentLevelsError')
+            : !createDistributionValid
+              ? t('staff.platform.companies.create.distributionSumError')
+              : ''
+        "
+      />
+
+      <div class="scl__modal-actions">
+        <CButton variant="outline" size="sm" @click="closeCreate">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="creating"
+          :disabled="!canSubmitCreate"
+          @click="handleCreate"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 
@@ -524,6 +844,17 @@ async function handleAssign(): Promise<void> {
   font-size: var(--fs-xs);
   color: var(--danger);
   margin: var(--space-2) 0 0;
+}
+.scl__password-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.scl__header-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 .scl__modal-actions {
   display: flex;

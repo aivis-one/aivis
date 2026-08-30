@@ -757,6 +757,11 @@ export type { UpdateCompanyRequest } from './generated'
 // schemas.py::AssignCompanyRequest.
 export type { AssignCompanyRequest } from './generated'
 
+// Create a BRAND-NEW company (user + profile) in one call (POST
+// /staff/companies). See backend/app/modules/companies/
+// schemas.py::CreateCompanyRequest.
+export type { CreateCompanyRequest } from './generated'
+
 export type { PriceHistoryListResponse } from './generated'
 
 // Admin audit feed of project writes (TASK-30 W3, GET

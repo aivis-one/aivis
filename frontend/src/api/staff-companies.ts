@@ -36,11 +36,7 @@
 //   PATCH  /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update item (D1)
 //   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}   -- soft-delete (D1)
 //   POST   /api/v1/staff/companies/assign                   -- assign existing user (TASK-30 gap fix, W0)
-//
-// Endpoints deferred (not yet needed by any staff view):
-//   POST   /api/v1/staff/companies -- create-with-new-account path; the
-//          product only has a UI for assign (promote an existing user),
-//          per the owner ruling that drove W0.
+//   POST   /api/v1/staff/companies                          -- create brand-new company + account (2026-08-30)
 //
 // Block D2 (cover upload) adds two more here -- they speak multipart
 // via fetch() (the JSON `api` client cannot send FormData), so they
@@ -63,6 +59,7 @@ import type {
   CompanyDetailResponse,
   CompanyListResponse,
   CompanyResponse,
+  CreateCompanyRequest,
   CreateRoadmapItemRequest,
   PriceHistoryListResponse,
   ReorderAttachmentsRequest,
@@ -138,6 +135,22 @@ export function fetchStaffCompany(companyId: string): Promise<CompanyDetailRespo
  */
 export function assignCompany(body: AssignCompanyRequest): Promise<CompanyResponse> {
   return api.post<CompanyResponse>('/api/v1/staff/companies/assign', body)
+}
+
+/**
+ * POST /api/v1/staff/companies -- create a brand-new company: mints a
+ * fresh User (role=company, admin sets the email + password directly)
+ * plus its CompanyProfile, in one call. Requires project_manage +
+ * financial_operations, same gate as `assignCompany` above (this body
+ * also carries price_per_unit_cents + distribution_config).
+ *
+ * The response's `user_id` is the id to hand to `startAvatar` /
+ * `useAvatar().startAvatarSession` -- the workflow this endpoint exists
+ * for is create-then-immediately-enter-avatar-mode as the new company,
+ * per the owner's own description of how he wants to set up a project.
+ */
+export function createCompany(body: CreateCompanyRequest): Promise<CompanyResponse> {
+  return api.post<CompanyResponse>('/api/v1/staff/companies', body)
 }
 
 /**
