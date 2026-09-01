@@ -213,17 +213,62 @@ services:
         mc anonymous set none local/aivis-attachments
         mc anonymous set none local/aivis-attachments-test
 
-        # Backend service account (one for both buckets). Idempotent: list
-        # existing svcaccts for root user and skip creation if our access
-        # key is already there. `grep -qxF` matches the literal access key
-        # as a whole line -- a substring grep would mis-detect "aivis"
-        # against an unrelated "aivis-test" key.
-        if mc admin user svcacct ls local "$$MINIO_ROOT_USER" 2>/dev/null | grep -qxF "$$MINIO_ACCESS_KEY"; then
-          echo "Service account $$MINIO_ACCESS_KEY already exists, skipping"
+        # REFUSE ON EMPTY CREDENTIALS, BEFORE CREATING ANYTHING. Passed an
+        # empty --access-key, mc mints a RANDOM one, prints "created" and
+        # exits 0 -- an account exists, the report is green, and the
+        # backend can never log in because it holds different keys. Same
+        # class as the receiver's fail-closed on an empty webhook secret:
+        # an unconfigured component must refuse, not improvise.
+        if [ -z "$$MINIO_ACCESS_KEY" ] || [ -z "$$MINIO_SECRET_KEY" ]; then
+          echo "MINIO_ACCESS_KEY / MINIO_SECRET_KEY are empty in .env.minio."
+          echo "Refusing to create a service account with generated keys the"
+          echo "backend does not have. Fix backend/.env and re-run."
+          exit 1
+        fi
+
+        # Backend service account (one for both buckets).
+        #
+        # THE TEST IS "DO THESE CREDENTIALS WORK", NOT "DOES THE ACCOUNT
+        # EXIST", and that is the whole point. What follows needs the
+        # backend to be able to read the bucket with the keys in
+        # .env.minio; asking that question directly answers it, while
+        # asking whether an account is listed somewhere only answers it by
+        # inference.
+        #
+        # WHAT WAS HERE BEFORE AND WHY IT NEVER RAN: the check was
+        # `mc admin user svcacct ls ... | grep -qxF "$$MINIO_ACCESS_KEY"`.
+        # There is no grep in the minio/mc image -- the shell reported
+        # "grep: command not found", the condition was therefore ALWAYS
+        # false, and the creation branch ran on every single start. The
+        # comment above it explained at length why `-qxF` beat a substring
+        # match, which made the missing binary that much harder to notice.
+        # Nothing here now calls a binary the image does not ship: mc
+        # alias and mc ls are the same commands this script already runs.
+        if mc alias set svccheck http://minio:9000 \
+             "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY" > /dev/null 2>&1 \
+           && mc ls svccheck/aivis-attachments > /dev/null 2>&1; then
+          echo "Service account $$MINIO_ACCESS_KEY already works, skipping"
         else
-          mc admin user svcacct add local "$$MINIO_ROOT_USER" \
-            --access-key "$$MINIO_ACCESS_KEY" \
-            --secret-key "$$MINIO_SECRET_KEY"
+          # KNOWN FALSE POSITIVE, NAMED RATHER THAN HIDDEN. The check
+          # above asks whether the key can READ aivis-attachments. An
+          # account that exists but has had its policy narrowed answers
+          # no, and we land here with the key already taken -- mc then
+          # refuses, set -e stops the container, and `aivis update` stops
+          # with it (it inspects this exit code). That is the right
+          # failure mode: loud, not silent. The hint exists so the
+          # reader is not left guessing which of the two it is.
+          if ! mc admin user svcacct add local "$$MINIO_ROOT_USER" \
+               --access-key "$$MINIO_ACCESS_KEY" \
+               --secret-key "$$MINIO_SECRET_KEY"; then
+            echo ""
+            echo "Could not create service account $$MINIO_ACCESS_KEY."
+            echo "Two causes look identical from here:"
+            echo "  * the key is genuinely new and creation failed, or"
+            echo "  * the account already exists but cannot read"
+            echo "    aivis-attachments, so the check above sent us here."
+            echo "Inspect with: mc admin user svcacct ls local $$MINIO_ROOT_USER"
+            exit 1
+          fi
           echo "Service account $$MINIO_ACCESS_KEY created"
         fi
 

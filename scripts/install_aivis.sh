@@ -1657,9 +1657,59 @@ success "Legal documents seeded"
 # needs it for system-actor audit attribution).
 # ------------------------------------------------------------------------------
 
+# WHY THE UPLOAD HERE USES mc AND `aivis update` USES app.
+#   Here: mc is on the host, its alias was configured a few sections up,
+#   and the app container's readiness is not this step's business.
+#   In update: the presence of mc on the host is guaranteed by nothing --
+#   only the install puts it there -- while app is running by definition
+#   at that point, ships the same files inside its image, and already
+#   holds the storage credentials. Two paths on purpose; unifying them
+#   would either drag the port-forward dependency into every update or
+#   change the install's upload path. Do not "tidy" this into one.
 log "Seeding platform default templates to MinIO..."
 mc cp -r "$INSTALL_BASE/repo/backend/scripts/templates/_default/" \
-    local/aivis-attachments/_platform/templates/
+    local/aivis-attachments/_platform/templates/ \
+    || error "Template upload to MinIO failed -- stopping before the DB rows are created"
+
+# COUNT WHAT LANDED, BEFORE CREATING THE ROWS THAT POINT AT IT.
+#
+# `set -euo pipefail` at the top of this file already aborts on a
+# non-zero mc cp, so the `|| error` above is a statement of intent that
+# outlives whoever removes set -e -- it is NOT the check this block
+# exists for. The failure it does not cover is the one that matters: mc
+# cp can exit 0 having copied the wrong NUMBER of files. An empty or
+# half-populated _default/, a source layout that moved, a partial copy --
+# each returns success, and the seed below then writes sixteen rows
+# pointing into empty storage. That is the state the comment above warns
+# about, reached without ever taking the branch it warns against.
+#
+# Counted through app, not through mc: this way the numbers come from the
+# same bucket, the same credentials and the same client the renderer
+# uses. Sixteen template.html pairs the sixteen rows about to be created;
+# sixty-four also covers the logo / signature / stamp images, which
+# render into the document.
+log "Verifying template objects landed in MinIO..."
+TEMPLATE_COUNTS=$(docker compose exec -T app python - <<'COUNT_PY' | tr -d '\r' | tail -n 1
+import asyncio
+
+from app.core.storage import list_objects
+
+
+async def main() -> None:
+    keys = await list_objects("_platform/templates/")
+    html = [k for k in keys if k.endswith("template.html")]
+    print(f"{len(keys)} {len(html)}")
+
+
+asyncio.run(main())
+COUNT_PY
+)
+TEMPLATE_OBJECTS=$(echo "$TEMPLATE_COUNTS" | cut -d' ' -f1)
+TEMPLATE_HTML=$(echo "$TEMPLATE_COUNTS" | cut -d' ' -f2)
+if [ "$TEMPLATE_OBJECTS" != "64" ] || [ "$TEMPLATE_HTML" != "16" ]; then
+    error "Template upload incomplete: expected 64 objects and 16 template.html under _platform/templates/, found '$TEMPLATE_OBJECTS' objects and '$TEMPLATE_HTML' template.html. Check $INSTALL_BASE/repo/backend/scripts/templates/_default/ and the mc alias, then re-run the install."
+fi
+success "64 template objects in MinIO (16 template.html)"
 
 log "Seeding platform default templates to DB..."
 docker compose exec -T app python -m scripts.seed_platform_templates

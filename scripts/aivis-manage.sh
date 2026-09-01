@@ -246,6 +246,25 @@ prepare_test_db() {
         return 1
     fi
 
+    # The storage half, CHECKED AND NOT REPAIRED. `aivis test` may not
+    # quietly supply what the run needs: a test command that fixes its own
+    # environment on the way past proves only that it can fix it. The
+    # repair lives in `aivis update`, where it is a stated step.
+    #
+    # Failing HERE rather than inside pytest is the point. Without the
+    # objects the suite falls over anyway -- on 2026-09-01 it was
+    # twenty-nine failures -- and the difference is what the reader gets:
+    # twenty-nine StorageError tracebacks, or one line naming the count
+    # and the command that restores it.
+    #
+    # The objects are read from the MAIN bucket even by the test run: only
+    # test_storage.py redirects storage, and its fixture is local to that
+    # file. Checking aivis-attachments-test here would pass precisely when
+    # the agreement and certificate tests are failing.
+    echo ""
+    echo "Smoke check: platform template objects present..."
+    check_platform_template_objects || return 1
+
     echo -e "${GREEN}✓ aivis_test ready (migrated + seeded, 16 templates)${NC}"
 }
 
@@ -642,6 +661,116 @@ update_all() {
     fi
 }
 
+# ==============================================================================
+# PLATFORM TEMPLATE OBJECTS -- the storage half of the template seam
+# ==============================================================================
+#
+# A platform default template is TWO things that can be lost separately:
+#   * a row in company_document_templates (company_id IS NULL, active),
+#   * the objects under _platform/templates/<kind>/<lang>/ it points at.
+#
+# The existing smoke checks count the ROWS. On 2026-09-01 all sixteen rows
+# were present and every object was gone -- the minio volume had been
+# recreated empty -- so the check passed and the product answered NoSuchKey
+# on every agreement and certificate. The row count was introduced after an
+# earlier incident of exactly this shape ("purchase_agreement/en
+# disappearing on update", per its own comment) and it still watched the
+# wrong side of the seam.
+#
+# So: count the objects too. Sixteen template.html pairs the sixteen rows;
+# sixty-four catches the logo / signature / stamp images, which render into
+# the document and are just as gone when the volume is.
+#
+# THE COUNT RUNS THROUGH app, DELIBERATELY, in both callers: it then reads
+# the same bucket, with the same credentials, through the same client the
+# renderer uses. A count taken any other way could pass while the renderer
+# still fails.
+#
+# NOTE ON THE BUCKET: templates live in the MAIN bucket for every caller,
+# including the test suite. Only test_storage.py redirects storage to
+# aivis-attachments-test, and it does so with a fixture local to that file.
+# A check pointed at the test bucket would be green exactly when the tests
+# are red.
+
+# Upload backend/scripts/templates/_default/ into _platform/templates/.
+# Idempotent -- an object that is already there is simply overwritten.
+restore_platform_template_objects() {
+    docker compose exec -T app python - <<'RESTORE_PY'
+import asyncio
+import mimetypes
+import sys
+from pathlib import Path
+
+from app.core.storage import upload_object
+
+SRC = Path("/app/scripts/templates/_default")
+
+
+async def main() -> int:
+    if not SRC.is_dir():
+        print(f"source directory missing inside the image: {SRC}", file=sys.stderr)
+        return 1
+    uploaded = 0
+    for path in sorted(SRC.rglob("*")):
+        if not path.is_file():
+            continue
+        key = "_platform/templates/" + str(path.relative_to(SRC))
+        ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        await upload_object(key, path.read_bytes(), ctype)
+        uploaded += 1
+    print(f"restored {uploaded} template objects")
+    return 0
+
+
+sys.exit(asyncio.run(main()))
+RESTORE_PY
+}
+
+# Print "<total objects> <template.html count>" for _platform/templates/.
+count_platform_template_objects() {
+    docker compose exec -T app python - <<'COUNT_PY'
+import asyncio
+
+from app.core.storage import list_objects
+
+
+async def main() -> None:
+    keys = await list_objects("_platform/templates/")
+    html = [k for k in keys if k.endswith("template.html")]
+    print(f"{len(keys)} {len(html)}")
+
+
+asyncio.run(main())
+COUNT_PY
+}
+
+# Verify both counts. Prints what is wrong AND how to fix it: a check that
+# only names the failure leaves the reader where we were on 2026-09-01,
+# reading twenty-nine tracebacks to arrive at one missing upload.
+check_platform_template_objects() {
+    local counts total html
+    counts=$(count_platform_template_objects 2>/dev/null | tr -d '\r' | tail -n 1)
+    total=$(echo "$counts" | cut -d' ' -f1)
+    html=$(echo "$counts" | cut -d' ' -f2)
+
+    if [ "$total" != "64" ] || [ "$html" != "16" ]; then
+        echo -e "${RED}✗ Platform template OBJECTS check failed${NC}"
+        echo "Expected 64 objects and 16 template.html under _platform/templates/,"
+        echo "found: '$total' objects, '$html' template.html"
+        echo ""
+        echo "The DB rows can be intact while the objects are gone -- that is"
+        echo "exactly the state this check exists to catch, and the row count"
+        echo "above cannot see it."
+        echo ""
+        echo "Restore them by running 'aivis update': it uploads the"
+        echo "objects before it seeds the rows. The upload itself is"
+        echo "restore_platform_template_objects in scripts/aivis-manage.sh."
+        return 1
+    fi
+    echo -e "${GREEN}✓ 64 platform template objects present (16 template.html)${NC}"
+    return 0
+}
+
 # The product's own cycle. Reached through update_service (the "internal"
 # record), which has already realigned this checkout to the recorded
 # branch -- the fetch and pull below are what brings the commits in.
@@ -845,6 +974,33 @@ update_product() {
     docker compose down
     docker compose up -d app postgres redis minio
 
+    # minio-init IS PART OF EVERY UPDATE, not just of the install.
+    # It creates the buckets and the backend service account, and both
+    # live INSIDE the minio volume -- lose that volume and they are gone
+    # while every other part of the stack still looks healthy. Until this
+    # line existed they were created exactly once, at install, and an
+    # update could not put them back: on 2026-09-01 that produced
+    # InvalidAccessKeyId on 28 tests and a storage layer that answered
+    # nothing.
+    #
+    # BLOCKING, NOT `up -d`. A one-shot container started detached
+    # returns immediately and tells us nothing; the exit code below is
+    # the only thing that distinguishes "buckets ready" from "refused to
+    # create an account". Same lesson as an install reporting "App is
+    # healthy" while the stack it just built never came up.
+    echo ""
+    echo "Ensuring MinIO buckets and service account (minio-init)..."
+    docker compose up minio-init
+    local init_code
+    init_code=$(docker inspect -f '{{.State.ExitCode}}' aivis-minio-init 2>/dev/null || echo "missing")
+    if [ "$init_code" != "0" ]; then
+        echo -e "${RED}✗ minio-init did not complete (exit code: '$init_code')${NC}"
+        echo "  Buckets and/or the backend service account may be missing."
+        echo "  Check: docker compose logs minio-init"
+        return 1
+    fi
+    echo -e "${GREEN}✓ MinIO buckets and service account ready${NC}"
+
     # Wait for app to be healthy.
     echo ""
     echo "Waiting for app..."
@@ -892,6 +1048,25 @@ update_product() {
     # storefront out. Updating a product is not a request for a demo.
     # Demo data now arrives one way: `aivis seed`, on purpose.
     # ----------------------------------------------------------------------
+    # OBJECTS FIRST, ROWS SECOND -- the order the installer's own comment
+    # already insists on ("Reverse order would leave the DB pointing at
+    # empty storage and the renderer 500ing"). Restoring here rather than
+    # merely checking is what makes a lost minio volume a non-event: the
+    # sixty-four files ship inside the image, the upload is idempotent,
+    # and it costs about two seconds.
+    #
+    # The check below still runs. A restore can be partial -- a half-read
+    # source directory, a storage error mid-loop -- and "we uploaded
+    # something" is not "the sixty-four objects are there". Replacing one
+    # unbacked assurance with another was the whole failure of the row
+    # count this pairs with.
+    echo ""
+    echo "Restoring platform template objects to MinIO..."
+    restore_platform_template_objects || {
+        echo -e "${RED}✗ Template object restore failed${NC}"
+        return 1
+    }
+
     echo ""
     echo "Seeding prod DB (bootstrap)..."
     docker compose exec -T app python scripts/seed_platform.py
@@ -924,6 +1099,13 @@ update_product() {
         return 1
     fi
     echo -e "${GREEN}✓ 16 platform templates active${NC}"
+
+    # The other side of the same seam. Sixteen rows above say the DB knows
+    # about sixteen templates; this says the objects those rows point at
+    # exist. Either half can be lost without the other.
+    echo ""
+    echo "Smoke check: platform template objects present..."
+    check_platform_template_objects || return 1
 
 
 
