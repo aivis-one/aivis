@@ -705,6 +705,16 @@ async def auth_2fa_login_verify(
         user_agent=request.headers.get("User-Agent", ""),
     )
 
+    # REFRESH BEFORE SERIALISING, and only the backup-code path needs it.
+    # Spending a backup code UPDATEs the user row, and `updated_at`
+    # carries onupdate=func.now(): after that UPDATE SQLAlchemy marks the
+    # attribute expired so the server-generated value gets re-read.
+    # UserResponse.model_validate() then touches it from inside pydantic,
+    # which is synchronous, and the lazy reload raises MissingGreenlet --
+    # a 500 on a legitimate login. A plain TOTP login writes nothing, so
+    # it never expired anything and never hit this.
+    await session.refresh(user)
+
     return AuthResponse(
         user=UserResponse.model_validate(user),
         session_token=token,

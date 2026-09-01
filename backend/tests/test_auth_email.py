@@ -252,7 +252,7 @@ async def test_login_blocked_user(
 
     resp = await client.post(
         "/api/v1/auth/email/login",
-        json={"email": email, "password": "testpass123"},
+        json={"email": email, "password": "Password123!"},
     )
     assert resp.status_code == 403
     body = resp.json()
@@ -295,7 +295,7 @@ async def test_login_self_deactivated_user(
 
     resp = await client.post(
         "/api/v1/auth/email/login",
-        json={"email": email, "password": "testpass123"},
+        json={"email": email, "password": "Password123!"},
     )
     assert resp.status_code == 403
     body = resp.json()

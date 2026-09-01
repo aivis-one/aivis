@@ -8,8 +8,10 @@
 #      columns are never emitted
 #   3: Caller only ever gets their OWN rows, even when another user has
 #      matching transactions
-#   4: CSV formula-injection guard -- a hostile reference_type cannot
-#      come back as a live formula (leading char neutralised)
+#   4: CSV formula-injection guard -- a hostile value cannot come back
+#      as a live formula (leading char neutralised). Asserted against
+#      _sanitize_csv_cell directly: see that test's docstring for why it
+#      can no longer be driven through the API
 #   5: Row-cap boundary -- exceeding EXPORT_MAX_ROWS returns 400, not a
 #      silently truncated file (EXPORT_MAX_ROWS patched down via
 #      monkeypatch so the test does not need to insert thousands of rows)
@@ -18,10 +20,18 @@
 #   7: Rate limiting -- the (max+1)th call in the window gets 429
 #
 # ISOLATION (shared test DB): every test creates its own user via
-# register_user() (UUID-suffixed email) and scopes its transactions to
-# a per-test UUID-derived type marker, never asserting on absolute
-# counts or "first row of type X" -- other tests' rows may already be
-# in the table.
+# register_user() (UUID-suffixed email), and the export endpoint scopes
+# every query to the caller's user_id -- so a fresh user's export
+# contains that test's rows and nothing else.
+#
+# WHY NOT A PER-TEST TYPE MARKER. These tests used to mint a unique
+# `exporttest_<hex>` prefix and write it into transactions.type. That
+# column carries a CHECK constraint listing the fifteen legal transaction
+# types (added in migration 0012, rebuilt in 0036), so every one of those
+# INSERTs was refused by the database and the whole file had never
+# passed. The types below are real members of TransactionType; isolation
+# comes from the fresh user, which is stronger anyway -- it is what the
+# endpoint actually enforces.
 # =============================================================================
 
 import csv
@@ -35,7 +45,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.modules.transactions.service import record_transaction
+from app.modules.transactions.constants import TransactionType
+from app.modules.transactions.service import _sanitize_csv_cell, record_transaction
 from app.modules.users.models import User
 from tests.helpers import auth_headers, register_user
 
@@ -46,10 +57,13 @@ async def _register(client: AsyncClient) -> tuple[UUID, str]:
     return UUID(data["user"]["id"]), data["session_token"]
 
 
-def _marker() -> str:
-    """A per-test-call unique type prefix so export filters never see
-    another test's (or another run's) rows in the shared DB."""
-    return f"exporttest_{uuid.uuid4().hex[:12]}"
+# Real transaction types, used instead of the synthetic marker these
+# tests used to mint. Both are legal values of the ck_transactions_type
+# CHECK constraint; a credit and a debit, so the decimal/sign assertions
+# below still have both signs to work with.
+_T_CREDIT = TransactionType.DEPOSIT_RECEIVED.value
+_T_DEBIT = TransactionType.PURCHASE_COMPLETED.value
+_T_SMALL = TransactionType.INSTALLMENT_TRANCHE_PAID.value
 
 
 def _parse_csv(text: str) -> list[list[str]]:
@@ -65,12 +79,11 @@ async def test_export_headers_and_metadata(
     columns (no details, no user_id).
     """
     user_id, token = await _register(client)
-    marker = _marker()
 
     await record_transaction(
         db_session,
         user_id=user_id,
-        type=f"{marker}:a",
+        type=_T_CREDIT,
         amount_cents=1234,
         reference_id=uuid.uuid4(),
         reference_type="payment",
@@ -78,7 +91,7 @@ async def test_export_headers_and_metadata(
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/export?type={marker}:",
+        "/api/v1/transactions/export",
         headers=auth_headers(token),
     )
     assert resp.status_code == 200, resp.text
@@ -112,26 +125,24 @@ async def test_export_amounts_are_decimal_not_cents(
     the raw integer cents value "10050"/"-2500".
     """
     user_id, token = await _register(client)
-    marker = _marker()
-
     await record_transaction(
         db_session,
         user_id=user_id,
-        type=f"{marker}:credit",
+        type=_T_CREDIT,
         amount_cents=10050,
         currency="USD",
     )
     await record_transaction(
         db_session,
         user_id=user_id,
-        type=f"{marker}:debit",
+        type=_T_DEBIT,
         amount_cents=-2500,
         currency="USD",
     )
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/export?type={marker}:",
+        "/api/v1/transactions/export",
         headers=auth_headers(token),
     )
     assert resp.status_code == 200, resp.text
@@ -140,7 +151,7 @@ async def test_export_amounts_are_decimal_not_cents(
     assert len(data_rows) == 2
 
     amounts_by_type = {r[1]: r[2] for r in data_rows}
-    assert amounts_by_type[f"{marker}:credit"] == "100.50"
+    assert amounts_by_type[_T_CREDIT] == "100.50"
     # THE DEBIT MUST STAY A NUMBER, apostrophe-free. The formula guard
     # deliberately does NOT touch the amount column: a leading "-" would
     # otherwise be escaped, every spreadsheet would read the cell as
@@ -151,11 +162,11 @@ async def test_export_amounts_are_decimal_not_cents(
     # real export. Safe to exempt because service.py BUILDS this cell
     # from a quantised Decimal -- digits, "-" and "." only, incapable of
     # expressing a formula. See _transaction_csv_row's comment.
-    assert amounts_by_type[f"{marker}:debit"] == "-25.00"
-    assert not amounts_by_type[f"{marker}:debit"].startswith("'")
+    assert amounts_by_type[_T_DEBIT] == "-25.00"
+    assert not amounts_by_type[_T_DEBIT].startswith("'")
     # Never the raw cents value ("10050"/"2500" would appear literally).
-    assert "10050" not in amounts_by_type[f"{marker}:credit"]
-    assert "2500" not in amounts_by_type[f"{marker}:debit"]
+    assert "10050" not in amounts_by_type[_T_CREDIT]
+    assert "2500" not in amounts_by_type[_T_DEBIT]
     # The column is genuinely arithmetic: both cells parse as Decimals
     # and sum. A regression to apostrophe-escaping fails right here.
     total = sum(Decimal(v) for v in amounts_by_type.values())
@@ -166,13 +177,12 @@ async def test_export_amounts_are_decimal_not_cents(
 async def test_export_only_returns_callers_own_rows(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """User B's transaction of the SAME marker type must never appear
+    """User B's transaction of the SAME type must never appear
     in User A's export -- list_transactions()'s user_id scope is the
     only thing standing between this and a cross-account data leak.
     """
     user_a_id, token_a = await _register(client)
     user_b_id, _token_b = await _register(client)
-    marker = _marker()  # shared marker -- proves isolation is by user_id, not type
 
     ref_a = uuid.uuid4()
     ref_b = uuid.uuid4()
@@ -180,7 +190,7 @@ async def test_export_only_returns_callers_own_rows(
     await record_transaction(
         db_session,
         user_id=user_a_id,
-        type=f"{marker}:shared",
+        type=_T_CREDIT,
         amount_cents=111,
         reference_id=ref_a,
         reference_type="payment",
@@ -188,7 +198,7 @@ async def test_export_only_returns_callers_own_rows(
     await record_transaction(
         db_session,
         user_id=user_b_id,
-        type=f"{marker}:shared",
+        type=_T_CREDIT,
         amount_cents=222,
         reference_id=ref_b,
         reference_type="payment",
@@ -196,7 +206,7 @@ async def test_export_only_returns_callers_own_rows(
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/export?type={marker}:",
+        "/api/v1/transactions/export",
         headers=auth_headers(token_a),
     )
     assert resp.status_code == 200, resp.text
@@ -209,46 +219,50 @@ async def test_export_only_returns_callers_own_rows(
     assert len(data_rows) == 1
 
 
-@pytest.mark.asyncio
-async def test_export_formula_injection_guard(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """A transaction whose reference_type carries a formula-injection
-    payload must come back with a neutered leading character -- proof
-    the file cannot re-open as a live formula in Excel/Sheets/
-    LibreOffice. `type`/`reference_type` are plain String columns with
-    no DB-level enum constraint, so this is a realistic worst case.
+def test_export_formula_injection_guard() -> None:
+    """Every hostile leading character is neutered before a cell is
+    written -- proof the file cannot re-open as a live formula in
+    Excel/Sheets/LibreOffice.
+
+    WHY THIS IS NO LONGER DRIVEN THROUGH THE API. The previous version
+    stored "=cmd|' /C calc'!A0" in transactions.reference_type and read
+    it back out of the exported CSV, on the stated grounds that `type`
+    and `reference_type` are "plain String columns with no DB-level enum
+    constraint". They are not: ck_transactions_type and
+    ck_transactions_reference_type each list their legal values, so the
+    hostile row could never be inserted and the test could never run.
+
+    The old assertion was right about WHAT must happen and wrong about
+    HOW to reach it. Asserting on _sanitize_csv_cell directly keeps the
+    guarantee and drops the unreachable set-up -- a test that builds a
+    state the schema forbids proves nothing about the export.
+
+    The API-level half of this guarantee is covered by
+    test_export_amounts_are_decimal_not_cents, which asserts a real
+    exported row is NOT apostrophe-prefixed in the amount column.
     """
-    user_id, token = await _register(client)
-    marker = _marker()
-    hostile_reference_type = "=cmd|' /C calc'!A0"
+    hostile = "=cmd|' /C calc'!A0"
 
-    await record_transaction(
-        db_session,
-        user_id=user_id,
-        type=f"{marker}:hostile",
-        amount_cents=1,
-        reference_type=hostile_reference_type,
-    )
-    await db_session.commit()
+    # MUST-FIRE CONTROL: the payload really does lead with a formula
+    # character, so a passing assertion below is not vacuous.
+    assert hostile.startswith("=")
 
-    resp = await client.get(
-        f"/api/v1/transactions/export?type={marker}:",
-        headers=auth_headers(token),
-    )
-    assert resp.status_code == 200, resp.text
-    rows = _parse_csv(resp.text)
-    data_rows = rows[1:]
-    assert len(data_rows) == 1
+    neutered = _sanitize_csv_cell(hostile)
+    assert not neutered.startswith("=")
+    assert neutered.startswith("'=")
+    assert neutered == "'" + hostile
 
-    reference_type_cell = data_rows[0][4]
-    # MUST-FIRE CONTROL: the payload as stored is a live formula lead.
-    assert hostile_reference_type.startswith("=")
-    # The emitted cell must NOT start with the live-formula character --
-    # it must be neutered with a leading apostrophe instead.
-    assert not reference_type_cell.startswith("=")
-    assert reference_type_cell.startswith("'=")
-    assert reference_type_cell == "'" + hostile_reference_type
+    # The whole OWASP lead set, not just "=" -- a guard that caught only
+    # the first character would pass a one-payload test and still ship
+    # every other vector.
+    for lead in ("=", "+", "-", "@", "\t", "\r"):
+        assert _sanitize_csv_cell(lead + "danger") == "'" + lead + "danger", lead
+
+    # A value that does NOT lead with one of them must pass through
+    # untouched: a guard that prefixed everything would also pass the
+    # assertions above.
+    assert _sanitize_csv_cell("deposit:received") == "deposit:received"
+    assert _sanitize_csv_cell("") == ""
 
 
 @pytest.mark.asyncio
@@ -265,19 +279,17 @@ async def test_export_row_cap_boundary(
     monkeypatch.setattr("app.modules.transactions.service.EXPORT_MAX_ROWS", 3)
 
     user_id, token = await _register(client)
-    marker = _marker()
-
-    for i in range(4):  # one more than the patched cap
+    for _ in range(4):  # one more than the patched cap
         await record_transaction(
             db_session,
             user_id=user_id,
-            type=f"{marker}:row{i}",
+            type=_T_CREDIT,
             amount_cents=100,
         )
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/export?type={marker}:",
+        "/api/v1/transactions/export",
         headers=auth_headers(token),
     )
     assert resp.status_code == 400, resp.text
@@ -301,19 +313,17 @@ async def test_export_row_cap_not_tripped_under_the_limit(
     monkeypatch.setattr("app.modules.transactions.service.EXPORT_MAX_ROWS", 3)
 
     user_id, token = await _register(client)
-    marker = _marker()
-
-    for i in range(3):  # exactly the patched cap
+    for _ in range(3):  # exactly the patched cap
         await record_transaction(
             db_session,
             user_id=user_id,
-            type=f"{marker}:row{i}",
+            type=_T_CREDIT,
             amount_cents=100,
         )
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/export?type={marker}:",
+        "/api/v1/transactions/export",
         headers=auth_headers(token),
     )
     assert resp.status_code == 200, resp.text
@@ -330,28 +340,26 @@ async def test_export_filters_are_honoured(
     filter on amount_cents.
     """
     user_id, token = await _register(client)
-    marker = _marker()
-
     await record_transaction(
-        db_session, user_id=user_id, type=f"{marker}:small", amount_cents=50
+        db_session, user_id=user_id, type=_T_SMALL, amount_cents=50
     )
     await record_transaction(
-        db_session, user_id=user_id, type=f"{marker}:mid", amount_cents=500
+        db_session, user_id=user_id, type=_T_CREDIT, amount_cents=500
     )
     await record_transaction(
-        db_session, user_id=user_id, type=f"{marker}:big", amount_cents=-5000
+        db_session, user_id=user_id, type=_T_DEBIT, amount_cents=-5000
     )
     await db_session.commit()
 
     resp = await client.get(
-        f"/api/v1/transactions/export?type={marker}:&amount_min=100&amount_max=1000",
+        "/api/v1/transactions/export?amount_min=100&amount_max=1000",
         headers=auth_headers(token),
     )
     assert resp.status_code == 200, resp.text
     rows = _parse_csv(resp.text)
     data_rows = rows[1:]
     types = {r[1] for r in data_rows}
-    assert types == {f"{marker}:mid"}
+    assert types == {_T_CREDIT}
 
 
 @pytest.mark.asyncio

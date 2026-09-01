@@ -78,15 +78,23 @@ def _sanitize_csv_cell(value: str) -> str:
     spreadsheet app renders an apostrophe-led cell as literal text
     instead of evaluating it.
 
-    Applied uniformly to EVERY emitted cell (not just the columns that
-    look "risky") -- this project's transaction `type` and
-    `reference_type` columns are String(50)/String(30) with no DB-level
-    enum constraint, so defense-in-depth is cheap and the alternative
-    (guessing which columns can never contain a hostile value) is not.
-    A side effect: a legitimate negative amount ("-25.50") also gets the
-    apostrophe prefix and opens as text rather than a number in the
-    target spreadsheet -- an accepted trade-off for closing the
-    injection vector on every column uniformly.
+    Applied to every DB-SOURCED cell, rather than to the columns that
+    happen to look risky: guessing which column can never carry a
+    hostile value is the expensive mistake, and the guard costs nothing.
+
+    TWO CLAIMS THAT USED TO STAND HERE WERE WRONG, and both are removed
+    rather than softened:
+
+    - `type` and `reference_type` were described as having "no DB-level
+      enum constraint". They do -- ck_transactions_type and
+      ck_transactions_reference_type each list their legal values. The
+      guard is still right to run over them (a constraint can be
+      dropped, and this function does not get to assume it will not),
+      but the stated reason was false.
+    - A negative amount was described as getting the apostrophe prefix
+      as "an accepted trade-off". It does not: _transaction_csv_row
+      exempts the amount column deliberately, with its own reasoning at
+      the call site, precisely so the column stays numeric.
     """
     if value and value[0] in _FORMULA_LEAD_CHARS:
         return "'" + value

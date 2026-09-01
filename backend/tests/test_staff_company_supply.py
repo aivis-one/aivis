@@ -199,9 +199,17 @@ async def test_update_supply_rejects_over_100_percent(
     assert pool is not None
     admin = await _admin(client, db_session)
 
+    # Read the identifiers BEFORE the rollback below. A rollback expires
+    # every loaded attribute, and touching `company.id` afterwards makes
+    # SQLAlchemy reload it lazily -- synchronous IO on an async session,
+    # which raises MissingGreenlet instead of the assertion this test is
+    # here to make.
+    company_id = company.id
+    pool_id = pool.id
+
     # 200,000 options over a 150,000 supply would be >100% -- refused.
     with pytest.raises(BadRequestError) as exc:
-        await update_supply(company.id, 150_000, admin, db_session)
+        await update_supply(company_id, 150_000, admin, db_session)
     await db_session.rollback()
     assert "100%" in str(exc.value)
 
@@ -209,12 +217,12 @@ async def test_update_supply_rejects_over_100_percent(
     # guard ran BEFORE any write, not merely that a rollback undid one.
     fresh_company = (
         await db_session.execute(
-            select(CompanyProfile).where(CompanyProfile.id == company.id)
+            select(CompanyProfile).where(CompanyProfile.id == company_id)
         )
     ).scalar_one()
     fresh_pool = (
         await db_session.execute(
-            select(OptionPool).where(OptionPool.id == pool.id)
+            select(OptionPool).where(OptionPool.id == pool_id)
         )
     ).scalar_one()
     assert fresh_company.total_supply == 1_000_000
@@ -239,23 +247,39 @@ async def test_update_supply_rejects_rounding_edge_case(
     pool.total_options to new_total_supply directly and must still
     reject this.
     """
+    # The company STARTS wider than the pool -- 2,000,002 options over
+    # 3,000,000 is an ordinary 66.67% -- and the test then narrows the
+    # supply to 2,000,001, one below the option count.
+    #
+    # WHAT THIS FIXES. The starting supply used to be 2,000,001, the same
+    # number the update asks for, so update_supply refused it with "the
+    # same as the current value" and returned before the ceiling guard
+    # ever ran. The assertion on "100%" then failed against the
+    # same-value message -- the test was green-adjacent for the wrong
+    # reason and could never have exercised the guard it names. The
+    # same-value path has its own test below.
     company, pool = await _mini_company(
-        client, db_session, total_supply=2_000_001, with_pool_total_options=2_000_002
+        client, db_session, total_supply=3_000_000, with_pool_total_options=2_000_002
     )
     assert pool is not None
     admin = await _admin(client, db_session)
 
+    # Read before the rollback: it expires loaded attributes, and a later
+    # `company.id` would reload lazily -- sync IO on an async session.
+    company_id = company.id
+
     with pytest.raises(BadRequestError) as exc:
-        await update_supply(company.id, 2_000_001, admin, db_session)
+        await update_supply(company_id, 2_000_001, admin, db_session)
     await db_session.rollback()
     assert "100%" in str(exc.value)
 
     fresh_company = (
         await db_session.execute(
-            select(CompanyProfile).where(CompanyProfile.id == company.id)
+            select(CompanyProfile).where(CompanyProfile.id == company_id)
         )
     ).scalar_one()
-    assert fresh_company.total_supply == 2_000_001  # the fixture's own starting value, unwritten
+    # The fixture's own starting value, unwritten.
+    assert fresh_company.total_supply == 3_000_000
 
 
 # ---------------------------------------------------------------------------

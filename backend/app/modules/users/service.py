@@ -48,6 +48,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 import pyotp
 import structlog
@@ -59,6 +60,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.crypto import decrypt_secret, encrypt_secret
+from app.core.database import get_session_factory
 from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError
 from app.modules.auth.service import (
     delete_all_sessions,
@@ -595,6 +597,46 @@ async def resend_email_change_code(
     )
 
 
+async def _record_email_change_attempt(user_id: UUID) -> None:
+    """Count one failed email-change code against the attempts cap.
+
+    RUNS IN ITS OWN TRANSACTION, ON PURPOSE. Its caller raises
+    BadRequestError the moment this returns, and get_db_session rolls
+    the request's transaction back on any exception (P-01) -- so a write
+    made on the caller's session would be erased by the very failure it
+    is counting, leaving the cap permanently at zero.
+
+    Re-reads the user rather than taking the caller's instance: that
+    instance belongs to a session about to be rolled back, and a JSONB
+    write against it would not reach this transaction.
+
+    A failure to count is logged, never raised: the caller's answer to
+    the user is "invalid code" either way, and turning a bookkeeping
+    problem into a 500 would tell an attacker more than it tells us.
+    """
+    factory = get_session_factory()
+    session = factory()
+    try:
+        user = await session.get(User, user_id)
+        if user is None:
+            return
+        creds = dict(user.credentials or {})
+        email_change = dict(creds.get("email_change") or {})
+        if not email_change.get("new_email"):
+            # The pending change was completed or cleared between the
+            # caller's read and this write. Nothing to count against.
+            return
+        email_change["attempts"] = email_change.get("attempts", 0) + 1
+        creds["email_change"] = email_change
+        user.set_jsonb("credentials", creds)
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        logger.error("email_change_attempt_count_failed", user_id=str(user_id))
+    finally:
+        await session.close()
+
+
 async def confirm_email_change(
     user: User,
     code: str,
@@ -645,11 +687,19 @@ async def confirm_email_change(
 
     stored_code = email_change.get("token") or ""
     if not secrets.compare_digest(code, stored_code):
-        updated_creds = dict(user.credentials or {})
-        updated_creds["email_change"] = dict(email_change)
-        updated_creds["email_change"]["attempts"] = attempts + 1
-        user.set_jsonb("credentials", updated_creds)
-        await session.flush()
+        # THE COUNTER MUST OUTLIVE THE ROLLBACK THAT FOLLOWS. This
+        # function raises immediately below, get_db_session rolls the
+        # request's transaction back on any exception (P-01), and a
+        # flush into that same transaction is undone with it -- so the
+        # increment written here used to vanish every single time.
+        # `attempts` stayed at 0 for the whole life of a pending change,
+        # the cap above never fired, and a six-digit code could be
+        # guessed without limit until its TTL expired.
+        #
+        # Same shape and same reason as auth service's
+        # _audit_login_failure: a dedicated session that commits on its
+        # own, because the caller's is already doomed.
+        await _record_email_change_attempt(user.id)
         raise BadRequestError("Invalid verification code")
 
     # Success: swap the active email, clear the pending slot.

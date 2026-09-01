@@ -279,6 +279,18 @@ async def test_project_price_change_cascades_and_audits(
     company_user_id = me.json()["user_id"]
     original_price = me.json()["price_per_unit_cents"]  # 10_000, from _create_company_and_login
 
+    # A product cannot exist without an option pool to draw from: creating
+    # one against a poolless company is a 400 by design. Every other test
+    # that reaches for a product creates the pool first (see the
+    # total_supply test below); this one did not, which is what made it
+    # red rather than anything about price cascade.
+    pool_resp = await client.post(
+        f"/api/v1/staff/companies/{company_id}/pool",
+        json={"equity_percent": "10.0000"},
+        headers=auth_headers(admin_token),
+    )
+    assert pool_resp.status_code in (200, 201), pool_resp.text
+
     product = await _create_product(client, admin_token, company_id, package_size=100)
     installment = await _create_installment_template(client, admin_token, product["id"])
 
