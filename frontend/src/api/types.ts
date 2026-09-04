@@ -240,7 +240,11 @@ export type { UpdatePermissionsRequest } from './generated'
 
 export type { KYCQueueItem } from './generated'
 
-export type { KYCRejectRequest } from './generated'
+// H10: one body for every staff KYC decision. Approve carried no
+// body at all before, and reject's reason was optional -- an
+// approval, the decision that opens the whole product to an
+// account, left no record of why it was given.
+export type { KYCDecisionRequest } from './generated'
 
 // ---------------------------------------------------------------------------
 // Staff: payments (Sprint 5.3)

@@ -295,7 +295,12 @@
       "promoteConfirm": "Benutzer zur Staff-Rolle befördern?",
       "promoted": "Benutzer zu Staff befördert",
       "permissions": "Berechtigungen",
-      "permissionsUpdated": "Berechtigungen aktualisiert"
+      "permissionsUpdated": "Berechtigungen aktualisiert",
+      "kyc": {
+        "approveHint": "Geben Sie einen Grund an. Er wird im Audit-Log gespeichert.",
+        "rejectHint": "Geben Sie einen Grund an. Der Antragsteller sieht ihn bei der nachsten Anmeldung.",
+        "reason": "Grund (erforderlich)"
+      }
     },
     "withdrawals": {
       "confirm": "Bestätigen",

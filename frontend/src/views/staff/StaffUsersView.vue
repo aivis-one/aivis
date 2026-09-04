@@ -196,8 +196,13 @@ const showUnblockModal = ref(false)
 const showPromoteModal = ref(false)
 
 // -- KYC reject modal (iter 2.7 A5) --
-const showKycRejectModal = ref(false)
-const kycRejectReason = ref('')
+// H10: one modal for both decisions. Approve used to fire straight from
+// the button with no body; the backend now refuses a decision without a
+// reason, and an approval is the decision that opens the whole product
+// to an account -- it is the one that most needed a recorded why.
+const showKycDecisionModal = ref(false)
+const kycDecisionMode = ref<'approve' | 'reject'>('reject')
+const kycDecisionReason = ref('')
 const kycActionLoading = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / perPage))
@@ -355,59 +360,50 @@ async function setPermission(key: PermissionKey, value: boolean): Promise<void> 
 // modal reflects the new status and any added history row) and the
 // list (so the chip filter counts agree with reality).
 
-async function handleKycApprove(): Promise<void> {
+function openKycDecision(mode: 'approve' | 'reject'): void {
+  if (!canDoKycApprove.value) {
+    console.warn(`[StaffUsersView] kyc ${mode} blocked: no kyc_approve permission`)
+    return
+  }
+  kycDecisionMode.value = mode
+  kycDecisionReason.value = ''
+  showKycDecisionModal.value = true
+}
+
+async function handleKycDecision(): Promise<void> {
   if (!detailUser.value) return
   const applicationId = detailUser.value.latest_application_id
   if (!applicationId) return
   if (!canDoKycApprove.value) {
-    console.warn('[StaffUsersView] kyc approve blocked: no kyc_approve permission')
+    console.warn('[StaffUsersView] kyc decision blocked: no kyc_approve permission')
     return
   }
-
-  kycActionLoading.value = true
-  try {
-    await approveKYC(applicationId)
-    showToast(t('staff.userDetail.kyc.approvedToast'), 'success')
-    // Refetch detail so the badge and history reflect the new state.
-    detailUser.value = await fetchUserDetail(detailUser.value.id)
-    // Refetch list so the chip-filtered counts stay accurate.
-    await loadUsers()
-  } catch {
-    showToast(t('common.error'), 'error')
-  } finally {
-    kycActionLoading.value = false
-  }
-}
-
-function openKycReject(): void {
-  if (!canDoKycApprove.value) {
-    console.warn('[StaffUsersView] kyc reject blocked: no kyc_approve permission')
-    return
-  }
-  kycRejectReason.value = ''
-  showKycRejectModal.value = true
-}
-
-async function handleKycReject(): Promise<void> {
-  if (!detailUser.value) return
-  const applicationId = detailUser.value.latest_application_id
-  if (!applicationId) return
-  if (!canDoKycApprove.value) {
-    console.warn('[StaffUsersView] kyc reject blocked: no kyc_approve permission')
-    return
-  }
-  // Reason is required for reject per R1 §3 ("Reject требует обязательное
-  // поле причины"). The button stays disabled until the input is non-empty,
-  // but trim-check here covers whitespace-only entries.
-  const reason = kycRejectReason.value.trim()
+  // The confirm button stays disabled while the trimmed input is empty;
+  // this check covers whitespace-only entries, which the backend also
+  // refuses -- better to stop here than to spend a request on a 422.
+  const reason = kycDecisionReason.value.trim()
   if (!reason) return
 
+  const approving = kycDecisionMode.value === 'approve'
   kycActionLoading.value = true
   try {
-    await rejectKYC(applicationId, { reason })
-    showToast(t('staff.userDetail.kyc.rejectedToast'), 'success')
-    showKycRejectModal.value = false
-    kycRejectReason.value = ''
+    if (approving) {
+      await approveKYC(applicationId, { reason })
+    } else {
+      await rejectKYC(applicationId, { reason })
+    }
+    showToast(
+      t(
+        approving
+          ? 'staff.userDetail.kyc.approvedToast'
+          : 'staff.userDetail.kyc.rejectedToast',
+      ),
+      'success',
+    )
+    showKycDecisionModal.value = false
+    kycDecisionReason.value = ''
+    // Refetch detail so the badge and history reflect the new state,
+    // then the list so the chip-filtered counts stay accurate.
     detailUser.value = await fetchUserDetail(detailUser.value.id)
     await loadUsers()
   } catch {
@@ -610,12 +606,17 @@ onMounted(loadUsers)
             <CButton
               variant="primary"
               size="sm"
-              :loading="kycActionLoading"
-              @click="handleKycApprove"
+              :disabled="kycActionLoading"
+              @click="openKycDecision('approve')"
             >
               {{ t('staff.userDetail.kyc.approve') }}
             </CButton>
-            <CButton variant="danger" size="sm" :disabled="kycActionLoading" @click="openKycReject">
+            <CButton
+              variant="danger"
+              size="sm"
+              :disabled="kycActionLoading"
+              @click="openKycDecision('reject')"
+            >
               {{ t('staff.userDetail.kyc.reject') }}
             </CButton>
           </div>
@@ -734,30 +735,42 @@ onMounted(loadUsers)
     <!-- KYC reject reason (iter 2.7 A5).
          Reason is REQUIRED per R1 §3 -- the confirm button stays
          disabled while the trimmed input is empty. -->
-    <CModal :open="showKycRejectModal" @close="showKycRejectModal = false">
+    <CModal :open="showKycDecisionModal" @close="showKycDecisionModal = false">
       <h3 class="detail__title">
-        {{ t('staff.userDetail.kyc.reject') }}
+        {{
+          kycDecisionMode === 'approve'
+            ? t('staff.userDetail.kyc.approve')
+            : t('staff.userDetail.kyc.reject')
+        }}
       </h3>
       <p class="detail__confirm-text">
-        {{ t('staff.userDetail.kyc.rejectHint') }}
+        {{
+          kycDecisionMode === 'approve'
+            ? t('staff.userDetail.kyc.approveHint')
+            : t('staff.userDetail.kyc.rejectHint')
+        }}
       </p>
       <CInput
-        v-model="kycRejectReason"
-        :label="t('staff.userDetail.kyc.rejectReason')"
-        :placeholder="t('staff.userDetail.kyc.rejectReason')"
+        v-model="kycDecisionReason"
+        :label="t('staff.userDetail.kyc.reason')"
+        :placeholder="t('staff.userDetail.kyc.reason')"
       />
       <div class="detail__actions" style="margin-top: 16px">
-        <CButton variant="outline" size="sm" @click="showKycRejectModal = false">
+        <CButton variant="outline" size="sm" @click="showKycDecisionModal = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
-          variant="danger"
+          :variant="kycDecisionMode === 'approve' ? 'primary' : 'danger'"
           size="sm"
-          :disabled="!kycRejectReason.trim() || kycActionLoading"
+          :disabled="!kycDecisionReason.trim() || kycActionLoading"
           :loading="kycActionLoading"
-          @click="handleKycReject"
+          @click="handleKycDecision"
         >
-          {{ t('staff.userDetail.kyc.reject') }}
+          {{
+            kycDecisionMode === 'approve'
+              ? t('staff.userDetail.kyc.approve')
+              : t('staff.userDetail.kyc.reject')
+          }}
         </CButton>
       </div>
     </CModal>

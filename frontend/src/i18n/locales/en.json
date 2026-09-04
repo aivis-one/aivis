@@ -378,9 +378,10 @@
         "approve": "Approve KYC",
         "reject": "Reject KYC",
         "rejectHint": "Provide a reason. The applicant will see it on their next sign-in.",
-        "rejectReason": "Rejection reason (required)",
         "approvedToast": "KYC application approved",
-        "rejectedToast": "KYC application rejected"
+        "rejectedToast": "KYC application rejected",
+        "approveHint": "Provide a reason. It is stored in the audit log.",
+        "reason": "Reason (required)"
       }
     },
     "platform": {

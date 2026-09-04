@@ -31,7 +31,7 @@ import type {
   UpdatePermissionsRequest,
   StaffProfileResponse,
   KYCQueueItem,
-  KYCRejectRequest,
+  KYCDecisionRequest,
   StaffPaymentListResponse,
   ReversePaymentRequest,
   ReversalResponse,
@@ -132,14 +132,21 @@ export function fetchKYCQueue(): Promise<KYCQueueItem[]> {
   return api.get<KYCQueueItem[]>('/api/v1/staff/kyc/queue')
 }
 
-/** POST /api/v1/staff/kyc/{id}/approve — approve KYC application. */
-export function approveKYC(applicationId: string): Promise<void> {
-  return api.post<void>(`/api/v1/staff/kyc/${applicationId}/approve`)
+/** POST /api/v1/staff/kyc/{id}/approve — approve KYC application.
+ *
+ * The body is REQUIRED since H10 and so is its reason: the backend
+ * answers 422 without one. It used to take no body at all.
+ */
+export function approveKYC(applicationId: string, body: KYCDecisionRequest): Promise<void> {
+  return api.post<void>(`/api/v1/staff/kyc/${applicationId}/approve`, body)
 }
 
-/** POST /api/v1/staff/kyc/{id}/reject — reject KYC application. */
-export function rejectKYC(applicationId: string, body?: KYCRejectRequest): Promise<void> {
-  return api.post<void>(`/api/v1/staff/kyc/${applicationId}/reject`, body ?? {})
+/** POST /api/v1/staff/kyc/{id}/reject — reject KYC application.
+ *
+ * Same body, and the reason is no longer optional here either.
+ */
+export function rejectKYC(applicationId: string, body: KYCDecisionRequest): Promise<void> {
+  return api.post<void>(`/api/v1/staff/kyc/${applicationId}/reject`, body)
 }
 
 // ---------------------------------------------------------------------------

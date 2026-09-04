@@ -295,7 +295,12 @@
       "promoteConfirm": "ترقية هذا المستخدم إلى دور موظف؟",
       "promoted": "تمت ترقية المستخدم إلى موظف",
       "permissions": "الصلاحيات",
-      "permissionsUpdated": "تم تحديث الصلاحيات"
+      "permissionsUpdated": "تم تحديث الصلاحيات",
+      "kyc": {
+        "approveHint": "اذكر السبب. يُحفظ في سجل التدقيق.",
+        "rejectHint": "اذكر السبب. سيراه مقدم الطلب عند تسجيل الدخول التالي.",
+        "reason": "السبب (مطلوب)"
+      }
     },
     "withdrawals": {
       "confirm": "تأكيد",
