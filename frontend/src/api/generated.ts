@@ -18,7 +18,7 @@ export type CompanyStatus = 'active' | 'hidden' | 'archived'
 export type DocumentTemplateKind = 'purchase_agreement' | 'gift_certificate' | 'installment_subcontract' | 'ownership_certificate'
 
 /** KYC verification status. Denormalized cache from KYCApplication. */
-export type KYCStatus = 'not_started' | 'submitted' | 'approved' | 'rejected'
+export type KYCStatus = 'not_started' | 'submitted' | 'approved' | 'rejected' | 'revoked'
 
 /** Post owner type. */
 export type OwnerType = 'platform' | 'company'
@@ -714,6 +714,11 @@ export interface KYCApplicationSummary {
   updated_at?: string | null
 }
 
+/** Request body for any staff KYC decision. The reason is required. ONE SCHEMA FOR APPROVE, REJECT AND REVOKE, and the reason is mandatory on all three (H10 P-43). It used to be optional and reject-only, which left an approval with no record of why it was given -- the one decision that opens the whole product to an account. min_length plus the strip validator refuse the three forms of nothing: absent, empty, and whitespace. Stored in the audit log and nowhere else: a column on KYCApplication would be a second copy of the same fact. */
+export interface KYCDecisionRequest {
+  reason: string
+}
+
 /** Pending KYC application with basic user info. */
 export interface KYCQueueItem {
   id: string
@@ -725,29 +730,20 @@ export interface KYCQueueItem {
   last_name?: string | null
 }
 
-/** Request body for KYC rejection with optional reason. */
-export interface KYCRejectRequest {
-  reason?: string | null
-}
-
-/** Current KYC status for the authenticated user. */
+/** Current KYC status for the authenticated user. Carries the money as well as the status. This endpoint is in front of the gate and dashboard/summary -- the usual source of a balance -- is behind it, so without these two fields the screen that asks for ten dollars could not say how much the account actually holds. */
 export interface KYCStatusResponse {
   kyc_status: string
   application_id?: string | null
   application_status?: string | null
+  fee_cents: number
+  available_cents: number
 }
 
-/** Response after submitting a KYC application. */
+/** Response after opening (and paying for) a verification session. */
 export interface KYCSubmitResponse {
   id: string
   status: string
   created_at: string
-}
-
-/** Webhook payload from KYC provider (stub). In production, this will be replaced with SumSub webhook format and signature validation. Current stub accepts user_id + status. */
-export interface KYCWebhookRequest {
-  user_id: string
-  status: string
 }
 
 /** Single agent entry in the leaderboard. */
