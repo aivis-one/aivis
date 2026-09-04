@@ -52,7 +52,7 @@ REGISTER = {
     "verify": "a centred auth card at --maxw-form (360px); the per-digit code inputs are a fixed row.",
     "onboarding-role": "centred role cards at --maxw-form-wide (400px).",
     "onboarding-profile": "a centred auth card at --maxw-form (360px).",
-    "onboarding-kyc": "a centred auth card at --maxw-form (360px).",
+    "kyc-verification": "a centred auth card at --maxw-form (360px) -- one heading, two lines of prose and at most two buttons. H10 replaced onboarding-kyc, which was the same shape.",
     "onboarding-docs": "a centred document list at --maxw-form-wide (400px); measured with eight "
                        "rows, centred and un-clipped from 390 to 1920.",
     "password-reset-request": "a centred auth card at --maxw-form (360px) -- the same shape as login "

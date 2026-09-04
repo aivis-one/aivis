@@ -172,6 +172,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.modules.documents.service import maybe_complete_onboarding
 from app.core.comms_sync import ensure_recipient
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.redis import get_redis
@@ -279,6 +280,13 @@ async def create_company(
     # them before the first message (T-64). Never raises; a failure
     # defers the recipient to the outbox.
     await ensure_recipient(session, company_user)
+
+    # H10: this user is created straight on ROLE_SELECTED, which is now
+    # the step the documents cascade hangs off. Until H10 they left it
+    # by submitting KYC; that step is gone, so the cascade has to be
+    # given its chance here or a company owner whose role requires no
+    # documents would never leave onboarding.
+    await maybe_complete_onboarding(company_user.id, session)
 
     # Create CompanyProfile.
     profile = CompanyProfile(

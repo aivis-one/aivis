@@ -353,8 +353,16 @@ export const useAuthStore = defineStore('auth', () => {
   // ---------------------------------------------------------------------------
   // Register 401 callback
   // ---------------------------------------------------------------------------
+  //
+  // The 402 callback (setOnKycRequired) is wired in main.ts instead of
+  // here: reaching the router from this store would mean importing it,
+  // and the router imports every view, which imports this store. The
+  // pre-auth width check follows those imports and saw the cycle
+  // before a browser could.
 
   setOnUnauthorized(() => _clearSession())
+
+  })
 
   // ---------------------------------------------------------------------------
   // Expose

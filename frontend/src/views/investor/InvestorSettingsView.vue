@@ -66,7 +66,7 @@
 //                      pending application server-side; clicking
 //                      caused a 409 with a generic toast. Showing the
 //                      retry surface keeps the UI honest.
-//     kyc_required  -- Disabled row pointing to /onboarding/kyc (decision
+//     kyc_required  -- Disabled row pointing to /verification (decision
 //                      Q6 in chat).
 //     pending       -- Disabled "under review" line, no button.
 //     cooldown      -- Disabled row with N-days-left label (ceiling days
@@ -406,7 +406,7 @@ async function applyForAgent(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 function goKyc(): void {
-  void safeNavigate(router.push('/onboarding/kyc'), '[InvestorSettingsView] to KYC onboarding')
+  void safeNavigate(router.push('/verification'), '[InvestorSettingsView] to verification')
 }
 
 function goDocs(): void {

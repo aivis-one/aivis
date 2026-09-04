@@ -188,6 +188,7 @@ from app.modules.installments.router import (
     query_router as installment_query_router,
 )
 from app.modules.installments.worker import run_installment_batch
+from app.modules.kyc.gate import enforce_kyc_gate
 from app.modules.kyc.router import router as kyc_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payments.confirmation import run_confirmation_batch
@@ -436,7 +437,15 @@ app = FastAPI(
     # symptomless hole -- it cost this project its whole failed-login audit
     # trail, 0 rows on the live database. Endpoints are untouched; they keep
     # their plain `background_tasks: BackgroundTasks` parameter.
-    dependencies=[Depends(publish_background_tasks)],
+    # H10: the KYC gate, app-wide for the same reason the line above is
+    # -- a per-router gate is one that whoever adds the next router
+    # forgets, and a missing gate produces no output at all. Ordering
+    # against publish_background_tasks does not matter: the gate queues
+    # no background task, and the routes it refuses never run.
+    dependencies=[
+        Depends(publish_background_tasks),
+        Depends(enforce_kyc_gate),
+    ],
 )
 
 
@@ -604,9 +613,18 @@ async def aivis_error_handler(request: Request, exc: AivisError) -> JSONResponse
     # (This comment named a since-renamed function, surviving_background_
     # tasks, until an adversarial review of an unrelated change caught the
     # drift -- the two names never referred to different mechanisms.)
+    # H10: errors may carry a structured payload (KYCGateError does --
+    # the fee and the account's balance). Built as details-first so
+    # "error" and "message" always win: a details key colliding with
+    # either of them must not be able to rewrite the two fields every
+    # client in the tree reads.
+    content: dict = dict(exc.details or {})
+    content["error"] = exc.code
+    content["message"] = exc.message
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.code, "message": exc.message},
+        content=content,
         headers=headers,
         background=getattr(request.state, "background_tasks", None),
     )

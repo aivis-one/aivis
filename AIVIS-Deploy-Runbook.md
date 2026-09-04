@@ -186,13 +186,7 @@ Each one is listed here in execution order, with the exact answer.
    **Pressing ENTER here has a cost worth knowing:** the token stays unset, Telegram login does not
    work, and comms is left in stub mode — where it accepts everything and delivers nothing. The
    script warns in those words when it happens.
-4. **SumSub API Key (optional)** — press **ENTER**. No KYC integration exists in this project.
-   **Pressing ENTER does not leave this field empty** — it keeps whatever `.env` already holds
-   (`SUMSUB_API_KEY=PLACEHOLDER` on a fresh install), a non-empty placeholder string, not a blank
-   one. That's expected and harmless; `CREDENTIALS.md` §6 has no real value to give you here.
-5. **SumSub Secret Key (optional)** — press **ENTER**, same reason: `.env` keeps the `PLACEHOLDER`
-   string it already had, not an empty value.
-6. **Mailgun API Key (optional)** — type the value from `CREDENTIALS.md` §3 if you have it handy, or
+4. **Mailgun API Key (optional)** — type the value from `CREDENTIALS.md` §3 if you have it handy, or
    press **ENTER** to keep whatever `.env` already holds (`PLACEHOLDER` on a fresh env, or an
    earlier install's value on a re-install) — again not an empty field. Either is fine — mail is out
    of scope for this product as currently run (§7).
@@ -627,8 +621,8 @@ missing every object stored in MinIO; the only way to know is to read that log y
   hand** — it's the box's own built-in equivalent of §5's `grep` command, and easier to remember. It
   doesn't change who does the recording: still read it yourself, still copy it into
   `AIVIS-Server/CREDENTIALS.md` by hand, still not on a screenshare.
-- **After you hand-edit `.env`** (adding a SumSub or Mailgun key you skipped during install, per §4
-  items 4-6) **the install's own completion banner tells you to run `aivis restart app`** — this
+- **After you hand-edit `.env`** (adding a Mailgun key you skipped during install, per §4
+  item 4) **the install's own completion banner tells you to run `aivis restart app`** — this
   runbook otherwise never mentions that step, but the app container needs a restart to pick up a
   hand-edited `.env`.
 - **`aivis deploy` is a working, undocumented synonym for `aivis update`** — same command, absent from

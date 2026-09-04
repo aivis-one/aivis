@@ -55,7 +55,7 @@ AIVIS.ONE -- платформа для четырёх аудиторий, объ
 | **Лидерборд** | Рейтинг агентов по объёму, обновляется каждые 60 минут. Строго для агентов |
 | **Бонусный пул** | 2% месячного объёма (top-20) + 1% квартального (top-10) |
 | **Cooling-off** | 14-дневная задержка выплаты комиссии (EU fiat) -- защита от chargeback |
-| **KYC** | Know Your Customer -- верификация через SumSub |
+| **KYC** | Know Your Customer -- верификация личности |
 | **Sub-contract** | Отдельный контракт на каждый транш рассрочки |
 | **Розетка** | Заготовка под будущую функцию: интерфейс определён, логика не реализована |
 | **Конституция** | Этот документ. Описывает что строим и почему. Не меняется без весомой причины |
@@ -106,7 +106,6 @@ AIVIS.ONE -- платформа для четырёх аудиторий, объ
 
 | Сервис | Назначение | Фаза |
 |--------|------------|------|
-| SumSub | KYC верификация (220+ стран) | MVP |
 | Telegram Bot API | Уведомления (aiogram), Telegram mini-app | MVP |
 | EMAP (primary) + Mailgun (fallback) | Transactional email + email verification | MVP |
 | Moonpay / Transak | Fiat on-ramp EUR -> USDT | Розетка (Phase 2) |
@@ -134,7 +133,7 @@ MVP -- один сервис, разбитый на изолированные �
 backend/app/modules/
 ├── auth/               -- Email+password, Telegram WebApp, сессии Redis
 ├── users/              -- Профили, роли, credentials JSONB, is_system flag
-├── kyc/                -- SumSub интеграция, статусы, webhook
+├── kyc/                -- гейт, платное прохождение, решения staff
 ├── documents/          -- Документы, версии, факты подписания (checkbox + DocuSign)
 ├── agent_applications/ -- Заявки на роль агента, история, кулдаун
 ├── companies/          -- Профили компаний, настройки, аналитика
@@ -498,7 +497,7 @@ import { PAYMENT_STATUS_LABEL } from '@/utils/displayHelpers'
 - Этап 1: email + password (или Telegram)
 - Этап 2: email verification
 - Этап 3: выбор роли + подписание базового пакета документов
-- Этап 4: KYC (SumSub) -- имя, страна, документ, селфи
+- Этап 4: KYC -- имя, страна, документ, селфи
 - Этап 5 (агенты): заявка -> одобрение Staff -> подписание агентского пакета документов
 
 Платформа не блокирует регистрацию из-за неполного профиля. Блокирует только покупку -- до `kyc_status = approved`.
@@ -582,7 +581,7 @@ aivis/                             -- GitHub: aivis-one/aivis
 8. Создание management script -> symlink `/usr/local/bin/aivis`
 9. Cron для ежедневного backup
 
-После установки заказчик заполняет `.env` (SumSub API key, blockchain nodes, wallet addresses, Mailgun API key) и получает рабочий стек.
+После установки заказчик заполняет `.env` (blockchain nodes, wallet addresses, Mailgun API key) и получает рабочий стек.
 
 **Разработка и тестирование ведётся на VPS, идентичном проду.** Нет понятия "локальная разработка". Все изменения -- через `aivis update` (git pull + rebuild + migrate + restart).
 

@@ -1885,8 +1885,8 @@
         "mime_type": "File type",
         "is_published": "Visibility",
         "is_public": "Public visibility",
-            "body": "Text",
-            "tags": "Tags",
+        "body": "Text",
+        "tags": "Tags",
         "order": "Display order"
       }
     },
@@ -2408,5 +2408,23 @@
       "rateLimit": "Too many requests. Try again in {seconds} seconds.",
       "rateLimitGeneric": "Too many requests. Try again in a minute."
     }
+  },
+  "kyc": {
+    "title": "Identity verification",
+    "introPaid": "Verification costs ${fee}. The fee is charged when you start and is not returned, whatever the outcome.",
+    "balance": "Your balance: ${available}",
+    "start": "Start verification (${fee})",
+    "startAgain": "Start a new verification (${fee})",
+    "needsTopUp": "Your balance does not cover the fee. Top up first.",
+    "toDeposit": "Top up balance",
+    "pendingTitle": "Verification in progress",
+    "pendingText": "Your verification has been paid for and is waiting for a decision. You will be notified when it is made.",
+    "rejectedTitle": "Verification was not approved",
+    "rejectedText": "You can start a new verification. A new attempt costs ${fee} again.",
+    "revokedTitle": "Verification withdrawn",
+    "revokedText": "Your approval has been withdrawn. Contact support if you believe this is a mistake.",
+    "toSupport": "Contact support",
+    "errorLoad": "Could not load verification status.",
+    "errorStart": "Could not start verification."
   }
 }

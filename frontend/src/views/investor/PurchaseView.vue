@@ -18,7 +18,7 @@
 //      courtesy, not a security boundary.
 //   4. Success -> toast + push to the portfolio in the current shell.
 //   5. Error -> narrow to ApiResponseError and branch on status + a
-//      message hint. KYC rejection nudges to /onboarding/kyc.
+//      message hint. KYC rejection nudges to /verification.
 //
 // Balance source:
 //   active_balance.confirmed from /dashboard/summary. The backend
@@ -190,7 +190,7 @@ async function handlePurchaseError(err: unknown): Promise<void> {
     // regex with a backend-emitted error code.
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.purchase.error.kycRequired'), 'warning')
-      void safeNavigate(router.push('/onboarding/kyc'), '[PurchaseView] to KYC onboarding')
+      void safeNavigate(router.push('/verification'), '[PurchaseView] to verification')
       return
     }
 

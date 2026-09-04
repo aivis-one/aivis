@@ -225,8 +225,6 @@ AuditLog:  -- иммутабельно, наследует Base напрямую
 - [x] SSH deploy key -> GitHub (`aivis-one/aivis`) -> clone repo
 - [x] Генерация `.env` с рандомными паролями (openssl rand)
 - [x] Интерактивный ввод секретов:
-  - `SUMSUB_API_KEY` (placeholder, можно пропустить)
-  - `SUMSUB_SECRET_KEY` (placeholder)
   - `TELEGRAM_BOT_TOKEN`
   - `EMAP_API_KEY` (placeholder)
   - `MAILGUN_API_KEY` (placeholder)
@@ -490,27 +488,28 @@ backend/tests/
 
 ### ✅ Sprint 2.1: KYC заглушка
 
-**Цель:** Структура KYC без реальной интеграции SumSub.
+**Цель:** Структура KYC без реальной интеграции провайдера.
+
+> **H10 (2026-09):** раздел описывает состояние до H10 и оставлен как история спринта.
+> Заглушка приёмника, её общий секрет и онбординг-шаг `kyc_done` снесены целиком;
+> прохождение стало платным, единственный путь к `approved` — решение staff.
 
 **Задачи:**
 - [x] `app/modules/kyc/models.py` — `KYCApplication`, `KYCApplicationStatus` (StrEnum)
-- [x] `app/modules/kyc/service.py` — `submit_kyc()`, `get_kyc_status()`, `process_webhook()`
+- [x] `app/modules/kyc/service.py` — `submit_kyc()`, `get_kyc_status()`, `process_webhook()` (H10: приёмник снесён, решения пишут `decide_by_application()` / `decide_by_user()`)
 - [x] При изменении статуса KYCApplication — синхронизация `User.kyc_status` (денормализованный кэш)
 - [x] `POST /api/v1/kyc/submit` — создаёт KYCApplication, статус -> submitted, **сразу ставит `onboarding_step = kyc_done`** (v3.3: non-blocking KYC, верификация идёт в фоне)
 - [x] `GET /api/v1/kyc/status` — текущий статус + последняя заявка
-- [x] `POST /api/v1/kyc/webhook` — заглушка (SumSub webhook handler) с `X-Webhook-Secret` защитой
 - [x] `tests/test_kyc.py` — 7 тестов
 
 **Миграции:**
 - [x] `0004_kyc_and_documents` — `kyc_applications` + `documents` + `document_signings` (одна миграция на всю Phase 2)
 
 **Решения реализации:**
-- Минимальная модель KYCApplication: `id, user_id, status, created_at, updated_at`. Поля SumSub (applicant_id, external_status, rejection_reason) добавятся через ALTER ADD COLUMN при реальной интеграции (TD-003)
+- Минимальная модель KYCApplication: `id, user_id, status, created_at, updated_at`. Поля провайдера (applicant reference, external status) добавятся через ALTER ADD COLUMN при реальной интеграции
 - История заявок: rejected → повторная подача → новая строка KYCApplication. Полноценная логика заложена сразу, хотя заглушка всегда approved
-- Webhook защищён `X-Webhook-Secret` header, секрет генерируется при установке (`install_aivis.sh`), обязателен в production. В будущем — замена на SumSub signature validation (TD-003)
 - `process_webhook()` содержит guard `_VALID_WEBHOOK_STATUSES = {"approved", "rejected"}` — защита от невалидных статусов при вызове из других модулей
 - `User.kyc_status` синхронизируется при каждом изменении статуса KYCApplication + audit `kyc.status_changed`
-- `KYC_WEBHOOK_SECRET` добавлен в `config.py` (dev default: `"dev-webhook-secret"`, production: ValueError при пустом) и в `install_aivis.sh` (генерируется через `gen_password`)
 
 **Config (новые настройки):**
 ```
@@ -3499,7 +3498,6 @@ Auth-flow download endpoint делает 302 на presigned MinIO URL. Если 
 |----|------|----------|-----------|--------|
 | TD-001 | `installments/` | Досрочное погашение | After MVP | ⬜ |
 | TD-002 | `installments/` | Пауза/заморозка плана | After MVP | ⬜ |
-| TD-003 | `kyc/` | Реальная SumSub интеграция | Phase 2 | ⬜ |
 | TD-004 | `payments/` | Fiat on-ramp (Moonpay/Transak) | Phase 2 | ⬜ |
 | TD-005 | `documents/` | DocuSign e-signature | Phase 2 | ⬜ |
 | TD-006 | `notifications/` | ~~Cron для expiration waitlist~~ → `cleanup_expired_notifications()` в notification worker. Hard-delete expired+delivered, CASCADE на deliveries | After MVP | ✅ Sprint 8.1 |
@@ -3572,7 +3570,6 @@ Auth-flow download endpoint делает 302 на presigned MinIO URL. Если 
 | TD-073 | `transactions/constants.py`, `withdrawals/service.py`, `payments/reversal.py` | Sign convention в `TransactionType` inconsistent. Проаудитить все `record_transaction` вызовы и зафиксировать конвенцию `positive=in / negative=out` в комментариях к каждому enum-значению. Также проверить `WITHDRAWAL_COMPLETED` — может быть избыточная transaction (после CREATED ledger движения нет, только статус-переход — тогда транзакция дублирует знак или должна иметь `amount=0`). После фикса TD-072 — связанная задача. | Before Prod | ⬜ |
 | TD-074 | `withdrawals/router.py`, `auth/router.py` | Rate limiting + docstring rectification. (1) `POST /withdrawals` — нет slowapi guard (уникальный индекс `uq_withdrawals_user_active` ограничивает одним активным выводом, но каждый запрос бьёт в БД advisory lock + balance query). Добавить `check_rate_limit("withdrawal_create:{user.id}")`. (2) `/verify-email/resend` docstring: «1 per 60s» vs реализация 5/60s (auth default). Либо добавить отдельный конфиг `resend_rate_limit_max_requests=1`, либо синхронизировать docstring. | Before Prod | ⬜ |
 | TD-075 | `commissions/service.py::get_my_commissions` | ~~N+1 запросы. Цикл из 50 ledger entries делает отдельный JOIN на каждую (Purchase × Product × User по `purchase_id`). До 51 запроса на вызов; при истории на 1000+ позиций — критично~~ → **Закрыт.** Batched preload: `purchase_ids`/`payout_ids` собираются регексом заранее, два JOIN'а (`Purchase.id.in_(...)` + `VolumePayout.id.in_(...)`), затем dict-lookup — N+1 свёрнут в 2 запроса. В коде помечено «Round 4 fix». | Before Scale | ✅ |
-| TD-076 | `kyc/router.py` | 🔴 **KYC webhook security.** Сейчас проверяется только `X-Webhook-Secret` (shared secret). SumSub в production использует `X-Payload-Digest` — HMAC-SHA1 подпись тела запроса. Без неё: компрометация секрета через TLS-терминатор/логи позволяет подделать KYC approval; payload не привязан к запросу — возможен replay. **Production blocker.** Stub-комментарий «In production, replace with SumSub signature validation» требует трекинга. Фикс: `hmac.new(secret, body_bytes, sha1).hexdigest()` против `X-Payload-Digest` header. | Before Prod | ⬜ |
 | TD-077 | `auth/service.py::verify_email_code` | `stored_code = onboarding.get("email_token", "")` возвращает `None` если ключ присутствует со значением `null` (после успешной верификации token обнуляется в `updated_creds["onboarding"]["email_token"] = None`). `dict.get(key, default)` возвращает `default` только при отсутствии ключа; для `None`-значения вернёт `None`. `secrets.compare_digest(code, None)` → `TypeError` → 500. Edge case (защищён через `if email_creds.get("verified")`), но fragile. Фикс: `onboarding.get("email_token") or ""`. | Backlog | ⬜ |
 | TD-078 | `core/config.py` | `secret_key` присутствует в Settings и обязателен в production, но не используется в видимом коде (JWT не используется, sessions в Redis). Либо убрать до момента реального использования, либо задокументировать назначение (готовность к JWT-flow / signed cookies / другой crypto-related feature). Code review SUGGESTION. | Backlog | ⬜ |
 | TD-079 | `ledgers/validators.py` | AML matrix (Active→Passive запрещено) проверяется только в `validate_route()`; не вызывается автоматически в `record_active_ledger`/`record_passive_ledger`. Любой новый сервис который не вызовет `validate_route()` явно — может нарушить AML-ограничение незаметно. Фикс: добавить defensive assertion в `record_*_ledger` (на каждом write вызывать validator), либо документировать как convention + покрыть тестами на все пути записи. | Backlog | ⬜ |

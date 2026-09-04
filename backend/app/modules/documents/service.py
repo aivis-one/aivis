@@ -445,13 +445,20 @@ async def maybe_complete_onboarding(
     Two callers cover BP-15 ("Auto-advance при 0 элементов"):
       - sign_document() in this module: fires after every successful
         signing; advances when the last required type gets signed.
-      - submit_kyc() in kyc/service.py: fires right after step is
-        moved to KYC_DONE; advances immediately if the user's role
-        has zero required documents (otherwise stays on KYC_DONE so
-        the frontend can render the docs list).
+      - select_role() in users/service.py: fires right after step is
+        moved to ROLE_SELECTED; advances immediately if the user's
+        role has zero required documents (otherwise stays on
+        ROLE_SELECTED so the frontend can render the docs list).
 
-    Public (no leading underscore) because submit_kyc imports it
-    cross-module. The internal guard `step != KYC_DONE -> return`
+    ANCHORED ON ROLE_SELECTED SINCE H10, not on KYC_DONE. Verification
+    is no longer an onboarding step, so the step that used to sit
+    between role and documents is gone; ROLE_SELECTED now means exactly
+    what KYC_DONE meant here -- role chosen, documents outstanding.
+    Left anchored on the removed step, this helper would never fire and
+    every user would sit on the role page for good.
+
+    Public (no leading underscore) because select_role imports it
+    cross-module. The internal guard `step != ROLE_SELECTED -> return`
     keeps the function safe to call from any callsite without
     pre-check ceremony.
 
@@ -464,7 +471,7 @@ async def maybe_complete_onboarding(
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if user is None or user.onboarding_step != OnboardingStep.KYC_DONE:
+    if user is None or user.onboarding_step != OnboardingStep.ROLE_SELECTED:
         return
 
     # Every active doc row required for the user's role, across all

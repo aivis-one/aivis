@@ -11,6 +11,7 @@
 #   ├── BadRequestError          -> 400
 #   │   └── InsufficientBalanceError -> 400 (Sprint 6.2)
 #   ├── RateLimitError           -> 429 (iter 2.5-finishing)
+#   ├── KYCGateError             -> 402 (H10)
 #   └── AMLViolationError        -> 403
 #
 # USAGE:
@@ -19,6 +20,7 @@
 #
 # FastAPI exception handler in main.py converts AivisError -> JSON response:
 #   {"error": "<code>", "message": "<message>"}
+# plus the keys of `details` when an error carries one (KYCGateError).
 # =============================================================================
 
 
@@ -36,10 +38,18 @@ class AivisError(Exception):
         message: str = "An error occurred",
         code: str = "internal_error",
         status_code: int = 500,
+        details: dict | None = None,
     ) -> None:
         self.message = message
         self.code = code
         self.status_code = status_code
+        # OPTIONAL STRUCTURED PAYLOAD, merged into the response body by
+        # aivis_error_handler. Added for the KYC gate, which has to tell
+        # the client what the verification costs and what the account
+        # holds -- numbers the client would otherwise have to parse back
+        # out of `message`, and message wording is not an API.
+        # Keys never overwrite "error" or "message"; see the handler.
+        self.details = details
         super().__init__(message)
 
 
@@ -157,6 +167,37 @@ class RateLimitError(AivisError):
     ) -> None:
         super().__init__(message=message, code=code, status_code=429)
         self.retry_after_seconds = retry_after_seconds
+
+
+class KYCGateError(AivisError):
+    """Account has not passed KYC verification (HTTP 402) -- H10.
+
+    402 AND NOT 403. The tree already answers 403 for "you are not
+    allowed to do this", from ForbiddenError, AMLViolationError and
+    thirty-odd role checks; a client cannot tell a missing permission
+    from a missing verification if both arrive as 403. 400 is worse
+    still -- it is what every BadRequestError uses, including the two
+    purchase-time KYC checks this gate now stands in front of, and the
+    frontend would be left matching on message text. 402 appears
+    nowhere else in this tree, which is what makes it legible.
+
+    The four `code` values live in kyc/constants.py: the status code
+    says the account is not verified, the code says which of the four
+    situations the person is in.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        code: str,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            code=code,
+            status_code=402,
+            details=details,
+        )
 
 
 class AMLViolationError(AivisError):

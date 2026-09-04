@@ -47,9 +47,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.payments.constants import PaymentStatus, PaymentType
 from app.modules.payments.models import Payment
 from app.modules.users.models import User, UserRole
+from app.modules.kyc.constants import KYC_VERIFICATION_FEE_CENTS
 from tests.helpers import (
     auth_headers,
     create_admin_user,
+    fund_user,
     register_user,
 )
 
@@ -69,6 +71,10 @@ async def _admin_token(
 # GET /staff/users -- unified user list
 # ---------------------------------------------------------------------------
 
+
+# H10: every staff KYC decision carries a reason; these tests are not
+# about the wording, so they share one.
+_STAFF_DECISION_REASON = "Checked by hand during the staff-admin test run."
 
 @pytest.mark.asyncio
 async def test_list_users_paginated(
@@ -482,22 +488,29 @@ async def test_kyc_queue(
 async def test_kyc_approve(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Approve KYC -> 204, user kyc_status updated."""
+    """Approve KYC -> 204, user kyc_status updated.
+
+    H10 added two requirements this test now carries: the investor
+    starts unverified and has to pay for the session, and the approval
+    needs a reason. Neither weakens what was being measured -- that a
+    staff approval lands on User.kyc_status.
+    """
     admin_token = await _admin_token(client, db_session)
 
-    # Create investor and submit KYC.
-    inv_data = await register_user(
-        client
-    )
+    # Create investor, fund the fee, and submit KYC.
+    inv_data = await register_user(client, verified=False)
     inv_token = inv_data["session_token"]
+    await fund_user(inv_data["user"]["id"], KYC_VERIFICATION_FEE_CENTS)
     submit_resp = await client.post(
         "/api/v1/kyc/submit", headers=auth_headers(inv_token)
     )
+    assert submit_resp.status_code == 201, submit_resp.text
     application_id = submit_resp.json()["id"]
 
     # Approve.
     resp = await client.post(
         f"/api/v1/staff/kyc/{application_id}/approve",
+        json={"reason": _STAFF_DECISION_REASON},
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 204
@@ -514,22 +527,26 @@ async def test_kyc_approve(
 async def test_kyc_reject(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Reject KYC -> 204, user kyc_status updated."""
+    """Reject KYC -> 204, user kyc_status updated.
+
+    The empty body this used to send is now a 422: a decision without a
+    reason is refused (H10 P-43), approve and reject alike.
+    """
     admin_token = await _admin_token(client, db_session)
 
-    inv_data = await register_user(
-        client
-    )
+    inv_data = await register_user(client, verified=False)
     inv_token = inv_data["session_token"]
+    await fund_user(inv_data["user"]["id"], KYC_VERIFICATION_FEE_CENTS)
     submit_resp = await client.post(
         "/api/v1/kyc/submit", headers=auth_headers(inv_token)
     )
+    assert submit_resp.status_code == 201, submit_resp.text
     application_id = submit_resp.json()["id"]
 
     # Reject.
     resp = await client.post(
         f"/api/v1/staff/kyc/{application_id}/reject",
-        json={},
+        json={"reason": _STAFF_DECISION_REASON},
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 204
@@ -545,11 +562,18 @@ async def test_kyc_reject(
 async def test_kyc_approve_nonexistent(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Approve non-existent KYC application -> 404."""
+    """Approve non-existent KYC application -> 404.
+
+    The body is now required, and it has to be sent here too: without
+    it the request is refused at validation with a 422 and never
+    reaches the lookup, so the test would stop measuring the 404 it is
+    named after.
+    """
     admin_token = await _admin_token(client, db_session)
 
     resp = await client.post(
         f"/api/v1/staff/kyc/{uuid4()}/approve",
+        json={"reason": _STAFF_DECISION_REASON},
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 404
@@ -596,14 +620,20 @@ async def _bring_investor_to_status(
     KYCApplication row -- exactly as a real staff session would
     leave it.
     """
-    inv_data = await register_user(client)
+    # verified=False: register_user approves by default since H10, and
+    # this helper is the one place that wants the funnel walked rather
+    # than the end state assumed.
+    inv_data = await register_user(client, verified=False)
     user_id = inv_data["user"]["id"]
     inv_token = inv_data["session_token"]
 
     if target_status == "not_started":
         return user_id
 
-    # All non-not_started states begin with a submit.
+    # All non-not_started states begin with a submit, and a submit now
+    # costs the verification fee -- fund the account first or the walk
+    # stops at 400 insufficient balance.
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
     submit_resp = await client.post(
         "/api/v1/kyc/submit", headers=auth_headers(inv_token)
     )
@@ -616,6 +646,7 @@ async def _bring_investor_to_status(
     if target_status == "approved":
         resp = await client.post(
             f"/api/v1/staff/kyc/{application_id}/approve",
+            json={"reason": _STAFF_DECISION_REASON},
             headers=auth_headers(admin_token),
         )
         assert resp.status_code == 204, resp.text
@@ -624,7 +655,7 @@ async def _bring_investor_to_status(
     if target_status == "rejected":
         resp = await client.post(
             f"/api/v1/staff/kyc/{application_id}/reject",
-            json={},
+            json={"reason": _STAFF_DECISION_REASON},
             headers=auth_headers(admin_token),
         )
         assert resp.status_code == 204, resp.text
@@ -690,8 +721,8 @@ async def test_list_users_filter_kyc_status(
     walk:
       not_started -> approved   (just registered, never submitted)
       submitted   -> approved   (submitted, not yet approved)
-      approved    -> rejected   (terminal in webhook -> approved)
-      rejected    -> approved   (terminal in webhook -> rejected)
+      approved    -> rejected   (terminal after a staff approval)
+      rejected    -> approved   (terminal after a staff rejection)
     """
     admin_token = await _admin_token(client, db_session)
     user_id = await _bring_investor_to_status(
@@ -742,7 +773,9 @@ async def test_list_users_filter_role_and_kyc_status(
     approved_id = await _bring_investor_to_status(
         client, admin_token, "approved"
     )
-    fresh_inv = await register_user(client)
+    # verified=False: B must genuinely sit on not_started for the
+    # negative probe to mean anything.
+    fresh_inv = await register_user(client, verified=False)
     fresh_id = fresh_inv["user"]["id"]
 
     page_ids = await _fetch_user_ids_page(

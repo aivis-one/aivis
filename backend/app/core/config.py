@@ -103,15 +103,6 @@ class Settings(BaseSettings):
     auth_init_data_ttl_seconds: int = 300
     auth_clock_skew_seconds: int = 60
 
-    # -- KYC (SumSub) --
-    sumsub_api_key: str = "TEST"
-    sumsub_secret_key: str = "TEST"
-
-    # -- KYC Webhook --
-    # Shared secret for webhook authentication (stub).
-    # In production, replace with SumSub signature validation.
-    kyc_webhook_secret: str = ""
-
     # -- Email (SMTP primary, Mailgun fallback) --
     smtp_host: str = "host.docker.internal"
     smtp_port: int = 25
@@ -363,15 +354,6 @@ class Settings(BaseSettings):
                     "SECRET_KEY is required in production. "
                     "Generate with: python -c "
                     "\"import secrets; print(secrets.token_urlsafe(64))\""
-                )
-
-        # -- kyc_webhook_secret --
-        if not self.kyc_webhook_secret:
-            if is_dev:
-                self.kyc_webhook_secret = "dev-webhook-secret"
-            else:
-                raise ValueError(
-                    "KYC_WEBHOOK_SECRET is required in production."
                 )
 
         # -- telegram_bot_token --

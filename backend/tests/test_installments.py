@@ -464,10 +464,15 @@ async def test_create_plan_no_kyc(
         client, admin_token, product["id"]
     )
 
-    # Investor WITHOUT kyc — just register + fund, no kyc_status change.
-    data = await register_user(
-        client
-    )
+    # Investor WITHOUT kyc -- register_user verifies by default since
+    # H10, so this case asks for the raw state explicitly.
+    #
+    # The assertion below is UNCHANGED, and deliberately so: this test
+    # calls create_plan directly rather than over HTTP, so the KYC gate
+    # never sees it and the service's own guard is still the thing being
+    # measured. That guard is now the second layer behind the gate, and
+    # this is the only test that still reaches it.
+    data = await register_user(client, verified=False)
     inv_id = UUID(data["user"]["id"])
     await record_active_ledger(
         db_session,

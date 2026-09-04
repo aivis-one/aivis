@@ -55,7 +55,7 @@ const I18N = {
     'nav.auth.profile':  { ru: 'Настройка профиля', en: 'Profile Setup', de: 'Profil einrichten' },
     'nav.auth.role':     { ru: 'Выбор роли', en: 'Role Selection', de: 'Rollenwahl' },
     'nav.auth.kyc':      { ru: 'Верификация KYC', en: 'KYC Verification', de: 'KYC-Verifizierung' },
-    'nav.auth.sumsub':   { ru: 'SumSub (внешний)', en: 'SumSub (external)', de: 'SumSub (extern)' },
+    'nav.auth.verification': { ru: 'Верификация (внешняя)', en: 'Verification (external)', de: 'Verifizierung (extern)' },
     'nav.auth.docs':     { ru: 'Подписание документов', en: 'Document Signing', de: 'Dokumentenunterzeichnung' },
     'nav.auth.complete': { ru: 'Онбординг завершён', en: 'Onboarding Complete', de: 'Onboarding abgeschlossen' },
 

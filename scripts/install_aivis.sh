@@ -651,7 +651,6 @@ log "Generating .env with random passwords..."
 DB_PASS=$(gen_password)
 REDIS_PASS=$(gen_password)
 SECRET=$(gen_secret)
-KYC_SECRET=$(gen_password)
 
 # MinIO secrets. Root credentials are used by MinIO server itself and by
 # minio-init to bootstrap; service account (ACCESS/SECRET) is what backend
@@ -726,11 +725,6 @@ AUTH_RATE_LIMIT_MAX_REQUESTS=5
 AUTH_RATE_LIMIT_WINDOW_SECONDS=60
 AUTH_INIT_DATA_TTL_SECONDS=300
 AUTH_CLOCK_SKEW_SECONDS=60
-
-# -- KYC (SumSub) --
-SUMSUB_API_KEY=PLACEHOLDER
-SUMSUB_SECRET_KEY=PLACEHOLDER
-KYC_WEBHOOK_SECRET=${KYC_SECRET}
 
 # -- Email (SMTP primary, Mailgun fallback) --
 SMTP_HOST=host.docker.internal
@@ -862,8 +856,6 @@ prompt_telegram_bot() {
 }
 
 prompt_telegram_bot
-prompt_secret "SUMSUB_API_KEY"     "SumSub API Key (optional)"
-prompt_secret "SUMSUB_SECRET_KEY"  "SumSub Secret Key (optional)"
 prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (optional)"
 
 # MinIO credentials -- user supplies memorable values OR ENTERs to keep the
@@ -1773,7 +1765,6 @@ echo ""
 echo -e "${YELLOW}NEXT STEPS:${NC}"
 echo "1. Edit $INSTALL_BASE/repo/backend/.env"
 echo "   -- Set TELEGRAM_BOT_TOKEN (if not done)"
-echo "   -- Set SUMSUB_API_KEY / SUMSUB_SECRET_KEY"
 echo "   -- Set MAILGUN_API_KEY (if not done)"
 echo "   -- Set MAILGUN_API_URL (default: EU endpoint, change to https://api.mailgun.net for US)"
 echo "2. Add DKIM DNS record (printed above during mail setup)"

@@ -255,7 +255,7 @@ async function handlePlanError(err: unknown): Promise<void> {
 
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.installment.error.kycRequired'), 'warning')
-      void safeNavigate(router.push('/onboarding/kyc'), '[InstallmentView] to KYC onboarding')
+      void safeNavigate(router.push('/verification'), '[InstallmentView] to verification')
       return
     }
 

@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from '@/App.vue'
+import { setOnKycRequired } from '@/api/client'
 import { router } from '@/router'
 import { i18n, setupI18n } from '@/i18n'
 
@@ -25,6 +26,20 @@ async function bootstrap(): Promise<void> {
   app.use(createPinia())
   app.use(router)
   app.use(i18n)
+
+  // H10: a 402 from the KYC gate can arrive from any screen, so the
+  // response is registered once here rather than in every caller's
+  // catch block. Wired at bootstrap and not inside the auth store,
+  // which must not import the router -- the router imports every view
+  // and every view imports the store.
+  //
+  // The session is left alone, unlike the 401 path: the person is
+  // signed in and simply not verified.
+  setOnKycRequired(() => {
+    if (router.currentRoute.value.path !== '/verification') {
+      void router.push('/verification').catch(() => undefined)
+    }
+  })
 
   app.mount('#app')
 }

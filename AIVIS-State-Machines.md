@@ -222,7 +222,7 @@ active -> ended  (Staff: явный выход / истечение таймау
 ## 7. KYC (заглушка MVP)
 
 В MVP `kyc_status` -- простое поле на `User` без валидации переходов.
-Полноценная state machine реализуется при подключении SumSub (Phase 2+).
+Полноценная state machine реализуется при подключении провайдера верификации.
 
 ```python
 kyc_status: enum  -- "not_started" | "submitted" | "approved" | "rejected"

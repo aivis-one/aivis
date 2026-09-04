@@ -37,7 +37,7 @@
 #   e-mail       -> auth.service.verify_email_code
 #   profile      -> users.service.update_user
 #   role         -> users.service.select_role
-#   kyc          -> kyc.service.submit_kyc + process_webhook
+#   kyc          -> kyc.service.decide_by_user (free manual approval)
 #   documents    -> documents.service.sign_document
 #   staff        -> staff.service.create_staff         (membership free)
 #   agents       -> agent_applications submit + approve
@@ -47,12 +47,16 @@
 #   money        -> ledgers.service.record_active_ledger
 #   purchases    -> purchases.service.execute_purchase
 #
-# process_webhook deserves a note, because it looks like a back door and
-# is not one: KYC approval arrives from SumSub as a webhook, the
-# signature check lives in the router, and the service function below it
-# takes (user_id, status, session) like any other. The seed calls the
-# service, exactly as the router does after it has checked the signature.
-# Nothing here writes kyc_status by hand.
+# decide_by_user deserves a note, because it looks like a back door and
+# is not one: since H10 it is the ONLY route to an approved account, and
+# the same one staff use from the panel for a person who has no queued
+# application. The seed calls the service exactly as the staff endpoint
+# does. Nothing here writes kyc_status by hand.
+#
+# The seed cannot go through submit_kyc any more: a submission now costs
+# ten dollars, and it runs long before the seeded user has a balance --
+# so it would fail on insufficient funds. Manual approval is free, which
+# is what makes it the right door for a fixture.
 #
 # -----------------------------------------------------------------------------
 # THE ONE BYPASS: THE FIRST ADMIN
@@ -187,8 +191,11 @@ from app.modules.documents.models import (  # noqa: E402
     DocumentStatus,
 )
 from app.modules.documents.service import sign_document  # noqa: E402
-from app.modules.kyc.models import KYCApplication  # noqa: E402
-from app.modules.kyc.service import process_webhook, submit_kyc  # noqa: E402
+from app.modules.kyc.models import (  # noqa: E402
+    KYCApplication,
+    KYCApplicationStatus,
+)
+from app.modules.kyc.service import decide_by_user  # noqa: E402
 from app.modules.ledgers.models import (  # noqa: E402
     ActiveLedger,
     LedgerStatus,
@@ -379,9 +386,9 @@ async def _sign_required_documents(
 ) -> int:
     """Sign every active document this user's role requires.
 
-    Signing is what moves KYC_DONE to ONBOARDING_COMPLETE for roles that
-    have required documents; roles with none are already there via the
-    cascade inside submit_kyc. Documents the user has signed already are
+    Signing is what moves ROLE_SELECTED to ONBOARDING_COMPLETE for roles
+    that have required documents; roles with none are already there via
+    the cascade inside select_role. Documents the user has signed already are
     skipped rather than re-signed -- sign_document raises ConflictError
     on a second signature, and a seed re-run must be a no-op.
     """
@@ -455,11 +462,14 @@ async def walk_onboarding(
     if user.onboarding_step == OnboardingStep.PROFILE_COMPLETE:
         await select_role(user, role, session)
 
-    if user.kyc_status == KYCStatus.NOT_STARTED:
-        await submit_kyc(user, session)
-
-    if user.kyc_status == KYCStatus.SUBMITTED:
-        await process_webhook(user.id, "approved", session)
+    if user.kyc_status != KYCStatus.APPROVED:
+        await decide_by_user(
+            user_id=user.id,
+            new_status=KYCApplicationStatus.APPROVED,
+            reason="Seeded fixture user -- approved by the seed script.",
+            actor_id=None,
+            session=session,
+        )
         await session.refresh(user)
 
     await _sign_required_documents(session, user)

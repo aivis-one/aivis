@@ -10,8 +10,9 @@
 #   unblock_user()        -- reactivate a previously blocked user
 #   dashboard_stats()     -- platform-wide statistics
 #   kyc_queue()           -- pending KYC applications with user info
-#   kyc_approve()         -- approve KYC application (delegates to process_webhook)
-#   kyc_reject()          -- reject KYC application (delegates to process_webhook)
+#   kyc_decide_application() -- staff decision on a queued application
+#   kyc_decide_user()        -- staff decision on a person, with or
+#                               without an application row
 #
 # PLATFORM EXCLUSION:
 #   Platform user (role=platform) is excluded from all user lists and
@@ -62,7 +63,7 @@ from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.auth.service import delete_all_sessions
 from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
-from app.modules.kyc.service import process_webhook
+from app.modules.kyc.service import decide_by_application, decide_by_user
 from app.modules.payments.constants import PaymentStatus
 from app.modules.payments.models import Payment
 from app.modules.staff.admin_schemas import (
@@ -540,93 +541,71 @@ async def kyc_queue(
     return items
 
 
-async def kyc_approve(
+async def kyc_decide_application(
     application_id: UUID,
-    staff: User,
-    session: AsyncSession,
-) -> None:
-    """Approve a KYC application. Delegates to process_webhook.
-
-    Raises:
-        NotFoundError: If application not found.
-    """
-    # Load application to get user_id.
-    stmt = select(KYCApplication).where(KYCApplication.id == application_id)
-    result = await session.execute(stmt)
-    application = result.scalar_one_or_none()
-
-    if application is None:
-        raise NotFoundError("KYC application not found")
-
-    await process_webhook(
-        user_id=application.user_id,
-        new_status=KYCApplicationStatus.APPROVED,
-        session=session,
-    )
-
-    # Staff-specific audit (process_webhook writes system audit separately).
-    await record_audit(
-        session=session,
-        event="kyc.approved_by_staff",
-        actor_id=staff.id,
-        actor_type="staff",
-        target_type="user",
-        target_id=application.user_id,
-        data={"application_id": str(application_id)},
-    )
-
-    logger.info(
-        "kyc_approved_by_staff",
-        application_id=str(application_id),
-        staff_id=str(staff.id),
-    )
-
-
-async def kyc_reject(
-    application_id: UUID,
+    new_status: str,
     staff: User,
     session: AsyncSession,
     *,
-    reason: str | None = None,
+    reason: str,
 ) -> None:
-    """Reject a KYC application. Delegates to process_webhook.
+    """Approve or reject a queued application. Reason is mandatory.
 
-    Reason is stored in audit_log data (not in KYCApplication model).
+    Thin on purpose: the status write, the audit row carrying who and
+    why, and the notification all live in kyc.service, so this path and
+    the person-level path below cannot drift apart.
 
     Raises:
-        NotFoundError: If application not found.
+        NotFoundError: application or its user not found.
+        ConflictError: the application already has a decision.
     """
-    # Load application to get user_id.
-    stmt = select(KYCApplication).where(KYCApplication.id == application_id)
-    result = await session.execute(stmt)
-    application = result.scalar_one_or_none()
-
-    if application is None:
-        raise NotFoundError("KYC application not found")
-
-    await process_webhook(
-        user_id=application.user_id,
-        new_status=KYCApplicationStatus.REJECTED,
-        session=session,
-    )
-
-    # Staff-specific audit (process_webhook writes system audit separately).
-    await record_audit(
-        session=session,
-        event="kyc.rejected_by_staff",
+    await decide_by_application(
+        application_id=application_id,
+        new_status=new_status,
+        reason=reason,
         actor_id=staff.id,
-        actor_type="staff",
-        target_type="user",
-        target_id=application.user_id,
-        data={
-            "application_id": str(application_id),
-            "reason": reason,
-        },
+        session=session,
     )
 
     logger.info(
-        "kyc_rejected_by_staff",
+        "kyc_decided_by_staff",
         application_id=str(application_id),
+        new_status=new_status,
         staff_id=str(staff.id),
-        reason=reason,
     )
+
+
+async def kyc_decide_user(
+    user_id: UUID,
+    new_status: str,
+    staff: User,
+    session: AsyncSession,
+    *,
+    reason: str,
+) -> None:
+    """Approve or revoke for a PERSON, application row or not.
+
+    The queue can only offer applications, and the two flows this
+    serves have none: an old user arriving under a new address (no
+    submission, and they cannot make one -- submitting costs money and
+    this does not), and withdrawing an approval already given.
+
+    Raises:
+        NotFoundError: user not found.
+        ConflictError: already approved, or revoking someone not approved.
+    """
+    await decide_by_user(
+        user_id=user_id,
+        new_status=new_status,
+        reason=reason,
+        actor_id=staff.id,
+        session=session,
+    )
+
+    logger.info(
+        "kyc_decided_by_staff_for_user",
+        user_id=str(user_id),
+        new_status=new_status,
+        staff_id=str(staff.id),
+    )
+

@@ -73,7 +73,6 @@ class OnboardingStep(enum.StrEnum):
     REGISTERED = "registered"
     EMAIL_VERIFIED = "email_verified"
     PROFILE_COMPLETE = "profile_complete"
-    KYC_DONE = "kyc_done"
     ROLE_SELECTED = "role_selected"
     ONBOARDING_COMPLETE = "onboarding_complete"
 
@@ -85,6 +84,8 @@ class KYCStatus(enum.StrEnum):
     SUBMITTED = "submitted"
     APPROVED = "approved"
     REJECTED = "rejected"
+    # Mirrors KYCApplicationStatus.REVOKED -- see the note there.
+    REVOKED = "revoked"
 
 
 class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):

@@ -6,10 +6,17 @@
 #   Records each KYC submission attempt. Multiple rows per user possible
 #   (history: rejected -> resubmit -> approved).
 #
-# STUB:
-#   This is a stub module. Real SumSub integration (TD-003) will add
-#   fields like applicant_id, external_status, rejection_reason via
-#   ALTER ADD COLUMN. Current model is intentionally minimal.
+# ONE ROW PER PAID SESSION (H10):
+#   A row is opened when the fee is charged and carries the decision
+#   that closes it. Returning to a session that is still SUBMITTED
+#   costs nothing; only a terminal decision makes the next attempt a
+#   new, paid row.
+#
+#   Deliberately minimal: the provider integration pass will add its
+#   own fields (applicant reference, external status) by ALTER ADD
+#   COLUMN. No column or status member is created here for states
+#   nothing currently produces -- a branch for an unreachable state
+#   lies to whoever reads it next.
 #
 # SYNC:
 #   On every status change, kyc/service.py updates User.kyc_status
@@ -34,6 +41,12 @@ class KYCApplicationStatus(enum.StrEnum):
     SUBMITTED = "submitted"
     APPROVED = "approved"
     REJECTED = "rejected"
+    # DISTINCT FROM REJECTED, AND THE DISTINCTION IS FOR THE READER OF
+    # THE QUEUE. "rejected" says the person did not pass; "revoked" says
+    # we took back a decision we had already made. Folding the second
+    # into the first would make the audit trail claim the person failed
+    # verification when what happened is that staff changed their mind.
+    REVOKED = "revoked"
 
 
 class KYCApplication(UUIDMixin, TimestampMixin, Base):

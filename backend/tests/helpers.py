@@ -26,6 +26,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import get_session_factory
+from app.modules.ledgers.models import LedgerStatus
+from app.modules.ledgers.service import record_active_ledger
 from app.modules.referrals.models import ReferralLink
 from app.modules.staff.constants import DEFAULT_STAFF_PERMISSIONS
 from app.modules.staff.models import StaffProfile
@@ -126,6 +129,7 @@ async def register_user(
     email: str | None = None,
     password: str = "Password123!",
     referral_code: str | None = None,
+    verified: bool = True,
 ) -> dict:
     """POST /api/v1/auth/email/register and assert 201. Returns the
     response body (contains session_token and user details).
@@ -134,6 +138,20 @@ async def register_user(
     is the default path -- tests that need a specific email (e.g. to
     check duplicate-rejection or to re-use the same address across two
     register calls) pass email= explicitly.
+
+    VERIFIED BY DEFAULT SINCE H10, and the default is the point. The KYC
+    gate refuses an unverified investor everywhere outside a named list,
+    so a fixture that left every user unverified would make several
+    hundred existing tests assert against an account state no real user
+    of the product stays in -- and they would fail with 402 on the way
+    to whatever they were actually testing. This does not weaken the
+    gate: it is enforced app-wide and tested directly in
+    test_kyc_gate.py, which uses verified=False to build the state on
+    purpose.
+
+    The approval is written straight to the row rather than through the
+    staff endpoint: a fixture should not need a staff account and a
+    reason string to produce an ordinary user.
     """
     if email is None:
         email = f"test_{uuid.uuid4().hex[:12]}@example.com"
@@ -147,7 +165,44 @@ async def register_user(
     # Echo the email back into the response so callers that did not
     # pre-generate it can still find out what was used.
     body.setdefault("email", email)
+
+    if verified:
+        await set_kyc_status(body["user"]["id"], KYCStatus.APPROVED)
+
     return body
+
+
+async def set_kyc_status(user_id: str | uuid.UUID, status: str) -> None:
+    """Write a user's kyc_status directly, in its own transaction.
+
+    Opens a session of its own so callers that only hold an AsyncClient
+    (most of them) do not have to grow a session parameter.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        user = (
+            await session.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
+        ).scalar_one()
+        user.kyc_status = status
+        await session.commit()
+
+
+async def fund_user(user_id: str | uuid.UUID, amount_cents: int) -> None:
+    """Give a user spendable balance, in its own transaction.
+
+    A confirmed active-ledger credit -- the same shape a settled deposit
+    leaves behind, which is what get_active_balance sums.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        await record_active_ledger(
+            session,
+            user_id=uuid.UUID(str(user_id)),
+            amount_cents=amount_cents,
+            status=LedgerStatus.CONFIRMED,
+            reason=f"test:funding:{uuid.uuid4()}",
+        )
+        await session.commit()
 
 
 async def login_user(

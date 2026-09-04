@@ -5,8 +5,12 @@
 # ENDPOINTS:
 #   GET  /api/v1/staff/dashboard/stats  -- platform statistics (any staff)
 #   GET  /api/v1/staff/kyc/queue        -- pending KYC applications (kyc_approve)
-#   POST /api/v1/staff/kyc/{id}/approve -- approve KYC (kyc_approve)
-#   POST /api/v1/staff/kyc/{id}/reject  -- reject KYC (kyc_approve, optional reason)
+#   POST /api/v1/staff/kyc/{id}/approve -- approve KYC (kyc_approve, reason required)
+#   POST /api/v1/staff/kyc/{id}/reject  -- reject KYC (kyc_approve, reason required)
+#   POST /api/v1/staff/kyc/users/{id}/approve -- approve a person with no
+#                                        application (kyc_approve, reason required)
+#   POST /api/v1/staff/kyc/users/{id}/revoke  -- withdraw an approval
+#                                        (kyc_approve, reason required)
 #
 # AUTH:
 #   Dashboard: any staff (get_current_staff).
@@ -25,16 +29,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.dependencies import get_current_staff, require_staff_permission
+from app.modules.kyc.models import KYCApplicationStatus
 from app.modules.staff.admin_schemas import (
     DashboardStatsResponse,
     KYCQueueItem,
-    KYCRejectRequest,
+    KYCDecisionRequest,
 )
 from app.modules.staff.admin_service import (
     dashboard_stats,
-    kyc_approve,
+    kyc_decide_application,
+    kyc_decide_user,
     kyc_queue,
-    kyc_reject,
 )
 from app.modules.users.models import User
 
@@ -91,11 +96,18 @@ async def get_kyc_queue(
 )
 async def kyc_approve_endpoint(
     application_id: UUID,
+    body: KYCDecisionRequest,
     staff: User = Depends(require_staff_permission("kyc_approve")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    """Approve a KYC application. Requires kyc_approve permission."""
-    await kyc_approve(application_id, staff, session)
+    """Approve a queued application. Requires kyc_approve permission."""
+    await kyc_decide_application(
+        application_id,
+        KYCApplicationStatus.APPROVED,
+        staff,
+        session,
+        reason=body.reason,
+    )
 
 
 @kyc_admin_router.post(
@@ -104,9 +116,69 @@ async def kyc_approve_endpoint(
 )
 async def kyc_reject_endpoint(
     application_id: UUID,
-    body: KYCRejectRequest,
+    body: KYCDecisionRequest,
     staff: User = Depends(require_staff_permission("kyc_approve")),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    """Reject a KYC application. Requires kyc_approve permission."""
-    await kyc_reject(application_id, staff, session, reason=body.reason)
+    """Reject a queued application. Requires kyc_approve permission."""
+    await kyc_decide_application(
+        application_id,
+        KYCApplicationStatus.REJECTED,
+        staff,
+        session,
+        reason=body.reason,
+    )
+
+
+@kyc_admin_router.post(
+    "/users/{user_id}/approve",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def kyc_approve_user_endpoint(
+    user_id: UUID,
+    body: KYCDecisionRequest,
+    staff: User = Depends(require_staff_permission("kyc_approve")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Approve a PERSON who has no queued application.
+
+    Free, and routine rather than exceptional: this is how an old user
+    arriving under a new address is let in, and how the seed script
+    builds its users. They have no application to name, and cannot make
+    one without paying.
+
+    Three segments against the queue endpoint's two, so the two route
+    templates cannot shadow each other.
+    """
+    await kyc_decide_user(
+        user_id,
+        KYCApplicationStatus.APPROVED,
+        staff,
+        session,
+        reason=body.reason,
+    )
+
+
+@kyc_admin_router.post(
+    "/users/{user_id}/revoke",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def kyc_revoke_user_endpoint(
+    user_id: UUID,
+    body: KYCDecisionRequest,
+    staff: User = Depends(require_staff_permission("kyc_approve")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Withdraw an approval, putting the person back behind the gate.
+
+    Same permission as granting it, deliberately: a separate permission
+    would create staff who can let somebody in and cannot take it back
+    -- unable to correct their own mistake.
+    """
+    await kyc_decide_user(
+        user_id,
+        KYCApplicationStatus.REVOKED,
+        staff,
+        session,
+        reason=body.reason,
+    )

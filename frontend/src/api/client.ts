@@ -67,6 +67,19 @@ export class ApiResponseError extends Error {
    * delta-seconds; the date variant is intentionally not parsed here.
    */
   retryAfter?: number
+  /**
+   * H10: on a 402 the backend's KYC gate names which of four
+   * situations the account is in -- kyc_payment_required, kyc_pending,
+   * kyc_rejected or kyc_revoked. 403 in this tree means "you lack a
+   * permission" and 400 is every other bad request, so neither status
+   * could carry this distinction; the code does.
+   *
+   * requiredCents / availableCents are populated only alongside
+   * kyc_payment_required: the other three are not about money.
+   */
+  kycCode?: string
+  requiredCents?: number
+  availableCents?: number
 
   constructor(status: number, detail: string, retryAfter?: number) {
     super(detail)
@@ -97,6 +110,7 @@ export class ApiTimeoutError extends Error {
 
 let _token: string | null = null
 let _onUnauthorized: (() => void) | null = null
+let _onKycRequired: ((code: string) => void) | null = null
 
 export function setAuthToken(token: string | null): void {
   _token = token
@@ -108,6 +122,16 @@ export function getAuthToken(): string | null {
 
 export function setOnUnauthorized(cb: () => void): void {
   _onUnauthorized = cb
+}
+
+/**
+ * Called on every 402 from the KYC gate, with the gate's code.
+ * Wired at app bootstrap next to setOnUnauthorized -- a 402 can arrive
+ * from any screen, so the response to it belongs in one place rather
+ * than in each caller's catch block.
+ */
+export function setOnKycRequired(cb: (code: string) => void): void {
+  _onKycRequired = cb
 }
 
 // ---------------------------------------------------------------------------
@@ -250,11 +274,25 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   // Error responses (4xx, 5xx).
   if (!response.ok) {
     const retryAfter = response.status === 429 ? parseRetryAfterHeader(response) : undefined
-    throw new ApiResponseError(
+    const error = new ApiResponseError(
       response.status,
       extractErrorMessage(response.status, data),
       retryAfter,
     )
+
+    // 402 -- the KYC gate. Carry its structured payload onto the error
+    // and tell the app, which sends the user to the verification screen.
+    if (response.status === 402 && data && typeof data === 'object') {
+      const body = data as Record<string, unknown>
+      error.kycCode = typeof body.error === 'string' ? body.error : undefined
+      error.requiredCents =
+        typeof body.required_cents === 'number' ? body.required_cents : undefined
+      error.availableCents =
+        typeof body.available_cents === 'number' ? body.available_cents : undefined
+      if (error.kycCode) _onKycRequired?.(error.kycCode)
+    }
+
+    throw error
   }
 
   return data as T

@@ -519,17 +519,29 @@ async def test_purchase_non_investor_forbidden(
 async def test_purchase_no_kyc(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Purchase without KYC approval -> 400."""
+    """Purchase without KYC approval -> 402 from the gate.
+
+    H10 made this assertion more precise rather than removing it. The
+    old one -- 400 with "KYC" in the message -- was right that an
+    unverified investor must not buy, and it was checking
+    purchases/service.py's own guard. Since the KYC gate went in
+    app-wide, the request is refused before that guard is reached, with
+    a status a client can act on: 402 and kyc_payment_required, where
+    400 was indistinguishable from every other bad request.
+
+    The service-level guard stays in place and is no longer reachable
+    over HTTP -- defence in depth by owner ruling: a route can lose its
+    gate by accident, and the purchase path should still refuse.
+    """
     admin_token = await _admin_token(client, db_session)
     company = await _create_company(client, admin_token)
     product = await _create_product(client, admin_token, company["id"])
     await _activate_company(client, admin_token, company["id"])
     await _activate_product(client, admin_token, product["id"])
 
-    # Investor WITHOUT kyc_status=approved (skip helper, do manually).
-    data = await register_user(
-        client
-    )
+    # Investor WITHOUT kyc_status=approved. register_user verifies by
+    # default since H10; this is the case that wants the raw state.
+    data = await register_user(client, verified=False)
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
     await record_active_ledger(
@@ -546,8 +558,9 @@ async def test_purchase_no_kyc(
         json={},
         headers=auth_headers(token),
     )
-    assert resp.status_code == 400
-    assert "KYC" in resp.json()["message"]
+    assert resp.status_code == 402
+    assert resp.json()["error"] == "kyc_payment_required"
+
 
 
 @pytest.mark.asyncio

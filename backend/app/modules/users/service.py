@@ -59,6 +59,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.modules.documents.service import maybe_complete_onboarding
 from app.core.crypto import decrypt_secret, encrypt_secret
 from app.core.database import get_session_factory
 from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError
@@ -288,6 +289,15 @@ async def select_role(
     user.onboarding_step = OnboardingStep.ROLE_SELECTED
 
     await session.flush()
+
+    # H10: the KYC step used to sit here, and submit_kyc() was what
+    # called the cascade. With verification out of onboarding, this is
+    # the site that knows a role was just chosen -- and a role with no
+    # required documents has nothing left to do, so it goes straight to
+    # ONBOARDING_COMPLETE. Without this call such a user would stop on
+    # the role page for good: the documents screen would show an empty
+    # list and never fire sign_document().
+    await maybe_complete_onboarding(user.id, session)
     await session.refresh(user)
 
     await record_audit(

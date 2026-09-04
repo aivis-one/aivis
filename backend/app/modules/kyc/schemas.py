@@ -1,22 +1,23 @@
 # =============================================================================
-# AIVIS.ONE Backend -- KYC Schemas (Sprint 2.1)
+# AIVIS.ONE Backend -- KYC Schemas (Sprint 2.1, H10)
 # =============================================================================
 #
 # Pydantic models for KYC endpoints.
 #
 # KYCSubmitResponse:  returned after POST /kyc/submit
 # KYCStatusResponse:  returned by GET /kyc/status
-# KYCWebhookRequest:  incoming webhook payload (stub)
+#
+# The webhook payload schema is gone with the webhook itself (H10 P-44).
 # =============================================================================
 
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class KYCSubmitResponse(BaseModel):
-    """Response after submitting a KYC application."""
+    """Response after opening (and paying for) a verification session."""
 
     id: UUID
     status: str
@@ -26,23 +27,16 @@ class KYCSubmitResponse(BaseModel):
 
 
 class KYCStatusResponse(BaseModel):
-    """Current KYC status for the authenticated user."""
+    """Current KYC status for the authenticated user.
+
+    Carries the money as well as the status. This endpoint is in front
+    of the gate and dashboard/summary -- the usual source of a balance
+    -- is behind it, so without these two fields the screen that asks
+    for ten dollars could not say how much the account actually holds.
+    """
 
     kyc_status: str
     application_id: UUID | None = None
     application_status: str | None = None
-
-
-class KYCWebhookRequest(BaseModel):
-    """Webhook payload from KYC provider (stub).
-
-    In production, this will be replaced with SumSub webhook format
-    and signature validation. Current stub accepts user_id + status.
-    """
-
-    user_id: UUID
-    status: str = Field(
-        ...,
-        pattern="^(approved|rejected)$",
-        description="New KYC status: approved or rejected",
-    )
+    fee_cents: int
+    available_cents: int

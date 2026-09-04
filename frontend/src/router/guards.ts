@@ -56,12 +56,16 @@ declare module 'vue-router' {
 // Onboarding step → redirect path
 // ---------------------------------------------------------------------------
 
+// H10: verification is no longer a step in this funnel, so role_selected
+// now leads straight to the documents page -- the destination kyc_done
+// used to hold. A user who arrives on an old session carrying the
+// removed step falls through to the role dashboard rather than to a
+// route that no longer exists.
 const ONBOARDING_REDIRECTS: Record<string, string> = {
   registered: '/verify',
   email_verified: '/onboarding/profile',
   profile_complete: '/onboarding/role',
-  role_selected: '/onboarding/kyc',
-  kyc_done: '/onboarding/docs',
+  role_selected: '/onboarding/docs',
 }
 
 // ---------------------------------------------------------------------------

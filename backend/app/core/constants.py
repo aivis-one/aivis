@@ -80,6 +80,16 @@ class LedgerReason:
     INSTALLMENT_TRANCHE: str = "installment:tranche:{tranche_id}"
 
     # ------------------------------------------------------------------
+    # KYC verification fee (active_ledger: -amount) -- H10
+    # ------------------------------------------------------------------
+    # KEYED BY APPLICATION, NOT BY USER. A user pays again for every new
+    # session after a terminal decision, so a user-keyed reason would
+    # collapse several distinct charges into one indistinguishable
+    # string -- and these strings are read by prefix (see the module
+    # header), which makes that collapse invisible rather than loud.
+    KYC_VERIFICATION: str = "kyc:verification:{application_id}"
+
+    # ------------------------------------------------------------------
     # Gifts -- all free unit allocations (passive_ledger: +0 entries)
     # Values of the {type} placeholder below:
     #   bundle_bonus | airdrop | welcome | campaign |

@@ -12,7 +12,7 @@
 #   KYCApplicationSummary   -- compact KYCApplication for the detail history
 #                              (iter 2.7 A5).
 #   BlockRequest            -- PATCH /staff/users/{id}/block
-#   KYCRejectRequest        -- POST /staff/kyc/{id}/reject
+#   KYCDecisionRequest      -- staff KYC approve / reject / revoke
 #
 # iter 2.7 A5 KYC-in-detail extension.
 #   StaffUsersView merges the old StaffKYCView Approve/Reject flow into
@@ -43,7 +43,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.modules.staff.schemas import StaffProfileResponse
 
@@ -182,11 +182,31 @@ class KYCQueueItem(BaseModel):
     last_name: str | None = None
 
 
-class KYCRejectRequest(BaseModel):
-    """Request body for KYC rejection with optional reason."""
+class KYCDecisionRequest(BaseModel):
+    """Request body for any staff KYC decision. The reason is required.
 
-    reason: str | None = Field(
-        default=None,
+    ONE SCHEMA FOR APPROVE, REJECT AND REVOKE, and the reason is
+    mandatory on all three (H10 P-43). It used to be optional and
+    reject-only, which left an approval with no record of why it was
+    given -- the one decision that opens the whole product to an
+    account. min_length plus the strip validator refuse the three forms
+    of nothing: absent, empty, and whitespace.
+
+    Stored in the audit log and nowhere else: a column on
+    KYCApplication would be a second copy of the same fact.
+    """
+
+    reason: str = Field(
+        ...,
+        min_length=1,
         max_length=2000,
-        description="Rejection reason (stored in audit log)",
+        description="Why this decision was made (stored in audit log)",
     )
+
+    @field_validator("reason")
+    @classmethod
+    def _reject_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("reason must not be blank")
+        return stripped

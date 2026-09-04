@@ -720,5 +720,23 @@
         "operator": "Support"
       }
     }
+  },
+  "kyc": {
+    "title": "Identitatsprufung",
+    "introPaid": "Die Prufung kostet ${fee}. Der Betrag wird beim Start abgebucht und unabhangig vom Ergebnis nicht erstattet.",
+    "balance": "Ihr Guthaben: ${available}",
+    "start": "Prufung starten (${fee})",
+    "startAgain": "Neue Prufung starten (${fee})",
+    "needsTopUp": "Ihr Guthaben deckt die Gebuhr nicht. Bitte zuerst aufladen.",
+    "toDeposit": "Guthaben aufladen",
+    "pendingTitle": "Prufung lauft",
+    "pendingText": "Die Prufung ist bezahlt und wartet auf eine Entscheidung. Wir benachrichtigen Sie, sobald sie vorliegt.",
+    "rejectedTitle": "Prufung nicht bestanden",
+    "rejectedText": "Sie konnen eine neue Prufung starten. Ein neuer Versuch kostet erneut ${fee}.",
+    "revokedTitle": "Freigabe zuruckgezogen",
+    "revokedText": "Ihre Freigabe wurde zuruckgezogen. Wenden Sie sich an den Support, wenn Sie das fur einen Fehler halten.",
+    "toSupport": "Support kontaktieren",
+    "errorLoad": "Prufungsstatus konnte nicht geladen werden.",
+    "errorStart": "Prufung konnte nicht gestartet werden."
   }
 }

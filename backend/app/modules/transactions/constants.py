@@ -21,9 +21,10 @@
 #   withdrawal:completed       -- payout succeeded
 #   withdrawal:failed          -- payout failed
 #   reversal:completed         -- chargeback reversal executed
+#   kyc:verification_fee       -- KYC verification session paid for
 #
 # REFERENCE TYPES:
-#   payment, purchase, withdrawal, installment_plan
+#   payment, purchase, withdrawal, installment_plan, kyc_application
 #
 # EXPORT (TASK-39 item 2):
 #   EXPORT_MAX_ROWS -- hard cap on rows a single CSV export may contain.
@@ -73,6 +74,13 @@ class TransactionType(enum.StrEnum):
     # Reversals
     REVERSAL_COMPLETED = "reversal:completed"
 
+    # KYC (H10)
+    # ONE TYPE, NOT A PAIR. The fee buys a verification session, and the
+    # money is gone whatever the session decides -- that is the point of
+    # charging before verifying rather than after. There is no refund
+    # event to log, so no second type describes one.
+    KYC_VERIFICATION_FEE = "kyc:verification_fee"
+
 
 class ReferenceType(enum.StrEnum):
     """Type of the referenced entity in transaction log."""
@@ -81,3 +89,8 @@ class ReferenceType(enum.StrEnum):
     PURCHASE = "purchase"
     WITHDRAWAL = "withdrawal"
     INSTALLMENT_PLAN = "installment_plan"
+    # The application the fee bought (H10). reference_id is its UUID.
+    # NULL was the cheaper option -- the constraint allows it -- and was
+    # rejected: without the link, "I paid and was refused" cannot be
+    # answered from the transaction log alone.
+    KYC_APPLICATION = "kyc_application"

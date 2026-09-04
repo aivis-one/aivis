@@ -194,9 +194,13 @@ export const router = createRouter({
       meta: { skipOnboarding: true },
     },
     {
-      path: '/onboarding/kyc',
-      name: 'onboarding-kyc',
-      component: () => import('@/views/auth/OnboardingKYCView.vue'),
+      // H10: the KYC gate's destination. skipOnboarding because the
+      // gate can refuse a user who has not finished onboarding, and
+      // bouncing them back into onboarding instead of showing them the
+      // refusal would be the self-lock again.
+      path: '/verification',
+      name: 'kyc-verification',
+      component: () => import('@/views/auth/KYCVerificationView.vue'),
       meta: { skipOnboarding: true },
     },
     {
@@ -292,9 +296,15 @@ export const router = createRouter({
           component: () => import('@/views/investor/BalanceView.vue'),
         },
         {
+          // skipOnboarding (H10): an unverified investor is sent here by
+          // the KYC gate modal to fund the account, and without this the
+          // onboarding guard would bounce them back into onboarding
+          // before they could -- the same self-lock the gate's exempt
+          // route list exists to avoid, one layer up.
           path: 'balance/deposit',
           name: 'investor-deposit',
           component: () => import('@/views/investor/InvestorDepositView.vue'),
+          meta: { skipOnboarding: true },
         },
         {
           path: 'transactions',
