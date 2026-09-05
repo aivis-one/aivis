@@ -29,6 +29,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.events.models import OutboxEvent
 from app.core.events.service import EVENT_SECTION_MEMBERSHIP_CHANGED
 from app.modules.staff import service as staff_service
@@ -73,10 +74,27 @@ def _url(profile_id: UUID) -> str:
 
 @pytest.mark.asyncio
 async def test_deactivation_flips_the_flag_and_tells_the_roster(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The two halves that must not be able to disagree: off duty here,
-    off the roster there, one transaction."""
+    off the roster there, one transaction.
+
+    THE COMMS ADDRESS IS SET HERE, AND UNTIL NOW IT WAS INHERITED.
+    emit_support_membership writes nothing when the box has no comms
+    address, so the roster half of this assertion only held where one
+    happened to be configured -- and a box WITHOUT one is a supported
+    configuration, not a misconfiguration (config.py:395-403 gates its
+    validator on comms being intended for that box at all). The red this
+    produced there said "the roster is not being told" when the truth
+    was "this box is set up one of the two allowed ways"; it should not
+    have gone red at all.
+
+    Third test of this shape, after the pair in test_seed.py. State
+    built inside the test, not around it -- the shape the payments tests
+    have always used.
+    """
+    monkeypatch.setattr(settings, "comms_api_url", "http://comms.test")
+
     _admin, admin_token = await create_admin_user(client, db_session)
     target, _token = await create_staff_user(client, db_session)
     profile = await _profile_of(db_session, target.id)

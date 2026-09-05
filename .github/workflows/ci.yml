@@ -1,0 +1,374 @@
+# =============================================================================
+# AIVIS.ONE -- CI
+# =============================================================================
+#
+# WHAT THIS IS FOR. Until now the suite ran only when a human typed
+# `aivis test` on a box with Postgres, Redis and MinIO up. The bar was
+# high, so it was cleared rarely, and the cost is known exactly:
+# forty-four tests in this tree failed on their FIRST EVER execution --
+# not "broke", never ran -- and unpicking them turned up two live holes
+# in the product. This file exists so that no test can be delivered
+# without having been run.
+#
+# WHY ONE FILE AND TWO JOBS. Two jobs give two independent statuses, so
+# a red frontend does not hide a green backend. One file keeps the whole
+# mechanism readable in one place.
+#
+# WHY NO `paths:` FILTERS. They would save the ~2 minutes of `npm ci` on
+# a Python-only push, and they would buy it with a job that can silently
+# not run: a filtered required check sits in "expected" forever, and a
+# change to something shared (scripts/generate_ts_types.py) can miss
+# every filter. A mechanism able to not fire by configuration is the
+# exact class this project keeps paying for. The two minutes are the
+# price of the guarantee, and they are named here rather than saved
+# quietly.
+#
+# WHY EVERY PRECONDITION IS ITS OWN STEP. Because the reader has to know
+# WHICH thing broke from the step name, without opening the log. A
+# single "prepare" step that migrates, seeds and uploads would report
+# "prepare failed" for six different situations. The seam check below is
+# the sharpest case: without the template objects the suite falls over
+# anyway -- on 2026-09-01 it was twenty-nine failures -- and the
+# difference is one line naming the count versus twenty-nine
+# StorageError tracebacks.
+#
+# WHAT IS NOT HERE, DELIBERATELY:
+#   ruff / mypy -- `ruff check .` is 467 errors on this tree today and
+#     mypy strict is 110 in 37 files. A step that is always red gets
+#     filtered out within a week, and it takes the red pytest next to it
+#     along. Recorded as debt with the per-area counts, together with
+#     the finding that even the narrow rule set needs reading before
+#     fixing: four of its seven hits are `company_user = await
+#     _load_user(...)`, where the variable is unused but the CALL raises
+#     on a missing user, so `--fix` would delete a live check in two
+#     money paths.
+#   `npm audit` in the blocking path -- it goes red when somebody else
+#     publishes an advisory, not when we push. Same failure mode as an
+#     always-red linter, so it runs as its own non-blocking job below.
+#
+# THE SOURCE THIS REPRODUCES is scripts/aivis-manage.sh, prepare_test_db
+# (:190) and the object checks (:697-772). Where the two disagree, the
+# CLI is right and this file is wrong.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Manual runs: used to demonstrate that this file can go red without
+  # pushing a deliberately broken commit.
+  workflow_dispatch:
+
+# Ten pushes in a row should not queue ten full runs. Only the newest
+# commit on a ref is worth checking; the older ones are already history.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned to what docker-compose.yml pins. CI reproduces the box, so it
+  # runs the box's versions -- "latest" would mean CI and the stand can
+  # disagree without anybody changing a line.
+  MINIO_IMAGE: minio/minio:RELEASE.2025-09-07T16-13-09Z
+  MC_IMAGE: minio/mc:RELEASE.2025-08-13T08-35-41Z
+
+jobs:
+  # ===========================================================================
+  # Backend
+  # ===========================================================================
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aivis
+          POSTGRES_PASSWORD: aivis
+          POSTGRES_DB: aivis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aivis"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      APP_ENV: development
+      SECRET_KEY: ci-secret-key-not-used-outside-this-runner
+      # ONE literal, read by alembic, both seeds, the smoke checks and
+      # pytest. Written twice it would drift, and the run would migrate
+      # one database while testing another.
+      DATABASE_URL: postgresql+asyncpg://aivis:aivis@127.0.0.1:5432/aivis_test
+      REDIS_URL: redis://127.0.0.1:6379/0
+      MINIO_ENDPOINT: http://127.0.0.1:9000
+      # Root credentials, and this is the one place CI differs from
+      # compose on purpose: compose mints a service account for the
+      # backend so that the root key never reaches the application. That
+      # boundary protects a long-lived stand. This container lives for
+      # one job and is destroyed with the runner, so the account it would
+      # protect does not outlast the thing it protects against.
+      MINIO_ACCESS_KEY: ciminioroot
+      MINIO_SECRET_KEY: ciminiorootsecret
+      MINIO_ROOT_USER: ciminioroot
+      MINIO_ROOT_PASSWORD: ciminiorootsecret
+      MINIO_BUCKET: aivis-attachments
+      # COMMS_API_URL is deliberately UNSET. A box without comms is a
+      # supported configuration (backend/app/core/config.py:395-403), and
+      # since the three tests that used to read this variable now pin
+      # their own state, the suite is green either way. Setting it here
+      # would make CI depend on a second product being reachable.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # pycairo builds against these; the runtime image installs
+      # libcairo2 and the builder stage libcairo2-dev (backend/Dockerfile
+      # :29-33). A runner has neither.
+      - name: Install system libraries
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev
+
+      # DEPENDENCIES ONLY, FROM AN EMPTY DIRECTORY, and the emptiness is
+      # the point. `pip install ".[dev]"` from the repository root fails:
+      # setuptools finds two top-level packages (`app` and `migrations`)
+      # and refuses to guess. The image gets away with it because
+      # backend/Dockerfile:35 copies pyproject.toml ALONE into an
+      # otherwise empty WORKDIR, so there is nothing to discover. This
+      # reproduces that condition deliberately instead of relying on the
+      # accident. The real fix -- declaring the packages in pyproject --
+      # is recorded as debt.
+      - name: Install Python dependencies
+        run: |
+          mkdir -p /tmp/deps
+          cp backend/pyproject.toml /tmp/deps/
+          python -m pip install --upgrade pip
+          pip install "/tmp/deps[dev]"
+
+      # Fail here, loudly, rather than three steps later with a
+      # connection error or a pytest UsageError. The second assertion is
+      # the pair to the first: a variable being set is not the same as it
+      # pointing somewhere safe, and conftest.py:95 refuses to run
+      # against a database whose name does not end in `_test`.
+      - name: Check required environment
+        run: |
+          set -euo pipefail
+          for var in APP_ENV SECRET_KEY DATABASE_URL REDIS_URL \
+                     MINIO_ENDPOINT MINIO_ACCESS_KEY MINIO_SECRET_KEY \
+                     MINIO_BUCKET; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::$var is unset or empty"
+              exit 1
+            fi
+          done
+          case "$DATABASE_URL" in
+            *_test) echo "DATABASE_URL targets a test database" ;;
+            *) echo "::error::DATABASE_URL must end with _test"; exit 1 ;;
+          esac
+
+      # Not a service container: services take an image and no command,
+      # and `minio/minio` does nothing without `server /data`. Passing it
+      # through `options: --entrypoint` works until the base image
+      # changes its entrypoint, which is a trap for whoever bumps the
+      # pin. `docker run` is supported outright.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER="$MINIO_ROOT_USER" \
+            -e MINIO_ROOT_PASSWORD="$MINIO_ROOT_PASSWORD" \
+            "$MINIO_IMAGE" server /data
+
+      - name: Wait for MinIO
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9000/minio/health/ready >/dev/null; then
+              echo "MinIO ready after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::MinIO did not become ready in 30s"
+          docker logs minio || true
+          exit 1
+
+      # The same tool and the same pin compose uses (docker-compose.yml
+      # :190, :208-209). Creating the buckets with boto3 instead would be
+      # a second implementation of something the stand already does, and
+      # the two would drift the first time either changed.
+      #
+      # BOTH buckets, and the test one matters as much: the seam check
+      # below reads only the MAIN bucket by design, so a missing
+      # aivis-attachments-test would sail past it and surface as
+      # seventeen storage failures in the middle of pytest.
+      - name: Create buckets
+        run: |
+          docker run --rm --network host --entrypoint sh "$MC_IMAGE" -c "
+            mc alias set local http://127.0.0.1:9000 \
+              '$MINIO_ROOT_USER' '$MINIO_ROOT_PASSWORD' &&
+            mc mb -p local/aivis-attachments &&
+            mc mb -p local/aivis-attachments-test
+          "
+
+      # "Created" and "readable by the account the backend will use" are
+      # different claims, and only the second one matters. This checks
+      # the second, with the very credentials handed to the application
+      # above -- the same shape as the service-account probe in
+      # docker-compose.yml:247-250.
+      - name: Verify buckets are readable by the backend's credentials
+        run: |
+          docker run --rm --network host --entrypoint sh "$MC_IMAGE" -c "
+            mc alias set backend http://127.0.0.1:9000 \
+              '$MINIO_ACCESS_KEY' '$MINIO_SECRET_KEY' &&
+            mc ls backend/aivis-attachments &&
+            mc ls backend/aivis-attachments-test
+          "
+
+      # Schema from the migration files, never metadata.create_all --
+      # the latter misses the functional indexes that only exist inside
+      # migrations (aivis-manage.sh says the same at greater length).
+      - name: Migrate
+        working-directory: backend
+        run: python -m alembic upgrade head
+
+      # Two steps, not one, so the step name says which seed failed.
+      - name: Seed platform user
+        working-directory: backend
+        run: python scripts/seed_platform.py
+
+      - name: Seed platform templates
+        working-directory: backend
+        run: python -m scripts.seed_platform_templates
+
+      - name: Smoke check -- 16 platform template rows
+        run: |
+          count=$(PGPASSWORD=aivis psql -h 127.0.0.1 -U aivis -d aivis_test -tAc \
+            "SELECT COUNT(*) FROM company_document_templates
+             WHERE company_id IS NULL AND status='active';" | tr -d '[:space:]')
+          if [ "$count" != "16" ]; then
+            echo "::error::expected 16 active platform templates, found '$count'"
+            exit 1
+          fi
+          echo "16 platform template rows present"
+
+      - name: Upload platform template objects
+        working-directory: backend
+        run: python -m scripts.platform_template_objects upload
+
+      # THE OTHER HALF OF THE SEAM, and it fails HERE rather than inside
+      # pytest on purpose. Rows in the database and objects in storage
+      # are two sides of one thing, and checking one side once passed
+      # green while the other was empty: the product answered NoSuchKey
+      # on every agreement and the smoke check said fine.
+      - name: Smoke check -- 64 platform template objects
+        working-directory: backend
+        run: python -m scripts.platform_template_objects check
+
+      - name: Run the suite
+        working-directory: backend
+        run: python -m pytest tests/ -q
+
+      # Covers what `npm run build` and `pytest` cannot: the Dockerfile
+      # itself, .dockerignore, and the system packages installed in the
+      # image. A broken Dockerfile otherwise surfaces during an
+      # installation at a customer's, which is the most expensive place
+      # to find it -- scripts/install_aivis.sh builds exactly this.
+      - name: Build the backend image
+        run: docker build -f backend/Dockerfile backend
+
+  # ===========================================================================
+  # Frontend
+  # ===========================================================================
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # `npm ci`, not `npm install`: it fails when package.json and the
+      # lockfile disagree instead of quietly resolving something else.
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # stdlib-only, runs anywhere. Five static checks over the router
+      # table, design tokens, i18n and pre-auth widths -- none of which
+      # any of the steps below can see.
+      - name: Static checks
+        run: python3 checks/run.py
+
+      # Separate from the build even though `npm run build` runs vue-tsc
+      # itself. The duplication is what splits two different reds: types
+      # wrong, or bundling wrong. H10 hit the first one twice in a row
+      # and the message came out of a Docker build log.
+      - name: Type check
+        working-directory: frontend
+        run: npx vue-tsc --noEmit
+
+      # 63 tests that live in this tree and had no automatic runner. A CI
+      # that skipped them would repeat, on a smaller scale, exactly the
+      # thing this file is here to stop.
+      - name: Unit tests
+        working-directory: frontend
+        run: npx vitest run
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build the frontend image
+        run: docker build -f frontend/Dockerfile frontend
+
+  # ===========================================================================
+  # Dependency audit -- reports, never blocks
+  # ===========================================================================
+  audit:
+    name: Dependency audit (advisory)
+    runs-on: ubuntu-latest
+    # NON-BLOCKING BY DESIGN. This job goes red when somebody publishes
+    # an advisory against a transitive dependency -- an event with no
+    # relation to the commit being checked. A blocking step of that kind
+    # is red on mornings when nothing is wrong, and a check that cries
+    # wolf gets filtered out along with the checks that do not. The news
+    # is worth having; the veto is not.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Audit
+        working-directory: frontend
+        run: npm audit --audit-level=high

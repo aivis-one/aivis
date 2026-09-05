@@ -143,17 +143,30 @@ async def _events(session: Any, event_type: str, user_ids: set[str]) -> int:
 
 
 async def test_seed_runs_with_comms_unconfigured_and_writes_no_outbox_rows(
-    db_session: Any, clean_stand: None
+    db_session: Any, clean_stand: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """comms absent: the seed completes, and emits no recipient events.
 
-    This is the state the test DB is in, and it is the state a laptop is
-    in. The assertion is deliberately "zero", not "some": ensure_recipient
+    The assertion is deliberately "zero", not "some": ensure_recipient
     refuses to write an outbox row when there is no comms address,
     because the relay that would ship it is disabled by the same empty
     address and the row would grow the table forever without ever
     leaving it.
+
+    THE STATE IS NOW PINNED HERE INSTEAD OF INHERITED. The docstring
+    used to say "this is the state the test DB is in, and it is the
+    state a laptop is in" -- true of a laptop, and true of the test DB
+    only because nobody had pointed that box at comms. It made the
+    result depend on the .env the run happened to pick up: the same
+    code passed or failed by deployment. T-93 already moved the
+    membership test off that footing (see the file header); this is the
+    same move, applied to the emitter's other half.
+
+    Same shape as the payments tests, which have never needed a
+    configured stand: state built inside the test, not around it.
     """
+    monkeypatch.setattr(seed_settings, "comms_api_url", "")
+
     profile = _profile()
     await seed.seed_profile(db_session, profile)
     await db_session.flush()
@@ -385,7 +398,7 @@ async def test_the_refusal_never_counts_this_profiles_own_staff(
 
 
 async def test_reset_undeclares_staff_before_deleting_them(
-    db_session: Any, clean_stand: None
+    db_session: Any, clean_stand: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The row that says "no longer an operator" is written, not skipped.
 
@@ -393,7 +406,32 @@ async def test_reset_undeclares_staff_before_deleting_them(
     and because a section with ANY declared member is served only by
     those members, a reset that deleted the only declared ones would
     leave the section served by nobody at all.
+
+    THE ADDRESS IS SET HERE, AND UNTIL NOW IT WAS NOT. emit_support_
+    membership is gated on comms_configured(), so this assertion only
+    held on a box that happened to have an address configured -- and a
+    box WITHOUT one is a supported configuration, not a
+    misconfiguration (config.py:395-403 gates its validator on comms
+    being intended for that box at all). So the red this test produced
+    on such a box was never a report about the deployment: it said
+    "membership is not being emitted" when the truth was "this box is
+    set up one of the two allowed ways". It should not have gone red
+    there.
+
+    It also went red UNREADABLY -- `assert 0 == 0 + 2`, which reads as
+    a broken roster rather than as an unset variable, and cost a whole
+    pass chasing it as a delivery defect.
+
+    upsert_recipient is stubbed to succeed rather than left alone: with
+    an address set and no stub, the seed's recipient path would open a
+    real socket to a hostname that does not exist. The product's own
+    branch is untouched -- only the wire is fake, which is the shape
+    test_crypto_invoices.py:160 uses for payments.
     """
+    monkeypatch.setattr(seed_settings, "comms_api_url", "http://comms.test")
+    monkeypatch.setattr(seed_settings, "comms_service_token", "test-token")
+    monkeypatch.setattr(_comms_sync(), "upsert_recipient", _always_succeed)
+
     profile = _profile()
     await seed.seed_profile(db_session, profile)
     await db_session.flush()
@@ -565,3 +603,10 @@ def _comms_sync() -> Any:
 
 async def _always_fail(*_args: Any, **_kwargs: Any) -> bool:
     return False
+
+
+async def _always_succeed(*_args: Any, **_kwargs: Any) -> bool:
+    """A comms that answers. Returns what the real upsert returns on a
+    successful PUT -- True -- so ensure_recipient takes its synchronous
+    branch and writes no outbox row."""
+    return True
