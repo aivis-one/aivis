@@ -62,7 +62,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.auth.service import delete_all_sessions
-from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
+from app.modules.kyc.models import KYCApplication
 from app.modules.kyc.service import decide_by_application, decide_by_user
 from app.modules.payments.constants import PaymentStatus
 from app.modules.payments.models import Payment
@@ -476,7 +476,7 @@ async def dashboard_stats(
     kyc_stmt = (
         select(func.count())
         .select_from(KYCApplication)
-        .where(KYCApplication.status == KYCApplicationStatus.SUBMITTED)
+        .where(KYCApplication.status == KYCStatus.SUBMITTED)
     )
     pending_kyc = (await session.execute(kyc_stmt)).scalar_one()
 
@@ -517,7 +517,7 @@ async def kyc_queue(
     stmt = (
         select(KYCApplication, User)
         .join(User, KYCApplication.user_id == User.id)
-        .where(KYCApplication.status == KYCApplicationStatus.SUBMITTED)
+        .where(KYCApplication.status == KYCStatus.SUBMITTED)
         .order_by(KYCApplication.created_at.asc())
     )
     result = await session.execute(stmt)

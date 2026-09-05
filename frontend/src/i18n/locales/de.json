@@ -742,6 +742,21 @@
     "revokedText": "Ihre Freigabe wurde zuruckgezogen. Wenden Sie sich an den Support, wenn Sie das fur einen Fehler halten.",
     "toSupport": "Support kontaktieren",
     "errorLoad": "Prufungsstatus konnte nicht geladen werden.",
-    "errorStart": "Prufung konnte nicht gestartet werden."
+    "errorStart": "Prufung konnte nicht gestartet werden.",
+    "upload": {
+      "documentType": "Dokumenttyp",
+      "typePassport": "Reisepass",
+      "typeIdCard": "Personalausweis",
+      "typeDrivingLicence": "Führerschein",
+      "front": "Vorderseite",
+      "back": "Rückseite",
+      "selfie": "Selfie mit dem Dokument",
+      "hint": "JPEG oder PNG, bis 10 MB. Die Dokumente werden bei uns gespeichert und nur von der entscheidenden Person eingesehen.",
+      "errorHeic": "HEIC-Bilder werden nicht akzeptiert. Bitte als JPEG oder PNG speichern.",
+      "errorType": "Es werden nur JPEG- und PNG-Dateien akzeptiert.",
+      "errorEmpty": "Diese Datei ist leer.",
+      "errorTooLarge": "Diese Datei ist größer als 10 MB.",
+      "errorIncomplete": "Bitte alle angeforderten Bilder anhängen."
+    }
   }
 }

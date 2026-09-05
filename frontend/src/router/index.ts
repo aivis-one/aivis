@@ -702,6 +702,15 @@ export const router = createRouter({
               component: () => import('@/views/staff/platform/StaffCompaniesListView.vue'),
             },
             {
+              // H12: platform-wide settings staff change from the UI
+              // rather than from .env. One subsection, one setting so
+              // far -- the verification mode.
+              path: 'settings',
+              name: 'staff-platform-settings',
+              component: () =>
+                import('@/views/staff/platform/StaffVerificationSettingsSection.vue'),
+            },
+            {
               path: 'companies/:id',
               component: () => import('@/views/staff/platform/StaffCompanyDetailView.vue'),
               children: [

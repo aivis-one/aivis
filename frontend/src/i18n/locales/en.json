@@ -381,14 +381,27 @@
         "approvedToast": "KYC application approved",
         "rejectedToast": "KYC application rejected",
         "approveHint": "Provide a reason. It is stored in the audit log.",
-        "reason": "Reason (required)"
+        "reason": "Reason (required)",
+        "documents": {
+          "title": "Application documents",
+          "empty": "No documents were submitted with this application.",
+          "noPermission": "The kyc_approve permission is required to view documents.",
+          "view": "Open",
+          "kindFront": "Front side",
+          "kindBack": "Reverse side",
+          "kindSelfie": "Selfie",
+          "ttlNotice": "The link is valid for {seconds} seconds. Every opening is recorded in the audit log.",
+          "errorLoad": "Could not load the document list.",
+          "errorLink": "Could not obtain a link to that document."
+        }
       }
     },
     "platform": {
       "tabs": {
         "news": "News",
         "events": "Events",
-        "companies": "Companies"
+        "companies": "Companies",
+        "settings": "Settings"
       },
       "news": {
         "title": "Platform news"
@@ -640,6 +653,17 @@
           "removeTitle": "Remove cover image",
           "removeConfirm": "The cover image will be removed from this roadmap item."
         }
+      },
+      "verification": {
+        "title": "Verification mode",
+        "description": "Who decides KYC applications.",
+        "manual": "Manual -- a staff member decides",
+        "automatic": "Automatic -- the provider decides",
+        "save": "Save",
+        "saved": "Mode saved",
+        "error": "Could not change the mode",
+        "notice": "The provider integration has not shipped yet. Until it does, applications in both modes are decided by a staff member; the setting is stored and recorded on every application.",
+        "current": "Currently: {mode}"
       }
     }
   },
@@ -2426,6 +2450,21 @@
     "revokedText": "Your approval has been withdrawn. Contact support if you believe this is a mistake.",
     "toSupport": "Contact support",
     "errorLoad": "Could not load verification status.",
-    "errorStart": "Could not start verification."
+    "errorStart": "Could not start verification.",
+    "upload": {
+      "documentType": "Document type",
+      "typePassport": "Passport",
+      "typeIdCard": "ID card",
+      "typeDrivingLicence": "Driving licence",
+      "front": "Front side",
+      "back": "Reverse side",
+      "selfie": "Selfie holding the document",
+      "hint": "JPEG or PNG, up to 10 MB. Documents are stored by us and seen only by the staff member deciding your application.",
+      "errorHeic": "HEIC images are not accepted. Re-save the photo as JPEG or PNG.",
+      "errorType": "Only JPEG and PNG files are accepted.",
+      "errorEmpty": "That file is empty.",
+      "errorTooLarge": "That file is larger than 10 MB.",
+      "errorIncomplete": "Please attach every requested image."
+    }
   }
 }

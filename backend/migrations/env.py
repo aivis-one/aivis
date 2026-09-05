@@ -30,7 +30,11 @@ from app.modules.staff.models import StaffProfile, AvatarSession  # noqa: F401
 from app.core.audit import AuditLog  # noqa: F401
 
 # Sprint 2.1: KYC
-from app.modules.kyc.models import KYCApplication  # noqa: F401
+from app.modules.kyc.models import (  # noqa: F401
+    KYCApplication,
+    KYCDocument,
+    KYCSettings,
+)
 
 # Sprint 2.2: Documents
 from app.modules.documents.models import Document, DocumentSigning  # noqa: F401

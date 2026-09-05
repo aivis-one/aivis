@@ -78,13 +78,28 @@ class OnboardingStep(enum.StrEnum):
 
 
 class KYCStatus(enum.StrEnum):
-    """KYC verification status. Denormalized cache from KYCApplication."""
+    """The KYC status vocabulary, for the application and its cache.
+
+    ONE ENUM FOR BOTH COLUMNS (H12 P-46f). users.kyc_status is a
+    denormalised cache of kyc_applications.status, and until this pass
+    each had its own enum with identical members -- two declarations of
+    one fact, plus two CHECK constraints that stayed level only because
+    somebody remembered to edit both. kyc/models.py imports this one.
+    tests/test_kyc.py reads both constraints out of pg_constraint and
+    asserts each admits exactly these members, so a future widening
+    that touches one column and not the other goes red the day it
+    lands rather than the day a value is written.
+    """
 
     NOT_STARTED = "not_started"
     SUBMITTED = "submitted"
     APPROVED = "approved"
     REJECTED = "rejected"
-    # Mirrors KYCApplicationStatus.REVOKED -- see the note there.
+    # DISTINCT FROM REJECTED, AND THE DISTINCTION IS FOR THE READER OF
+    # THE QUEUE. "rejected" says the person did not pass; "revoked" says
+    # we took back a decision we had already made. Folding the second
+    # into the first would make the audit trail claim the person failed
+    # verification when what happened is that staff changed their mind.
     REVOKED = "revoked"
 
 

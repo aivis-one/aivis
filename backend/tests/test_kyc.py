@@ -39,7 +39,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.kyc.constants import KYC_VERIFICATION_FEE_CENTS
-from app.modules.kyc.models import KYCApplication, KYCApplicationStatus
+from app.modules.kyc.models import KYCApplication
 from app.modules.ledgers.models import ActiveLedger
 from app.modules.ledgers.service import get_active_balance
 from app.modules.transactions.constants import ReferenceType, TransactionType
@@ -50,6 +50,7 @@ from tests.helpers import (
     create_admin_user,
     fund_user,
     register_user,
+    submit_kyc_application,
 )
 
 REASON = "Documents checked by hand during the H10 test run."
@@ -74,7 +75,7 @@ async def test_submit_charges_the_fee(
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
 
-    resp = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    resp = await submit_kyc_application(client, token)
     assert resp.status_code == 201, resp.text
     application_id = UUID(resp.json()["id"])
 
@@ -123,7 +124,7 @@ async def test_submit_one_cent_short_charges_nothing(
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS - 1)
 
-    resp = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    resp = await submit_kyc_application(client, token)
     assert resp.status_code == 400, resp.text
 
     balance = await get_active_balance(db_session, user_id)
@@ -161,7 +162,7 @@ async def test_submit_with_no_ledger_history_at_all(
     """
     token, user_id = await _unverified_investor(client)
 
-    resp = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    resp = await submit_kyc_application(client, token)
     assert resp.status_code == 400, resp.text
 
     assert (
@@ -183,9 +184,9 @@ async def test_second_submit_is_refused_and_charges_once(
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS * 2)
 
-    first = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    first = await submit_kyc_application(client, token)
     assert first.status_code == 201
-    second = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    second = await submit_kyc_application(client, token)
     assert second.status_code == 409, second.text
 
     debits = (
@@ -237,7 +238,7 @@ async def test_staff_approves_queued_application(
     staff_user, staff_token = await create_admin_user(client, db_session)
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
-    submit = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    submit = await submit_kyc_application(client, token)
     application_id = submit.json()["id"]
 
     queue = await client.get(
@@ -267,14 +268,14 @@ async def test_staff_rejects_and_a_retry_costs_again(
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS * 2)
 
-    first = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    first = await submit_kyc_application(client, token)
     await client.post(
         f"/api/v1/staff/kyc/{first.json()['id']}/reject",
         json={"reason": REASON},
         headers=auth_headers(staff_token),
     )
 
-    second = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    second = await submit_kyc_application(client, token)
     assert second.status_code == 201
     assert second.json()["id"] != first.json()["id"]
 
@@ -306,7 +307,7 @@ async def test_approval_without_a_real_reason_is_refused(
     _, staff_token = await create_admin_user(client, db_session)
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
-    submit = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    submit = await submit_kyc_application(client, token)
 
     resp = await client.post(
         f"/api/v1/staff/kyc/{submit.json()['id']}/approve",
@@ -332,7 +333,7 @@ async def test_successful_approval_stores_a_non_empty_reason(
     _, staff_token = await create_admin_user(client, db_session)
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
-    submit = await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+    submit = await submit_kyc_application(client, token)
 
     await client.post(
         f"/api/v1/staff/kyc/{submit.json()['id']}/approve",
@@ -383,7 +384,7 @@ async def test_staff_approves_a_person_with_no_application(
         )
     ).scalars().all()
     assert len(applications) == 1
-    assert applications[0].status == KYCApplicationStatus.APPROVED
+    assert applications[0].status == KYCStatus.APPROVED
 
     # Free: no debit, no transaction.
     assert (

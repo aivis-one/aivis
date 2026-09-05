@@ -53,6 +53,7 @@ from tests.helpers import (
     create_admin_user,
     fund_user,
     register_user,
+    submit_kyc_application,
 )
 
 
@@ -467,7 +468,7 @@ async def test_kyc_queue(
         client
     )
     inv_token = inv_data["session_token"]
-    await client.post("/api/v1/kyc/submit", headers=auth_headers(inv_token))
+    await submit_kyc_application(client, inv_token)
 
     resp = await client.get(
         "/api/v1/staff/kyc/queue",
@@ -501,9 +502,7 @@ async def test_kyc_approve(
     inv_data = await register_user(client, verified=False)
     inv_token = inv_data["session_token"]
     await fund_user(inv_data["user"]["id"], KYC_VERIFICATION_FEE_CENTS)
-    submit_resp = await client.post(
-        "/api/v1/kyc/submit", headers=auth_headers(inv_token)
-    )
+    submit_resp = await submit_kyc_application(client, inv_token)
     assert submit_resp.status_code == 201, submit_resp.text
     application_id = submit_resp.json()["id"]
 
@@ -537,9 +536,7 @@ async def test_kyc_reject(
     inv_data = await register_user(client, verified=False)
     inv_token = inv_data["session_token"]
     await fund_user(inv_data["user"]["id"], KYC_VERIFICATION_FEE_CENTS)
-    submit_resp = await client.post(
-        "/api/v1/kyc/submit", headers=auth_headers(inv_token)
-    )
+    submit_resp = await submit_kyc_application(client, inv_token)
     assert submit_resp.status_code == 201, submit_resp.text
     application_id = submit_resp.json()["id"]
 
@@ -634,9 +631,7 @@ async def _bring_investor_to_status(
     # costs the verification fee -- fund the account first or the walk
     # stops at 400 insufficient balance.
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
-    submit_resp = await client.post(
-        "/api/v1/kyc/submit", headers=auth_headers(inv_token)
-    )
+    submit_resp = await submit_kyc_application(client, inv_token)
     assert submit_resp.status_code == 201, submit_resp.text
     application_id = submit_resp.json()["id"]
 

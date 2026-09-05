@@ -84,6 +84,11 @@ import {
   approveKYC,
   rejectKYC,
 } from '@/api/admin'
+import {
+  fetchKycDocuments,
+  requestKycDocumentUrl,
+  type KycDocument,
+} from '@/api/kyc'
 import type { UpdatePermissionsRequest, UserListItem, UserDetailResponse } from '@/api/types'
 
 // PermissionKey derived from the backend schema -- single source of
@@ -257,13 +262,79 @@ async function openDetail(userId: string): Promise<void> {
   showDetail.value = true
   detailLoading.value = true
   detailUser.value = null
+  kycDocuments.value = []
   try {
     detailUser.value = await fetchUserDetail(userId)
+    await loadKycDocuments()
   } catch {
     showToast(t('common.error'), 'error')
     showDetail.value = false
   } finally {
     detailLoading.value = false
+  }
+}
+
+// -- KYC documents (H12) --
+//
+// LISTED ON OPEN, NOT ON DEMAND, because the reason the documents exist
+// is that a decision must not be made without looking at them: a panel
+// that hides them behind a second click invites deciding from the
+// status badge alone.
+//
+// THE IMAGES THEMSELVES ARE NOT FETCHED HERE. Each one costs a POST
+// that records who looked, so a link is issued when a staff member
+// actually opens a document -- listing a person's application is not
+// the same act as reading their passport, and the audit log must be
+// able to tell them apart.
+
+const kycDocuments = ref<KycDocument[]>([])
+const kycDocumentsLoading = ref(false)
+const kycDocumentPending = ref<string | null>(null)
+
+const DOCUMENT_KIND_LABELS: Record<string, string> = {
+  front: 'staff.userDetail.kyc.documents.kindFront',
+  back: 'staff.userDetail.kyc.documents.kindBack',
+  selfie: 'staff.userDetail.kyc.documents.kindSelfie',
+}
+
+async function loadKycDocuments(): Promise<void> {
+  const applicationId = detailUser.value?.latest_application_id
+  // No application, or no permission to look: nothing to ask for. The
+  // backend would refuse the second case anyway; not asking keeps a
+  // guaranteed 403 out of the console on every modal open.
+  if (!applicationId || !canDoKycApprove) {
+    kycDocuments.value = []
+    return
+  }
+
+  kycDocumentsLoading.value = true
+  try {
+    kycDocuments.value = await fetchKycDocuments(applicationId)
+  } catch {
+    kycDocuments.value = []
+    showToast(t('staff.userDetail.kyc.documents.errorLoad'), 'error')
+  } finally {
+    kycDocumentsLoading.value = false
+  }
+}
+
+async function openKycDocument(documentId: string): Promise<void> {
+  if (!canDoKycApprove) {
+    console.warn('[StaffUsersView] document open blocked: no kyc_approve permission')
+    return
+  }
+
+  kycDocumentPending.value = documentId
+  try {
+    const { url } = await requestKycDocumentUrl(documentId)
+    // noopener: the signed URL travels in the new tab's address bar,
+    // and a document viewer has no business holding a handle on the
+    // staff panel that opened it.
+    window.open(url, '_blank', 'noopener')
+  } catch {
+    showToast(t('staff.userDetail.kyc.documents.errorLink'), 'error')
+  } finally {
+    kycDocumentPending.value = null
   }
 }
 
@@ -592,6 +663,46 @@ onMounted(loadUsers)
                 <span class="kyc-history__date">{{ formatDate(app.created_at) }}</span>
               </li>
             </ul>
+          </div>
+
+          <!-- Documents (H12). Only for staff who may decide: the
+               owner tied looking and deciding to one permission on
+               purpose -- approving without looking is what these
+               exist to prevent. -->
+          <div v-if="canDoKycApprove" class="kyc-documents">
+            <div class="kyc-documents__title">
+              {{ t('staff.userDetail.kyc.documents.title') }}
+            </div>
+            <div v-if="kycDocumentsLoading" class="kyc-documents__empty">
+              {{ t('common.loading') }}
+            </div>
+            <div v-else-if="kycDocuments.length === 0" class="kyc-documents__empty">
+              {{ t('staff.userDetail.kyc.documents.empty') }}
+            </div>
+            <template v-else>
+              <ul class="kyc-documents__list">
+                <li
+                  v-for="doc in kycDocuments"
+                  :key="doc.id"
+                  class="kyc-documents__row"
+                >
+                  <span class="kyc-documents__kind">
+                    {{ t(DOCUMENT_KIND_LABELS[doc.kind] ?? doc.kind) }}
+                  </span>
+                  <CButton
+                    variant="outline"
+                    size="sm"
+                    :disabled="kycDocumentPending === doc.id"
+                    @click="openKycDocument(doc.id)"
+                  >
+                    {{ t('staff.userDetail.kyc.documents.view') }}
+                  </CButton>
+                </li>
+              </ul>
+              <p class="kyc-documents__notice">
+                {{ t('staff.userDetail.kyc.documents.ttlNotice', { seconds: 300 }) }}
+              </p>
+            </template>
           </div>
 
           <!-- Approve / Reject CTAs.
@@ -958,6 +1069,37 @@ onMounted(loadUsers)
 }
 
 /* KYC history timeline (iter 2.7 A5). */
+.kyc-documents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.kyc-documents__title {
+  font-weight: 600;
+}
+
+.kyc-documents__empty,
+.kyc-documents__notice {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.kyc-documents__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  padding: 0;
+}
+
+.kyc-documents__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .kyc-history {
   margin: var(--space-3) 0 var(--space-4);
   padding: var(--space-3);

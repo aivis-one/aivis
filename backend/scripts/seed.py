@@ -191,10 +191,7 @@ from app.modules.documents.models import (  # noqa: E402
     DocumentStatus,
 )
 from app.modules.documents.service import sign_document  # noqa: E402
-from app.modules.kyc.models import (  # noqa: E402
-    KYCApplication,
-    KYCApplicationStatus,
-)
+from app.modules.kyc.models import KYCApplication  # noqa: E402
 from app.modules.kyc.service import decide_by_user  # noqa: E402
 from app.modules.ledgers.models import (  # noqa: E402
     ActiveLedger,
@@ -465,7 +462,7 @@ async def walk_onboarding(
     if user.kyc_status != KYCStatus.APPROVED:
         await decide_by_user(
             user_id=user.id,
-            new_status=KYCApplicationStatus.APPROVED,
+            new_status=KYCStatus.APPROVED,
             reason="Seeded fixture user -- approved by the seed script.",
             actor_id=None,
             session=session,

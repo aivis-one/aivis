@@ -19,6 +19,7 @@ import hmac
 import json
 import time
 import uuid
+from typing import Any
 from urllib.parse import urlencode
 
 from httpx import AsyncClient
@@ -429,3 +430,84 @@ async def create_agent_with_link(
         )
     ).scalar_one()
     return user, token, link
+
+
+# ---------------------------------------------------------------------------
+# KYC submission helpers (H12)
+# ---------------------------------------------------------------------------
+#
+# POST /kyc/submit STOPPED ACCEPTING AN EMPTY BODY IN H12. It is now
+# multipart carrying the identity documents, and four test files drive
+# it. The multipart is built here rather than in each of them so that
+# the next change to the document set edits one place instead of
+# fourteen call sites -- and so that a test which wants to send a
+# DELIBERATELY wrong set has to say so explicitly rather than differ
+# from its neighbours by accident.
+
+
+KYC_SUBMIT_URL = "/api/v1/kyc/submit"
+
+# Bytes, not a real JPEG. Validation is by filename extension (the
+# multipart content-type header is client-controlled and not trusted),
+# so no test here depends on the payload decoding as an image. The
+# content is deterministic and distinct per kind precisely so that the
+# round-trip test can assert it got THAT object back and not merely an
+# object of the right length.
+KYC_FIXTURE_BYTES: dict[str, bytes] = {
+    "front": b"aivis-test-front-image-bytes",
+    "back": b"aivis-test-back-image-bytes",
+    "selfie": b"aivis-test-selfie-image-bytes",
+}
+
+
+def kyc_document_files(
+    *,
+    include_back: bool = False,
+    extension: str = "jpg",
+    content_type: str = "image/jpeg",
+    omit: tuple[str, ...] = (),
+) -> dict[str, tuple[str, bytes, str]]:
+    """Build the multipart `files=` mapping for POST /kyc/submit.
+
+    Defaults to a passport submission: front plus selfie, no back.
+    `include_back` adds the reverse for an id_card or driving licence.
+    `omit` drops parts on purpose, for the tests that assert an
+    incomplete set is refused.
+    """
+    parts = {
+        "front_image": "front",
+        "selfie_image": "selfie",
+    }
+    if include_back:
+        parts["back_image"] = "back"
+
+    return {
+        field: (
+            f"{kind}.{extension}",
+            KYC_FIXTURE_BYTES[kind],
+            content_type,
+        )
+        for field, kind in parts.items()
+        if field not in omit
+    }
+
+
+async def submit_kyc_application(
+    client: AsyncClient,
+    token: str,
+    *,
+    document_type: str = "passport",
+    include_back: bool = False,
+) -> Any:
+    """POST a well-formed verification submission and return the response.
+
+    Does NOT assert the status: callers check for 201, 400 or 409
+    themselves, and a helper that asserted 201 could not be used by the
+    tests about refusals.
+    """
+    return await client.post(
+        KYC_SUBMIT_URL,
+        headers=auth_headers(token),
+        data={"document_type": document_type},
+        files=kyc_document_files(include_back=include_back),
+    )

@@ -16,7 +16,7 @@
 # when it should not, which a user reports on the first day, rather than
 # a route that lets everyone through, which nobody reports at all.
 #
-# THE TWO LISTS BELOW ARE BOTH CHECKED BY tests/test_kyc_gate_routes.py,
+# THE TWO LISTS BELOW ARE BOTH CHECKED BY tests/test_kyc_gate.py,
 # in both directions: every exempt entry must match a real route that
 # really requires a session, and every session-requiring route in the
 # modules named here must appear in one list or the other. The second
@@ -259,17 +259,16 @@ async def enforce_kyc_gate(
         # more", and the deposit screen's own source of balance
         # (dashboard/summary) is itself behind the gate.
         balance = await get_active_balance(session, user.id)
-        # int() IS LOad-BEARING, not tidiness. get_active_balance is
-        # annotated dict[str, int] and returns Decimal -- SUM() over a
-        # numeric column comes back as Decimal, and the annotation has
-        # been wrong since it was written. Every other caller compares
-        # the value and never serialises it, so nothing noticed; this
-        # one puts it in a JSON body, and JSONResponse raises TypeError
-        # on a Decimal. Without the cast the gate answers 500 to any
-        # unverified user who has ever had a ledger row.
+        # No cast here any more (H12 P-46g). It used to be load-bearing:
+        # get_active_balance was annotated dict[str, int] and handed
+        # back Decimal, and JSONResponse raises TypeError on a Decimal,
+        # so without it the gate answered 500 instead of 402 to any
+        # unverified user who had ever had a ledger row. The function
+        # now returns what it promises, and the guarantee sits there
+        # rather than in each caller that remembered.
         details = {
             "required_cents": KYC_VERIFICATION_FEE_CENTS,
-            "available_cents": int(balance["frozen"]) + int(balance["confirmed"]),
+            "available_cents": balance["frozen"] + balance["confirmed"],
         }
 
     raise KYCGateError(

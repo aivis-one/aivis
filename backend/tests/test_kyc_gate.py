@@ -43,7 +43,12 @@ from app.modules.kyc.gate import (
 )
 from app.modules.users.models import KYCStatus, User, UserRole
 from sqlalchemy import select
-from tests.helpers import auth_headers, create_admin_user, register_user
+from tests.helpers import (
+    auth_headers,
+    create_admin_user,
+    register_user,
+    submit_kyc_application,
+)
 
 _AUTH_DEPS = {get_current_user, get_current_user_write}
 
@@ -203,7 +208,7 @@ async def test_pending_refusal_is_a_different_code(client: AsyncClient) -> None:
     token = data["session_token"]
     await fund_user(uuid.UUID(data["user"]["id"]), KYC_VERIFICATION_FEE_CENTS)
     assert (
-        await client.post("/api/v1/kyc/submit", headers=auth_headers(token))
+        await submit_kyc_application(client, token)
     ).status_code == 201
 
     resp = await client.get(

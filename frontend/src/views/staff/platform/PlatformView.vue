@@ -4,8 +4,9 @@
 // =============================================================================
 //
 // Thin wrapper for the Staff Platform tab. Renders a horizontal
-// chip-row navigation across the three top-level subsections (News
-// / Events / Companies) and a <router-view> for the selected one.
+// chip-row navigation across the top-level subsections (News /
+// Events / Companies / Settings) and a <router-view> for the
+// selected one.
 //
 // FP-18 compliance: every router.push() goes through safeNavigate
 // with a labelled context string for telemetry. FP-19 compliance:
@@ -34,6 +35,7 @@ const subsections = [
   { id: 'news', path: '/staff/platform/news', labelKey: 'staff.platform.tabs.news' },
   { id: 'events', path: '/staff/platform/events', labelKey: 'staff.platform.tabs.events' },
   { id: 'companies', path: '/staff/platform/companies', labelKey: 'staff.platform.tabs.companies' },
+  { id: 'settings', path: '/staff/platform/settings', labelKey: 'staff.platform.tabs.settings' },
 ] as const
 
 const activeId = computed<string>(() => {

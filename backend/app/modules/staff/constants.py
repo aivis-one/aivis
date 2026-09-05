@@ -47,7 +47,19 @@
 # Admin overrides these per-staff via PATCH /staff/users/{id}/permissions.
 DEFAULT_STAFF_PERMISSIONS: dict[str, bool] = {
     "avatar_mode": True,
-    "kyc_approve": True,
+    # H12 P-46d: False, and it used to be True. Until this pass, hiring
+    # anybody handed them every user's passport -- harmless while the
+    # applications were empty, and exactly wrong the moment H12 gave
+    # them documents to hold. The key now gates three things: reading
+    # the documents, deciding the application, and moving the platform's
+    # verification mode. The third arrived by attachment rather than by
+    # design -- a new permission key would break is_admin() for every
+    # existing profile (see the project_manage note above) -- and it
+    # means granting somebody the right to look at passports also grants
+    # the right to switch how the platform verifies. Named in the H12
+    # report's Observations; it comes apart when a second setting needs
+    # a different permission and the key -> permission map earns itself.
+    "kyc_approve": False,
     "payment_review": True,
     "user_block": True,
     "financial_operations": True,

@@ -196,6 +196,21 @@ async def get_active_balance(
     Returns:
         {"frozen": int, "confirmed": int} -- both in cents.
         Missing statuses default to 0.
+
+    THE int() ON THE WAY OUT IS THE FIX, NOT TIDINESS (H12 P-46g).
+    SUM() over a BigInteger column comes back from Postgres as numeric,
+    which the driver hands us as Decimal, so this function returned
+    Decimal under an int annotation from the day it was written. Every
+    caller that only compared the value never noticed; the two that put
+    it in a JSON body did, because JSONResponse raises TypeError on a
+    Decimal -- the KYC gate would have answered 500 instead of 402 to
+    any unverified user who had ever had a ledger row. Those call sites
+    each carried their own int(), which meant the guarantee lived in
+    the callers and the next caller inherited nothing. It lives here
+    now and the casts there are gone.
+
+    Lossless: amount_cents is BigInteger, so the sum has no fractional
+    part to truncate.
     """
     stmt = (
         select(
@@ -227,7 +242,7 @@ async def get_active_balance(
     result = await session.execute(stmt)
     row = result.one()
 
-    return {"frozen": row.frozen, "confirmed": row.confirmed}
+    return {"frozen": int(row.frozen), "confirmed": int(row.confirmed)}
 
 
 async def get_passive_balance(
@@ -241,6 +256,13 @@ async def get_passive_balance(
     Returns:
         {"frozen": int, "confirmed": int} -- both in cents.
         Missing statuses default to 0.
+
+    Carried the same false int annotation as get_active_balance and is
+    fixed the same way -- see the note there for why the cast belongs
+    at the source. Fixed together on purpose (H12 P-46g): only the
+    active twin had produced a visible failure, and repairing that one
+    alone would have left an identical trap for whoever first serialises
+    a passive balance.
     """
     stmt = (
         select(
@@ -272,4 +294,4 @@ async def get_passive_balance(
     result = await session.execute(stmt)
     row = result.one()
 
-    return {"frozen": row.frozen, "confirmed": row.confirmed}
+    return {"frozen": int(row.frozen), "confirmed": int(row.confirmed)}
