@@ -576,7 +576,7 @@ async def test_empty_file_is_refused(
         files=files,
     )
     assert resp.status_code == 400, resp.text
-    assert resp.json()["code"] == "kyc_document_empty"
+    assert resp.json()["error"] == "kyc_document_empty"
     await _assert_nothing_charged(db_session, user_id)
 
 
@@ -597,7 +597,7 @@ async def test_file_without_extension_is_refused(
         files=files,
     )
     assert resp.status_code == 400, resp.text
-    assert resp.json()["code"] == "kyc_document_no_extension"
+    assert resp.json()["error"] == "kyc_document_no_extension"
     await _assert_nothing_charged(db_session, user_id)
 
 
@@ -624,7 +624,7 @@ async def test_heic_is_refused_by_its_own_code(
         files=files,
     )
     assert resp.status_code == 400, resp.text
-    assert resp.json()["code"] == "kyc_document_heic"
+    assert resp.json()["error"] == "kyc_document_heic"
     await _assert_nothing_charged(db_session, user_id)
 
 
@@ -645,7 +645,7 @@ async def test_disallowed_type_is_refused(
         files=files,
     )
     assert resp.status_code == 400, resp.text
-    assert resp.json()["code"] == "kyc_document_type_not_allowed"
+    assert resp.json()["error"] == "kyc_document_type_not_allowed"
     await _assert_nothing_charged(db_session, user_id)
 
 
@@ -670,7 +670,7 @@ async def test_oversized_file_is_refused(
         files=files,
     )
     assert resp.status_code == 400, resp.text
-    assert resp.json()["code"] == "kyc_document_too_large"
+    assert resp.json()["error"] == "kyc_document_too_large"
     await _assert_nothing_charged(db_session, user_id)
 
 
@@ -692,7 +692,7 @@ async def test_passport_with_a_back_image_is_refused(
         files=kyc_document_files(include_back=True),
     )
     assert resp.status_code == 400, resp.text
-    assert resp.json()["code"] == "kyc_documents_incomplete"
+    assert resp.json()["error"] == "kyc_documents_incomplete"
     await _assert_nothing_charged(db_session, user_id)
 
 
@@ -710,7 +710,7 @@ async def test_id_card_without_a_back_image_is_refused(
         files=kyc_document_files(include_back=False),
     )
     assert resp.status_code == 400, resp.text
-    assert resp.json()["code"] == "kyc_documents_incomplete"
+    assert resp.json()["error"] == "kyc_documents_incomplete"
     await _assert_nothing_charged(db_session, user_id)
 
 

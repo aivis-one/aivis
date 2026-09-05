@@ -78,7 +78,7 @@ from app.modules.staff.admin_schemas import (
 from app.modules.staff.models import AvatarSession, AvatarSessionStatus, StaffProfile
 from app.modules.staff.schemas import StaffProfileResponse
 from app.modules.staff.service import get_effective_permissions
-from app.modules.users.models import User, UserRole
+from app.modules.users.models import KYCStatus, User, UserRole
 
 logger = structlog.get_logger()
 
