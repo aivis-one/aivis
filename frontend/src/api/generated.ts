@@ -17,7 +17,10 @@ export type CompanyStatus = 'active' | 'hidden' | 'archived'
 /** Document template kinds. Maps onto Purchase.legal_basis for the per-purchase variants; OWNERSHIP_CERTIFICATE is the live aggregate. R2 §4.3: purchase_agreement -> Purchase.legal_basis = sale gift_certificate -> Purchase.legal_basis = gift installment_subcontract -> Purchase.legal_basis = installment_tranche ownership_certificate -> live aggregate of investor's purchases for one company (no per-purchase snapshot) */
 export type DocumentTemplateKind = 'purchase_agreement' | 'gift_certificate' | 'installment_subcontract' | 'ownership_certificate'
 
-/** KYC verification status. Denormalized cache from KYCApplication. */
+/** What the person is showing us. */
+export type KYCDocumentType = 'passport' | 'id_card' | 'driving_licence'
+
+/** The KYC status vocabulary, for the application and its cache. ONE ENUM FOR BOTH COLUMNS (H12 P-46f). users.kyc_status is a denormalised cache of kyc_applications.status, and until this pass each had its own enum with identical members -- two declarations of one fact, plus two CHECK constraints that stayed level only because somebody remembered to edit both. kyc/models.py imports this one. tests/test_kyc.py reads both constraints out of pg_constraint and asserts each admits exactly these members, so a future widening that touches one column and not the other goes red the day it lands rather than the day a value is written. */
 export type KYCStatus = 'not_started' | 'submitted' | 'approved' | 'rejected' | 'revoked'
 
 /** Post owner type. */
@@ -34,6 +37,9 @@ export type TemplateStatus = 'draft' | 'active' | 'archived'
 
 /** User roles in the platform. */
 export type UserRole = 'investor' | 'agent' | 'company' | 'staff' | 'platform'
+
+/** Who decides a verification session: staff, or the provider. MANUAL is the only mode that decides anything today. AUTOMATIC is the setting the provider pass (H13) will read; until it lands, the submit path does not branch on this value at all -- see the note on KYCApplication.decision_mode for why the column is written anyway. */
+export type VerificationMode = 'manual' | 'automatic'
 
 // -- Interfaces ---------------------------------------------------------------
 
@@ -146,6 +152,13 @@ export interface Body_create_attachment_staff_endpoint_api_v1_staff_companies__c
 export interface Body_create_own_attachment_endpoint_api_v1_company_attachments_post {
   metadata: string
   file: string
+}
+
+export interface Body_kyc_submit_api_v1_kyc_submit_post {
+  document_type: KYCDocumentType
+  front_image: string
+  selfie_image: string
+  back_image?: string | null
 }
 
 export interface Body_replace_attachment_staff_endpoint_api_v1_staff_companies__company_id__attachments__attachment_id__replace_patch {
@@ -717,6 +730,21 @@ export interface KYCApplicationSummary {
 /** Request body for any staff KYC decision. The reason is required. ONE SCHEMA FOR APPROVE, REJECT AND REVOKE, and the reason is mandatory on all three (H10 P-43). It used to be optional and reject-only, which left an approval with no record of why it was given -- the one decision that opens the whole product to an account. min_length plus the strip validator refuse the three forms of nothing: absent, empty, and whitespace. Stored in the audit log and nowhere else: a column on KYCApplication would be a second copy of the same fact. */
 export interface KYCDecisionRequest {
   reason: string
+}
+
+/** One stored identity document, as the staff panel sees it. */
+export interface KYCDocumentResponse {
+  id: string
+  kind: string
+  content_type: string
+  size_bytes: number
+  created_at: string
+}
+
+/** A short-lived link to one document, and how short. ttl_seconds is returned rather than assumed by the client: the screen has to be able to say when the link stops working, and a number the frontend hardcodes is a number that drifts from the backend's the first time the TTL is tuned. */
+export interface KYCDocumentURLResponse {
+  url: string
+  ttl_seconds: number
 }
 
 /** Pending KYC application with basic user info. */
@@ -1596,6 +1624,16 @@ export interface UserResponse {
 export interface UserUpdate {
   profile?: Record<string, unknown> | null
   language?: string | null
+}
+
+/** The platform's current verification mode. */
+export interface VerificationModeResponse {
+  mode: VerificationMode
+}
+
+/** Request body for changing the verification mode. Bound to the enum, so a value outside the vocabulary is refused by FastAPI with a 422 before any service or the database sees it. */
+export interface VerificationModeUpdate {
+  mode: VerificationMode
 }
 
 /** POST /api/v1/auth/verify-email -- request body. */
