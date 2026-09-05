@@ -240,6 +240,23 @@ jobs:
             mc ls backend/aivis-attachments-test
           "
 
+      # STEP ONE OF THE BOX'S SEQUENCE, and its absence is what broke
+      # the first run of this file: the service container creates
+      # `aivis`, the suite runs against `aivis_test`, and nothing in
+      # between was creating it. aivis-manage.sh does this at :207-213
+      # and I reproduced the six steps after it while dropping the one
+      # my own stand had done by hand.
+      #
+      # DROP ... WITH (FORCE) as well as CREATE, even though a runner
+      # starts empty: a `workflow_dispatch` re-run on a self-hosted
+      # runner would find the previous run's database, and a suite that
+      # inherits state is the thing the box drops it to avoid.
+      - name: Create the test database
+        run: |
+          PGPASSWORD=aivis psql -h 127.0.0.1 -U aivis -d postgres \
+            -c "DROP DATABASE IF EXISTS aivis_test WITH (FORCE);" \
+            -c "CREATE DATABASE aivis_test OWNER aivis;"
+
       # Schema from the migration files, never metadata.create_all --
       # the latter misses the functional indexes that only exist inside
       # migrations (aivis-manage.sh says the same at greater length).
