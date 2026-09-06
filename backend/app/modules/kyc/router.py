@@ -52,9 +52,14 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.rate_limit import check_rate_limit
 from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
-from app.modules.kyc.constants import KYCDocumentKind, KYCDocumentType
+from app.modules.kyc.constants import (
+    KYC_SUBMIT_RATE_LIMIT,
+    KYCDocumentKind,
+    KYCDocumentType,
+)
 from app.modules.kyc.schemas import KYCStatusResponse, KYCSubmitResponse
 from app.modules.kyc.service import (
     PendingDocument,
@@ -133,8 +138,11 @@ async def kyc_submit(
 
     402 from the gate means "not verified"; this endpoint answers 400
     with insufficient_balance when the account cannot cover the fee,
-    400 with a kyc_document_* code when a file is unacceptable, and 409
-    when a session is already open and awaiting a decision.
+    400 with a kyc_document_* code when a file is unacceptable, 409
+    with kyc_already_in_progress when a session is already open and
+    awaiting a decision, 409 with kyc_already_verified when the person
+    has nothing to buy, and 429 when the account has reached the
+    submission rate limit.
 
     FRONT AND SELFIE ARE REQUIRED BY THE SIGNATURE, BACK IS NOT, and
     that asymmetry is the truth about the document types: a passport
@@ -151,7 +159,71 @@ async def kyc_submit(
     submit time rather than at decision time is what stops a staff
     member moving the switch and changing how sessions that were
     already paid for get handled.
+
+    THE RATE LIMIT BUYS FREQUENCY, NOT THE COST OF ONE REQUEST. It caps
+    how often one account may reach this endpoint; it does nothing
+    about how large a single upload is, and a refused request has
+    already been transferred in full. Why that gap exists, how it is
+    watched and what would close it: the KNOWN CEILING marker at the
+    call below.
     """
+    # ┌─ KNOWN CEILING ──────────────────────────────────────────────────
+    # │ (1) MECHANICS: the limit cannot make a refused request cheap,
+    # │     only rare. By the time this line runs the whole body has
+    # │     been transferred and buffered TWICE. Once by nginx: the API
+    # │     server block (scripts/aivis-manage.sh, render_nginx_api) has
+    # │     no proxy_request_buffering off -- the tree's only occurrence
+    # │     of that directive is in the storage block -- so nginx reads
+    # │     the request to the end before it opens a connection to the
+    # │     app at all. Once by Starlette: the signature takes
+    # │     UploadFile = File(...), and FastAPI's request handler reads
+    # │     the form BEFORE it solves dependencies, so nothing written
+    # │     in Python can decide earlier than this. The cap on a single
+    # │     body is client_max_body_size 100M, and it sits at SERVER
+    # │     level in that block, shared by every API path.
+    # │ (2) STATUS: acknowledged by design.
+    # │ (3) REFERENCE: P-61.
+    # │ (4) UNCONSERVATION TRIGGER: 429 responses to
+    # │     POST /api/v1/kyc/submit appearing in the host's nginx access
+    # │     log. That is the address to read, and it is the only one:
+    # │     this application logs NOTHING on a 429 -- check_rate_limit
+    # │     raises silently and the global AivisError handler in
+    # │     main.py builds the response without a log call -- so an
+    # │     empty grep of the application log says nothing whatever
+    # │     about whether the ceiling has been hit. A 429 here means an
+    # │     account reached the cap, which is the only way the cost of
+    # │     buffering becomes real; it fires before the damage, not
+    # │     after. The size of a refused body is deliberately NOT the
+    # │     trigger: nothing logs it (the tree declares no log_format,
+    # │     so nginx writes combined, which carries no $request_length),
+    # │     and making it readable would mean doing part of P-61 first.
+    # │ (5) SHAPE OF THE FIX: give /api/v1/kyc/submit its own location
+    # │     in render_nginx_api with its own client_max_body_size, and
+    # │     repeat the proxy_set_header block into it. NOT a narrowing
+    # │     of an existing directive: that server block has exactly one
+    # │     location / and its cap is server-level, so there is nothing
+    # │     path-specific to shrink. One place only -- install_aivis.sh
+    # │     renders through this same function (:901, :1099) and carries
+    # │     no template of its own.
+    # │ (6) REJECTED, AND WHY: moving the limit into a route dependency,
+    # │     which looks like it would refuse before the upload. It would
+    # │     not. FastAPI reads the body first and solves dependencies
+    # │     second, and nginx has finished buffering before either. What
+    # │     limits the exposure today: the caller is authenticated, so
+    # │     the cost is attributable to an account and the cap applies
+    # │     per account rather than per address.
+    # └─────────────────────────────────────────────────────────────────
+    max_requests, window_seconds = KYC_SUBMIT_RATE_LIMIT
+    await check_rate_limit(
+        f"kyc_submit:{user.id}",
+        max_requests=max_requests,
+        window_seconds=window_seconds,
+        error_message=(
+            "Too many verification attempts. Please wait a few minutes "
+            "and try again."
+        ),
+    )
+
     documents = [
         _prepare(front_image, KYCDocumentKind.FRONT),
         _prepare(selfie_image, KYCDocumentKind.SELFIE),

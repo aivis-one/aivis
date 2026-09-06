@@ -22,8 +22,27 @@
 #
 #   THE FEE BUYS A SESSION, NOT AN ATTEMPT. While an application sits in
 #   SUBMITTED the person may come and go; a second submit is refused
-#   with a conflict rather than charged again. Only a session that
-#   reached a terminal decision requires a new one.
+#   with a conflict rather than charged again. A session that ended in
+#   REJECTED or REVOKED is replaced by a new, paid one.
+#
+#   NARROWED IN H13 (P-52), AND THIS IS THE ONE PLACE THE FULL
+#   STATEMENT LIVES. The paragraph above used to end "only a session
+#   that reached a terminal decision requires a new one". APPROVED is a
+#   terminal decision, so that sentence licensed exactly what
+#   submit_kyc then did: it charged a verified person the fee a second
+#   time, stored a second set of identity documents that this module
+#   has no path to delete, and moved them back behind the gate until
+#   staff decided again. What the old wording had right survives
+#   untouched -- a decision is what closes a session, and a closed
+#   session is never reopened. What overturned it is that one of the
+#   three closing decisions leaves nothing to buy: an approved person
+#   already has what the fee purchases. The refusal is in submit_kyc,
+#   reads User.kyc_status, and answers kyc_already_verified.
+#
+#   kyc/constants.py and kyc/models.py state the same rule in passing
+#   and now point here instead of repeating it -- two full copies of
+#   one fact are two things to correct, and the first correction
+#   leaves the second lying.
 #
 #   THERE IS NO WEBHOOK ANY MORE. process_webhook() was the stub
 #   provider receiver; it and its endpoint are gone (H10 P-44), with the
@@ -487,12 +506,25 @@ async def submit_kyc(
 ) -> KYCApplication:
     """Charge the verification fee and open a verification session.
 
-    Order is deliberate, and H12 added a step to it. The advisory lock
-    first, then the conflict check, then the balance check, then the
-    documents are checked as a SET, then every write. Two concurrent
-    submits serialise on the lock, so the second one sees the first
-    one's debit and is refused instead of charging twice against the
-    same ten dollars.
+    Order is deliberate, and H12 added a step to it, H13 another. An
+    already-approved person is refused first of all, then the document
+    type, then the advisory lock, then the conflict check, then the
+    balance check, then the documents are checked as a SET, then every
+    write. Two concurrent submits serialise on the lock, so the second
+    one sees the first one's debit and is refused instead of charging
+    twice against the same ten dollars.
+
+    THE APPROVED REFUSAL STANDS BEFORE THE REQUEST IS EVEN LOOKED AT,
+    and that placement is the point. Whether this person has anything
+    to buy does not depend on whether they picked the right files:
+    telling a verified person "your selfie is missing" would send them
+    off to fix a submission that must not happen at all. It is not
+    duplicated in the router -- the body is already buffered by the
+    time either could run (see the KNOWN CEILING marker in
+    kyc/router.py), so a second copy would save parsing, not traffic,
+    and would be a second place holding one rule. The service is also
+    what the seed script and any future caller reach, and they never
+    pass through the router.
 
     NOTHING IS WRITTEN UNTIL THE FILES ARE KNOWN TO BE ACCEPTABLE. Each
     file was checked one at a time by the router as it arrived; this
@@ -518,11 +550,26 @@ async def submit_kyc(
     how they were decided instead of being backfilled with a guess.
 
     Raises:
-        ConflictError: a session is already open for this user.
+        ConflictError: this person is already verified
+            (kyc_already_verified), or a session is already open for
+            them (kyc_already_in_progress). The two codes are distinct
+            because the two situations lead to different screens: one
+            is finished, the other is waiting.
         InsufficientBalanceError: balance below the fee.
         BadRequestError: the document set is wrong for this type.
         StorageError: an upload failed; nothing is committed.
     """
+    if user.kyc_status == KYCStatus.APPROVED:
+        # The message travels to the person verbatim: the verification
+        # screen prints the server's text as-is (frontend, api/client
+        # ApiResponseError.detail), so this is interface copy, not a
+        # log line.
+        raise ConflictError(
+            "Your identity has already been verified. There is nothing "
+            "more to send us -- you can go straight to the platform.",
+            code="kyc_already_verified",
+        )
+
     if document_type not in set(KYCDocumentType):
         raise BadRequestError(
             f"Unknown identity document type: {document_type}.",
@@ -748,8 +795,22 @@ async def _write_decision(
     "system" status change plus a staff-flavoured one -- and the reason
     lived on only one of them, so reading either row alone gave an
     incomplete account of the same event.
+
+    "FROM" IS READ OFF THE USER, NOT OFF THE ROW (H13). It used to be
+    `application.status`, which was true only while every decision was
+    written onto the row the person's previous decision already sat on.
+    It was already false on the branch that CREATES a row: that row is
+    born carrying the new status, so a person approved from
+    NOT_STARTED was audited "from: approved, to: approved". P-53 made
+    the same thing happen to an approval after a rejection, which is
+    the transition most worth reading correctly. The audit row is
+    addressed to the user (target_type="user"), so the user's previous
+    status is what it is claiming; taking it from the user is also what
+    submit_kyc has always done. Do not put `application.status` back
+    because it looks obvious -- it answers a different question, and
+    for a freshly created row it answers nothing.
     """
-    old_status = application.status
+    old_status = user.kyc_status
     application.status = new_status
     user.kyc_status = new_status
 
@@ -885,10 +946,13 @@ async def decide_by_user(
     refusal is a verdict on a submission, and there is nothing to refuse
     from somebody who never submitted.
 
-    Creates the application row when none exists, already carrying the
-    decision -- so user.kyc_status and the application history never
-    disagree, including for an imported account approved before this
-    table had a row for them.
+    Creates a new application row unless the newest one is a row this
+    decision is entitled to write on -- the open session it decides, or
+    the approval a revocation withdraws. See the comment at the
+    predicate below; a terminal row is never rewritten. The new row
+    already carries the decision, so user.kyc_status and the
+    application history never disagree, including for an imported
+    account approved before this table had a row for them.
 
     Raises:
         BadRequestError: status is not APPROVED or REVOKED, or reason is blank.
@@ -939,11 +1003,43 @@ async def decide_by_user(
     result = await session.execute(stmt)
     application = result.scalar_one_or_none()
 
-    if application is None:
-        # No paid session to attach the decision to. The row is created
-        # carrying the decision itself rather than passing through
-        # SUBMITTED: passing through would make the history claim a fee
-        # was charged, and this path is free.
+    # WHICH ROW A DECISION IS ALLOWED TO OVERWRITE (H13 P-53). Until
+    # this pass the answer was "the newest one, whatever it says", and
+    # only the complete absence of a row created a new one. So a person
+    # who paid, uploaded a passport and a selfie and was REJECTED had
+    # that very row turned into APPROVED when staff later approved them
+    # by hand: the kyc_documents submitted for a refused session became
+    # the stated basis of the approval, the row's document_type
+    # travelled with it, and transactions.reference_id pointed at a row
+    # asserting the opposite of what had been paid for.
+    #
+    # Exactly two situations may write onto an existing row:
+    #
+    #   SUBMITTED -- the decision this session was opened and paid for.
+    #       Writing it anywhere else would leave the paid session
+    #       forever undecided.
+    #   APPROVED, when the decision is REVOKED -- a withdrawal is by
+    #       construction a SECOND decision on the row it withdraws.
+    #       _write_decision's idempotency_key carries the status for
+    #       precisely this reason; making a revocation open a new row
+    #       would be a regression, not a side effect.
+    #
+    # Everything else gets a new row, including the case where there is
+    # no row at all. The new row is born carrying the decision rather
+    # than passing through SUBMITTED -- passing through would make the
+    # history claim a fee was charged, and this path is free -- and its
+    # document_type stays NULL, which is the honest statement that this
+    # decision rests on no submitted document. It is nullable for that
+    # reason (see kyc/models.py), so no migration is involved.
+    may_reuse = application is not None and (
+        application.status == KYCStatus.SUBMITTED
+        or (
+            application.status == KYCStatus.APPROVED
+            and new_status == KYCStatus.REVOKED
+        )
+    )
+
+    if not may_reuse:
         application = KYCApplication(user_id=user.id, status=new_status)
         session.add(application)
         await session.flush()

@@ -15,6 +15,18 @@
 #  10: The transaction type the fee uses is accepted by the CHECK
 #      constraint, and a foreign literal still is not
 #
+# H13 ADDED (P-55):
+#  11: An approved person cannot buy a second session -- refused before
+#      anything is written, in both the "has rows" and the "has no rows"
+#      shapes, and refused again on a repeat
+#  12: A revoked person still can -- the pair without which 11 would
+#      pass for a submit endpoint that refused everybody
+#  13: A decision never rewrites a terminal row: approval after a
+#      rejection makes a NEW row, while a revocation and a decision on
+#      an open session still write the row they belong to
+#  14: The audit row for a decision names the status the PERSON left
+#  15: The submission rate limit refuses without charging
+#
 # WHAT HAPPENED TO THE WEBHOOK TESTS. Seven tests here used to drive
 # POST /api/v1/kyc/webhook: approved, rejected-then-resubmit, unknown
 # user, invalid status, and three notification cases. The endpoint is
@@ -38,8 +50,11 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.kyc.constants import KYC_VERIFICATION_FEE_CENTS
-from app.modules.kyc.models import KYCApplication
+from app.modules.kyc.constants import (
+    KYC_SUBMIT_RATE_LIMIT,
+    KYC_VERIFICATION_FEE_CENTS,
+)
+from app.modules.kyc.models import KYCApplication, KYCDocument
 from app.modules.ledgers.models import ActiveLedger
 from app.modules.ledgers.service import get_active_balance
 from app.modules.transactions.constants import ReferenceType, TransactionType
@@ -50,6 +65,7 @@ from tests.helpers import (
     create_admin_user,
     fund_user,
     register_user,
+    set_kyc_status,
     submit_kyc_application,
 )
 
@@ -523,3 +539,437 @@ async def test_transaction_type_constraint_admits_the_fee_and_nothing_new(
         await db_session.flush()
     assert "ck_transactions_type" in str(excinfo.value)
     await db_session.rollback()
+
+
+# ---------------------------------------------------------------------------
+# H13 -- an approved person has nothing left to buy (P-52)
+# ---------------------------------------------------------------------------
+
+
+async def _applications(
+    session: AsyncSession, user_id: UUID
+) -> list[KYCApplication]:
+    """This user's applications, oldest first.
+
+    Ordered by created_at with no tie-breaker, which is safe here and
+    only here: every row these tests create is written by its own HTTP
+    request, so every row carries its own transaction's now().
+    """
+    session.expire_all()
+    return list(
+        (
+            await session.execute(
+                select(KYCApplication)
+                .where(KYCApplication.user_id == user_id)
+                .order_by(KYCApplication.created_at.asc())
+            )
+        ).scalars().all()
+    )
+
+
+async def _latest_decision_audit(session: AsyncSession, user_id: UUID) -> dict:
+    """The newest kyc.status_changed row about this user."""
+    return (
+        await session.execute(
+            text(
+                "SELECT data FROM audit_log WHERE event = 'kyc.status_changed' "
+                "AND target_id = :uid ORDER BY created_at DESC LIMIT 1"
+            ),
+            {"uid": str(user_id)},
+        )
+    ).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_submit_from_an_approved_person_costs_nothing(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An approved person is refused before anything at all is written.
+
+    The fee buys a session, and somebody already verified has nothing a
+    session could give them. Before H13 this charged ten dollars, stored
+    a second set of identity documents that this module has no path to
+    delete, and pushed the person back behind the gate until staff
+    decided again.
+
+    Funded for TWO sessions on purpose, so a charge would have somewhere
+    to come from and the assertion is about refusal rather than about an
+    empty wallet. Submitted twice -- the repeat axis: a rule that
+    refuses once and lets the second through is the same defect one turn
+    later. No object check against MinIO is needed to say none were
+    written: an object and its kyc_documents row are created together in
+    one transaction, so a document count that did not move is an object
+    count that did not move.
+    """
+    _, staff_token = await create_admin_user(client, db_session)
+    token, user_id = await _unverified_investor(client)
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS * 2)
+
+    first = await submit_kyc_application(client, token)
+    assert first.status_code == 201, first.text
+    approved = await client.post(
+        f"/api/v1/staff/kyc/{first.json()['id']}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert approved.status_code == 204, approved.text
+
+    for attempt in range(2):
+        again = await submit_kyc_application(client, token)
+        assert again.status_code == 409, f"attempt {attempt}: {again.text}"
+        assert again.json()["error"] == "kyc_already_verified"
+
+    balance = await get_active_balance(db_session, user_id)
+    assert (
+        int(balance["frozen"]) + int(balance["confirmed"])
+        == KYC_VERIFICATION_FEE_CENTS
+    )
+
+    applications = await _applications(db_session, user_id)
+    assert len(applications) == 1
+
+    debits = (
+        await db_session.execute(
+            select(ActiveLedger).where(
+                ActiveLedger.user_id == user_id,
+                ActiveLedger.amount_cents < 0,
+            )
+        )
+    ).scalars().all()
+    assert len(debits) == 1
+
+    transactions = (
+        await db_session.execute(
+            select(Transaction).where(Transaction.user_id == user_id)
+        )
+    ).scalars().all()
+    assert len(transactions) == 1
+
+    documents = (
+        await db_session.execute(
+            select(KYCDocument).where(
+                KYCDocument.application_id == applications[0].id
+            )
+        )
+    ).scalars().all()
+    assert len(documents) == 2  # passport: front + selfie
+
+
+@pytest.mark.asyncio
+async def test_an_approved_person_with_no_application_row_is_refused_too(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Emptiness axis: approved, and not one row in kyc_applications.
+
+    Not a contrived state -- it is what an account imported from the old
+    platform looks like, and what tests/helpers.register_user produces
+    by default. The refusal reads User.kyc_status rather than the
+    application history precisely so that this shape is covered; a check
+    written against the newest row would let this person pay.
+    """
+    token, user_id = await _unverified_investor(client)
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
+    await set_kyc_status(user_id, KYCStatus.APPROVED)
+
+    resp = await submit_kyc_application(client, token)
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"] == "kyc_already_verified"
+
+    assert await _applications(db_session, user_id) == []
+    balance = await get_active_balance(db_session, user_id)
+    assert (
+        int(balance["frozen"]) + int(balance["confirmed"])
+        == KYC_VERIFICATION_FEE_CENTS
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_revoked_person_can_still_pay_for_a_new_session(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The pair to the two tests above: "refuses X" needs "admits Y".
+
+    Without this, a submit endpoint that refused everybody would pass
+    both of them. REVOKED is the case worth naming, because it is the
+    one an over-broad reading of "already decided" would swallow: the
+    person's approval was withdrawn, they have no verification, and
+    buying a new session is exactly the route back. (The REJECTED half
+    is held by test_staff_rejects_and_a_retry_costs_again above.)
+    """
+    _, staff_token = await create_admin_user(client, db_session)
+    token, user_id = await _unverified_investor(client)
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS * 2)
+
+    first = await submit_kyc_application(client, token)
+    assert first.status_code == 201
+    await client.post(
+        f"/api/v1/staff/kyc/{first.json()['id']}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    revoked = await client.post(
+        f"/api/v1/staff/kyc/users/{user_id}/revoke",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert revoked.status_code == 204, revoked.text
+
+    second = await submit_kyc_application(client, token)
+    assert second.status_code == 201, second.text
+
+    debits = (
+        await db_session.execute(
+            select(ActiveLedger).where(
+                ActiveLedger.user_id == user_id,
+                ActiveLedger.amount_cents < 0,
+            )
+        )
+    ).scalars().all()
+    assert len(debits) == 2
+
+
+# ---------------------------------------------------------------------------
+# H13 -- a decision never rewrites a terminal row (P-53)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_approval_after_a_rejection_creates_a_new_row(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The refused session keeps its documents; the approval claims none.
+
+    Before H13 the user-level approval was written onto the newest row
+    whatever it said, so the row that had been REJECTED became APPROVED
+    -- and the passport and selfie submitted for a refused session
+    became the stated basis of the approval, with the row's
+    document_type travelling along and transactions.reference_id
+    pointing at a row asserting the opposite of what was paid for.
+
+    Both halves are asserted, and the second is the load-bearing one: a
+    new row that inherited document_type would claim documents it does
+    not have.
+    """
+    _, staff_token = await create_admin_user(client, db_session)
+    token, user_id = await _unverified_investor(client)
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
+
+    submit = await submit_kyc_application(client, token)
+    assert submit.status_code == 201
+    rejected = await client.post(
+        f"/api/v1/staff/kyc/{submit.json()['id']}/reject",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert rejected.status_code == 204, rejected.text
+
+    approved = await client.post(
+        f"/api/v1/staff/kyc/users/{user_id}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert approved.status_code == 204, approved.text
+
+    applications = await _applications(db_session, user_id)
+    assert [a.status for a in applications] == [
+        KYCStatus.REJECTED,
+        KYCStatus.APPROVED,
+    ]
+
+    old, new = applications
+    assert UUID(submit.json()["id"]) == old.id
+    assert old.document_type == "passport"
+    assert new.document_type is None
+
+    old_documents = (
+        await db_session.execute(
+            select(KYCDocument).where(KYCDocument.application_id == old.id)
+        )
+    ).scalars().all()
+    assert len(old_documents) == 2
+
+    new_documents = (
+        await db_session.execute(
+            select(KYCDocument).where(KYCDocument.application_id == new.id)
+        )
+    ).scalars().all()
+    assert new_documents == []
+
+    user = await db_session.get(User, user_id)
+    await db_session.refresh(user)
+    assert user.kyc_status == KYCStatus.APPROVED
+
+
+@pytest.mark.asyncio
+async def test_revocation_after_an_approval_reuses_the_row(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The negative twin of the test above -- and the regression to fear.
+
+    Reusing a row is not a bug in general; it is the whole shape of a
+    withdrawal, which is by construction a SECOND decision on the row it
+    withdraws. _write_decision's notification idempotency_key carries
+    the status for exactly this reason. A P-53 fix that made every
+    decision open a new row would pass the test above and break this,
+    which is why the two are written as a pair.
+    """
+    _, staff_token = await create_admin_user(client, db_session)
+    _, user_id = await _unverified_investor(client)
+
+    approved = await client.post(
+        f"/api/v1/staff/kyc/users/{user_id}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert approved.status_code == 204, approved.text
+    created = await _applications(db_session, user_id)
+    assert len(created) == 1
+
+    revoked = await client.post(
+        f"/api/v1/staff/kyc/users/{user_id}/revoke",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert revoked.status_code == 204, revoked.text
+
+    after = await _applications(db_session, user_id)
+    assert len(after) == 1
+    assert after[0].id == created[0].id
+    assert after[0].status == KYCStatus.REVOKED
+
+
+@pytest.mark.asyncio
+async def test_user_level_decision_on_an_open_session_reuses_its_row(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The other row a decision is entitled to write on: the paid one.
+
+    Staff can approve from the person's card as well as from the queue,
+    and when the person has an open session that is the session being
+    decided. Opening a second row here would leave a paid SUBMITTED row
+    undecided forever -- in the queue, and in front of the gate.
+    """
+    _, staff_token = await create_admin_user(client, db_session)
+    token, user_id = await _unverified_investor(client)
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
+
+    submit = await submit_kyc_application(client, token)
+    assert submit.status_code == 201
+
+    approved = await client.post(
+        f"/api/v1/staff/kyc/users/{user_id}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert approved.status_code == 204, approved.text
+
+    applications = await _applications(db_session, user_id)
+    assert len(applications) == 1
+    assert applications[0].id == UUID(submit.json()["id"])
+    assert applications[0].status == KYCStatus.APPROVED
+    # The paid session keeps what it was paid for.
+    assert applications[0].document_type == "passport"
+
+
+@pytest.mark.asyncio
+async def test_the_decision_audit_names_the_status_the_person_left(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """"from" is the user's previous status, not the row's.
+
+    This is the guard on the half of P-53 that has no visible symptom.
+    Once an approval after a rejection opens a NEW row, that row is born
+    carrying APPROVED, so an audit written from application.status would
+    record "from: approved, to: approved" for the transition most worth
+    reading: the one where a refusal was overturned.
+
+    The second half covers the branch that was already wrong before
+    H13 and is fixed by the same line -- approving somebody who has no
+    row at all was audited as a move from APPROVED to APPROVED, for a
+    person who had never been approved in their life.
+    """
+    _, staff_token = await create_admin_user(client, db_session)
+    token, rejected_user = await _unverified_investor(client)
+    await fund_user(rejected_user, KYC_VERIFICATION_FEE_CENTS)
+
+    submit = await submit_kyc_application(client, token)
+    assert submit.status_code == 201
+    await client.post(
+        f"/api/v1/staff/kyc/{submit.json()['id']}/reject",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    await client.post(
+        f"/api/v1/staff/kyc/users/{rejected_user}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+
+    row = await _latest_decision_audit(db_session, rejected_user)
+    assert row["from"] == KYCStatus.REJECTED
+    assert row["to"] == KYCStatus.APPROVED
+
+    _, fresh_user = await _unverified_investor(client)
+    await client.post(
+        f"/api/v1/staff/kyc/users/{fresh_user}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+
+    fresh_row = await _latest_decision_audit(db_session, fresh_user)
+    assert fresh_row["from"] == KYCStatus.NOT_STARTED
+    assert fresh_row["to"] == KYCStatus.APPROVED
+
+
+# ---------------------------------------------------------------------------
+# H13 -- the submission rate limit (P-56)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_submit_rate_limit_refuses_without_charging(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Past the cap the endpoint answers 429 and touches nothing.
+
+    Every request counts, refusals included -- that is the point of a
+    limit on an endpoint whose body is buffered in full before anything
+    here can decide anything (see the KNOWN CEILING marker in
+    kyc/router.py). So the walk is one accepted submission followed by
+    conflicts, and the request after the cap is the one that changes
+    shape.
+
+    THE conftest clear_rate_limit FIXTURE IS DELIBERATELY NOT EXTENDED
+    for this key, and that decision is invisible unless written down.
+    It clears the auth-flow families because those are keyed by a fixed
+    test IP; this key carries the user's id, every test registers a
+    fresh user with a random UUID, and a run creates its database anew.
+    Nothing can bleed between tests or between runs, so a cleaner would
+    be a fixture that never fires.
+    """
+    max_requests, _window = KYC_SUBMIT_RATE_LIMIT
+    token, user_id = await _unverified_investor(client)
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
+
+    first = await submit_kyc_application(client, token)
+    assert first.status_code == 201, first.text
+
+    for attempt in range(2, max_requests + 1):
+        conflict = await submit_kyc_application(client, token)
+        assert conflict.status_code == 409, f"attempt {attempt}: {conflict.text}"
+
+    limited = await submit_kyc_application(client, token)
+    assert limited.status_code == 429, limited.text
+    assert limited.json()["error"] == "rate_limit_exceeded"
+    assert "Retry-After" in limited.headers
+
+    debits = (
+        await db_session.execute(
+            select(ActiveLedger).where(
+                ActiveLedger.user_id == user_id,
+                ActiveLedger.amount_cents < 0,
+            )
+        )
+    ).scalars().all()
+    assert len(debits) == 1
+    assert len(await _applications(db_session, user_id)) == 1

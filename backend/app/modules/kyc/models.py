@@ -14,11 +14,19 @@
 #   have made that row carry three NULLs meaning "not applicable" that
 #   are indistinguishable from three NULLs meaning "not uploaded yet".
 #
-# ONE ROW PER PAID SESSION (H10):
+# ONE ROW PER PAID SESSION (H10, narrowed in H13):
 #   A row is opened when the fee is charged and carries the decision
 #   that closes it. Returning to a session that is still SUBMITTED
-#   costs nothing; only a terminal decision makes the next attempt a
-#   new, paid row.
+#   costs nothing. Which closed sessions make the next attempt a new,
+#   paid row is narrower than "any terminal decision" -- an approved
+#   person is refused instead. The full statement lives in
+#   kyc/service.py's header and is not repeated here.
+#
+#   A decision may also be written onto a row that already exists, and
+#   only in the two cases decide_by_user names at its predicate. A
+#   terminal row is never rewritten (H13 P-53), so the documents a
+#   refused session carried can never become the basis of a later
+#   approval.
 #
 # ONE STATUS VOCABULARY, AND IT LIVES IN users/models.py (H12 P-46f):
 #   This file used to declare KYCApplicationStatus with exactly the

@@ -21,8 +21,12 @@ import enum
 # verification runs, not after. Charging on success would make a flood of
 # junk photographs free; charging on start makes every attempt cost the
 # same whatever it produces. A user who comes back to a session that is
-# still open pays nothing extra -- only a session that reached a terminal
-# decision requires a new one.
+# still open pays nothing extra.
+#
+# WHICH CLOSED SESSIONS CAN BE REPLACED BY A NEW PAID ONE is narrower
+# than "any terminal decision" since H13 (P-52) -- an approved person
+# has nothing left to buy. The full statement, and what it overturned,
+# is in kyc/service.py's header and is deliberately not repeated here.
 KYC_VERIFICATION_FEE_CENTS: int = 1000
 
 # -----------------------------------------------------------------------------
@@ -38,6 +42,35 @@ KYC_CODE_PAYMENT_REQUIRED: str = "kyc_payment_required"
 KYC_CODE_PENDING: str = "kyc_pending"
 KYC_CODE_REJECTED: str = "kyc_rejected"
 KYC_CODE_REVOKED: str = "kyc_revoked"
+
+
+# -----------------------------------------------------------------------------
+# Rate limit on POST /kyc/submit (H13 P-56)
+# -----------------------------------------------------------------------------
+# (max_requests, window_seconds), the same tuple shape companies/
+# constants.py uses for its public-flow presets, consumed by
+# kyc/router.py through the extended core.rate_limit API.
+#
+# NOT THE AUTH DEFAULT of 5 per 60 seconds: that window is sized for
+# login attempts, and a person verifying their identity is not looping.
+# The number is sized instead against the refusal a legitimate caller
+# actually repeats here, because every refused request spends a slot.
+#
+# IT IS NOT A BAD FILE. The verification screen refuses HEIC, an
+# unlisted extension, an empty file and an oversized one at the moment
+# the file is picked (frontend/src/api/kyc.ts, localFileRejection,
+# called from KYCVerificationView before the slot is even filled), so
+# the fumbling-with-a-phone sequence never reaches this endpoint and
+# never costs a slot.
+#
+# IT IS insufficient_balance. That one is decided here, and repeating
+# it is the legitimate flow, not abuse: the person tries, tops up,
+# waits for the deposit to confirm, and tries again. A caller that is
+# not our own UI has no local check at all and will additionally spend
+# slots on malformed files. Five requests in ten minutes leaves both of
+# those room while still stopping sustained hammering; three per hour,
+# the first proposal, would lock a topping-up investor out for an hour.
+KYC_SUBMIT_RATE_LIMIT: tuple[int, int] = (5, 600)
 
 
 # -----------------------------------------------------------------------------

@@ -302,7 +302,7 @@ async function loadKycDocuments(): Promise<void> {
   // No application, or no permission to look: nothing to ask for. The
   // backend would refuse the second case anyway; not asking keeps a
   // guaranteed 403 out of the console on every modal open.
-  if (!applicationId || !canDoKycApprove) {
+  if (!applicationId || !canDoKycApprove.value) {
     kycDocuments.value = []
     return
   }
@@ -319,7 +319,7 @@ async function loadKycDocuments(): Promise<void> {
 }
 
 async function openKycDocument(documentId: string): Promise<void> {
-  if (!canDoKycApprove) {
+  if (!canDoKycApprove.value) {
     console.warn('[StaffUsersView] document open blocked: no kyc_approve permission')
     return
   }
