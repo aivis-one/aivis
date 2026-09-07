@@ -59,6 +59,17 @@ export const KYC_ACCEPT_ATTRIBUTE = '.jpg,.jpeg,.png'
 /** Mirrors KYC_MAX_DOCUMENT_BYTES. */
 export const KYC_MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 
+/** What the staff panel says a document link lasts BEFORE it has issued
+ * one. Every issued link reports its own `ttl_seconds` and that is what
+ * gets shown from then on -- see KYCDocumentURLResponse, which returns
+ * the number precisely so the client does not assume it. This constant
+ * exists only because the notice is on screen before the first link
+ * exists, and a blank duration there is worse than a mirrored one. It
+ * is the one place a TTL is written on the client; if it drifts from
+ * the backend it drifts for one sentence, on one screen, until the
+ * first click. */
+export const KYC_DOCUMENT_URL_TTL_SECONDS = 300
+
 export interface KycDocument {
   id: string
   kind: 'front' | 'back' | 'selfie'

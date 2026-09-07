@@ -62,6 +62,12 @@ const error = ref('')
 const status = ref<KYCStatusResponse | null>(null)
 
 const documentType = ref<KycDocumentType>('passport')
+
+// The three file slots, and the name of one of them. Named because
+// pickFile and setSlot both take it and a repeated union is a repeated
+// place to forget a member.
+type SlotTarget = 'front' | 'back' | 'selfie'
+
 const frontImage = ref<File | null>(null)
 const backImage = ref<File | null>(null)
 const selfieImage = ref<File | null>(null)
@@ -78,7 +84,17 @@ const documentsReady = computed(
     (!needsBack.value || backImage.value !== null),
 )
 
-function pickFile(target: 'front' | 'back' | 'selfie', event: Event): void {
+// The dispatch from `target` to the ref it names, in ONE place. It used
+// to be written out three times, and that is how the branch below came
+// to be missing one of them: a branch that cleared the input LOOKED
+// like it had cleared the choice.
+function setSlot(target: SlotTarget, file: File | null): void {
+  if (target === 'front') frontImage.value = file
+  else if (target === 'back') backImage.value = file
+  else selfieImage.value = file
+}
+
+function pickFile(target: SlotTarget, event: Event): void {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0] ?? null
 
@@ -86,23 +102,29 @@ function pickFile(target: 'front' | 'back' | 'selfie', event: Event): void {
     // The person opened the picker and cancelled. Clear the slot rather
     // than keeping the previous choice, so what the form shows is what
     // it will send.
-    if (target === 'front') frontImage.value = null
-    else if (target === 'back') backImage.value = null
-    else selfieImage.value = null
+    setSlot(target, null)
     return
   }
 
   const rejection = localFileRejection(file)
   if (rejection !== null) {
+    // CLEARING THE INPUT AND CLEARING THE SLOT ARE ONE ACTION. The
+    // input is what the person SEES; the ref is what the form SENDS.
+    // This branch used to do only the first, so "front.jpg, then
+    // front.heic" left the field blank, the submit button live and
+    // front.jpg still staged -- the submission carried a document its
+    // owner believed they had replaced, and staff decided on that one.
+    // A document in storage that is not the one the person chose is a
+    // record that lies about the basis of a decision, which is why this
+    // is a blocker and not a cosmetic bug.
     error.value = t(rejection)
     input.value = ''
+    setSlot(target, null)
     return
   }
 
   error.value = ''
-  if (target === 'front') frontImage.value = file
-  else if (target === 'back') backImage.value = file
-  else selfieImage.value = file
+  setSlot(target, file)
 }
 
 // A passport carries nothing on its reverse, so a back image chosen

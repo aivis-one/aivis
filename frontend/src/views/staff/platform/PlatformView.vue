@@ -13,31 +13,75 @@
 // no <CHeader> here -- StaffShell provides the single header for
 // the whole subtree.
 //
-// Permission gate: this view is reachable for any role=staff user.
-// The internal CTAs in News / Events / Companies sections check
+// Permission gate: this view is reachable for any role=staff user, but
+// its chip row is not uniform -- a subsection whose screen enforces a
+// permission carries that key on its record and is not painted without
+// it (H14 P-67). The internal CTAs in News / Events / Companies check
 // per-permission flags through useStaffPermissions (Block B4).
+//
+// HIDING A CHIP IS NOT A ROUTE GUARD. A deep link to a subsection still
+// reaches the screen, which refuses it server-side. The chip row is
+// about not offering a door that answers 403, not about locking it.
 // =============================================================================
 
 import { computed } from 'vue'
+import type { ComputedRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import { safeNavigate } from '@/composables/safeNavigate'
+import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import type { StaffPermissionKey } from '@/composables/useStaffPermissions'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const { canDo } = useStaffPermissions()
+
+interface Subsection {
+  id: string
+  path: string
+  labelKey: string
+  // The permission the subsection's own screen enforces server-side,
+  // or null when the screen is open to any staff. It lives on the
+  // record so the chip and the screen cannot drift: a chip whose screen
+  // answers 403 is a button that exists only to fail.
+  permission: StaffPermissionKey | null
+}
 
 // Subsection definitions. Path is matched as a prefix so deep links
 // like /staff/platform/companies/:id/profile still light up the
 // "Companies" chip.
-const subsections = [
-  { id: 'news', path: '/staff/platform/news', labelKey: 'staff.platform.tabs.news' },
-  { id: 'events', path: '/staff/platform/events', labelKey: 'staff.platform.tabs.events' },
-  { id: 'companies', path: '/staff/platform/companies', labelKey: 'staff.platform.tabs.companies' },
-  { id: 'settings', path: '/staff/platform/settings', labelKey: 'staff.platform.tabs.settings' },
-] as const
+const subsections: readonly Subsection[] = [
+  { id: 'news', path: '/staff/platform/news', labelKey: 'staff.platform.tabs.news', permission: null },
+  { id: 'events', path: '/staff/platform/events', labelKey: 'staff.platform.tabs.events', permission: null },
+  { id: 'companies', path: '/staff/platform/companies', labelKey: 'staff.platform.tabs.companies', permission: null },
+  { id: 'settings', path: '/staff/platform/settings', labelKey: 'staff.platform.tabs.settings', permission: 'kyc_approve' },
+]
 
+// Resolved once here rather than inside the filter below: canDo()
+// creates a computed the first time it sees a key, and creating one
+// during another computed's evaluation is a lifetime question nobody
+// should have to answer while reading a nav bar.
+const permissionOf = new Map<StaffPermissionKey, ComputedRef<boolean>>(
+  subsections
+    .map((s) => s.permission)
+    .filter((p): p is StaffPermissionKey => p !== null)
+    .map((p) => [p, canDo(p)]),
+)
+
+const visibleSubsections = computed<readonly Subsection[]>(() =>
+  subsections.filter(
+    (s) => s.permission === null || permissionOf.get(s.permission)?.value === true,
+  ),
+)
+
+// Deliberately derived from the FULL list, not the visible one. This
+// answers "where am I", not "what may I see": a staff member who
+// deep-links to a subsection they cannot open is still there, and
+// computing it from the filtered list would light up the first chip
+// instead -- pointing at a screen they are not on. No chip active is
+// the honest picture.
 const activeId = computed<string>(() => {
   const match = subsections.find((s) => route.path.startsWith(s.path))
   return match?.id ?? 'news'
@@ -53,7 +97,7 @@ function go(path: string): void {
   <div class="platform">
     <nav class="platform__nav" aria-label="Platform subsections">
       <button
-        v-for="s in subsections"
+        v-for="s in visibleSubsections"
         :key="s.id"
         type="button"
         class="platform__chip"

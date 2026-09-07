@@ -85,6 +85,7 @@ import {
   rejectKYC,
 } from '@/api/admin'
 import {
+  KYC_DOCUMENT_URL_TTL_SECONDS,
   fetchKycDocuments,
   requestKycDocumentUrl,
   type KycDocument,
@@ -263,6 +264,10 @@ async function openDetail(userId: string): Promise<void> {
   detailLoading.value = true
   detailUser.value = null
   kycDocuments.value = []
+  // A TTL belongs to the link it was issued for. Carrying the previous
+  // card's number into this one would state a duration for documents
+  // nobody has asked for yet.
+  kycDocumentTtl.value = KYC_DOCUMENT_URL_TTL_SECONDS
   try {
     detailUser.value = await fetchUserDetail(userId)
     await loadKycDocuments()
@@ -290,6 +295,13 @@ async function openDetail(userId: string): Promise<void> {
 const kycDocuments = ref<KycDocument[]>([])
 const kycDocumentsLoading = ref(false)
 const kycDocumentPending = ref<string | null>(null)
+
+// How long the last link this panel issued is good for. The number is
+// the server's, not ours: the endpoint returns ttl_seconds so the
+// screen can say when the link stops working without a client-side
+// copy of the backend's setting drifting from it. The constant is the
+// starting value only, for the notice shown before any link exists.
+const kycDocumentTtl = ref<number>(KYC_DOCUMENT_URL_TTL_SECONDS)
 
 const DOCUMENT_KIND_LABELS: Record<string, string> = {
   front: 'staff.userDetail.kyc.documents.kindFront',
@@ -326,7 +338,11 @@ async function openKycDocument(documentId: string): Promise<void> {
 
   kycDocumentPending.value = documentId
   try {
-    const { url } = await requestKycDocumentUrl(documentId)
+    const { url, ttl_seconds } = await requestKycDocumentUrl(documentId)
+    // A failed request leaves this alone on purpose: the notice
+    // describes the links that were issued, and a request that failed
+    // issued none.
+    kycDocumentTtl.value = ttl_seconds
     // noopener: the signed URL travels in the new tab's address bar,
     // and a document viewer has no business holding a handle on the
     // staff panel that opened it.
@@ -700,7 +716,7 @@ onMounted(loadUsers)
                 </li>
               </ul>
               <p class="kyc-documents__notice">
-                {{ t('staff.userDetail.kyc.documents.ttlNotice', { seconds: 300 }) }}
+                {{ t('staff.userDetail.kyc.documents.ttlNotice', { seconds: kycDocumentTtl }) }}
               </p>
             </template>
           </div>

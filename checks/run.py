@@ -32,6 +32,7 @@ sys.path.insert(0, HERE)
 
 import breakpoints  # noqa: E402
 import preauth  # noqa: E402
+import reftruth  # noqa: E402
 import routes  # noqa: E402
 import shell_layout  # noqa: E402
 import tokens  # noqa: E402
@@ -43,6 +44,7 @@ CHECKS = [
     ("tokens", "every var(--x) that paints resolves to a declared token", tokens),
     ("routes", "the router table is well formed and every name is unique", routes),
     ("pre-auth width", "every screen without a breakpoint says why it is fixed-width", preauth),
+    ("ref truthiness", "every ref or computed tested for truth carries .value", reftruth),
 ]
 
 
