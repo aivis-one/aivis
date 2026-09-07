@@ -126,6 +126,31 @@ kyc.approved:
 kyc.rejected:
   category: kyc
 
+# A THIRD OUTCOME, ADDED 2026-09-08 (P-63), AND IT IS NOT A SECOND KIND
+# OF REFUSAL.
+#
+#   rejected -- how a PAID SESSION ends. The person submitted documents,
+#               they were not accepted, and they keep exactly the access
+#               they had while waiting: none. The way forward is to pay
+#               for another session.
+#   revoked  -- the withdrawal of an approval that was ALREADY IN FORCE.
+#               It is a second decision on a session that had already
+#               ended in approval, and the person LOSES access they were
+#               using, without having done anything to ask for it.
+#
+# So the two cannot share a notice. "You can start a new verification"
+# is the right thing to say to someone who was refused and the wrong
+# thing to say to someone who has just been cut off from a platform they
+# were already inside -- which is why the emitter carries separate copy
+# for it, and why it needs its own type here rather than reusing the
+# rejection's.
+#
+# Same category as the pair above, for the reason this section already
+# gives.
+
+kyc.revoked:
+  category: kyc
+
 # =============================================================================
 # aivis product types -- phase 2, batch 3 continued (2026-08-27)
 # =============================================================================
