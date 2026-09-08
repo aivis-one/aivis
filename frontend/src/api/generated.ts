@@ -20,7 +20,7 @@ export type DocumentTemplateKind = 'purchase_agreement' | 'gift_certificate' | '
 /** What the person is showing us. */
 export type KYCDocumentType = 'passport' | 'id_card' | 'driving_licence'
 
-/** The KYC status vocabulary, for the application and its cache. ONE ENUM FOR BOTH COLUMNS (H12 P-46f). users.kyc_status is a denormalised cache of kyc_applications.status, and until this pass each had its own enum with identical members -- two declarations of one fact, plus two CHECK constraints that stayed level only because somebody remembered to edit both. kyc/models.py imports this one. tests/test_kyc.py reads both constraints out of pg_constraint and asserts each admits exactly these members, so a future widening that touches one column and not the other goes red the day it lands rather than the day a value is written. */
+/** The KYC status vocabulary, for the application and its cache. ONE ENUM FOR BOTH COLUMNS (H12 P-46f). users.kyc_status is a denormalised cache of kyc_applications.status, and until this pass each had its own enum with identical members -- two declarations of one fact, plus two CHECK constraints that stayed level only because somebody remembered to edit both. kyc/models.py imports this one. tests/test_kyc_documents.py reads both constraints out of pg_constraint and asserts each admits exactly these members, so a future widening that touches one column and not the other goes red the day it lands rather than the day a value is written. */
 export type KYCStatus = 'not_started' | 'submitted' | 'approved' | 'rejected' | 'revoked'
 
 /** Post owner type. */
