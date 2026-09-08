@@ -229,11 +229,14 @@ async def kyc_application_documents_endpoint(
 ) -> list[KYCDocumentResponse]:
     """List the images a verification session carries.
 
-    AN EMPTY LIST IS AN ANSWER, NOT A 404. Applications created by the
-    person-level approval path belong to somebody who never submitted
-    anything, and answering 404 for them would tell staff the
-    application does not exist when what is true is that it has no
-    documents.
+    AN EMPTY LIST IS AN ANSWER FOR AN APPLICATION THAT EXISTS, NOT FOR
+    ONE THAT DOES NOT. Applications created by the person-level approval
+    path belong to somebody who never submitted anything, and answering
+    404 for them would tell staff the application does not exist when
+    what is true is that it has no documents. An id that matches no
+    application is the other case and answers 404: it used to come back
+    as the same empty list, which read to staff as a real answer about a
+    real session.
 
     No storage keys in the response: staff fetch each image through the
     presign endpoint below, which is where the read gets recorded.

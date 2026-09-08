@@ -447,16 +447,24 @@ async def create_agent_with_link(
 
 KYC_SUBMIT_URL = "/api/v1/kyc/submit"
 
-# Bytes, not a real JPEG. Validation is by filename extension (the
-# multipart content-type header is client-controlled and not trusted),
-# so no test here depends on the payload decoding as an image. The
-# content is deterministic and distinct per kind precisely so that the
-# round-trip test can assert it got THAT object back and not merely an
-# object of the right length.
+# A JPEG HEAD FOLLOWED BY MARKER TEXT, and the head is not decoration.
+# These bytes used to be ASCII only, on the stated ground that
+# validation was by filename extension and nothing depended on the
+# payload decoding as an image. H15 item 9 ended that: the submit path
+# now compares the first bytes against the type the extension claims,
+# so a fixture without the JPEG magic number is refused as a renamed
+# file and every submit test built on it fails at the door.
+#
+# NOT A DECODABLE JPEG EITHER -- the signature is all the upload path
+# reads, and no test opens these as images. The trailing text stays
+# distinct per kind so the round-trip test can assert it got back THAT
+# object rather than merely an object of the right length.
+_JPEG_HEAD = b"\xff\xd8\xff\xe0"
+
 KYC_FIXTURE_BYTES: dict[str, bytes] = {
-    "front": b"aivis-test-front-image-bytes",
-    "back": b"aivis-test-back-image-bytes",
-    "selfie": b"aivis-test-selfie-image-bytes",
+    "front": _JPEG_HEAD + b"aivis-test-front-image-bytes",
+    "back": _JPEG_HEAD + b"aivis-test-back-image-bytes",
+    "selfie": _JPEG_HEAD + b"aivis-test-selfie-image-bytes",
 }
 
 

@@ -72,6 +72,7 @@ import {
   CInput,
   CCheckbox,
 } from '@/components/ui'
+import { ApiResponseError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import {
@@ -138,6 +139,26 @@ const ALL_KYC_STATUSES = ['not_started', 'submitted', 'approved', 'rejected'] as
 type KYCStatus = (typeof ALL_KYC_STATUSES)[number]
 
 const { t } = useI18n()
+
+// WHY EVERY CATCH IN THIS FILE GOES THROUGH ONE FUNCTION.
+//
+// All nine handlers here used to be `catch {}` -- the binding dropped,
+// the response body with it, and `common.error` shown whatever had
+// happened. The backend does say what went wrong: the AivisError
+// handler puts a machine `error` code AND a human `message` into every
+// failure body, and the client turns that message into
+// ApiResponseError.detail. The panel was throwing it away, which is
+// how a 422 once hid behind "something went wrong" and cost a round of
+// review.
+//
+// The server's sentence first, the screen's own text as the fallback --
+// the same shape TransactionsView and InvestorSettingsView already use.
+// The fallback is not decoration: ApiNetworkError and ApiTimeoutError
+// carry no server sentence because no server answered, and a dropped
+// connection must not be reported as a KYC verdict.
+function serverReason(err: unknown, fallbackKey: string): string {
+  return err instanceof ApiResponseError && err.detail ? err.detail : t(fallbackKey)
+}
 const { showToast } = useToast()
 const { canDo } = useStaffPermissions()
 
@@ -251,9 +272,9 @@ async function loadUsers(): Promise<void> {
     })
     items.value = resp.items
     total.value = resp.total
-  } catch {
+  } catch (err) {
     error.value = true
-    showToast(t('common.error'), 'error')
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     loading.value = false
   }
@@ -271,8 +292,8 @@ async function openDetail(userId: string): Promise<void> {
   try {
     detailUser.value = await fetchUserDetail(userId)
     await loadKycDocuments()
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
     showDetail.value = false
   } finally {
     detailLoading.value = false
@@ -322,9 +343,9 @@ async function loadKycDocuments(): Promise<void> {
   kycDocumentsLoading.value = true
   try {
     kycDocuments.value = await fetchKycDocuments(applicationId)
-  } catch {
+  } catch (err) {
     kycDocuments.value = []
-    showToast(t('staff.userDetail.kyc.documents.errorLoad'), 'error')
+    showToast(serverReason(err, 'staff.userDetail.kyc.documents.errorLoad'), 'error')
   } finally {
     kycDocumentsLoading.value = false
   }
@@ -347,8 +368,8 @@ async function openKycDocument(documentId: string): Promise<void> {
     // and a document viewer has no business holding a handle on the
     // staff panel that opened it.
     window.open(url, '_blank', 'noopener')
-  } catch {
-    showToast(t('staff.userDetail.kyc.documents.errorLink'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'staff.userDetail.kyc.documents.errorLink'), 'error')
   } finally {
     kycDocumentPending.value = null
   }
@@ -378,8 +399,8 @@ async function handleBlock(): Promise<void> {
     blockReason.value = ''
     showDetail.value = false
     await loadUsers()
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     actionLoading.value = false
   }
@@ -394,8 +415,8 @@ async function handleUnblock(): Promise<void> {
     showUnblockModal.value = false
     showDetail.value = false
     await loadUsers()
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     actionLoading.value = false
   }
@@ -410,8 +431,8 @@ async function handlePromote(): Promise<void> {
     showPromoteModal.value = false
     showDetail.value = false
     await loadUsers()
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     actionLoading.value = false
   }
@@ -429,8 +450,8 @@ async function setPermission(key: PermissionKey, value: boolean): Promise<void> 
     })
     detailUser.value.staff_profile = updated
     showToast(t('staff.userDetail.permissionsUpdated'), 'success')
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   }
 }
 
@@ -493,8 +514,8 @@ async function handleKycDecision(): Promise<void> {
     // then the list so the chip-filtered counts stay accurate.
     detailUser.value = await fetchUserDetail(detailUser.value.id)
     await loadUsers()
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     kycActionLoading.value = false
   }

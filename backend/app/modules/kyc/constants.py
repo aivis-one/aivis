@@ -155,6 +155,34 @@ KYC_EXTENSION_MIME_TYPES: dict[str, str] = {
     "png": "image/png",
 }
 
+# MIME -> the bytes a real file of that type starts with. The filename
+# says what the upload claims to be; this says what it is. Extension and
+# magic number are two independent statements about one file, and a file
+# whose bytes disagree with its name is the case this exists for -- the
+# module has no delete path, so anything that lands in the prefix stays
+# there forever under whatever type its name won it.
+#
+# JPEG: FF D8 FF -- the SOI marker plus the first byte of the marker
+# that always follows it. The fourth byte varies by encoder (E0 for
+# JFIF, E1 for EXIF, DB for a bare table), so three is the prefix every
+# JPEG shares.
+# PNG: the full eight-byte signature from the specification, including
+# the CRLF/EOF bytes that exist to catch mangled transfers.
+KYC_MIME_SIGNATURES: dict[str, tuple[bytes, ...]] = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+}
+
+# How much of the head we need to see to decide. The longest signature
+# above is eight bytes; reading a fixed slice keeps the check to one
+# short read regardless of which type is claimed.
+KYC_SIGNATURE_PROBE_BYTES: int = 8
+
+# A MIME type added to KYC_ALLOWED_MIME_TYPES without an entry here
+# has no signature to check against, and the validator subscripts
+# this map by design: a missing entry must fail loudly at the first
+# upload rather than quietly wave the new type through unverified.
+
 # Extensions we recognise well enough to refuse by name rather than as
 # "unknown". HEIC/HEIF is what an iPhone produces when the user picks a
 # file out of the Files app instead of the camera roll.

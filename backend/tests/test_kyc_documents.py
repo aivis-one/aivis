@@ -650,6 +650,44 @@ async def test_disallowed_type_is_refused(
 
 
 @pytest.mark.asyncio
+async def test_a_renamed_file_is_refused_by_its_bytes(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A PNG called front.jpg is refused, and by its own code.
+
+    THE NAME IS THE ONLY THING EVERY OTHER CHECK LOOKS AT. The
+    extension resolves the MIME type, the type picks the stored
+    extension and the object's ContentType -- so before H15 item 9 a
+    file of any nature under a .jpg name was stored and served as
+    image/jpeg, permanently: this module keeps documents on purpose and
+    has no delete path.
+
+    A PNG head rather than random bytes on purpose. Garbage would pass
+    for a check that merely asks "does this look like some image"; a
+    real signature of the WRONG type only fails a check that compares
+    the bytes against the type this particular name claimed.
+    """
+    token, user_id = await _funded_investor(client)
+
+    files: dict[str, Any] = kyc_document_files()
+    files["front_image"] = (
+        "front.jpg",
+        b"\x89PNG\r\n\x1a\n" + b"aivis-test-not-a-jpeg",
+        "image/jpeg",
+    )
+
+    resp = await client.post(
+        KYC_SUBMIT_URL,
+        headers=auth_headers(token),
+        data={"document_type": "passport"},
+        files=files,
+    )
+    assert resp.status_code == 400, resp.text
+    assert resp.json()["error"] == "kyc_document_content_mismatch"
+    await _assert_nothing_charged(db_session, user_id)
+
+
+@pytest.mark.asyncio
 async def test_oversized_file_is_refused(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
@@ -828,6 +866,15 @@ async def test_application_without_documents_lists_empty_not_404(
 
     An empty list is the honest answer; 404 would say the application
     does not exist, which is false and sends staff looking for a bug.
+
+    THE ID HERE IS A REAL ONE, and since H15 item 7 that is the whole
+    point of the test rather than an incidental detail. The endpoint
+    used to answer an empty list for ANY id, existing or not, so this
+    assertion could not distinguish "no documents" from "no
+    application" -- it passed for the right reason and would have
+    passed for the wrong one. An unknown id is now a 404; what this
+    still guards is that the 404 did not swallow the legitimate empty
+    case with it.
     """
     staff_user, staff_token = await create_admin_user(client, db_session)
     data = await register_user(client, verified=False)

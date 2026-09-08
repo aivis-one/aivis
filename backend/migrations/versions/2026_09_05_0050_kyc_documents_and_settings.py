@@ -74,7 +74,7 @@ depends_on: str | Sequence[str] | None = None
 # Kept as literals rather than imported from app.modules.kyc.constants:
 # a migration that imports application code breaks the day that code
 # changes, and this file has to keep meaning the same thing forever.
-# tests/test_kyc.py asserts these match the enums.
+# tests/test_kyc_documents.py asserts these match the enums.
 _DECISION_MODES = "'manual', 'automatic'"
 _DOCUMENT_TYPES = "'passport', 'id_card', 'driving_licence'"
 _DOCUMENT_KINDS = "'front', 'back', 'selfie'"

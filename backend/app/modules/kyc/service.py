@@ -77,6 +77,7 @@ from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -101,7 +102,9 @@ from app.modules.kyc.constants import (
     KYC_EXTENSION_MIME_TYPES,
     KYC_HEIC_EXTENSIONS,
     KYC_MAX_DOCUMENT_BYTES,
+    KYC_MIME_SIGNATURES,
     KYC_PRESIGNED_URL_TTL_SECONDS,
+    KYC_SIGNATURE_PROBE_BYTES,
     KYC_STORAGE_PREFIX,
     KYC_VERIFICATION_FEE_CENTS,
     KYCDocumentKind,
@@ -185,6 +188,17 @@ def _clean_reason(reason: str) -> str:
 # shared bucket everybody has to reach into.
 
 
+async def _load_settings_row(session: AsyncSession) -> KYCSettings | None:
+    """Read the single settings row, or None when nobody has written it.
+
+    Shared by the reader and the writer so that the writer's retry after
+    a lost race asks exactly the same question as its first read.
+    """
+    stmt = select(KYCSettings).where(KYCSettings.id == KYC_SETTINGS_ID)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 async def get_verification_mode(session: AsyncSession) -> str:
     """The mode in force, or the default when nothing has been set.
 
@@ -194,9 +208,7 @@ async def get_verification_mode(session: AsyncSession) -> str:
     switch must not put the product into the state whose other half has
     not shipped.
     """
-    stmt = select(KYCSettings).where(KYCSettings.id == KYC_SETTINGS_ID)
-    result = await session.execute(stmt)
-    settings_row = result.scalar_one_or_none()
+    settings_row = await _load_settings_row(session)
 
     if settings_row is None:
         return VerificationMode.MANUAL
@@ -221,10 +233,23 @@ async def set_verification_mode(
     the mode it was submitted under and is decided that way whatever
     happens to this row afterwards -- otherwise one click would change
     how every already-paid session is handled.
+
+    THE FIRST WRITE IS A RACE, AND THE LOSER IS A SECOND UPDATE RATHER
+    THAN A 500. The row has one constant primary key, so "read, find
+    nothing, insert" is safe only until two staff members save for the
+    first time at once: the second INSERT hits the primary key and used
+    to leave the endpoint as an IntegrityError. The insert now runs on
+    a SAVEPOINT (the pattern referrals/service.py already uses); when it
+    collides the savepoint rolls back on its own, the outer transaction
+    survives, and the row the winner committed is read and updated.
+
+    The re-read is what keeps the audit honest. Under READ COMMITTED the
+    second SELECT takes a fresh snapshot, so the loser records the
+    winner's mode as `from` -- which is what actually preceded its own
+    write. Reusing the "manual" it read the first time would log a
+    transition that never happened.
     """
-    stmt = select(KYCSettings).where(KYCSettings.id == KYC_SETTINGS_ID)
-    result = await session.execute(stmt)
-    settings_row = result.scalar_one_or_none()
+    settings_row = await _load_settings_row(session)
 
     if settings_row is None:
         old_mode = VerificationMode.MANUAL
@@ -233,7 +258,29 @@ async def set_verification_mode(
             verification_mode=mode,
             updated_by_id=actor_id,
         )
-        session.add(settings_row)
+        try:
+            async with session.begin_nested():
+                session.add(settings_row)
+                await session.flush()
+        except IntegrityError:
+            # Lost the race. The savepoint took the pending row with it,
+            # so the identity map is clean and the row the winner wrote
+            # is now visible to this transaction.
+            settings_row = await _load_settings_row(session)
+            if settings_row is None:
+                # The signature allows None; the database does not. A
+                # collision on this primary key means the row is there,
+                # and no path in this module deletes it. Re-raise the
+                # original error rather than invent a route out of a
+                # state the storage cannot produce.
+                raise
+            logger.info(
+                "kyc_verification_mode_first_write_raced",
+                actor_id=str(actor_id),
+            )
+            old_mode = settings_row.verification_mode
+            settings_row.verification_mode = mode
+            settings_row.updated_by_id = actor_id
     else:
         old_mode = settings_row.verification_mode
         settings_row.verification_mode = mode
@@ -351,6 +398,49 @@ def validate_document_size(size_bytes: int, *, kind: str) -> None:
         )
 
 
+def validate_document_signature(
+    stream: BinaryIO,
+    *,
+    content_type: str,
+    kind: str,
+) -> None:
+    """Refuse a file whose first bytes disagree with its own extension.
+
+    THE NAME IS THE UPLOADER'S, THE BYTES ARE THE FILE'S. Everything
+    upstream of this point trusts the extension: validate_document_
+    filename resolves the MIME type from it, build_document_storage_key
+    takes the stored extension from that type, and upload_object writes
+    the object with it as ContentType. So until this check existed, a
+    file of any nature named passport.jpg was stored, served and
+    recorded as image/jpeg -- permanently, because this module has no
+    delete path and keeps documents on purpose.
+
+    It is also what issue_document_url leans on when it presigns
+    without Content-Disposition: attachment; read its docstring before
+    weakening this one.
+
+    Reads the head of the stream and rewinds it, so the caller can hand
+    the same stream to the upload afterwards.
+
+    Raises:
+        BadRequestError: the head does not match the claimed type.
+    """
+    signatures = KYC_MIME_SIGNATURES[content_type]
+
+    head = stream.read(KYC_SIGNATURE_PROBE_BYTES)
+    stream.seek(0)
+
+    if any(head.startswith(signature) for signature in signatures):
+        return
+
+    extension = KYC_ALLOWED_MIME_TYPES[content_type]
+    raise BadRequestError(
+        f"The {kind} image is not a {extension.upper()} file, whatever "
+        f"its name says. Upload the photo itself, not a renamed file.",
+        code="kyc_document_content_mismatch",
+    )
+
+
 def required_document_kinds(document_type: str) -> tuple[str, ...]:
     """Which faces a submission of this document type must carry.
 
@@ -394,10 +484,26 @@ async def list_application_documents(
 ) -> list[KYCDocument]:
     """Documents attached to one application, oldest first.
 
-    An empty list is a legitimate answer, not a 404: applications
-    created by decide_by_user() for a person approved by hand have no
-    documents and never will.
+    TWO CASES THAT LOOKED THE SAME AND ARE NOT. An empty list is a
+    legitimate answer for an application that exists: the ones
+    decide_by_user() creates for a person approved by hand have no
+    documents and never will. An application id that matches nothing is
+    a different fact, and returning the same empty list for it told
+    staff "this session carries no images" about a session that does
+    not exist -- so a mistyped or stale id read as a real answer.
+
+    An unknown id is now a 404; an existing application with no
+    documents is still an empty list.
+
+    Raises:
+        NotFoundError: no application carries this id.
     """
+    exists = await session.execute(
+        select(KYCApplication.id).where(KYCApplication.id == application_id)
+    )
+    if exists.scalar_one_or_none() is None:
+        raise NotFoundError("KYC application not found")
+
     stmt = (
         select(KYCDocument)
         .where(KYCDocument.application_id == application_id)
@@ -429,6 +535,31 @@ async def issue_document_url(
     reads to staff as "the link is broken" rather than "the document is
     gone". It would also write an audit row claiming a view that could
     not happen.
+
+    SHOWN IN THE BROWSER, NOT HANDED OVER AS A FILE, AND THAT IS A
+    CHOICE. generate_presigned_url takes download_filename and turns it
+    into Content-Disposition: attachment, which its own docstring calls
+    the primary defence against stored-XSS through a payload uploaded
+    under a trusted extension. This path passes no filename on purpose:
+
+      * the act here is LOOKING at a passport next to a decision, and an
+        attachment turns every check into a download into the reviewer's
+        Downloads folder -- copies of other people's identity documents
+        on staff laptops, which is worse than what it prevents;
+      * there is no name to give. KYCDocument deliberately stores no
+        original filename (see its docstring: the uploader's string
+        routinely carries the person's real name), so the header would
+        have to invent one;
+      * the vector Content-Disposition defends against is closed at the
+        door instead. validate_document_signature() in this module
+        refuses any upload whose first bytes are not the JPEG or PNG
+        magic number, so nothing but a real image reaches storage.
+
+    THAT LAST POINT IS THE LOAD-BEARING ONE. Whoever removes or weakens
+    validate_document_signature re-opens exactly what this decision
+    leans on, and the signature check is in a different function with a
+    different reason for existing -- so the connection is stated here
+    rather than left to be rediscovered.
 
     Returns:
         (url, ttl_seconds)
@@ -755,7 +886,16 @@ async def get_kyc_status(
     stmt = (
         select(KYCApplication)
         .where(KYCApplication.user_id == user.id)
-        .order_by(KYCApplication.created_at.desc())
+        # SECOND KEY BECAUSE created_at TIES. It comes from
+        # server_default=func.now(), which is the TRANSACTION's start
+        # time, so two rows written in one transaction carry the same
+        # stamp and "the newest" stops being a question the ORDER BY can
+        # answer. WHAT id.desc() BUYS IS REPRODUCIBILITY, NOT RECENCY:
+        # KYCApplication has no monotonic column at all -- the id is a
+        # uuid4 -- so a tie resolves the same way on every run and in
+        # every replica, but the winner is not the later row. Do not
+        # build "most recent" on this tie-break.
+        .order_by(KYCApplication.created_at.desc(), KYCApplication.id.desc())
         .limit(1)
     )
     result = await session.execute(stmt)
@@ -997,7 +1137,10 @@ async def decide_by_user(
     stmt = (
         select(KYCApplication)
         .where(KYCApplication.user_id == user.id)
-        .order_by(KYCApplication.created_at.desc())
+        # Second sort key, for the reason and with the caveat spelled
+        # out in get_kyc_status: created_at ties inside one transaction,
+        # and id.desc() buys reproducibility, not recency.
+        .order_by(KYCApplication.created_at.desc(), KYCApplication.id.desc())
         .limit(1)
     )
     result = await session.execute(stmt)

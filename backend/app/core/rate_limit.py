@@ -50,9 +50,13 @@
 #   )
 # =============================================================================
 
+import structlog
+
 from app.core.config import settings
 from app.core.exceptions import RateLimitError
 from app.core.redis import get_redis
+
+logger = structlog.get_logger()
 
 # Lua script: INCR + conditional EXPIRE in one atomic operation.
 # Sets TTL only when counter transitions from 0 to 1 (new window).
@@ -127,6 +131,25 @@ async def check_rate_limit(
         # cases. Translate either to None so the Retry-After header is
         # simply omitted rather than emitting a misleading negative value.
         retry_after = ttl if ttl > 0 else None
+        # P-62: LOGGED HERE, IN THE MECHANISM. Nine modules call this
+        # helper and none of them logged the refusal; neither does the
+        # AivisError handler nor TraceIdMiddleware, so until this line a
+        # 429 was visible only in the web server's access log -- off the
+        # application's own trail, with no trace_id beside it. A line at
+        # one call site would have closed that caller and left eight.
+        #
+        # The key is the whole subject of the event: "email_auth:1.2.3.4"
+        # says both which limit refused and whom. It carries the caller's
+        # IP for the auth-flow keys, which adds no new trace -- the
+        # middleware binds ip_address into the contextvars of every log
+        # line on every request already (core/middleware.py).
+        logger.warning(
+            "rate_limit_exceeded",
+            key=key,
+            limit=limit,
+            count=count,
+            retry_after_seconds=retry_after,
+        )
         raise RateLimitError(
             message=error_message,
             retry_after_seconds=retry_after,

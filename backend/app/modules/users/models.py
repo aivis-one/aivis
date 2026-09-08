@@ -85,10 +85,10 @@ class KYCStatus(enum.StrEnum):
     each had its own enum with identical members -- two declarations of
     one fact, plus two CHECK constraints that stayed level only because
     somebody remembered to edit both. kyc/models.py imports this one.
-    tests/test_kyc.py reads both constraints out of pg_constraint and
-    asserts each admits exactly these members, so a future widening
-    that touches one column and not the other goes red the day it
-    lands rather than the day a value is written.
+    tests/test_kyc_documents.py reads both constraints out of
+    pg_constraint and asserts each admits exactly these members, so a
+    future widening that touches one column and not the other goes
+    red the day it lands rather than the day a value is written.
     """
 
     NOT_STARTED = "not_started"

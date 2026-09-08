@@ -38,9 +38,9 @@
 #   on the user model is a real debt, recorded in the H12 report's
 #   Observations rather than paid here.
 #
-#   tests/test_kyc.py asserts that both CHECK constraints admit exactly
-#   this enum's members. That test, not a convention, is what stops the
-#   two columns drifting apart again.
+#   tests/test_kyc_documents.py asserts that both CHECK constraints
+#   admit exactly this enum's members. That test, not a convention,
+#   is what stops the two columns drifting apart again.
 #
 # SYNC:
 #   On every status change, kyc/service.py updates User.kyc_status

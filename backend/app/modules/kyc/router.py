@@ -67,6 +67,7 @@ from app.modules.kyc.service import (
     get_verification_mode,
     submit_kyc,
     validate_document_filename,
+    validate_document_signature,
     validate_document_size,
 )
 from app.modules.users.models import User
@@ -101,13 +102,23 @@ def _resolve_upload_size(file: UploadFile) -> int:
 def _prepare(file: UploadFile, kind: str) -> PendingDocument:
     """Validate one uploaded part and describe it for the service.
 
-    Type first, then size. A twenty-megabyte HEIC should be told it is
-    a HEIC -- refusing it for its size would send the person off to
-    compress a file we were never going to accept in any size.
+    NAME, THEN SIZE, THEN BYTES, AND THE ORDER IS THE MESSAGE. A
+    twenty-megabyte HEIC should be told it is a HEIC -- refusing it for
+    its size would send the person off to compress a file we were never
+    going to accept in any size. By the same rule the content check
+    comes last: an oversized file has a size problem whatever its first
+    bytes say, and telling somebody their photo "is not a JPEG" when the
+    real complaint is that it is eleven megabytes sends them to fix the
+    wrong thing.
+
+    All three run before the service is entered, so an unacceptable file
+    is refused before the fee is charged and before an application row
+    exists.
     """
     content_type = validate_document_filename(file.filename or "", kind=kind)
     size_bytes = _resolve_upload_size(file)
     validate_document_size(size_bytes, kind=kind)
+    validate_document_signature(file.file, content_type=content_type, kind=kind)
     return PendingDocument(
         kind=kind,
         stream=file.file,
