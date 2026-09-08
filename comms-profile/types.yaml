@@ -20,7 +20,7 @@
 # domain dictionary) arrive incrementally, together with the emitters that
 # raise them -- declaring a type before its emitter exists would describe
 # behaviour that does not. Batch 3 (2026-08-27) is the first delivery: the
-# `kyc.*` pair below, emitted from `kyc/service.py::process_webhook`. Read
+# `kyc.*` types below, emitted from `kyc/service.py::_write_decision`. Read
 # its own section for what is specific to it; this section is about the
 # three msg.* keys only.
 #
@@ -102,14 +102,28 @@ msg.support_message:
 # aivis product types -- phase 2, batch 3 (2026-08-27)
 # =============================================================================
 #
-# THE FIRST AIVIS DOMAIN EVENT. Emitted by `kyc/service.py::process_webhook`
-# on the ONE existing decision path (there is no separate staff-driven
-# approve/reject endpoint today -- measured before writing this section, see
-# TASK-REGISTRY.md batch 3). One type per outcome rather than one shared
+# THE FIRST AIVIS DOMAIN EVENT. Emitted by `kyc/service.py::_write_decision`,
+# the one function every KYC decision passes through, as
+# `f"kyc.{new_status}"` -- so the set of types raised here is exactly the
+# key set of `_KYC_DECISION_COPY` beside it, which is where each notice's
+# title and body come from too.
+#
+# TWO SERVICE ENTRIES REACH IT, both staff-driven, and both write decisions
+# by hand -- there is no automated decision path at all:
+#
+#   decide_by_application -- a decision on the open, paid session. Reached
+#       from the staff queue: POST /staff/kyc/{application_id}/approve and
+#       .../reject. Raises kyc.approved and kyc.rejected.
+#   decide_by_user        -- a decision on the person rather than on a
+#       session. Reached from the staff user card: POST
+#       /staff/kyc/users/{user_id}/approve and .../revoke. Raises
+#       kyc.approved and kyc.revoked.
+#
+# One type per outcome rather than one shared
 # `kyc.decision` type: it lets a future preference screen mute a rejection
 # notice differently from an approval one, and it matches the msg.* shape
 # above (one type = one specific meaning) rather than inventing a new one.
-# Both share ONE category so today they mute together; splitting the
+# All three share ONE category so today they mute together; splitting the
 # category is free later if that turns out to be wanted.
 #
 # title/body are sent as literal English strings by the emitter, not through
