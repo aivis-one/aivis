@@ -13,6 +13,7 @@
 //   public         — skip all checks, allow unauthenticated access
 //   skipOnboarding — skip onboarding redirect (for onboarding routes)
 //   roles          — allowed roles (string[]), empty = any authenticated
+//   permission     — staff permission the route needs (P-88)
 //   shell          — which shell wraps this route; read by shared views
 //                    via router/helpers.ts (F4.1.5)
 //
@@ -31,6 +32,7 @@
 import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 
 import { useAuth } from '@/composables/useAuth'
+import { useStaffPermissions, type StaffPermissionKey } from '@/composables/useStaffPermissions'
 import { useAuthStore } from '@/stores/auth'
 import type { Shell } from './helpers'
 
@@ -44,6 +46,16 @@ declare module 'vue-router' {
     public?: boolean
     /** Allowed user roles. Empty/undefined = any authenticated role. */
     roles?: string[]
+    /** Staff permission this route needs, on top of `roles` (P-88).
+     *
+     *  THE ROUTE'S PERMISSION IS A FACT ABOUT THE ROUTE, and this is
+     *  the only place it is written. Hiding the nav entry was never a
+     *  lock: a typed URL walked straight past it and the screen refused
+     *  with a 403 after mounting -- an empty page and a toast. Anything
+     *  that needs to know which permission a route wants (the platform
+     *  tab bar, for one) reads it back off the route record rather than
+     *  repeating the key. */
+    permission?: StaffPermissionKey
     /** Skip onboarding redirect (for onboarding routes themselves). */
     skipOnboarding?: boolean
     /** Which shell wraps this route. Set on shell wrapper records
@@ -148,6 +160,20 @@ export async function globalGuard(to: RouteLocationNormalized): Promise<void | R
     const userRole = authStore.role
     if (!userRole || !allowedRoles.includes(userRole)) {
       return getRoleDashboard(userRole)
+    }
+  }
+
+  // --- Staff permission check (P-88) ---
+  // Refused the same way a wrong role is: back to the dashboard, before
+  // the screen mounts. The screen's own 403 stays where it is -- it
+  // answers a server that refused a request, which is a different
+  // event from "you may not go here" and survives a stale session this
+  // guard cannot see.
+  const needed = to.meta.permission
+  if (needed) {
+    const { canDo } = useStaffPermissions()
+    if (!canDo(needed).value) {
+      return getRoleDashboard(authStore.role)
     }
   }
 }

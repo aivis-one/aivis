@@ -109,7 +109,13 @@ async def _find_active_avatar(
             AvatarSession.staff_id == staff_id,
             AvatarSession.status == AvatarSessionStatus.ACTIVE,
         )
-        .order_by(AvatarSession.created_at.desc())
+        # Tie-break, not recency. created_at is a server_default of
+        # now(), which is the TRANSACTION's start time, so two sessions
+        # opened in one transaction carry the same stamp and "the
+        # newest" stops being something ORDER BY can answer.
+        # AvatarSession has no monotonic column -- its id is a uuid4 --
+        # so this buys a stable answer, not a later row.
+        .order_by(AvatarSession.created_at.desc(), AvatarSession.id.desc())
         .limit(1)
     )
     result = await session.execute(stmt)

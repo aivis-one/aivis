@@ -298,7 +298,14 @@ async def current_invoice(
             CryptoInvoice.network == network,
             CryptoInvoice.status.not_in(_TERMINAL_STATUSES),
         )
-        .order_by(CryptoInvoice.created_at.desc())
+        # Tie-break, not recency. created_at is a server_default of
+        # now(), the TRANSACTION's start time, so two invoices written
+        # in one transaction share a stamp and "the newest candidate"
+        # becomes arbitrary. CryptoInvoice has no monotonic column
+        # either: its id is the product_ref, a uuid4 minted before the
+        # call to the service. So this buys a stable answer, not a
+        # later row.
+        .order_by(CryptoInvoice.created_at.desc(), CryptoInvoice.id.desc())
         .limit(1)
     )
     result = await session.execute(stmt)

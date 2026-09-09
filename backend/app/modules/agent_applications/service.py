@@ -70,7 +70,13 @@ async def submit_application(
             AgentApplication.status == AgentApplicationStatus.REJECTED,
             AgentApplication.cooldown_until.isnot(None),
         )
-        .order_by(AgentApplication.created_at.desc())
+        # Tie-break, not recency. created_at is a server_default of
+        # now(), the TRANSACTION's start time, so two applications
+        # written in one transaction share a stamp and the cooldown
+        # would be read off an arbitrary one of them. AgentApplication
+        # has no monotonic column -- its id is a uuid4 -- so this buys a
+        # stable answer, not a later row.
+        .order_by(AgentApplication.created_at.desc(), AgentApplication.id.desc())
         .limit(1)
     )
     result_cooldown = await session.execute(stmt_cooldown)

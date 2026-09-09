@@ -727,18 +727,29 @@ sys.exit(asyncio.run(main()))
 RESTORE_PY
 }
 
-# Print "<total objects> <template.html count>" for _platform/templates/.
+# Print "<total> <html> <expected total> <expected html>" for
+# _platform/templates/.
+#
+# THE EXPECTED NUMBERS ARE IMPORTED, NOT WRITTEN HERE. They are derived
+# from the template tree in scripts/platform_template_objects.py -- 16
+# directories of four files -- and that module says so beside them. A
+# copy in this file would be a second declaration of a number nobody
+# recomputed, and the day a template is added the two would disagree
+# with each other instead of with reality. The import works the same
+# way reconcile_templates.py already imports from scripts/: the
+# directory is in the image and PYTHONPATH is /app.
 count_platform_template_objects() {
     docker compose exec -T app python - <<'COUNT_PY'
 import asyncio
 
 from app.core.storage import list_objects
+from scripts.platform_template_objects import EXPECTED_HTML, EXPECTED_TOTAL
 
 
 async def main() -> None:
     keys = await list_objects("_platform/templates/")
     html = [k for k in keys if k.endswith("template.html")]
-    print(f"{len(keys)} {len(html)}")
+    print(f"{len(keys)} {len(html)} {EXPECTED_TOTAL} {EXPECTED_HTML}")
 
 
 asyncio.run(main())
@@ -749,14 +760,26 @@ COUNT_PY
 # only names the failure leaves the reader where we were on 2026-09-01,
 # reading twenty-nine tracebacks to arrive at one missing upload.
 check_platform_template_objects() {
-    local counts total html
+    local counts total html expected_total expected_html
     counts=$(count_platform_template_objects 2>/dev/null | tr -d '\r' | tail -n 1)
     total=$(echo "$counts" | cut -d' ' -f1)
     html=$(echo "$counts" | cut -d' ' -f2)
+    expected_total=$(echo "$counts" | cut -d' ' -f3)
+    expected_html=$(echo "$counts" | cut -d' ' -f4)
 
-    if [ "$total" != "64" ] || [ "$html" != "16" ]; then
+    # An empty expectation means the count did not run -- the container
+    # is down, or the import failed. Treat it as a failure rather than
+    # comparing against nothing, which would pass silently.
+    if [ -z "$expected_total" ] || [ -z "$expected_html" ]; then
+        echo -e "${RED}✗ Platform template OBJECTS check could not run${NC}"
+        echo "The counter returned: '$counts'"
+        echo "Expected four numbers. The app container must be up for this check."
+        return 1
+    fi
+
+    if [ "$total" != "$expected_total" ] || [ "$html" != "$expected_html" ]; then
         echo -e "${RED}✗ Platform template OBJECTS check failed${NC}"
-        echo "Expected 64 objects and 16 template.html under _platform/templates/,"
+        echo "Expected $expected_total objects and $expected_html template.html under _platform/templates/,"
         echo "found: '$total' objects, '$html' template.html"
         echo ""
         echo "The DB rows can be intact while the objects are gone -- that is"
@@ -768,7 +791,7 @@ check_platform_template_objects() {
         echo "restore_platform_template_objects in scripts/aivis-manage.sh."
         return 1
     fi
-    echo -e "${GREEN}✓ 64 platform template objects present (16 template.html)${NC}"
+    echo -e "${GREEN}✓ $expected_total platform template objects present ($expected_html template.html)${NC}"
     return 0
 }
 

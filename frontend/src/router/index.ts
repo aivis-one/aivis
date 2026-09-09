@@ -705,8 +705,13 @@ export const router = createRouter({
               // H12: platform-wide settings staff change from the UI
               // rather than from .env. One subsection, one setting so
               // far -- the verification mode.
+              //
+              // P-88: the permission lives here and nowhere else. The
+              // platform tab bar reads it back off this record, so the
+              // chip and the lock cannot drift apart.
               path: 'settings',
               name: 'staff-platform-settings',
+              meta: { permission: 'kyc_approve' as const },
               component: () =>
                 import('@/views/staff/platform/StaffVerificationSettingsSection.vue'),
             },

@@ -19,9 +19,17 @@
 // it (H14 P-67). The internal CTAs in News / Events / Companies check
 // per-permission flags through useStaffPermissions (Block B4).
 //
-// HIDING A CHIP IS NOT A ROUTE GUARD. A deep link to a subsection still
-// reaches the screen, which refuses it server-side. The chip row is
-// about not offering a door that answers 403, not about locking it.
+// THE CHIP IS NOT THE LOCK, AND SINCE P-88 IT IS NOT ALONE EITHER. A
+// deep link used to reach the screen, which then refused server-side --
+// an empty page and a toast. The route record now carries the
+// permission in its meta and the global guard turns a person without it
+// away before the screen mounts. The chip row's job is what it always
+// was: not offering a door that answers 403.
+//
+// AND IT ASKS THE ROUTER WHICH DOOR NEEDS WHICH KEY. The permission is
+// declared once, on the route; this file resolves the path and reads it
+// back. Repeating the key here would put one rule in two files, and the
+// copy that drifts is always the one nobody is looking at.
 // =============================================================================
 
 import { computed } from 'vue'
@@ -42,22 +50,26 @@ interface Subsection {
   id: string
   path: string
   labelKey: string
-  // The permission the subsection's own screen enforces server-side,
-  // or null when the screen is open to any staff. It lives on the
-  // record so the chip and the screen cannot drift: a chip whose screen
-  // answers 403 is a button that exists only to fail.
-  permission: StaffPermissionKey | null
 }
 
 // Subsection definitions. Path is matched as a prefix so deep links
 // like /staff/platform/companies/:id/profile still light up the
 // "Companies" chip.
 const subsections: readonly Subsection[] = [
-  { id: 'news', path: '/staff/platform/news', labelKey: 'staff.platform.tabs.news', permission: null },
-  { id: 'events', path: '/staff/platform/events', labelKey: 'staff.platform.tabs.events', permission: null },
-  { id: 'companies', path: '/staff/platform/companies', labelKey: 'staff.platform.tabs.companies', permission: null },
-  { id: 'settings', path: '/staff/platform/settings', labelKey: 'staff.platform.tabs.settings', permission: 'kyc_approve' },
+  { id: 'news', path: '/staff/platform/news', labelKey: 'staff.platform.tabs.news' },
+  { id: 'events', path: '/staff/platform/events', labelKey: 'staff.platform.tabs.events' },
+  { id: 'companies', path: '/staff/platform/companies', labelKey: 'staff.platform.tabs.companies' },
+  { id: 'settings', path: '/staff/platform/settings', labelKey: 'staff.platform.tabs.settings' },
 ]
+
+// The permission each subsection needs, asked of the router rather than
+// written here. resolve() merges meta down the matched records, so this
+// yields whatever the route declared -- and undefined for the ones that
+// declare nothing, which is the honest answer for a screen open to any
+// staff member.
+function permissionForPath(path: string): StaffPermissionKey | undefined {
+  return router.resolve(path).meta.permission
+}
 
 // Resolved once here rather than inside the filter below: canDo()
 // creates a computed the first time it sees a key, and creating one
@@ -65,15 +77,16 @@ const subsections: readonly Subsection[] = [
 // should have to answer while reading a nav bar.
 const permissionOf = new Map<StaffPermissionKey, ComputedRef<boolean>>(
   subsections
-    .map((s) => s.permission)
-    .filter((p): p is StaffPermissionKey => p !== null)
+    .map((s) => permissionForPath(s.path))
+    .filter((p): p is StaffPermissionKey => p !== undefined)
     .map((p) => [p, canDo(p)]),
 )
 
 const visibleSubsections = computed<readonly Subsection[]>(() =>
-  subsections.filter(
-    (s) => s.permission === null || permissionOf.get(s.permission)?.value === true,
-  ),
+  subsections.filter((s) => {
+    const needed = permissionForPath(s.path)
+    return needed === undefined || permissionOf.get(needed)?.value === true
+  }),
 )
 
 // Deliberately derived from the FULL list, not the visible one. This

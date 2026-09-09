@@ -460,15 +460,37 @@ async def test_dashboard_stats_frozen_payments_count(
 async def test_kyc_queue(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """KYC queue -> 200, pending applications with user info."""
+    """KYC queue -> 200, and the application this test submitted is in it.
+
+    IT USED TO PASS ON SOMEBODY ELSE'S ROWS. The investor was built with
+    the default register_user(), which writes kyc_status=APPROVED
+    straight onto the row, and was never funded. So the submission was
+    refused -- on the balance before H13, on the status after it -- and
+    the response was not asserted either way. What kept the test green
+    was `len(body) >= 1` over applications left behind by other tests in
+    the same run: isolation here is per-RUN, not per-test
+    (tests/conftest.py). Run on its own, it failed.
+
+    WHAT THE OLD ASSERTIONS WERE RIGHT ABOUT, and what is kept: the
+    queue answers 200 with a list, and its items carry `email` and
+    `user_id` beside the status. Those were true and are still asserted.
+
+    WHAT IS REPLACED. `body[-1] # Last submitted` read the queue's
+    ordering, which this test never set -- the same defect P-76 closed
+    in the services, one layer up. The row is now found by the user_id
+    it was submitted for, so the assertion holds whatever order the
+    queue returns and whatever else the run left in it.
+    """
     admin_token = await _admin_token(client, db_session)
 
-    # Create investor and submit KYC.
-    inv_data = await register_user(
-        client
-    )
+    # Build the state the queue is supposed to show: an unverified
+    # investor who paid for a session and submitted it.
+    inv_data = await register_user(client, verified=False)
     inv_token = inv_data["session_token"]
-    await submit_kyc_application(client, inv_token)
+    inv_user_id = inv_data["user"]["id"]
+    await fund_user(inv_user_id, KYC_VERIFICATION_FEE_CENTS)
+    submit_resp = await submit_kyc_application(client, inv_token)
+    assert submit_resp.status_code == 201, submit_resp.text
 
     resp = await client.get(
         "/api/v1/staff/kyc/queue",
@@ -477,12 +499,12 @@ async def test_kyc_queue(
     assert resp.status_code == 200
     body = resp.json()
     assert isinstance(body, list)
-    assert len(body) >= 1
 
-    item = body[-1]  # Last submitted.
+    mine = [item for item in body if item["user_id"] == inv_user_id]
+    assert len(mine) == 1, body
+    item = mine[0]
     assert item["status"] == "submitted"
-    assert "email" in item
-    assert "user_id" in item
+    assert item["email"] == inv_data["email"]
 
 
 @pytest.mark.asyncio
