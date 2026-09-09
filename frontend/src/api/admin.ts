@@ -63,8 +63,13 @@ export function fetchDashboardStats(): Promise<DashboardStatsResponse> {
  * Filters (all optional, combinable):
  *   - role:       'investor' | 'agent' | 'company' | 'staff'
  *   - kyc_status: 'not_started' | 'submitted' | 'approved' | 'rejected'
+ *                 | 'revoked'
  *                 (iter 2.6c B1; backend validates via KYCStatus StrEnum,
- *                  422 on any other value)
+ *                  422 on any other value). `revoked` landed with H12 and
+ *                  was missing from this list until P-65 gave the panel a
+ *                  button that produces it -- a vocabulary that omits the
+ *                  status the same file can now create would read as "the
+ *                  backend refuses this filter", which is false.
  *   - search:     case-insensitive substring match on email, first_name,
  *                 or last_name (TASK-30 admin-capability gap). Backs the
  *                 UserPicker component -- the only way to find a user's
@@ -147,6 +152,34 @@ export function approveKYC(applicationId: string, body: KYCDecisionRequest): Pro
  */
 export function rejectKYC(applicationId: string, body: KYCDecisionRequest): Promise<void> {
   return api.post<void>(`/api/v1/staff/kyc/${applicationId}/reject`, body)
+}
+
+/** POST /api/v1/staff/kyc/users/{id}/approve — approve a PERSON.
+ *
+ * The pair above decides an APPLICATION: somebody paid, submitted
+ * documents and is waiting in the queue. This one decides a PERSON, and
+ * needs no application to exist. That is the point of it -- an old user
+ * arriving under a new address has never submitted and cannot submit
+ * without paying, while this path is free.
+ *
+ * 409 `kyc_already_approved` when the person is approved already.
+ */
+export function approveKYCUser(userId: string, body: KYCDecisionRequest): Promise<void> {
+  return api.post<void>(`/api/v1/staff/kyc/users/${userId}/approve`, body)
+}
+
+/** POST /api/v1/staff/kyc/users/{id}/revoke — withdraw an approval.
+ *
+ * Person-level like the one above, and the only way back out: the
+ * application-level pair can refuse a submission but cannot take back an
+ * approval already granted. Same `kyc_approve` permission as granting
+ * it, so that nobody can let a person in and then be unable to correct
+ * their own mistake.
+ *
+ * 409 `kyc_not_approved` when the person is not currently approved.
+ */
+export function revokeKYCUser(userId: string, body: KYCDecisionRequest): Promise<void> {
+  return api.post<void>(`/api/v1/staff/kyc/users/${userId}/revoke`, body)
 }
 
 // ---------------------------------------------------------------------------

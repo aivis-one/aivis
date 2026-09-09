@@ -370,7 +370,8 @@
           "not_started": "Not started",
           "submitted": "Pending",
           "approved": "Approved",
-          "rejected": "Rejected"
+          "rejected": "Rejected",
+          "revoked": "Revoked"
         },
         "sectionTitle": "KYC Application",
         "latestStatus": "Latest status",
@@ -393,7 +394,13 @@
           "ttlNotice": "The link is valid for {seconds} seconds. Every opening is recorded in the audit log.",
           "errorLoad": "Could not load the document list.",
           "errorLink": "Could not obtain a link to that document."
-        }
+        },
+        "approveUser": "Approve manually",
+        "approveUserHint": "Approves the PERSON, with or without an application on file. Free, and recorded in the audit log with your reason.",
+        "approvedUserToast": "Person approved",
+        "revokeUser": "Revoke approval",
+        "revokeUserHint": "Withdraws an approval already granted. The person goes back behind the gate and cannot buy until approved again.",
+        "revokedUserToast": "Approval revoked"
       }
     },
     "platform": {

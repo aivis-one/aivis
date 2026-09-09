@@ -83,7 +83,9 @@ import {
   createStaff,
   updatePermissions,
   approveKYC,
+  approveKYCUser,
   rejectKYC,
+  revokeKYCUser,
 } from '@/api/admin'
 import {
   KYC_DOCUMENT_URL_TTL_SECONDS,
@@ -91,7 +93,12 @@ import {
   requestKycDocumentUrl,
   type KycDocument,
 } from '@/api/kyc'
-import type { UpdatePermissionsRequest, UserListItem, UserDetailResponse } from '@/api/types'
+import type {
+  KYCDecisionRequest,
+  UpdatePermissionsRequest,
+  UserListItem,
+  UserDetailResponse,
+} from '@/api/types'
 
 // PermissionKey derived from the backend schema -- single source of
 // truth. Required<> strips the `?` so `keyof` returns every permission
@@ -135,7 +142,15 @@ void _permissionKeysExhaustive
 
 // KYC status filter chip values. Backend ?kyc_status= accepts these
 // exact strings (KYCStatus StrEnum, 422 on anything else).
-const ALL_KYC_STATUSES = ['not_started', 'submitted', 'approved', 'rejected'] as const
+//
+// `revoked` has been a member since H12 and was missing here until
+// P-65. It could be left out while nothing in the product produced it;
+// P-65 gives this very screen the button that does, and a panel that
+// can revoke but cannot then list who was revoked is half a feature.
+// The constant feeds three places at once -- the chip row, the
+// query-parameter parse on arrival, and the KYCStatus type below --
+// so one member covers all three.
+const ALL_KYC_STATUSES = ['not_started', 'submitted', 'approved', 'rejected', 'revoked'] as const
 type KYCStatus = (typeof ALL_KYC_STATUSES)[number]
 
 const { t } = useI18n()
@@ -222,22 +237,149 @@ const showUnblockModal = ref(false)
 // -- Promote modal --
 const showPromoteModal = ref(false)
 
-// -- KYC reject modal (iter 2.7 A5) --
-// H10: one modal for both decisions. Approve used to fire straight from
+// -- KYC decision modal (iter 2.7 A5, four modes since P-65) --
+// H10: one modal for every decision. Approve used to fire straight from
 // the button with no body; the backend now refuses a decision without a
 // reason, and an approval is the decision that opens the whole product
 // to an account -- it is the one that most needed a recorded why.
+//
+// TWO LEVELS, FOUR MODES. The pair this modal started with decides an
+// APPLICATION: somebody paid, submitted documents, and waits in the
+// queue. P-65 adds the pair that decides a PERSON, which the queue
+// cannot reach -- approving someone who never applied (free, and the
+// only way to let in an old user arriving under a new address) and
+// withdrawing an approval already given.
+//
+// ONE TABLE INSTEAD OF FOUR TERNARIES. Title, hint, toast, button
+// variant and the client to call all vary by mode. Expressed as
+// conditionals in the template they were readable at two members and
+// would be four nested ternaries each at four -- five independent
+// places to edit when a fifth mode arrives, and nothing to make the
+// person who edits one remember the other four. One record per mode
+// keeps the whole of "what this mode is" in a single place.
+type KycDecisionMode = 'approve' | 'reject' | 'approveUser' | 'revokeUser'
+
+interface KycDecisionSpec {
+  // Which id the request is addressed to. 'application' takes
+  // latest_application_id, 'user' takes the user's own id.
+  level: 'application' | 'user'
+  labelKey: string
+  hintKey: string
+  toastKey: string
+  variant: 'primary' | 'danger'
+  send: (id: string, body: KYCDecisionRequest) => Promise<void>
+}
+
+const KYC_DECISION_SPECS: Record<KycDecisionMode, KycDecisionSpec> = {
+  approve: {
+    level: 'application',
+    labelKey: 'staff.userDetail.kyc.approve',
+    hintKey: 'staff.userDetail.kyc.approveHint',
+    toastKey: 'staff.userDetail.kyc.approvedToast',
+    variant: 'primary',
+    send: approveKYC,
+  },
+  reject: {
+    level: 'application',
+    labelKey: 'staff.userDetail.kyc.reject',
+    hintKey: 'staff.userDetail.kyc.rejectHint',
+    toastKey: 'staff.userDetail.kyc.rejectedToast',
+    variant: 'danger',
+    send: rejectKYC,
+  },
+  approveUser: {
+    level: 'user',
+    labelKey: 'staff.userDetail.kyc.approveUser',
+    hintKey: 'staff.userDetail.kyc.approveUserHint',
+    toastKey: 'staff.userDetail.kyc.approvedUserToast',
+    variant: 'primary',
+    send: approveKYCUser,
+  },
+  revokeUser: {
+    level: 'user',
+    labelKey: 'staff.userDetail.kyc.revokeUser',
+    hintKey: 'staff.userDetail.kyc.revokeUserHint',
+    toastKey: 'staff.userDetail.kyc.revokedUserToast',
+    variant: 'danger',
+    send: revokeKYCUser,
+  },
+}
+
 const showKycDecisionModal = ref(false)
-const kycDecisionMode = ref<'approve' | 'reject'>('reject')
+const kycDecisionMode = ref<KycDecisionMode>('reject')
 const kycDecisionReason = ref('')
 const kycActionLoading = ref(false)
+
+const kycDecisionSpec = computed(() => KYC_DECISION_SPECS[kycDecisionMode.value])
+
+// WHOSE CARD OFFERS A PERSON-LEVEL KYC CONTROL AT ALL.
+//
+// NOT "the roles that go through the KYC gate" -- check that against
+// kyc/gate.py and the list is wrong. GATE_EXEMPT_ROLES there is
+// {staff, platform, agent, company}: an agent is exempt from the
+// ROUTE gate and would drop out of this list on that reading.
+//
+// The reason is the MONEY path, which reads kyc_status with no regard
+// for role at all: purchases/service.py and installments/service.py
+// both refuse outright unless kyc_status is approved. So an agent, gate
+// or no gate, cannot buy or take out an installment plan until somebody
+// approves them -- and approving them by hand is the only free way to
+// do it. That is what puts agent in this list, and it is why anybody
+// "fixing" the list against GATE_EXEMPT_ROLES would break the flow.
+//
+// company is absent because it was not established whether a company
+// user can buy at all; companies/service.py does create them carrying
+// kyc_status=not_started. If the answer turns out to be yes, this list
+// grows by one word.
+const KYC_MONEY_ROLES = ['investor', 'agent'] as const
+
+// FP-25 SELF-HIDE, WIDENED (P-65). The section used to appear only for
+// somebody who already had an application row, on the ground that
+// company and staff users never get one and an empty block is noise.
+// That reasoning survives; what did not is the consequence, because
+// the person with no application row is exactly who manual approval
+// exists for -- the old user arriving under a new address. So the
+// section also appears for a KYC_MONEY_ROLES person whose reviewer can
+// act on them. Everyone else sees what they saw before: nothing.
+const showKycSection = computed(() => {
+  const user = detailUser.value
+  if (!user) return false
+  if (user.latest_application_id) return true
+  return canDoKycApprove.value && (KYC_MONEY_ROLES as readonly string[]).includes(user.role)
+})
+
+// WHICH PERSON-LEVEL CONTROL, IF ANY. Exactly one is offered at a time
+// and never beside the application-level pair, because two controls
+// deciding one thing is two places for the rule to live.
+//
+// Order matters. An open application is answered through the queue's
+// own pair, so it wins first -- which also means the state "approved
+// person with a submitted application" needs no branch of its own: it
+// lands here and is decided as the application it is.
+//
+// The final fallthrough sends every OTHER kyc_status, including one
+// this file has never heard of, to manual approval rather than to
+// revocation. Deliberate: approval is reversible here (revocation is
+// the control right above it) and revocation of an unknown state is
+// not. The backend refuses either way if the state does not permit it
+// -- kyc_already_approved / kyc_not_approved -- and serverReason puts
+// that sentence on the screen.
+const kycPersonAction = computed<'approveUser' | 'revokeUser' | null>(() => {
+  const user = detailUser.value
+  if (!user || !canDoKycApprove.value) return null
+  if (user.latest_application_status === 'submitted') return null
+  return user.kyc_status === 'approved' ? 'revokeUser' : 'approveUser'
+})
 
 const totalPages = computed(() => Math.ceil(total.value / perPage))
 
 const kycVariant = (status: string) => {
   if (status === 'approved') return 'success'
   if (status === 'submitted') return 'warning'
-  if (status === 'rejected') return 'danger'
+  // Revoked reads as danger alongside rejected, not as neutral: both
+  // say the person cannot buy. Neutral is for not_started, where
+  // nothing has gone wrong and nobody has done anything yet.
+  if (status === 'rejected' || status === 'revoked') return 'danger'
   return 'neutral'
 }
 
@@ -468,7 +610,7 @@ async function setPermission(key: PermissionKey, value: boolean): Promise<void> 
 // modal reflects the new status and any added history row) and the
 // list (so the chip filter counts agree with reality).
 
-function openKycDecision(mode: 'approve' | 'reject'): void {
+function openKycDecision(mode: KycDecisionMode): void {
   if (!canDoKycApprove.value) {
     console.warn(`[StaffUsersView] kyc ${mode} blocked: no kyc_approve permission`)
     return
@@ -480,38 +622,38 @@ function openKycDecision(mode: 'approve' | 'reject'): void {
 
 async function handleKycDecision(): Promise<void> {
   if (!detailUser.value) return
-  const applicationId = detailUser.value.latest_application_id
-  if (!applicationId) return
   if (!canDoKycApprove.value) {
     console.warn('[StaffUsersView] kyc decision blocked: no kyc_approve permission')
     return
   }
+  const spec = KYC_DECISION_SPECS[kycDecisionMode.value]
+  // WHICH ID THIS DECISION IS ADDRESSED TO. Until P-65 the handler read
+  // latest_application_id unconditionally and returned when it was
+  // null -- which silently disabled the modal for exactly the person
+  // the person-level path exists to serve, the one who never applied.
+  const targetId =
+    spec.level === 'application' ? detailUser.value.latest_application_id : detailUser.value.id
+  // The application-level modes are only reachable from a card whose
+  // latest application is `submitted`, so the id is there. The check is
+  // the type-level floor, not a route somebody takes.
+  if (!targetId) return
   // The confirm button stays disabled while the trimmed input is empty;
   // this check covers whitespace-only entries, which the backend also
   // refuses -- better to stop here than to spend a request on a 422.
   const reason = kycDecisionReason.value.trim()
   if (!reason) return
 
-  const approving = kycDecisionMode.value === 'approve'
   kycActionLoading.value = true
   try {
-    if (approving) {
-      await approveKYC(applicationId, { reason })
-    } else {
-      await rejectKYC(applicationId, { reason })
-    }
-    showToast(
-      t(
-        approving
-          ? 'staff.userDetail.kyc.approvedToast'
-          : 'staff.userDetail.kyc.rejectedToast',
-      ),
-      'success',
-    )
+    await spec.send(targetId, { reason })
+    showToast(t(spec.toastKey), 'success')
     showKycDecisionModal.value = false
     kycDecisionReason.value = ''
     // Refetch detail so the badge and history reflect the new state,
-    // then the list so the chip-filtered counts stay accurate.
+    // then the list so the chip-filtered counts stay accurate. This is
+    // also what moves the card between the person-level controls: a
+    // manual approval creates an application row server-side, so the
+    // refetched card offers Revoke where it offered Approve.
     detailUser.value = await fetchUserDetail(detailUser.value.id)
     await loadUsers()
   } catch (err) {
@@ -657,19 +799,19 @@ onMounted(loadUsers)
           </span>
         </div>
 
-        <!-- KYC Application section (iter 2.7 A5).
-             FP-25 self-hide: only shown when the user has at least one
-             application row (latest_application_id != null). Company /
-             staff role users skip KYC entirely, so they'll never have
-             a row and the section disappears silently.
+        <!-- KYC section (iter 2.7 A5, widened by P-65).
+             Visibility is showKycSection: an application row as before,
+             or a person a reviewer may still act on. See the computed
+             for why the role list is what it is.
 
-             FP-23 double guard on Approve / Reject:
-               1. canDoKycApprove computed wraps both buttons (template
-                  guard);
+             FP-23 double guard on every control:
+               1. canDoKycApprove wraps them (template guard);
                2. handlers re-check + console.warn before firing.
-             Buttons further restricted to status=submitted -- terminal
-             statuses show only history. -->
-        <div v-if="detailUser.latest_application_id" class="detail__section">
+             The application-level pair stays restricted to
+             status=submitted; the person-level control appears only
+             when that pair does not, and picks itself in
+             kycPersonAction. -->
+        <div v-if="showKycSection" class="detail__section">
           <h4 class="detail__subtitle">
             {{ t('staff.userDetail.kyc.sectionTitle') }}
           </h4>
@@ -706,7 +848,7 @@ onMounted(loadUsers)
                owner tied looking and deciding to one permission on
                purpose -- approving without looking is what these
                exist to prevent. -->
-          <div v-if="canDoKycApprove" class="kyc-documents">
+          <div v-if="canDoKycApprove && detailUser.latest_application_id" class="kyc-documents">
             <div class="kyc-documents__title">
               {{ t('staff.userDetail.kyc.documents.title') }}
             </div>
@@ -742,11 +884,9 @@ onMounted(loadUsers)
             </template>
           </div>
 
-          <!-- Approve / Reject CTAs.
-               Visible only when the latest application is still pending
-               (status=submitted) AND the current staff has kyc_approve.
-               Terminal statuses (approved / rejected) leave the section
-               in read-only form. -->
+          <!-- Application-level pair. Visible only while the latest
+               application is still pending (status=submitted) AND the
+               current staff has kyc_approve. -->
           <div
             v-if="detailUser.latest_application_status === 'submitted' && canDoKycApprove"
             class="detail__actions"
@@ -766,6 +906,20 @@ onMounted(loadUsers)
               @click="openKycDecision('reject')"
             >
               {{ t('staff.userDetail.kyc.reject') }}
+            </CButton>
+          </div>
+
+          <!-- Person-level control (P-65). Mutually exclusive with the
+               pair above by construction: kycPersonAction is null while
+               an application is open. -->
+          <div v-else-if="kycPersonAction" class="detail__actions">
+            <CButton
+              :variant="KYC_DECISION_SPECS[kycPersonAction].variant"
+              size="sm"
+              :disabled="kycActionLoading"
+              @click="openKycDecision(kycPersonAction)"
+            >
+              {{ t(KYC_DECISION_SPECS[kycPersonAction].labelKey) }}
             </CButton>
           </div>
         </div>
@@ -880,23 +1034,16 @@ onMounted(loadUsers)
       </div>
     </CModal>
 
-    <!-- KYC reject reason (iter 2.7 A5).
+    <!-- KYC decision reason (iter 2.7 A5, four modes since P-65).
          Reason is REQUIRED per R1 §3 -- the confirm button stays
-         disabled while the trimmed input is empty. -->
+         disabled while the trimmed input is empty. Everything that
+         varies by mode comes from kycDecisionSpec; see the table. -->
     <CModal :open="showKycDecisionModal" @close="showKycDecisionModal = false">
       <h3 class="detail__title">
-        {{
-          kycDecisionMode === 'approve'
-            ? t('staff.userDetail.kyc.approve')
-            : t('staff.userDetail.kyc.reject')
-        }}
+        {{ t(kycDecisionSpec.labelKey) }}
       </h3>
       <p class="detail__confirm-text">
-        {{
-          kycDecisionMode === 'approve'
-            ? t('staff.userDetail.kyc.approveHint')
-            : t('staff.userDetail.kyc.rejectHint')
-        }}
+        {{ t(kycDecisionSpec.hintKey) }}
       </p>
       <CInput
         v-model="kycDecisionReason"
@@ -908,17 +1055,13 @@ onMounted(loadUsers)
           {{ t('common.cancel') }}
         </CButton>
         <CButton
-          :variant="kycDecisionMode === 'approve' ? 'primary' : 'danger'"
+          :variant="kycDecisionSpec.variant"
           size="sm"
           :disabled="!kycDecisionReason.trim() || kycActionLoading"
           :loading="kycActionLoading"
           @click="handleKycDecision"
         >
-          {{
-            kycDecisionMode === 'approve'
-              ? t('staff.userDetail.kyc.approve')
-              : t('staff.userDetail.kyc.reject')
-          }}
+          {{ t(kycDecisionSpec.labelKey) }}
         </CButton>
       </div>
     </CModal>

@@ -299,7 +299,16 @@
       "kyc": {
         "approveHint": "Geben Sie einen Grund an. Er wird im Audit-Log gespeichert.",
         "rejectHint": "Geben Sie einen Grund an. Der Antragsteller sieht ihn bei der nachsten Anmeldung.",
-        "reason": "Grund (erforderlich)"
+        "reason": "Grund (erforderlich)",
+        "approveUser": "Manuell genehmigen",
+        "approveUserHint": "Genehmigt die PERSON, mit oder ohne vorliegenden Antrag. Kostenlos; der Grund wird im Audit-Log gespeichert.",
+        "approvedUserToast": "Person genehmigt",
+        "revokeUser": "Genehmigung widerrufen",
+        "revokeUserHint": "Widerruft eine bereits erteilte Genehmigung. Die Person steht wieder vor der Sperre und kann bis zur erneuten Genehmigung nicht kaufen.",
+        "revokedUserToast": "Genehmigung widerrufen",
+        "filter": {
+          "revoked": "Widerrufen"
+        }
       }
     },
     "withdrawals": {
