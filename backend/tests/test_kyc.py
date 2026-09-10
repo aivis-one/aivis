@@ -250,18 +250,33 @@ async def test_status_carries_fee_and_balance(client: AsyncClient) -> None:
 async def test_staff_approves_queued_application(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Queue -> approve with a reason -> user approved, reason audited."""
+    """Staff finds the submitted investor, then approves with a reason
+    -> user approved, reason audited.
+
+    H17 P-85: the witness step used to be a GET on
+    /staff/kyc/queue -- deleted this pass, no frontend consumer since
+    iter 2.7 A2 (TD-KYC-QUEUE-ENDPOINT). This test was never really
+    about the queue: it is about staff being able to find a submitted
+    application before approving it, so the witness moves to
+    /staff/users?kyc_status=submitted, the address the real Staff
+    Users view has used since that same iteration. The queue endpoint
+    returned application_id directly; the user list does not carry
+    it, so the assertion checks user_id instead -- the same underlying
+    claim ("staff can see this pending session before deciding it"),
+    read off the address that is actually live.
+    """
     staff_user, staff_token = await create_admin_user(client, db_session)
     token, user_id = await _unverified_investor(client)
     await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
     submit = await submit_kyc_application(client, token)
     application_id = submit.json()["id"]
 
-    queue = await client.get(
-        "/api/v1/staff/kyc/queue", headers=auth_headers(staff_token)
+    listing = await client.get(
+        "/api/v1/staff/users?kyc_status=submitted",
+        headers=auth_headers(staff_token),
     )
-    assert queue.status_code == 200
-    assert application_id in [item["id"] for item in queue.json()]
+    assert listing.status_code == 200
+    assert str(user_id) in [item["id"] for item in listing.json()["items"]]
 
     resp = await client.post(
         f"/api/v1/staff/kyc/{application_id}/approve",

@@ -30,7 +30,6 @@ import type {
   CreateStaffRequest,
   UpdatePermissionsRequest,
   StaffProfileResponse,
-  KYCQueueItem,
   KYCDecisionRequest,
   StaffPaymentListResponse,
   ReversePaymentRequest,
@@ -128,14 +127,11 @@ export function updatePermissions(
   return api.patch<StaffProfileResponse>(`/api/v1/staff/users/${staffProfileId}/permissions`, body)
 }
 
-// ---------------------------------------------------------------------------
-// KYC queue (Sprint 3.3)
-// ---------------------------------------------------------------------------
-
-/** GET /api/v1/staff/kyc/queue — pending KYC applications. */
-export function fetchKYCQueue(): Promise<KYCQueueItem[]> {
-  return api.get<KYCQueueItem[]>('/api/v1/staff/kyc/queue')
-}
+// H17 P-85: fetchKYCQueue (GET /api/v1/staff/kyc/queue) removed. It
+// had exactly one reference in this file -- its own declaration --
+// since iter 2.7 A2 moved the real queue view onto fetchUsers'
+// kyc_status filter. See admin_schemas.py's header on the backend for
+// the fuller account.
 
 /** POST /api/v1/staff/kyc/{id}/approve — approve KYC application.
  *

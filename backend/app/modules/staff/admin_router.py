@@ -1,10 +1,9 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Admin Router (Sprint 3.3, G5 fix)
+# AIVIS.ONE Backend -- Admin Router (Sprint 3.3, G5 fix, H17 P-85 queue removal)
 # =============================================================================
 #
 # ENDPOINTS:
 #   GET  /api/v1/staff/dashboard/stats  -- platform statistics (any staff)
-#   GET  /api/v1/staff/kyc/queue        -- pending KYC applications (kyc_approve)
 #   POST /api/v1/staff/kyc/{id}/approve -- approve KYC (kyc_approve, reason required)
 #   POST /api/v1/staff/kyc/{id}/reject  -- reject KYC (kyc_approve, reason required)
 #   POST /api/v1/staff/kyc/users/{id}/approve -- approve a person with no
@@ -17,6 +16,12 @@
 #                                        image (kyc_approve, audited)
 #   GET  /api/v1/staff/kyc/verification-mode -- the platform switch (kyc_approve)
 #   PUT  /api/v1/staff/kyc/verification-mode -- change it (kyc_approve)
+#
+# H17 P-85: GET /api/v1/staff/kyc/queue is REMOVED (was here, listed
+# above this note in every revision before this one). No frontend
+# caller since iter 2.7 A2; see admin_schemas.py's header for the full
+# account. The staff queue view is GET /staff/users?kyc_status=
+# submitted, in staff/router.py, unaffected by this pass.
 #
 # AUTH:
 #   Dashboard: any staff (get_current_staff).
@@ -67,13 +72,11 @@ from app.modules.kyc.service import (
 from app.modules.staff.admin_schemas import (
     DashboardStatsResponse,
     KYCDecisionRequest,
-    KYCQueueItem,
 )
 from app.modules.staff.admin_service import (
     dashboard_stats,
     kyc_decide_application,
     kyc_decide_user,
-    kyc_queue,
 )
 from app.modules.users.models import KYCStatus, User
 
@@ -105,23 +108,6 @@ async def get_dashboard_stats(
 ) -> DashboardStatsResponse:
     """Platform-wide statistics. Any staff can view."""
     return await dashboard_stats(session)
-
-
-# ---------------------------------------------------------------------------
-# KYC queue
-# ---------------------------------------------------------------------------
-
-
-@kyc_admin_router.get(
-    "/queue",
-    response_model=list[KYCQueueItem],
-)
-async def get_kyc_queue(
-    staff: User = Depends(require_staff_permission("kyc_approve")),
-    session: AsyncSession = Depends(get_db_reader),
-) -> list[KYCQueueItem]:
-    """List pending KYC applications. Requires kyc_approve permission."""
-    return await kyc_queue(session)
 
 
 @kyc_admin_router.post(

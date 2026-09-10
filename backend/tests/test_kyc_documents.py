@@ -35,6 +35,9 @@
 #    18: over the size cap
 #    19: a passport carrying a back image
 #    20: an id_card missing its back image
+#    20b (H17 P-58): a storage outage mid-submit still surfaces as a
+#        failure instead of silently completing a paid, documentless
+#        session
 #
 #   Vocabulary (P-46f)
 #    21: both CHECK constraints admit exactly KYCStatus's members
@@ -66,7 +69,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.config import settings
-from app.core.storage import delete_object, list_objects
+from app.core.storage import StorageError, delete_object, list_objects
 from app.modules.kyc.constants import (
     KYC_MAX_DOCUMENT_BYTES,
     KYC_VERIFICATION_FEE_CENTS,
@@ -75,6 +78,7 @@ from app.modules.kyc.constants import (
 from app.modules.kyc.models import KYCApplication, KYCDocument, KYCSettings
 from app.modules.ledgers.service import get_active_balance
 from app.modules.staff.models import StaffProfile
+from app.modules.transactions.models import Transaction
 from app.modules.users.models import KYCStatus
 from tests.helpers import (
     KYC_FIXTURE_BYTES,
@@ -89,6 +93,11 @@ from tests.helpers import (
 )
 
 TEST_BUCKET = "aivis-attachments-test"
+
+# Same value test_storage.py uses for the same purpose (a bucket
+# guaranteed not to exist); each file defines its own copy rather than
+# importing across test modules, matching this tree's convention.
+MISSING_BUCKET = "definitely-does-not-exist-xyz"
 
 
 @pytest.fixture(autouse=True)
@@ -750,6 +759,69 @@ async def test_id_card_without_a_back_image_is_refused(
     assert resp.status_code == 400, resp.text
     assert resp.json()["error"] == "kyc_documents_incomplete"
     await _assert_nothing_charged(db_session, user_id)
+
+
+@pytest.mark.asyncio
+async def test_a_storage_outage_mid_submit_is_not_swallowed(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """H17 P-58: a failed upload must still reach the caller as a failure.
+
+    Before this pass, submit_kyc's upload loop awaited each
+    upload_object() call directly, one at a time, so a StorageError
+    came straight out of that bare `await` with nothing in between to
+    catch it. The parallel version instead runs every upload through
+    asyncio.gather(..., return_exceptions=True) -- which, unlike a bare
+    gather(), does NOT raise when a task fails. It hands the exception
+    back as a value sitting in the results list. Forgetting the
+    `if _failures: ... raise first_exc` step that has to follow that
+    call is exactly the mistake return_exceptions=True invites: the
+    function would fall through the failure entirely, add a
+    KYCDocument row for an object that was never written, debit the
+    fee, and mark the person SUBMITTED -- a paid, "complete" session
+    pointing at nothing in storage. Nothing in this suite exercised
+    that path before this test: the word StorageError does not appear
+    anywhere in test_kyc.py or in this file before this pass.
+
+    THE ASSERTION IS `pytest.raises`, NOT A STATUS CODE, and that is a
+    property of this test harness, not a stylistic choice. No handler
+    is registered for StorageError (app/main.py only registers one for
+    AivisError and its subclasses), so it reaches Starlette's
+    ServerErrorMiddleware unhandled. That middleware sends a bare 500
+    and then re-raises -- "to allow test clients to optionally raise
+    the error within the test case", in its own source's words -- and
+    the `client` fixture here builds ASGITransport with the default
+    `raise_app_exceptions=True`, left unmodified, so the re-raise
+    reaches this test directly instead of arriving as a Response
+    object carrying a 500. A future change that starts converting
+    StorageError into a handled error response would not break this
+    test for the wrong reason: it would still have to raise something
+    on the failing path for `pytest.raises` to see, which is the one
+    property this test is checking.
+
+    No new mocking convention needed: upload_object reads
+    settings.minio_bucket on every call rather than taking a bucket as
+    an argument, so the same real-bucket-swap technique
+    test_storage.py already uses for this exact failure reaches this
+    code path unmodified.
+    """
+    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+
+    token, user_id = await _funded_investor(client)
+
+    with pytest.raises(StorageError):
+        await submit_kyc_application(client, token)
+
+    await _assert_nothing_charged(db_session, user_id)
+
+    transactions = (
+        await db_session.execute(
+            select(Transaction).where(Transaction.user_id == user_id)
+        )
+    ).scalars().all()
+    assert transactions == []
 
 
 # ---------------------------------------------------------------------------

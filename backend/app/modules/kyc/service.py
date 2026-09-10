@@ -71,6 +71,7 @@
 #   Service never commits. Caller (get_db_session) manages the transaction.
 # =============================================================================
 
+import asyncio
 from dataclasses import dataclass
 from typing import BinaryIO
 from uuid import UUID, uuid4
@@ -91,7 +92,6 @@ from app.core.exceptions import (
     NotFoundError,
 )
 from app.core.storage import (
-    StorageError,
     generate_presigned_url,
     object_exists,
     upload_object,
@@ -674,6 +674,26 @@ async def submit_kyc(
     transaction that then fails to commit is unreferenced, invisible to
     every read path, and costs storage; that is the cheaper of the two.
 
+    THE THREE UPLOADS RUN CONCURRENTLY, NOT ONE AFTER ANOTHER (H17
+    P-58). The advisory lock above is keyed on this user and is also
+    what purchases and instalment tranches take, so a slow upload used
+    to hold every other money operation of this person's for as long
+    as the slowest CHAIN of sequential PUTs took, not the slowest
+    single one. Storage keys are computed for every document before
+    any upload starts (`_planned_uploads` below), so a mid-flight
+    failure never leaves a later key uncomputed. The gather is called
+    with `return_exceptions=True` on purpose: every upload is awaited
+    to completion regardless of outcome, so the `already_written` list
+    a failure logs is read off the actual set of successes rather than
+    guessed from how far a loop got. Two documents can now fail at
+    once in a way they never could sequentially -- a total storage
+    outage used to fail on the first document only, because the old
+    loop never reached the second -- and when that happens the
+    exception raised is always the one belonging to the first document
+    in `documents`, for the same reason the checks above run in a
+    fixed order: a predictable failure is easier for a caller to
+    reason about than a fast one.
+
     THE MODE IS RECORDED, NOT ACTED ON. `verification_mode` is written
     to the row and nothing branches on it: the provider integration is
     the next pass, so a manual decision is the only decision there is.
@@ -767,40 +787,78 @@ async def submit_kyc(
     await session.flush()
     await session.refresh(application)
 
-    stored_keys: list[str] = []
+    # H17 P-58. Keys are computed for every document up front, before
+    # any upload starts -- see the docstring paragraph above. Nothing
+    # here reads or writes the session, so running the uploads
+    # concurrently touches no shared state: each upload_object() call
+    # opens its own short-lived client (core/storage.py), and each
+    # pending.stream is a distinct file-like object.
+    _planned_uploads: list[tuple[PendingDocument, UUID, str]] = []
     for pending in documents:
         document_id = uuid4()
         storage_key = build_document_storage_key(
-            application.id,
-            document_id,
-            pending.content_type,
+            application.id, document_id, pending.content_type
         )
+        _planned_uploads.append((pending, document_id, storage_key))
 
-        try:
-            await upload_object(
+    # return_exceptions=True, not the bare default. With the default,
+    # gather raises as soon as the first task fails and the still-running
+    # tasks are abandoned rather than cancelled -- their outcome is then
+    # unknown, which is exactly the information already_written below
+    # needs. Waiting for every result first makes the log line true.
+    _upload_results = await asyncio.gather(
+        *(
+            upload_object(
                 storage_key,
                 pending.stream,
                 pending.content_type,
                 content_length=pending.size_bytes,
             )
-        except StorageError:
-            # Let it out. The transaction has not committed, so the
-            # application row, the ledger entry and the transaction row
-            # all disappear with it and the person keeps their money.
-            # Objects already written for this attempt stay behind
-            # unreferenced -- named here rather than swept, because a
-            # sweep would be a second failure path to get right for an
-            # object nothing can reach.
-            logger.error(
-                "kyc_document_upload_failed",
-                application_id=str(application.id),
-                kind=pending.kind,
-                storage_key=storage_key,
-                already_written=stored_keys,
-            )
-            raise
+            for pending, _document_id, storage_key in _planned_uploads
+        ),
+        return_exceptions=True,
+    )
 
-        stored_keys.append(storage_key)
+    _failures = [
+        (pending, storage_key, result)
+        for (pending, _document_id, storage_key), result in zip(
+            _planned_uploads, _upload_results, strict=True
+        )
+        if isinstance(result, BaseException)
+    ]
+
+    if _failures:
+        # Let the first one out, by input order, not by whichever
+        # finished failing first -- see the docstring paragraph above
+        # for why a fixed order is chosen over completion order.
+        # The transaction has not committed, so the application row,
+        # the ledger entry and the transaction row all disappear with
+        # it and the person keeps their money. Objects already written
+        # for this attempt stay behind unreferenced -- named here
+        # rather than swept, because a sweep would be a second failure
+        # path to get right for an object nothing can reach.
+        first_pending, first_key, first_exc = _failures[0]
+        already_written = [
+            storage_key
+            for (_pending, _document_id, storage_key), result in zip(
+                _planned_uploads, _upload_results, strict=True
+            )
+            if not isinstance(result, BaseException)
+        ]
+        logger.error(
+            "kyc_document_upload_failed",
+            application_id=str(application.id),
+            kind=first_pending.kind,
+            storage_key=first_key,
+            already_written=already_written,
+            also_failed=[
+                {"kind": pending.kind, "storage_key": storage_key}
+                for pending, storage_key, _exc in _failures[1:]
+            ],
+        )
+        raise first_exc
+
+    for pending, document_id, storage_key in _planned_uploads:
         session.add(
             KYCDocument(
                 id=document_id,

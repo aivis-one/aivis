@@ -235,11 +235,12 @@ export type { CreateStaffRequest } from './generated'
 export type { UpdatePermissionsRequest } from './generated'
 
 // ---------------------------------------------------------------------------
-// Staff: KYC queue (Sprint 3.3)
+// H17 P-85: KYCQueueItem re-export removed. GET /staff/kyc/queue and its
+// schema are deleted on the backend (admin_schemas.py); generated.ts
+// still carries the interface until the next bot-driven regeneration
+// picks up that removal, but nothing in this tree imports it from
+// here any more.
 // ---------------------------------------------------------------------------
-
-export type { KYCQueueItem } from './generated'
-
 // H10: one body for every staff KYC decision. Approve carried no
 // body at all before, and reject's reason was optional -- an
 // approval, the decision that opens the whole product to an

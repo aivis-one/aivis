@@ -1,5 +1,6 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Staff Admin Tests (Sprint 3.3, iter 2.6c B1)
+# AIVIS.ONE Backend -- Staff Admin Tests (Sprint 3.3, iter 2.6c B1,
+#                                        H17 P-85 queue removal)
 # =============================================================================
 #
 # Tests cover:
@@ -13,13 +14,22 @@
 #   8:  Dashboard stats -> 200, correct counts
 #   8b: Dashboard stats frozen_payments_count -> moves by +1 when a FROZEN
 #       payment is seeded (shared-DB safe: delta, not absolute count)
-#   9:  KYC queue -> 200, pending applications with user info
-#   10: KYC approve -> 204, status updated
-#   11: KYC reject -> 204, status updated
-#   12: KYC approve non-existent -> 404
-#   13: (B1) ?kyc_status= positive-and-negative pair across 4 enum values
-#   14: (B1) ?role=investor combined with ?kyc_status=approved
-#   15: (B1) ?kyc_status=garbage -> 422 from the FastAPI enum bind
+#   9:  KYC approve -> 204, status updated
+#   10: KYC reject -> 204, status updated
+#   11: KYC approve non-existent -> 404
+#   12: (B1) ?kyc_status= positive-and-negative pair across 4 enum values
+#   13: (B1) ?role=investor combined with ?kyc_status=approved
+#   14: (B1) ?kyc_status=garbage -> 422 from the FastAPI enum bind
+#
+# H17 P-85: item 9 used to be "KYC queue -> 200, pending applications
+# with user info" (test_kyc_queue), removed along with kyc_queue()
+# itself -- /staff/kyc/queue had no frontend consumer since iter 2.7
+# A2. Its "a submitted investor is visible to staff" claim is covered
+# by item 12 (?kyc_status=submitted is one of that test's parametrised
+# cases); its `item["email"] == ...` assertion was not replicated
+# anywhere else in this file and is not replicated here either -- see
+# the H17 report's "Ставки, которые не сошлись" for that gap named
+# plainly instead of silently dropped.
 #
 # Email prefix: "s33_" -- unique to this test file, cleaned up in fixture.
 #
@@ -452,59 +462,13 @@ async def test_dashboard_stats_frozen_payments_count(
 
 
 # ---------------------------------------------------------------------------
-# KYC queue + approve/reject
+# KYC approve/reject
+#
+# H17 P-85: test_kyc_queue removed from this section along with
+# kyc_queue() itself and GET /staff/kyc/queue -- see the file header
+# note above for what its coverage was and what covers the surviving
+# part of it now.
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_kyc_queue(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
-    """KYC queue -> 200, and the application this test submitted is in it.
-
-    IT USED TO PASS ON SOMEBODY ELSE'S ROWS. The investor was built with
-    the default register_user(), which writes kyc_status=APPROVED
-    straight onto the row, and was never funded. So the submission was
-    refused -- on the balance before H13, on the status after it -- and
-    the response was not asserted either way. What kept the test green
-    was `len(body) >= 1` over applications left behind by other tests in
-    the same run: isolation here is per-RUN, not per-test
-    (tests/conftest.py). Run on its own, it failed.
-
-    WHAT THE OLD ASSERTIONS WERE RIGHT ABOUT, and what is kept: the
-    queue answers 200 with a list, and its items carry `email` and
-    `user_id` beside the status. Those were true and are still asserted.
-
-    WHAT IS REPLACED. `body[-1] # Last submitted` read the queue's
-    ordering, which this test never set -- the same defect P-76 closed
-    in the services, one layer up. The row is now found by the user_id
-    it was submitted for, so the assertion holds whatever order the
-    queue returns and whatever else the run left in it.
-    """
-    admin_token = await _admin_token(client, db_session)
-
-    # Build the state the queue is supposed to show: an unverified
-    # investor who paid for a session and submitted it.
-    inv_data = await register_user(client, verified=False)
-    inv_token = inv_data["session_token"]
-    inv_user_id = inv_data["user"]["id"]
-    await fund_user(inv_user_id, KYC_VERIFICATION_FEE_CENTS)
-    submit_resp = await submit_kyc_application(client, inv_token)
-    assert submit_resp.status_code == 201, submit_resp.text
-
-    resp = await client.get(
-        "/api/v1/staff/kyc/queue",
-        headers=auth_headers(admin_token),
-    )
-    assert resp.status_code == 200
-    body = resp.json()
-    assert isinstance(body, list)
-
-    mine = [item for item in body if item["user_id"] == inv_user_id]
-    assert len(mine) == 1, body
-    item = mine[0]
-    assert item["status"] == "submitted"
-    assert item["email"] == inv_data["email"]
 
 
 @pytest.mark.asyncio

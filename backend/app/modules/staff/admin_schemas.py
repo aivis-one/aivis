@@ -1,6 +1,7 @@
 # =============================================================================
 # AIVIS.ONE Backend -- Admin Schemas (Sprint 3.3, G5 fix,
-#                                    iter 2.7 A5 KYC-in-detail extension)
+#                                    iter 2.7 A5 KYC-in-detail extension,
+#                                    H17 P-85 queue removal)
 # =============================================================================
 #
 # SCHEMAS:
@@ -8,7 +9,6 @@
 #   UserListResponse        -- paginated list wrapper
 #   UserDetailResponse      -- full user detail for staff view
 #   DashboardStatsResponse  -- platform-wide statistics
-#   KYCQueueItem            -- pending KYC application with user info
 #   KYCApplicationSummary   -- compact KYCApplication for the detail history
 #                              (iter 2.7 A5).
 #   BlockRequest            -- PATCH /staff/users/{id}/block
@@ -33,10 +33,20 @@
 #                                   newest applications (NEWEST FIRST),
 #                                   enough to render a re-submit timeline.
 #
-#   The endpoint /staff/kyc/queue stays for the legacy global queue
-#   view (none of the frontend reads it any more after iter 2.7 A2,
-#   but kept as a stable API surface for completeness; the cost is
-#   one SELECT and the rows are bounded).
+# H17 P-85 REMOVES KYCQueueItem, GET /staff/kyc/queue AND kyc_queue().
+#   The paragraph this replaces called the endpoint "a stable API
+#   surface kept for completeness" with "the rows are bounded" -- true
+#   only while the table stayed empty, and an un-paginated SELECT *
+#   waiting to stop being true. Confirmed before removal: nothing in
+#   the frontend has called it since iter 2.7 A2 (fetchKYCQueue's only
+#   reference in frontend/src was its own declaration), and the actual
+#   queue staff use is /staff/users?kyc_status=submitted -- already
+#   paginated, already the address StaffDashboardView's "KYC queue"
+#   stat card links to (see the comment on goKyc() there). Keeping an
+#   un-paginated SELECT around for a caller that does not exist was
+#   the tracked debt TD-KYC-QUEUE-ENDPOINT
+#   (AIVIS-Refactor-Investor-Market-And-Staff.md); this pass closes it
+#   by deleting the dead surface rather than paginating it.
 # =============================================================================
 
 from datetime import datetime
@@ -94,10 +104,11 @@ class KYCApplicationSummary(BaseModel):
     (timeline ordering / submission date), updated_at (when the
     status changed for terminal statuses).
 
-    Distinct from KYCQueueItem -- that one carries denormalized
-    user info for the global queue, this one is already nested
-    inside a per-user response so user_id / email / name would
-    duplicate the parent.
+    Carries no user_id / email / name of its own: this row is always
+    nested inside a per-user response (UserDetailResponse's
+    kyc_applications_history), so repeating the parent's identity
+    fields here would duplicate them for a reader who already has
+    them from the object this list sits inside.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -161,25 +172,6 @@ class DashboardStatsResponse(BaseModel):
     pending_kyc_count: int
     active_avatar_sessions: int
     frozen_payments_count: int
-
-
-# ---------------------------------------------------------------------------
-# KYC queue
-# ---------------------------------------------------------------------------
-
-
-class KYCQueueItem(BaseModel):
-    """Pending KYC application with basic user info."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    user_id: UUID
-    status: str
-    created_at: datetime
-    email: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
 
 
 class KYCDecisionRequest(BaseModel):

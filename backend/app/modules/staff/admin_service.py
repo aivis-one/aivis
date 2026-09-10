@@ -1,6 +1,7 @@
 # =============================================================================
 # AIVIS.ONE Backend -- Admin Service (Sprint 3.3, G5 fix, iter 2.6c B1,
-#                                    iter 2.7 A5 KYC-in-detail extension)
+#                                    iter 2.7 A5 KYC-in-detail extension,
+#                                    H17 P-85 queue removal)
 # =============================================================================
 #
 # RESPONSIBILITIES:
@@ -9,10 +10,16 @@
 #   block_user()          -- deactivate user + kill all sessions
 #   unblock_user()        -- reactivate a previously blocked user
 #   dashboard_stats()     -- platform-wide statistics
-#   kyc_queue()           -- pending KYC applications with user info
 #   kyc_decide_application() -- staff decision on a queued application
 #   kyc_decide_user()        -- staff decision on a person, with or
 #                               without an application row
+#
+# H17 P-85: kyc_queue() is REMOVED, not paginated. It answered
+# GET /staff/kyc/queue, which nothing in the frontend has called since
+# iter 2.7 A2 -- the real queue view is list_users(kyc_status=
+# 'submitted'), already paginated. See admin_schemas.py's header for
+# the fuller account of why deleting rather than fixing was the right
+# call here.
 #
 # PLATFORM EXCLUSION:
 #   Platform user (role=platform) is excluded from all user lists and
@@ -70,7 +77,6 @@ from app.modules.staff.admin_schemas import (
     KYC_HISTORY_LIMIT,
     DashboardStatsResponse,
     KYCApplicationSummary,
-    KYCQueueItem,
     UserDetailResponse,
     UserListItem,
     UserListResponse,
@@ -503,42 +509,6 @@ async def dashboard_stats(
         active_avatar_sessions=active_avatars,
         frozen_payments_count=frozen_payments,
     )
-
-
-# ---------------------------------------------------------------------------
-# KYC queue
-# ---------------------------------------------------------------------------
-
-
-async def kyc_queue(
-    session: AsyncSession,
-) -> list[KYCQueueItem]:
-    """List pending KYC applications with basic user info."""
-    stmt = (
-        select(KYCApplication, User)
-        .join(User, KYCApplication.user_id == User.id)
-        .where(KYCApplication.status == KYCStatus.SUBMITTED)
-        .order_by(KYCApplication.created_at.asc())
-    )
-    result = await session.execute(stmt)
-    rows = result.all()
-
-    items = []
-    for application, user in rows:
-        email = _extract_user_email(user)
-        first_name, last_name = _extract_user_name(user)
-
-        items.append(KYCQueueItem(
-            id=application.id,
-            user_id=application.user_id,
-            status=application.status,
-            created_at=application.created_at,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-        ))
-
-    return items
 
 
 async def kyc_decide_application(

@@ -229,13 +229,26 @@ async def test_pending_refusal_is_a_different_code(client: AsyncClient) -> None:
 async def test_staff_passes_without_any_approval_record(
     client: AsyncClient, db_session
 ) -> None:
-    """P-41: staff work by rule, not by a decision somebody recorded."""
+    """P-41: staff work by rule, not by a decision somebody recorded.
+
+    H17 P-85: this used to hit /staff/kyc/queue, which is deleted this
+    pass (no frontend consumer since iter 2.7 A2). The route named
+    here was never the point -- any staff-only, kyc_status-independent
+    route works, since the claim under test is that the ROLE clears
+    the gate, not that this particular permission does. Swapped for
+    /staff/users, which if anything states that more precisely: it
+    requires no permission beyond being staff at all (see
+    staff/router.py's user_list -- Depends(get_current_staff), no
+    require_staff_permission), so passing it is about the role alone
+    and not about which permissions this staff profile happens to
+    carry.
+    """
     from app.modules.kyc.models import KYCApplication
 
     staff_user, staff_token = await create_admin_user(client, db_session)
 
     resp = await client.get(
-        "/api/v1/staff/kyc/queue", headers=auth_headers(staff_token)
+        "/api/v1/staff/users", headers=auth_headers(staff_token)
     )
     assert resp.status_code == 200
 
