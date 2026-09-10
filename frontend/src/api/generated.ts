@@ -719,7 +719,7 @@ export interface InvoiceResponse {
   underpaid?: boolean | null
 }
 
-/** Compact KYCApplication row for the user detail history. Mirrors the columns the staff detail modal actually renders: id (for action endpoints), status (badge color), created_at (timeline ordering / submission date), updated_at (when the status changed for terminal statuses). Distinct from KYCQueueItem -- that one carries denormalized user info for the global queue, this one is already nested inside a per-user response so user_id / email / name would duplicate the parent. */
+/** Compact KYCApplication row for the user detail history. Mirrors the columns the staff detail modal actually renders: id (for action endpoints), status (badge color), created_at (timeline ordering / submission date), updated_at (when the status changed for terminal statuses). Carries no user_id / email / name of its own: this row is always nested inside a per-user response (UserDetailResponse's kyc_applications_history), so repeating the parent's identity fields here would duplicate them for a reader who already has them from the object this list sits inside. */
 export interface KYCApplicationSummary {
   id: string
   status: string
@@ -745,17 +745,6 @@ export interface KYCDocumentResponse {
 export interface KYCDocumentURLResponse {
   url: string
   ttl_seconds: number
-}
-
-/** Pending KYC application with basic user info. */
-export interface KYCQueueItem {
-  id: string
-  user_id: string
-  status: string
-  created_at: string
-  email?: string | null
-  first_name?: string | null
-  last_name?: string | null
 }
 
 /** Current KYC status for the authenticated user. Carries the money as well as the status. This endpoint is in front of the gate and dashboard/summary -- the usual source of a balance -- is behind it, so without these two fields the screen that asks for ten dollars could not say how much the account actually holds. */
