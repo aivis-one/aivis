@@ -209,6 +209,10 @@ from app.modules.purchases.agreement_router import (
     agreement_router,
     ownership_router,
 )
+
+# H18 P-74: background sweep, not an inline call in engine.write_transactions --
+# see purchases/agreement_worker.py's own header for why.
+from app.modules.purchases.agreement_worker import run_agreement_snapshot_batch
 from app.modules.purchases.router import router as purchases_router
 from app.modules.purchases.staff_router import router as staff_purchases_router
 from app.modules.referrals.public_router import router as referrals_public_router
@@ -342,6 +346,40 @@ async def _leaderboard_worker() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Agreement snapshot sweep (H18 P-74)
+# ---------------------------------------------------------------------------
+
+
+async def _agreement_snapshot_worker() -> None:
+    """Background task: fill Purchase.agreement_html for purchases missing one.
+
+    Deliberately NOT inline in the purchase-creation path -- see
+    purchases/agreement_worker.py's header for why rendering there
+    would hold a money-critical per-user lock for as long as MinIO
+    took. Runs every agreement_snapshot_worker_interval_minutes;
+    interval is minutes because the requirement is bounding the window
+    during which an unsent snapshot could still be shaped by an
+    operator's template edit, not raw throughput.
+    """
+    logger.info("agreement_snapshot_worker_started")
+
+    while True:
+        try:
+            await run_agreement_snapshot_batch()
+            await asyncio.sleep(
+                settings.agreement_snapshot_worker_interval_minutes * 60
+            )
+        except asyncio.CancelledError:
+            logger.info("agreement_snapshot_worker_stopped")
+            break
+        except Exception:
+            logger.exception("agreement_snapshot_worker_error")
+            await asyncio.sleep(
+                settings.agreement_snapshot_worker_interval_minutes * 60
+            )
+
+
+# ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
 
@@ -385,6 +423,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _leaderboard_worker(),
         name="leaderboard_worker",
     )
+    agreement_snapshot_task = asyncio.create_task(
+        _agreement_snapshot_worker(),
+        name="agreement_snapshot_worker",
+    )
 
     logger.info(
         "app_started",
@@ -407,12 +449,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     confirmation_task.cancel()
     installment_task.cancel()
     leaderboard_task.cancel()
+    agreement_snapshot_task.cancel()
     with suppress(asyncio.CancelledError):
         await confirmation_task
     with suppress(asyncio.CancelledError):
         await installment_task
     with suppress(asyncio.CancelledError):
         await leaderboard_task
+    with suppress(asyncio.CancelledError):
+        await agreement_snapshot_task
 
     await close_redis()
     await dispose_engine()

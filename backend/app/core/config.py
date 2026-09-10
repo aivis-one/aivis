@@ -169,6 +169,27 @@ class Settings(BaseSettings):
     leaderboard_top_quarterly: int = 10
     leaderboard_worker_interval_minutes: int = 60
 
+    # -- Agreement snapshot worker (H18 P-74) --
+    # Fills Purchase.agreement_html in the background, never inline at
+    # purchase time (purchases/agreement_worker.py's own header explains
+    # why: the render touches MinIO + Jinja2, and the purchase path holds
+    # a per-user pg_advisory_xact_lock it must not hold that long).
+    # Minutes, not seconds: the real requirement is bounding the window
+    # between a purchase and its snapshot, during which an operator's
+    # template edit could still be what a freshly-bought agreement
+    # renders against -- not raw throughput.
+    agreement_snapshot_worker_interval_minutes: int = 5
+    # Rows claimed per pass (the FOR UPDATE SKIP LOCKED batch) -- same
+    # default as comms_relay_batch_size, no reason to differ.
+    agreement_snapshot_worker_batch_size: int = 100
+    # Poison-row ceiling (P-27 class, named in the payments sweeper): a
+    # Purchase whose template can never render would otherwise occupy a
+    # batch slot forever. No backoff timer here, unlike the comms
+    # outbox's -- this is a best-effort cache with an always-correct
+    # live-render fallback, so the worker's own multi-minute interval
+    # already throttles retries enough.
+    agreement_snapshot_max_attempts: int = 5
+
     # -- Events (iter 2.7b) --
     # Ceiling for GET /api/v1/events/upcoming?limit=N. The dashboard
     # widget asks for 3; this bounds an over-large client request so the

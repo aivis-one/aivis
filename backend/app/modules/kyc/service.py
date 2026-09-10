@@ -1152,6 +1152,11 @@ async def decide_by_user(
     application history never disagree, including for an imported
     account approved before this table had a row for them.
 
+    SERIALISED PER PERSON (H18 P-60b). Two concurrent calls for the
+    same user_id used to both pass the not-already-decided checks below
+    and both write a row -- see the advisory lock taken right after
+    input validation, on the same key submit_kyc uses.
+
     Raises:
         BadRequestError: status is not APPROVED or REVOKED, or reason is blank.
         NotFoundError: no such user.
@@ -1167,6 +1172,22 @@ async def decide_by_user(
             f"{KYCStatus.REVOKED}"
         )
     reason = _clean_reason(reason)
+
+    # H18 P-60b. Same key submit_kyc takes, so a submit and a manual
+    # decision on the same person serialise instead of passing through
+    # each other. Without this, two concurrent calls here (e.g. a
+    # double-click, or a decision racing a submit) could both read
+    # user.kyc_status before either commits and both pass the
+    # not-already-decided checks below, producing two APPROVED rows
+    # instead of one (H13 report). No new branch is needed to handle the
+    # loser: every read below runs AFTER the lock, in this request's own
+    # session, so the loser's SELECT sees whatever the winner already
+    # committed and lands in one of the existing ConflictErrors on its
+    # own -- a real refusal, not an integrity error.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": user_id.int & 0x7FFFFFFFFFFFFFFF},
+    )
 
     stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)

@@ -1,12 +1,33 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Purchase Agreement Service (Refactor 2 iter 2.4, R2 §5.4)
+# AIVIS.ONE Backend -- Purchase Agreement Service (Refactor 2 iter 2.4,
+#                                                    R2 §5.4, H18 P-74)
 # =============================================================================
 #
 # RESPONSIBILITIES:
 #   load_agreement_data() -- load + verify purchase + related entities
-#   render_agreement_html() -- Jinja2 render from MinIO-stored template
+#     (HTTP path: agreement_router.py, enforces ownership + ACTIVE)
+#   build_agreement_data_for_snapshot() -- same load, no ownership/status
+#     filter (background sweep path: purchases/agreement_worker.py)
+#   render_agreement_html() -- returns Purchase.agreement_html verbatim
+#     when set (H18 P-74 snapshot), else a fresh Jinja2 render from the
+#     MinIO-stored template
 #   generate_agreement_pdf() -- HTML -> PDF via xhtml2pdf
 #   send_agreement_email()  -- email the PDF via core/email
+#
+# H18 P-74 -- WHY A SNAPSHOT, AND WHY NOT IN THIS FILE'S OWN WRITE PATH:
+#   purchase_agreement_template_id alone was not enough (the row behind
+#   it is mutable and deletable -- see purchases/models.py's module
+#   docstring for the full account). The fix freezes the actual
+#   rendered OUTPUT onto Purchase.agreement_html. That write is NOT
+#   done here and NOT done inline at purchase creation: engine.
+#   write_transactions() runs under the same per-user
+#   pg_advisory_xact_lock submit_kyc takes, and this file's render
+#   touches MinIO + Jinja2 -- exactly the slow-thing-under-a-money-lock
+#   shape H17 P-58 removed from KYC uploads. The write instead happens
+#   in purchases/agreement_worker.py, on its own schedule, with no
+#   lock held at all. This file stays read-only (COMMIT RULE below is
+#   still true after this pass) and simply reads whatever that worker
+#   has, or hasn't, written yet.
 #
 # REPLACES (Sprint 9.2):
 #   purchases/certificate_service.py was a hardcoded global HTML
@@ -38,7 +59,8 @@
 #   never fires -- platform defaults are seeded for every
 #   (kind, language) pair. A NULL means the seed or MinIO was broken
 #   at purchase time, and Staff already has a `purchase.template_missing`
-#   audit row to act on.
+#   audit row to act on. Unaffected by H18 P-74: this only fires on
+#   the live-render fallback, reached when agreement_html is NULL.
 #
 # ACCESS:
 #   The agreement is available to the purchase owner only.
@@ -175,6 +197,63 @@ async def load_agreement_data(
     )
 
 
+async def build_agreement_data_for_snapshot(
+    purchase: Purchase,
+    session: AsyncSession,
+) -> AgreementData | None:
+    """Load what render_agreement_html needs for an ALREADY-KNOWN Purchase row.
+
+    For purchases/agreement_worker.py only -- not the HTTP path. The
+    caller there already has the Purchase (from its own SELECT ...
+    WHERE agreement_html IS NULL), trusts it completely (this is not a
+    request on behalf of an outside party to verify ownership of), and
+    only needs the rest of the JOIN load_agreement_data does for the
+    router. No investor_id / ACTIVE filter here on purpose -- unlike a
+    person opening their own agreement, the sweep processes any status
+    and any owner; a reversed Purchase is still a real document someone
+    signed, and freezing it is exactly as valid as for an active one.
+
+    Returns:
+        AgreementData, or None if the template row is gone (SET NULL
+        fired between the sweep's SELECT and this call, or the id was
+        never valid) -- the caller must treat that as nothing to render
+        THIS PASS, not as this row's failure to charge an attempt for.
+    """
+    stmt = (
+        select(User, CompanyProfile, Product, CompanyDocumentTemplate)
+        .select_from(Purchase)
+        .join(User, Purchase.investor_id == User.id)
+        .join(CompanyProfile, Purchase.company_id == CompanyProfile.id)
+        .join(Product, Purchase.product_id == Product.id)
+        .outerjoin(
+            CompanyDocumentTemplate,
+            Purchase.purchase_agreement_template_id == CompanyDocumentTemplate.id,
+        )
+        .where(Purchase.id == purchase.id)
+    )
+
+    result = await session.execute(stmt)
+    row = result.one_or_none()
+    if row is None:
+        # The Purchase itself vanished between selection and now --
+        # cannot happen today (Purchase rows are never deleted), kept
+        # as a defensive None rather than an unchecked unpack.
+        return None
+
+    investor, company, product, template = row
+    if template is None:
+        return None
+
+    return AgreementData(
+        purchase=purchase,
+        investor_name=extract_investor_name(investor),
+        investor_email=extract_investor_email(investor),
+        company=company,
+        product=product,
+        template=template,
+    )
+
+
 def _short_id(purchase_id: UUID) -> str:
     """Short certificate number derived from a Purchase UUID.
 
@@ -188,7 +267,22 @@ async def render_agreement_html(
     data: AgreementData,
     session: AsyncSession,
 ) -> str:
-    """Render the per-Purchase agreement HTML.
+    """Return this Purchase's agreement HTML -- snapshot if one exists,
+    a fresh render otherwise.
+
+    H18 P-74: data.purchase.agreement_html, when truthy, is returned
+    as-is -- no MinIO, no Jinja2, no dependency on the template row
+    still existing or still saying what it said at purchase time. This
+    is the ONLY change this pass makes to this function's callers'
+    contract: view_agreement / email_agreement (agreement_router.py)
+    need no changes at all, because they already call this function
+    and nothing else for the HTML.
+
+    A NULL/empty agreement_html (a Purchase older than this column, or
+    one the background sweep has not reached or could never render)
+    falls through to the render below exactly as before this pass --
+    see purchases/models.py's module docstring for why that fallback,
+    not a backfill, is the deliberate answer for those rows.
 
     Pulls template.html from MinIO via the Redis-cached path, builds
     the asset_data_uri Jinja-global, sets up a hardened Environment
@@ -211,6 +305,9 @@ async def render_agreement_html(
             the renderer didn't supply. StrictUndefined makes this a
             hard error instead of a silent empty string.
     """
+    if data.purchase.agreement_html:
+        return data.purchase.agreement_html
+
     html_body = await get_template_html_cached(data.template.storage_prefix)
 
     asset_data_uri = await make_asset_data_uri_func(

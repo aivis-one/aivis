@@ -235,6 +235,10 @@ async def enforce_kyc_gate(
         # here instead would start answering 401 for anonymous-friendly
         # routes that merely saw a stale cookie.
         return
+    # Do NOT add `except ForbiddenError: return` to match the branch
+    # above -- a deactivated account must reach aivis_error_handler as
+    # 403 (H18 P-60a report); catching it here the way UnauthorizedError
+    # is caught would let it through silently.
 
     if user is None:
         return
