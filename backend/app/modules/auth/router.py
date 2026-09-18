@@ -615,7 +615,7 @@ async def auth_2fa_setup(
     secret -- real cost/abuse surface even though each call is
     individually harmless). Shared default cap
     (auth_rate_limit_max_requests / window_seconds, 5 per 60s out of
-    the box), same shape as email_change_request's rate limit.
+    the box), the same shape totp_confirm and totp_disable use below.
     """
     await check_rate_limit(f"totp_setup:{user.id}")
     secret, provisioning_uri = await setup_totp(user, body.current_password, session)

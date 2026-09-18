@@ -5,7 +5,7 @@
 //
 // Shared across InvestorSettingsView / AgentSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
-// EmailChangeSection.vue. Backend: users/service.py::deactivate_own_account
+// TwoFactorSection.vue. Backend: users/service.py::deactivate_own_account
 // -- soft/reversible (is_active=False + a "self" discriminator so
 // login_email() shows honest copy instead of the staff-block
 // "suspended" message), current password required, every session
@@ -68,7 +68,7 @@ function mapError(err: unknown): string {
     // avatar-mode-blocked message -- match the backend's own exact,
     // stable text rather than mapping every 403 to "wrong password" (an
     // adversarial review caught this misleading a staff member in avatar
-    // mode). Same fix in EmailChangeSection.vue.
+    // mode). Same fix in TwoFactorSection.vue.
     if (err.status === 403 && err.detail === 'Incorrect password') {
       return tk('errorIncorrectPassword')
     }

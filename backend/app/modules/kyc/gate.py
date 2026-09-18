@@ -84,8 +84,11 @@ GATE_EXEMPT_ROLES: frozenset[str] = frozenset(
 # sign the documents), getting TO THE MONEY (the deposit screen's
 # endpoints and the verification's own two), and -- for someone who has
 # already paid and been refused -- getting OUT and getting ANSWERED:
-# leaving the product, changing the address, and support. A gate that
-# takes ten dollars at the entrance and locks the exit is not a gate.
+# leaving the product and support. A gate that takes ten dollars at the
+# entrance and locks the exit is not a gate. Changing the login address
+# belonged to this third group until P-104 removed the feature from the
+# product; when the staff-side tool for it appears, its route gets a
+# decision here like any other.
 KYC_GATE_EXEMPT_ROUTES: frozenset[tuple[str, str]] = frozenset(
     {
         # -- Identity and session --------------------------------------
@@ -103,9 +106,6 @@ KYC_GATE_EXEMPT_ROUTES: frozenset[tuple[str, str]] = frozenset(
         ("PATCH", "/api/v1/users/me"),
         ("POST", "/api/v1/users/me/select-role"),
         ("POST", "/api/v1/users/me/deactivate"),
-        ("POST", "/api/v1/users/me/email-change"),
-        ("POST", "/api/v1/users/me/email-change/resend"),
-        ("POST", "/api/v1/users/me/email-change/confirm"),
         # -- Onboarding documents --------------------------------------
         ("GET", "/api/v1/documents"),
         ("GET", "/api/v1/documents/{document_id}"),

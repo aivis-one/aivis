@@ -8,7 +8,7 @@
 // clearing there; these two are read/act-on-a-list calls with no
 // local-session-clearing side effect of their own, so they live here
 // instead, matching api/users.ts's shape for the sibling
-// email-change / deactivate-account TASK-38 endpoints).
+// deactivate-account TASK-38 endpoint).
 //
 // session_id (both functions) is NEVER the bearer token -- it is a
 // non-reversible id derived server-side (SHA-256 of the token, see

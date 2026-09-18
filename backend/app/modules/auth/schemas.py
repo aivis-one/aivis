@@ -227,7 +227,7 @@ class TwoFactorSetupRequest(BaseModel):
     Re-authentication (current password) before a new pending TOTP
     secret can even be generated -- mirrors
     users/service.py::_require_current_password's use in
-    request_email_change / deactivate_own_account.
+    deactivate_own_account.
     """
 
     current_password: str = Field(..., min_length=1)

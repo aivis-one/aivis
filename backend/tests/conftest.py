@@ -202,28 +202,6 @@ def mock_email(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app.modules.auth.service._send_password_reset_email", _noop_token
     )
-    # TASK-38: email-change verification code, same shape as the
-    # onboarding _send_verification_email above but a separate function
-    # in users/service.py -- see that module's header for why the two
-    # flows are kept independent.
-    monkeypatch.setattr(
-        "app.modules.users.service._send_email_change_verification_email",
-        _noop_code,
-    )
-
-    async def _noop_two_emails(_old_email: str, _new_email: str) -> None:
-        return None
-
-    # Navigator-30's review of TASK-38: confirm_email_change() now also
-    # notifies the OLD address on success (_send_email_changed_notice,
-    # different signature from the code-carrying senders above -- two
-    # email addresses, no code) -- without this no-op, any test driving
-    # a real confirm would schedule a genuine outbound send the same
-    # way the fixture's own docstring warns about for the others.
-    monkeypatch.setattr(
-        "app.modules.users.service._send_email_changed_notice",
-        _noop_two_emails,
-    )
 
 
 @pytest.fixture(autouse=True)
@@ -261,8 +239,7 @@ async def clear_rate_limit() -> None:
           limits (totp_setup/totp_confirm/totp_disable) are keyed by
           user.id, not IP -- every test registers its own fresh user,
           so those are naturally isolated per test and need no cleanup
-          here, same reason email_change_request's per-user key isn't
-          listed either.
+          here.
     """
     try:
         from app.core.redis import get_redis

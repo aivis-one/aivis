@@ -62,12 +62,16 @@
 #   The set is SELF-CHECKING: test_avatar.py walks app.routes and
 #   asserts every operation above carries its forbid_avatar_*
 #   dependency -- removing a guard from a route fails the suite.
-#   change_email and delete_account (TASK-38) now have live endpoints
-#   too -- POST /api/v1/users/me/email-change (request step only, see
-#   users/router.py header) and POST /api/v1/users/me/deactivate
-#   (users/router.py). The remaining RESTRICTED_OPERATIONS entries
-#   still have no live endpoints (change_password / access_staff_shell)
-#   -- apply forbid_avatar when they appear.
+#   delete_account (TASK-38) has a live endpoint too -- POST
+#   /api/v1/users/me/deactivate (users/router.py). The remaining
+#   RESTRICTED_OPERATIONS entries still have no live endpoints
+#   (change_password / access_staff_shell) -- apply forbid_avatar when
+#   they appear. There used to be a third such entry, change_email: it
+#   was pre-declared, then wired to POST /me/email-change by TASK-38,
+#   and both the route and the entry went out together with the whole
+#   email-change feature (P-104). A staff-side address change is a
+#   separate, later task; when it lands, its operation name arrives
+#   with the endpoint it guards, not ahead of it.
 #
 #   revoke_session (auth/router.py DELETE /sessions/{session_id},
 #   TASK-38): same disruption-vector reasoning as logout_all, at
@@ -119,8 +123,8 @@
 #   profile.phone, fields this same module's own header comment calls
 #   AML/KYC-significant, and outlives the avatar session by construction
 #   (a JSONB write on the target's own row) -- the same reasoning
-#   already applied to change_email/delete_account/mute_notifications
-#   fits this endpoint at least as well, not less.
+#   already applied to delete_account/mute_notifications fits this
+#   endpoint at least as well, not less.
 #
 #   export_transactions (transactions/router.py GET /export, owner-ruled):
 #   the ONE read-only entry in this list, and deliberately narrower than
@@ -159,7 +163,6 @@ from app.modules.users.models import User
 # Defined here as the single source of truth.
 RESTRICTED_OPERATIONS = frozenset({
     "change_password",
-    "change_email",
     "delete_account",
     "create_payment",
     "create_withdrawal",

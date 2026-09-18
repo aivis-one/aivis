@@ -46,23 +46,18 @@
 # =============================================================================
 
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 
 import pyotp
 import structlog
 from cryptography.fernet import InvalidToken
-from fastapi import BackgroundTasks
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.modules.documents.service import maybe_complete_onboarding
 from app.core.crypto import decrypt_secret, encrypt_secret
-from app.core.database import get_session_factory
-from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError
+from app.core.exceptions import BadRequestError, ForbiddenError
 from app.modules.auth.service import (
     delete_all_sessions,
     hash_password,
@@ -92,14 +87,6 @@ _ALLOWED_PROFILE_KEYS = frozenset({
 
 # Profile fields required to advance to profile_complete step.
 _REQUIRED_PROFILE_FIELDS = frozenset({"first_name", "last_name", "country"})
-
-# Email-change verification constants (TASK-38). Same shape as
-# auth/service.py's onboarding email verification (10 min TTL, 5
-# attempts) -- deliberately duplicated rather than imported so the two
-# flows (initial signup verification vs. changing an existing,
-# already-verified email) stay independently tunable.
-_EMAIL_CHANGE_CODE_TTL_MINUTES = 10
-_EMAIL_CHANGE_MAX_ATTEMPTS = 5
 
 # Two-Factor Authentication (TOTP) constants (TASK-38).
 _TOTP_ISSUER = "AIVIS.ONE"
@@ -373,8 +360,8 @@ async def update_payout_details(
 async def _require_current_password(user: User, password: str) -> None:
     """Re-verify the caller's current password before a sensitive action.
 
-    Used by both request_email_change() and deactivate_own_account() --
-    changing the login email and deactivating the account are both
+    Used by deactivate_own_account(), setup_totp() and disable_totp() --
+    deactivating the account and moving its second factor are all
     sensitive enough that a hijacked-but-not-yet-logged-out session
     should not be able to do them silently (see module notes on each
     caller for the specific threat).
@@ -398,371 +385,6 @@ async def _require_current_password(user: User, password: str) -> None:
 
     if not await verify_password(password, stored_hash):
         raise ForbiddenError("Incorrect password", code="incorrect_password")
-
-
-# ---------------------------------------------------------------------------
-# Email change (TASK-38)
-# ---------------------------------------------------------------------------
-#
-# Deliberately NOT folded into UserUpdate/update_user: email lives at
-# credentials.email.email, not a plain User column, and swapping the
-# LOGIN identifier needs two things update_user has no equivalent for:
-#   1. Re-authentication (current password) before the change can even
-#      be REQUESTED -- see _require_current_password above.
-#   2. Re-verification (a 6-digit code sent to the NEW address) before
-#      the change takes effect -- mirrors auth/service.py's onboarding
-#      email verification shape (_generate_verification_code, TTL,
-#      attempts cap) but stores the pending new email in its OWN JSONB
-#      slot, credentials.email_change = {new_email, token, expires_at,
-#      attempts}, entirely separate from credentials.email and
-#      credentials.onboarding. The active login email
-#      (credentials.email.email) is untouched until confirm_email_change
-#      succeeds -- a user who never finishes the code step keeps
-#      logging in with their old address.
-#
-# UNIQUENESS: ix_users_email (migration 0002) is a unique index directly
-# on credentials->'email'->>'email'. request_email_change() does a
-# proactive SELECT for a fast, friendly 409 at request time; the actual
-# swap in confirm_email_change() ALSO catches the IntegrityError the
-# index raises on flush, same two-layer pattern as register_email() --
-# the SELECT is a UX nicety, the index is the real race-safe guarantee
-# (two people cannot both finish changing into the same email).
-
-
-def _generate_email_change_code() -> str:
-    """Generate a 6-digit numeric verification code.
-
-    Same shape as auth/service.py's _generate_verification_code --
-    duplicated rather than imported to keep the two verification flows
-    independently evolvable (see module note above).
-    """
-    return str(secrets.randbelow(900000) + 100000)
-
-
-async def _send_email_change_verification_email(email: str, code: str) -> None:
-    """Send the email-change verification code. Errors logged, not raised.
-
-    Same fire-and-forget contract as auth/service.py's
-    _send_verification_email -- sent to the NEW address (the whole
-    point: proving the user controls it before the swap happens).
-    """
-    from app.core.email import send_email
-
-    try:
-        await send_email(
-            recipient=email,
-            subject="AIVIS.ONE - Confirm Your New Email",
-            body=(
-                f"Your email change verification code is: {code}\n\n"
-                f"This code expires in {_EMAIL_CHANGE_CODE_TTL_MINUTES} "
-                "minutes.\n\n"
-                "If you did not request this change, you can safely "
-                "ignore this email -- your login email will not change."
-            ),
-        )
-    except Exception:
-        logger.error(
-            "email_change_verification_email_send_failed",
-            recipient=email[:3] + "***",
-        )
-
-
-async def _send_email_changed_notice(old_email: str, new_email: str) -> None:
-    """Notify the OLD address after a successful email change. Errors
-    logged, not raised -- same fire-and-forget contract as every other
-    outbound mail helper in this module.
-
-    Navigator-30's review of TASK-38: only the NEW address ever heard
-    about an email change in the original delivery -- the old address
-    (the account owner's one remaining trusted channel if the change
-    was not theirs) was never told anything happened. Standard
-    industry practice for this exact action; closes a silent-takeover
-    gap where an attacker with a stolen session + the current password
-    could move the account onto an address only they control with no
-    notice anywhere the real owner would see it.
-    """
-    from app.core.email import send_email
-
-    try:
-        await send_email(
-            recipient=old_email,
-            subject="AIVIS.ONE - Your Account Email Was Changed",
-            body=(
-                f"Your AIVIS.ONE account email was changed to {new_email}.\n\n"
-                "If you made this change, no action is needed.\n\n"
-                "If you did NOT make this change, your account may be "
-                "compromised -- contact support immediately."
-            ),
-        )
-    except Exception:
-        logger.error(
-            "email_changed_notice_send_failed",
-            recipient=old_email[:3] + "***",
-        )
-
-
-async def request_email_change(
-    user: User,
-    current_password: str,
-    new_email: str,
-    session: AsyncSession,
-    background_tasks: BackgroundTasks,
-) -> None:
-    """Start an email change: re-auth, uniqueness check, code to the NEW email.
-
-    Does NOT touch credentials.email.email -- see module note above.
-    Does NOT commit -- caller (get_db_session) manages the transaction
-    (P-01). background_tasks defers the send past that commit, same
-    reasoning as register_email.
-
-    Raises:
-        ForbiddenError: Current password is wrong (code="incorrect_password").
-        BadRequestError: new_email equals the current login email.
-        ConflictError: new_email already belongs to another account.
-    """
-    await _require_current_password(user, current_password)
-
-    new_email_lower = new_email.strip().lower()
-
-    if new_email_lower == (user.email or ""):
-        raise BadRequestError("New email must be different from the current email")
-
-    # Proactive check -- see module note (UX nicety, not the race guard).
-    existing = await session.execute(
-        select(User.id).where(
-            User.credentials["email"]["email"].as_string() == new_email_lower,
-            User.id != user.id,
-        )
-    )
-    if existing.scalar_one_or_none() is not None:
-        raise ConflictError("Email is already registered")
-
-    code = _generate_email_change_code()
-    now = datetime.now(UTC)
-    expires_at = now + timedelta(minutes=_EMAIL_CHANGE_CODE_TTL_MINUTES)
-
-    updated_creds = dict(user.credentials or {})
-    updated_creds["email_change"] = {
-        "new_email": new_email_lower,
-        "token": code,
-        "expires_at": expires_at.isoformat(),
-        "attempts": 0,
-    }
-    user.set_jsonb("credentials", updated_creds)
-    await session.flush()
-
-    await record_audit(
-        session=session,
-        event="user.email_change_requested",
-        actor_id=user.id,
-        actor_type="user",
-        target_type="user",
-        target_id=user.id,
-        data={"new_email": new_email_lower},
-    )
-
-    logger.info("email_change_requested", user_id=str(user.id))
-
-    background_tasks.add_task(
-        _send_email_change_verification_email, new_email_lower, code
-    )
-
-
-async def resend_email_change_code(
-    user: User,
-    session: AsyncSession,
-    background_tasks: BackgroundTasks,
-) -> None:
-    """Regenerate the code, reset TTL and attempts, resend to the pending email.
-
-    Does NOT commit -- caller manages the transaction (P-01).
-
-    Raises:
-        BadRequestError: No pending email change on this account.
-    """
-    email_change = (user.credentials or {}).get("email_change") or {}
-    pending_email = email_change.get("new_email")
-
-    if not pending_email:
-        raise BadRequestError("No pending email change")
-
-    code = _generate_email_change_code()
-    now = datetime.now(UTC)
-    expires_at = now + timedelta(minutes=_EMAIL_CHANGE_CODE_TTL_MINUTES)
-
-    updated_creds = dict(user.credentials or {})
-    updated_creds["email_change"] = {
-        "new_email": pending_email,
-        "token": code,
-        "expires_at": expires_at.isoformat(),
-        "attempts": 0,
-    }
-    user.set_jsonb("credentials", updated_creds)
-    await session.flush()
-
-    logger.info("email_change_code_resent", user_id=str(user.id))
-
-    background_tasks.add_task(
-        _send_email_change_verification_email, pending_email, code
-    )
-
-
-async def _record_email_change_attempt(user_id: UUID) -> None:
-    """Count one failed email-change code against the attempts cap.
-
-    RUNS IN ITS OWN TRANSACTION, ON PURPOSE. Its caller raises
-    BadRequestError the moment this returns, and get_db_session rolls
-    the request's transaction back on any exception (P-01) -- so a write
-    made on the caller's session would be erased by the very failure it
-    is counting, leaving the cap permanently at zero.
-
-    Re-reads the user rather than taking the caller's instance: that
-    instance belongs to a session about to be rolled back, and a JSONB
-    write against it would not reach this transaction.
-
-    A failure to count is logged, never raised: the caller's answer to
-    the user is "invalid code" either way, and turning a bookkeeping
-    problem into a 500 would tell an attacker more than it tells us.
-    """
-    factory = get_session_factory()
-    session = factory()
-    try:
-        user = await session.get(User, user_id)
-        if user is None:
-            return
-        creds = dict(user.credentials or {})
-        email_change = dict(creds.get("email_change") or {})
-        if not email_change.get("new_email"):
-            # The pending change was completed or cleared between the
-            # caller's read and this write. Nothing to count against.
-            return
-        email_change["attempts"] = email_change.get("attempts", 0) + 1
-        creds["email_change"] = email_change
-        user.set_jsonb("credentials", creds)
-        await session.commit()
-    except Exception:
-        await session.rollback()
-        logger.error("email_change_attempt_count_failed", user_id=str(user_id))
-    finally:
-        await session.close()
-
-
-async def confirm_email_change(
-    user: User,
-    code: str,
-    session: AsyncSession,
-    background_tasks: BackgroundTasks,
-) -> User:
-    """Verify the 6-digit code and, on success, swap the login email.
-
-    Checks: pending change exists, attempts limit, TTL, code match.
-    On success: credentials.email.email <- pending new_email,
-    credentials.email_change cleared. Does NOT commit -- caller manages
-    the transaction (P-01).
-
-    Navigator-30's review of TASK-38 caught two gaps, both closed here:
-    - delete_all_sessions() now runs on success, same as
-      confirm_password_reset()/deactivate_own_account() for the
-      identical reason -- a stolen write-session token + the current
-      password (already required to REACH this point, see
-      request_email_change's _require_current_password call) could
-      otherwise move the account onto an attacker-controlled email and
-      leave every other session, including the real owner's, alive
-      with no notice.
-    - The OLD address is now notified after a successful change (see
-      _send_email_changed_notice) -- previously only the NEW address
-      ever heard anything.
-
-    Raises:
-        BadRequestError: No pending change, too many attempts, expired,
-            or wrong code.
-        ConflictError: The pending email was claimed by another account
-            in the interim (ix_users_email raced -- see module note).
-    """
-    email_change = (user.credentials or {}).get("email_change") or {}
-    pending_email = email_change.get("new_email")
-
-    if not pending_email:
-        raise BadRequestError("No pending email change")
-
-    attempts = email_change.get("attempts", 0)
-    if attempts >= _EMAIL_CHANGE_MAX_ATTEMPTS:
-        raise BadRequestError("Too many attempts, please request a new code")
-
-    expires_at_str = email_change.get("expires_at")
-    if expires_at_str:
-        expires_at = datetime.fromisoformat(expires_at_str)
-        if datetime.now(UTC) > expires_at:
-            raise BadRequestError("Code expired, please request a new code")
-
-    stored_code = email_change.get("token") or ""
-    if not secrets.compare_digest(code, stored_code):
-        # THE COUNTER MUST OUTLIVE THE ROLLBACK THAT FOLLOWS. This
-        # function raises immediately below, get_db_session rolls the
-        # request's transaction back on any exception (P-01), and a
-        # flush into that same transaction is undone with it -- so the
-        # increment written here used to vanish every single time.
-        # `attempts` stayed at 0 for the whole life of a pending change,
-        # the cap above never fired, and a six-digit code could be
-        # guessed without limit until its TTL expired.
-        #
-        # Same shape and same reason as auth service's
-        # _audit_login_failure: a dedicated session that commits on its
-        # own, because the caller's is already doomed.
-        await _record_email_change_attempt(user.id)
-        raise BadRequestError("Invalid verification code")
-
-    # Success: swap the active email, clear the pending slot.
-    old_email = user.email
-    now = datetime.now(UTC)
-    updated_creds = dict(user.credentials or {})
-    email_creds = dict(updated_creds.get("email", {}))
-    email_creds["email"] = pending_email
-    email_creds["verified"] = True
-    email_creds["verified_at"] = now.isoformat()
-    updated_creds["email"] = email_creds
-    updated_creds["email_change"] = None
-    user.set_jsonb("credentials", updated_creds)
-
-    try:
-        await session.flush()
-    except IntegrityError as exc:
-        if "ix_users_email" in str(exc.orig):
-            raise ConflictError("Email is already registered") from exc
-        raise
-
-    await session.refresh(user)
-
-    # Every other session (including this request's own) dies with the
-    # old identity -- see the module note above. Redis-only, safe to
-    # call before the DB commit lands (same reasoning as
-    # confirm_password_reset/deactivate_own_account).
-    killed = await delete_all_sessions(user.id)
-
-    await record_audit(
-        session=session,
-        event="user.email_changed",
-        actor_id=user.id,
-        actor_type="user",
-        target_type="user",
-        target_id=user.id,
-        data={
-            "old_email": old_email,
-            "new_email": pending_email,
-            "sessions_killed": killed,
-        },
-    )
-
-    logger.info(
-        "email_changed", user_id=str(user.id), sessions_killed=killed
-    )
-
-    if old_email:
-        background_tasks.add_task(
-            _send_email_changed_notice, old_email, pending_email
-        )
-
-    return user
 
 
 # ---------------------------------------------------------------------------
@@ -859,8 +481,7 @@ async def deactivate_own_account(
 # Two-Factor Authentication (TOTP) -- TASK-38
 # ---------------------------------------------------------------------------
 #
-# STORAGE SHAPE (credentials JSONB), mirroring the email_change pending-
-# slot precedent above:
+# STORAGE SHAPE (credentials JSONB), a two-slot pending/active pair:
 #   credentials.totp_pending = {secret_encrypted, created_at}
 #     -- written by setup_totp(), cleared/replaced by confirm_totp_setup().
 #        A setup abandoned partway (never confirmed) never enables
@@ -873,8 +494,8 @@ async def deactivate_own_account(
 #        auth/service.py's verify_totp_or_backup_code() on every login
 #        and by disable_totp() below. None (not a partial dict) when
 #        2FA has never been enabled or was disabled -- callers check
-#        `.get("totp") or {}` then `.get("enabled")`, same discipline
-#        as credentials.email_change's `or {}` guards above.
+#        `.get("totp") or {}` then `.get("enabled")`, the same discipline
+#        User.two_factor_enabled (users/models.py) uses on the same slot.
 #
 # `secret_encrypted` is a Fernet token (app/core/crypto.py) -- reversible,
 # because a TOTP secret must be usable to COMPUTE a fresh code on every

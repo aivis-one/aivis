@@ -129,7 +129,6 @@ import {
 } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
-import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
@@ -941,7 +940,6 @@ onMounted(() => {
         <div class="cset__section-title">
           {{ t('comp.settings.actions.title') }}
         </div>
-        <EmailChangeSection tPrefix="comp.settings.actions" />
         <TwoFactorSection tPrefix="comp.settings.actions" />
         <ActiveSessionsSection tPrefix="comp.settings.actions" />
         <NotificationPreferencesSection tPrefix="comp.settings.actions" />

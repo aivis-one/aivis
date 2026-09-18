@@ -5,13 +5,14 @@
 //
 // Shared across InvestorSettingsView / AgentSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
-// EmailChangeSection.vue / ActiveSessionsSection.vue / DeactivateAccountSection.vue.
+// TwoFactorSection.vue / ActiveSessionsSection.vue / DeactivateAccountSection.vue.
 // Backend: notifications/router.py + service.py's preferences pair,
 // a thin proxy over comms (D:/02_Projects/comms/app/api/prefs.py).
 //
 // i18n: every string is read from `${props.tPrefix}.notifications.*`,
 // matching the established "no shared settings-string namespace"
-// convention (see EmailChangeSection.vue's own header) -- category
+// convention every sibling section in this folder follows, each under
+// its own sub-key of the caller's prefix -- category
 // labels are duplicated per role rather than hoisted into a common
 // namespace that does not exist in this codebase.
 //

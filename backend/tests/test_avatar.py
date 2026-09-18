@@ -619,35 +619,6 @@ async def test_avatar_blocked_logout_all(
 
 
 @pytest.mark.asyncio
-async def test_avatar_blocked_email_change_request(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    avatar_restrictions_on: None,
-) -> None:
-    """TASK-38: POST /users/me/email-change in avatar mode -> 403.
-
-    An avatar must not be able to move the account's login email onto
-    an address only it controls. The guard fires as a route dependency
-    ahead of the handler, so a bogus current_password in the body
-    (which the guard never inspects) does not matter here -- same
-    pattern as test_avatar_blocked_create_withdrawal's `{"amount_cents":
-    1000}` body never reaching the withdrawal service.
-    """
-    avatar_token = await _avatar_token_for_fresh_investor(client, db_session)
-
-    resp = await client.post(
-        "/api/v1/users/me/email-change",
-        json={
-            "current_password": "whatever-the-avatar-does-not-know-it",
-            "new_email": f"hijack_{uuid.uuid4().hex[:12]}@example.com",
-        },
-        headers=auth_headers(avatar_token),
-    )
-    assert resp.status_code == 403
-    assert "avatar" in resp.json()["message"].lower()
-
-
-@pytest.mark.asyncio
 async def test_avatar_blocked_deactivate_account(
     client: AsyncClient,
     db_session: AsyncSession,
@@ -1192,10 +1163,22 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
     access_staff_shell) are intentionally absent from the expected set;
     extend it when their endpoints appear. logout_all
     (STAGE-III-FINDINGS.md #19) was added to the expected set the same
-    day its guard was wired, not left for a later pass -- change_email,
-    delete_account, and revoke_session (TASK-38, users/router.py and
-    auth/router.py DELETE /sessions/{id}) follow the same rule: added
-    here the same change that wired their guards. export_transactions
+    day its guard was wired, not left for a later pass -- delete_account
+    and revoke_session (TASK-38, users/router.py and auth/router.py
+    DELETE /sessions/{id}) follow the same rule: added here the same
+    change that wired their guards.
+
+    forbid_avatar_change_email was in this set and is right to be gone.
+    The old entry was true of the tree it was written for: TASK-38 gave
+    change_email a live endpoint (POST /users/me/email-change) and the
+    guard was wired on it the same day, so demanding the dependency was
+    demanding something real. P-104 removed the email-change feature
+    from the product outright -- route, service, schemas and the
+    RESTRICTED_OPERATIONS entry itself -- so the demand now names an
+    operation that no longer exists, and this walk can only assert
+    guards for operations that do. Dropping the line is not a weakened
+    assertion: every operation still in RESTRICTED_OPERATIONS with a
+    live endpoint is still demanded here, which is the whole property. export_transactions
     (transactions/router.py GET /export, owner-ruled) is the newest --
     the one READ-only entry in the set, guarded because the downloaded
     CSV file outlives the avatar session on the impersonator's disk,
@@ -1242,7 +1225,6 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_modify_kyc",
         "forbid_avatar_sign_document",
         "forbid_avatar_logout_all",
-        "forbid_avatar_change_email",
         "forbid_avatar_delete_account",
         "forbid_avatar_revoke_session",
         "forbid_avatar_mute_notifications",

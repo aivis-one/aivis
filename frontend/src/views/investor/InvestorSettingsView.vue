@@ -116,7 +116,6 @@ import {
 } from 'lucide-vue-next'
 
 import { CAvatar, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
-import EmailChangeSection from '@/components/shared/EmailChangeSection.vue'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
@@ -629,7 +628,6 @@ onMounted(() => {
         <ChevronRight :size="16" />
       </button>
 
-      <EmailChangeSection tPrefix="inv.settings.actions" />
       <TwoFactorSection tPrefix="inv.settings.actions" />
       <ActiveSessionsSection tPrefix="inv.settings.actions" />
       <NotificationPreferencesSection tPrefix="inv.settings.actions" />

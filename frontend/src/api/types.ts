@@ -901,18 +901,13 @@ export type { DownlineSubAgentEntry } from './generated'
 export type { CommissionSummaryResponse } from './generated'
 
 // ---------------------------------------------------------------------------
-// Email change + self-deactivation (TASK-38)
+// Self-deactivation (TASK-38)
 //
 // Consumed by api/users.ts + InvestorSettingsView / AgentSettingsView /
-// CompanySettingsView's Actions section. See users/schemas.py for the
-// full three-step email-change flow (request -> resend -> confirm) and
-// users/service.py for why it is its own endpoint rather than folded
-// into UserUpdate.
+// CompanySettingsView's Actions section. See users/service.py for why
+// deactivation is its own endpoint with its own re-auth gate rather
+// than folded into UserUpdate.
 // ---------------------------------------------------------------------------
-
-export type { RequestEmailChangeRequest } from './generated'
-
-export type { ConfirmEmailChangeRequest } from './generated'
 
 export type { DeactivateAccountRequest } from './generated'
 

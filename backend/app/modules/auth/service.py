@@ -974,7 +974,7 @@ async def confirm_password_reset(
 # setup_totp() / confirm_totp_setup() / disable_totp() -- the account-
 # management half of 2FA (generate a secret, confirm it works, turn it
 # off) -- live in users/service.py, NOT here, alongside
-# request_email_change/deactivate_own_account: they need
+# deactivate_own_account: they need
 # _require_current_password() (users/service.py), and users/service.py
 # already imports FROM this module (verify_password, delete_all_sessions)
 # -- this module importing back from users/service.py would be a

@@ -5,7 +5,7 @@
 //
 // Shared across InvestorSettingsView / AgentSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
-// EmailChangeSection.vue / DeactivateAccountSection.vue. Unlike those
+// TwoFactorSection.vue / DeactivateAccountSection.vue. Unlike those
 // two this is not a wizard -- opening the row fetches and shows a
 // LIST (GET /api/v1/auth/sessions), each row revocable individually
 // (DELETE /api/v1/auth/sessions/{session_id}) with an inline confirm
@@ -26,7 +26,7 @@
 // auth/router.py's auth_revoke_session docstring) for any other client
 // that calls it directly; this UI just never exposes that path.
 //
-// ERROR MAPPING mirrors EmailChangeSection.vue / DeactivateAccountSection.vue's
+// ERROR MAPPING mirrors DeactivateAccountSection.vue's
 // shape for the list fetch (network/timeout -> shared auth.error.*
 // strings). Revoke adds its own two backend-specific cases: 404 (the
 // session was already gone -- another tab revoked it, or it expired

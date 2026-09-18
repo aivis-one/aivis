@@ -5,8 +5,8 @@
 //
 // Shared across InvestorSettingsView / AgentSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
-// EmailChangeSection.vue / ActiveSessionsSection.vue / Deactivate
-// AccountSection.vue. Backend: auth/router.py "Two-Factor Authentication
+// ActiveSessionsSection.vue / DeactivateAccountSection.vue.
+// Backend: auth/router.py "Two-Factor Authentication
 // (TOTP)" section + users/service.py's setup_totp/confirm_totp_setup/
 // disable_totp -- see those module notes for the full storage shape
 // and verification logic. Staff has no Settings/Actions screen (same
@@ -37,7 +37,7 @@
 // affordance, mirroring the "save this now" discipline the backend
 // docstring calls for.
 //
-// ERROR MAPPING mirrors EmailChangeSection.vue / DeactivateAccountSection.vue's
+// ERROR MAPPING mirrors DeactivateAccountSection.vue's
 // shape (403 incorrect_password vs. other-403-pass-through for the
 // avatar-guard message, 429 shared rate-limit copy, 400 per-step key).
 // =============================================================================
@@ -119,7 +119,7 @@ function close(): void {
 
 function mapError(err: unknown, badRequestKey: string | null = null): string {
   if (err instanceof ApiResponseError) {
-    // Same discipline as EmailChangeSection.vue / DeactivateAccountSection.vue:
+    // Same discipline as DeactivateAccountSection.vue:
     // match the backend's exact, stable "Incorrect password" text rather
     // than mapping every 403 to that meaning -- forbid_avatar("manage_2fa")
     // also answers 403, with a different message, and blanket-mapping
