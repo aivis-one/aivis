@@ -16,7 +16,7 @@
 #   8.  Prompt for sensitive secrets (bot token, API keys)
 #   9.  Configure Nginx reverse proxy (api.aivis.one, app.aivis.one)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
-#   11. Install and configure mail server (Postfix + OpenDKIM)
+#   11. Assert the host runs no local mail transfer agent
 #   12. Set up MinIO Web UI proxy (storage-mc-admin.aivis.one + basic-auth)
 #   13. Start Docker stack -> healthcheck -> mc alias on host -> migrations
 #       -> seed Platform user
@@ -58,6 +58,9 @@ GITHUB_REPO="aivis-one/aivis"
 DEPLOY_USER="aivis"
 API_DOMAIN="api.aivis.one"
 FRONTEND_DOMAIN="app.aivis.one"
+# The Mailgun SENDING domain: it appears in MAILGUN_DOMAIN and in the
+# from-address, both handed to comms. Nothing on this host serves it --
+# no A record, no certificate, no local relay.
 MAIL_DOMAIN="mail.aivis.one"
 STORAGE_DOMAIN="storage-mc-admin.aivis.one"
 # Bug fix: certbot's --email must NOT derive from FRONTEND_DOMAIN. That
@@ -170,7 +173,14 @@ preflight_checks() {
     fi
 
     local DOMAIN
-    for DOMAIN in "$API_DOMAIN" "$FRONTEND_DOMAIN" "$MAIL_DOMAIN" "$STORAGE_DOMAIN"; do
+    # MAIL_DOMAIN is NOT in this loop. Every domain here is checked for
+    # an A record pointing at this box, and mail.aivis.one has no reason
+    # to have one: it is the Mailgun SENDING domain (MX / SPF / DKIM on
+    # Mailgun's side), nothing on this host answers for it, and certbot
+    # below does not ask for a certificate for it either. Warning about
+    # a missing A record would send the next operator to create a record
+    # that serves nothing.
+    for DOMAIN in "$API_DOMAIN" "$FRONTEND_DOMAIN" "$STORAGE_DOMAIN"; do
         local RESOLVED_IP
         RESOLVED_IP=$(dig +short "$DOMAIN" 2>/dev/null | head -1 || true)
         if [ -z "$RESOLVED_IP" ]; then
@@ -320,9 +330,12 @@ ufw default allow outgoing > /dev/null 2>&1
 ufw allow 22/tcp  > /dev/null 2>&1
 ufw allow 80/tcp  > /dev/null 2>&1
 ufw allow 443/tcp > /dev/null 2>&1
-ufw allow from 172.16.0.0/12 to any port 25 proto tcp comment "Docker SMTP to Postfix" > /dev/null 2>&1
+# NO PORT 25 RULE. The opening for "Docker SMTP to Postfix" lived here
+# while the backend reached a local relay on the host; there is no local
+# relay any more (see "Local Mail Transfer Agent" below, which also
+# withdraws the rule from a box that still carries it).
 echo "y" | ufw enable > /dev/null 2>&1
-success "UFW: 22 (SSH) + 80 (HTTP) + 443 (HTTPS) + Docker→SMTP"
+success "UFW: 22 (SSH) + 80 (HTTP) + 443 (HTTPS)"
 
 # ==============================================================================
 # DEPLOY USER
@@ -726,17 +739,26 @@ AUTH_RATE_LIMIT_WINDOW_SECONDS=60
 AUTH_INIT_DATA_TTL_SECONDS=300
 AUTH_CLOCK_SKEW_SECONDS=60
 
-# -- Email (SMTP primary, Mailgun fallback) --
-SMTP_HOST=host.docker.internal
-SMTP_PORT=25
-SMTP_USER=
-SMTP_PASSWORD=
+# -- Email (HAND-OVER ONLY -- the backend reads none of these) --
+# The product does not send email. comms does, and these four values are
+# the source deliver_comms_email reads to write its four EMAIL_* keys
+# into the comms env. Same arrangement as TELEGRAM_BOT_URL: written
+# here, consumed by the hand-over, ignored by app/core/config.py.
+#
+# So an operator editing a Mailgun value edits it HERE, once, and the
+# next install run carries it across. MAILGUN_API_URL is where the
+# REGION is stated -- the hand-over derives eu/us from it rather than
+# repeating the fact.
+#
+# The six SMTP_* variables that used to sit here are gone with the local
+# MTA (this installer no longer installs Postfix, and removes it if it
+# finds one). SMTP_FROM_EMAIL keeps its old NAME on purpose: this block
+# is a no-op on a box that already has a .env, so renaming it would
+# silently lose the value on every existing server.
 SMTP_FROM_EMAIL=noreply@${MAIL_DOMAIN}
-SMTP_USE_TLS=false
 MAILGUN_API_KEY=PLACEHOLDER
 MAILGUN_DOMAIN=${MAIL_DOMAIN}
 MAILGUN_API_URL=https://api.eu.mailgun.net
-HIGH_SECURED_DOMAINS=t-online.de,web.de,online.de,kabelmail.de,kabelbw.de,gmx.de,arcor.de
 
 # -- Crypto payments service (H7) --
 # Rendered EMPTY. The service issues both values on its own first
@@ -856,7 +878,7 @@ prompt_telegram_bot() {
 }
 
 prompt_telegram_bot
-prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (optional)"
+prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (NO EMAIL AT ALL without it)"
 
 # MinIO credentials -- user supplies memorable values OR ENTERs to keep the
 # random defaults generated above by gen_short_id / gen_password. The three
@@ -924,144 +946,104 @@ fi
 success "SSL auto-renewal cron set (3 AM daily)"
 
 # ==============================================================================
-# MAIL SERVER (Postfix + OpenDKIM)
+# NO LOCAL MAIL TRANSFER AGENT ON THIS HOST
 # ==============================================================================
+#
+# THIS IS A STATEMENT ABOUT THE DESIRED STATE OF THE MACHINE, NOT A
+# MIGRATION STEP. The host is supposed to have no MTA of its own, and
+# this section is where that is asserted -- read it that way in a year,
+# not as a transitional crutch someone forgot to delete.
+#
+# WHY IT IS HERE AND NOT JUST "THE INSTALL LINES ARE GONE". This section
+# used to install Postfix + OpenDKIM (send-only relay on port 25, DKIM
+# milter over a unix socket, postfix added to the opendkim group, both
+# units enabled), and the product's own email module used it as one of
+# two delivery paths. Both the module and the second path are gone: mail
+# leaves the product through the comms notification service, which talks
+# to Mailgun's HTTP API and needs no local relay.
+#
+# Deleting install lines does not uninstall anything. There was no
+# removing operation anywhere in scripts/ -- no apt-get remove, no
+# systemctl disable, no ufw delete -- and this box is REINSTALLED rather
+# than recreated: the existing-installation branch near the top of this
+# script drops containers, volumes and the checkout, and touches no host
+# package. Postfix would survive that and keep listening on 25.
+#
+# IDEMPOTENT, AND SILENT ON A CLEAN MACHINE. Every step below is guarded
+# by "is this actually present", so a host that never had an MTA does
+# nothing here and prints one line. Nothing in this section may abort
+# the run: a machine that refuses to give up its mail packages is a
+# problem to look at, not a reason to fail an install.
 
-section "Mail Server"
+section "Local Mail Transfer Agent"
 
-DKIM_SELECTOR="aivis"
-DKIM_DIR="/etc/opendkim/keys/${MAIL_DOMAIN}"
+log "Asserting: this host runs no local MTA..."
 
-# -- Postfix: send-only configuration --
-log "Configuring Postfix..."
+MTA_CHANGED=0
 
-# Prevent interactive prompts from Postfix.
-debconf-set-selections <<< "postfix postfix/mailname string ${MAIL_DOMAIN}"
-debconf-set-selections <<< "postfix postfix/main_mailer_type string Internet Site"
-
-# Install mail packages (after debconf preseeding to avoid interactive dialogs).
-log "Installing Postfix + OpenDKIM..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    postfix \
-    opendkim \
-    opendkim-tools \
-    mailutils \
-    > /dev/null 2>&1
-success "Mail packages installed"
-
-postconf -e "myhostname = ${MAIL_DOMAIN}"
-postconf -e "myorigin = ${MAIL_DOMAIN}"
-postconf -e "inet_interfaces = all"
-postconf -e "mydestination = localhost"
-postconf -e "mynetworks = 127.0.0.0/8 172.16.0.0/12 [::ffff:127.0.0.0]/104 [::1]/128"
-postconf -e "relay_domains ="
-postconf -e "default_transport = smtp"
-postconf -e "smtp_tls_security_level = may"
-postconf -e "smtp_tls_loglevel = 1"
-
-# Connect Postfix to OpenDKIM milter.
-postconf -e "milter_protocol = 6"
-postconf -e "milter_default_action = accept"
-postconf -e "smtpd_milters = unix:/run/opendkim/opendkim.sock"
-postconf -e "non_smtpd_milters = unix:/run/opendkim/opendkim.sock"
-
-success "Postfix configured (send-only via localhost)"
-
-# -- OpenDKIM: generate key and configure --
-log "Configuring OpenDKIM..."
-
-mkdir -p "$DKIM_DIR"
-
-# Generate DKIM key pair if not already present.
-if [ ! -f "${DKIM_DIR}/${DKIM_SELECTOR}.private" ]; then
-    opendkim-genkey -b 2048 -d "$MAIL_DOMAIN" -D "$DKIM_DIR" \
-        -s "$DKIM_SELECTOR" -v > /dev/null 2>&1
-    success "DKIM key pair generated (2048-bit)"
-else
-    success "DKIM key pair already exists"
-fi
-
-chown -R opendkim:opendkim /etc/opendkim
-chmod 600 "${DKIM_DIR}/${DKIM_SELECTOR}.private"
-
-# OpenDKIM main config.
-cat > /etc/opendkim.conf << DKIM_CONF
-Syslog          yes
-SyslogSuccess   yes
-LogWhy          yes
-
-Mode            s
-Canonicalization relaxed/simple
-Domain          ${MAIL_DOMAIN}
-Selector        ${DKIM_SELECTOR}
-KeyFile         ${DKIM_DIR}/${DKIM_SELECTOR}.private
-
-Socket          local:/run/opendkim/opendkim.sock
-PidFile         /run/opendkim/opendkim.pid
-
-UMask           007
-UserID          opendkim
-
-OversignHeaders From
-DKIM_CONF
-
-# Ensure socket directory exists with correct permissions.
-mkdir -p /run/opendkim
-chown opendkim:postfix /run/opendkim
-chmod 750 /run/opendkim
-
-# Add postfix to opendkim group so it can access the socket.
-usermod -aG opendkim postfix
-
-# Enable and start services.
-systemctl enable opendkim > /dev/null 2>&1
-systemctl enable postfix  > /dev/null 2>&1
-
-# Validate before restarting, then WARN + CONTINUE on failure instead of
-# aborting the install (decision 36). Mail is out of this migration's
-# scope entirely (decision 30) -- a subsystem the owner explicitly
-# excluded may not kill the run. Matches the precedent already set by
-# both certbot calls above, which already end `|| warn` rather than abort.
-if opendkim -n -x /etc/opendkim.conf; then
-    if systemctl restart opendkim; then
-        success "OpenDKIM restarted"
-    else
-        warn "OpenDKIM failed to restart. DKIM signing is NOT active. Check: systemctl status opendkim / journalctl -u opendkim / /etc/opendkim.conf"
+# -- 1. Stop and disable the units, if they exist at all ---------------
+# `list-unit-files` and not `is-active`: the unit may be installed but
+# dead, in which case there is still something to disable.
+for unit in postfix opendkim; do
+    if systemctl list-unit-files "${unit}.service" 2>/dev/null | grep -q "^${unit}.service"; then
+        systemctl stop "$unit" > /dev/null 2>&1 || warn "Could not stop ${unit} (continuing)."
+        systemctl disable "$unit" > /dev/null 2>&1 || warn "Could not disable ${unit} (continuing)."
+        success "  ${unit}: stopped and disabled"
+        MTA_CHANGED=1
     fi
-else
-    warn "OpenDKIM config check failed (opendkim -n -x /etc/opendkim.conf). NOT restarting -- DKIM signing is NOT active. Check: /etc/opendkim.conf"
-fi
+done
 
-if postfix check; then
-    if systemctl restart postfix; then
-        success "Postfix restarted"
-    else
-        warn "Postfix failed to restart. Outbound mail is NOT active. Check: systemctl status postfix / journalctl -u postfix / /etc/postfix/main.cf"
+# -- 2. Remove the packages, if installed ------------------------------
+# --purge, so the configuration this script used to write does not stay
+# behind to describe a relay that no longer exists. dpkg-query decides
+# what is installed; apt-get on an absent package is a no-op but a noisy
+# one, and "remove nothing" should print nothing.
+MTA_PACKAGES=""
+for pkg in postfix opendkim opendkim-tools mailutils; do
+    if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+        MTA_PACKAGES="$MTA_PACKAGES $pkg"
     fi
-else
-    warn "Postfix config check failed (postfix check). NOT restarting -- outbound mail is NOT active. Check: /etc/postfix/main.cf"
+done
+if [ -n "$MTA_PACKAGES" ]; then
+    # shellcheck disable=SC2086
+    if DEBIAN_FRONTEND=noninteractive apt-get purge -y $MTA_PACKAGES > /dev/null 2>&1; then
+        success "  packages purged:$MTA_PACKAGES"
+    else
+        warn "  could not purge:$MTA_PACKAGES -- check by hand (apt-get purge$MTA_PACKAGES)."
+    fi
+    DEBIAN_FRONTEND=noninteractive apt-get autoremove -y > /dev/null 2>&1 || true
+    MTA_CHANGED=1
 fi
 
-# -- Print DKIM DNS record for the user to add --
-echo ""
-echo -e "${YELLOW}${BOLD}ACTION REQUIRED -- Add DKIM DNS record:${NC}"
-echo ""
-echo "Type: TXT"
-echo "Name: ${DKIM_SELECTOR}._domainkey.${MAIL_DOMAIN}"
-echo "Value:"
-echo ""
-echo -e "${CYAN}"
-# Extract the public key from the .txt file generated by opendkim-genkey.
-cat "${DKIM_DIR}/${DKIM_SELECTOR}.txt"
-echo -e "${NC}"
-echo ""
-echo "Add this TXT record in your DNS settings, then verify with:"
-echo "  opendkim-testkey -d ${MAIL_DOMAIN} -s ${DKIM_SELECTOR} -vvv"
-echo ""
-echo "Press ENTER to continue..."
-read -r < /dev/tty
+# -- 3. Withdraw the firewall opening ----------------------------------
+# The rule this deletes is the one the Docker-network section used to
+# add ("Docker SMTP to Postfix"). `ufw delete` on an absent rule exits
+# non-zero and says so, which is the normal state on a clean machine --
+# hence the guard rather than `|| true`, so a real failure is still
+# visible.
+if command -v ufw &> /dev/null; then
+    if ufw status 2>/dev/null | grep -q "Docker SMTP to Postfix"; then
+        if ufw delete allow from 172.16.0.0/12 to any port 25 proto tcp > /dev/null 2>&1; then
+            success "  firewall: port 25 opening removed"
+        else
+            warn "  could not remove the port 25 rule -- check: ufw status numbered"
+        fi
+        MTA_CHANGED=1
+    fi
+fi
 
-success "Mail server setup complete"
+if [ "$MTA_CHANGED" -eq 0 ]; then
+    success "No local MTA on this host (nothing to remove)"
+else
+    success "Local MTA removed -- mail leaves this product through comms only"
+    # The DKIM keys under /etc/opendkim and the selector's DNS TXT record
+    # are now orphans. Neither is code and neither is removed here:
+    # deleting key material and editing DNS are owner decisions, and a
+    # dangling TXT record signs nothing.
+    warn "Leftovers to clean by hand (not this script's business):"
+    warn "  -- /etc/opendkim/keys/${MAIL_DOMAIN} (key material)"
+    warn "  -- the aivis._domainkey.${MAIL_DOMAIN} TXT record in DNS"
+fi
 
 # ==============================================================================
 # MINIO STORAGE -- Web UI proxy (nginx + basic-auth + Let's Encrypt)
@@ -1217,10 +1199,19 @@ upsert_env_var() {
 
 # Gate on every value we push into ANOTHER stack's env file.
 #
-# WHITELIST, not blacklist: we deliver exactly three shapes -- a bot
-# token, a hostname-bearing URL and an absolute path -- and this set
-# covers them with room to spare, so the guarantee is structural instead
-# of a list of characters someone remembered to ban.
+# WHITELIST, not blacklist: we deliver exactly four shapes -- a bot
+# token, a hostname-bearing URL, an absolute path and a bare email
+# address -- and this set covers them with room to spare, so the
+# guarantee is structural instead of a list of characters someone
+# remembered to ban.
+#
+# '@' is in the set for the sender address (EMAIL_FROM_ADDRESS). It is
+# not a shell metacharacter and not the sed delimiter used below, so it
+# adds no way out of either mechanism this guard protects. The
+# DISPLAY-NAME form comms also accepts ("Name <addr>") is deliberately
+# NOT admitted here: it needs a space and angle brackets, and this
+# installer never produces one -- it delivers what its own .env
+# generation wrote, which is a bare address.
 #
 # What it actually catches: a NEWLINE in an operator-supplied value. The
 # comms CLI *sources* its env file, so one newline in a delivered value
@@ -1235,8 +1226,8 @@ validate_deliverable() {
     if [ -z "$value" ]; then
         error "Refusing to deliver an empty value for $key."
     fi
-    if ! [[ "$value" =~ ^[A-Za-z0-9:._/-]+$ ]]; then
-        error "Refusing to deliver $key: value contains characters outside the allowed set [A-Za-z0-9:._/-] (spaces, quotes, \$, backticks, '|' and newlines are rejected -- they would break the env file the comms CLI sources)."
+    if ! [[ "$value" =~ ^[A-Za-z0-9:._@/-]+$ ]]; then
+        error "Refusing to deliver $key: value contains characters outside the allowed set [A-Za-z0-9:._@/-] (spaces, quotes, \$, backticks, '|' and newlines are rejected -- they would break the env file the comms CLI sources)."
     fi
 }
 
@@ -1276,8 +1267,15 @@ deliver_comms_profile() {
     success "PROFILE_DIR=$profile_dir (bind: comms reads the profile from the aivis checkout)"
 }
 
-# The bot credentials and the channel mode reach comms from the ONE place
-# they were ever entered: this installer's own prompt.
+# The bot credentials reach comms from the ONE place they were ever
+# entered: this installer's own prompt.
+#
+# NO CHANNEL MODE ANY MORE. comms decided a channel by CHANNELS_MODE
+# once; since its 2.0.0 the verdict comes from the key set alone --
+# empty means the channel does not exist on that deploy, full means it
+# is live, PARTIAL refuses startup. So "both or neither" below stopped
+# being a nicety and became the contract: half a set does not degrade
+# the channel, it stops the service.
 #
 # Both values are read back OUT of backend/.env rather than rebuilt from
 # shell variables, for two load-bearing reasons: byte-equality with what
@@ -1306,10 +1304,10 @@ deliver_comms_telegram() {
     if [ -z "$token" ] || [ -z "$url" ]; then
         warn "Telegram credentials NOT delivered to comms on this run."
         warn "backend/.env carries no real bot token, so pushing what is there"
-        warn "would put comms into real mode with a placeholder -- where every"
-        warn "delivery fails instead of being quietly stubbed."
-        warn "CHANNELS_MODE in $comms_env is left as it is (stub, unless a"
-        warn "previous run set it), and so are any existing credentials."
+        warn "would hand comms a full key set built from a sentinel -- a LIVE"
+        warn "telegram channel whose every delivery fails, instead of a deploy"
+        warn "that simply has no telegram channel."
+        warn "Any credentials already in $comms_env are left as they are."
         warn "A clean delivery is a WIPE + fresh install -- never a hand edit"
         warn "of either .env (the installer is the deliverable; a server edited"
         warn "by hand is a server nobody can reproduce)."
@@ -1319,23 +1317,109 @@ deliver_comms_telegram() {
 
     # Both or neither: the URL carries the username Telegram answered with
     # for THAT token, so moving one without the other is meaningless. And
-    # real mode validates BOTH at startup -- comms refuses to boot on an
-    # empty bot URL, because every deep-link button is built from it.
+    # comms validates BOTH at startup -- it refuses to boot on an empty
+    # bot URL, because every deep-link button is built from it.
     validate_deliverable "TELEGRAM_BOT_TOKEN" "$token"
     validate_deliverable "TELEGRAM_BOT_URL" "$url"
 
     upsert_env_var "$comms_env" "TELEGRAM_BOT_TOKEN" "$token"
     upsert_env_var "$comms_env" "TELEGRAM_BOT_URL" "$url"
-    # comms-deploy.sh writes CHANNELS_MODE=stub when it mints its env, and
-    # in stub mode EVERY channel resolves to the stub -- nothing is ever
-    # delivered. Flipping it is the point of delivering credentials at all.
-    upsert_env_var "$comms_env" "CHANNELS_MODE" "real"
     COMMS_TELEGRAM_DELIVERED=1
-    success "Telegram credentials delivered to comms; CHANNELS_MODE=real"
+    success "Telegram credentials delivered to comms (channel: live)"
 }
 
-# Set by deliver_comms_telegram, read by the verification below.
+# The four Mailgun values reach comms the same way the bot token does:
+# read back OUT of backend/.env, filtered for sentinels, delivered all or
+# not at all. Same reasons as above -- byte-equality with what the
+# product's own .env says becomes a property of the code, and on a re-run
+# over a live box the prompts never happen, so shell variables from the
+# generation step do not exist.
+#
+# WHY ALL OR NOTHING, and why it is stricter here than it looks: comms
+# counts three DECIDING keys for this channel (API key, domain, sender).
+# A PARTIAL set does not disable the channel -- it REFUSES STARTUP of the
+# whole comms service, taking telegram and in-app down with it. So a
+# half-delivery here is not "no email", it is "no comms".
+#
+# THE SENTINEL SET IS TWO VALUES, NOT ONE. This installer writes
+# PLACEHOLDER into MAILGUN_API_KEY; the committed .env.example carries
+# TEST. Our own deleted email guard knew only TEST, and that was a live
+# defect -- a box installed by this script and never edited would have
+# passed PLACEHOLDER through as if it were a key. Both are filtered, on
+# every value, exactly as the telegram delivery above does it.
+#
+# THE REGION IS DERIVED, NOT SPELLED OUT. It is already stated once, in
+# MAILGUN_API_URL, which is what the product's .env carries and what an
+# operator edits when moving to the US endpoint. A literal "eu" here
+# would be a SECOND place recording one fact, and the two would part
+# company on that move -- silently, because comms would then sign
+# requests against the wrong provider base address. An unrecognised URL
+# delivers NOTHING rather than guessing: comms treats an unknown region
+# as a startup refusal, and its default (eu) is only correct by accident
+# on a deploy that spelled out a US endpoint.
+deliver_comms_email() {
+    local comms_env="$1" aivis_env="$2"
+    local api_key domain sender api_url region
+
+    api_key=$(read_env_value "$aivis_env" "MAILGUN_API_KEY" || true)
+    domain=$(read_env_value "$aivis_env" "MAILGUN_DOMAIN" || true)
+    sender=$(read_env_value "$aivis_env" "SMTP_FROM_EMAIL" || true)
+    api_url=$(read_env_value "$aivis_env" "MAILGUN_API_URL" || true)
+
+    case "${api_key:-}" in ""|PLACEHOLDER|TEST) api_key="" ;; esac
+    case "${domain:-}" in ""|PLACEHOLDER|TEST) domain="" ;; esac
+    case "${sender:-}" in ""|PLACEHOLDER|TEST) sender="" ;; esac
+    case "${api_url:-}" in ""|PLACEHOLDER|TEST) api_url="" ;; esac
+
+    # Closed set, mirroring comms (EMAIL_REGIONS in its
+    # app/core/channels.py). Matched on the HOST portion and not with a
+    # loose substring: a path or query containing "eu." must not decide a
+    # region.
+    region=""
+    case "${api_url:-}" in
+        https://api.eu.mailgun.net|https://api.eu.mailgun.net/*) region="eu" ;;
+        https://api.mailgun.net|https://api.mailgun.net/*)       region="us" ;;
+    esac
+
+    if [ -z "$api_key" ] || [ -z "$domain" ] || [ -z "$sender" ] || [ -z "$region" ]; then
+        warn "Mailgun credentials NOT delivered to comms on this run."
+        warn "The product will have NO EMAIL at all: comms is the only path,"
+        warn "and a deploy with an empty key set simply has no email channel."
+        warn "Delivering a partial set instead would be worse -- comms refuses"
+        warn "to start on a half-filled channel, taking telegram and in-app"
+        warn "down with it -- so nothing is written."
+        warn "Missing after sentinel filtering (PLACEHOLDER / TEST count as"
+        warn "missing):"
+        # `if`, not `[ ... ] && warn`: this script runs under `set -e`,
+        # and a failing test as the left side of an AND-list is a
+        # subtlety nobody should have to re-derive while reading a
+        # diagnostic.
+        if [ -z "$api_key" ]; then warn "  -- MAILGUN_API_KEY in $aivis_env"; fi
+        if [ -z "$domain" ]; then warn "  -- MAILGUN_DOMAIN in $aivis_env"; fi
+        if [ -z "$sender" ]; then warn "  -- SMTP_FROM_EMAIL in $aivis_env"; fi
+        if [ -z "$region" ]; then
+            warn "  -- a region derivable from MAILGUN_API_URL (got: ${api_url:-<empty>}; expected https://api.eu.mailgun.net or https://api.mailgun.net)"
+        fi
+        COMMS_EMAIL_DELIVERED=0
+        return 0
+    fi
+
+    validate_deliverable "EMAIL_MAILGUN_API_KEY" "$api_key"
+    validate_deliverable "EMAIL_MAILGUN_DOMAIN" "$domain"
+    validate_deliverable "EMAIL_FROM_ADDRESS" "$sender"
+    validate_deliverable "EMAIL_MAILGUN_REGION" "$region"
+
+    upsert_env_var "$comms_env" "EMAIL_MAILGUN_API_KEY" "$api_key"
+    upsert_env_var "$comms_env" "EMAIL_MAILGUN_DOMAIN" "$domain"
+    upsert_env_var "$comms_env" "EMAIL_FROM_ADDRESS" "$sender"
+    upsert_env_var "$comms_env" "EMAIL_MAILGUN_REGION" "$region"
+    COMMS_EMAIL_DELIVERED=1
+    success "Mailgun credentials delivered to comms (channel: live, region: $region)"
+}
+
+# Set by the two delivery functions above, read by the summary below.
 COMMS_TELEGRAM_DELIVERED=0
+COMMS_EMAIL_DELIVERED=0
 
 setup_comms() {
     log "Setting up the comms stack (orchestrated)..."
@@ -1406,6 +1490,7 @@ setup_comms() {
     # that knows about aivis.
     deliver_comms_profile "$comms_env"
     deliver_comms_telegram "$comms_env" "$aivis_env"
+    deliver_comms_email "$comms_env" "$aivis_env"
 
     # -- 4. Pass 2: idempotent re-run -- executes the hand-over -----------
     log "comms-deploy install, pass 2 (COMMS_* hand-over into backend/.env)..."
@@ -1428,13 +1513,24 @@ setup_comms() {
     done
     success "COMMS_* variables verified in $aivis_env"
 
+    # -- 6. Say which channels this box ended up with ---------------------
+    # A REPORT, not a check. The predecessor here re-read CHANNELS_MODE
+    # out of the comms env and aborted when it was not "real" -- a
+    # tautology, because the only writer of that key was the delivery
+    # function five lines earlier in this same script, and comms stopped
+    # having a channel mode at its 2.0.0 anyway. What can actually be
+    # verified about a channel is its state in the channel map of comms'
+    # own GET /health, which is a question for `aivis email-status`
+    # (scripts/aivis-manage.sh) and not for a variable we wrote ourselves.
     if [ "$COMMS_TELEGRAM_DELIVERED" -eq 1 ]; then
-        if ! grep -Eq "^CHANNELS_MODE=real$" "$comms_env"; then
-            error "CHANNELS_MODE is not 'real' in $comms_env after delivering credentials -- comms would run in stub mode and deliver nothing."
-        fi
-        success "comms channels: real (bot credentials delivered by this installer)"
+        success "comms channel telegram: credentials delivered by this installer"
     else
-        warn "comms channels: stub -- nothing will be delivered. See the note above."
+        warn "comms channel telegram: NOT delivered -- see the note above."
+    fi
+    if [ "$COMMS_EMAIL_DELIVERED" -eq 1 ]; then
+        success "comms channel email: credentials delivered by this installer"
+    else
+        warn "comms channel email: NOT delivered -- the product has no email."
     fi
     success "comms stack is up and linked (profile: $INSTALL_BASE/repo/comms-profile)"
 }
@@ -1765,14 +1861,15 @@ echo ""
 echo -e "${YELLOW}NEXT STEPS:${NC}"
 echo "1. Edit $INSTALL_BASE/repo/backend/.env"
 echo "   -- Set TELEGRAM_BOT_TOKEN (if not done)"
-echo "   -- Set MAILGUN_API_KEY (if not done)"
+echo "   -- Set MAILGUN_API_KEY (if not done -- NO EMAIL AT ALL without it)"
 echo "   -- Set MAILGUN_API_URL (default: EU endpoint, change to https://api.mailgun.net for US)"
-echo "2. Add DKIM DNS record (printed above during mail setup)"
-echo "3. Verify DKIM: opendkim-testkey -d ${MAIL_DOMAIN} -s ${DKIM_SELECTOR} -vvv"
-echo "4. Run: aivis restart app"
-echo "5. Test email: aivis test-email your@email.com"
-echo "6. Open MinIO Console: aivis storage console  (prints URL + credentials)"
-echo "7. Demo data, if this is a stand and not a real box:"
+echo "   These four Mailgun/from-address values are delivered to comms by"
+echo "   THIS installer, so editing them takes another install run to"
+echo "   reach the mail channel."
+echo "2. Run: aivis restart app"
+echo "3. Check the mail channel: aivis email-status"
+echo "4. Open MinIO Console: aivis storage console  (prints URL + credentials)"
+echo "5. Demo data, if this is a stand and not a real box:"
 echo "   -- aivis seed                          (creates the first admin too)"
 echo "   -- aivis seed --list                    (available profiles)"
 echo "   The install seeds NO demo data at all; this is the only way in."

@@ -18,19 +18,23 @@
 #       with code "agreement_template_missing"
 #       (Direct ORM UPDATE flips the column to NULL, simulating the
 #       broken-infra case from R2 §5.3.)
-#   4.  POST /agreement/email -> 204, send hook called once with the
-#       correct investor email.
+#   4.  POST /agreement/email -> 204, emission hook called once with the
+#       correct investor on the AgreementData.
 #   5.  Per-user rate limit on POST /email: after settings.auth_rate_limit_max_requests
 #       consecutive POSTs, the next one is rejected.
 #
 # IMPORTANT EMAIL-MOCK STRATEGY:
-#   The router imports `send_agreement_email` from agreement_service as
-#   a bare name. We monkeypatch the BINDING IN THE ROUTER MODULE
-#   (app.modules.purchases.agreement_router.send_agreement_email) so
-#   the real implementation never runs. This is the same lesson TD-069
-#   recorded for the certificate-flow tests: mock at the router level,
-#   not inside core/email, so Mailgun/SMTP routing changes can't break
-#   the test.
+#   The router imports `request_agreement_email` from agreement_service
+#   as a bare name. We monkeypatch the BINDING IN THE ROUTER MODULE
+#   (app.modules.purchases.agreement_router.request_agreement_email) so
+#   the real implementation never runs. TD-069 recorded the lesson as
+#   "mock at the router level, not inside core/email, so Mailgun/SMTP
+#   routing changes can't break the test"; core/email no longer exists
+#   and the product sends nothing itself, but the level is still the
+#   right one -- what is behind that name is now an outbox emission,
+#   and these tests are about the ENDPOINT (auth, 404, rate limit),
+#   not about the event's shape. The event's shape is asserted where it
+#   is built.
 # =============================================================================
 
 import uuid
@@ -305,12 +309,20 @@ async def test_agreement_email_204_and_send_called(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """POST .../agreement/email returns 204 and calls send_agreement_email
-    exactly once with the investor's email visible on the AgreementData.
+    """POST .../agreement/email returns 204 and calls
+    request_agreement_email exactly once, with the investor's email
+    visible on the AgreementData.
 
-    Mocks the binding inside agreement_router (NOT core/email) -- see
-    TD-069: routing-layer mock is the right level so future Mailgun /
-    SMTP changes don't silently invalidate the test.
+    WHAT CHANGED AND WHY THE OLD ASSERTION WAS RIGHT UNTIL IT WAS NOT.
+    This used to also assert `len(pdf_bytes) > 0` as a smoke check that
+    xhtml2pdf had really run on the way here. It was a fair check while
+    the endpoint's job was to render a PDF and attach it. The endpoint
+    no longer produces a PDF at all -- comms carries no attachments, so
+    the letter carries a link -- and the second element of that tuple
+    would have to be invented to keep the assertion alive. It is
+    replaced by the stronger half of the same idea: the hook is called
+    exactly once, with the AgreementData whose investor_email the
+    precondition in the service reads.
     """
     admin_token = await _admin_token(client, db_session)
     _, product = await _create_company_with_product(client, admin_token)
@@ -321,18 +333,14 @@ async def test_agreement_email_204_and_send_called(
     )
     await _purge_agreement_email_bucket(inv_id)
 
-    captured: list[tuple[str | None, int]] = []
+    captured: list[str | None] = []
 
-    async def _fake_send_agreement_email(data, pdf_bytes) -> bool:
-        # AgreementData carries investor_email + the PDF bytes generated
-        # by xhtml2pdf. We assert on the email; bytes-length is a
-        # smoke check that PDF generation actually ran.
-        captured.append((data.investor_email, len(pdf_bytes)))
-        return True
+    async def _fake_request_agreement_email(data, _session) -> None:
+        captured.append(data.investor_email)
 
     monkeypatch.setattr(
-        "app.modules.purchases.agreement_router.send_agreement_email",
-        _fake_send_agreement_email,
+        "app.modules.purchases.agreement_router.request_agreement_email",
+        _fake_request_agreement_email,
     )
 
     resp = await client.post(
@@ -342,11 +350,9 @@ async def test_agreement_email_204_and_send_called(
     assert resp.status_code == 204, resp.text
 
     assert len(captured) == 1, (
-        f"send_agreement_email called {len(captured)} times, expected 1"
+        f"request_agreement_email called {len(captured)} times, expected 1"
     )
-    captured_email, pdf_len = captured[0]
-    assert captured_email == investor_email
-    assert pdf_len > 0, "PDF generation produced empty bytes"
+    assert captured[0] == investor_email
 
 
 # ---------------------------------------------------------------------------
@@ -383,12 +389,12 @@ async def test_agreement_email_rate_limit_per_user(
     monkeypatch.setattr(settings, "auth_rate_limit_max_requests", 2)
     await _purge_agreement_email_bucket(inv_id)
 
-    async def _noop_send(_data, _pdf) -> bool:
-        return True
+    async def _noop_request(_data, _session) -> None:
+        return None
 
     monkeypatch.setattr(
-        "app.modules.purchases.agreement_router.send_agreement_email",
-        _noop_send,
+        "app.modules.purchases.agreement_router.request_agreement_email",
+        _noop_request,
     )
 
     url = f"/api/v1/purchases/{purchase_id}/agreement/email"

@@ -534,8 +534,9 @@ def test_ownership_data_does_not_hold_user_object() -> None:
         "into Jinja context. Use investor_id + investor_language instead."
     )
     assert "investor_id" in fields, (
-        "OwnershipData must carry investor_id (UUID) for audit log "
-        "correlation in send_ownership_email."
+        "OwnershipData must carry investor_id (UUID): it is the comms "
+        "recipient the certificate email is addressed to, and the "
+        "correlation id in its log lines."
     )
     assert "investor_language" in fields, (
         "OwnershipData must carry investor_language (str) for template "

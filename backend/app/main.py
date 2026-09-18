@@ -113,8 +113,7 @@
 #     and /ownership-certificate/email. Live aggregate of investor's
 #     non-reversed Purchases per company (R2 §5.3).
 #   - Both routers live in app/modules/purchases/agreement_router.py
-#     because they share the same Jinja2 / MinIO / xhtml2pdf rendering
-#     machinery.
+#     because they share the same Jinja2 / MinIO rendering machinery.
 #
 # LIFESPAN:
 #   startup:  setup_logging -> init_redis -> start daemons

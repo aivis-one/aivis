@@ -74,9 +74,27 @@ async def ensure_recipient(session: AsyncSession, user: "User") -> bool:
     # │     asynchronously, so the guarantee this module exists to give
     # │     -- "the recipient exists before the first message" --
     # │     degrades to best-effort for exactly as long as the outage
-    # │     lasts. A notification emitted inside that window can still
-    # │     overtake the sync and be dropped by comms (SKIPPED, no
-    # │     delivery row, no retry).
+    # │     lasts. A notification that overtakes the sync is dropped by
+    # │     comms (SKIPPED, no delivery row, no retry).
+    # │
+    # │     NARROWED, 2026-09-19, BY THE EMITTER THIS MARKER WAS
+    # │     WAITING FOR (auth/service.py's registration email). An
+    # │     emitter that writes its own outbox row in the SAME
+    # │     transaction, AFTER this function, cannot overtake the sync
+    # │     in the ordinary case: this row is inserted first and takes
+    # │     the lower BIGSERIAL id, and the relay publishes in id order
+    # │     (core/events/relay.py). So for those emitters the window is
+    # │     closed by construction, not by luck.
+    # │
+    # │     WHAT REMAINS OPEN, AND IT IS THE WHOLE OF THIS MARKER'S
+    # │     SUBJECT NOW: the relay's SELECT excludes a row whose
+    # │     next_attempt_at is in the future, and keeps shipping the
+    # │     rows behind it -- its own header calls that inversion
+    # │     accepted. So if THIS row is charged an attempt and put into
+    # │     backoff, a notification emitted after it publishes first
+    # │     and lands on a recipient comms has not been told about. The
+    # │     exposure is no longer "any notification during an outage";
+    # │     it is "any notification behind a poisoned user_upserted".
     # │ (2) STATUS: acknowledged by design.
     # │ (3) REFERENCE: none, and this is not a deferred task. The
     # │     alternative is failing user creation when comms is down,
@@ -84,14 +102,20 @@ async def ensure_recipient(session: AsyncSession, user: "User") -> bool:
     # │     cannot register is harmed more than a user whose first
     # │     notification is late. The gap is the price of that ruling,
     # │     not an unfinished piece of it.
-    # │ (4) UNCONSERVATION TRIGGER: the first product caller of
-    # │     emit_event lands in this tree -- from that moment a real
-    # │     message can occupy the window, and the exposure stops being
-    # │     theoretical.
-    # │ (5) SHAPE OF THE FIX: hold the first message rather than widen
-    # │     this path -- an emitter that refuses to emit until the
-    # │     recipient is confirmed (or that carries the snapshot with
-    # │     it), decided together with that emitter.
+    # │ (4) UNCONSERVATION TRIGGER: this row is seen in backoff --
+    # │     a `user_upserted` outbox row with next_attempt_at set and
+    # │     attempts > 0, or the relay logging a poison charge against
+    # │     one. The old trigger ("the first product caller of
+    # │     emit_event lands in this tree") has FIRED and is spent: the
+    # │     caller arrived and closed the ordinary case, so what is
+    # │     left to watch for is the one path it did not close.
+    # │ (5) SHAPE OF THE FIX: do not let a poisoned recipient row be
+    # │     overtaken -- either the relay stops the pass on a
+    # │     user_upserted in backoff instead of shipping past it, or a
+    # │     notification for a recipient whose sync row is still
+    # │     pending is held behind it. Either is a change in the relay,
+    # │     not in this module: the ordering that closed the ordinary
+    # │     case is the relay's, and so is the exception to it.
     # │ (6) REJECTED, AND WHY. (a) Retrying here: it multiplies the
     # │     registration's wait by the retry count for the same answer,
     # │     and the outbox already retries, from disk, across restarts.

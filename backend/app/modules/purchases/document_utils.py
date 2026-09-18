@@ -14,11 +14,14 @@
 #   extract_investor_name  -- best-effort display name from User.profile
 #   extract_investor_email -- email address from User.credentials JSONB
 #   format_cents           -- "150000" -> "1,500.00"
+#   documents_link         -- where a document email sends the reader
 #
-# All three are pure -- they only read their inputs and return a value.
-# No DB / MinIO / Redis access; safe to call inside any render path.
+# All four are pure -- they only read their inputs (or settings) and
+# return a value. No DB / MinIO / Redis access; safe to call inside any
+# render path.
 # =============================================================================
 
+from app.core.config import settings
 from app.modules.users.models import User
 
 
@@ -58,3 +61,34 @@ def format_cents(cents: int) -> str:
     """
     dollars = cents / 100
     return f"{dollars:,.2f}"
+
+
+def documents_link() -> str:
+    """Where a document email points the reader.
+
+    ONE PLACE, ON PURPOSE. Both document emails (per-purchase agreement
+    and per-company ownership certificate) carry a link rather than an
+    attachment -- comms delivers no attachments and is not going to --
+    and this function is the single line that decides where that link
+    goes. Moving it is a one-line change, which is the whole reason it
+    is a function and not a formatted string in two emitters.
+
+    WHY A DESTINATION AND NOT THE DOCUMENT. This product sets no
+    cookies -- authorization is a Bearer header and nothing else -- so a
+    browser following a link out of a mail client carries no
+    credentials, and the backend has no way to know who arrived. A
+    document URL would therefore have to carry its own token, which is a
+    key living in a forwardable message for a paper people come back to
+    years later. So the link lands the reader on a screen they must be
+    logged in to see, and the email says so in as many words.
+
+    KNOWN LIMIT, NAMED HERE RATHER THAN DISCOVERED LATER: the portfolio
+    lives under the investor shell, and the agent shell has its own
+    copy of the same route (`/agent/portfolio`). A purchaser whose role
+    is agent follows this link to a screen their shell does not serve.
+    The role is not in either document's data carrier, and inventing a
+    role lookup inside a mail body is not this change's business -- when
+    a document route exists, this line points at it and the question
+    disappears.
+    """
+    return f"{settings.frontend_base_url}/investor/portfolio"

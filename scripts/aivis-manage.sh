@@ -1870,62 +1870,167 @@ case_version() {
 }
 
 # ==============================================================================
-# TEST EMAIL
+# EMAIL CHANNEL STATUS
 # ==============================================================================
-
-case_test_email() {
+#
+# WHY THIS IS NOT `test-email` ANY MORE. The old command sent two real
+# letters -- one through Mailgun's HTTP API, one through the local
+# Postfix -- and printed which arrived. Both paths are gone: this
+# product no longer builds email at all, it asks the comms notification
+# service for it, and comms holds the provider credentials.
+#
+# So the command cannot answer "did a letter go out" by sending one. It
+# answers the question the owner actually asks -- "is mail working?" --
+# by reading the state of the channel at the service that owns it. The
+# name changed with the mechanism: a command called `test-email` that
+# sends nothing would be the more confusing artifact.
+#
+# NO TEST NOTIFICATION TYPE, DELIBERATELY. Producing a letter would mean
+# declaring a type in comms-profile/types.yaml that exists only so this
+# command can fire it -- a permanent entry in the product's vocabulary
+# earning its keep once a quarter. This asks about state instead.
+#
+# WHERE THE ANSWER LIVES. comms publishes its channel map in the body of
+# its own GET /health, under `channels`: live / not_configured /
+# not_implemented per channel. That endpoint is unauthenticated on
+# purpose, so no token is needed -- but it is only reachable from the
+# shared docker network, which is why the probe runs INSIDE the app
+# container: that is also the exact path the product itself uses, so a
+# green answer here means the product can reach comms, not just that
+# something on the box can.
+case_email_status() {
     cd_compose
-    local RECIPIENT="${1:-}"
-    if [ -z "$RECIPIENT" ]; then
-        echo "Usage: aivis test-email <recipient@example.com>"
-        exit 1
+
+    local comms_dir comms_env record r
+    record=""
+    for r in "${AIVIS_SERVICES[@]}"; do
+        [ "$(svc_field "$r" 1)" = "comms" ] && record="$r" && break
+    done
+    comms_dir=$(svc_field "$record" 3)
+    # A service's env sits NEXT TO its checkout -- same derivation the
+    # installer uses, not a second spelling of the path.
+    comms_env=""
+    [ -n "$comms_dir" ] && comms_env="$(dirname "$comms_dir")/.env"
+
+    echo "=== Email channel ==="
+    echo ""
+
+    # -- 1. Ask comms what it thinks its channels are -------------------
+    local PROBE
+    PROBE=$(docker compose exec -T app python -c "
+import asyncio, json
+import httpx
+from app.core.config import settings
+
+async def main():
+    base = settings.comms_api_url
+    if not base:
+        print('NOLINK')
+        return
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(base.rstrip('/') + '/health')
+    body = resp.json()
+    channels = body.get('channels') or {}
+    print('STATE ' + str(channels.get('email', 'absent')))
+    print('ALL ' + json.dumps(channels))
+
+asyncio.run(main())
+" 2>/dev/null) || true
+
+    local EMAIL_STATE=""
+    if echo "$PROBE" | grep -q "^NOLINK$"; then
+        echo -e "${RED}✗ This box is not linked to comms at all${NC}"
+        echo "  COMMS_API_URL is empty in backend/.env -- the product emits"
+        echo "  nothing, so there is no mail and no in-app notification either."
+        echo "  A missing link is an install-time failure: see setup_comms in"
+        echo "  scripts/install_aivis.sh."
+        return 0
+    fi
+    EMAIL_STATE=$(echo "$PROBE" | sed -n 's/^STATE //p')
+    if [ -z "$EMAIL_STATE" ]; then
+        echo -e "${RED}✗ comms did not answer${NC}"
+        echo "  The probe ran inside the app container and could not read the"
+        echo "  channel map from COMMS_API_URL/health."
+        echo "  Check, in this order:"
+        echo "    docker compose ps app                 (is the product up)"
+        echo "    bash $comms_dir/deploy/comms-deploy.sh status"
+        echo "    bash $comms_dir/deploy/comms-deploy.sh logs"
+        return 0
     fi
 
-    echo "=== Email Delivery Test ==="
-    echo ""
-    echo "Recipient: $RECIPIENT"
+    echo "Channel map reported by comms: $(echo "$PROBE" | sed -n 's/^ALL //p')"
     echo ""
 
-    # Test 1: Mailgun API (primary)
-    echo -n "1. Mailgun API... "
-    MAILGUN_RESULT=$(docker compose exec -T app python -c "
-import asyncio
-from app.core.email import send_email
-result = asyncio.run(send_email(
-    recipient='$RECIPIENT',
-    subject='AIVIS.ONE — Mailgun Test',
-    body='This test email was sent via Mailgun HTTP API (primary channel).',
-))
-print('OK' if result else 'FAIL')
-" 2>/dev/null)
-    if echo "$MAILGUN_RESULT" | grep -q "OK"; then
-        echo -e "${GREEN}✓ Sent via Mailgun${NC}"
+    if [ "$EMAIL_STATE" = "live" ]; then
+        echo -e "${GREEN}✓ email: live${NC}"
+        echo "  comms has a full key set for the channel and will deliver."
+        echo ""
+        echo "  This says the channel EXISTS, not that the provider accepted"
+        echo "  the last letter. A key that is well-formed but wrong shows up"
+        echo "  only at delivery time, as email_channel_not_viable in the"
+        echo "  comms log:"
+        echo "    bash $comms_dir/deploy/comms-deploy.sh logs | grep email_channel_not_viable"
+        return 0
+    fi
+
+    echo -e "${YELLOW}⚠ email: $EMAIL_STATE${NC}"
+    echo "  comms reports no usable email channel, so no letter can leave"
+    echo "  the product."
+    echo ""
+
+    # -- 2. Separate "never delivered" from "delivered, not picked up" --
+    # Two very different states look identical from the channel map, and
+    # sending the owner down the wrong one costs a day. The keys are in a
+    # file THIS product writes (install_aivis.sh, deliver_comms_email), so
+    # reading it back is not a new privilege.
+    #
+    # PRESENCE IS CHECKED AS `^KEY=.+`, NEVER `^KEY=`. An empty
+    # assignment is exactly what comms treats as "no such channel", so a
+    # name-only check would report the keys as delivered and send the
+    # owner to recreate containers when the real answer is that nothing
+    # was delivered. The VALUE never leaves this function -- grep decides,
+    # and only yes/no is printed. Precedent and the same reasoning:
+    # install_aivis.sh's COMMS_* hand-over verification, whose message
+    # says "missing (or empty)".
+    if [ -z "$comms_env" ] || [ ! -f "$comms_env" ]; then
+        echo "  comms env not found${comms_env:+ at $comms_env} -- this box"
+        echo "  may not have a comms stack installed at all."
+        return 0
+    fi
+
+    local key missing=0
+    for key in EMAIL_MAILGUN_API_KEY EMAIL_MAILGUN_DOMAIN EMAIL_FROM_ADDRESS; do
+        if ! grep -Eq "^${key}=.+" "$comms_env"; then
+            echo "  -- $key: not delivered (absent or empty) in $comms_env"
+            missing=1
+        fi
+    done
+
+    if [ "$missing" -eq 1 ]; then
+        echo ""
+        echo "  DIAGNOSIS: the credentials were never delivered."
+        echo "  They travel from backend/.env to the comms env during an"
+        echo "  install run (deliver_comms_email). Put real values into"
+        echo "  $COMPOSE_DIR/backend/.env -- MAILGUN_API_KEY, MAILGUN_DOMAIN,"
+        echo "  SMTP_FROM_EMAIL, MAILGUN_API_URL -- and re-run the installer."
+        echo "  PLACEHOLDER and TEST count as absent, by design."
     else
-        echo -e "${RED}✗ Mailgun failed${NC}"
+        echo "  All three deciding keys ARE present and non-empty in"
+        echo "  $comms_env, yet comms reports the channel as $EMAIL_STATE."
+        echo ""
+        echo "  DIAGNOSIS: the comms processes are running with their OLD"
+        echo "  environment. \`aivis update\` restarts them (comms-deploy.sh"
+        echo "  restart), and a restart signals the containers without"
+        echo "  re-reading env_file -- so keys written after the containers"
+        echo "  were created do not reach the processes. Recreate them:"
+        echo "    bash $comms_dir/deploy/comms-deploy.sh start"
+        echo "  (\`start\` is \`up -d\`, which recreates on a changed env and is"
+        echo "  a no-op otherwise.)"
+        echo ""
+        echo "  If the channel is still not live after that, the region is the"
+        echo "  next suspect: EMAIL_MAILGUN_REGION must be exactly eu or us,"
+        echo "  and comms refuses to start on anything else."
     fi
-
-    # Test 2: SMTP Postfix (fallback)
-    echo -n "2. SMTP Postfix... "
-    SMTP_RESULT=$(docker compose exec -T app python -c "
-import asyncio
-from app.core.email import send_email
-result = asyncio.run(send_email(
-    recipient='$RECIPIENT',
-    subject='AIVIS.ONE — SMTP Test',
-    body='This test email was sent via SMTP Postfix (fallback channel).',
-    force_smtp=True,
-))
-print('OK' if result else 'FAIL')
-" 2>/dev/null)
-    if echo "$SMTP_RESULT" | grep -q "OK"; then
-        echo -e "${GREEN}✓ Sent via SMTP${NC}"
-    else
-        echo -e "${YELLOW}⚠ SMTP failed (outbound port 25 may be blocked by hosting provider)${NC}"
-    fi
-
-    echo ""
-    echo "Check $RECIPIENT inbox for test emails."
-    echo "If SMTP failed, request port 25/587 unblock from your hosting provider."
 }
 
 # ==============================================================================
@@ -1951,7 +2056,7 @@ case "$CMD" in
     nginx)          case_nginx "$@" ;;
     storage)        case_storage "$@" ;;
     version)        case_version ;;
-    test-email)     case_test_email "$@" ;;
+    email-status)   case_email_status ;;
     help|*)
         echo -e "${CYAN}AIVIS.ONE Management Script${NC}"
         echo ""
@@ -2001,6 +2106,6 @@ case "$CMD" in
         echo "  ssl status                                — Show certificate info"
         echo "  nginx reload                              — Test config and reload Nginx"
         echo "  nginx render [api|frontend|storage|all]   — Render nginx templates from the repo (default: all)"
-        echo "  test-email <email>                        — Test Mailgun + SMTP delivery"
+        echo "  email-status                              — Is the mail channel live at comms?"
         ;;
 esac

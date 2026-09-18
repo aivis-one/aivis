@@ -32,7 +32,6 @@
 #   * client                  -- AsyncClient backed by ASGITransport.
 #   * db_session              -- AsyncSession from the app's session factory
 #                                (same engine as the HTTP layer).
-#   * mock_email autouse      -- swap _send_verification_email for a no-op.
 #   * clear_rate_limit autouse -- delete the email-auth Redis keys.
 # =============================================================================
 
@@ -173,35 +172,29 @@ async def db_session() -> AsyncGenerator[Any, None]:
 
 
 # ---------------------------------------------------------------------------
-# Autouse: mute outbound side effects
+# NO OUTBOUND-EMAIL MUTING FIXTURE ANY MORE
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture(autouse=True)
-def mock_email(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Replace the verification-email and password-reset-email senders
-    with no-ops.
-
-    Without this, registration / password-reset-request tests would
-    block trying to reach Mailgun / Postfix from inside the test
-    container. Tests that need the actual token/code (e.g. to drive a
-    confirm call) monkeypatch these same targets again themselves with
-    a capturing fake -- monkeypatch.setattr layers cleanly, the last
-    one applied wins for that test.
-    """
-
-    async def _noop_code(_email: str, _code: str) -> None:
-        return None
-
-    async def _noop_token(_email: str, _token: str) -> None:
-        return None
-
-    monkeypatch.setattr(
-        "app.modules.auth.service._send_verification_email", _noop_code
-    )
-    monkeypatch.setattr(
-        "app.modules.auth.service._send_password_reset_email", _noop_token
-    )
+#
+# An autouse `mock_email` fixture used to live here, replacing
+# auth.service._send_verification_email / _send_password_reset_email
+# with no-ops so that registration and password-reset tests would not
+# block trying to reach Mailgun or Postfix from inside the test
+# container.
+#
+# It is gone because both targets are gone, and with them the hazard.
+# This product does not send email: it writes a `notification_request`
+# row into the outbox and the comms service delivers. Under test,
+# settings.comms_api_url is empty, so the emitters return without even
+# writing a row -- there is no socket to open and nothing to mute. A
+# fixture patching two names that no longer exist would fail at
+# collection; one patching something else would be protecting against a
+# send this tree cannot perform.
+#
+# A test that needs the code or the token now reads it from where it
+# actually is: the user row for the verification code, or the emitted
+# outbox payload for the reset token (see test_auth_password_reset.py's
+# capture_reset_email, which sets comms_api_url first so the row is
+# written at all).
 
 
 @pytest.fixture(autouse=True)

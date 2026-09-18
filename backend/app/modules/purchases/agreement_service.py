@@ -11,8 +11,8 @@
 #   render_agreement_html() -- returns Purchase.agreement_html verbatim
 #     when set (H18 P-74 snapshot), else a fresh Jinja2 render from the
 #     MinIO-stored template
-#   generate_agreement_pdf() -- HTML -> PDF via xhtml2pdf
-#   send_agreement_email()  -- email the PDF via core/email
+#   request_agreement_email() -- ask comms to email a LINK to it
+#     (no PDF, no attachment -- see that function)
 #
 # H18 P-74 -- WHY A SNAPSHOT, AND WHY NOT IN THIS FILE'S OWN WRITE PATH:
 #   purchase_agreement_template_id alone was not enough (the row behind
@@ -70,7 +70,6 @@
 #   Service never commits. Read-only queries only.
 # =============================================================================
 
-import io
 from dataclasses import dataclass
 from datetime import datetime, UTC
 from uuid import UUID
@@ -80,8 +79,9 @@ from jinja2 import Environment, StrictUndefined
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.email import send_email
-from app.core.exceptions import BadRequestError, AivisError, NotFoundError
+from app.core.comms import comms_configured
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
+from app.core.exceptions import AivisError, BadRequestError, NotFoundError
 from app.modules.companies.models import CompanyDocumentTemplate, CompanyProfile
 from app.modules.companies.service import (
     get_template_html_cached,
@@ -90,6 +90,7 @@ from app.modules.companies.service import (
 from app.modules.products.models import Product
 from app.modules.purchases.constants import PurchaseStatus
 from app.modules.purchases.document_utils import (
+    documents_link,
     extract_investor_email,
     extract_investor_name,
     format_cents,
@@ -362,74 +363,74 @@ async def render_agreement_html(
     return template_obj.render(**context)
 
 
-def generate_agreement_pdf(html: str) -> bytes:
-    """Convert agreement HTML to PDF bytes via xhtml2pdf.
-
-    A converter failure on rendered HTML is a server-side problem
-    (either a broken template that Staff uploaded or an xhtml2pdf
-    regression), not a client mistake -- the investor did nothing
-    wrong by asking for their document. Round 11 ERR-11-01 reclassifies
-    this as 500 with a stable `code` so Sentry / Staff dashboards can
-    aggregate it separately from genuine 400s.
-    """
-    from xhtml2pdf import pisa
-
-    buffer = io.BytesIO()
-    result = pisa.CreatePDF(io.StringIO(html), dest=buffer)
-
-    if result.err:
-        logger.error("agreement_pdf_generation_failed", errors=result.err)
-        raise AivisError(
-            message="Failed to generate agreement PDF",
-            code="pdf_generation_failed",
-            status_code=500,
-        )
-
-    return buffer.getvalue()
-
-
-async def send_agreement_email(
+async def request_agreement_email(
     data: AgreementData,
-    pdf_bytes: bytes,
-) -> bool:
-    """Send the agreement PDF to the investor's email.
+    session: AsyncSession,
+) -> None:
+    """Ask comms to email the investor a link to their agreement.
 
-    Uses core/email.send_email() with the full SMTP/Mailgun routing
-    logic (high-secured domains, fallback). Raises BadRequestError if
-    the investor has no email on record.
+    A LINK, NOT AN ATTACHMENT, AND NO PDF ANY MORE. This used to render
+    the agreement to PDF (xhtml2pdf) and attach it. comms carries no
+    attachments and is not growing any, so the document leaves the mail
+    path entirely: the letter names the agreement and points at the
+    screen where it is rendered (documents_link, which is also where the
+    reasoning about that destination lives).
+
+    The precondition stays: an investor with no address on record is a
+    400 here rather than a letter comms cannot address. Note the pair --
+    this checks that the address EXISTS and is non-empty, it does not
+    check "no attachment needed"; comms decides deliverability from its
+    own recipient record, which is the same address by a different
+    route.
     """
     if not data.investor_email:
         raise BadRequestError("Investor has no email address on file")
 
-    agreement_number = _short_id(data.purchase.id)
-    filename = f"agreement_{agreement_number}.pdf"
+    if not comms_configured():
+        logger.error(
+            "agreement_email_not_emitted_comms_absent",
+            purchase_id=str(data.purchase.id),
+        )
+        return
 
-    success = await send_email(
-        recipient=data.investor_email,
-        subject=f"Purchase Agreement -- {agreement_number}",
-        body=(
-            f"Dear {data.investor_name},\n\n"
-            f"Please find your purchase agreement attached.\n\n"
-            f"Agreement: {agreement_number}\n"
-            f"Company: {data.company.name}\n"
-            f"Product: {data.product.name}\n"
-            f"Units: {data.purchase.units}\n"
-            f"Total paid: {format_cents(data.purchase.paid_cents)}\n\n"
-            f"Best regards,\n"
-            f"AIVIS.ONE Platform"
-        ),
-        attachment=(filename, pdf_bytes, "application/pdf"),
+    agreement_number = _short_id(data.purchase.id)
+    # Re-sending the same agreement is a legitimate thing to ask for, so
+    # the key has to change per request -- an `agreement:{purchase_id}`
+    # key would make the second send a duplicate comms collapses, for
+    # ever. A timestamp is the discriminator because the document has no
+    # state that moves; nothing secret goes into a key, which travels
+    # into the comms logs.
+    requested_at = datetime.now(UTC)
+
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            "idempotency_key": (
+                f"agreement:{data.purchase.id}:{requested_at.isoformat()}"
+            ),
+            "type": "purchase.agreement",
+            "target_type": "user",
+            "target_value": str(data.purchase.user_id),
+            "title": f"Purchase Agreement -- {agreement_number}",
+            "body": (
+                f"Dear {data.investor_name},\n\n"
+                f"Your purchase agreement is ready.\n\n"
+                f"Agreement: {agreement_number}\n"
+                f"Company: {data.company.name}\n"
+                f"Product: {data.product.name}\n"
+                f"Units: {data.purchase.units}\n"
+                f"Total paid: {format_cents(data.purchase.paid_cents)}\n\n"
+                f"Open it in your portfolio (you will be asked to sign in): "
+                f"{documents_link()}\n\n"
+                f"Best regards,\n"
+                f"AIVIS.ONE Platform"
+            ),
+            "channels": ["in_app", "email"],
+        },
     )
 
-    if success:
-        logger.info(
-            "agreement_email_sent",
-            purchase_id=str(data.purchase.id),
-        )
-    else:
-        logger.error(
-            "agreement_email_failed",
-            purchase_id=str(data.purchase.id),
-        )
-
-    return success
+    logger.info(
+        "agreement_email_requested",
+        purchase_id=str(data.purchase.id),
+    )

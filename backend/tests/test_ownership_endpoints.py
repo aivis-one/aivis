@@ -21,8 +21,8 @@
 #       agreement side. The fallback machinery is shared, but the
 #       ownership renderer resolves templates LIVE every call --
 #       this asserts that path actually runs.)
-#   5.  POST .../ownership-certificate/email -> 204, send_ownership_email
-#       called once with the investor email visible.
+#   5.  POST .../ownership-certificate/email -> 204,
+#       request_ownership_email called once with the investor visible.
 #   6.  Per-user rate limit on POST /email (Redis key
 #       `ownership_email:<user_id>`).
 # =============================================================================
@@ -401,11 +401,15 @@ async def test_ownership_email_204_and_send_called(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """POST returns 204 and the router-level send_ownership_email is
-    invoked exactly once with the investor's email and a non-empty
-    PDF payload.
+    """POST returns 204 and the router-level request_ownership_email is
+    invoked exactly once with the investor's email on the OwnershipData.
 
     Same mock-at-router pattern as the agreement-side test (TD-069).
+
+    The PDF half of the old assertion (`len(pdf_bytes) > 0`) is gone
+    with the PDF: the endpoint asks comms for a letter carrying a link,
+    and comms takes no attachments. The agreement-side test carries the
+    long form of this note.
     """
     admin_token = await _admin_token(client, db_session)
     company, product = await _create_company_with_product(client, admin_token)
@@ -425,15 +429,14 @@ async def test_ownership_email_204_and_send_called(
         )
     ).scalar_one()
 
-    captured: list[tuple[str | None, int]] = []
+    captured: list[str | None] = []
 
-    async def _fake_send_ownership_email(data, pdf_bytes) -> bool:
-        captured.append((data.investor_email, len(pdf_bytes)))
-        return True
+    async def _fake_request_ownership_email(data, _session) -> None:
+        captured.append(data.investor_email)
 
     monkeypatch.setattr(
-        "app.modules.purchases.agreement_router.send_ownership_email",
-        _fake_send_ownership_email,
+        "app.modules.purchases.agreement_router.request_ownership_email",
+        _fake_request_ownership_email,
     )
 
     resp = await client.post(
@@ -443,11 +446,9 @@ async def test_ownership_email_204_and_send_called(
     assert resp.status_code == 204, resp.text
 
     assert len(captured) == 1, (
-        f"send_ownership_email called {len(captured)} times, expected 1"
+        f"request_ownership_email called {len(captured)} times, expected 1"
     )
-    captured_email, pdf_len = captured[0]
-    assert captured_email == investor_email
-    assert pdf_len > 0, "PDF generation produced empty bytes"
+    assert captured[0] == investor_email
 
 
 # ---------------------------------------------------------------------------
@@ -481,12 +482,12 @@ async def test_ownership_email_rate_limit_per_user(
     monkeypatch.setattr(settings, "auth_rate_limit_max_requests", 2)
     await _purge_ownership_email_bucket(inv_id)
 
-    async def _noop_send(_data, _pdf) -> bool:
-        return True
+    async def _noop_request(_data, _session) -> None:
+        return None
 
     monkeypatch.setattr(
-        "app.modules.purchases.agreement_router.send_ownership_email",
-        _noop_send,
+        "app.modules.purchases.agreement_router.request_ownership_email",
+        _noop_request,
     )
 
     url = f"/api/v1/companies/{company['id']}/ownership-certificate/email"

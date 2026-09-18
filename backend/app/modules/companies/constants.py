@@ -416,9 +416,13 @@ TEMPLATE_PLACEHOLDERS: dict[DocumentTemplateKind, frozenset[str]] = {
 # Allowed mime-types for files sitting next to template.html in the
 # template's MinIO folder (logo.png, signature.png, stamp.png and similar).
 #
-# PNG + JPEG only. SVG is intentionally excluded -- xhtml2pdf does not
-# render SVG reliably, so an SVG asset would silently break PDF output
-# (and only PDF; HTML preview would still look fine, masking the bug).
+# PNG + JPEG only. SVG is intentionally excluded. The original reason
+# was the PDF converter: xhtml2pdf did not render SVG reliably, so an
+# SVG asset silently broke PDF output while the HTML preview still
+# looked fine. That converter is gone (documents are HTML now, mailed
+# as a link), so the reason is no longer PDF -- but the whitelist
+# stays: it is also a guard on what Staff can upload into a template
+# folder, and SVG is a scriptable document format, not an image.
 TEMPLATE_ASSET_MIME_WHITELIST: frozenset[str] = frozenset({
     "image/png",
     "image/jpeg",

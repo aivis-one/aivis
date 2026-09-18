@@ -51,7 +51,9 @@
 # EMAIL VERIFICATION (G1):
 #   6-digit numeric code, stored in credentials.onboarding.email_token.
 #   TTL: 10 minutes. Max 5 attempts per code. Resend has rate limit.
-#   Verification email sent via core/email.py (SMTP + Mailgun fallback).
+#   Verification email emitted as a comms notification_request into the
+#   outbox (the only mail path this product has -- see the note above
+#   _request_verification_email).
 #
 # PASSWORD RESET:
 #   Deliberately NOT built as a copy of email verification -- that flow
@@ -129,10 +131,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms import comms_configured
 from app.core.comms_sync import ensure_recipient
 from app.core.config import settings
 from app.core.crypto import decrypt_secret
 from app.core.database import get_session_factory
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import (
     BadRequestError,
     ConflictError,
@@ -263,46 +267,115 @@ def _generate_verification_code() -> str:
     return str(secrets.randbelow(900000) + 100000)
 
 
-async def _send_verification_email(email: str, code: str) -> None:
-    """Send verification code via email. Errors logged, not raised."""
-    from app.core.email import send_email
+# EMAIL LEAVES THIS MODULE THROUGH comms, AND THROUGH NOTHING ELSE.
+#
+# Both functions below used to build an EmailMessage and hand it to
+# app/core/email.py (Mailgun HTTP, local SMTP fallback). That module is
+# gone: the product has exactly one path to a mailbox now, the comms
+# notification service, reached by writing a `notification_request` into
+# the transactional outbox. There is deliberately no second path and no
+# fallback -- two ways to send the same letter is a state where "did it
+# go?" has two answers and nobody checks both.
+#
+# THREE THINGS THESE EMISSIONS CARRY THAT THE OTHER PRODUCERS DO NOT:
+#
+#   channels=["email"] -- comms defaults to ["in_app"], so an emission
+#     without this field is an inbox entry and NO letter. And email is
+#     the ONLY channel here, not an addition to the inbox: both of these
+#     carry a credential. A password-reset link sitting in the in-app
+#     inbox is readable by any live session, which turns a stolen session
+#     into a password change -- confirm_password_reset() does not ask for
+#     the old password, by design, because the person using it has lost
+#     access to it. The inbox copy would hand that same primitive to
+#     whoever holds a token.
+#
+#   expiry_at -- comms may defer a delivery (its schedule of allowed
+#     periods, and its retry backoff). Without an expiry, a deferred
+#     letter wakes up later and SUCCESSFULLY DELIVERS A DEAD CODE, which
+#     is worse than never arriving: the person reads a valid-looking code
+#     and gets an error from a system that just told them the code was
+#     fine. The value is the credential's own expiry, not a constant.
+#
+#   title -- the profile carries no templates/ directory, so comms falls
+#     back to the stored title as the email subject. The subject is
+#     therefore ours to supply, per emission.
+#
+# NO try/except HERE, AND THAT IS THE CHANGE IN CONTRACT. The senders
+# these replaced swallowed every exception and logged: correct for a
+# fire-and-forget BackgroundTasks call after the commit, where there was
+# nothing left to roll back. An emission is not that. It is an INSERT in
+# the caller's own transaction, and a failure means the row could not be
+# written -- letting that through would commit a user whose verification
+# code exists nowhere. It rolls back with the caller, which is the
+# outcome we want.
 
-    try:
-        await send_email(
-            recipient=email,
-            subject="AIVIS.ONE - Email Verification",
-            body=(
+
+async def _request_verification_email(
+    session: AsyncSession,
+    user_id: UUID,
+    code: str,
+    expires_at: datetime,
+) -> None:
+    """Ask comms to email the registration verification code.
+
+    Emitted INSIDE the caller's transaction, after the user row and the
+    comms recipient snapshot -- so the outbox row carrying this letter
+    always has a higher id than the `user_upserted` that tells comms who
+    the recipient is, and the relay publishes in id order.
+    """
+    if not comms_configured():
+        return
+
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            # The code's expiry, not the code: an idempotency key travels
+            # into the comms logs, and a secret does not belong there.
+            # It still changes on every re-issue, which is what makes a
+            # resend a NEW request instead of a duplicate comms collapses.
+            "idempotency_key": f"auth-verification:{user_id}:{expires_at.isoformat()}",
+            "type": "auth.verification_code",
+            "target_type": "user",
+            "target_value": str(user_id),
+            "title": "AIVIS.ONE - Email Verification",
+            "body": (
                 f"Your verification code is: {code}\n\n"
                 f"This code expires in {_VERIFICATION_CODE_TTL_MINUTES} minutes.\n\n"
                 "If you did not request this, please ignore this email."
             ),
-        )
-    except Exception:
-        logger.error(
-            "verification_email_send_failed",
-            recipient=email[:3] + "***",
-        )
+            "channels": ["email"],
+            "expiry_at": expires_at.isoformat(),
+        },
+    )
 
 
-async def _send_password_reset_email(email: str, token: str) -> None:
-    """Send the password reset link via email. Errors logged, not raised.
-
-    Same fire-and-forget contract as _send_verification_email -- this
-    runs inside a BackgroundTasks call, after the request's transaction
-    already committed, so there is nothing left to roll back if the
-    send fails.
-    """
-    from app.core.email import send_email
+async def _request_password_reset_email(
+    session: AsyncSession,
+    user_id: UUID,
+    token: str,
+    expires_at: datetime,
+) -> None:
+    """Ask comms to email the password reset link."""
+    if not comms_configured():
+        return
 
     reset_link = (
         f"{settings.frontend_base_url}/password-reset/confirm?token={token}"
     )
 
-    try:
-        await send_email(
-            recipient=email,
-            subject="AIVIS.ONE - Password Reset",
-            body=(
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            "idempotency_key": (
+                f"auth-password-reset:{user_id}:{expires_at.isoformat()}"
+            ),
+            "type": "auth.password_reset",
+            "target_type": "user",
+            "target_value": str(user_id),
+            "title": "AIVIS.ONE - Password Reset",
+            "body": (
                 "We received a request to reset your AIVIS.ONE password.\n\n"
                 f"Reset your password: {reset_link}\n\n"
                 f"This link expires in {_PASSWORD_RESET_TOKEN_TTL_MINUTES} "
@@ -310,12 +383,10 @@ async def _send_password_reset_email(email: str, token: str) -> None:
                 "If you did not request this, you can safely ignore this "
                 "email -- your password will not be changed."
             ),
-        )
-    except Exception:
-        logger.error(
-            "password_reset_email_send_failed",
-            recipient=email[:3] + "***",
-        )
+            "channels": ["email"],
+            "expiry_at": expires_at.isoformat(),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -424,25 +495,27 @@ async def register_email(
     email: str,
     password: str,
     session: AsyncSession,
-    background_tasks: BackgroundTasks,
     *,
     referral_code: str | None = None,
 ) -> User:
     """Register a new user via email + password.
 
     Creates a User with role=investor, stores hashed password and
-    6-digit verification code in credentials JSONB. Schedules the
-    verification email to send after the request's transaction commits.
+    6-digit verification code in credentials JSONB, and asks comms to
+    email that code.
 
     referral_code is resolved FIRST: valid code -> referred_by = agent_id
     AND referred_by_link_id = link.id; invalid/missing -> referred_by =
     platform_id, referred_by_link_id = NULL. Never blocks registration.
 
     Does NOT commit or rollback -- caller (get_db_session) manages
-    the transaction lifecycle (P-01). background_tasks defers the email
-    send past that commit -- TASK-6 4.1d: the old code awaited the send
-    while the row was still uncommitted, so a later commit failure would
-    leave someone holding a code for a user that does not exist.
+    the transaction lifecycle (P-01). The letter no longer needs
+    BackgroundTasks to be deferred past that commit: TASK-6 4.1d moved
+    the send off the request path because awaiting it while the row was
+    uncommitted could leave someone holding a code for a user that does
+    not exist. An outbox row solves that at the root instead -- it is
+    written INSIDE this transaction and disappears with it, so a commit
+    failure cannot leave a letter behind to be sent.
 
     Raises:
         ConflictError: If email is already registered (ix_users_email).
@@ -517,11 +590,11 @@ async def register_email(
         referred_by=str(referred_by),
     )
 
-    # Schedule verification email for AFTER get_db_session commits this
-    # transaction (FastAPI runs background tasks only once the response's
-    # dependency exit stack -- including that commit -- has closed).
-    background_tasks.add_task(
-        _send_verification_email, email_lower, verification_code
+    # The letter is now a row in this same transaction, emitted AFTER
+    # ensure_recipient above so its outbox id is the higher of the two and
+    # the relay hands comms the recipient before the notification.
+    await _request_verification_email(
+        session, user.id, verification_code, expires_at
     )
 
     return user
@@ -748,12 +821,15 @@ async def verify_email_code(
 async def resend_verification_code(
     user: User,
     session: AsyncSession,
-    background_tasks: BackgroundTasks,
 ) -> None:
     """Regenerate 6-digit code, reset TTL and attempts, resend email.
 
-    Send is scheduled via background_tasks so it runs after the request's
-    transaction commits -- TASK-6 4.1d, same reasoning as register_email.
+    The letter is emitted into the outbox inside this transaction --
+    same reasoning as register_email, whose docstring carries it.
+
+    A resend is a NEW request to comms, not a duplicate of the last one:
+    the idempotency key carries the new code's expiry, which moves every
+    time this runs.
 
     Raises:
         BadRequestError: If already verified or no email in credentials.
@@ -783,8 +859,7 @@ async def resend_verification_code(
 
     logger.info("verification_code_resent", user_id=str(user.id))
 
-    # Schedule for after commit -- see docstring.
-    background_tasks.add_task(_send_verification_email, email_address, new_code)
+    await _request_verification_email(session, user.id, new_code, expires_at)
 
 
 # ---------------------------------------------------------------------------
@@ -795,7 +870,6 @@ async def resend_verification_code(
 async def request_password_reset(
     email: str,
     session: AsyncSession,
-    background_tasks: BackgroundTasks,
 ) -> None:
     """Request a password reset link. Unauthenticated -- no `user` in hand.
 
@@ -810,9 +884,9 @@ async def request_password_reset(
     On a match: generates a token, stores it in Redis as the reverse
     index (token -> user_id, see module note for why Redis and not
     credentials JSONB), writes requested_at/expires_at onto
-    credentials.password_reset for visibility, and schedules the email
-    for after this transaction commits (P-01 -- same background_tasks
-    pattern as register_email).
+    credentials.password_reset for visibility, and emits the letter into
+    the outbox inside this transaction (P-01 -- same shape as
+    register_email).
 
     Does NOT commit or rollback -- caller (get_db_session) manages the
     transaction (P-01).
@@ -888,8 +962,25 @@ async def request_password_reset(
 
     logger.info("password_reset_requested", user_id=str(user.id))
 
-    # Schedule for after commit -- see register_email docstring for why.
-    background_tasks.add_task(_send_password_reset_email, email_lower, token)
+    # DELIBERATELY OUTSIDE the SAVEPOINT above, and deliberately NOT
+    # given the same degrade-and-log treatment.
+    #
+    # That block degrades because what it writes is dispensable: the
+    # Redis token already exists and confirm_password_reset() reads only
+    # that, so losing the JSONB copy costs an audit trail. This emission
+    # is the OPPOSITE -- it IS the reset. Swallowing its failure would
+    # return the same fixed 200 to someone who will then wait for a
+    # letter that was never queued, and the only trace would be a log
+    # line nobody is watching.
+    #
+    # The cost is named plainly: a DB fault here 500s on the match branch
+    # while the unknown-email branch still returns 200, which is the same
+    # narrow enumeration side-channel the SAVEPOINT comment above closes
+    # for the audit write. It is not attacker-triggerable -- it needs the
+    # database to fail mid-request -- and the alternative is losing reset
+    # letters silently, which is a worse thing to trade a narrow
+    # DB-fault-only channel against.
+    await _request_password_reset_email(session, user.id, token, expires_at)
 
 
 async def confirm_password_reset(

@@ -321,3 +321,54 @@ agent_application.approved:
 
 agent_application.rejected:
   category: agent_applications
+
+# ===========================================================================
+# EMAIL-BEARING TYPES -- DECLARED WITHOUT A CATEGORY, ON PURPOSE
+# ===========================================================================
+# The four types below are the product's email. They carry NO `category:`
+# line, and that omission is the feature, not an oversight.
+#
+# DO NOT "FIX" THIS BY ADDING A CATEGORY. A type with a category goes
+# through the mute gate: a person can switch that category off in their
+# preferences and stop receiving it. comms' own registry states the rule
+# (app/profile/registry.py, register_type: a type without a category is
+# exempt from mute gating), and every other type in this file WANTS that
+# gate -- a muted "your commission was credited" is a preference.
+#
+# These four are different in kind:
+#
+#   auth.verification_code -- the code that completes registration. Muted,
+#     the account can never be opened.
+#   auth.password_reset -- the link that recovers a lost account. Muted,
+#     a locked-out person has no way back in, and the mute itself is
+#     unreachable because it lives behind the login they cannot pass.
+#   purchase.agreement / ownership.certificate -- the legal documents of a
+#     transaction that already happened. Withholding them on a preference
+#     toggle is not a preference, it is a missing record.
+#
+# So: nobody gets to switch off their own login mail. If a preference
+# screen ever needs to say something about these, the answer is to show
+# them as not mutable, NOT to give them a category and hope no one clicks.
+#
+# NAMING. `ownership.certificate` deliberately does NOT join the
+# `purchase.*` family the agreement sits in: the certificate is keyed by
+# the investor-company pair and aggregates every purchase of that product,
+# while the agreement belongs to exactly one purchase. A key goes into the
+# comms database as data, so it is named after what the document IS rather
+# than after its neighbour in this file.
+#
+# ALL FOUR ARE EMITTED WITH channels INCLUDING email (see the emitters in
+# backend/app/modules/auth/service.py and modules/purchases/). A type that
+# is emitted but NOT declared here is rejected by comms and lands in its
+# dead-letter queue -- that already happened once to kyc.revoked, and a
+# verification revocation reached nobody for as long as it lasted. The
+# reverse (declared here, emitted nowhere) is a dead line in a dictionary
+# someone will later have to prove is dead.
+
+auth.verification_code:
+
+auth.password_reset:
+
+purchase.agreement:
+
+ownership.certificate:

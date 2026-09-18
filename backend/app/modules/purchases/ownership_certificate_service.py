@@ -8,8 +8,8 @@
 #                            Purchases for one company
 #   render_ownership_html() -- Jinja2 render against the company's
 #                              ownership_certificate template
-#   generate_ownership_pdf() -- HTML -> PDF via xhtml2pdf
-#   send_ownership_email()   -- email the PDF via core/email
+#   request_ownership_email() -- ask comms to email a LINK to it
+#                               (no PDF, no attachment)
 #
 # DIFFERENCE FROM AGREEMENT (R2 §5.3):
 #   The ownership certificate has NO per-Purchase snapshot. It reflects
@@ -47,7 +47,6 @@
 #   QC-11-01  -- helpers (extract_investor_*, format_cents) imported
 #                from purchases.document_utils, not as underscore-
 #                prefixed cross-module imports.
-#   ERR-11-01 -- generate_ownership_pdf raises AivisError(500), not 400.
 #   SEC-11-01 -- OwnershipData no longer stores the full User ORM
 #                instance (which carries credentials / password_hash).
 #                Only the minimum required scalars (investor_id +
@@ -58,7 +57,6 @@
 #   Service never commits. Read-only queries only.
 # =============================================================================
 
-import io
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
@@ -68,8 +66,9 @@ from jinja2 import Environment, StrictUndefined
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.email import send_email
-from app.core.exceptions import BadRequestError, AivisError, NotFoundError
+from app.core.comms import comms_configured
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
+from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.constants import DocumentTemplateKind
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.service import (
@@ -80,6 +79,7 @@ from app.modules.companies.service import (
 from app.modules.purchases.agreement_service import TemplateMissingError
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.document_utils import (
+    documents_link,
     extract_investor_email,
     extract_investor_name,
     format_cents,
@@ -113,11 +113,11 @@ class OwnershipData:
 
     Round 11 SEC-11-01: stores `investor_id` and `investor_language`
     as plain scalars instead of holding the full User ORM instance.
-    The renderer only needs the language for template selection and
-    the email sender only needs the id for log correlation; carrying
-    a full User across the render path would have meant
-    credentials / password_hash / kyc_data sitting in memory for the
-    duration of an xhtml2pdf call.
+    The renderer only needs the language for template selection, and
+    the email request needs the id as the comms recipient; carrying a
+    full User across the render path would have meant credentials /
+    password_hash / kyc_data sitting in memory for the duration of the
+    render.
     """
 
     investor_id: UUID
@@ -331,76 +331,67 @@ async def render_ownership_html(
     return template_obj.render(**context)
 
 
-def generate_ownership_pdf(html: str) -> bytes:
-    """Convert ownership certificate HTML to PDF bytes via xhtml2pdf.
-
-    Round 11 ERR-11-01: a converter failure on already-rendered HTML
-    is a server-side problem (Staff-uploaded template bug or xhtml2pdf
-    regression), not a client mistake. Surfaced as 500 with a stable
-    `code` so Sentry / Staff dashboards can aggregate it separately
-    from genuine 400s. Identical classification to
-    generate_agreement_pdf.
-    """
-    from xhtml2pdf import pisa
-
-    buffer = io.BytesIO()
-    result = pisa.CreatePDF(io.StringIO(html), dest=buffer)
-
-    if result.err:
-        logger.error("ownership_pdf_generation_failed", errors=result.err)
-        raise AivisError(
-            message="Failed to generate ownership certificate PDF",
-            code="pdf_generation_failed",
-            status_code=500,
-        )
-
-    return buffer.getvalue()
-
-
-async def send_ownership_email(
+async def request_ownership_email(
     data: OwnershipData,
-    pdf_bytes: bytes,
-) -> bool:
-    """Send the ownership certificate PDF to the investor's email.
+    session: AsyncSession,
+) -> None:
+    """Ask comms to email the investor a link to their certificate.
 
-    Uses core/email.send_email() with the full SMTP/Mailgun routing
-    logic. Raises BadRequestError if the investor has no email --
-    that is genuinely a client-state problem (the user has not given
-    an email address yet), so 400 is correct here.
+    A LINK, NOT AN ATTACHMENT, AND NO PDF ANY MORE -- same change and
+    same reasoning as request_agreement_email in agreement_service.py,
+    which carries the full account. The destination is documents_link().
+
+    The precondition stays: an investor with no address on record is a
+    400, which is genuinely a client-state problem (they have not given
+    an address yet), not a delivery failure.
     """
     if not data.investor_email:
         raise BadRequestError("Investor has no email address on file")
 
-    issued = data.as_of_date.strftime("%Y%m%d")
-    filename = f"ownership_{data.company.id}_{issued}.pdf"
+    if not comms_configured():
+        logger.error(
+            "ownership_email_not_emitted_comms_absent",
+            company_id=str(data.company.id),
+            investor_id=str(data.investor_id),
+        )
+        return
 
-    success = await send_email(
-        recipient=data.investor_email,
-        subject=f"Ownership Certificate -- {data.company.name}",
-        body=(
-            f"Dear {data.investor_name},\n\n"
-            f"Please find your ownership certificate for "
-            f"{data.company.name} attached.\n\n"
-            f"Total units owned: {data.total_units}\n"
-            f"Current value: {format_cents(data.current_value_cents)}\n"
-            f"As of: {data.as_of_date.strftime('%B %d, %Y')}\n\n"
-            f"Best regards,\n"
-            f"AIVIS.ONE Platform"
-        ),
-        attachment=(filename, pdf_bytes, "application/pdf"),
+    # Per-request discriminator, for the reason spelled out in
+    # request_agreement_email: a certificate is re-sendable and the
+    # document has no state that moves, so a key built from the
+    # investor-company pair alone would collapse every resend.
+    requested_at = datetime.now(UTC)
+
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            "idempotency_key": (
+                f"ownership:{data.company.id}:{data.investor_id}:"
+                f"{requested_at.isoformat()}"
+            ),
+            "type": "ownership.certificate",
+            "target_type": "user",
+            "target_value": str(data.investor_id),
+            "title": f"Ownership Certificate -- {data.company.name}",
+            "body": (
+                f"Dear {data.investor_name},\n\n"
+                f"Your ownership certificate for {data.company.name} is "
+                f"ready.\n\n"
+                f"Total units owned: {data.total_units}\n"
+                f"Current value: {format_cents(data.current_value_cents)}\n"
+                f"As of: {data.as_of_date.strftime('%B %d, %Y')}\n\n"
+                f"Open it in your portfolio (you will be asked to sign in): "
+                f"{documents_link()}\n\n"
+                f"Best regards,\n"
+                f"AIVIS.ONE Platform"
+            ),
+            "channels": ["in_app", "email"],
+        },
     )
 
-    if success:
-        logger.info(
-            "ownership_email_sent",
-            company_id=str(data.company.id),
-            investor_id=str(data.investor_id),
-        )
-    else:
-        logger.error(
-            "ownership_email_failed",
-            company_id=str(data.company.id),
-            investor_id=str(data.investor_id),
-        )
-
-    return success
+    logger.info(
+        "ownership_email_requested",
+        company_id=str(data.company.id),
+        investor_id=str(data.investor_id),
+    )

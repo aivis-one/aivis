@@ -97,9 +97,10 @@
 #
 # NO DOCUMENT_ID, NO SEPARATE STORAGE OBJECT:
 #   agreement_html above is a column, not a file -- there is still no
-#   MinIO object per Purchase, and PDF generation (generate_agreement_pdf)
-#   still happens on demand from whichever HTML render_agreement_html
-#   returns (the snapshot, or a live render on a NULL one).
+#   MinIO object per Purchase, and there is no PDF at all any more: the
+#   document is served as HTML from whichever render_agreement_html
+#   returns (the snapshot, or a live render on a NULL one), and the
+#   email about it carries a link rather than a file.
 # =============================================================================
 
 from datetime import datetime

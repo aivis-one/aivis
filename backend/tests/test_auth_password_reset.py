@@ -15,10 +15,8 @@
 #
 # The request endpoint's fixed response means tests cannot read the
 # token off the HTTP response (that is the whole point -- anti-
-# enumeration). Instead, `capture_reset_email` monkeypatches
-# _send_password_reset_email (the same target the autouse mock_email
-# fixture already no-ops) with a fake that records (email, token) into
-# a dict the test can read after the request call returns.
+# enumeration). `capture_reset_email` reads it off the OUTBOX EVENT the
+# service emits instead -- see that fixture for why the seam moved.
 #
 # Email prefix: "pwreset_" -- unique to this test file.
 # =============================================================================
@@ -41,22 +39,55 @@ from tests.helpers import auth_headers, login_user, register_user
 
 @pytest.fixture
 def capture_reset_email(monkeypatch: pytest.MonkeyPatch) -> dict:
-    """Capture the (email, token) pair the service would have emailed.
+    """Capture the notification_request the service emits for a reset.
 
-    Overrides the no-op the autouse `mock_email` fixture already
-    installed -- monkeypatch.setattr layers fine, whichever call
-    happens last (this fixture, applied after autouse fixtures for
-    tests that request it) wins for the duration of the test.
+    WHAT THIS REPLACED, AND WHAT THE OLD VERSION WAS RIGHT ABOUT. It
+    used to monkeypatch auth.service._send_password_reset_email -- the
+    function that built an EmailMessage and handed it to core/email.py
+    -- and record the (email, token) pair it was called with. That was
+    the right seam while the product sent its own mail: it was the last
+    point at which the token was in the product's hands.
+
+    The product does not send mail any anymore. It emits a comms
+    `notification_request` into the transactional outbox, and that row
+    is now the last point at which the token is ours. So the fixture
+    wraps emit_event instead. The REAL emit_event still runs underneath
+    -- the row is written and validated (known event type, JSON-scalar
+    payload, tz-aware expiry_at) -- and the wrapper only records the
+    payload on the way past. The assertion the tests make therefore got
+    stronger, not weaker: it used to be "the sender was called with
+    this token", it is now "an event carrying this token reached the
+    outbox in the right shape".
+
+    WHY comms_configured IS PATCHED TOO, AND WHY HERE AND NOT ON
+    settings. The emitters return early when this box has no comms
+    address, which is the state of the test environment. Patching the
+    name as auth.service sees it turns that gate off for the module
+    under test and NOTHING else -- in particular it leaves
+    core/comms_sync's own gate alone, so registering a user inside
+    these tests still takes its no-op path instead of trying to reach a
+    comms host that does not exist.
+
+    Keys recorded: "token", "target_value" (the recipient's user id --
+    the event carries no email address, comms resolves that from its
+    own recipient record), "type", "channels", "expiry_at".
     """
+    from app.modules.auth import service as auth_service
+
     captured: dict = {}
+    real_emit = auth_service.emit_event
 
-    async def _fake(email: str, token: str) -> None:
-        captured["email"] = email
-        captured["token"] = token
+    async def _capturing_emit(session, event_type, data):  # type: ignore[no-untyped-def]
+        if data.get("type") == "auth.password_reset":
+            captured["token"] = data["body"].rsplit("token=", 1)[-1].split("\n")[0]
+            captured["target_value"] = data["target_value"]
+            captured["type"] = data["type"]
+            captured["channels"] = data.get("channels")
+            captured["expiry_at"] = data.get("expiry_at")
+        return await real_emit(session, event_type, data)
 
-    monkeypatch.setattr(
-        "app.modules.auth.service._send_password_reset_email", _fake
-    )
+    monkeypatch.setattr(auth_service, "comms_configured", lambda: True)
+    monkeypatch.setattr(auth_service, "emit_event", _capturing_emit)
     return captured
 
 
@@ -100,7 +131,10 @@ async def test_reset_happy_path(
             "been sent."
         )
     }
-    assert capture_reset_email["email"] == email
+    # The event targets the user by id; it carries no address, because
+    # comms resolves the address from its own recipient record.
+    assert capture_reset_email["target_value"] == data["user"]["id"]
+    assert capture_reset_email["channels"] == ["email"]
     reset_token = capture_reset_email["token"]
     assert len(reset_token) > 20  # secrets.token_urlsafe(32), not a 6-digit code
 
@@ -150,34 +184,36 @@ async def test_reset_request_same_response_real_vs_fake_email(
     """A real account's email and a never-registered email must produce
     byte-identical status + body -- the entire point of P-anti-enum.
 
-    Also confirms the internal branch actually happened (email fired
-    only for the real address) so this test is not accidentally
+    Also confirms the internal branch actually happened (an event was
+    emitted only for the real address) so this test is not accidentally
     passing because NEITHER branch does anything.
     """
     real_email = f"pwreset_real_{uuid.uuid4().hex[:12]}@example.com"
     fake_email = f"pwreset_ghost_{uuid.uuid4().hex[:12]}@example.com"
-    await register_user(client, email=real_email)
+    real_user = await register_user(client, email=real_email)
 
     real_resp = await client.post(
         "/api/v1/auth/password-reset/request",
         json={"email": real_email},
     )
-    real_captured_email = capture_reset_email.get("email")
+    real_captured_target = capture_reset_email.get("target_value")
     capture_reset_email.clear()
 
     fake_resp = await client.post(
         "/api/v1/auth/password-reset/request",
         json={"email": fake_email},
     )
-    fake_captured_email = capture_reset_email.get("email")
+    fake_captured_target = capture_reset_email.get("target_value")
 
     assert real_resp.status_code == fake_resp.status_code == 200
     assert real_resp.json() == fake_resp.json()
 
     # The internal branch DID differ -- proves the test exercises the
-    # real "match found" vs "no match" code paths, not two no-ops.
-    assert real_captured_email == real_email
-    assert fake_captured_email is None
+    # real "match found" vs "no match" code paths, not two no-ops. The
+    # identity checked is the recipient id rather than the address: the
+    # emitted event never carries an address.
+    assert real_captured_target == real_user["user"]["id"]
+    assert fake_captured_target is None
 
 
 # ---------------------------------------------------------------------------

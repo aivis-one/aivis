@@ -21,8 +21,8 @@
 #   The four endpoints serve two related-but-distinct resources:
 #     - per-Purchase agreement      (snapshot, /api/v1/purchases)
 #     - per-investor-company cert   (live aggregate, /api/v1/companies)
-#   Both are document-rendering paths over the same Jinja2 / MinIO /
-#   xhtml2pdf machinery, so it's natural to keep them together. We
+#   Both are document-rendering paths over the same Jinja2 / MinIO
+#   machinery, so it's natural to keep them together. We
 #   expose two APIRouter objects (agreement_router, ownership_router)
 #   with distinct prefixes, both wired in main.py.
 #
@@ -49,9 +49,11 @@
 #   (system error)". Clients match on the CODE, never on the message.
 #
 # COMMIT RULE (P-01):
-#   Read-only endpoints use get_db_reader. POST /email handlers don't
-#   write to the DB either (email sending is an external side effect),
-#   so they also take a reader session.
+#   The two GET endpoints render and return -- get_db_reader.
+#   The two POST /email endpoints DO write to the DB: asking comms for a
+#   letter is an outbox row in the request's transaction, not an
+#   external side effect, so they take get_db_session. A reader session
+#   there would roll the row away and still answer 204.
 # =============================================================================
 
 from uuid import UUID
@@ -61,20 +63,18 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db_reader
+from app.core.database import get_db_reader, get_db_session
 from app.core.rate_limit import check_rate_limit
 from app.modules.auth.dependencies import get_current_user
 from app.modules.purchases.agreement_service import (
-    generate_agreement_pdf,
     load_agreement_data,
     render_agreement_html,
-    send_agreement_email,
+    request_agreement_email,
 )
 from app.modules.purchases.ownership_certificate_service import (
-    generate_ownership_pdf,
     load_ownership_data,
     render_ownership_html,
-    send_ownership_email,
+    request_ownership_email,
 )
 from app.modules.users.models import User
 
@@ -120,20 +120,26 @@ async def view_agreement(
 async def email_agreement(
     purchase_id: UUID,
     user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_reader),
+    session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    """Generate the agreement PDF and email it to the investor.
+    """Ask comms to email the investor a link to their agreement.
 
     Same auth + template-missing semantics as GET. Rate-limited per
-    user under key `agreement_email:<user_id>` to keep SMTP / Mailgun
-    spend bounded.
+    user under key `agreement_email:<user_id>` to keep provider spend
+    bounded.
+
+    get_db_session, NOT get_db_reader, AND THAT IS LOAD-BEARING. The
+    reader session rolls back unconditionally in its `finally` (see
+    core/database.py) -- correct for a GET, fatal here: the letter is
+    now an INSERT into the outbox inside this request's transaction, so
+    on a reader session the row would be written, logged as emitted,
+    discarded by that rollback, and the endpoint would still answer
+    204. No error anywhere, and no email, ever.
     """
     await check_rate_limit(f"agreement_email:{user.id}")
 
     data = await load_agreement_data(purchase_id, user.id, session)
-    html = await render_agreement_html(data, session)
-    pdf_bytes = generate_agreement_pdf(html)
-    await send_agreement_email(data, pdf_bytes)
+    await request_agreement_email(data, session)
 
 
 # ---------------------------------------------------------------------------
@@ -175,16 +181,18 @@ async def view_ownership_certificate(
 async def email_ownership_certificate(
     company_id: UUID,
     user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_reader),
+    session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    """Generate the ownership certificate PDF and email it.
+    """Ask comms to email the investor a link to their certificate.
 
     Same auth + 404 + 500 semantics as GET. Rate-limited per user under
     key `ownership_email:<user_id>`.
+
+    get_db_session for the same reason as email_agreement above: the
+    emission is an INSERT in this transaction, and a reader session
+    would silently roll it away.
     """
     await check_rate_limit(f"ownership_email:{user.id}")
 
     data = await load_ownership_data(company_id, user.id, session)
-    html = await render_ownership_html(data, session)
-    pdf_bytes = generate_ownership_pdf(html)
-    await send_ownership_email(data, pdf_bytes)
+    await request_ownership_email(data, session)

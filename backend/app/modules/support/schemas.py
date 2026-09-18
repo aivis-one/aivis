@@ -19,9 +19,15 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# Longest message this channel accepts. Not a comms limit -- its body
-# column is unbounded -- but a support message is typed by a person into
-# a box, and an unbounded body is an unbounded row.
+# Longest message this channel accepts. comms DOES have a limit of its
+# own -- its notifications.body column is String(5000), and its event
+# contract rejects a longer body before it ever reaches the column --
+# so this 4000 sits under that ceiling rather than above it. That is
+# luck, not knowledge: the number was chosen because a support message
+# is typed by a person into a box and an unbounded body is an unbounded
+# row. Whoever raises it has to check the other side's 5000 first; the
+# previous version of this comment said comms had no limit, which would
+# have made that check look unnecessary.
 MAX_MESSAGE_LENGTH = 4000
 
 

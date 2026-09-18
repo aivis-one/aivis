@@ -4,7 +4,7 @@
 // =============================================================================
 //
 // Step 2 of account recovery: reads `?token=` from the URL (the link
-// _send_password_reset_email built -- see auth/service.py --
+// _request_password_reset_email built -- see auth/service.py --
 // f"{frontend_base_url}/password-reset/confirm?token={token}"), takes a
 // new password, and POSTs both to /api/v1/auth/password-reset/confirm.
 //
