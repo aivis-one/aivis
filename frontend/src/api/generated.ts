@@ -361,11 +361,6 @@ export interface CompanyTransactionResponse {
   created_at: string
 }
 
-/** POST /api/v1/users/me/email-change/confirm -- request body. Same 6-digit shape as auth.VerifyEmailRequest -- deliberately not imported from there to keep the two verification flows independently evolvable (users vs auth domain). */
-export interface ConfirmEmailChangeRequest {
-  code: string
-}
-
 /** GET /api/v1/staff/consistency -- all semaphore results. */
 export interface ConsistencyResponse {
   overall_status: string
@@ -505,7 +500,7 @@ export interface DashboardSummaryResponse {
   companies: CompanySummaryResponse[]
 }
 
-/** POST /api/v1/users/me/deactivate -- request body. current_password confirms a destructive-feeling (though reversible -- see users/service.py module note) action, same re-auth pattern as RequestEmailChangeRequest. */
+/** POST /api/v1/users/me/deactivate -- request body. current_password confirms a destructive-feeling (though reversible -- see users/service.py module note) action, the same re-auth pattern _require_current_password enforces for the 2FA endpoints. */
 export interface DeactivateAccountRequest {
   current_password: string
 }
@@ -1142,16 +1137,6 @@ export interface ReorderRoadmapRequest {
   item_ids: string[]
 }
 
-/** POST /api/v1/users/me/email-change -- request body. current_password re-authenticates the request (changing the login identifier is sensitive -- see users/service.py module note). new_email is normalized to lowercase in the service layer, same as register_email. */
-export interface RequestEmailChangeRequest {
-  current_password: string
-  new_email: string
-}
-
-/** POST /api/v1/users/me/email-change/resend -- empty body. No fields: the pending change (and its recipient) is already on the authenticated user's own credentials.email_change -- nothing for the caller to supply. Kept as an explicit model (rather than no body at all) for parity with VerifyEmailRequest's sibling shape and so FastAPI's OpenAPI schema documents the endpoint consistently. */
-export interface ResendEmailChangeRequest {
-}
-
 /** Reversal result summary. */
 export interface ReversalResponse {
   payment_id: string
@@ -1407,7 +1392,7 @@ export interface TwoFactorLoginVerifyRequest {
   code: string
 }
 
-/** POST /api/v1/auth/2fa/setup -- request body. Re-authentication (current password) before a new pending TOTP secret can even be generated -- mirrors users/service.py::_require_current_password's use in request_email_change / deactivate_own_account. */
+/** POST /api/v1/auth/2fa/setup -- request body. Re-authentication (current password) before a new pending TOTP secret can even be generated -- mirrors users/service.py::_require_current_password's use in deactivate_own_account. */
 export interface TwoFactorSetupRequest {
   current_password: string
 }
