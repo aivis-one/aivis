@@ -155,7 +155,6 @@ for _p in (_SCRIPTS_DIR, _BACKEND_DIR):
         sys.path.insert(0, str(_p))
 
 import structlog  # noqa: E402
-from fastapi import BackgroundTasks  # noqa: E402
 from sqlalchemy import delete, func, select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -514,13 +513,17 @@ async def ensure_user(
         email,
         profile["demo_password"],
         session,
-        BackgroundTasks(),
         referral_code=referral_code,
     )
-    # register_email schedules the verification e-mail on the
-    # BackgroundTasks object above. Nothing ever runs it: FastAPI runs
-    # background tasks after a response, and there is no response here.
-    # The task dies with the object and no mail leaves the box.
+    # NO THROWAWAY BackgroundTasks ANY MORE, AND NO MAIL EITHER. This
+    # used to pass a BackgroundTasks() nobody would ever run -- FastAPI
+    # runs background tasks after a response, and a seed has no response
+    # -- so the scheduled verification e-mail died with the object.
+    # register_email now emits a comms notification_request into the
+    # outbox instead, inside this session. On a box with no comms
+    # address the emitter is gated off and writes nothing at all; on a
+    # linked box the seeded demo users WILL be sent their verification
+    # code, which is what a seeded user asking for one should get.
 
     user.profile = {
         "first_name": spec.get("first_name", "Seed"),

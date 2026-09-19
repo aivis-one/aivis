@@ -381,9 +381,35 @@ async def test_registration_succeeds_while_comms_is_down(
     user_id = UUID(body["user"]["id"])
 
     deferred = await _rows_added_since(db_session, before)
-    assert len(deferred) == 1
-    assert deferred[0].event_type == "user_upserted"
+
+    # TWO ROWS NOW, NOT ONE, AND THEIR ORDER IS THE POINT.
+    #
+    # The old assertion (`len(deferred) == 1`) was right for as long as
+    # registration had exactly one thing to tell comms: who the new
+    # recipient is. H19 gave it a second -- the verification e-mail,
+    # which used to leave the box through the product's own SMTP/Mailgun
+    # module and now travels as a notification_request on this same
+    # outbox. So the count changed because the delivery changed, and
+    # keeping the old number would have meant asserting that the
+    # verification mail is not requested.
+    #
+    # What replaces it is stronger than a count. comms DROPS a
+    # notification for a recipient it has never been told about
+    # (SKIPPED: no delivery row, no retry, no letter), so the recipient
+    # row must reach it FIRST. That is not luck here: ensure_recipient
+    # emits inside the same transaction, before the emitter, so it takes
+    # the lower BIGSERIAL id -- and the relay publishes in id order.
+    # This asserts exactly that, which is the guarantee the KNOWN
+    # CEILING in core/comms_sync.py now rests on.
+    assert len(deferred) == 2
+    assert [row.event_type for row in deferred] == [
+        "user_upserted",
+        "notification_request",
+    ]
+    assert deferred[0].id < deferred[1].id
     assert deferred[0].payload["recipient_id"] == str(user_id)
+    assert deferred[1].payload["type"] == "auth.verification_code"
+    assert deferred[1].payload["target_value"] == str(user_id)
 
     # Targeted cleanup: this test COMMITTED (the HTTP path does), and a
     # pending outbox row left behind would fail the relay suite's

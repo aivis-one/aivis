@@ -920,9 +920,19 @@ async def test_reverse_payment_emits_notification_to_payer_only(
     assert "100.50" in payload["body"]
     assert "chargeback" in payload["body"]
 
-    # No notification was emitted targeting the agent for this reversal.
+    # No notification was emitted targeting the agent FOR THIS REVERSAL.
+    #
+    # The filter has to name the type now. It used to be enough to ask
+    # for any notification_request pointing at the agent, because the
+    # only thing that could produce one was a reversal. Since H19 the
+    # agent's own registration emits one too -- the verification e-mail
+    # travels on this outbox -- so the unqualified filter would match a
+    # row that has nothing to do with the payment and fail a test whose
+    # subject is who gets told about a reversal.
     agent_matches = [
-        e for e in events if e.payload.get("target_value") == str(agent_id)
+        e for e in events
+        if e.payload.get("target_value") == str(agent_id)
+        and e.payload.get("type") == "payment.reversed"
     ]
     assert agent_matches == []
 
