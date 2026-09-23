@@ -18,7 +18,9 @@
 //      courtesy, not a security boundary.
 //   4. Success -> toast + push to the portfolio in the current shell.
 //   5. Error -> narrow to ApiResponseError and branch on status + a
-//      message hint. KYC rejection nudges to /verification.
+//      message hint. A 402 from the KYC gate is left to main.ts, which
+//      sends the person to /verification; the service's own 400 KYC
+//      refusal (what an agent meets) nudges there from here.
 //
 // Balance source:
 //   active_balance.confirmed from /dashboard/summary. The backend
@@ -185,8 +187,14 @@ async function handlePurchaseError(err: unknown): Promise<void> {
   if (err instanceof ApiResponseError) {
     const { status, message } = err
 
+    // 402 -- the KYC gate. main.ts has already sent the person to the
+    // verification screen; a toast here would only say "error" on the
+    // way out.
+    if (status === 402) return
+
     // KYC first -- matches BadRequestError('KYC verification required ...')
-    // from purchases/service.py KYC guard. TD-F10 will replace the
+    // from purchases/service.py KYC guard, which is what an agent meets:
+    // the gate lets agents through by role. TD-F10 will replace the
     // regex with a backend-emitted error code.
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.purchase.error.kycRequired'), 'warning')

@@ -253,6 +253,13 @@ async function handlePlanError(err: unknown): Promise<void> {
   if (err instanceof ApiResponseError) {
     const { status, message } = err
 
+    // 402 -- the KYC gate. main.ts has already sent the person to the
+    // verification screen; a toast here would only say "error" on the
+    // way out.
+    if (status === 402) return
+
+    // installments/service.py's own KYC guard -- what an agent meets,
+    // since the gate lets agents through by role.
     if (status === 400 && /kyc/i.test(message)) {
       showToast(t('inv.installment.error.kycRequired'), 'warning')
       void safeNavigate(router.push('/verification'), '[InstallmentView] to verification')

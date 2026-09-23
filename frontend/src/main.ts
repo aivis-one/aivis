@@ -27,11 +27,19 @@ async function bootstrap(): Promise<void> {
   app.use(router)
   app.use(i18n)
 
-  // H10: a 402 from the KYC gate can arrive from any screen, so the
+  // H10, turned over in H21 P-111: the KYC gate answers 402 only on the
+  // money routes -- buying, an installment plan, a withdrawal, the agent
+  // application. Everything else in the product is open before
+  // verification. A 402 can still arrive from several screens, so the
   // response is registered once here rather than in every caller's
-  // catch block. Wired at bootstrap and not inside the auth store,
-  // which must not import the router -- the router imports every view
-  // and every view imports the store.
+  // catch block, and those callers return on a 402 without a toast of
+  // their own. Wired at bootstrap and not inside the auth store, which
+  // must not import the router -- the router imports every view and
+  // every view imports the store.
+  //
+  // NO TOAST HERE: /verification is a standalone auth card with no
+  // CToast mounted, so a toast raised on the way there would never be
+  // seen. The explanation lives on the verification screen itself.
   //
   // The session is left alone, unlike the 401 path: the person is
   // signed in and simply not verified.

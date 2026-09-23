@@ -1,31 +1,40 @@
 # =============================================================================
-# AIVIS.ONE Backend -- KYC Gate (H10)
+# AIVIS.ONE Backend -- KYC Gate (H10, turned over H21 P-111)
 # =============================================================================
 #
-# An investor who has not passed verification is refused everywhere
-# except a named list of routes. The refusal is a 402 carrying one of
-# four codes (kyc/constants.py) so the client can tell "pay", "wait",
-# "refused" and "revoked" apart.
+# OWNER'S DECISION, NOT A DEFERRED TASK: before verification a person sees
+# the product -- dashboard, storefront, products, companies, history,
+# settings. What is closed is exactly what turns a balance into
+# ownership or takes money out. The gate therefore holds a list of what
+# it CLOSES, and everything else passes it. The refusal is a 402 carrying
+# one of four codes (kyc/constants.py) so the client can tell "pay",
+# "wait", "refused" and "revoked" apart.
+#
+# Until H21 it was the other way round -- closed everywhere except a list
+# of exemptions -- and the first screen after onboarding
+# (GET /dashboard/summary) was a wall. The inversion changes the failure
+# direction as well: a new route is open by default. That is why the
+# completeness walk in tests/test_kyc_gate.py demands a decision for
+# every route that can WRITE and that an unverified investor can reach,
+# across the whole app: such a route is either in KYC_GATE_CLOSED_ROUTES
+# or in KYC_GATE_OPEN_BY_DECISION, and a route in neither fails the walk
+# until somebody decides. Routes that only read are not in the walk:
+# reading moves no money, and the walk proves "only reads" by the absence
+# of a write session in the route's dependency tree, not by the method.
 #
 # WIRED APP-WIDE, on the FastAPI() constructor, next to
-# publish_background_tasks and for the same reason its comment gives:
-# per-router opt-in leaves the trap armed for whoever adds the next
-# router, and a forgotten gate is not visible in any output. App-wide
-# means a route added tomorrow is gated by default and its author has to
-# come here to open it -- the failure direction is a route that refuses
-# when it should not, which a user reports on the first day, rather than
-# a route that lets everyone through, which nobody reports at all.
+# publish_background_tasks: per-router opt-in would leave the next
+# router's money route ungated with nothing visible in any output.
 #
-# THE TWO LISTS BELOW ARE BOTH CHECKED BY tests/test_kyc_gate.py,
-# in both directions: every exempt entry must match a real route that
-# really requires a session, and every session-requiring route in the
-# modules named here must appear in one list or the other. The second
-# direction is why GATED_BY_DESIGN exists at all -- without it, adding a
-# route to, say, payments would silently inherit the gate with nobody
-# deciding whether it should.
+# THE ROUTE IS CHECKED BEFORE THE USER IS LOADED. A request to a route
+# that is not closed never reaches the user lookup, so the gate costs
+# nothing there and cannot answer for a route it has no business with.
+# The consequence is deliberate: a public route called with a Bearer
+# header -- the frontend sends one on every request once signed in -- is
+# served whatever the account's verification state.
 #
 # NOT A MIDDLEWARE: middleware runs before routing and would have to
-# match "/api/v1/payments/invoices/{invoice_id}" against a raw path by
+# match "/api/v1/products/{product_id}/purchase" against a raw path by
 # hand, i.e. reimplement the router. As a dependency the gate reads the
 # matched route's template straight out of the scope.
 # =============================================================================
@@ -41,9 +50,7 @@ from app.modules.kyc.constants import (
     KYC_CODE_PENDING,
     KYC_CODE_REJECTED,
     KYC_CODE_REVOKED,
-    KYC_VERIFICATION_FEE_CENTS,
 )
-from app.modules.ledgers.service import get_active_balance
 from app.modules.users.models import KYCStatus, User, UserRole
 
 # -----------------------------------------------------------------------------
@@ -51,14 +58,16 @@ from app.modules.users.models import KYCStatus, User, UserRole
 # -----------------------------------------------------------------------------
 # A LIST OF WHO PASSES, NOT OF WHO IS STOPPED. A role this file has never
 # heard of -- a value added to UserRole later, a row written by a script
-# -- is not in this set and is therefore gated. Written the other way
-# round, the same unknown role would sail through.
+# -- is not in this set and is therefore refused on the closed routes.
+# Written the other way round, the same unknown role would sail through.
 #
 # The gate exists for the people who put money in and buy: investors.
 # Staff and platform run the product. Agents earn commission and
 # companies receive revenue; neither deposits, and both are created by
 # staff, so demanding ten dollars and a manual approval from them would
-# lock a company owner out of their own dashboard.
+# stop a company owner from withdrawing its own revenue. The service-level
+# KYC refusals in purchases/service.py and installments/service.py stay
+# for exactly these roles: for an agent they are the only lock.
 GATE_EXEMPT_ROLES: frozenset[str] = frozenset(
     {
         UserRole.STAFF,
@@ -69,110 +78,93 @@ GATE_EXEMPT_ROLES: frozenset[str] = frozenset(
 )
 
 # -----------------------------------------------------------------------------
-# Routes open to an unverified investor
+# Routes closed to an unverified investor
 # -----------------------------------------------------------------------------
-# (METHOD, path template) exactly as FastAPI records it on the route.
-#
-# ROUTES WITHOUT A SESSION ARE NOT LISTED HERE AND MUST NOT BE. Login,
-# registration, password reset, the public storefront, the payments
-# webhook and /health carry no user, and the gate's first branch lets
-# every user-less request through. Listing them would make this file
-# read as "everything that works without verification", which it is not.
-#
-# Three groups, and the third is the one the first draft of this list
-# missed. Getting IN (onboarding: verify the address, choose a role,
-# sign the documents), getting TO THE MONEY (the deposit screen's
-# endpoints and the verification's own two), and -- for someone who has
-# already paid and been refused -- getting OUT and getting ANSWERED:
-# leaving the product and support. A gate that takes ten dollars at the
-# entrance and locks the exit is not a gate. Changing the login address
-# belonged to this third group until P-104 removed the feature from the
-# product; when the staff-side tool for it appears, its route gets a
-# decision here like any other.
-KYC_GATE_EXEMPT_ROUTES: frozenset[tuple[str, str]] = frozenset(
+# (METHOD, path template) exactly as FastAPI records it on the route. The
+# only list the gate consults at runtime.
+KYC_GATE_CLOSED_ROUTES: frozenset[tuple[str, str]] = frozenset(
     {
+        # Balance -> ownership.
+        ("POST", "/api/v1/products/{product_id}/purchase"),
+        # Balance -> ownership, paid in tranches.
+        ("POST", "/api/v1/products/{product_id}/installment"),
+        # Money out.
+        ("POST", "/api/v1/withdrawals"),
+        # The door to a role the gate does not stop. An approved
+        # application makes the investor an agent, agents are in
+        # GATE_EXEMPT_ROLES, and withdrawals/service.py has no KYC check
+        # of its own -- so an open application route would let an
+        # unverified depositor reach POST /withdrawals through staff
+        # approval. This route is the only thing on the backend that
+        # holds "applying requires verification", which the investor
+        # settings screen already states.
+        ("POST", "/api/v1/agent-applications"),
+    }
+)
+
+# -----------------------------------------------------------------------------
+# Routes that write and stay open to an unverified investor, by decision
+# -----------------------------------------------------------------------------
+# NOT CONSULTED AT RUNTIME: a route missing from the closed list passes
+# with or without an entry here. The set exists so the completeness walk
+# can tell "decided open" from "nobody looked". Sessionless routes are in
+# it on purpose: the gate sees the Bearer header on every request, so a
+# route that needs no session is still within its reach.
+KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
+    {
+        # -- Getting in, sessionless ------------------------------------
+        ("POST", "/api/v1/auth/email/register"),
+        ("POST", "/api/v1/auth/email/login"),
+        ("POST", "/api/v1/auth/telegram"),
+        ("POST", "/api/v1/auth/2fa/login-verify"),
+        ("POST", "/api/v1/auth/password-reset/request"),
+        ("POST", "/api/v1/auth/password-reset/confirm"),
+        ("POST", "/api/v1/public/referral-click"),
         # -- Identity and session --------------------------------------
         ("POST", "/api/v1/auth/verify-email"),
         ("POST", "/api/v1/auth/verify-email/resend"),
         ("POST", "/api/v1/auth/logout"),
         ("POST", "/api/v1/auth/logout-all"),
-        ("GET", "/api/v1/auth/sessions"),
         ("DELETE", "/api/v1/auth/sessions/{session_id}"),
         ("POST", "/api/v1/auth/2fa/setup"),
         ("POST", "/api/v1/auth/2fa/confirm"),
         ("POST", "/api/v1/auth/2fa/disable"),
-        # -- Profile, onboarding, and the way out ----------------------
-        ("GET", "/api/v1/users/me"),
+        # -- Profile, onboarding, settings -----------------------------
         ("PATCH", "/api/v1/users/me"),
         ("POST", "/api/v1/users/me/select-role"),
         ("POST", "/api/v1/users/me/deactivate"),
-        # -- Onboarding documents --------------------------------------
-        ("GET", "/api/v1/documents"),
-        ("GET", "/api/v1/documents/{document_id}"),
         ("POST", "/api/v1/documents/{document_id}/sign"),
+        ("PATCH", "/api/v1/notifications/preferences"),
+        # Where a withdrawal would be paid out to. A setting, not a
+        # movement: the money leaves only through POST /withdrawals,
+        # which is closed.
+        ("PUT", "/api/v1/users/me/payout-details"),
         # -- Topping up ------------------------------------------------
-        # The deposit screen and nothing else. GET /payments/history is
-        # deliberately absent: it is a record of past movement, not a
-        # way to fund the account.
+        # Money in, not out. The two GETs are here because they hold a
+        # write session, which puts them in the walk.
         ("POST", "/api/v1/payments/invoices"),
         ("GET", "/api/v1/payments/invoices/current"),
         ("GET", "/api/v1/payments/invoices/{invoice_id}"),
         ("POST", "/api/v1/payments/invoices/{invoice_id}/txid"),
         # -- Verification itself ---------------------------------------
-        # Without these the gate stands in front of the only door
-        # through it.
-        ("GET", "/api/v1/kyc/status"),
+        # Takes the fee from the balance, but it is the way through the
+        # gate, not past it.
         ("POST", "/api/v1/kyc/submit"),
-        # -- Inbox, read side ------------------------------------------
-        # The decision arrives as a notification. Preferences stay
-        # behind the gate: that is a setting, not a message.
-        ("GET", "/api/v1/notifications"),
-        ("GET", "/api/v1/notifications/unread-count"),
+        # -- Inbox, content, referrals ---------------------------------
         ("POST", "/api/v1/notifications/{delivery_id}/read"),
         ("POST", "/api/v1/notifications/read-all"),
-        # -- Support, whole module -------------------------------------
-        # Someone who paid and was refused has no other human recourse,
-        # and there is no money in support. Listed route by route rather
-        # than by prefix on purpose: a prefix rule would also switch off
-        # the route walk for this module, and the walk is the thing that
-        # makes the list trustworthy.
+        ("POST", "/api/v1/posts/{post_id}/dismiss"),
+        ("POST", "/api/v1/referrals/links"),
+        # -- Documents of things already owned -------------------------
+        # A copy of an agreement or certificate by email. An unverified
+        # investor owns nothing, so these answer 404 for them.
+        ("POST", "/api/v1/purchases/{purchase_id}/agreement/email"),
+        ("POST", "/api/v1/companies/{company_id}/ownership-certificate/email"),
+        # -- Support ---------------------------------------------------
         ("POST", "/api/v1/support/threads"),
-        ("GET", "/api/v1/support/threads"),
         ("POST", "/api/v1/support/threads/messages"),
-        ("GET", "/api/v1/support/threads/{thread_id}/messages"),
         ("POST", "/api/v1/support/threads/{thread_id}/read"),
     }
-)
-
-# Session-requiring routes in the same modules that stay behind the gate.
-# Not consulted at runtime -- the gate refuses anything not exempt, with
-# or without this set. It exists so that the route walk can demand a
-# DECISION for every new route in these modules instead of letting it
-# inherit the gate unread.
-KYC_GATE_GATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
-    {
-        # History is not a path to the money.
-        ("GET", "/api/v1/payments/history"),
-        # Delivery settings, not the inbox.
-        ("GET", "/api/v1/notifications/preferences"),
-        ("PATCH", "/api/v1/notifications/preferences"),
-        # Where a withdrawal is paid out to. Behind the gate by
-        # intention: an unverified account has nothing to withdraw.
-        ("GET", "/api/v1/users/me/payout-details"),
-        ("PUT", "/api/v1/users/me/payout-details"),
-    }
-)
-
-# Prefixes whose routes the walk demands a decision for. Modules outside
-# this list are gated by default and need no entry anywhere.
-KYC_GATE_REVIEWED_PREFIXES: tuple[str, ...] = (
-    "/api/v1/auth/",
-    "/api/v1/users/",
-    "/api/v1/documents",
-    "/api/v1/payments/",
-    "/api/v1/kyc/",
-    "/api/v1/notifications",
-    "/api/v1/support/",
 )
 
 # status -> refusal code. Covers every KYCStatus except APPROVED, which
@@ -189,7 +181,8 @@ _REFUSAL_CODES: dict[str, str] = {
 
 _MESSAGES: dict[str, str] = {
     KYC_CODE_PAYMENT_REQUIRED: (
-        "Identity verification is required before using the platform."
+        "Identity verification is required to buy, pay in installments "
+        "or withdraw."
     ),
     KYC_CODE_PENDING: (
         "Identity verification has been paid for and is awaiting a "
@@ -216,24 +209,26 @@ async def enforce_kyc_gate(
     request: Request,
     session: AsyncSession = Depends(get_db_reader),
 ) -> None:
-    """App-wide gate: refuse unverified investors outside the exempt list.
+    """App-wide gate: refuse unverified investors on the closed routes.
+
+    The route is checked first and the user is loaded only for a closed
+    route -- see the file header for what that does to public routes
+    called with a Bearer header.
 
     Loads the user itself rather than reusing the route's own dependency:
-    routes resolve their user through get_current_user,
-    get_current_user_write or a staff dependency, and FastAPI caches by
-    callable, so there is no single object to share. The cost is one
-    extra SELECT on requests whose route loads a user for writing --
-    accepted, and named in the H10 report rather than hidden here.
+    FastAPI caches by callable and the closed routes resolve their user
+    through get_current_user_write, so there is no single object to
+    share. The cost is one extra SELECT on the closed routes only.
     """
+    route_key = (request.method, request.scope["route"].path)
+    if route_key not in KYC_GATE_CLOSED_ROUTES:
+        return
+
     try:
         user: User | None = await get_optional_user(request, session)
     except UnauthorizedError:
         # A token that is present but invalid. Not the gate's business:
-        # letting it through leaves the answer exactly as it was before
-        # this file existed -- 401 from a protected route's own
-        # dependency, and the public storefront still served. Raising
-        # here instead would start answering 401 for anonymous-friendly
-        # routes that merely saw a stale cookie.
+        # the route's own session dependency answers 401 right after.
         return
     # Do NOT add `except ForbiddenError: return` to match the branch
     # above -- a deactivated account must reach aivis_error_handler as
@@ -249,34 +244,5 @@ async def enforce_kyc_gate(
     if user.kyc_status == KYCStatus.APPROVED:
         return
 
-    route_key = (request.method, request.scope["route"].path)
-    if route_key in KYC_GATE_EXEMPT_ROUTES:
-        return
-
     code = _REFUSAL_CODES[user.kyc_status]
-
-    details: dict | None = None
-    if code == KYC_CODE_PAYMENT_REQUIRED:
-        # Only on this branch: the other three are not about money, and
-        # a balance read on every refusal would be a query bought for
-        # nothing. The client needs both numbers to say "top up $7
-        # more", and the deposit screen's own source of balance
-        # (dashboard/summary) is itself behind the gate.
-        balance = await get_active_balance(session, user.id)
-        # No cast here any more (H12 P-46g). It used to be load-bearing:
-        # get_active_balance was annotated dict[str, int] and handed
-        # back Decimal, and JSONResponse raises TypeError on a Decimal,
-        # so without it the gate answered 500 instead of 402 to any
-        # unverified user who had ever had a ledger row. The function
-        # now returns what it promises, and the guarantee sits there
-        # rather than in each caller that remembered.
-        details = {
-            "required_cents": KYC_VERIFICATION_FEE_CENTS,
-            "available_cents": balance["frozen"] + balance["confirmed"],
-        }
-
-    raise KYCGateError(
-        message=_MESSAGES[code],
-        code=code,
-        details=details,
-    )
+    raise KYCGateError(message=_MESSAGES[code], code=code)

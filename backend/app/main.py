@@ -657,18 +657,9 @@ async def aivis_error_handler(request: Request, exc: AivisError) -> JSONResponse
     # (This comment named a since-renamed function, surviving_background_
     # tasks, until an adversarial review of an unrelated change caught the
     # drift -- the two names never referred to different mechanisms.)
-    # H10: errors may carry a structured payload (KYCGateError does --
-    # the fee and the account's balance). Built as details-first so
-    # "error" and "message" always win: a details key colliding with
-    # either of them must not be able to rewrite the two fields every
-    # client in the tree reads.
-    content: dict = dict(exc.details or {})
-    content["error"] = exc.code
-    content["message"] = exc.message
-
     return JSONResponse(
         status_code=exc.status_code,
-        content=content,
+        content={"error": exc.code, "message": exc.message},
         headers=headers,
         background=getattr(request.state, "background_tasks", None),
     )

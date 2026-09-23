@@ -75,6 +75,7 @@ import {
 } from '@/components/ui'
 import { useDashboardStore } from '@/stores/dashboard'
 import { listPaymentHistory } from '@/api/payments'
+import { ApiResponseError } from '@/api/client'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -383,6 +384,9 @@ async function submitWithdraw(): Promise<void> {
     closeWithdrawSheet()
     await Promise.all([dashboardStore.refresh(), fetchWithdrawalsFirstPage()])
   } catch (err) {
+    // 402 -- the KYC gate. main.ts has already sent the person to the
+    // verification screen, which unmounts this one.
+    if (err instanceof ApiResponseError && err.status === 402) return
     withdrawError.value =
       err instanceof Error && err.message ? err.message : t('inv.balance.withdrawals.form.error')
     // Backup: if payout details were cleared mid-session (backend 400),

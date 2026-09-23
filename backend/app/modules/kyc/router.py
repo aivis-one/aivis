@@ -19,10 +19,12 @@
 # the same shape companies/attachments_company_router.py uses -- the
 # size comes from a seek, not from reading the body.
 #
-# BOTH ARE IN FRONT OF THE KYC GATE (kyc/gate.py's exempt list). A gate
-# standing in front of the only door through it would lock every new
-# investor out of the product permanently -- the same self-lock that
-# put the deposit endpoints on that list.
+# NEITHER IS CLOSED BY THE KYC GATE. Status only reads and is open like
+# every read. Submit writes, so kyc/gate.py names it in
+# KYC_GATE_OPEN_BY_DECISION rather than leaving it to the default: it
+# takes the fee from the balance, which reads like the money the gate
+# closes, but it is the way through the gate, and closing it would lock
+# every new investor out of buying permanently.
 #
 # WHAT IS GONE, AND IT IS NOT COMING BACK IN THIS SHAPE (H10 P-44):
 #   POST /webhook  -- the stub provider receiver. It authenticated by

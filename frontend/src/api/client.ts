@@ -72,14 +72,11 @@ export class ApiResponseError extends Error {
    * situations the account is in -- kyc_payment_required, kyc_pending,
    * kyc_rejected or kyc_revoked. 403 in this tree means "you lack a
    * permission" and 400 is every other bad request, so neither status
-   * could carry this distinction; the code does.
-   *
-   * requiredCents / availableCents are populated only alongside
-   * kyc_payment_required: the other three are not about money.
+   * could carry this distinction; the code does. The gate answers 402
+   * only on the money routes (buy, installment plan, withdraw, agent
+   * application) -- backend kyc/gate.py, turned over in H21 P-111.
    */
   kycCode?: string
-  requiredCents?: number
-  availableCents?: number
 
   constructor(status: number, detail: string, retryAfter?: number) {
     super(detail)
@@ -127,8 +124,10 @@ export function setOnUnauthorized(cb: () => void): void {
 /**
  * Called on every 402 from the KYC gate, with the gate's code.
  * Wired at app bootstrap next to setOnUnauthorized -- a 402 can arrive
- * from any screen, so the response to it belongs in one place rather
- * than in each caller's catch block.
+ * from every screen that buys, opens an installment plan, withdraws or
+ * applies to be an agent, so the response to it belongs in one place
+ * rather than in each caller's catch block. Those callers step aside on
+ * a 402 and show nothing of their own.
  */
 export function setOnKycRequired(cb: (code: string) => void): void {
   _onKycRequired = cb
@@ -280,15 +279,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       retryAfter,
     )
 
-    // 402 -- the KYC gate. Carry its structured payload onto the error
-    // and tell the app, which sends the user to the verification screen.
+    // 402 -- the KYC gate. Carry its code onto the error and tell the
+    // app, which sends the user to the verification screen.
     if (response.status === 402 && data && typeof data === 'object') {
       const body = data as Record<string, unknown>
       error.kycCode = typeof body.error === 'string' ? body.error : undefined
-      error.requiredCents =
-        typeof body.required_cents === 'number' ? body.required_cents : undefined
-      error.availableCents =
-        typeof body.available_cents === 'number' ? body.available_cents : undefined
       if (error.kycCode) _onKycRequired?.(error.kycCode)
     }
 

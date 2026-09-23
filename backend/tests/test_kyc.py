@@ -466,7 +466,12 @@ async def test_approving_an_unknown_user_is_a_404(
 async def test_revocation_puts_the_person_back_behind_the_gate(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Withdrawing an approval is visible to the gate immediately."""
+    """Withdrawing an approval is visible to the gate immediately.
+
+    Until H21 measured on GET /dashboard/summary, which the gate closed
+    then and does not close now: the claim is about the gate seeing the
+    new status, so it moved to a route the gate still closes.
+    """
     _, staff_token = await create_admin_user(client, db_session)
     token, user_id = await _unverified_investor(client)
 
@@ -475,8 +480,8 @@ async def test_revocation_puts_the_person_back_behind_the_gate(
         json={"reason": REASON},
         headers=auth_headers(staff_token),
     )
-    allowed = await client.get(
-        "/api/v1/dashboard/summary", headers=auth_headers(token)
+    allowed = await client.post(
+        "/api/v1/withdrawals", json={}, headers=auth_headers(token)
     )
     assert allowed.status_code != 402
 
@@ -491,8 +496,8 @@ async def test_revocation_puts_the_person_back_behind_the_gate(
     await db_session.refresh(user)
     assert user.kyc_status == KYCStatus.REVOKED
 
-    refused = await client.get(
-        "/api/v1/dashboard/summary", headers=auth_headers(token)
+    refused = await client.post(
+        "/api/v1/withdrawals", json={}, headers=auth_headers(token)
     )
     assert refused.status_code == 402
     assert refused.json()["error"] == "kyc_revoked"

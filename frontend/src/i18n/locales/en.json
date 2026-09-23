@@ -117,23 +117,6 @@
         "revenue": "Revenue"
       }
     },
-    "kyc": {
-      "title": "Identity Verification",
-      "subtitle": "KYC verification is required to use the platform",
-      "submit": "Start Verification",
-      "pending": "Verification Pending",
-      "pendingText": "Your documents are being reviewed. This usually takes a few minutes.",
-      "approved": "Verification Complete",
-      "approvedText": "Your identity has been verified. You can continue setting up your account.",
-      "rejected": "Verification Rejected",
-      "rejectedText": "Your verification was rejected. Please try again.",
-      "continue": "Continue",
-      "redo": "Try again",
-      "statusesTitle": "Verification statuses:",
-      "statusPending": "Pending — documents under review",
-      "statusApproved": "Approved — verification complete",
-      "statusRejected": "Rejected — resubmission required"
-    },
     "docs": {
       "title": "Document Signing",
       "subtitle": "Review and sign the required documents to get started",
@@ -731,7 +714,7 @@
       },
       "error": {
         "insufficientBalance": "Not enough balance on your active account",
-        "kycRequired": "KYC verification required. Redirecting to onboarding",
+        "kycRequired": "KYC verification required. Redirecting to verification",
         "productInactive": "This product is no longer available",
         "generic": "Purchase failed. Please try again"
       }
@@ -762,7 +745,7 @@
       "success": "Installment plan created",
       "error": {
         "insufficientBalance": "Not enough balance for the first tranche",
-        "kycRequired": "KYC verification required. Redirecting to onboarding",
+        "kycRequired": "KYC verification required. Redirecting to verification",
         "templateMismatch": "The selected plan is no longer valid for this product",
         "productInactive": "This product is no longer available",
         "generic": "Could not create the plan. Please try again"
@@ -2390,6 +2373,8 @@
     "revokedTitle": "Verification withdrawn",
     "revokedText": "Your approval has been withdrawn. Contact support if you believe this is a mistake.",
     "toSupport": "Contact support",
+    "unlocks": "Verification unlocks buying, installment plans and withdrawals. Everything else is open without it.",
+    "back": "Back",
     "errorLoad": "Could not load verification status.",
     "errorStart": "Could not start verification.",
     "upload": {

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // Identity verification screen (H10).
 //
-// ONE SCREEN CARRYING FOUR STATES, not a modal over whatever page the
-// 402 interrupted. The gate refuses from any endpoint, so a modal would
-// leave the person looking at a product they cannot use behind it, with
-// half its widgets showing errors of their own. Here the answer to
-// "what do you want from me and where do I go" is the whole page.
+// ONE SCREEN CARRYING FOUR STATES, not a modal over the page the 402
+// interrupted. Since H21 P-111 the gate refuses only the money routes --
+// buying, an installment plan, a withdrawal, the agent application --
+// and the rest of the product is open before verification. So the page
+// answers two questions: what verification unlocks and costs, and how
+// to get back to the product without it (kyc.unlocks and the back
+// button at the foot of the card, shown in every state).
 //
 //   not_started -> what it costs, what the account holds, and either
 //                  "start" or a link to the deposit screen
@@ -13,9 +15,9 @@
 //   rejected    -> refused; a new session costs the fee again
 //   revoked     -> the approval was withdrawn; support is reachable
 //
-// GET /kyc/status and POST /kyc/submit are both in front of the gate
-// (backend kyc/gate.py), which is what makes this screen loadable by
-// the very users it exists for.
+// GET /kyc/status and POST /kyc/submit are open to an unverified
+// investor (backend kyc/gate.py), which is what makes this screen
+// loadable by the very users it exists for.
 //
 // H12: THE SESSION NOW CARRIES DOCUMENTS. Until this pass the button
 // paid ten dollars and opened an empty application, and staff approved
@@ -213,6 +215,17 @@ function toSupport(): void {
   )
 }
 
+// Back to where the person came from -- usually the purchase,
+// installment or withdrawal screen the gate refused. A deep link has no
+// prior entry, so it goes to '/', which lands on the role's dashboard.
+function goBack(): void {
+  if (window.history.state?.back) {
+    router.back()
+    return
+  }
+  void safeNavigate(router.push('/'), '[KYCVerificationView] back')
+}
+
 onMounted(load)
 </script>
 
@@ -392,6 +405,11 @@ onMounted(load)
             {{ t('kyc.toSupport') }}
           </button>
         </template>
+
+        <p class="kyc-text">{{ t('kyc.unlocks') }}</p>
+        <button class="btn btn-outline" @click="goBack">
+          {{ t('kyc.back') }}
+        </button>
       </div>
 
       <p v-if="error" class="kyc-error">{{ error }}</p>

@@ -141,14 +141,14 @@ async def register_user(
     register calls) pass email= explicitly.
 
     VERIFIED BY DEFAULT SINCE H10, and the default is the point. The KYC
-    gate refuses an unverified investor everywhere outside a named list,
-    so a fixture that left every user unverified would make several
-    hundred existing tests assert against an account state no real user
-    of the product stays in -- and they would fail with 402 on the way
-    to whatever they were actually testing. This does not weaken the
-    gate: it is enforced app-wide and tested directly in
-    test_kyc_gate.py, which uses verified=False to build the state on
-    purpose.
+    gate closes buying, installment plans, withdrawals and the agent
+    application to an unverified investor, and those are what a large
+    part of the suite exists to exercise -- purchases, installments,
+    reversals, commissions, withdrawals. A fixture that left every user
+    unverified would have each of those tests fail with 402 on the way
+    to whatever it was actually testing. This does not weaken the gate:
+    it is enforced app-wide and tested directly in test_kyc_gate.py,
+    which uses verified=False to build the state on purpose.
 
     The approval is written straight to the row rather than through the
     staff endpoint: a fixture should not need a staff account and a

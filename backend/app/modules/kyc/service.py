@@ -937,9 +937,10 @@ async def get_kyc_status(
 ) -> KYCStatusResponse:
     """Return the current KYC status, latest application, and the money.
 
-    The two amounts are here because the screen that needs them cannot
-    reach dashboard/summary: that endpoint is behind the gate, and this
-    one is in front of it by design.
+    The two amounts are here so the verification screen gets the fee
+    and what the account can pay it from in one read, from the endpoint
+    that also says where the verification stands. The gate's refusal
+    carries no amounts (H21 P-111): this is their only source.
     """
     stmt = (
         select(KYCApplication)
