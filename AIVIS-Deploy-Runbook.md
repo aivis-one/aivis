@@ -509,8 +509,9 @@ immediately after. The frontend does not return until the very end — after the
 migrations run, the database reseeds, a smoke check runs, and (unless you pass `--skip-tests`) the full
 test suite runs. If you assumed `update` was a quick, low-impact refresh, it isn't: budget for a full
 outage window, not a blip. `aivis update --frontend-only` is the one mode that skips all of this — it
-refuses outright if anything backend-side changed in the pulled commits, so it can't silently do the
-wrong thing, but when it does run, only the frontend goes down.
+refuses outright if anything backend-side differs between what is running and the checkout, or if the
+box does not know what is running, so it can't silently do the wrong thing, but when it does run, only
+the frontend goes down.
 
 **A failed migration and a failed test suite are not the same kind of failure, even though both can
 print in red.** If the database migration fails, or the post-seed smoke check fails, `aivis update`
@@ -519,7 +520,9 @@ broke and re-run it. If instead the *test suite* fails, the update keeps going: 
 rebuilds and comes back up, on the theory that a broken test shouldn't take a working site offline —
 only the command's own exit code tells you something failed. Read the last few lines of output rather
 than assuming "it printed red, the site must be down" or "it finished, the site must be fine" — neither
-follows automatically from the other here.
+follows automatically from the other here. A red test suite does **not** make the next `aivis update`
+rebuild the same commit: the code is running, so it is recorded as deployed, and the next run builds
+only when a new commit arrives.
 
 **`aivis update` can commit and push to the public GitHub repo without asking you first.** If the
 regenerated OpenAPI-derived frontend types differ from what's committed, the script commits the change
@@ -531,22 +534,49 @@ but not until the first time a schema change actually triggers a push.
 
 **Its own destructive confirmation prompt is the script's second one, and deserves the same reading as
 §4 item 1's wipe prompt.** If `update` finds uncommitted changes in `/opt/aivis/repo`, it asks
-`Discard local changes and update? (y/n)`. Answering `y` discards every edit to every file already
+`Discard local changes and update? (y/n)` -- before it touches comms or anything else. Answering `n`
+cancels the whole run with nothing changed. Answering `y` discards every edit to every file already
 tracked by git in that checkout — if anyone has ever hand-edited a file directly on the server (a quick
 fix, a config tweak), it is gone the moment you answer `y` here. Untracked new files are not touched,
 only edits to files git already knows about. If you don't recognize the changes it's warning you about,
 stop and look at them (`git -C /opt/aivis/repo status`) before answering — the prompt itself does not
 tell you what the changes are, only that they exist.
 
-**`aivis update` now updates comms too, and in a fixed order.** It walks the service registry
-(`scripts/services.conf`) top to bottom: comms first, the product last — a service's code has to be
-current before the product that calls it. comms is updated by its own CLI, not by anything in this
-repo. A box without comms is not an error: that service is reported as skipped and the run continues.
-After the product's pull, comms is restarted once more, unconditionally, so the notification
-dictionary that just arrived in this checkout is the one being served. **If that restart fails, the
+**`aivis update` now updates comms too, and in a fixed order -- three steps.**
+
+1. **The product's files arrive first.** `/opt/aivis/repo` is brought to the commit on GitHub before
+   anything restarts. comms reads its notification dictionary straight out of this checkout, and
+   a new comms can refuse to start on an old dictionary -- so the dictionary has to be on disk before
+   comms restarts. Nothing is built at this step; only files move. If this step cannot finish -- no
+   network to GitHub, local commits that cannot be pushed, a history on GitHub that no longer contains
+   the box's commit -- the run stops here with nothing touched.
+2. **Then the services**, walking the service registry (`scripts/services.conf`) top to bottom: comms
+   first. comms is updated by its own CLI, not by anything in this repo. A box without comms is not an
+   error: that service is reported as skipped and the run continues. If a service fails, the run stops
+   there, and the product is not built.
+3. **Then the product is built** -- a service's code has to be current before the product that calls it.
+
+After that, comms is restarted once more, unconditionally, so the notification dictionary in this
+checkout is the one being served even when comms' own code did not change. **If that restart fails, the
 likeliest cause is the profile commit you just pulled** — comms validates its profile at startup and
 refuses to boot on a bad one. The command prints the recovery path (revert that commit, roll out
 again) rather than only the verdict.
+
+**Whether the product is rebuilt is decided by what is running, not by what is on disk.** Because the
+files arrive before the services, a run that stops at comms leaves the checkout newer than the running
+product. The box keeps a record of the commit that was last built and came up healthy --
+`/opt/aivis/deployed-commit`, written at the end of every product cycle that passed its final health
+check -- and `aivis update` builds whenever the checkout is not that commit. So after a run that stopped
+at a service, the next `aivis update` builds the product; it does not say "Already up to date". Each run
+prints both commits (`Deployed: ... checkout: ...`), and `aivis version` shows them too.
+
+**When the box has no record yet, the next `aivis update` runs the full cycle, even if nothing
+changed.** That is the case on a freshly installed box, and on an existing box for one run after this
+behaviour arrives: the run that brings it still executes the old script (see the top of this section),
+which does not write the record. So on an existing box, **run `aivis update` twice** -- the second run
+is a full cycle and ends with `✓ Recorded deployed commit ...`. If a comms upgrade that depends on a new
+dictionary is coming, do both runs before it. Until the record exists, `aivis update --frontend-only`
+refuses and says why.
 
 **The branch is now taken from the registry, not from whatever is checked out.** If someone left
 `/opt/aivis/repo` on another branch, `update` says so and puts it back, instead of quietly treating

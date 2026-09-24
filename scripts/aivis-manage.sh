@@ -19,6 +19,13 @@
 INSTALL_BASE="/opt/aivis"
 COMPOSE_DIR="$INSTALL_BASE/repo"
 
+# The product commit that was last built and brought up healthy, written by
+# `aivis update` at the end of a successful product cycle (H24 P-112). It
+# lives OUTSIDE the checkout on purpose: the checkout is moved ahead of the
+# running product before the services restart, so the checkout's HEAD says
+# what is on disk, never what is running. See update_product.
+DEPLOYED_COMMIT_FILE="$INSTALL_BASE/deployed-commit"
+
 CONF_FILE="$INSTALL_BASE/aivis.conf"
 if [ ! -f "$CONF_FILE" ]; then
     echo "FATAL: $CONF_FILE not found." >&2
@@ -363,8 +370,9 @@ case_lint() {
 # -- Registry-driven update ---------------------------------------------------
 # `aivis update` is no longer one function: the box runs more than one
 # service now, and they are updated in registry order, top to bottom,
-# with the product LAST -- a service's code must be current before the
-# product that calls it.
+# with the product's BUILD last -- a service's code must be current
+# before the product that calls it. The product's FILES arrive first,
+# before any service (H24 P-112): services read data out of them.
 
 # Bring one checkout to the branch the registry records for it, and
 # report (through SVC_CHANGED) whether anything actually moved.
@@ -472,16 +480,22 @@ update_service() {
     want=$(svc_branch "$branch_expr" "$name") || return 1
     echo -e "${CYAN}=== $name ($want) ===${NC}"
 
-    svc_sync_checkout "$dir" "$want" "$name" || return 1
-
     if [ "$lifecycle" = "internal" ]; then
+        # The product's checkout is NOT synced here: update_all already
+        # brought it to origin before the first service ran (see
+        # sync_product_checkout). Syncing it again here would be a second
+        # way of getting the product's code, and there is one.
+        #
         # The product runs its own full cycle (build, migrate, tests,
         # types, health) and decides for itself whether there is anything
-        # to do. It gets the branch the registry resolved, so it never has
-        # to ask the checkout what it is.
+        # to do -- from what was last deployed, not from the checkout. It
+        # gets the branch the registry resolved, so it never has to ask
+        # the checkout what it is.
         AIVIS_PRODUCT_BRANCH="$want" "$updater" "$@" || return 1
         return 0
     fi
+
+    svc_sync_checkout "$dir" "$want" "$name" || return 1
 
     if [ "$SVC_CHANGED" -eq 0 ]; then
         echo -e "${GREEN}✓ $name: already up to date${NC}"
@@ -495,6 +509,145 @@ update_service() {
         return 1
     fi
     echo ""
+    return 0
+}
+
+# Bring the PRODUCT's checkout to origin before any service is touched.
+#
+# WHY BEFORE (H24 P-112). Services read DATA out of this checkout -- comms
+# bind-mounts comms-profile/ from it -- and a service's new code can refuse
+# to start on the old data. When the pull came last, in update_product,
+# the circle was closed: the new service would not come up on the old
+# profile, the new profile only arrived with the product pull, and the
+# product pull only ran once the service was up. Now the files land on
+# disk first; the product's CODE is still built and restarted last, in
+# update_product, because a service's code must be current before the
+# product that calls it.
+#
+# This is the one path the product's code arrives by: the fetch in
+# svc_sync_checkout, then a fast-forward. update_product does not fetch.
+#
+# Returns 0 when the checkout is at origin, 2 when the operator declined
+# to discard local edits (nothing touched, not a failure), 1 otherwise.
+# Every non-zero return happens before any service runs.
+sync_product_checkout() {
+    local record="$1"
+    local name dir branch_expr want before after
+    name=$(svc_field "$record" 1)
+    dir=$(svc_field "$record" 3)
+    branch_expr=$(svc_field "$record" 4)
+
+    want=$(svc_branch "$branch_expr" "$name") || return 1
+    echo -e "${CYAN}=== $name checkout ($want) -- files first, services next, build last ===${NC}"
+
+    svc_sync_checkout "$dir" "$want" "$name" || return 1
+
+    # Uncommitted edits. Asked HERE, before the services, because the
+    # fast-forward below is what would carry them away. Use git status
+    # --porcelain (same output git status reads) rather than git
+    # diff-index, which fires false positives when file stat metadata
+    # drifts (e.g. after chmod, touch, or filesystem restore) even when
+    # the working tree is actually clean.
+    if [ -n "$(git status --porcelain)" ]; then
+        echo -e "${YELLOW}⚠ Uncommitted changes detected:${NC}"
+        git status --short
+        echo ""
+        read -rp "Discard local changes and update? (y/n): " -n 1 < /dev/tty
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            return 2
+        fi
+        git checkout -- .
+    fi
+
+    before=$(git rev-parse --short HEAD)
+    if [ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/$want")" ]; then
+        # Always a fast-forward here: svc_sync_checkout has already pushed
+        # any local commits home or stopped the cycle -- including when
+        # origin's history was rewritten, since that push is then refused
+        # -- so HEAD is an ancestor of origin/$want. --ff-only says so in
+        # the command, and a merge commit can never be made on the box.
+        # What CAN still refuse is the working tree: an untracked file on
+        # the box at a path the incoming commits add. git prints which.
+        if ! git merge --ff-only --quiet "origin/$want"; then
+            echo -e "${RED}✗ $name: the checkout could not be moved to origin/$want${NC}"
+            echo "  git refused, and says why above -- most often an untracked file"
+            echo "  on this box sits where the incoming commits add one."
+            return 1
+        fi
+    fi
+    after=$(git rev-parse --short HEAD)
+
+    if [ "$before" = "$after" ]; then
+        echo -e "${GREEN}✓ $name: checkout already at $after${NC}"
+    else
+        echo -e "${GREEN}✓ $name: $before -> $after on disk (before services)${NC}"
+    fi
+    echo ""
+    return 0
+}
+
+# -- The deployed-commit record ----------------------------------------------
+# What `aivis update` decides from, since H24 P-112: not "is the checkout
+# behind origin" -- the checkout is moved ahead of the running product on
+# purpose -- but "is what is running the checkout". See update_product.
+
+# Sets DEPLOYED_COMMIT (full sha, or empty) and DEPLOYED_STATE, one of:
+#   ok        a full sha that exists in this checkout's history
+#   absent    no record -- a fresh install, or a box whose first run with
+#             this logic has not finished yet
+#   empty     the file exists and holds nothing
+#   malformed not a full 40-character sha
+#   unknown   a well-formed sha this checkout does not have
+# Anything but "ok" means the running commit is not known. Must run inside
+# the product checkout (the history check reads it).
+read_deployed_commit() {
+    DEPLOYED_COMMIT=""
+    DEPLOYED_STATE=""
+    if [ ! -f "$DEPLOYED_COMMIT_FILE" ]; then
+        DEPLOYED_STATE="absent"
+        return 0
+    fi
+    local raw
+    raw=$(tr -d '[:space:]' < "$DEPLOYED_COMMIT_FILE" 2>/dev/null)
+    if [ -z "$raw" ]; then
+        DEPLOYED_STATE="empty"
+    elif ! [[ "$raw" =~ ^[0-9a-f]{40}$ ]]; then
+        DEPLOYED_STATE="malformed"
+    elif ! git cat-file -e "${raw}^{commit}" 2>/dev/null; then
+        DEPLOYED_STATE="unknown"
+    else
+        DEPLOYED_COMMIT="$raw"
+        DEPLOYED_STATE="ok"
+    fi
+    return 0
+}
+
+# One line for the operator on why the running commit is not known.
+deployed_state_text() {
+    case "$DEPLOYED_STATE" in
+        absent)    echo "no record yet" ;;
+        empty)     echo "the record is empty" ;;
+        malformed) echo "the record is not a commit id" ;;
+        unknown)   echo "the recorded commit is not in this checkout's history" ;;
+        *)         echo "$DEPLOYED_STATE" ;;
+    esac
+}
+
+# Record the checkout's HEAD as deployed. Called once, after the final
+# health check of a product cycle -- and after the bot's types commit, so
+# the record is the commit the frontend was actually built from. Written
+# to a temp file beside the record and moved over it: an interrupted
+# write leaves the old record, never half a sha.
+record_deployed_commit() {
+    local sha tmp
+    sha=$(git rev-parse HEAD) || return 1
+    tmp=$(mktemp "$INSTALL_BASE/.deployed-commit.XXXXXX") || return 1
+    if ! printf '%s\n' "$sha" > "$tmp" || ! mv -f "$tmp" "$DEPLOYED_COMMIT_FILE"; then
+        rm -f "$tmp"
+        return 1
+    fi
+    echo -e "${GREEN}✓ Recorded deployed commit $(git rev-parse --short HEAD)${NC}"
     return 0
 }
 
@@ -573,11 +726,16 @@ reload_bound_profile() {
     return 1
 }
 
-# `aivis update` -- the whole box, in registry order.
+# `aivis update` -- the whole box, in three steps:
+#   1. the product's checkout is brought to origin (files only);
+#   2. the services, in registry order;
+#   3. the product is built and restarted, if what runs is not the checkout.
+# Then services whose profile lives in the product's checkout restart once
+# more. Step 1 comes first since H24 P-112 -- see sync_product_checkout.
 update_all() {
     # Self-update guard -- this file is executed straight from the repo
     # checkout (via the shim at $INSTALL_BASE/scripts/manage.sh), and this
-    # very call is about to `git pull` that same checkout below. Bash reads
+    # very call is about to fast-forward that same checkout below. Bash reads
     # a script incrementally by byte offset, so a mid-run rewrite of this
     # file can drop the interpreter into the middle of a different line.
     # Run the rest of the cycle from a snapshot instead: the copy is
@@ -617,7 +775,27 @@ update_all() {
     local registry_before=""
     [ -f "$SERVICES_CONF" ] && registry_before=$(md5sum "$SERVICES_CONF" 2>/dev/null)
 
-    local record lifecycle
+    # -- The product's files first -------------------------------------------
+    # Before any service restarts: a service may read data out of this
+    # checkout (comms reads comms-profile/), and its new code may refuse
+    # the old data. Only the FILES move here; the product is built and
+    # restarted last, below, as before. Runs in frontend-only mode too --
+    # that mode has always pulled the product.
+    local record lifecycle sync_rc
+    for record in "${AIVIS_SERVICES[@]}"; do
+        [ "$(svc_field "$record" 5)" = "internal" ] || continue
+        sync_rc=0
+        sync_product_checkout "$record" || sync_rc=$?
+        if [ "$sync_rc" -eq 2 ]; then
+            echo "Update cancelled -- nothing was touched"
+            exit 0
+        fi
+        if [ "$sync_rc" -ne 0 ]; then
+            echo -e "${RED}✗ Update stopped at the '$(svc_field "$record" 1)' checkout, before any service -- nothing was restarted or built${NC}"
+            exit 1
+        fi
+    done
+
     for record in "${AIVIS_SERVICES[@]}"; do
         lifecycle=$(svc_field "$record" 5)
         if [ "$lifecycle" != "internal" ] && [ "$frontend_only" -eq 1 ]; then
@@ -632,13 +810,17 @@ update_all() {
     done
 
     # -- Bound profiles: the SECOND restart ---------------------------------
-    # The registry order is "services -> product", and it stays that way:
-    # a service's CODE must be current before the product that calls it.
-    # But a service whose PROFILE is bind-mounted out of the product's
-    # checkout has a second dependency pointing the other way -- the data
-    # only arrived a moment ago, in update_product's pull, long after that
-    # service restarted. Without this pass a profile edit would land on
-    # disk now and reach the running service one update LATER.
+    # The registry order is "services -> product" for CODE, and it stays
+    # that way: a service's code must be current before the product that
+    # calls it. A service whose PROFILE is bind-mounted out of the
+    # product's checkout depends the other way round, on data -- and since
+    # H24 that data is already on disk before the service loop (see
+    # sync_product_checkout), so a service whose own code changed restarts
+    # onto it. This pass is for the other case: the service's code did not
+    # change, so the loop never restarted it, and it is still serving the
+    # profile it read at its last start. Without this pass a profile-only
+    # edit would sit on disk and reach the running service only when the
+    # service itself next changed.
     #
     # Runs in frontend-only mode too. comms is a separate stack, its
     # profile is data rather than backend code, and the mode's guard does
@@ -650,9 +832,10 @@ update_all() {
         reload_bound_profile "$record" || exit 1
     done
 
-    # A registry change arrives WITH the product update, but the list was
-    # read before that -- so a newly declared service starts being managed
-    # on the next run. Say so instead of letting it look like a no-op.
+    # A registry change arrives with the product's files, but the list was
+    # read when this run started, before them -- so a newly declared
+    # service starts being managed on the next run. Say so instead of
+    # letting it look like a no-op.
     if [ -n "$registry_before" ] && [ -f "$SERVICES_CONF" ]; then
         if [ "$registry_before" != "$(md5sum "$SERVICES_CONF" 2>/dev/null)" ]; then
             echo ""
@@ -812,8 +995,10 @@ update_product() {
     #                     full compose restart, migrations, seeds, smoke
     #                     check and backend tests. Only the OpenAPI types
     #                     regeneration + frontend rebuild run. Refuses to
-    #                     proceed if backend/ or migrations/ changed in
-    #                     the pulled commits (fool-proof guard).
+    #                     proceed if backend/ or docker-compose.yml differ
+    #                     between the deployed commit and the checkout, or
+    #                     if the deployed commit is not known (fool-proof
+    #                     guard).
     SKIP_TESTS=0
     FRONTEND_ONLY=0
     while [ $# -gt 0 ]; do
@@ -852,57 +1037,55 @@ update_product() {
     # Re-adding a safe.directory call would document an ownership state
     # this product no longer produces.
 
-    # Save current state. The branch comes from AIVIS_PRODUCT_BRANCH,
-    # resolved from the registry by update_service and already applied to
-    # this checkout by svc_sync_checkout -- NOT from `git branch
-    # --show-current`, which is what this used to read and which made
-    # "the branch this server tracks" mean "whatever someone last checked
-    # out here". The fallback keeps the function runnable on its own.
-    CURRENT_COMMIT=$(git rev-parse --short HEAD)
+    # The branch comes from AIVIS_PRODUCT_BRANCH, resolved from the
+    # registry by update_service -- NOT from `git branch --show-current`,
+    # which is what this used to read and which made "the branch this
+    # server tracks" mean "whatever someone last checked out here".
     BRANCH="${AIVIS_PRODUCT_BRANCH:-$(git branch --show-current)}"
-    echo "Current: $CURRENT_COMMIT ($BRANCH)"
 
-    # Check for uncommitted local changes.
-    # Use git status --porcelain (same output git status reads) rather than
-    # git diff-index, which fires false positives when file stat metadata
-    # drifts (e.g. after chmod, touch, or filesystem restore) even when
-    # the working tree is actually clean.
-    if [ -n "$(git status --porcelain)" ]; then
-        echo -e "${YELLOW}⚠ Uncommitted changes detected:${NC}"
-        git status --short
-        echo ""
-        read -rp "Discard local changes and update? (y/n): " -n 1 < /dev/tty
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Update cancelled"
+    # WHETHER THERE IS ANYTHING TO DO is decided from what was last
+    # DEPLOYED, not from HEAD against origin (H24 P-112). The checkout was
+    # already brought to origin before the services ran
+    # (sync_product_checkout) -- this function no longer fetches or pulls
+    # -- so HEAD == origin says only that the files are on disk. After a
+    # run that stopped at a service, the checkout is new and the product
+    # is not built; a HEAD-vs-origin check would call that "up to date"
+    # on this run and every run after it, and the new backend would
+    # never be built.
+    read_deployed_commit
+    NEW_COMMIT=$(git rev-parse --short HEAD)
+    if [ "$DEPLOYED_STATE" = "ok" ]; then
+        CURRENT_COMMIT=$(git rev-parse --short "$DEPLOYED_COMMIT")
+        echo "Deployed: $CURRENT_COMMIT   checkout: $NEW_COMMIT ($BRANCH)"
+        if [ "$DEPLOYED_COMMIT" = "$(git rev-parse HEAD)" ]; then
+            echo -e "${GREEN}✓ Already up to date -- the checkout is what is running${NC}"
             return 0
         fi
-        git checkout -- .
+    else
+        CURRENT_COMMIT="unknown"
+        echo "Deployed: unknown ($(deployed_state_text))   checkout: $NEW_COMMIT ($BRANCH)"
+        # --frontend-only builds the frontend on top of the backend that is
+        # already running, and its guard proves that safe by diffing that
+        # backend's commit against the checkout. With no known commit there
+        # is nothing to diff against, and "no difference found" would be a
+        # guess.
+        if [ $FRONTEND_ONLY -eq 1 ]; then
+            echo -e "${RED}✗ The deployed commit is not known -- refusing to run with --frontend-only${NC}"
+            echo "  frontend-only must prove the running backend matches this checkout,"
+            echo "  and there is no deployed commit to compare it with."
+            echo ""
+            echo "Run: aivis update              (full cycle; records the deployed commit)"
+            echo "  or aivis update --skip-tests (full cycle without tests)"
+            return 1
+        fi
+        echo -e "${CYAN}The running commit is not known -- running the full cycle${NC}"
     fi
-
-    # Fetch and check if there are any remote changes.
-    GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" git fetch origin
-    if git diff --quiet HEAD "origin/$BRANCH" 2>/dev/null; then
-        echo -e "${GREEN}✓ Already up to date${NC}"
-        return 0
-    fi
-
-    # Pull changes.
-    echo "Pulling updates..."
-    if ! GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" git pull origin "$BRANCH"; then
-        echo -e "${RED}✗ git pull failed. Local changes may conflict.${NC}"
-        echo "  Inspect: git -C $COMPOSE_DIR status"
-        echo "  To force: git -C $COMPOSE_DIR stash && aivis update"
-        return 1
-    fi
-    NEW_COMMIT=$(git rev-parse --short HEAD)
-    echo "Updated: $CURRENT_COMMIT -> $NEW_COMMIT"
     echo ""
 
     # -- Narrow env projections, BEFORE any compose command ------------------
     # postgres/redis read backend/.env.db and minio/minio-init read
     # backend/.env.minio; both are generated from backend/.env and both
-    # are gitignored, so the pull above never brings them. Compose fails
+    # are gitignored, so no update of the checkout ever brings them. Compose fails
     # outright on a missing env_file -- and it parses the WHOLE file, so
     # even a frontend-only run dies on it. Regenerate here, before the
     # first compose invocation of this cycle.
@@ -951,19 +1134,23 @@ update_product() {
     fi
 
     # Fool-proof guard for --frontend-only: if anything backend-side
-    # changed between CURRENT_COMMIT and NEW_COMMIT, refuse hard.
+    # differs between what is DEPLOYED and the checkout, refuse hard.
+    # Deployed, not "HEAD before the pull": since H24 the checkout is
+    # moved before this function runs, so HEAD-before and HEAD-after are
+    # the same commit here and a diff between them would always be empty.
+    # An unknown deployed commit never reaches this point (refused above).
     # Watched paths:
     #   backend/           -- app code + migrations + seed scripts
     #   docker-compose.yml -- service config, env wiring, mounts
     # docker-compose.yml lives at the repo root in aivis (unlike app
     # code which is under backend/), so we list it explicitly.
     if [ $FRONTEND_ONLY -eq 1 ]; then
-        if ! git diff --quiet "$CURRENT_COMMIT" "$NEW_COMMIT" -- backend/ docker-compose.yml; then
-            echo -e "${RED}✗ Detected backend-side changes between $CURRENT_COMMIT and $NEW_COMMIT${NC}"
+        if ! git diff --quiet "$DEPLOYED_COMMIT" HEAD -- backend/ docker-compose.yml; then
+            echo -e "${RED}✗ Detected backend-side changes between deployed $CURRENT_COMMIT and checkout $NEW_COMMIT${NC}"
             echo -e "${RED}  Refusing to run with --frontend-only.${NC}"
             echo ""
             echo "Changed files:"
-            git diff --name-only "$CURRENT_COMMIT" "$NEW_COMMIT" -- backend/ docker-compose.yml | sed 's/^/  /'
+            git diff --name-only "$DEPLOYED_COMMIT" HEAD -- backend/ docker-compose.yml | sed 's/^/  /'
             echo ""
             echo "Run: aivis update              (full cycle)"
             echo "  or aivis update --skip-tests (full cycle without tests)"
@@ -1261,9 +1448,23 @@ Triggered by aivis update on commit $NEW_COMMIT" || {
     sleep 3
     HEALTH=$(curl -s http://127.0.0.1:8000/health 2>/dev/null)
     if echo "$HEALTH" | grep -q '"status"'; then
-        echo -e "${GREEN}✓ Update complete: $CURRENT_COMMIT -> $NEW_COMMIT${NC}"
+        echo -e "${GREEN}✓ Update complete: $CURRENT_COMMIT -> $(git rev-parse --short HEAD)${NC}"
     else
         echo -e "${RED}✗ Health check failed after update${NC}"
+        return 1
+    fi
+
+    # Built and running: record it. HERE, after the health check and
+    # BEFORE the test verdict below, because the record says what runs,
+    # and a red suite leaves the new code running (the cycle goes on past
+    # it on purpose). Recording only on green would make every later
+    # update rebuild -- a full outage each time -- for the same red tests.
+    # HEAD, not NEW_COMMIT: the bot's types commit above moved HEAD, and
+    # the frontend was built from it.
+    if ! record_deployed_commit; then
+        echo -e "${RED}✗ Could not record the deployed commit in $DEPLOYED_COMMIT_FILE${NC}"
+        echo "  The product is running. The next aivis update will not know that"
+        echo "  and will run the full cycle again."
         return 1
     fi
 
@@ -1833,7 +2034,18 @@ case_version() {
     git log --oneline -5
     echo ""
     echo "Branch: $(git branch --show-current)"
-    echo "Commit: $(git rev-parse HEAD)"
+    echo "Commit: $(git rev-parse HEAD)   (the checkout)"
+    # The checkout is not necessarily what runs (H24 P-112): `aivis update`
+    # moves it before the services and builds the product last, so a run
+    # that stopped at a service leaves it ahead of the running product.
+    read_deployed_commit
+    if [ "$DEPLOYED_STATE" != "ok" ]; then
+        echo -e "${YELLOW}Deployed: unknown ($(deployed_state_text)) -- the next aivis update runs the full cycle${NC}"
+    elif [ "$DEPLOYED_COMMIT" = "$(git rev-parse HEAD)" ]; then
+        echo "Deployed: $DEPLOYED_COMMIT   (same as the checkout)"
+    else
+        echo -e "${YELLOW}Deployed: $DEPLOYED_COMMIT   -- the checkout is NOT what runs; the next aivis update builds it${NC}"
+    fi
     echo ""
     echo "Runtime:"
     docker compose exec -T app python --version 2>/dev/null || true
@@ -2075,9 +2287,11 @@ case "$CMD" in
         echo "    vite build) and linted by 'npm run lint' on a checkout."
         echo ""
         echo "Deployment:"
-        echo "  update                                    — Pull, rebuild, migrate, test, regen-types, restart"
+        echo "  update                                    — Product files first, then services, then build, migrate, test, regen-types, restart"
+        echo "                                              (builds when what runs is not the checkout)"
         echo "    --skip-tests                              Skip backend tests (everything else runs)"
-        echo "    --frontend-only                           Skip whole backend cycle; refuses if backend/ changed"
+        echo "    --frontend-only                           Skip services and the backend cycle; refuses if backend/"
+        echo "                                              differs from what runs, or what runs is not known"
         echo "  gen-types                                 — Regenerate frontend generated.ts from live OpenAPI"
         echo "  restart [service]                         — Restart all or specific service"
         echo ""
