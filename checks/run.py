@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Run every frontend check in this folder.
+"""Run every static check in this folder.
 
     python checks/run.py              # the checks; exit 0 = all pass, 1 = a failure
     python checks/run.py --selftest   # prove each check can FAIL, then that it passes
 
-WHAT THIS IS. Static checks on the frontend source that the type checker and the
+WHAT THIS IS. Static checks on the repository that the type checker and the
 unit tests cannot express: things that are true of the CSS and the router as a
-whole rather than of one module. Each one exists because the product actually
-had the defect it looks for.
+whole rather than of one module, and -- since H23 -- of the comms profile,
+which lives in the checkout but not in the backend image the test suite runs
+from. Each one exists because the product had, or must never have, the defect
+it looks for.
 
 WHY --selftest MATTERS AS MUCH AS THE CHECKS. A check that cannot fail passes
 forever and proves nothing. `--selftest` plants the defect each check is meant
@@ -31,6 +33,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 import breakpoints  # noqa: E402
+import comms_profile  # noqa: E402
 import preauth  # noqa: E402
 import reftruth  # noqa: E402
 import routes  # noqa: E402
@@ -45,6 +48,7 @@ CHECKS = [
     ("routes", "the router table is well formed and every name is unique", routes),
     ("pre-auth width", "every screen without a breakpoint says why it is fixed-width", preauth),
     ("ref truthiness", "every ref or computed tested for truth carries .value", reftruth),
+    ("comms profile", "no type routed to email can be muted by a category", comms_profile),
 ]
 
 
@@ -53,7 +57,7 @@ def main(argv: list[str]) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    print("frontend checks -- repository root: %s" % ROOT)
+    print("repository checks -- repository root: %s" % ROOT)
     print()
     failed = []
     for name, blurb, module in CHECKS:
