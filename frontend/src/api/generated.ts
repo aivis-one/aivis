@@ -795,7 +795,6 @@ export interface NotificationItemOut {
   title: string
   body: string
   action_data?: NotificationActionOut | null
-  priority: number
   sent_at: string
   read_at?: string | null
   created_at: string
@@ -911,7 +910,7 @@ export interface PreferencesOut {
   timezone?: string | null
 }
 
-/** PATCH /api/v1/notifications/preferences request body. extra="forbid" at this level too -- rejects a stray "timezone" (or any typo) with a 422 from THIS product's own validation, before a round trip to comms is spent proving the same thing. Mirrors comms' own PreferencesPatch field-for-field; see notifications/service.py's header for how `categories` (partial) and `schedule` (full-replace-or-clear, presence-sensitive via model_fields_set) are forwarded. */
+/** PATCH /api/v1/notifications/preferences request body. extra="forbid" at this level too -- rejects a stray "timezone" (or any typo) with a 422 from THIS product's own validation, before a round trip to comms is spent proving the same thing. The field set is comms' PreferencesPatch; `schedule` is in the SCREEN's form (a quiet window) and is converted before it is sent -- see notifications/service.py::update_preferences for how `categories` (partial) and `schedule` (full-replace-or-clear, presence-sensitive via model_fields_set) are forwarded. */
 export interface PreferencesPatchIn {
   categories?: Record<string, unknown> | null
   schedule?: ScheduleIn | null
@@ -1187,14 +1186,14 @@ export interface SalesByProductEntry {
   options_sold: number
 }
 
-/** Quiet-hours window as the CLIENT sends it -- always a full replace. All three fields are required when `schedule` is present at all (comms' contract: PATCH .../preferences' schedule key is FULL REPLACE, never a partial merge). Local time strings, "HH:MM" -- left as `str` rather than `datetime.time` deliberately: this proxy does not re-validate the format, comms already does (a malformed string round-trips to comms and comes back as a 422 CommsRejectedError, forwarded as-is), and a plain string is what `<input type="time">` on the frontend already produces without any local conversion. */
+/** Quiet hours as the CLIENT sends them -- always a full replace. `days` are the days the window STARTS on. A window whose `to` is earlier than its `from` runs past midnight into the next day (sun into mon). `from == to` is refused: it names no window at all, and reading it as "the whole day" would be a guess. */
 export interface ScheduleIn {
   from: string
   to: string
   days: string[]
 }
 
-/** Quiet-hours window as comms answers it -- same shape, read-only side. */
+/** Quiet hours as the screen reads them back -- converted from comms' allowed periods by notifications/schedule.py, never comms' own shape. */
 export interface ScheduleOut {
   from: string
   to: string

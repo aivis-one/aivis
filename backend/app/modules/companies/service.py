@@ -173,7 +173,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.modules.documents.service import maybe_complete_onboarding
-from app.core.comms_sync import ensure_recipient
+from app.core.comms_sync import sync_recipient
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.core.redis import get_redis
 from app.core.storage import (
@@ -279,7 +279,7 @@ async def create_company(
     # A company user is a recipient like any other -- comms must know
     # them before the first message (T-64). Never raises; a failure
     # defers the recipient to the outbox.
-    await ensure_recipient(session, company_user)
+    await sync_recipient(session, company_user)
 
     # H10: this user is created straight on ROLE_SELECTED, which is now
     # the step the documents cascade hangs off. Until H10 they left it
@@ -430,7 +430,7 @@ async def assign_company(
     # A company user is a recipient like any other -- comms must know
     # them before the first message (T-64), same as create_company.
     # Never raises; a failure defers the recipient to the outbox.
-    await ensure_recipient(session, target)
+    await sync_recipient(session, target)
 
     # Audit.
     await record_audit(

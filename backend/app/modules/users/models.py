@@ -49,7 +49,7 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -223,6 +223,22 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         String(10),
         default="en",
         server_default="en",
+        nullable=False,
+    )
+
+    # -- comms recipient snapshot version (H23 P-112) --
+    # The `version` every snapshot of this person carries to comms, on
+    # both paths (PUT /recipients/{id} and the user_upserted event).
+    # comms applies a snapshot only when its version is higher than the
+    # one it holds, and treats the same version with other content as a
+    # conflict. So it is a counter, raised by exactly one function --
+    # core/comms_sync.py::sync_recipient, in the transaction of the change
+    # -- and not updated_at: that moves on any column of the row, is the
+    # transaction's START time, and is bypassed by raw SQL. 0 = never sent.
+    comms_snapshot_version: Mapped[int] = mapped_column(
+        BigInteger,
+        default=0,
+        server_default="0",
         nullable=False,
     )
 

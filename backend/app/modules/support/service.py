@@ -115,6 +115,42 @@ logger = structlog.get_logger()
 _SECTIONS_PATH = "/api/v1/sections"
 _THREADS_PATH = "/api/v1/threads"
 
+# -- Idempotency keys for the two calls that create (comms 3.0.0) --------
+# comms takes a required Idempotency-Key on POST /threads and on POST
+# /threads/{id}/messages, and its unique index on the key is GLOBAL --
+# across every product and every person on that comms. So every key this
+# module sends is namespaced by product and by the person acting.
+#
+# A THREAD'S KEY IS OURS, NOT THE CLIENT'S. A person has exactly one
+# support thread for life (kind=dm, see the header), so "open my thread"
+# is one intent per person and the key is derived from the person alone.
+# comms fingerprints method, path and the RAW BODY BYTES: the create body
+# must therefore be byte-identical on every repeat -- the same four keys
+# in the same order, built from the same user id and the same section id
+# -- or a repeat would be a 409 instead of the same thread.
+#
+# A MESSAGE'S KEY IS THE CLIENT'S. Only the client knows that two
+# requests are one press of "send" retried after a timeout rather than
+# two messages with the same text; it generates the key when the person
+# presses send and reuses it on every retry of that message.
+#
+# LENGTH: comms accepts 1..200 characters. The client part is capped at
+# SUPPORT_CLIENT_KEY_MAX_LEN = 100 (support/schemas.py); the prefix
+# "aivis:msg:" (10) + a UUID (36) + ":" (1) is 47, so the longest key is
+# 147. Whoever changes the prefix re-does this sum.
+_THREAD_KEY_PREFIX = "aivis:thread:"
+_MESSAGE_KEY_PREFIX = "aivis:msg:"
+
+
+def _thread_idempotency_key(user_id: UUID) -> str:
+    """The one key a person's support thread is ever created under."""
+    return f"{_THREAD_KEY_PREFIX}{user_id}"
+
+
+def _message_idempotency_key(actor_id: UUID, client_key: str) -> str:
+    """The client's key for one message, namespaced by who sends it."""
+    return f"{_MESSAGE_KEY_PREFIX}{actor_id}:{client_key}"
+
 # The comms section every support request lands in. English on purpose:
 # the label is shown to whoever administers comms, never in this product.
 _SUPPORT_SECTION_KEY = "support"
@@ -299,9 +335,10 @@ async def open_support_thread(
                 "operator_value": str(section_id),
                 "kind": "dm",
             },
+            idempotency_key=_thread_idempotency_key(user.id),
         )
     except CommsRejectedError as exc:
-        if exc.status_code == 404:
+        if exc.error_class == "not_found":
             # comms delivers to KNOWN recipients only, and this user is
             # not one yet: the synchronous upsert at registration failed
             # and the outbox has not caught up. Transient, and not the
@@ -366,7 +403,7 @@ async def list_support_threads(
         for pointer in pointers
     ]
     if not rows:
-        return {"threads": []}
+        return {"items": [], "next_cursor": None}
 
     try:
         payload = await comms_request(
@@ -379,14 +416,18 @@ async def list_support_threads(
         )
     except (CommsUnavailableError, CommsRejectedError):
         logger.warning("support_unread_unavailable", user_id=str(user.id))
-        return {"threads": rows}
+        return {"items": rows, "next_cursor": None}
 
     counts = payload.get("counts") if isinstance(payload, dict) else None
     if not isinstance(counts, dict):
-        return {"threads": rows}
+        return {"items": rows, "next_cursor": None}
 
+    # comms' one listing shape (its INTEGRATION.md section 5, "One way to
+    # page"), used here too although this list is local and never has a
+    # second page: every support list the frontend reads has one form.
     return {
-        "threads": [
+        "next_cursor": None,
+        "items": [
             {**row, "unread": counts[row["id"]]}
             if row["id"] in counts
             else row
@@ -415,7 +456,7 @@ async def get_support_messages(
 
 
 async def send_support_message(
-    session: AsyncSession, *, user: User, body: str
+    session: AsyncSession, *, user: User, body: str, idempotency_key: str
 ) -> dict[str, Any]:
     """Write one message into the caller's own conversation.
 
@@ -439,6 +480,7 @@ async def send_support_message(
         "POST",
         f"{_THREADS_PATH}/{pointer.comms_thread_id}/messages",
         json={"sender": str(user.id), "body": body},
+        idempotency_key=_message_idempotency_key(user.id, idempotency_key),
     )
 
 
@@ -602,10 +644,10 @@ async def attach_client_profiles(
     Defensive about the SHAPE of the answer, not about its content: comms
     is a service this product deploys, but the queue is the one place
     where its reply is reshaped rather than forwarded, so a reply without
-    `threads`, or with a row that is not an object, must leave the
+    `items`, or with a row that is not an object, must leave the
     operator with an unenriched list instead of a 500.
     """
-    threads = page.get("threads")
+    threads = page.get("items")
     if not isinstance(threads, list):
         return page
 
@@ -708,47 +750,41 @@ async def claim_support_thread(
 ) -> dict[str, Any]:
     """Take an unclaimed conversation, or say who already has it.
 
-    comms answers {claimed, thread}: `claimed` is True only for the call
-    that won the conditional UPDATE (assignee IS NULL), so a repeat by
-    the SAME operator comes back False with themselves as assignee --
-    that is idempotence, not failure, and it returns 200. A False with
-    somebody else's assignee is a real conflict and returns 409 rather
-    than a bare 500 or a misleading success.
-
-    The two cases are told apart by the assignee comms returns, so no
-    local copy of who-owns-what is needed. A claimed=False with no
-    assignee at all falls into the conflict branch too, on purpose: there
-    is no state comms can produce where the thread is unowned AND the
-    claim failed, and inventing a branch for it would document a state
-    that cannot happen.
+    comms 3.0.0 answers "is it yours now" (its INTEGRATION.md section 5):
+    200 with `claimed: true` for the operator the thread belongs to --
+    including a REPEAT by the one who already holds it, so a lost
+    response is retried safely -- and a 409 of class `conflict` for
+    anyone else. Both are forwarded in this product's words: the thread,
+    or "already taken". A 200 without `claimed: true` is not in comms'
+    contract and is answered as a malformed payload, not interpreted.
     """
     await _require_known_thread(session, thread_id)
 
-    payload = await comms_request(
-        "POST",
-        f"{_THREADS_PATH}/{thread_id}/claim",
-        json={"operator": str(operator.id)},
-    )
+    try:
+        payload = await comms_request(
+            "POST",
+            f"{_THREADS_PATH}/{thread_id}/claim",
+            json={"operator": str(operator.id)},
+        )
+    except CommsRejectedError as exc:
+        if exc.error_class == "conflict":
+            raise ConflictError(
+                "This request has already been taken by another operator",
+                code="support_thread_already_claimed",
+            ) from exc
+        raise
+
     thread = payload.get("thread") if isinstance(payload, dict) else None
-    if not isinstance(thread, dict):
-        logger.error("comms_payload_malformed", what="claim", key="thread")
+    if not isinstance(thread, dict) or payload.get("claimed") is not True:
+        logger.error("comms_payload_malformed", what="claim", key="claimed")
         raise CommsUnavailableError()
 
-    if bool(payload.get("claimed")):
-        logger.info(
-            "support_thread_claimed",
-            thread_id=str(thread_id),
-            operator_id=str(operator.id),
-        )
-        return thread
-
-    if str(thread.get("assignee")) == str(operator.id):
-        return thread
-
-    raise ConflictError(
-        "This request has already been taken by another operator",
-        code="support_thread_already_claimed",
+    logger.info(
+        "support_thread_claimed",
+        thread_id=str(thread_id),
+        operator_id=str(operator.id),
     )
+    return thread
 
 
 async def reply_to_support_thread(
@@ -757,6 +793,7 @@ async def reply_to_support_thread(
     operator: SupportOperator,
     thread_id: UUID,
     body: str,
+    idempotency_key: str,
 ) -> dict[str, Any]:
     """Answer as this operator.
 
@@ -783,9 +820,12 @@ async def reply_to_support_thread(
             f"{_THREADS_PATH}/{thread_id}/messages",
             json={"sender": str(operator.id), "body": body},
             forward_403=True,
+            idempotency_key=_message_idempotency_key(
+                operator.id, idempotency_key
+            ),
         )
     except CommsRejectedError as exc:
-        if exc.status_code == 403:
+        if exc.error_class == "forbidden":
             raise ConflictError(
                 "Claim this request before replying to it",
                 code="support_thread_not_claimed",
@@ -872,7 +912,7 @@ async def emit_support_membership(
 
     if not comms_configured():
         # NOTHING IS WRITTEN when this box has no comms address, and the
-        # reasoning is core.comms_sync.ensure_recipient's, applied to the
+        # reasoning is core.comms_sync.sync_recipient's, applied to the
         # second emitter rather than restated: the relay is disabled by
         # the same empty address, so a row emitted here would sit in the
         # table forever with nobody to ship it. That is table growth, not

@@ -426,7 +426,6 @@ async def request_agreement_email(
                 f"Best regards,\n"
                 f"AIVIS.ONE Platform"
             ),
-            "channels": ["in_app", "email"],
         },
     )
 

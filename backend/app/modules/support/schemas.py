@@ -44,6 +44,16 @@ class EmptyBodyIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# The client's Idempotency-Key for one message (H23 P-112): generated when
+# the person presses send, reused on every retry of that message. Bounded
+# so the namespaced key the service forwards stays within comms' 200 --
+# the sum is at support/service.py's _MESSAGE_KEY_PREFIX. A closed
+# alphabet (a UUID fits it) keeps the header free of separators and
+# whitespace that could make two keys look alike.
+SUPPORT_CLIENT_KEY_MAX_LEN = 100
+SUPPORT_CLIENT_KEY_PATTERN = r"^[A-Za-z0-9_-]+$"
+
+
 class SendMessageIn(BaseModel):
     """One message into the caller's own conversation.
 

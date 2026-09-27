@@ -75,8 +75,12 @@ export interface SupportMessageResponse {
   created_at: string | null
 }
 
+// Every support list has comms' one listing shape (comms
+// deploy/INTEGRATION.md section 5): `items` and `next_cursor`. The
+// caller's own thread list is local and never has a second page, but it
+// answers in the same shape so no reader has two to know.
 export interface SupportMessageListResponse {
-  messages: SupportMessageResponse[]
+  items: SupportMessageResponse[]
   next_cursor: string | null
 }
 
@@ -96,7 +100,8 @@ export interface SupportThreadListItem {
 }
 
 export interface SupportThreadListResponse {
-  threads: SupportThreadListItem[]
+  items: SupportThreadListItem[]
+  next_cursor: string | null
 }
 
 /**
@@ -124,7 +129,7 @@ export interface SupportOperatorThreadRow extends SupportThreadResponse {
 }
 
 export interface SupportOperatorQueueResponse {
-  threads: SupportOperatorThreadRow[]
+  items: SupportOperatorThreadRow[]
   next_cursor: string | null
 }
 
@@ -170,14 +175,31 @@ export function listSupportThreads(): Promise<SupportThreadListResponse> {
 }
 
 /**
+ * The Idempotency-Key header for one message. The key is born when the
+ * person presses send and is reused on every retry of THAT message --
+ * the store keeps it with the draft (stores/support.ts). A new key on a
+ * retry would make comms store a second message and ping a second time.
+ */
+function idempotencyHeaders(idempotencyKey: string): Record<string, string> {
+  return { 'Idempotency-Key': idempotencyKey }
+}
+
+/**
  * POST /api/v1/support/threads/messages -- send one message into the
  * caller's own conversation. No thread id on the wire.
  *
  * 404 if the caller has never opened the channel (open first).
  */
-export function sendSupportMessage(body: SendMessageIn['body']): Promise<SupportMessageResponse> {
+export function sendSupportMessage(
+  body: SendMessageIn['body'],
+  idempotencyKey: string,
+): Promise<SupportMessageResponse> {
   const payload: SendMessageIn = { body }
-  return api.post<SupportMessageResponse>('/api/v1/support/threads/messages', payload)
+  return api.post<SupportMessageResponse>(
+    '/api/v1/support/threads/messages',
+    payload,
+    idempotencyHeaders(idempotencyKey),
+  )
 }
 
 /**
@@ -231,10 +253,10 @@ export function listStaffSupportQueue(
  * POST /api/v1/staff/support/threads/{id}/claim -- take an unclaimed
  * request.
  *
- * Backend strips the `claimed` flag comms returns and hands back only
- * the thread object -- a repeat claim by the SAME operator succeeds
- * (200) with the same payload, idempotent by construction. Claiming
- * one a colleague already took is 409, not a value in the body.
+ * Backend hands back only the thread object. A repeat claim by the SAME
+ * operator succeeds (200) with the same thread -- comms answers "is it
+ * yours now", so a lost response is safe to retry. Claiming one a
+ * colleague already took is 409 (`support_thread_already_claimed`).
  */
 export function claimStaffSupportThread(threadId: string): Promise<SupportThreadResponse> {
   const body: EmptyBodyIn = {}
@@ -281,11 +303,13 @@ export function getStaffSupportThreadMessages(
 export function replyToStaffSupportThread(
   threadId: string,
   body: SendMessageIn['body'],
+  idempotencyKey: string,
 ): Promise<SupportMessageResponse> {
   const payload: SendMessageIn = { body }
   return api.post<SupportMessageResponse>(
     `/api/v1/staff/support/threads/${threadId}/messages`,
     payload,
+    idempotencyHeaders(idempotencyKey),
   )
 }
 

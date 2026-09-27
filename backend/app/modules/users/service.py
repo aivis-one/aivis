@@ -55,6 +55,7 @@ from cryptography.fernet import InvalidToken
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms_sync import sync_recipient
 from app.modules.documents.service import maybe_complete_onboarding
 from app.core.crypto import decrypt_secret, encrypt_secret
 from app.core.exceptions import BadRequestError, ForbiddenError
@@ -187,7 +188,11 @@ async def update_user(
     if "language" in updates and updates["language"] is None:
         raise BadRequestError("language cannot be set to null")
 
-    # Apply language if provided.
+    # Apply language if provided. A real change is a new snapshot for
+    # comms (H23 P-113): the language is what comms renders templates in.
+    language_changed = (
+        "language" in updates and updates["language"] != user.language
+    )
     if "language" in updates:
         user.language = updates["language"]
 
@@ -213,6 +218,9 @@ async def update_user(
             user.onboarding_step = OnboardingStep.PROFILE_COMPLETE
 
     await session.flush()
+
+    if language_changed:
+        await sync_recipient(session, user)
     # Reload expired attrs (updated_at) after potential set_jsonb + flush.
     await session.refresh(user)
 
@@ -457,6 +465,11 @@ async def deactivate_own_account(
     user.set_jsonb("credentials", updated_creds)
     user.is_active = False
     await session.flush()
+
+    # comms rechecks `active` before every send, against its own copy:
+    # without a new snapshot it would keep delivering to this person
+    # (H23 P-113).
+    await sync_recipient(session, user)
 
     killed = await delete_all_sessions(user.id)
 

@@ -8,7 +8,7 @@
 # So the assertions below are about the PATH being walked, not about the
 # rows looking right.
 #
-# WHY THE OUTBOX IS NOT THE ASSERTION ON ITS OWN. ensure_recipient has
+# WHY THE OUTBOX IS NOT THE ASSERTION ON ITS OWN. sync_recipient has
 # THREE outcomes, not two, and only one of them writes an outbox row:
 #
 #   comms not configured    -> no HTTP call, and NO outbox row either
@@ -24,7 +24,7 @@
 # separately because it answers a different question.
 #
 # T-93 UPDATE: emit_support_membership now carries the SAME gate as
-# ensure_recipient -- no comms address, no row -- so the membership
+# sync_recipient -- no comms address, no row -- so the membership
 # assertion below states the address it needs instead of relying on
 # whichever .env the box happens to run pytest with.
 #
@@ -44,6 +44,7 @@ import pytest
 from sqlalchemy import func, select
 
 import scripts.seed as seed
+from app.core.comms import UpsertOutcome
 from app.core.config import settings as seed_settings
 from app.core.events.models import OutboxEvent
 from app.core.events.service import (
@@ -52,6 +53,7 @@ from app.core.events.service import (
 )
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import OnboardingStep, User, UserRole
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -147,7 +149,7 @@ async def test_seed_runs_with_comms_unconfigured_and_writes_no_outbox_rows(
 ) -> None:
     """comms absent: the seed completes, and emits no recipient events.
 
-    The assertion is deliberately "zero", not "some": ensure_recipient
+    The assertion is deliberately "zero", not "some": sync_recipient
     refuses to write an outbox row when there is no comms address,
     because the relay that would ship it is disabled by the same empty
     address and the row would grow the table forever without ever
@@ -601,12 +603,14 @@ def _comms_sync() -> Any:
     return comms_sync
 
 
-async def _always_fail(*_args: Any, **_kwargs: Any) -> bool:
-    return False
+async def _always_fail(*_args: Any, **_kwargs: Any) -> UpsertOutcome:
+    # UNDELIVERED is the outcome that sends sync_recipient to the outbox
+    # (comms unreachable); the other two refusals, by design, do not.
+    return UpsertOutcome.UNDELIVERED
 
 
 async def _always_succeed(*_args: Any, **_kwargs: Any) -> bool:
     """A comms that answers. Returns what the real upsert returns on a
-    successful PUT -- True -- so ensure_recipient takes its synchronous
+    successful PUT -- True -- so sync_recipient takes its synchronous
     branch and writes no outbox row."""
     return True

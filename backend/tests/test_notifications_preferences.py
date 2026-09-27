@@ -34,6 +34,8 @@ from httpx import AsyncClient
 
 from app.core import comms as comms_module
 from app.core.config import settings
+from app.modules.notifications.schedule import quiet_to_periods
+from app.modules.notifications.schemas import ScheduleIn
 from tests.helpers import auth_headers, register_user
 
 _URL = "http://comms.test"
@@ -51,6 +53,63 @@ _DEFAULT_CATEGORIES = (
     "support_messages",
     "withdrawals",
 )
+
+
+# comms 3.0.0's one refusal body (its INTEGRATION.md section 5); the
+# product branches on the class, so the fake puts the class comms would.
+_CLASS_FOR_STATUS = {
+    401: "unauthorized",
+    403: "forbidden",
+    404: "not_found",
+    409: "conflict",
+    422: "validation",
+    500: "internal",
+}
+
+
+_DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def _period_list_problem(schedule: Any) -> str | None:
+    """comms 3.0.0's schedule rules (INTEGRATION.md section 6), as the
+    fake enforces them: null, or a non-empty list of {day, from, to}
+    periods, one day each, from < to, `to` up to 24:00, and two periods
+    of one day neither overlapping nor touching."""
+    if schedule is None:
+        return None
+    if not isinstance(schedule, list) or not schedule:
+        return "schedule must be null or a non-empty list of periods"
+    by_day: dict[str, list[tuple[str, str]]] = {}
+    for period in schedule:
+        if not isinstance(period, dict) or set(period) != {"day", "from", "to"}:
+            return f"a period is {{day, from, to}}, got {period!r}"
+        if period["day"] not in _DAYS:
+            return f"unknown day {period['day']!r}"
+        if not period["from"] < period["to"] or period["from"] >= "24:00":
+            return f"a period runs forward within its day, got {period!r}"
+        by_day.setdefault(period["day"], []).append((period["from"], period["to"]))
+    for day, spans in by_day.items():
+        spans.sort()
+        for (_, end), (start, _) in zip(spans, spans[1:]):
+            if start <= end:
+                return f"periods of {day} overlap or touch"
+    return None
+
+
+def _periods(window: dict[str, Any]) -> list[dict[str, str]]:
+    """comms' allowed periods for a quiet window -- the product's own
+    conversion, so a seed is exactly what the product would have written."""
+    return quiet_to_periods(ScheduleIn(**window))
+
+
+def _refusal_body(status: int, message: str) -> dict:
+    return {
+        "error": {
+            "class": _CLASS_FOR_STATUS.get(status, "internal"),
+            "message": message,
+            "fields": [],
+        }
+    }
 
 
 class _FakeResponse:
@@ -139,13 +198,13 @@ class _FakeCommsPrefs:
         if isinstance(self.fail_with, Exception):
             raise self.fail_with
         if isinstance(self.fail_with, int):
-            return _FakeResponse(self.fail_with, {"detail": "comms said no"})
+            return _FakeResponse(self.fail_with, _refusal_body(self.fail_with, "comms said no"))
 
         recipient_id = path.split("/")[4]
 
         if recipient_id not in self.recipients:
             return _FakeResponse(
-                404, {"detail": f"recipient {recipient_id} does not exist"}
+                404, _refusal_body(404, f"recipient {recipient_id} does not exist")
             )
 
         if method == "GET":
@@ -163,7 +222,11 @@ class _FakeCommsPrefs:
                 # schedule when the key is actually present, and an
                 # explicit null clears it -- exactly what this branch
                 # mirrors ("in body" catches both cases, "omitted"
-                # never reaches here at all).
+                # never reaches here at all). What it accepts is comms
+                # 3.0.0's form, checked the way comms checks it.
+                problem = _period_list_problem(body["schedule"])
+                if problem is not None:
+                    return _FakeResponse(422, _refusal_body(422, problem))
                 form["schedule"] = body["schedule"]
             return _FakeResponse(200, form)
 
@@ -201,13 +264,21 @@ async def _registered(client: AsyncClient) -> tuple[dict[str, str], str]:
 
 
 @pytest.mark.asyncio
-async def test_get_returns_the_comms_shape(
+async def test_get_returns_the_quiet_window_comms_periods_describe(
     client: AsyncClient, comms: _FakeCommsPrefs
 ) -> None:
+    """comms holds allowed periods; the screen reads its quiet window.
+
+    Until H23 this was test_get_returns_the_comms_shape and seeded comms
+    with {from, to, days}: right for the comms this product was written
+    against, wrong for 3.0.0, whose schedule is a list of ALLOWED periods
+    -- the reverse of quiet hours. The claim that stays is that the
+    screen reads back exactly the window that was chosen.
+    """
     headers, user_id = await _registered(client)
     form = comms.seed_recipient(user_id)
     form["categories"]["kyc"] = False
-    form["schedule"] = {"from": "22:00", "to": "07:00", "days": ["mon", "fri"]}
+    form["schedule"] = _periods({"from": "22:00", "to": "07:00", "days": ["mon", "fri"]})
 
     response = await client.get(
         "/api/v1/notifications/preferences", headers=headers
@@ -250,6 +321,15 @@ async def test_patch_forwards_partial_category_toggles(
 async def test_patch_forwards_a_full_schedule_replace(
     client: AsyncClient, comms: _FakeCommsPrefs
 ) -> None:
+    """A schedule in the PATCH replaces comms' whole schedule.
+
+    Until H23 this asserted the window was forwarded to comms as-is.
+    That was the contract of the comms it was written against; comms
+    3.0.0 stores ALLOWED periods, and the window forwarded as-is would
+    be refused -- or, had the shapes matched, stored as the opposite of
+    the person's choice (P-114). The claim that stays: the whole
+    schedule is replaced, and the screen reads back its own window.
+    """
     headers, user_id = await _registered(client)
     comms.seed_recipient(user_id)
 
@@ -267,9 +347,18 @@ async def test_patch_forwards_a_full_schedule_replace(
         "days": ["sat", "sun"],
     }
 
+    # What reached comms is the OPPOSITE of the window: allowed periods.
+    # Saturday is allowed until the window opens at 23:00; Sunday after
+    # Saturday's spill ends at 06:30, until its own window at 23:00;
+    # Monday after Sunday's spill; the days with no window, all day.
     call = comms.calls[-1]
+    sent = call["json"]["schedule"]
+    assert {"day": "sat", "from": "00:00", "to": "23:00"} in sent
+    assert {"day": "sun", "from": "06:30", "to": "23:00"} in sent
+    assert {"day": "mon", "from": "06:30", "to": "24:00"} in sent
+    assert {"day": "wed", "from": "00:00", "to": "24:00"} in sent
     assert call["json"] == {
-        "schedule": {"from": "23:00", "to": "06:30", "days": ["sat", "sun"]}
+        "schedule": _periods({"from": "23:00", "to": "06:30", "days": ["sat", "sun"]})
     }
 
 
@@ -279,7 +368,7 @@ async def test_patch_explicit_null_schedule_clears_it(
 ) -> None:
     headers, user_id = await _registered(client)
     form = comms.seed_recipient(user_id)
-    form["schedule"] = {"from": "22:00", "to": "07:00", "days": ["mon"]}
+    form["schedule"] = _periods({"from": "22:00", "to": "07:00", "days": ["mon"]})
 
     response = await client.patch(
         "/api/v1/notifications/preferences",
@@ -301,7 +390,7 @@ async def test_patch_omitted_schedule_key_is_never_forwarded(
     what makes the two distinguishable on the wire."""
     headers, user_id = await _registered(client)
     form = comms.seed_recipient(user_id)
-    form["schedule"] = {"from": "22:00", "to": "07:00", "days": ["mon"]}
+    form["schedule"] = _periods({"from": "22:00", "to": "07:00", "days": ["mon"]})
 
     response = await client.patch(
         "/api/v1/notifications/preferences",
@@ -561,3 +650,27 @@ async def test_comms_not_configured_patch_does_not_degrade(
 
     assert response.status_code == 502, response.text
     assert response.json()["error"] == "comms_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_a_schedule_that_is_no_window_is_a_loud_502_not_a_guess(
+    client: AsyncClient, comms: _FakeCommsPrefs
+) -> None:
+    """H23 P-114: comms' schedules are written by this product's screen
+    alone, so periods that are the image of no quiet window are a defect
+    of the conversion. They are answered as a 502 with their own code --
+    and logged as an error -- never rendered as some window they are not."""
+    headers, user_id = await _registered(client)
+    comms.seed_recipient(user_id)
+    comms.raw_form = {
+        "categories": dict.fromkeys(_DEFAULT_CATEGORIES, True),
+        "schedule": [{"day": "mon", "from": "01:00", "to": "02:00"}],
+        "timezone": None,
+    }
+
+    response = await client.get(
+        "/api/v1/notifications/preferences", headers=headers
+    )
+
+    assert response.status_code == 502, response.text
+    assert response.json()["error"] == "comms_schedule_unreadable"

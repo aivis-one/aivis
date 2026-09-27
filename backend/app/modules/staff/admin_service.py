@@ -67,6 +67,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
+from app.core.comms_sync import sync_recipient
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.auth.service import delete_all_sessions
 from app.modules.kyc.models import KYCApplication
@@ -367,6 +368,10 @@ async def block_user(
     target.is_active = False
     await session.flush()
 
+    # comms rechecks `active` before every send, against its own copy
+    # (H23 P-113): a block it never hears of does not stop delivery.
+    await sync_recipient(session, target)
+
     # Kill all Redis sessions.
     killed = await delete_all_sessions(target.id)
 
@@ -433,6 +438,9 @@ async def unblock_user(
 
     target.is_active = True
     await session.flush()
+
+    # The mirror of block_user: comms must see the person active again.
+    await sync_recipient(session, target)
 
     # Audit.
     await record_audit(

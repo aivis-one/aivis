@@ -69,3 +69,4 @@ _design-source/
 # never tracked it, and leaving it untracked makes every `git status` read
 # as a dirty tree.
 .claude/
+/docs/

@@ -44,13 +44,18 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.support.dependencies import reject_actor_override
-from app.modules.support.schemas import EmptyBodyIn, SendMessageIn
+from app.modules.support.schemas import (
+    SUPPORT_CLIENT_KEY_MAX_LEN,
+    SUPPORT_CLIENT_KEY_PATTERN,
+    EmptyBodyIn,
+    SendMessageIn,
+)
 from app.modules.support.service import (
     get_support_messages,
     list_support_threads,
@@ -116,17 +121,30 @@ async def list_threads(
 async def send_message(
     request: Request,
     body: SendMessageIn,
+    idempotency_key: str = Header(
+        alias="Idempotency-Key",
+        min_length=1,
+        max_length=SUPPORT_CLIENT_KEY_MAX_LEN,
+        pattern=SUPPORT_CLIENT_KEY_PATTERN,
+    ),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
 ) -> Any:
     """Send one message into the caller's own conversation.
+
+    Idempotency-Key is required: the client's key for this one message,
+    reused on every retry of it (support/service.py says why the key is
+    the client's). A retry with the same key answers with the same
+    message and notifies nobody again.
 
     404 if the caller has never opened it. A reader session on purpose:
     this route writes nothing locally -- the message lives in comms --
     and a write session would open a transaction with nothing in it.
     """
     _reject_actor_override(request)
-    return await send_support_message(session, user=user, body=body.body)
+    return await send_support_message(
+        session, user=user, body=body.body, idempotency_key=idempotency_key
+    )
 
 
 @router.get("/threads/{thread_id}/messages")

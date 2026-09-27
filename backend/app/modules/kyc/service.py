@@ -1032,7 +1032,7 @@ async def _write_decision(
     )
 
     if comms_configured():
-        # Same gate as comms_sync.ensure_recipient / support.service's
+        # Same gate as comms_sync.sync_recipient / support.service's
         # emit_support_membership: without a comms address the relay is
         # disabled too (same empty setting), so a row emitted here would
         # sit in the outbox forever with nobody to ship it.

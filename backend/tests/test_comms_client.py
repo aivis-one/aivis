@@ -36,8 +36,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import comms as comms_module
-from app.core.comms import comms_configured, upsert_recipient, user_snapshot
-from app.core.comms_sync import ensure_recipient
+from app.core.comms import (
+    UpsertOutcome,
+    comms_configured,
+    upsert_recipient,
+    user_snapshot,
+)
+from app.core.comms_sync import sync_recipient
 from app.core.config import settings
 from app.core.events.models import OutboxEvent
 from app.modules.auth.service import get_platform_user_id
@@ -54,16 +59,28 @@ _TOKEN = "t64-service-token"
 
 
 class _FakeResponse:
-    def __init__(self, status_code: int) -> None:
+    """comms' answer. A refusal carries comms 3.0.0's one error body,
+    {"error": {"class", "message", "fields"}} -- the class is what the
+    client branches on, so a fake without it would test nothing."""
+
+    def __init__(self, status_code: int, error_class: str | None = None) -> None:
         self.status_code = status_code
         self.text = ""
+        self._error_class = error_class
+
+    def json(self) -> Any:
+        if self._error_class is None:
+            return {}
+        return {
+            "error": {"class": self._error_class, "message": "fake", "fields": []}
+        }
 
 
 def _fake_httpx(monkeypatch: pytest.MonkeyPatch, outcome: Any) -> list[dict]:
     """Replace app.core.comms's httpx client. Returns the call log.
 
-    `outcome` is either a status code to answer with, or an exception
-    instance to raise from request().
+    `outcome` is a status code to answer with, a (status, error class)
+    pair for a refusal, or an exception instance to raise from request().
 
     T-65: the fake speaks `request(method, url, ...)`, not `put(url,
     ...)`. Not a loosening -- the opposite. Every comms call in this
@@ -108,6 +125,8 @@ def _fake_httpx(monkeypatch: pytest.MonkeyPatch, outcome: Any) -> list[dict]:
             )
             if isinstance(outcome, Exception):
                 raise outcome
+            if isinstance(outcome, tuple):
+                return _FakeResponse(*outcome)
             return _FakeResponse(outcome)
 
     monkeypatch.setattr(comms_module.httpx, "AsyncClient", _FakeClient)
@@ -180,13 +199,14 @@ async def _rows_added_since(
 async def test_snapshot_is_complete_for_every_user_shape(
     db_session: AsyncSession,
 ) -> None:
-    """Snapshot, not patch: all five fields present in every shape.
+    """Snapshot, not patch: all six fields present in every shape.
 
     comms overwrites what it holds with exactly this document, so a key
     that goes missing for one kind of user is not a smaller update --
     it is a rejected request (422) or, worse, a silently kept stale
     value. timezone is always present and always None: this product
-    does not track one.
+    does not track one. `version` is whatever the caller passes -- the
+    snapshot carries it, sync_recipient decides it.
     """
     telegram_user = await _make_user(
         db_session, credentials={"telegram": {"id": 92180}}, language="ru"
@@ -196,17 +216,20 @@ async def test_snapshot_is_complete_for_every_user_shape(
     )
     bare_user = await _make_user(db_session, credentials={})
 
-    expected_keys = {"telegram_id", "email", "locale", "timezone", "active"}
+    expected_keys = {
+        "version", "telegram_id", "email", "locale", "timezone", "active",
+    }
     for user in (telegram_user, email_user, bare_user):
-        snapshot = user_snapshot(user)
+        snapshot = user_snapshot(user, 7)
         assert set(snapshot) == expected_keys
         assert snapshot["timezone"] is None
+        assert snapshot["version"] == 7
 
-    assert user_snapshot(telegram_user)["telegram_id"] == 92180
-    assert user_snapshot(telegram_user)["email"] is None
-    assert user_snapshot(email_user)["telegram_id"] is None
-    assert user_snapshot(email_user)["email"] == "a@example.test"
-    assert user_snapshot(bare_user)["telegram_id"] is None
+    assert user_snapshot(telegram_user, 1)["telegram_id"] == 92180
+    assert user_snapshot(telegram_user, 1)["email"] is None
+    assert user_snapshot(email_user, 1)["telegram_id"] is None
+    assert user_snapshot(email_user, 1)["email"] == "a@example.test"
+    assert user_snapshot(bare_user, 1)["telegram_id"] is None
 
     await db_session.rollback()
 
@@ -227,7 +250,10 @@ async def test_empty_url_makes_no_call(
     calls = _fake_httpx(monkeypatch, 200)
 
     assert comms_configured() is False
-    assert await upsert_recipient(uuid4(), {"active": True}) is False
+    assert (
+        await upsert_recipient(uuid4(), {"active": True})
+        is UpsertOutcome.UNDELIVERED
+    )
     assert calls == []
 
 
@@ -245,7 +271,7 @@ async def test_empty_url_emits_no_outbox_row(
         db_session, credentials={"email": {"email": "b@example.test"}}
     )
 
-    assert await ensure_recipient(db_session, user) is False
+    assert await sync_recipient(db_session, user) is False
     assert await _rows_added_since(db_session, before) == []
 
     await db_session.rollback()
@@ -269,7 +295,7 @@ async def test_success_sends_the_snapshot_and_skips_the_outbox(
         db_session, credentials={"telegram": {"id": 92181}}, language="de"
     )
 
-    assert await ensure_recipient(db_session, user) is True
+    assert await sync_recipient(db_session, user) is True
 
     assert len(calls) == 1
     call = calls[0]
@@ -281,6 +307,7 @@ async def test_success_sends_the_snapshot_and_skips_the_outbox(
     assert call["headers"]["Authorization"] == f"Bearer {_TOKEN}"
     assert call["timeout"] == settings.comms_http_timeout_seconds
     assert call["json"] == {
+        "version": 1,
         "telegram_id": 92181,
         "email": None,
         "locale": "de",
@@ -299,8 +326,8 @@ async def test_success_sends_the_snapshot_and_skips_the_outbox(
     [
         httpx.ConnectError("connection refused"),
         httpx.ReadTimeout("timed out"),
-        401,
-        500,
+        (401, "unauthorized"),
+        (500, "internal"),
     ],
     ids=["refused", "timeout", "unauthorized", "server_error"],
 )
@@ -310,12 +337,15 @@ async def test_failures_never_raise(
     comms_configured_url: None,
     outcome: Any,
 ) -> None:
-    """Every way comms can fail comes back as False, not as an
+    """Every way comms can fail comes back as UNDELIVERED, not as an
     exception. This is the property the caller depends on: creating a
     user must not become fragile because another service is down."""
     _fake_httpx(monkeypatch, outcome)
 
-    assert await upsert_recipient(uuid4(), {"active": True}) is False
+    assert (
+        await upsert_recipient(uuid4(), {"active": True})
+        is UpsertOutcome.UNDELIVERED
+    )
 
 
 @pytest.mark.asyncio
@@ -337,7 +367,7 @@ async def test_failure_defers_the_recipient_to_the_outbox(
         db_session, credentials={"telegram": {"id": 92182}}, language="fr"
     )
 
-    assert await ensure_recipient(db_session, user) is False
+    assert await sync_recipient(db_session, user) is False
 
     rows = await _rows_added_since(db_session, before)
     assert len(rows) == 1
@@ -345,6 +375,7 @@ async def test_failure_defers_the_recipient_to_the_outbox(
     assert rows[0].payload == {
         "v": 1,
         "recipient_id": str(user.id),
+        "version": 1,
         "telegram_id": 92182,
         "email": None,
         "locale": "fr",
@@ -396,7 +427,7 @@ async def test_registration_succeeds_while_comms_is_down(
     # What replaces it is stronger than a count. comms DROPS a
     # notification for a recipient it has never been told about
     # (SKIPPED: no delivery row, no retry, no letter), so the recipient
-    # row must reach it FIRST. That is not luck here: ensure_recipient
+    # row must reach it FIRST. That is not luck here: sync_recipient
     # emits inside the same transaction, before the emitter, so it takes
     # the lower BIGSERIAL id -- and the relay publishes in id order.
     # This asserts exactly that, which is the guarantee the KNOWN
@@ -419,3 +450,141 @@ async def test_registration_succeeds_while_comms_is_down(
         delete(OutboxEvent).where(OutboxEvent.id.in_([row.id for row in deferred]))
     )
     await db_session.commit()
+
+
+# ---------------------------------------------------------------------------
+# 6. comms 3.0.0: the versioned snapshot (H23 P-112)
+# ---------------------------------------------------------------------------
+
+
+async def _stored_version(session: AsyncSession, user: User) -> int:
+    result = await session.execute(
+        select(User.comms_snapshot_version).where(User.id == user.id)
+    )
+    return int(result.scalar_one())
+
+
+@pytest.mark.asyncio
+async def test_every_sync_raises_the_version_and_sends_it(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    comms_configured_url: None,
+) -> None:
+    """Repeat axis: two syncs of one person are two versions, in order.
+
+    comms applies a snapshot only when its version is higher than the one
+    it holds, so a repeat that re-used a number would be refused -- or,
+    with other content, be a conflict.
+    """
+    calls = _fake_httpx(monkeypatch, 200)
+    user = await _make_user(db_session, credentials={"email": {"email": "v@example.test"}})
+
+    assert await sync_recipient(db_session, user) is True
+    assert await sync_recipient(db_session, user) is True
+
+    assert [call["json"]["version"] for call in calls] == [1, 2]
+    assert await _stored_version(db_session, user) == 2
+    assert user.comms_snapshot_version == 2
+
+    await db_session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_the_outbox_carries_the_version_the_call_would_have(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    comms_configured_url: None,
+) -> None:
+    """Both paths, one number: the event is built from the same dict."""
+    calls = _fake_httpx(monkeypatch, httpx.ConnectError("comms is down"))
+    before = await _outbox_ids(db_session)
+    user = await _make_user(db_session, credentials={})
+
+    assert await sync_recipient(db_session, user) is False
+
+    rows = await _rows_added_since(db_session, before)
+    assert calls[0]["json"]["version"] == 1
+    assert rows[0].payload["version"] == 1
+
+    await db_session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_no_comms_spends_no_version(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Emptiness axis: nothing sent, no number used."""
+    monkeypatch.setattr(settings, "comms_api_url", "")
+    user = await _make_user(db_session, credentials={})
+
+    assert await sync_recipient(db_session, user) is False
+    assert await _stored_version(db_session, user) == 0
+
+    await db_session.rollback()
+
+
+@pytest.mark.parametrize(
+    ("answer", "outcome"),
+    [
+        ((409, "stale_snapshot"), UpsertOutcome.SUPERSEDED),
+        ((409, "conflict"), UpsertOutcome.CONFLICT),
+    ],
+    ids=["stale_snapshot", "conflict"],
+)
+@pytest.mark.asyncio
+async def test_a_409_is_read_by_its_class_and_never_goes_to_the_outbox(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    comms_configured_url: None,
+    answer: tuple[int, str],
+    outcome: UpsertOutcome,
+) -> None:
+    """One status, two meanings -- told apart by the class.
+
+    stale_snapshot: comms holds something newer, which is the truth.
+    conflict: one version, two contents -- our defect, logged. Neither
+    is helped by the outbox, which would meet the same answer.
+    """
+    _fake_httpx(monkeypatch, answer)
+    assert await upsert_recipient(uuid4(), {"version": 1}) is outcome
+
+    before = await _outbox_ids(db_session)
+    user = await _make_user(db_session, credentials={})
+    assert await sync_recipient(db_session, user) is False
+    assert await _rows_added_since(db_session, before) == []
+
+    await db_session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_without_a_class_is_not_read_as_one(
+    monkeypatch: pytest.MonkeyPatch, comms_configured_url: None
+) -> None:
+    """Shortage axis: a 409 whose body is not comms' protocol (a proxy
+    page) is neither superseded nor a conflict -- it is undelivered."""
+    _fake_httpx(monkeypatch, 409)
+    assert (
+        await upsert_recipient(uuid4(), {"version": 1})
+        is UpsertOutcome.UNDELIVERED
+    )
+
+
+@pytest.mark.asyncio
+async def test_no_value_is_null_never_a_blank_or_a_zero(
+    db_session: AsyncSession,
+) -> None:
+    """comms 3.0.0 refuses "" and a telegram id of 0 on both paths."""
+    user = await _make_user(
+        db_session,
+        credentials={"email": {"email": ""}, "telegram": {"id": 0}},
+        language="",
+    )
+
+    snapshot = user_snapshot(user, 1)
+
+    assert snapshot["email"] is None
+    assert snapshot["telegram_id"] is None
+    assert snapshot["locale"] is None
+    assert "" not in snapshot.values()
+
+    await db_session.rollback()

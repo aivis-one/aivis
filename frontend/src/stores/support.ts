@@ -92,6 +92,22 @@ function toActionError(err: unknown): SupportActionError {
   return { message: err instanceof Error ? err.message : String(err) }
 }
 
+/** One message on its way to comms, with the key it is sent under. */
+interface PendingMessage {
+  body: string
+  key: string
+}
+
+/**
+ * The key for sending `body`: the pending one when this is a retry of the
+ * same text, a fresh one otherwise. The key is minted here, on the press
+ * of send -- never per HTTP attempt.
+ */
+function keyFor(pending: PendingMessage | null, body: string): PendingMessage {
+  if (pending !== null && pending.body === body) return pending
+  return { body, key: crypto.randomUUID() }
+}
+
 export const useSupportStore = defineStore('support', () => {
   // ---------------------------------------------------------------------
   // User side -- the caller's own thread
@@ -114,6 +130,13 @@ export const useSupportStore = defineStore('support', () => {
   // Not appended into `messages` -- see header, stake D.
   const lastSentMessage = ref<SupportMessageResponse | null>(null)
   const sending = ref<boolean>(false)
+  // The message the person is trying to send and the Idempotency-Key it
+  // was given when they pressed send. Kept until comms confirms it, so a
+  // retry after a failure or a timeout re-sends under the SAME key and
+  // comms answers with the message it already stored instead of storing
+  // a second one. A different text is a different message and gets a
+  // new key: comms would refuse the old key with another body (409).
+  let pendingSend: PendingMessage | null = null
   const sendError = ref<SupportActionError | null>(null)
 
   const marking = ref<boolean>(false)
@@ -155,7 +178,7 @@ export const useSupportStore = defineStore('support', () => {
     try {
       const resp = await listSupportThreads()
       if (epoch !== threadEpoch) return
-      threads.value = resp.threads
+      threads.value = resp.items
       threadsLoaded.value = true
     } catch (err) {
       if (epoch !== threadEpoch) return
@@ -177,7 +200,7 @@ export const useSupportStore = defineStore('support', () => {
     try {
       const resp = await getSupportThreadMessages(threadId)
       if (epoch !== threadEpoch) return
-      messages.value = resp.messages
+      messages.value = resp.items
       messagesNextCursor.value = resp.next_cursor
     } catch (err) {
       if (epoch !== threadEpoch) return
@@ -202,12 +225,17 @@ export const useSupportStore = defineStore('support', () => {
    * reason: it would hide which of the two calls failed).
    */
   async function sendMessage(body: string): Promise<void> {
+    // A second press while the first is in flight is the same intent:
+    // it neither sends again nor mints a second key.
+    if (sending.value) return
+    pendingSend = keyFor(pendingSend, body)
     sending.value = true
     sendError.value = null
     lastSentMessage.value = null
     try {
-      const resp = await sendSupportMessage(body)
+      const resp = await sendSupportMessage(body, pendingSend.key)
       lastSentMessage.value = resp
+      pendingSend = null
     } catch (err) {
       sendError.value = toActionError(err)
     } finally {
@@ -251,6 +279,9 @@ export const useSupportStore = defineStore('support', () => {
   const claimErrors = reactive<Record<string, SupportActionError | null>>({})
 
   const replying = reactive<Record<string, boolean>>({})
+  // Per thread: the reply being sent and its Idempotency-Key -- the same
+  // rule as pendingSend on the user side, one pending reply per thread.
+  const pendingReplies: Record<string, PendingMessage> = {}
   const replyErrors = reactive<Record<string, SupportActionError | null>>({})
 
   const changingStatus = reactive<Record<string, boolean>>({})
@@ -290,7 +321,7 @@ export const useSupportStore = defineStore('support', () => {
     try {
       const resp = await getStaffSupportThreadMessages(threadId)
       if (epoch !== staffFeedEpoch) return
-      staffMessages.value = resp.messages
+      staffMessages.value = resp.items
       staffMessagesNextCursor.value = resp.next_cursor
     } catch (err) {
       if (epoch !== staffFeedEpoch) return
@@ -309,7 +340,7 @@ export const useSupportStore = defineStore('support', () => {
     try {
       const resp = await listStaffSupportQueue()
       if (epoch !== queueEpoch) return
-      queue.value = resp.threads
+      queue.value = resp.items
       queueNextCursor.value = resp.next_cursor
       queueLoaded.value = true
     } catch (err) {
@@ -358,10 +389,13 @@ export const useSupportStore = defineStore('support', () => {
    */
   async function replyToThread(threadId: string, body: string): Promise<void> {
     if (replying[threadId]) return
+    const pending = keyFor(pendingReplies[threadId] ?? null, body)
+    pendingReplies[threadId] = pending
     replying[threadId] = true
     replyErrors[threadId] = null
     try {
-      await replyToStaffSupportThread(threadId, body)
+      await replyToStaffSupportThread(threadId, body, pending.key)
+      delete pendingReplies[threadId]
     } catch (err) {
       replyErrors[threadId] = toActionError(err)
     } finally {
@@ -423,6 +457,8 @@ export const useSupportStore = defineStore('support', () => {
     lastSentMessage.value = null
     sending.value = false
     sendError.value = null
+    pendingSend = null
+    for (const threadId of Object.keys(pendingReplies)) delete pendingReplies[threadId]
 
     marking.value = false
     markError.value = null

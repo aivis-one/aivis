@@ -34,7 +34,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
@@ -44,6 +44,8 @@ from app.modules.support.dependencies import (
     reject_actor_override,
 )
 from app.modules.support.schemas import (
+    SUPPORT_CLIENT_KEY_MAX_LEN,
+    SUPPORT_CLIENT_KEY_PATTERN,
     EmptyBodyIn,
     SendMessageIn,
     SetStatusIn,
@@ -138,10 +140,19 @@ async def reply_to_thread(
     request: Request,
     thread_id: UUID,
     body: SendMessageIn,
+    idempotency_key: str = Header(
+        alias="Idempotency-Key",
+        min_length=1,
+        max_length=SUPPORT_CLIENT_KEY_MAX_LEN,
+        pattern=SUPPORT_CLIENT_KEY_PATTERN,
+    ),
     operator: SupportOperator = Depends(get_support_operator),
     session: AsyncSession = Depends(get_db_reader),
 ) -> Any:
     """Answer the person who opened this request.
+
+    Idempotency-Key is required, as on the user side: the client's key
+    for this one reply, reused on every retry of it.
 
     409 if the operator has not claimed it -- comms refuses the write and
     this is that refusal, said in a way the caller can act on. A
@@ -150,7 +161,11 @@ async def reply_to_thread(
     """
     reject_actor_override(request)
     return await reply_to_support_thread(
-        session, operator=operator, thread_id=thread_id, body=body.body
+        session,
+        operator=operator,
+        thread_id=thread_id,
+        body=body.body,
+        idempotency_key=idempotency_key,
     )
 
 

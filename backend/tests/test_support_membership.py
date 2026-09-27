@@ -40,7 +40,7 @@ def comms_is_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every test in this file runs on a box that HAS a comms address.
 
     Stated rather than inherited. T-93 gave emit_support_membership the
-    gate its sibling ensure_recipient always had -- no comms address, no
+    gate its sibling sync_recipient always had -- no comms address, no
     outbox row, because the relay is disabled by that same empty address
     and the row could never leave. That makes "a promotion writes a
     membership event" true only where comms is configured, and these
@@ -224,7 +224,7 @@ async def test_no_comms_address_means_no_membership_row(
 
     The relay is disabled by the same empty address, so a row emitted
     here would sit in the table forever with nobody to ship it: growth,
-    not delayed delivery. core.comms_sync.ensure_recipient reasoned this
+    not delayed delivery. core.comms_sync.sync_recipient reasoned this
     out first and refused to write; this emitter disagreed with its
     neighbour until T-93, and the difference was nobody's decision.
     """

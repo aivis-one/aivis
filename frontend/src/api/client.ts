@@ -206,10 +206,16 @@ export function parseRetryAfterHeader(response: Response): number | undefined {
 // Core request function
 // ---------------------------------------------------------------------------
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  extraHeaders?: Record<string, string>,
+): Promise<T> {
   const url = `${BASE_URL}${path}`
 
   const headers: Record<string, string> = {
+    ...extraHeaders,
     Accept: 'application/json',
     'Accept-Language': i18n.global.locale.value,
   }
@@ -302,8 +308,13 @@ export const api = {
     return request<T>('GET', path)
   },
 
-  post<T>(path: string, body?: unknown): Promise<T> {
-    return request<T>('POST', path, body)
+  /**
+   * `headers` carries per-call headers the backend requires on a route
+   * -- today only `Idempotency-Key` on the support message routes. They
+   * go under the standard ones, so a caller cannot replace the token.
+   */
+  post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+    return request<T>('POST', path, body, headers)
   },
 
   patch<T>(path: string, body?: unknown): Promise<T> {

@@ -132,7 +132,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.comms import comms_configured
-from app.core.comms_sync import ensure_recipient
+from app.core.comms_sync import sync_recipient
 from app.core.config import settings
 from app.core.crypto import decrypt_secret
 from app.core.database import get_session_factory
@@ -277,12 +277,13 @@ def _generate_verification_code() -> str:
 # fallback -- two ways to send the same letter is a state where "did it
 # go?" has two answers and nobody checks both.
 #
-# THREE THINGS THESE EMISSIONS CARRY THAT THE OTHER PRODUCERS DO NOT:
+# THREE THINGS SET THESE EMISSIONS APART FROM THE OTHER PRODUCERS:
 #
-#   channels=["email"] -- comms defaults to ["in_app"], so an emission
-#     without this field is an inbox entry and NO letter. And email is
-#     the ONLY channel here, not an addition to the inbox: both of these
-#     carry a credential. A password-reset link sitting in the in-app
+#   NO channels FIELD -- the channel is set by the profile, not here.
+#     comms 3.0.0 refuses a request that names a channel;
+#     comms-profile/types.yaml routes both types to `[email]`. And email
+#     is the ONLY channel there, not an addition to the inbox: both of
+#     these carry a credential. A password-reset link sitting in the in-app
 #     inbox is readable by any live session, which turns a stolen session
 #     into a password change -- confirm_password_reset() does not ask for
 #     the old password, by design, because the person using it has lost
@@ -344,7 +345,6 @@ async def _request_verification_email(
                 f"This code expires in {_VERIFICATION_CODE_TTL_MINUTES} minutes.\n\n"
                 "If you did not request this, please ignore this email."
             ),
-            "channels": ["email"],
             "expiry_at": expires_at.isoformat(),
         },
     )
@@ -383,7 +383,6 @@ async def _request_password_reset_email(
                 "If you did not request this, you can safely ignore this "
                 "email -- your password will not be changed."
             ),
-            "channels": ["email"],
             "expiry_at": expires_at.isoformat(),
         },
     )
@@ -564,7 +563,7 @@ async def register_email(
     # user anything -- the verification e-mail below is the first thing
     # in line. Never raises; a failure defers the recipient to the
     # outbox and registration continues either way (T-64).
-    await ensure_recipient(session, user)
+    await sync_recipient(session, user)
 
     await record_audit(
         session=session,
@@ -591,7 +590,7 @@ async def register_email(
     )
 
     # The letter is now a row in this same transaction, emitted AFTER
-    # ensure_recipient above so its outbox id is the higher of the two and
+    # sync_recipient above so its outbox id is the higher of the two and
     # the relay hands comms the recipient before the notification.
     await _request_verification_email(
         session, user.id, verification_code, expires_at
@@ -1420,7 +1419,7 @@ async def upsert_telegram_user(
     # the product has anything to say to them (T-64). Deliberately NOT
     # in the race branch above -- that branch resolved to an EXISTING
     # user, who already got their upsert when they were created.
-    await ensure_recipient(session, new_user)
+    await sync_recipient(session, new_user)
 
     await record_audit(
         session=session,

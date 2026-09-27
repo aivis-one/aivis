@@ -50,6 +50,7 @@
 # caller must pick one on purpose, not inherit one by accident.
 # =============================================================================
 
+import enum
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -78,12 +79,35 @@ _FAILURE_NOT_CONFIGURED = "not_configured"
 _FAILURE_TIMEOUT = "timeout"
 _FAILURE_TRANSPORT = "transport"
 
-# The only comms 4xx statuses that say something about THIS request
-# rather than about our own configuration. A 401 or a 403 from comms
-# means our service token is wrong, and a 405 means our path is -- both
-# are infrastructure faults, mapped to 502 rather than forwarded, so a
-# misconfigured deployment cannot masquerade as the caller's mistake.
-_FORWARDABLE_4XX = frozenset({400, 404, 409, 422})
+# comms' refusal classes (its deploy/INTEGRATION.md, section 5: "the
+# message is for a human; the class is the contract"). Every error of
+# every comms route has ONE body, {"error": {"class", "message",
+# "fields"}}, and this module branches on the class, never on the
+# status: 409 alone carries three classes that mean three different
+# things.
+_CLASS_UNAUTHORIZED = "unauthorized"
+_CLASS_FORBIDDEN = "forbidden"
+_CLASS_NOT_FOUND = "not_found"
+_CLASS_CONFLICT = "conflict"
+_CLASS_STALE_SNAPSHOT = "stale_snapshot"
+_CLASS_VALIDATION = "validation"
+
+# The only classes that say something about THIS request rather than
+# about our own configuration. `unauthorized` and `forbidden` mean our
+# service token is wrong, `method_not_allowed` and a missing class mean
+# our path or comms' own answer is -- all infrastructure faults, mapped
+# to 502 rather than forwarded, so a misconfigured deployment cannot
+# masquerade as the caller's mistake. `forbidden` is forwarded only
+# where the call site opted in (forward_403). `stale_snapshot` and
+# `recipient_deleted` answer only the recipient writes, which do not go
+# through comms_request.
+_FORWARDABLE_CLASSES = frozenset(
+    {_CLASS_NOT_FOUND, _CLASS_CONFLICT, _CLASS_VALIDATION}
+)
+
+# comms' header for the calls that create (its deploy/INTEGRATION.md,
+# section 5, "Repeating a call"). Its value is 1..200 characters.
+_IDEMPOTENCY_HEADER = "Idempotency-Key"
 
 # How much of comms' own refusal text reaches the log. Bounded because
 # it is somebody else's string arriving over the network.
@@ -127,19 +151,22 @@ class CommsTimeoutError(CommsUnavailableError):
 class CommsRejectedError(AivisError):
     """comms refused this request with a status it models (HTTP 4xx).
 
-    Carries comms' STATUS but not comms' WORDING. Its messages name
-    internal objects ("client recipient <uuid> does not exist") and a
-    product response is not the place for them; the original text is
-    logged instead, where whoever debugs this can read it.
+    Carries comms' STATUS and CLASS but not comms' WORDING. Its messages
+    name internal objects ("client recipient <uuid> does not exist") and
+    a product response is not the place for them; the original text is
+    logged instead, where whoever debugs this can read it. A caller
+    branches on `error_class` -- comms' contract -- not on the status.
     """
 
     def __init__(
         self,
         status_code: int,
+        error_class: str,
         message: str = "Support service rejected the request",
         code: str = "comms_rejected",
     ) -> None:
         super().__init__(message=message, code=code, status_code=status_code)
+        self.error_class = error_class
 
 
 @dataclass(frozen=True)
@@ -162,6 +189,7 @@ async def _call(
     *,
     params: dict[str, Any] | None = None,
     json: dict[str, Any] | None = None,
+    idempotency_key: str | None = None,
 ) -> _CallResult:
     """THE door: the only place this product opens a socket to comms.
 
@@ -180,6 +208,8 @@ async def _call(
 
     url = f"{settings.comms_api_url.rstrip('/')}{path}"
     headers = {"Authorization": f"Bearer {settings.comms_service_token}"}
+    if idempotency_key is not None:
+        headers[_IDEMPOTENCY_HEADER] = idempotency_key
 
     try:
         async with httpx.AsyncClient(
@@ -204,30 +234,53 @@ async def _call(
     return _CallResult(response=response)
 
 
-def _refusal_detail(response: httpx.Response) -> str:
-    """comms' own words for a refusal -- FOR THE LOG ONLY.
+def _refusal_detail(response: httpx.Response) -> tuple[str | None, str]:
+    """comms' refusal: (class, message) from its one error body.
 
-    Never returned to a caller and never rendered into a response body:
-    see CommsRejectedError on why comms' wording stays inside.
+    The class is what callers branch on; None means the body is not
+    comms' protocol at all (a proxy page, a crash before comms' own
+    handler), which every caller treats as an infrastructure fault.
+    The message is FOR THE LOG ONLY -- never returned to a caller and
+    never rendered into a response body: see CommsRejectedError on why
+    comms' wording stays inside.
     """
     try:
         body = response.json()
     except ValueError:
-        return response.text[:_DETAIL_LOG_LIMIT]
-    if isinstance(body, dict):
-        detail = body.get("detail")
-        if isinstance(detail, str):
-            return detail[:_DETAIL_LOG_LIMIT]
-    return ""
+        return None, response.text[:_DETAIL_LOG_LIMIT]
+    error = body.get("error") if isinstance(body, dict) else None
+    if not isinstance(error, dict):
+        return None, ""
+    error_class = error.get("class")
+    message = error.get("message")
+    return (
+        error_class if isinstance(error_class, str) and error_class else None,
+        message[:_DETAIL_LOG_LIMIT] if isinstance(message, str) else "",
+    )
 
 
-def user_snapshot(user: "User") -> dict[str, Any]:
+def _telegram_id_or_none(value: Any) -> int | None:
+    """The stored telegram id as comms takes it: a non-zero int, or None."""
+    if value is None:
+        return None
+    telegram_id = int(value)
+    return telegram_id if telegram_id != 0 else None
+
+
+def user_snapshot(user: "User", version: int) -> dict[str, Any]:
     """Build the identity snapshot comms stores for one user.
 
     A SNAPSHOT, not a patch: every field is always present and "no
     value" is an explicit None. comms overwrites what it holds with
     exactly this, so omitting a field would mean "keep the old value" --
-    a semantic this contract does not have.
+    a semantic this contract does not have. comms 3.0.0 REFUSES a blank
+    string or a telegram id of 0 on both paths, so every empty form
+    becomes None here rather than on the wire.
+
+    `version` is the person's snapshot version, raised by
+    core/comms_sync.py::sync_recipient -- the only caller. It rides in
+    the snapshot itself so that the HTTP body and the outbox event carry
+    the same number for one change: they are built from this one dict.
 
     timezone is always None: this product does not track a user
     timezone at all, and comms falls back to its own default when
@@ -238,21 +291,43 @@ def user_snapshot(user: "User") -> dict[str, Any]:
     telegram = credentials.get("telegram") or {}
     telegram_id = telegram.get("id")
     return {
-        "telegram_id": int(telegram_id) if telegram_id is not None else None,
-        "email": user.email,
-        "locale": user.language,
+        "version": version,
+        "telegram_id": _telegram_id_or_none(telegram_id),
+        "email": user.email or None,
+        "locale": user.language or None,
         "timezone": None,
         "active": user.is_active,
     }
 
 
-async def upsert_recipient(recipient_id: UUID, snapshot: dict[str, Any]) -> bool:
-    """Create or update the recipient in comms. Returns success.
+class UpsertOutcome(enum.Enum):
+    """What one PUT /recipients/{id} achieved. See upsert_recipient."""
 
-    Never raises: every failure -- unconfigured, unreachable, refused,
-    rejected -- is logged and reported as False, so the caller decides
-    what to do about it. The caller is expected to fall back to the
-    outbox rather than to fail the operation that triggered this.
+    # comms holds this snapshot now.
+    STORED = "stored"
+    # comms already holds a HIGHER version (stale_snapshot): a later
+    # change overtook this one. Nothing to deliver -- the newer snapshot
+    # is the truth, and re-sending this one through the outbox would be
+    # refused the same way.
+    SUPERSEDED = "superseded"
+    # comms holds THIS version with other content (conflict). That is a
+    # defect of ours -- one version, two contents -- and the outbox would
+    # meet the same refusal, so it is logged loudly and not retried.
+    CONFLICT = "conflict"
+    # comms did not take it for a reason that may heal: unconfigured,
+    # unreachable, slow, 5xx, our token, an unmodeled refusal. The caller
+    # falls back to the outbox.
+    UNDELIVERED = "undelivered"
+
+
+async def upsert_recipient(
+    recipient_id: UUID, snapshot: dict[str, Any]
+) -> UpsertOutcome:
+    """Create or update the recipient in comms.
+
+    Never raises: every failure is logged and reported as an outcome, so
+    the caller decides what to do about it. Only UNDELIVERED sends the
+    caller to the outbox; see UpsertOutcome for why the other two do not.
     """
     result = await _call(
         "PUT", f"{_RECIPIENTS_PATH}/{recipient_id}", json=snapshot
@@ -266,7 +341,7 @@ async def upsert_recipient(recipient_id: UUID, snapshot: dict[str, Any]) -> bool
             "comms_upsert_skipped_no_url",
             recipient_id=str(recipient_id),
         )
-        return False
+        return UpsertOutcome.UNDELIVERED
 
     if result.failure == _FAILURE_TIMEOUT:
         logger.warning(
@@ -274,7 +349,7 @@ async def upsert_recipient(recipient_id: UUID, snapshot: dict[str, Any]) -> bool
             recipient_id=str(recipient_id),
             error=result.error,
         )
-        return False
+        return UpsertOutcome.UNDELIVERED
 
     response = result.response
     if response is None:
@@ -283,9 +358,36 @@ async def upsert_recipient(recipient_id: UUID, snapshot: dict[str, Any]) -> bool
             recipient_id=str(recipient_id),
             error=result.error,
         )
-        return False
+        return UpsertOutcome.UNDELIVERED
 
-    if response.status_code in (401, 403):
+    if response.status_code < 400:
+        logger.info(
+            "comms_recipient_upserted",
+            recipient_id=str(recipient_id),
+            version=snapshot.get("version"),
+        )
+        return UpsertOutcome.STORED
+
+    error_class, detail = _refusal_detail(response)
+
+    if error_class == _CLASS_STALE_SNAPSHOT:
+        logger.info(
+            "comms_upsert_superseded",
+            recipient_id=str(recipient_id),
+            version=snapshot.get("version"),
+        )
+        return UpsertOutcome.SUPERSEDED
+
+    if error_class == _CLASS_CONFLICT:
+        logger.error(
+            "comms_upsert_version_conflict",
+            recipient_id=str(recipient_id),
+            version=snapshot.get("version"),
+            detail=detail,
+        )
+        return UpsertOutcome.CONFLICT
+
+    if error_class in (_CLASS_UNAUTHORIZED, _CLASS_FORBIDDEN):
         # Configuration, not weather: a wrong or empty service token
         # fails every call the same way and will not heal on its own.
         logger.error(
@@ -293,18 +395,16 @@ async def upsert_recipient(recipient_id: UUID, snapshot: dict[str, Any]) -> bool
             recipient_id=str(recipient_id),
             status=response.status_code,
         )
-        return False
+        return UpsertOutcome.UNDELIVERED
 
-    if response.status_code >= 400:
-        logger.warning(
-            "comms_upsert_rejected",
-            recipient_id=str(recipient_id),
-            status=response.status_code,
-        )
-        return False
-
-    logger.info("comms_recipient_upserted", recipient_id=str(recipient_id))
-    return True
+    logger.warning(
+        "comms_upsert_rejected",
+        recipient_id=str(recipient_id),
+        status=response.status_code,
+        error_class=error_class,
+        detail=detail,
+    )
+    return UpsertOutcome.UNDELIVERED
 
 
 async def comms_request(
@@ -314,6 +414,7 @@ async def comms_request(
     params: dict[str, Any] | None = None,
     json: dict[str, Any] | None = None,
     forward_403: bool = False,
+    idempotency_key: str | None = None,
 ) -> Any:
     """One request to comms on a path a PERSON is waiting on.
 
@@ -335,8 +436,14 @@ async def comms_request(
         path: comms API path starting with "/".
         params: optional query parameters.
         json: optional JSON body.
-        forward_403: treat a comms 403 as a real answer about THIS
-            request instead of an infrastructure fault. Default False,
+        idempotency_key: the Idempotency-Key header, for the two calls
+            comms makes create something (a thread, a message). comms
+            answers a repeat with the same key and the SAME request bytes
+            with the same object and pings nobody again; the same key
+            with other bytes is a `conflict`. So the caller must send a
+            byte-identical body on every repeat of one intent.
+        forward_403: treat a comms `forbidden` (403) as a real answer
+            about THIS request instead of an infrastructure fault. Default False,
             and it must stay the default: on every other path a 403 can
             only mean our service token is wrong. The exception is comms'
             write-authz on a section thread (can_post_message admits the
@@ -351,13 +458,17 @@ async def comms_request(
     Raises:
         CommsTimeoutError: comms did not answer in time (504).
         CommsUnavailableError: unreachable, unconfigured, upstream 5xx,
-            an auth fault of OUR service token, an unmodeled 4xx, or a
+            an auth fault of OUR service token, a refusal whose class is not
+            one it forwards (or no class at all), or a
             body that is not JSON (502).
-        CommsRejectedError: comms answered with a status it models --
-            400 / 404 / 409 / 422, plus 403 where the caller opted in --
-            forwarded as that status.
+        CommsRejectedError: comms refused with a class that answers THIS
+            request -- not_found / conflict / validation, plus forbidden
+            where the caller opted in -- forwarded with comms' status,
+            the class on error_class.
     """
-    result = await _call(method, path, params=params, json=json)
+    result = await _call(
+        method, path, params=params, json=json, idempotency_key=idempotency_key
+    )
 
     if result.failure == _FAILURE_NOT_CONFIGURED:
         # A box without comms is a supported configuration for the
@@ -387,30 +498,40 @@ async def comms_request(
         logger.warning("comms_upstream_error", path=path, status=status)
         raise CommsUnavailableError()
 
-    if status == 401 or (status == 403 and not forward_403):
-        # OUR service token, never this user's session. Forwarding the
-        # status verbatim would be read by the frontend as "your
-        # session expired" and log out everyone who opened support
-        # while the token was wrong. 403 leaves this branch only for a
-        # call site that asked for it -- see the docstring.
-        logger.error("comms_auth_error", path=path, status=status)
-        raise CommsUnavailableError()
-
     if status >= 400:
-        detail = _refusal_detail(response)
-        forwardable = _FORWARDABLE_4XX | ({403} if forward_403 else set())
-        if status not in forwardable:
+        error_class, detail = _refusal_detail(response)
+
+        if error_class == _CLASS_UNAUTHORIZED or (
+            error_class == _CLASS_FORBIDDEN and not forward_403
+        ):
+            # OUR service token, never this user's session. Forwarding
+            # the status verbatim would be read by the frontend as "your
+            # session expired" and log out everyone who opened support
+            # while the token was wrong. `forbidden` leaves this branch
+            # only for a call site that asked for it -- see the docstring.
+            logger.error("comms_auth_error", path=path, status=status)
+            raise CommsUnavailableError()
+
+        forwardable = _FORWARDABLE_CLASSES | (
+            {_CLASS_FORBIDDEN} if forward_403 else set()
+        )
+        if error_class not in forwardable:
             logger.warning(
-                "comms_unexpected_4xx",
+                "comms_unexpected_refusal",
                 path=path,
                 status=status,
+                error_class=error_class,
                 detail=detail,
             )
             raise CommsUnavailableError()
         logger.info(
-            "comms_rejected", path=path, status=status, detail=detail
+            "comms_rejected",
+            path=path,
+            status=status,
+            error_class=error_class,
+            detail=detail,
         )
-        raise CommsRejectedError(status_code=status)
+        raise CommsRejectedError(status_code=status, error_class=error_class)
 
     try:
         return response.json()

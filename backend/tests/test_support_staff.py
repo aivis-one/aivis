@@ -27,8 +27,10 @@
 # The rules the fake reproduces are read from comms' bodies, not guessed:
 #   visible(me)        = assignee == me OR (section AND unassigned)
 #                        -- messaging/operators.list_visible_threads
-#   claim              = UPDATE ... WHERE assignee IS NULL, rowcount
-#                        decides `claimed` -- operators.claim_thread
+#   claim              = "is it yours now": claimed=true for the operator
+#                        the thread belongs to (a repeat by its holder
+#                        included), 409 `conflict` for anyone else --
+#                        comms 3.0.0, INTEGRATION.md section 5
 #   can_post_message   = client or assignee, no supervisor bypass
 #   status matrix      = open -> resolved|closed, resolved -> closed,
 #                        X -> X no-op, everything else 422 -- status.py
@@ -77,6 +79,19 @@ _ALLOWED: dict[str, set[str]] = {
 # ---------------------------------------------------------------------------
 
 
+def _reply_headers(token: str) -> dict[str, str]:
+    """One press of "reply": the session plus a fresh Idempotency-Key."""
+    return {**auth_headers(token), "Idempotency-Key": str(uuid4())}
+
+
+def _refusal(status: int, error_class: str, message: str) -> "_FakeResponse":
+    """comms 3.0.0's one refusal body; the product branches on the class."""
+    return _FakeResponse(
+        status,
+        {"error": {"class": error_class, "message": message, "fields": []}},
+    )
+
+
 class _FakeResponse:
     def __init__(self, status_code: int, payload: Any = None) -> None:
         self.status_code = status_code
@@ -118,7 +133,7 @@ class _FakeComms:
                 json: dict | None = None,
                 headers: dict | None = None,
             ) -> _FakeResponse:
-                return fake.handle(method, url, params, json)
+                return fake.handle(method, url, params, json, headers)
 
         monkeypatch.setattr(comms_module.httpx, "AsyncClient", _FakeClient)
 
@@ -149,6 +164,7 @@ class _FakeComms:
         url: str,
         params: dict | None,
         json: dict | None,
+        headers: dict | None = None,
     ) -> _FakeResponse:
         path = url[len(_URL) :]
         self.calls.append(
@@ -172,7 +188,7 @@ class _FakeComms:
         if len(parts) == 5 and parts[2] == "threads":
             thread = self.threads.get(parts[3])
             if thread is None:
-                return _FakeResponse(404, {"detail": "thread does not exist"})
+                return _refusal(404, "not_found", "thread does not exist")
             if parts[4] == "claim":
                 return self._claim(thread, json or {})
             # METHOD-AWARE, since T-66-fix. Until the operator side had
@@ -182,7 +198,7 @@ class _FakeComms:
             # written against that fake would have gone green while
             # asserting a shape the service never returns.
             if parts[4] == "messages" and method == "POST":
-                return self._post_message(thread, json or {})
+                return self._post_message(thread, json or {}, headers)
             if parts[4] == "messages" and method == "GET":
                 return self._feed(thread, params or {})
             if parts[4] == "status":
@@ -211,15 +227,20 @@ class _FakeComms:
             if params.get("with_unread") and thread["assignee"] == operator:
                 row["unread"] = self.unread.get(thread["id"], 0)
             rows.append(row)
-        return _FakeResponse(200, {"threads": rows, "next_cursor": None})
+        return _FakeResponse(200, {"items": rows, "next_cursor": None})
 
     def _claim(
         self, thread: dict[str, Any], body: dict[str, Any]
     ) -> _FakeResponse:
+        # comms 3.0.0 answers "is it yours now": claimed=true for the
+        # operator the thread belongs to -- a repeat by its holder
+        # included -- and a 409 conflict for anyone else.
+        operator = str(body.get("operator"))
         if thread["assignee"] is None:
-            thread["assignee"] = str(body.get("operator"))
+            thread["assignee"] = operator
+        if thread["assignee"] == operator:
             return _FakeResponse(200, {"claimed": True, "thread": dict(thread)})
-        return _FakeResponse(200, {"claimed": False, "thread": dict(thread)})
+        return _refusal(409, "conflict", "thread claimed by another operator")
 
     def _feed(
         self, thread: dict[str, Any], params: dict[str, Any]
@@ -229,20 +250,26 @@ class _FakeComms:
         limit = int(params.get("limit") or 20)
         return _FakeResponse(
             200,
-            {"messages": messages[:limit], "next_cursor": None},
+            {"items": messages[:limit], "next_cursor": None},
         )
 
     def _post_message(
-        self, thread: dict[str, Any], body: dict[str, Any]
+        self,
+        thread: dict[str, Any],
+        body: dict[str, Any],
+        headers: dict[str, Any] | None,
     ) -> _FakeResponse:
         sender = str(body.get("sender"))
+        if not (headers or {}).get("Idempotency-Key"):
+            return _refusal(
+                422, "validation", "the Idempotency-Key header is required"
+            )
         if sender not in (thread["client"], thread["assignee"]):
-            return _FakeResponse(
+            return _refusal(
                 403,
-                {
-                    "detail": "sender is neither a participant nor the "
-                    "serving operator of this thread"
-                },
+                "forbidden",
+                "sender is neither a participant nor the serving operator "
+                "of this thread",
             )
         message = {
             "id": str(uuid4()),
@@ -264,9 +291,8 @@ class _FakeComms:
         if target == current:
             return _FakeResponse(200, dict(thread))
         if target not in _ALLOWED[current]:
-            return _FakeResponse(
-                422,
-                {"detail": f"invalid status transition {current} -> {target}"},
+            return _refusal(
+                422, "validation", f"invalid status transition {current} -> {target}"
             )
         thread["status"] = target
         return _FakeResponse(200, dict(thread))
@@ -471,10 +497,19 @@ async def test_actor_fields_in_an_operator_body_are_refused(
             {"status": "closed", "is_supervisor": True},
         ),
     ):
+        # The reply route also requires Idempotency-Key; it is sent, so
+        # the 422 measured here is the actor field's and nothing else's.
         response = await client.post(
-            path, json=payload, headers=auth_headers(token)
+            path,
+            json=payload,
+            headers=(
+                _reply_headers(token)
+                if path.endswith("/messages")
+                else auth_headers(token)
+            ),
         )
         assert response.status_code == 422, f"{path}: {response.text}"
+        assert "Idempotency-Key" not in response.text
 
 
 # ---------------------------------------------------------------------------
@@ -497,7 +532,7 @@ async def test_a_plain_operator_sees_the_pool_and_their_own(
 
     response = await client.get(_STAFF_BASE, headers=auth_headers(token))
 
-    seen = {row["id"] for row in response.json()["threads"]}
+    seen = {row["id"] for row in response.json()["items"]}
     assert unclaimed in seen
     assert ours in seen
     assert theirs not in seen
@@ -513,7 +548,7 @@ async def test_a_supervisor_sees_every_thread(
 
     response = await client.get(_STAFF_BASE, headers=auth_headers(token))
 
-    assert theirs in {row["id"] for row in response.json()["threads"]}
+    assert theirs in {row["id"] for row in response.json()["items"]}
 
 
 @pytest.mark.asyncio
@@ -530,7 +565,7 @@ async def test_a_pool_row_carries_no_unread_count(
 
     response = await client.get(_STAFF_BASE, headers=auth_headers(token))
 
-    rows = {row["id"]: row for row in response.json()["threads"]}
+    rows = {row["id"]: row for row in response.json()["items"]}
     assert "unread" not in rows[unclaimed]
     assert rows[ours]["unread"] == 2
 
@@ -605,14 +640,14 @@ async def test_a_claimed_request_leaves_everybody_elses_pool(
     before = await client.get(
         _STAFF_BASE, headers=auth_headers(other_token)
     )
-    assert thread_id in {r["id"] for r in before.json()["threads"]}
+    assert thread_id in {r["id"] for r in before.json()["items"]}
 
     await client.post(
         f"{_STAFF_BASE}/{thread_id}/claim", headers=auth_headers(mine_token)
     )
 
     after = await client.get(_STAFF_BASE, headers=auth_headers(other_token))
-    assert thread_id not in {r["id"] for r in after.json()["threads"]}
+    assert thread_id not in {r["id"] for r in after.json()["items"]}
 
 
 @pytest.mark.asyncio
@@ -647,7 +682,7 @@ async def test_a_reply_goes_out_as_the_session_operator(
     response = await client.post(
         f"{_STAFF_BASE}/{thread_id}/messages",
         json={"body": "Looking into it now"},
-        headers=auth_headers(token),
+        headers=_reply_headers(token),
     )
 
     assert response.status_code == 200, response.text
@@ -667,7 +702,7 @@ async def test_replying_without_claiming_says_what_to_do(
     response = await client.post(
         f"{_STAFF_BASE}/{thread_id}/messages",
         json={"body": "let me help"},
-        headers=auth_headers(token),
+        headers=_reply_headers(token),
     )
 
     assert response.status_code == 409, response.text
@@ -686,7 +721,7 @@ async def test_a_supervisor_still_has_to_claim_before_replying(
     response = await client.post(
         f"{_STAFF_BASE}/{thread_id}/messages",
         json={"body": "stepping in"},
-        headers=auth_headers(token),
+        headers=_reply_headers(token),
     )
 
     assert response.status_code == 409, response.text
@@ -702,7 +737,7 @@ async def test_an_empty_reply_is_refused(
     response = await client.post(
         f"{_STAFF_BASE}/{thread_id}/messages",
         json={"body": ""},
-        headers=auth_headers(token),
+        headers=_reply_headers(token),
     )
 
     assert response.status_code == 422, response.text
@@ -824,7 +859,7 @@ async def test_an_operator_reads_a_known_conversation(
     await client.post(
         f"{_STAFF_BASE}/{thread_id}/messages",
         json={"body": "on it"},
-        headers=auth_headers(token),
+        headers=_reply_headers(token),
     )
 
     response = await client.get(
@@ -833,7 +868,7 @@ async def test_an_operator_reads_a_known_conversation(
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert [m["body"] for m in body["messages"]] == ["on it"]
+    assert [m["body"] for m in body["items"]] == ["on it"]
     assert body["next_cursor"] is None
 
 
@@ -902,7 +937,7 @@ async def test_an_empty_conversation_reads_as_an_empty_page(
     )
 
     assert response.status_code == 200, response.text
-    assert response.json()["messages"] == []
+    assert response.json()["items"] == []
 
 
 @pytest.mark.asyncio

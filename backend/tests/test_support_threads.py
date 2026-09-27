@@ -29,6 +29,7 @@
 # is healthy and only then breaks it.
 # =============================================================================
 
+import json as json_module
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -69,6 +70,33 @@ class _FakeResponse:
         return self._payload
 
 
+# comms 3.0.0's one refusal body (its INTEGRATION.md section 5). The
+# product branches on the class, so every refusal the fake produces
+# carries the class comms would put on that status.
+_CLASS_FOR_STATUS = {
+    401: "unauthorized",
+    403: "forbidden",
+    404: "not_found",
+    405: "method_not_allowed",
+    409: "conflict",
+    422: "validation",
+    500: "internal",
+}
+
+
+def _refusal(status: int, message: str = "comms said no") -> _FakeResponse:
+    return _FakeResponse(
+        status,
+        {
+            "error": {
+                "class": _CLASS_FOR_STATUS.get(status, "internal"),
+                "message": message,
+                "fields": [],
+            }
+        },
+    )
+
+
 class _FakeComms:
     """An in-memory comms with the create-or-get behaviour that matters.
 
@@ -92,6 +120,11 @@ class _FakeComms:
         self.create_fails_with: int | None = None
         # Overrides the create response, for the malformed-payload test.
         self.thread_payload: Any = None
+        # comms 3.0.0's Idempotency-Key store for the two calls that
+        # create: key -> (request fingerprint, stored answer). The same
+        # key with the same method, path and body answers with the SAME
+        # object; the same key with anything else is a 409 conflict.
+        self.keys: dict[str, tuple[tuple[str, str, str], dict[str, Any]]] = {}
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fake = self
@@ -145,7 +178,7 @@ class _FakeComms:
         if isinstance(self.fail_with, Exception):
             raise self.fail_with
         if isinstance(self.fail_with, int):
-            return _FakeResponse(self.fail_with, {"detail": "comms said no"})
+            return _refusal(self.fail_with)
 
         if path == "/api/v1/sections":
             return _FakeResponse(
@@ -153,7 +186,10 @@ class _FakeComms:
             )
 
         if path == "/api/v1/threads":
-            return self._create_thread(json or {})
+            return self._idempotent(
+                method, path, json, headers,
+                lambda: self._create_thread(json or {}),
+            )
 
         if path == "/api/v1/threads/unread-counts":
             wanted = (json or {}).get("thread_ids") or []
@@ -163,30 +199,58 @@ class _FakeComms:
             return _FakeResponse(200, {"counts": counts})
 
         if path.endswith("/messages") and method == "POST":
-            return _FakeResponse(
-                200,
-                {
-                    "id": str(uuid4()),
-                    "thread_id": path.split("/")[4],
-                    "sender": (json or {}).get("sender"),
-                    "body": (json or {}).get("body"),
-                },
+            return self._idempotent(
+                method, path, json, headers,
+                lambda: _FakeResponse(
+                    201,
+                    {
+                        "id": str(uuid4()),
+                        "thread_id": path.split("/")[4],
+                        "sender": (json or {}).get("sender"),
+                        "body": (json or {}).get("body"),
+                    },
+                ),
             )
 
         if path.endswith("/messages") and method == "GET":
-            return _FakeResponse(200, {"messages": [], "next_cursor": None})
+            return _FakeResponse(200, {"items": [], "next_cursor": None})
 
         if path.endswith("/read"):
             return _FakeResponse(200, {"unread": 0})
 
         raise AssertionError(f"fake comms has no route for {method} {path}")
 
+    def _idempotent(
+        self,
+        method: str,
+        path: str,
+        body: dict | None,
+        headers: dict | None,
+        create: Any,
+    ) -> _FakeResponse:
+        """comms' key rule for a call that creates."""
+        key = (headers or {}).get("Idempotency-Key")
+        if not key:
+            return _refusal(422, "the Idempotency-Key header is required")
+        # comms fingerprints the RAW body bytes; the fake has the parsed
+        # body, and json.dumps of it in insertion order is those bytes
+        # for a body httpx serialised.
+        fingerprint = (method, path, json_module.dumps(body))
+        stored = self.keys.get(key)
+        if stored is not None:
+            if stored[0] != fingerprint:
+                return _refusal(409, "key taken by another request")
+            return _FakeResponse(200, stored[1])
+        response = create()
+        if response.status_code < 400:
+            self.keys[key] = (fingerprint, response.json())
+        return response
+
     def _create_thread(self, body: dict[str, Any]) -> _FakeResponse:
         if self.create_fails_with is not None:
-            return _FakeResponse(
+            return _refusal(
                 self.create_fails_with,
-                {"detail": f"client recipient {body.get('client')} "
-                           "does not exist"},
+                f"client recipient {body.get('client')} does not exist",
             )
         if self.thread_payload is not None:
             return _FakeResponse(200, self.thread_payload)
@@ -236,6 +300,17 @@ async def _registered(client: AsyncClient) -> tuple[dict[str, str], UUID]:
     return auth_headers(body["session_token"]), UUID(body["user"]["id"])
 
 
+def _with_key(headers: dict[str, str]) -> dict[str, str]:
+    """The headers of one press of "send": a fresh Idempotency-Key.
+
+    The client mints the key when the person presses send (see
+    frontend stores/support.ts); a test that sends one message does the
+    same. A retry of the SAME message reuses the key -- the tests that
+    retry build their headers once and send them twice.
+    """
+    return {**headers, "Idempotency-Key": str(uuid4())}
+
+
 async def _pointer_count(session: AsyncSession, user_id: UUID) -> int:
     result = await session.execute(
         select(func.count())
@@ -274,8 +349,15 @@ async def test_actor_fields_in_a_body_are_refused(
             {"participant": str(uuid4())},
         ),
     ):
-        response = await client.post(path, json=payload, headers=headers)
+        # The message route also requires Idempotency-Key; it is sent, so
+        # the 422 measured here is the actor field's and nothing else's.
+        response = await client.post(
+            path,
+            json=payload,
+            headers=_with_key(headers) if path.endswith("/messages") else headers,
+        )
         assert response.status_code == 422, f"{path}: {response.text}"
+        assert "Idempotency-Key" not in response.text
 
 
 @pytest.mark.asyncio
@@ -292,7 +374,7 @@ async def test_the_session_is_what_reaches_comms(
     await client.post(
         "/api/v1/support/threads/messages",
         json={"body": "my card was declined"},
-        headers=headers,
+        headers=_with_key(headers),
     )
     await client.post(
         f"/api/v1/support/threads/{thread_id}/read", headers=headers
@@ -333,7 +415,11 @@ async def test_actor_params_in_a_query_are_refused(
             response = await client.request(
                 method,
                 f"{path}?{query}",
-                headers=headers,
+                headers=(
+                    _with_key(headers)
+                    if method == "POST" and path.endswith("/messages")
+                    else headers
+                ),
                 json={"body": "hi"} if path.endswith("/messages") else None,
             )
             assert response.status_code == 400, (
@@ -471,7 +557,7 @@ async def test_a_user_with_no_request_gets_an_empty_list(
     response = await client.get("/api/v1/support/threads", headers=headers)
 
     assert response.status_code == 200, response.text
-    assert response.json() == {"threads": []}
+    assert response.json() == {"items": [], "next_cursor": None}
 
 
 @pytest.mark.asyncio
@@ -485,10 +571,10 @@ async def test_an_empty_or_missing_message_is_refused(
     empty = await client.post(
         "/api/v1/support/threads/messages",
         json={"body": ""},
-        headers=headers,
+        headers=_with_key(headers),
     )
     missing = await client.post(
-        "/api/v1/support/threads/messages", json={}, headers=headers
+        "/api/v1/support/threads/messages", json={}, headers=_with_key(headers)
     )
 
     assert empty.status_code == 422, empty.text
@@ -553,7 +639,7 @@ async def test_comms_timeout_on_send_is_answered_not_crashed(
     response = await client.post(
         "/api/v1/support/threads/messages",
         json={"body": "still there?"},
-        headers=headers,
+        headers=_with_key(headers),
     )
 
     assert response.status_code == 504, response.text
@@ -571,7 +657,7 @@ async def test_sending_before_opening_is_a_404(
     response = await client.post(
         "/api/v1/support/threads/messages",
         json={"body": "hello?"},
-        headers=headers,
+        headers=_with_key(headers),
     )
 
     assert response.status_code == 404, response.text
@@ -628,7 +714,7 @@ async def test_unread_is_reported_when_comms_answers(
     response = await client.get("/api/v1/support/threads", headers=headers)
 
     assert response.status_code == 200, response.text
-    assert response.json()["threads"][0]["unread"] == 3
+    assert response.json()["items"][0]["unread"] == 3
 
 
 @pytest.mark.asyncio
@@ -652,13 +738,125 @@ async def test_unread_is_absent_never_zero_when_it_is_unknown(
         "/api/v1/support/threads", headers=headers
     )
     assert not_counted.status_code == 200, not_counted.text
-    assert "unread" not in not_counted.json()["threads"][0]
+    assert "unread" not in not_counted.json()["items"][0]
 
     # b) comms is unreachable
     comms.fail_with = httpx.ConnectError("comms is down")
     degraded = await client.get("/api/v1/support/threads", headers=headers)
 
     assert degraded.status_code == 200, degraded.text
-    rows = degraded.json()["threads"]
+    rows = degraded.json()["items"]
     assert len(rows) == 1
     assert "unread" not in rows[0]
+
+
+# ---------------------------------------------------------------------------
+# 7. comms 3.0.0: the Idempotency-Key (H23 P-112)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_retried_message_is_one_message(
+    client: AsyncClient, comms: _FakeComms
+) -> None:
+    """Repeat axis: the same press of send, retried, is stored once.
+
+    The headers are built ONCE and sent twice, as the frontend store does
+    after a timeout; the answer to the retry is the stored message.
+    """
+    headers, user_id = await _registered(client)
+    await client.post("/api/v1/support/threads", headers=headers)
+    one_press = _with_key(headers)
+
+    first = await client.post(
+        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=one_press
+    )
+    retry = await client.post(
+        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=one_press
+    )
+
+    assert first.status_code in (200, 201), first.text
+    assert retry.status_code in (200, 201), retry.text
+    assert retry.json()["id"] == first.json()["id"]
+    sent_keys = [
+        call["headers"]["Idempotency-Key"]
+        for call in comms.calls
+        if call["path"].endswith("/messages") and call["method"] == "POST"
+    ]
+    assert len(set(sent_keys)) == 1
+    assert sent_keys[0] == (
+        f"aivis:msg:{user_id}:{one_press['Idempotency-Key']}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_the_same_key_with_other_text_is_a_conflict(
+    client: AsyncClient, comms: _FakeComms
+) -> None:
+    """A client defect, answered as comms answers it -- not as a second
+    message under an old key."""
+    headers, _ = await _registered(client)
+    await client.post("/api/v1/support/threads", headers=headers)
+    one_press = _with_key(headers)
+
+    await client.post(
+        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=one_press
+    )
+    other = await client.post(
+        "/api/v1/support/threads/messages", json={"body": "bye"}, headers=one_press
+    )
+
+    assert other.status_code == 409, other.text
+
+
+@pytest.mark.parametrize(
+    "key",
+    [None, "", "x" * 101, "has space", "a:b"],
+    ids=["missing", "empty", "too_long", "space", "colon"],
+)
+@pytest.mark.asyncio
+async def test_a_message_without_a_usable_key_never_reaches_comms(
+    client: AsyncClient, comms: _FakeComms, key: str | None
+) -> None:
+    """Emptiness and shortage axes: refused by this product, before comms.
+
+    The 100 limit keeps the namespaced key inside comms' 200 (the sum is
+    at support/service.py's _MESSAGE_KEY_PREFIX); a colon is refused so no
+    client key can impersonate the namespace's separators.
+    """
+    headers, _ = await _registered(client)
+    await client.post("/api/v1/support/threads", headers=headers)
+    before = len(comms.calls)
+
+    sent = dict(headers)
+    if key is not None:
+        sent["Idempotency-Key"] = key
+    response = await client.post(
+        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=sent
+    )
+
+    assert response.status_code == 422, response.text
+    assert len(comms.calls) == before
+
+
+@pytest.mark.asyncio
+async def test_opening_twice_sends_the_same_key_and_the_same_bytes(
+    client: AsyncClient, comms: _FakeComms
+) -> None:
+    """comms fingerprints the raw body: the thread-create request of one
+    person must be byte-identical on every repeat, or a repeat would be a
+    409 instead of the same thread."""
+    headers, user_id = await _registered(client)
+
+    first = await client.post("/api/v1/support/threads", headers=headers)
+    second = await client.post("/api/v1/support/threads", headers=headers)
+
+    creates = [
+        call for call in comms.calls
+        if call["path"] == "/api/v1/threads" and call["method"] == "POST"
+    ]
+    assert first.json()["id"] == second.json()["id"]
+    assert {c["headers"]["Idempotency-Key"] for c in creates} == {
+        f"aivis:thread:{user_id}"
+    }
+    assert len({json_module.dumps(c["json"]) for c in creates}) == 1

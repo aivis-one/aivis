@@ -7,7 +7,7 @@
 # nothing here for this product to own. comms' inbox API
 # (D:/02_Projects/comms/app/api/inbox.py) already IS a per-user table
 # keyed by recipient_id, and recipient_id IS user.id 1:1 -- confirmed
-# by core/comms_sync.ensure_recipient, which upserts recipients keyed
+# by core/comms_sync.sync_recipient, which upserts recipients keyed
 # on user.id and nothing else. So every read and every write this
 # module makes is one HTTP call to comms; nothing is cached, nothing is
 # joined, nothing is written to this product's own database.
@@ -71,6 +71,11 @@ from app.modules.notifications.schemas import (
     PreferencesOut,
     PreferencesPatchIn,
     UnreadCountOut,
+)
+from app.modules.notifications.schedule import (
+    ScheduleUnreadable,
+    periods_to_quiet,
+    quiet_to_periods,
 )
 from app.modules.users.models import User
 
@@ -276,6 +281,45 @@ def _default_preferences() -> PreferencesOut:
     )
 
 
+def _preferences_from_comms(
+    user: User, payload: object, what: str
+) -> PreferencesOut:
+    """comms' preferences answer in the screen's form.
+
+    comms' `schedule` is a list of allowed periods; the screen's is one
+    quiet window. A payload that is not comms' shape is a clean 502, as
+    everywhere in this module. A schedule periods_to_quiet cannot turn
+    back into a window is a defect of the conversion, not a state of the
+    product -- notifications/schedule.py's header says why nobody else
+    writes these schedules -- so it is logged as an ERROR, loudly, and
+    answered as a 502 rather than rendered as some window it is not.
+    """
+    if not isinstance(payload, dict):
+        raise _malformed(what, user, payload)
+    try:
+        schedule = periods_to_quiet(payload.get("schedule"))
+    except ScheduleUnreadable as exc:
+        logger.error(
+            "comms_prefs_schedule_unreadable",
+            user_id=str(user.id),
+            error=str(exc),
+        )
+        raise CommsUnavailableError(
+            message="Notification schedule could not be read",
+            code="comms_schedule_unreadable",
+        ) from exc
+    try:
+        return PreferencesOut.model_validate(
+            {
+                "categories": payload.get("categories"),
+                "schedule": schedule,
+                "timezone": payload.get("timezone"),
+            }
+        )
+    except ValidationError:
+        raise _malformed(what, user, payload) from None
+
+
 def _recipient_not_ready(user: User) -> CommsUnavailableError:
     """comms is up but has no recipient row for this user yet.
 
@@ -301,21 +345,20 @@ async def get_preferences(*, user: User) -> PreferencesOut:
     try:
         payload = await comms_request("GET", _prefs_path(user))
     except CommsRejectedError as exc:
-        if exc.status_code == 404:
+        if exc.error_class == "not_found":
             raise _recipient_not_ready(user) from exc
         raise
-    try:
-        return PreferencesOut.model_validate(payload)
-    except ValidationError:
-        raise _malformed("preferences", user, payload) from None
+    return _preferences_from_comms(user, payload, "preferences")
 
 
 async def update_preferences(
     *, user: User, patch: PreferencesPatchIn
 ) -> PreferencesOut:
     """Partial write: listed category toggles change, schedule replaces
-    whole (or clears, on an explicit null) -- comms' own PATCH contract,
-    forwarded through unconverted.
+    whole (or clears, on an explicit null) -- comms' own PATCH contract.
+    The categories are forwarded as they came; the schedule is the one
+    part CONVERTED on the way, from the screen's quiet window to comms'
+    allowed periods (notifications/schedule.py).
 
     `exclude_unset=True` is what makes "clear the schedule" (an
     explicit `schedule: null` in the request) distinct from "leave the
@@ -327,13 +370,14 @@ async def update_preferences(
     contract requires and PreferencesPatchIn's docstring names.
     """
     body = patch.model_dump(mode="json", by_alias=True, exclude_unset=True)
+    if "schedule" in body:
+        # Present = replace or clear; absent = leave comms' schedule
+        # alone. quiet_to_periods(None) is None, the explicit clear.
+        body["schedule"] = quiet_to_periods(patch.schedule)
     try:
         payload = await comms_request("PATCH", _prefs_path(user), json=body)
     except CommsRejectedError as exc:
-        if exc.status_code == 404:
+        if exc.error_class == "not_found":
             raise _recipient_not_ready(user) from exc
         raise
-    try:
-        return PreferencesOut.model_validate(payload)
-    except ValidationError:
-        raise _malformed("preferences_patch", user, payload) from None
+    return _preferences_from_comms(user, payload, "preferences_patch")

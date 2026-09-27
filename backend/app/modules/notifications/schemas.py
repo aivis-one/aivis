@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class NotificationActionOut(BaseModel):
@@ -55,7 +55,6 @@ class NotificationItemOut(BaseModel):
     title: str
     body: str
     action_data: NotificationActionOut | None = None
-    priority: int
     sent_at: datetime
     read_at: datetime | None = None
     created_at: datetime
@@ -85,54 +84,70 @@ class UnreadCountOut(BaseModel):
 
 
 # =============================================================================
-# Preferences (TASK-38 item 4) -- comms' E8-shaped facade, typed both ways
+# Preferences (TASK-38 item 4; schedule reworked H23 P-114)
 # =============================================================================
 #
-# comms' contract (D:/02_Projects/comms/app/api/prefs.py, FROZEN):
-#   GET/PATCH .../preferences -> {categories: {<category>: bool, ...},
-#   schedule: {from, to, days} | null, timezone: <IANA> | null}. Mirrored
-# here as real Pydantic models rather than forwarded as `-> Any` (the
-# support module's choice for its still-frontend-less threads/messages
-# endpoints) because this DOES have a frontend consumer -- generated.ts
-# needs a real interface, same reasoning notifications/schemas.py's own
-# header gives for InboxPageOut / UnreadCountOut above.
+# TWO FORMS OF ONE SCHEDULE. The settings screen offers QUIET HOURS: one
+# window {from, to, days} in which the person does not want to be
+# disturbed. comms stores the opposite: a list of ALLOWED periods
+# [{day, from, to}], one day per period, never crossing midnight (its
+# deploy/INTEGRATION.md, section 6 -- "a screen built as quiet hours must
+# convert to this form before it writes -- sending its quiet window as-is
+# would store the opposite of what the person chose"). The conversion
+# lives in ONE place, notifications/schedule.py; these models are the
+# screen's form, and nothing in them is ever sent to comms as-is.
 #
-# `from` is a Python keyword, hence `from_` + Field(alias="from") on both
-# the inbound and outbound schedule shapes -- exactly comms' own
-# ScheduleIn does it. Two separate schedule classes rather than one
-# reused both ways: ScheduleIn is a CLIENT REQUEST (extra="forbid" --
-# an unknown key, most importantly "timezone", must 422 immediately
-# rather than being silently dropped and round-tripped to comms as a
-# request that looks like it worked); ScheduleOut is comms' ANSWER
-# (extra="ignore" -- comms adding a field later must not 502 every
-# request the day it ships, same rule InboxPageOut's header states).
+# `from` is a Python keyword, hence `from_` + Field(alias="from").
+# ScheduleIn is a CLIENT REQUEST (extra="forbid" -- an unknown key must
+# 422 here rather than be dropped). It is validated HERE, completely:
+# comms no longer sees this form, so nobody downstream would catch a
+# malformed time or day.
 # =============================================================================
+
+_TIME_PATTERN = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
+
+# comms' day codes, in week order -- the order the conversion walks.
+DAY_CODES: tuple[str, ...] = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 
 class ScheduleIn(BaseModel):
-    """Quiet-hours window as the CLIENT sends it -- always a full replace.
+    """Quiet hours as the CLIENT sends them -- always a full replace.
 
-    All three fields are required when `schedule` is present at all
-    (comms' contract: PATCH .../preferences' schedule key is FULL
-    REPLACE, never a partial merge). Local time strings, "HH:MM" --
-    left as `str` rather than `datetime.time` deliberately: this proxy
-    does not re-validate the format, comms already does (a malformed
-    string round-trips to comms and comes back as a 422 CommsRejectedError,
-    forwarded as-is), and a plain string is what `<input type="time">`
-    on the frontend already produces without any local conversion.
+    `days` are the days the window STARTS on. A window whose `to` is
+    earlier than its `from` runs past midnight into the next day
+    (sun into mon). `from == to` is refused: it names no window at all,
+    and reading it as "the whole day" would be a guess.
     """
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    from_: str = Field(alias="from")
-    to: str
-    days: list[str]
+    from_: str = Field(alias="from", pattern=_TIME_PATTERN)
+    to: str = Field(pattern=_TIME_PATTERN)
+    days: list[str] = Field(min_length=1)
+
+    @field_validator("days")
+    @classmethod
+    def _known_distinct_days(cls, days: list[str]) -> list[str]:
+        unknown = sorted(set(days) - set(DAY_CODES))
+        if unknown:
+            raise ValueError(f"unknown day(s): {', '.join(unknown)}")
+        if len(set(days)) != len(days):
+            raise ValueError("a day is listed twice")
+        return days
+
+    @model_validator(mode="after")
+    def _window_is_not_empty(self) -> "ScheduleIn":
+        if self.from_ == self.to:
+            raise ValueError("from and to are equal: the window is empty")
+        return self
 
 
 class ScheduleOut(BaseModel):
-    """Quiet-hours window as comms answers it -- same shape, read-only side."""
+    """Quiet hours as the screen reads them back -- converted from comms'
+    allowed periods by notifications/schedule.py, never comms' own shape.
+    """
 
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True)
 
     from_: str = Field(alias="from")
     to: str
@@ -144,11 +159,12 @@ class PreferencesPatchIn(BaseModel):
 
     extra="forbid" at this level too -- rejects a stray "timezone" (or
     any typo) with a 422 from THIS product's own validation, before a
-    round trip to comms is spent proving the same thing. Mirrors
-    comms' own PreferencesPatch field-for-field; see
-    notifications/service.py's header for how `categories` (partial)
-    and `schedule` (full-replace-or-clear, presence-sensitive via
-    model_fields_set) are forwarded.
+    round trip to comms is spent proving the same thing. The field set
+    is comms' PreferencesPatch; `schedule` is in the SCREEN's form (a
+    quiet window) and is converted before it is sent -- see
+    notifications/service.py::update_preferences for how `categories`
+    (partial) and `schedule` (full-replace-or-clear, presence-sensitive
+    via model_fields_set) are forwarded.
     """
 
     model_config = ConfigDict(extra="forbid")

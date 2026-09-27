@@ -122,7 +122,7 @@ async def _a_known_thread(
 
 def _page(*rows: dict[str, Any]) -> dict[str, Any]:
     """A page shaped the way comms answers the queue endpoint."""
-    return {"threads": list(rows), "next_cursor": None}
+    return {"items": list(rows), "next_cursor": None}
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +143,7 @@ async def test_a_known_thread_carries_the_persons_name(
         db_session, _page({"id": str(thread_id), "client": str(client_id)})
     )
 
-    profile = page["threads"][0]["client_profile"]
+    profile = page["items"][0]["client_profile"]
     assert profile["first_name"] == "Anna"
     assert profile["last_name"] == "Ivanova"
     assert profile["email"] is not None
@@ -176,7 +176,7 @@ async def test_the_queue_route_hands_the_service_a_session(
     response = await client.get(_STAFF_BASE, headers=auth_headers(token))
 
     assert response.status_code == 200
-    row = response.json()["threads"][0]
+    row = response.json()["items"][0]
     assert row["client_profile"]["first_name"] == "Pavel"
     assert row["id"] == str(thread_id)
 
@@ -209,11 +209,11 @@ async def test_a_thread_we_do_not_know_gets_no_key_and_breaks_nothing(
         ),
     )
 
-    assert "client_profile" not in page["threads"][0]
-    assert page["threads"][1]["client_profile"]["first_name"] == "Vera"
+    assert "client_profile" not in page["items"][0]
+    assert page["items"][1]["client_profile"]["first_name"] == "Vera"
 
 
-async def test_a_reply_without_threads_is_returned_untouched(
+async def test_a_reply_without_items_is_returned_untouched(
     db_session: AsyncSession,
 ) -> None:
     """The one place comms' answer is reshaped is the one place its
@@ -221,8 +221,8 @@ async def test_a_reply_without_threads_is_returned_untouched(
     still work; an operator with a 500 cannot."""
     assert await attach_client_profiles(db_session, {}) == {}
     assert await attach_client_profiles(
-        db_session, {"threads": None}
-    ) == {"threads": None}
+        db_session, {"items": None}
+    ) == {"items": None}
 
 
 async def test_a_row_that_is_not_an_object_is_skipped(
@@ -234,11 +234,11 @@ async def test_a_row_that_is_not_an_object_is_skipped(
 
     page = await attach_client_profiles(
         db_session,
-        {"threads": ["not-a-row", {"id": str(known), "client": str(known_client)}]},
+        {"items": ["not-a-row", {"id": str(known), "client": str(known_client)}]},
     )
 
-    assert page["threads"][0] == "not-a-row"
-    assert page["threads"][1]["client_profile"]["first_name"] == "Ines"
+    assert page["items"][0] == "not-a-row"
+    assert page["items"][1]["client_profile"]["first_name"] == "Ines"
 
 
 async def test_a_row_whose_id_is_not_a_uuid_is_skipped(
@@ -247,7 +247,7 @@ async def test_a_row_whose_id_is_not_a_uuid_is_skipped(
     page = await attach_client_profiles(
         db_session, _page({"id": "nonsense", "client": str(uuid4())})
     )
-    assert "client_profile" not in page["threads"][0]
+    assert "client_profile" not in page["items"][0]
 
 
 # ---------------------------------------------------------------------------
@@ -273,7 +273,7 @@ async def test_an_empty_profile_yields_nulls_and_never_the_word_none(
         db_session, _page({"id": str(thread_id), "client": str(client_id)})
     )
 
-    profile = page["threads"][0]["client_profile"]
+    profile = page["items"][0]["client_profile"]
     assert profile["first_name"] is None
     assert profile["last_name"] is None
 
@@ -302,8 +302,8 @@ async def test_blank_strings_are_reported_the_same_as_missing_keys(
         ),
     )
 
-    blank_profile = page["threads"][0]["client_profile"]
-    missing_profile = page["threads"][1]["client_profile"]
+    blank_profile = page["items"][0]["client_profile"]
+    missing_profile = page["items"][1]["client_profile"]
     assert blank_profile["first_name"] is missing_profile["first_name"] is None
     assert blank_profile["last_name"] is missing_profile["last_name"] is None
 
@@ -319,7 +319,7 @@ async def test_only_one_of_the_two_names_is_returned_as_it_is(
         db_session, _page({"id": str(thread_id), "client": str(client_id)})
     )
 
-    profile = page["threads"][0]["client_profile"]
+    profile = page["items"][0]["client_profile"]
     assert profile["first_name"] == "Cher"
     assert profile["last_name"] is None
 

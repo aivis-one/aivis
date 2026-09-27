@@ -33,6 +33,28 @@ _URL = "http://comms.test"
 _TOKEN = "phase6-service-token"
 
 
+# comms 3.0.0's one refusal body (its INTEGRATION.md section 5); the
+# product branches on the class, so the fake puts the class comms would.
+_CLASS_FOR_STATUS = {
+    401: "unauthorized",
+    403: "forbidden",
+    404: "not_found",
+    409: "conflict",
+    422: "validation",
+    500: "internal",
+}
+
+
+def _refusal_body(status: int, message: str) -> dict:
+    return {
+        "error": {
+            "class": _CLASS_FOR_STATUS.get(status, "internal"),
+            "message": message,
+            "fields": [],
+        }
+    }
+
+
 class _FakeResponse:
     def __init__(self, status_code: int, payload: Any = None) -> None:
         self.status_code = status_code
@@ -107,7 +129,7 @@ class _FakeComms:
         if isinstance(self.fail_with, Exception):
             raise self.fail_with
         if isinstance(self.fail_with, int):
-            return _FakeResponse(self.fail_with, {"detail": "comms said no"})
+            return _FakeResponse(self.fail_with, _refusal_body(self.fail_with, "comms said no"))
 
         recipient_id = self._recipient_from(path)
 
@@ -140,7 +162,7 @@ class _FakeComms:
             rows = self.items.get(recipient_id, [])
             match = next((r for r in rows if r["id"] == delivery_id), None)
             if match is None:
-                return _FakeResponse(404, {"detail": "delivery not found"})
+                return _FakeResponse(404, _refusal_body(404, "delivery not found"))
             if match["read_at"] is None:
                 match["read_at"] = "2026-01-01T00:00:00+00:00"
                 self.unread[recipient_id] = max(
@@ -167,7 +189,6 @@ class _FakeComms:
             "title": "Withdrawal completed",
             "body": "Your withdrawal has been processed.",
             "action_data": None,
-            "priority": 0,
             "sent_at": "2026-01-01T00:00:00+00:00",
             "read_at": None,
             "created_at": "2026-01-01T00:00:00+00:00",

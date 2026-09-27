@@ -386,7 +386,6 @@ async def request_ownership_email(
                 f"Best regards,\n"
                 f"AIVIS.ONE Platform"
             ),
-            "channels": ["in_app", "email"],
         },
     )
 

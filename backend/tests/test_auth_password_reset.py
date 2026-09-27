@@ -70,7 +70,9 @@ def capture_reset_email(monkeypatch: pytest.MonkeyPatch) -> dict:
 
     Keys recorded: "token", "target_value" (the recipient's user id --
     the event carries no email address, comms resolves that from its
-    own recipient record), "type", "channels", "expiry_at".
+    own recipient record), "type", "expiry_at", and whether the data
+    names a channel at all -- comms 3.0.0 refuses a request that does;
+    the channel is comms-profile/types.yaml's.
     """
     from app.modules.auth import service as auth_service
 
@@ -82,7 +84,7 @@ def capture_reset_email(monkeypatch: pytest.MonkeyPatch) -> dict:
             captured["token"] = data["body"].rsplit("token=", 1)[-1].split("\n")[0]
             captured["target_value"] = data["target_value"]
             captured["type"] = data["type"]
-            captured["channels"] = data.get("channels")
+            captured["names_a_channel"] = "channels" in data
             captured["expiry_at"] = data.get("expiry_at")
         return await real_emit(session, event_type, data)
 
@@ -134,7 +136,12 @@ async def test_reset_happy_path(
     # The event targets the user by id; it carries no address, because
     # comms resolves the address from its own recipient record.
     assert capture_reset_email["target_value"] == data["user"]["id"]
-    assert capture_reset_email["channels"] == ["email"]
+    # Until H23 this asserted channels == ["email"] on the event: right
+    # while the request chose its channel. comms 3.0.0 takes the channel
+    # from the profile and refuses a request that names one, so the
+    # claim now is that the request names none (types.yaml routes the
+    # type to email).
+    assert capture_reset_email["names_a_channel"] is False
     reset_token = capture_reset_email["token"]
     assert len(reset_token) > 20  # secrets.token_urlsafe(32), not a 6-digit code
 
