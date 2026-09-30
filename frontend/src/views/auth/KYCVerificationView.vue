@@ -438,9 +438,8 @@ onMounted(load)
   margin-bottom: var(--space-2);
 }
 
-/* Fixed-width by intent -- registered in checks/preauth.py. The card
-   holds one heading, two lines of prose and at most two buttons; a
-   wider column would only stretch the prose. */
+/* Fixed-width by intent -- registered in checks/preauth.py, which says
+   what the card holds. A wider column would only stretch its content. */
 .kyc-card {
   width: 100%;
   max-width: var(--maxw-form);

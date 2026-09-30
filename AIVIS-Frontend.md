@@ -604,7 +604,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 /verify                    → VerifyEmailView
 /onboarding/profile        → OnboardingProfileView
 /onboarding/role           → OnboardingRoleView
-/onboarding/kyc            → OnboardingKYCView
+/verification              → KYCVerificationView
 /onboarding/docs           → OnboardingDocsView
 
 -- Investor --
@@ -952,13 +952,14 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 
 **Integration contracts:**
 - Roles guard на бэке: `_BUYER_ROLES = {investor, agent}` — staff/company отвергаются `403`.
-- KYC gate: UI перехватывает `400 "KYC verification required ..."` → warning toast + `router.push('/onboarding/kyc')`.
+- KYC gate (H10, переведён в H21 P-111): гейт бэкенда отвечает `402` только на денежных действиях -- покупка, план рассрочки, вывод, заявка агента. Ответ обрабатывается один раз, глобальным обработчиком в `main.ts` (`setOnKycRequired`) -> `/verification`; экраны на `402` возвращаются без своего тоста. Агента гейт пропускает по роли, и его останавливает собственная проверка сервиса покупки или рассрочки: `400 "KYC verification required ..."` -> warning toast + `/verification`.
 - Balance probe: `active_balance.confirmed` из `/dashboard/summary` (frozen excluded — бэк при execute_purchase не учитывает).
 - `referral_link_id` — reserved optional field в request bodies (Sprint 7.2 stub).
 
 **Error taxonomy (унифицирована PurchaseView + InstallmentView):**
+- `402` (гейт) -> возврат без тоста: переход на `/verification` уже сделал `main.ts`
 - `instanceof ApiResponseError` → discriminate 400 sub-cases regex'ом на `message` (регексы — временный discriminator, см. TD-F08c):
-  - `/kyc/i` → warning toast + redirect `/onboarding/kyc`
+  - `/kyc/i` (агент, проверка сервиса) -> warning toast + redirect `/verification`
   - `/insufficient/i` → error toast + `await refreshBalance()` (ловит «другая вкладка съела»)
   - `/(template\|does not belong)/i` → error toast `templateMismatch` (InstallmentView only — race при soft-delete template)
   - `/not active/i` или `404` → error toast `productInactive`

@@ -52,7 +52,12 @@ REGISTER = {
     "verify": "a centred auth card at --maxw-form (360px); the per-digit code inputs are a fixed row.",
     "onboarding-role": "centred role cards at --maxw-form-wide (400px).",
     "onboarding-profile": "a centred auth card at --maxw-form (360px).",
-    "kyc-verification": "a centred auth card at --maxw-form (360px) -- one heading, two lines of prose and at most two buttons. H10 replaced onboarding-kyc, which was the same shape.",
+    "kyc-verification": "a centred auth card at --maxw-form (360px), one stacked column in every state. "
+                        "Not started, rejected and revoked: a heading, the explanation, the balance and "
+                        "the document upload form, then the action that starts verification or tops the "
+                        "balance up; rejected and revoked add the way to support. Submitted: a heading "
+                        "and the explanation. Every state closes with what verification unlocks and the "
+                        "way back (H21). Nothing in it reflows with width. H10 replaced onboarding-kyc.",
     "onboarding-docs": "a centred document list at --maxw-form-wide (400px); measured with eight "
                        "rows, centred and un-clipped from 390 to 1920.",
     "password-reset-request": "a centred auth card at --maxw-form (360px) -- the same shape as login "
