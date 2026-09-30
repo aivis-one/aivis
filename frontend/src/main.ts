@@ -5,6 +5,7 @@ import App from '@/App.vue'
 import { setOnKycRequired } from '@/api/client'
 import { router } from '@/router'
 import { i18n, setupI18n } from '@/i18n'
+import { installUpdateCheck } from '@/pwa/updateCheck'
 
 import '@/styles/variables.css'
 import '@/styles/global.css'
@@ -48,6 +49,11 @@ async function bootstrap(): Promise<void> {
       void router.push('/verification').catch(() => undefined)
     }
   })
+
+  // H22 (P-110): an open tab asks for a new service worker whenever the
+  // person arrives on a screen; the worker itself moves the tab onto a new
+  // build (src/pwa/updateCheck.ts, public/sw-update.js).
+  installUpdateCheck(router)
 
   app.mount('#app')
 }

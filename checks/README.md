@@ -1,4 +1,4 @@
-# checks/ — static checks on the frontend source
+# checks/ -- static checks on the repository
 
 ```bash
 python checks/run.py            # run them; exit 0 = all pass
@@ -10,9 +10,12 @@ dependency (`backend/pyproject.toml`), so this adds no toolchain.
 
 ## What this is
 
-Five checks on `frontend/src` that the type checker and the unit tests cannot
-express, because each is a property of the CSS or the router **as a whole**
-rather than of one module.
+Checks on the repository that the type checker and the unit tests cannot
+express: properties of the CSS or the router **as a whole** rather than of one
+module, and of files that live in the checkout but not in the backend image the
+test suite runs from (the comms profile, the frontend's nginx config). The list
+is `CHECKS` in `run.py`; the table below adds what the list cannot carry -- why
+each one exists.
 
 Every one of them exists because the product actually had the defect it looks
 for. None of them is a style preference.
@@ -24,23 +27,21 @@ for. None of them is a style preference.
 | `tokens.py` | every `var(--x)` that paints resolves to a declared token | an undeclared custom property does not error and does not warn; the declaration is silently dropped |
 | `routes.py` | every route is named, every name is unique, and the table parses as the tree it is | a duplicate route name does not throw — Vue Router keeps the last one and every `push({ name })` for the shadowed route goes somewhere else |
 | `preauth.py` | every route with no width breakpoint anywhere in its closure carries a declared, non-empty reason for being fixed-width, and the set of such routes is re-derived from the router on every run | twelve pre-auth screens looked like twelve missing breakpoints and were not one — they cap with a design token and centre, and a `max-width` on a centred card is width behaviour. The defect was the SILENCE: nothing said the narrowness was deliberate, so the next reader would have “fixed” it |
+| `reftruth.py` | every ref or computed tested for truth carries `.value` -- a declaration of the form `const NAME = <factory>(...)` for a factory that returns a ref, or a name destructured from `storeToRefs(...)`, is never used as a truth value without it | a ref is an object, so testing one for truth always says yes: two `if (!canDoKycApprove)` guards in StaffUsersView.vue were dead, and every staff member without `kyc_approve` fired a request that answered 403. `vue-tsc` accepts it and a unit test cannot reach the branch |
+| `comms_profile.py` | no type the comms profile (`comms-profile/types.yaml`) routes to email carries a `category` -- stated on the property, so a new email type is held to it without editing the check | a category is the mute gate in comms: one written on a type that carries a login code, a password reset or a signed document would let a person switch off the mail they need to get into their own account. The test suite runs from an image built out of `./backend`, where the profile does not exist |
+| `nginx_headers.py` | every `add_header` in `frontend/nginx.conf` sits at `server` level and none in a nested block; the three security headers are declared there non-empty and `always`; Cache-Control comes from a `map` whose default is `no-cache` and which is `immutable` only for `/assets/` | nginx inherits `add_header` into a `location` only if it declares none of its own. One `Cache-Control` line per location dropped `nosniff`, the CSP and `Referrer-Policy` from `/assets/`, `/icons/`, `/manifest.json` and `/health` without a warning -- measured with curl in H22 (P-110) |
 
 ## Why `--selftest` matters as much as the checks
 
 A check that cannot fail passes forever and proves nothing.
 
 `--selftest` plants the exact defect each check is meant to catch — in a
-throwaway copy of `frontend/src`, never in the real tree — asserts the check
-rejects it, restores, and asserts it accepts again. **Nineteen distinct plants,
-reported over eighteen lines, across all five checks.** The two totals
-differ because `tokens.py` plants three bad `var()` uses in one probe file and
-reports them on two lines. **Each figure says which measure it is.** This line
-read “Nine planted defects in total” until 2026-08-25, and **that figure was
-right when it was written** — nine distinct defects over eight lines at
-`c8e5646`. It went stale in two later commits that nobody thought of as
-touching it: `77e57c9` added the survival plant, `41490fa` added `preauth.py`'s
-four. **An unlabelled count is how that happens invisibly — a reader cannot
-tell whether the number moved or the thing under it did.**
+throwaway copy of what the check reads, never in the real tree -- asserts the
+check rejects it, restores, and asserts it accepts again. Every plant prints its
+own line: **`python checks/run.py --selftest` is the count**, and this file does
+not repeat it. It did until H22, twice, and both times the figure went stale in
+commits that added a check or a plant without anyone thinking of them as
+touching this paragraph.
 
 **If you change a check, run the selftest before you trust a green run.** Two
 of these checks were wrong on their first version and their own selftest is

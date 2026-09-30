@@ -21,6 +21,12 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//],
+        // H22 (P-110): the add-on that moves every open window onto a new
+        // build the moment a new worker replaces an old one. It has to live
+        // INSIDE the worker: a page that is still running an older build runs
+        // that build's registration code, and only the new sw.js reaches it.
+        // See public/sw-update.js.
+        importScripts: ['sw-update.js'],
       },
     }),
   ],

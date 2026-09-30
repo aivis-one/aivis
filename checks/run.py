@@ -6,10 +6,10 @@
 
 WHAT THIS IS. Static checks on the repository that the type checker and the
 unit tests cannot express: things that are true of the CSS and the router as a
-whole rather than of one module, and -- since H23 -- of the comms profile,
-which lives in the checkout but not in the backend image the test suite runs
-from. Each one exists because the product had, or must never have, the defect
-it looks for.
+whole rather than of one module, and -- since H23 and H22 -- of the comms
+profile and the frontend's nginx config, which live in the checkout but not in
+the backend image the test suite runs from. Each one exists because the product
+had, or must never have, the defect it looks for.
 
 WHY --selftest MATTERS AS MUCH AS THE CHECKS. A check that cannot fail passes
 forever and proves nothing. `--selftest` plants the defect each check is meant
@@ -17,11 +17,9 @@ to catch -- in a throwaway copy, never in the real tree -- and asserts the check
 rejects it, then restores and asserts it accepts again. If you change a check,
 run the selftest before trusting a green run.
 
-NOT WIRED INTO `npm run gate` YET. This is deliberate: it adds a Python step to
-a JavaScript build, and that is a decision for whoever owns the pipeline. Python
-is already a project dependency (see backend/pyproject.toml), so the cost is a
-line in package.json, not a new toolchain. Nothing here needs pip -- standard
-library only.
+WHERE IT RUNS: first in `npm run gate` (frontend/package.json) and as the CI
+step "Static checks" (.github/workflows/ci.yml). Nothing here needs pip --
+standard library only.
 """
 from __future__ import annotations
 
@@ -34,6 +32,7 @@ sys.path.insert(0, HERE)
 
 import breakpoints  # noqa: E402
 import comms_profile  # noqa: E402
+import nginx_headers  # noqa: E402
 import preauth  # noqa: E402
 import reftruth  # noqa: E402
 import routes  # noqa: E402
@@ -49,6 +48,8 @@ CHECKS = [
     ("pre-auth width", "every screen without a breakpoint says why it is fixed-width", preauth),
     ("ref truthiness", "every ref or computed tested for truth carries .value", reftruth),
     ("comms profile", "no type routed to email can be muted by a category", comms_profile),
+    ("nginx headers", "every frontend nginx response keeps the security headers",
+     nginx_headers),
 ]
 
 
