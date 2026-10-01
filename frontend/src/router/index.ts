@@ -12,6 +12,8 @@
 //   /                — redirect to role dashboard or /login (beforeEnter)
 //   /login, /register, /loading — public auth routes
 //   /verify, /onboarding/*     — onboarding (auth required, no role check)
+//   /portfolio/:id             -- document link from an email; redirects into
+//                                the reader's own shell (P-106)
 //   /investor/*                — InvestorShell (investor | agent)
 //   /agent/*                   — AgentShell (agent only, includes investor screens)
 //   /company/*                 — CompanyShell (company only)
@@ -111,6 +113,7 @@ import { API_BASE_URL } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { captureReferralFromPath } from '@/composables/useAuth'
 import { globalGuard, getRoleDashboard } from './guards'
+import { documentLinkTarget } from './documentLink'
 
 // ---------------------------------------------------------------------------
 // Router instance
@@ -209,6 +212,27 @@ export const router = createRouter({
       name: 'onboarding-docs',
       component: () => import('@/views/auth/OnboardingDocsView.vue'),
       meta: { skipOnboarding: true },
+    },
+
+    // -----------------------------------------------------------------
+    // Document link -- /portfolio/:id (P-106)
+    //
+    // Where a document email lands. The backend builds the address
+    // (document_utils.py::documents_link) without knowing the reader's
+    // role, so this route has no shell and no role list: globalGuard
+    // still sends an anonymous reader to /login with `?next=`, and once
+    // signed in, beforeEnter hands the reader to the position screen of
+    // their own shell with the query intact. The query names the
+    // document the screen opens -- see router/documentLink.ts.
+    // -----------------------------------------------------------------
+    {
+      path: '/portfolio/:id',
+      name: 'document-link',
+      component: () => import('@/views/auth/LoadingView.vue'),
+      beforeEnter: (to) => {
+        const authStore = useAuthStore()
+        return documentLinkTarget(authStore.role, to.params.id as string, to.query)
+      },
     },
 
     // -----------------------------------------------------------------

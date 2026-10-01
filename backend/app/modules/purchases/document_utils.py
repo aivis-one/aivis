@@ -14,12 +14,14 @@
 #   extract_investor_name  -- best-effort display name from User.profile
 #   extract_investor_email -- email address from User.credentials JSONB
 #   format_cents           -- "150000" -> "1,500.00"
-#   documents_link         -- where a document email sends the reader
+#   documents_link         -- the address of one document, for its email
 #
 # All four are pure -- they only read their inputs (or settings) and
 # return a value. No DB / MinIO / Redis access; safe to call inside any
 # render path.
 # =============================================================================
+
+from uuid import UUID
 
 from app.core.config import settings
 from app.modules.users.models import User
@@ -63,32 +65,44 @@ def format_cents(cents: int) -> str:
     return f"{dollars:,.2f}"
 
 
-def documents_link() -> str:
-    """Where a document email points the reader.
+def documents_link(company_id: UUID, purchase_id: UUID | None = None) -> str:
+    """Where a document email points the reader: the document itself.
 
     ONE PLACE, ON PURPOSE. Both document emails (per-purchase agreement
     and per-company ownership certificate) carry a link rather than an
     attachment -- comms delivers no attachments and is not going to --
     and this function is the single line that decides where that link
-    goes. Moving it is a one-line change, which is the whole reason it
-    is a function and not a formatted string in two emitters.
+    goes.
 
-    WHY A DESTINATION AND NOT THE DOCUMENT. This product sets no
-    cookies -- authorization is a Bearer header and nothing else -- so a
-    browser following a link out of a mail client carries no
-    credentials, and the backend has no way to know who arrived. A
-    document URL would therefore have to carry its own token, which is a
+    THE SHAPE. `{FRONTEND_BASE_URL}/portfolio/{company_id}` plus a query
+    naming the document:
+      purchase_id given -> `?doc=agreement&purchase={purchase_id}`
+                           (an agreement belongs to ONE purchase);
+      purchase_id None  -> `?doc=ownership`
+                           (a certificate belongs to the investor's
+                           whole position in the company, there is no
+                           purchase to name).
+    The frontend reads that query on the company position screen and
+    opens the named document over it.
+
+    WHY A ROLE-NEUTRAL PATH. The position screen exists twice, under the
+    investor shell and under the agent shell, and the purchaser's role
+    is in neither document's data carrier. `/portfolio/:id` is a
+    frontend route with no shell of its own: after sign-in it sends the
+    reader into the shell of the role they actually have, with the
+    query intact. The role is decided where it is known -- in the
+    browser, after sign-in -- not guessed here inside a mail body.
+
+    WHY NO TOKEN. This product sets no cookies -- authorization is a
+    Bearer header and nothing else -- so a browser following a link out
+    of a mail client carries no credentials. A link that opened the
+    document by itself would have to carry its own token, which is a
     key living in a forwardable message for a paper people come back to
-    years later. So the link lands the reader on a screen they must be
-    logged in to see, and the email says so in as many words.
-
-    KNOWN LIMIT, NAMED HERE RATHER THAN DISCOVERED LATER: the portfolio
-    lives under the investor shell, and the agent shell has its own
-    copy of the same route (`/agent/portfolio`). A purchaser whose role
-    is agent follows this link to a screen their shell does not serve.
-    The role is not in either document's data carrier, and inventing a
-    role lookup inside a mail body is not this change's business -- when
-    a document route exists, this line points at it and the question
-    disappears.
+    years later. Owner's decision: no token. An anonymous reader is sent
+    to sign in and lands on the same document afterwards (the router
+    carries the requested URL through `?next=`), and the email says so.
     """
-    return f"{settings.frontend_base_url}/investor/portfolio"
+    base = f"{settings.frontend_base_url}/portfolio/{company_id}"
+    if purchase_id is None:
+        return f"{base}?doc=ownership"
+    return f"{base}?doc=agreement&purchase={purchase_id}"

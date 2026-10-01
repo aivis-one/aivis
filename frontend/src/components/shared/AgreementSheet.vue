@@ -6,10 +6,10 @@
 //
 // Bottom-sheet that renders a document HTML (per-Purchase agreement OR
 // per-investor-company ownership certificate) in a sandboxed iframe
-// and exposes an "Email to me" CTA.
+// and exposes two actions on it: "Save" and "Email to me".
 //
 // Generic over the document surface via the `mode` prop. The two
-// surfaces share identical UX -- inline iframe + email button + retry
+// surfaces share identical UX -- inline iframe + save + email + retry
 // on error + local cooldown on rapid clicks -- so factoring them into
 // one component keeps wiring small in the consumers (CompanyPositionView
 // uses one instance for the row-level agreement and a second instance
@@ -26,6 +26,9 @@
 //                 'sale' renders as "Purchase agreement", 'gift' as
 //                 "Gift certificate", 'installment_tranche' as
 //                 "Installment subcontract". Ignored in ownership mode.
+//   companyName -- optional. Only names the saved file; absent while
+//                 the parent's position detail is still loading, and
+//                 the file name then simply goes without it.
 //
 // DATA FLOW.
 //   The sheet watches `[open, id, mode]` and calls
@@ -58,11 +61,20 @@
 //   load() throw -> composable's `errored` flag + sheet error state +
 //   toast suppressed (inline message is enough; the sheet is modal,
 //   nothing else competes for attention). The Retry button calls
-//   load() again. R2 §5.3 + ERR-11-01 introduce 500 as a legitimate
-//   non-recoverable backend state (template_id NULL / fallback miss /
-//   xhtml2pdf failure); retry on 500 keeps failing until Staff fixes
-//   the template. The sheet's "errorTitle" is intentionally generic
+//   load() again. R2 §5.3 introduces 500 as a legitimate
+//   non-recoverable backend state (template_id NULL / fallback miss);
+//   retry on 500 keeps failing until Staff fixes the template. The sheet's "errorTitle" is intentionally generic
 //   so we don't blame the user for an infrastructure issue.
+//
+// SAVE (P-106).
+//   Hands the reader THE SAME BLOB the iframe shows, as a file: no new
+//   request, nothing regenerated, no PDF (owner's decision: no PDF in
+//   any form). The button exists only in the loaded branch, so there is
+//   always a blob behind it. The anchor is synthesised the way
+//   api/attachments.ts downloads, with one difference: the URL is NOT
+//   revoked after the click -- it is still on screen, and the sheet's
+//   own close / unmount path (useAgreementBlob) owns its lifetime. The
+//   file name comes from utils/documentFilename.ts.
 //
 // EMAIL CTA.
 //   The send endpoint is rate-limited on the backend
@@ -93,6 +105,7 @@ import {
 } from '@/api/agreements'
 import { useAgreementBlob } from '@/composables/useAgreementBlob'
 import { useToast } from '@/composables/useToast'
+import { documentFilename } from '@/utils/documentFilename'
 
 type AgreementMode = 'agreement' | 'ownership'
 
@@ -101,6 +114,7 @@ const props = defineProps<{
   mode: AgreementMode
   id: string | null
   legalBasis?: string
+  companyName?: string
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -206,6 +220,22 @@ async function onRetry(): Promise<void> {
   }
 }
 
+function onSave(): void {
+  if (!blobUrl.value || !props.id) return
+  const anchor = document.createElement('a')
+  anchor.href = blobUrl.value
+  anchor.download = isOwnership
+    ? documentFilename({ mode: 'ownership', companyName: props.companyName })
+    : documentFilename({
+        mode: 'agreement',
+        purchaseId: props.id,
+        legalBasis: props.legalBasis,
+        companyName: props.companyName,
+      })
+  anchor.rel = 'noopener'
+  anchor.click()
+}
+
 async function onEmail(): Promise<void> {
   if (!props.id || emailDisabled.value) return
   emailSending.value = true
@@ -258,6 +288,9 @@ async function onEmail(): Promise<void> {
         <div class="ags__actions">
           <CButton variant="outline" size="sm" @click="onClose">
             {{ t('inv.agreement.close') }}
+          </CButton>
+          <CButton variant="outline" size="sm" @click="onSave">
+            {{ t('inv.agreement.save') }}
           </CButton>
           <CButton variant="primary" size="sm" :disabled="emailDisabled" @click="onEmail">
             {{ emailSending ? t('inv.agreement.emailSending') : t('inv.agreement.emailSend') }}

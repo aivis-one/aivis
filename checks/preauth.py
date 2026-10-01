@@ -46,6 +46,8 @@ REGISTER = {
             "dashboard; there is no content to reflow.",
     "loading": "a centred logo and a spinner, 230px at every width. Nothing to lay out.",
     "referral-link": "a redirect record -- /r/<code> resolves and leaves. Nothing renders.",
+    "document-link": "a redirect record -- /portfolio/<id> from a document email hands the reader "
+                     "to their own shell's position screen and leaves (P-106). Nothing renders.",
     "not-found": "the code and one line of prose, capped at --maxw-prose and centred.",
     "login": "a centred auth card at --maxw-form (360px). A wider login form is a worse login form.",
     "register": "a centred auth card at --maxw-form (360px), same shape as login.",

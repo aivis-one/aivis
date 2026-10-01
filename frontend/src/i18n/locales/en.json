@@ -1172,6 +1172,7 @@
       "loading": "Loading document...",
       "errorTitle": "Could not load document",
       "errorRetry": "Retry",
+      "save": "Save",
       "emailSend": "Email to me",
       "emailSending": "Sending...",
       "emailSuccess": "Document sent to your email",

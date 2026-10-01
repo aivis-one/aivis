@@ -1172,6 +1172,7 @@
       "loading": "Загрузка документа...",
       "errorTitle": "Не удалось загрузить документ",
       "errorRetry": "Повторить",
+      "save": "Сохранить",
       "emailSend": "Отправить на email",
       "emailSending": "Отправка...",
       "emailSuccess": "Документ отправлен на ваш email",

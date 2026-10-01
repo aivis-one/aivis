@@ -50,6 +50,19 @@
 //   Two sheet instances because their fetcher closures are pinned at
 //   setup time -- one composable per surface, epoch counters do not
 //   interfere with each other.
+//
+// DOCUMENT LINK (P-106).
+//   A document email lands here with the document named in the query
+//   (`?doc=ownership`, `?doc=agreement&purchase=<id>`; the shape and
+//   its parser live in router/documentLink.ts). The named sheet opens
+//   once the position has loaded -- not before, so a link to a company
+//   the reader holds nothing in shows the NOT-FOUND state alone rather
+//   than a document floating over it. An agreement's title comes from
+//   its row when that row is on the first page; a purchase further
+//   down the list opens under the generic "Document" title (accepted
+//   by the owner). Closing the sheet drops `doc` / `purchase` from the
+//   URL, so neither refresh nor history reopens a document the reader
+//   has already closed.
 // =============================================================================
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -63,6 +76,7 @@ import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { isAgentShell } from '@/router/helpers'
+import { parseDocumentQuery } from '@/router/documentLink'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { PurchaseItemResponse } from '@/api/types'
@@ -106,6 +120,7 @@ function openCertificate(p: PurchaseItemResponse): void {
 function closeCertificate(): void {
   selectedPurchaseId.value = null
   selectedLegalBasis.value = null
+  dropLinkedDocument()
 }
 
 // Per-company ownership sheet: independent state from the per-purchase
@@ -120,6 +135,33 @@ function openOwnership(): void {
 }
 function closeOwnership(): void {
   ownershipSheetOpen.value = false
+  dropLinkedDocument()
+}
+
+// Document named by an email link -- see DOCUMENT LINK in the header.
+const linkedDocument = computed(() => parseDocumentQuery(route.query))
+
+watch(
+  [currentDetail, linkedDocument],
+  ([detail, request]) => {
+    if (detail === null || request === null) return
+    if (request.kind === 'ownership') {
+      ownershipSheetOpen.value = true
+      return
+    }
+    const row = currentPurchases.value.find((p) => p.id === request.purchaseId)
+    selectedPurchaseId.value = request.purchaseId
+    selectedLegalBasis.value = row?.legal_basis ?? null
+  },
+  { immediate: true },
+)
+
+function dropLinkedDocument(): void {
+  if (route.query.doc === undefined && route.query.purchase === undefined) return
+  const query = { ...route.query }
+  delete query.doc
+  delete query.purchase
+  void safeNavigate(router.replace({ query }), '[CompanyPositionView] drop document link')
 }
 
 // ---------------------------------------------------------------------------
@@ -450,12 +492,14 @@ onUnmounted(() => {
       :open="certificateSheetOpen"
       mode="agreement"
       :legal-basis="selectedLegalBasis ?? undefined"
+      :company-name="currentDetail?.company_name"
       @close="closeCertificate"
     />
     <AgreementSheet
       :id="companyId"
       :open="ownershipSheetOpen"
       mode="ownership"
+      :company-name="currentDetail?.company_name"
       @close="closeOwnership"
     />
   </div>

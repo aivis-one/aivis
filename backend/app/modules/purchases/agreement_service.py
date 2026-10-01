@@ -372,9 +372,10 @@ async def request_agreement_email(
     A LINK, NOT AN ATTACHMENT, AND NO PDF ANY MORE. This used to render
     the agreement to PDF (xhtml2pdf) and attach it. comms carries no
     attachments and is not growing any, so the document leaves the mail
-    path entirely: the letter names the agreement and points at the
-    screen where it is rendered (documents_link, which is also where the
-    reasoning about that destination lives).
+    path entirely: the letter names the agreement and links straight to
+    it -- documents_link(company, purchase) opens this agreement of this
+    purchase after sign-in, and is also where the reasoning about that
+    address lives.
 
     The precondition stays: an investor with no address on record is a
     400 here rather than a letter comms cannot address. Note the pair --
@@ -421,8 +422,8 @@ async def request_agreement_email(
                 f"Product: {data.product.name}\n"
                 f"Units: {data.purchase.units}\n"
                 f"Total paid: {format_cents(data.purchase.paid_cents)}\n\n"
-                f"Open it in your portfolio (you will be asked to sign in): "
-                f"{documents_link()}\n\n"
+                f"Open it here (you will be asked to sign in): "
+                f"{documents_link(data.company.id, data.purchase.id)}\n\n"
                 f"Best regards,\n"
                 f"AIVIS.ONE Platform"
             ),

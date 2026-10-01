@@ -339,7 +339,9 @@ async def request_ownership_email(
 
     A LINK, NOT AN ATTACHMENT, AND NO PDF ANY MORE -- same change and
     same reasoning as request_agreement_email in agreement_service.py,
-    which carries the full account. The destination is documents_link().
+    which carries the full account. The address is
+    documents_link(company) -- a certificate belongs to the investor's
+    whole position in the company, so no purchase is named.
 
     The precondition stays: an investor with no address on record is a
     400, which is genuinely a client-state problem (they have not given
@@ -381,8 +383,8 @@ async def request_ownership_email(
                 f"Total units owned: {data.total_units}\n"
                 f"Current value: {format_cents(data.current_value_cents)}\n"
                 f"As of: {data.as_of_date.strftime('%B %d, %Y')}\n\n"
-                f"Open it in your portfolio (you will be asked to sign in): "
-                f"{documents_link()}\n\n"
+                f"Open it here (you will be asked to sign in): "
+                f"{documents_link(data.company.id)}\n\n"
                 f"Best regards,\n"
                 f"AIVIS.ONE Platform"
             ),
