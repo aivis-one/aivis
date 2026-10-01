@@ -841,12 +841,19 @@ def test_seed_creates_users_and_staff_only_through_application_paths() -> None:
     application's own paths, and this guard is what stops the next
     convenient shortcut from quietly undoing that.
 
-    EXACTLY ONE StaffProfile construction is allowed and it is the
-    documented bypass: create_staff needs an admin actor and the FIRST
-    admin has none, so that one promotion is written by hand next to the
-    prose explaining why. If a second one appears, either the bypass has
-    been copied (which is the failure this guards) or the ceiling has
-    genuinely moved and this test should be re-argued, not relaxed.
+    NO StaffProfile construction in the seed, and EXACTLY ONE in
+    app/modules/staff/bootstrap.py, which the seed calls. create_staff
+    needs an admin actor and the FIRST admin has none, so that one
+    promotion is written without an actor. Until H30 (P-118) the one
+    construction lived here, in seed.py, and this test counted exactly
+    one here -- right while the seed was the only path to a first admin.
+    H30 added the production path (`aivis bootstrap-admin`) and moved the
+    three writes into write_admin_promotion so both callers share ONE
+    copy; the count therefore moved with it, and it is held in both
+    places: zero here (the seed must not grow its own copy back) and one
+    there (the bypass must not be copied inside the module either). A
+    second construction anywhere is either a copied bypass -- the failure
+    this guards -- or a moved ceiling, to be re-argued, not relaxed.
 
     A SUBSTRING SEARCH, DELIBERATELY. An AST walk would be tidier and
     would miss the case that matters: a call assembled as a string, or a
@@ -881,11 +888,31 @@ def test_seed_creates_users_and_staff_only_through_application_paths() -> None:
 
     staff_forms = ("StaffProfile(", "models.StaffProfile(")
     total = sum(code.count(form) for form in staff_forms)
-    assert total == 1, (
-        f"scripts/seed.py has {total} StaffProfile construction(s); "
-        f"exactly one is allowed -- the first-admin bypass. Every other "
+    assert total == 0, (
+        f"scripts/seed.py has {total} StaffProfile construction(s); none "
+        f"is allowed. The first-admin bypass is "
+        f"app.modules.staff.bootstrap.write_admin_promotion; every other "
         f"staff member must go through staff.service.create_staff, which "
         f"is what emits the support-section membership event."
+    )
+    assert "write_admin_promotion(" in code, (
+        "scripts/seed.py no longer calls write_admin_promotion -- the first "
+        "admin of a seeded stand must come through the one shared bypass."
+    )
+
+    bootstrap_path = (
+        Path(__file__).resolve().parent.parent
+        / "app" / "modules" / "staff" / "bootstrap.py"
+    )
+    bootstrap_code = "\n".join(
+        line
+        for line in bootstrap_path.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
+    )
+    bypass_total = sum(bootstrap_code.count(form) for form in staff_forms)
+    assert bypass_total == 1, (
+        f"app/modules/staff/bootstrap.py has {bypass_total} StaffProfile "
+        f"construction(s); exactly one is allowed -- write_admin_promotion."
     )
 
 

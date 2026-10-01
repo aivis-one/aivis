@@ -66,10 +66,13 @@
 # nobody to be that actor, so the first one cannot be made through the
 # path -- chicken and egg, not an oversight. The bypass is therefore as
 # narrow as it can be: the admin's USER goes through the full ladder like
-# everybody else, and only the promotion is written by hand -- the role
-# flip, the StaffProfile row, and the membership event, which are the
-# three things create_staff does internally. Every later staff member
-# goes through create_staff with this admin as the actor.
+# everybody else, and only the promotion is written without an actor --
+# the role flip, the StaffProfile row, and the membership event, which
+# are the three things create_staff does internally. Those three writes
+# live in app/modules/staff/bootstrap.py (write_admin_promotion), the one
+# copy shared with `aivis bootstrap-admin`, the production path to the
+# first admin. Every later staff member goes through create_staff with
+# this admin as the actor.
 #
 # The admin signs in with the profile's demo_password like everybody
 # else. This repository is the TEST server's, the seed refuses to run on
@@ -217,7 +220,10 @@ from app.modules.referrals.models import (  # noqa: E402
     ReferralLink,
 )
 from app.modules.referrals.service import create_link  # noqa: E402
-from app.modules.staff.constants import VALID_PERMISSION_KEYS, is_admin  # noqa: E402
+from app.modules.staff.bootstrap import (  # noqa: E402
+    find_any_admin,
+    write_admin_promotion,
+)
 from app.modules.staff.models import StaffProfile  # noqa: E402
 from app.modules.staff.service import create_staff  # noqa: E402
 from app.modules.support.service import emit_support_membership  # noqa: E402
@@ -541,23 +547,6 @@ async def ensure_user(
 # ---------------------------------------------------------------------------
 
 
-async def _find_any_admin(session: AsyncSession) -> User | None:
-    """The first active admin on this stand, or None.
-
-    is_admin() is a permission-set predicate, not a column, so this
-    reads the profiles rather than filtering in SQL.
-    """
-    stmt = (
-        select(StaffProfile, User)
-        .join(User, User.id == StaffProfile.user_id)
-        .where(StaffProfile.is_active.is_(True))
-    )
-    for staff_profile, user in (await session.execute(stmt)).all():
-        if is_admin(staff_profile.permissions):
-            return user
-    return None
-
-
 async def ensure_admin(
     session: AsyncSession, profile: dict[str, Any]
 ) -> User:
@@ -567,7 +556,7 @@ async def ensure_admin(
     a second administrator on a stand that has one. Only when there is
     none does the bypass described in the header run.
     """
-    existing = await _find_any_admin(session)
+    existing = await find_any_admin(session)
     if existing is not None:
         info(f"Using the existing admin as actor: {existing.id}")
         return existing
@@ -581,14 +570,16 @@ async def ensure_admin(
 
     user = await ensure_user(session, profile, spec, role=UserRole.INVESTOR)
 
-    # -- THE BYPASS. Three writes, and they are the three create_staff
-    # makes internally: the role, the profile row, and the membership
-    # event. The user above came through the ordinary ladder, so the
-    # comms recipient is already there and is NOT part of this.
+    # -- THE BYPASS. The three writes (role, StaffProfile with every
+    # permission, membership event) live in ONE place,
+    # app.modules.staff.bootstrap.write_admin_promotion, shared with
+    # `aivis bootstrap-admin`. The user above came through the ordinary
+    # ladder, so the comms recipient is already there and is NOT part of
+    # this.
     #
     # GATED ON THE ROW IT WOULD WRITE, like every other step in this
     # file. Reaching here does NOT prove there is no staff profile for
-    # this person: _find_any_admin answers "is there an ACTIVE profile
+    # this person: find_any_admin answers "is there an ACTIVE profile
     # whose permissions are all True", and a profile that is inactive,
     # or that an operator has since taken a permission away from, makes
     # it say None while staff_profiles.user_id -- which is UNIQUE --
@@ -613,16 +604,7 @@ async def ensure_admin(
         await session.refresh(user)
         return user
 
-    user.role = UserRole.STAFF
-    staff_profile = StaffProfile(
-        user_id=user.id,
-        permissions={key: True for key in VALID_PERMISSION_KEYS},
-        is_active=True,
-    )
-    session.add(staff_profile)
-    await session.flush()
-    await emit_support_membership(session, user_id=user.id)
-    await session.refresh(user)
+    await write_admin_promotion(session, user)
 
     ok(f"Bootstrapped the first admin: {user.id}")
     return user

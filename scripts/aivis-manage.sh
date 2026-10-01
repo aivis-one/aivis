@@ -1704,6 +1704,26 @@ case_seed() {
 }
 
 # ==============================================================================
+# FIRST ADMIN (H30 P-118)
+# ==============================================================================
+#
+# The production path to the first admin: promotes an ALREADY registered,
+# verified user and creates nothing else. Refuses for good once the box
+# has an admin -- from then on staff is appointed in the interface. Runs
+# on any APP_ENV, production included; `aivis seed` is the test stands'
+# path and refuses production. The decisions live in
+# backend/app/modules/staff/bootstrap.py; the exit code is the script's
+# (0 promoted, 1 refused with nothing written, 2 usage).
+case_bootstrap_admin() {
+    cd_compose
+    if [ "$#" -ne 1 ] || [ -z "${1// /}" ]; then
+        echo "Usage: aivis bootstrap-admin <email of a registered, verified user>"
+        return 2
+    fi
+    docker compose exec -T app python -m scripts.bootstrap_admin "$1"
+}
+
+# ==============================================================================
 # SEED USER PORTFOLIO (dev)
 # ==============================================================================
 
@@ -2254,6 +2274,7 @@ case "$CMD" in
     backup)         case_backup ;;
     db)             case_db "$@" ;;
     seed)           case_seed "$@" ;;
+    bootstrap-admin) case_bootstrap_admin "$@" ;;
     seed-portfolio) case_seed_portfolio "$@" ;;
     ssl)            case_ssl "$@" ;;
     nginx)          case_nginx "$@" ;;
@@ -2296,6 +2317,7 @@ case "$CMD" in
         echo "  seed --profile <name>                     — Seed from a named profile"
         echo "  seed --reset                              — Delete this profile's rows, then seed again"
         echo "  seed --dry-run                            — Print what would be seeded, write nothing"
+        echo "  bootstrap-admin <email>                   — Make a registered, verified user the first admin (once per box)"
         echo "  seed-portfolio <email>                    — Fill an existing user's dashboard"
         echo ""
         echo "Storage (MinIO):"

@@ -54,7 +54,6 @@ from app.core.events.service import (
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import OnboardingStep, User, UserRole
 
-
 pytestmark = pytest.mark.asyncio
 
 
@@ -72,7 +71,10 @@ def clean_stand(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _none(_session: object) -> None:
         return None
 
-    monkeypatch.setattr(seed, "_find_any_admin", _none)
+    # The lookup moved to app/modules/staff/bootstrap.py (H30 P-118, one
+    # copy shared with `aivis bootstrap-admin`); seed.py imports it by
+    # name, so the name inside seed is what its branch reads.
+    monkeypatch.setattr(seed, "find_any_admin", _none)
 
 
 # ---------------------------------------------------------------------------
