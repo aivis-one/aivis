@@ -73,6 +73,7 @@ import structlog
 from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.body_limit import upload_body_limit
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import BadRequestError
 from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
@@ -246,6 +247,7 @@ async def delete_own_roadmap_item_endpoint(
     "/{item_id}/cover",
     response_model=RoadmapItemResponse,
 )
+@upload_body_limit(files=1, per_file_bytes=ROADMAP_COVER_MAX_BYTES)
 async def set_own_roadmap_cover_endpoint(
     item_id: UUID,
     file: UploadFile = File(...),

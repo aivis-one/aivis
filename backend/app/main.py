@@ -135,6 +135,7 @@ from datetime import UTC, datetime, timedelta
 
 import structlog
 from app.core.background import publish_background_tasks
+from app.core.body_limit import RequestBodyLimitMiddleware
 from app.core.config import APP_VERSION, settings
 from app.core.database import dispose_engine, get_engine
 from app.core.events.relay import run_relay
@@ -496,6 +497,12 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # Middleware
 # ---------------------------------------------------------------------------
+
+# Per-endpoint request body limit (P-61). Registered BEFORE CORSMiddleware
+# so it sits inside it: a 413 goes back out through CORS and carries its
+# headers, and the browser reads a 413 rather than a network failure.
+# The reasoning and the ceiling that remains live in app/core/body_limit.py.
+app.add_middleware(RequestBodyLimitMiddleware)
 
 _cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
 _allow_all = _cors_origins == ["*"]

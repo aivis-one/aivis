@@ -59,7 +59,13 @@
 #   extension validation.
 #
 # 100MB SIZE LIMIT (R2 Q-ATT-3):
-#   Enforced by Nginx (client_max_body_size 100m) at the proxy layer.
+#   settings.minio_max_file_size_bytes. Enforced twice, and neither
+#   place is a service check: by the host nginx (client_max_body_size
+#   100M, server level) and, for these endpoints, by the request body
+#   limit declared on each of them (app/core/body_limit.py: one file at
+#   this size plus multipart overhead -> 413 before the form is parsed).
+#   Behind nginx the second one is not reached -- nginx refuses first;
+#   the KNOWN CEILING in body_limit.py says why that is the remaining gap.
 #   Round 4 (PERF-01): the router no longer materialises the whole
 #   payload into a Python `bytes` (the previous `await file.read()`
 #   peaked RAM at N * 100 MB for N parallel uploads). We now stream
@@ -77,6 +83,8 @@ import structlog
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.body_limit import upload_body_limit
+from app.core.config import settings
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import require_staff_permission
@@ -205,6 +213,7 @@ async def list_attachments_staff_endpoint(
     response_model=StaffAttachmentResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@upload_body_limit(files=1, per_file_bytes=settings.minio_max_file_size_bytes)
 async def create_attachment_staff_endpoint(
     company_id: UUID,
     metadata: str = Form(...),
@@ -317,6 +326,7 @@ async def patch_attachment_staff_endpoint(
     "/{company_id}/attachments/{attachment_id}/replace",
     response_model=StaffAttachmentResponse,
 )
+@upload_body_limit(files=1, per_file_bytes=settings.minio_max_file_size_bytes)
 async def replace_attachment_staff_endpoint(
     company_id: UUID,
     attachment_id: UUID,

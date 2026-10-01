@@ -75,8 +75,8 @@
 #   module's docstring for the full rationale (metadata as a JSON Form
 #   field validated via AttachmentInboxMetadata.model_validate_json(),
 #   extension-based MIME validation via validate_attachment_mime_by_filename,
-#   streamed multipart upload via UploadFile.file, 100MB cap enforced by
-#   Nginx). Not repeated here.
+#   streamed multipart upload via UploadFile.file, 100MB cap). Not
+#   repeated here.
 #
 # SESSION SAFETY:
 #   get_current_company_profile (companies/dependencies.py) is wired to
@@ -112,6 +112,8 @@ import structlog
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.body_limit import upload_body_limit
+from app.core.config import settings
 from app.core.database import get_db_reader, get_db_session
 from app.modules.companies.dependencies import get_current_company_profile
 from app.modules.companies.models import CompanyProfile
@@ -202,6 +204,7 @@ async def list_own_attachments_endpoint(
     response_model=AttachmentResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@upload_body_limit(files=1, per_file_bytes=settings.minio_max_file_size_bytes)
 async def create_own_attachment_endpoint(
     metadata: str = Form(...),
     file: UploadFile = File(...),
@@ -307,6 +310,7 @@ async def patch_own_attachment_endpoint(
     "/{attachment_id}/replace",
     response_model=AttachmentResponse,
 )
+@upload_body_limit(files=1, per_file_bytes=settings.minio_max_file_size_bytes)
 async def replace_own_attachment_endpoint(
     attachment_id: UUID,
     file: UploadFile = File(...),
