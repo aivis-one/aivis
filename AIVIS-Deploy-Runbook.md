@@ -60,8 +60,10 @@ What to have ready either way:
   either tab (§4 item 2).
 - **The comms stack** is cloned and brought up by this same installer — there is no second script
   to run and no manual step afterwards. You do not need credentials for it: it mints its own.
-- **The Mailgun API key** (`CREDENTIALS.md` §3), if you want it in `.env` now rather than editing
-  the file by hand later. Optional — mail is out of scope for this product as currently run (see §7).
+- **The Mailgun API key** (`CREDENTIALS.md` §3) -- **required**. The install asks for it and does
+  not continue without it: the password reset, the registration code and the document letters go
+  out by email, and comms refuses to start at all when a type routed to email has no keys. There is
+  no later step that could add it -- `.env` is not edited by hand on this box.
 - Root SSH access to the target box (`CREDENTIALS.md` §1).
 
 ## 2. Run inside `tmux` — do not run this over a bare SSH session
@@ -177,19 +179,16 @@ Each one is listed here in execution order, with the exact answer.
 
 3. **Telegram Bot Token** — type the value from `CREDENTIALS.md` §2 (the `@aivisonebot` row).
    **The script now verifies the token by using it**: it calls Telegram's `getMe`, and a typo, a
-   revoked token or a placeholder is rejected on the spot with Telegram's own answer printed. A
-   rejected token re-asks rather than aborting — you can press ENTER to skip past it — so a run that
-   continues past this prompt is not proof a token was accepted; the `✓ Telegram bot: @name` line is.
+   revoked token or a placeholder is rejected on the spot with Telegram's own answer printed, and
+   the prompt asks again. **The token is required: ENTER asks again too** -- the backend refuses to
+   start without a real token, and nothing after the install can set it. The prompt ends only on the
+   `✓ Telegram bot: @name` line (or on Ctrl-C, which stops the install before `.env` is written).
    **You are not asked for the bot's URL, and you must not look for that prompt.** It is derived
    from the username Telegram answers with for the token you just typed, which is the only way the
    two can never name different bots. comms builds every deep-link button from that URL.
-   **Pressing ENTER here has a cost worth knowing:** the token stays unset, Telegram login does not
-   work, and comms is left in stub mode — where it accepts everything and delivers nothing. The
-   script warns in those words when it happens.
-4. **Mailgun API Key (optional)** — type the value from `CREDENTIALS.md` §3 if you have it handy, or
-   press **ENTER** to keep whatever `.env` already holds (`PLACEHOLDER` on a fresh env, or an
-   earlier install's value on a re-install) — again not an empty field. Either is fine — mail is out
-   of scope for this product as currently run (§7).
+4. **Mailgun API Key (required)** — type the value from `CREDENTIALS.md` §3. ENTER asks again: without
+   the key comms does not start, and the product sends no password reset, no registration code and
+   no document letter.
 7. **MinIO Root User** — **press ENTER.** ⚠
 8. **MinIO Root Password** — **press ENTER.** ⚠
 9. **MinIO Console basic-auth password** — **press ENTER.** ⚠
