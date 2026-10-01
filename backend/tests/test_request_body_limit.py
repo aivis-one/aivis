@@ -280,18 +280,27 @@ async def _chunked_multipart(file_bytes: int, size: int = MiB):
 async def test_oversized_anonymous_upload_gets_413_not_401(client: AsyncClient) -> None:
     """413 rather than 401: the refusal happens before authentication, form
     parsing and the endpoint -- nothing behind the middleware ran. And it
-    carries the CORS header, so the middleware sits inside CORS."""
+    carries the CORS allow-origin header, so the middleware sits inside CORS.
+
+    THE ORIGIN IS ONE THE APP ALLOWS. CORS echoes allow-origin only for an
+    allowed origin, so the origin is taken from settings.cors_origins by
+    the same rule main.py applies: any origin under "*", otherwise the
+    first configured one. A made-up origin passed only where the list is
+    "*" and failed on a box with a real list -- the 413 was correct there,
+    the test was not."""
+    configured = [o.strip() for o in settings.cors_origins.split(",")]
+    origin = "https://app.example.test" if configured == ["*"] else configured[0]
     resp = await client.put(
         COVER_PATH,
         content=_chunked_multipart(COVER_LIMIT + MiB),
         headers={
             "content-type": "multipart/form-data; boundary=x",
-            "origin": "https://app.example.test",
+            "origin": origin,
         },
     )
     assert resp.status_code == 413
     assert resp.json()["error"] == "request_too_large"
-    assert "access-control-allow-origin" in resp.headers
+    assert resp.headers.get("access-control-allow-origin") in (origin, "*")
 
 
 async def test_small_anonymous_upload_reaches_the_application(client: AsyncClient) -> None:
