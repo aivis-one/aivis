@@ -27,6 +27,7 @@ import type {
   UserListResponse,
   UserDetailResponse,
   BlockUserRequest,
+  ChangeEmailRequest,
   CreateStaffRequest,
   UpdatePermissionsRequest,
   StaffProfileResponse,
@@ -112,6 +113,16 @@ export function blockUser(userId: string, body?: BlockUserRequest): Promise<void
  */
 export function unblockUser(userId: string): Promise<void> {
   return api.patch<void>(`/api/v1/staff/users/${userId}/unblock`, {})
+}
+
+/**
+ * PATCH /api/v1/staff/users/{id}/email — change a user's email (admin only).
+ *
+ * Support is the only way an address changes; the reason is required and
+ * lands in the audit log.
+ */
+export function changeUserEmail(userId: string, body: ChangeEmailRequest): Promise<void> {
+  return api.patch<void>(`/api/v1/staff/users/${userId}/email`, body)
 }
 
 /** POST /api/v1/staff/users — promote user to staff (admin only). */

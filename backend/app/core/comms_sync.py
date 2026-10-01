@@ -19,9 +19,10 @@
 # and raw UPDATE users. The creation sites are auth/service.py (email
 # and telegram registration) and companies/service.py (two); the change
 # sites are users/service.py (language, self-deactivation) and
-# staff/admin_service.py (block, unblock). Nothing else writes those
-# fields: TOTP, onboarding and password reset write credentials keys the
-# snapshot does not read, and the product has no email change and no
+# staff/admin_service.py (block, unblock, and the support email change
+# of H28 P-105 -- the only path that changes an address). Nothing else
+# writes those fields: TOTP, onboarding and password reset write
+# credentials keys the snapshot does not read, and the product has no
 # telegram link for an existing account.
 #
 # THE VERSION. comms 3.0.0 applies a snapshot only when its version is

@@ -9,6 +9,7 @@
 #   get_user_detail()     -- full user detail for staff view (incl. KYC history)
 #   block_user()          -- deactivate user + kill all sessions
 #   unblock_user()        -- reactivate a previously blocked user
+#   change_user_email()   -- support change of a user's email (admin only)
 #   dashboard_stats()     -- platform-wide statistics
 #   kyc_decide_application() -- staff decision on a queued application
 #   kyc_decide_user()        -- staff decision on a person, with or
@@ -60,15 +61,17 @@
 #   Service never commits. Caller (get_db_session) manages the transaction.
 # =============================================================================
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 import structlog
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.comms_sync import sync_recipient
-from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.auth.service import delete_all_sessions
 from app.modules.kyc.models import KYCApplication
 from app.modules.kyc.service import decide_by_application, decide_by_user
@@ -463,6 +466,148 @@ async def unblock_user(
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
+
+
+# The onboarding keys of the registration verification code
+# (auth/service.py::register_email writes them, verify_email_code reads
+# them). A code still pending at a change was sent to the OLD address;
+# it is removed with the address it belongs to.
+_PENDING_EMAIL_CODE_KEYS = (
+    "email_token",
+    "email_token_expires_at",
+    "email_verification_attempts",
+)
+
+
+async def change_user_email(
+    user_id: UUID,
+    staff: User,
+    new_email: str,
+    reason: str,
+    session: AsyncSession,
+) -> None:
+    """Change a user's email address -- support only (H28 P-105).
+
+    The caller is a staff admin (the router checks it). The user cannot
+    change their own address anywhere in the product: self-service change
+    was removed on purpose as account-takeover protection, so an admin
+    changing THEIR OWN address is refused here as the same thing.
+
+    The new address is stored lower-cased and stripped, exactly as
+    registration stores it, and counts as verified: support sets it after
+    establishing the person's identity, there is no confirmation code.
+    Sessions are left alone -- the change is made at the user's own
+    request -- and nothing is sent to the old address (owner's decision,
+    closed with P-104).
+
+    KNOWN CEILING -- a password-reset link sent to the OLD address keeps
+    working after the change.
+      1. Mechanism: the reset token lives in Redis as password_reset:
+         {token} -> {"user_id": ...} (auth/service.py, module note) with
+         a 30-minute TTL. The record names the user, not the address the
+         link went to, and there is no user -> token index, so nothing
+         here can find or void it. Whoever reads the old mailbox can set
+         a new password for up to 30 minutes after the change.
+      2. Status: acknowledged by design (H28).
+      3. Task: none -- it is opened by the trigger below, not scheduled.
+      4. Trigger: the first email change requested BECAUSE the old
+         mailbox was taken over (the reason given here, in the
+         user.email_changed audit row, says so).
+      5. Agreed fix: write the address the link was sent to into the
+         token record at request time, and refuse the confirm when it
+         differs from the user's current address -- one condition in
+         confirm_password_reset().
+      6. Rejected: a Redis reverse index user -> token voided from here
+         (a second structure to keep in step with the token's own TTL);
+         killing the user's sessions (does not touch the token at all).
+
+    Raises:
+        BadRequestError: own address, platform user, no email to change
+            (Telegram-only account -- giving it one would ADD a login
+            method, not change one), or the address is the current one.
+        NotFoundError: user not found.
+        ConflictError: the address belongs to another account.
+    """
+    if user_id == staff.id:
+        raise BadRequestError(
+            "Cannot change your own email address -- another admin does it"
+        )
+
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    target = result.scalar_one_or_none()
+
+    if target is None:
+        raise NotFoundError("User not found")
+
+    if target.role == UserRole.PLATFORM:
+        raise BadRequestError("Cannot change the email of the platform user")
+
+    old_email = target.email
+    if not old_email:
+        raise BadRequestError(
+            "User has no email address to change (Telegram-only account)"
+        )
+
+    email_lower = new_email.strip().lower()
+    if email_lower == old_email:
+        raise BadRequestError("The new address is the current address")
+
+    # Read first for a clean 409; the unique index ix_users_email below
+    # is what actually holds under a concurrent change or registration.
+    taken = await session.execute(
+        select(User.id).where(
+            User.credentials["email"]["email"].as_string() == email_lower,
+            User.id != target.id,
+        )
+    )
+    if taken.scalar_one_or_none() is not None:
+        raise ConflictError("Email is already registered")
+
+    creds = dict(target.credentials or {})
+    email_creds = dict(creds.get("email") or {})
+    email_creds["email"] = email_lower
+    email_creds["verified"] = True
+    email_creds["verified_at"] = datetime.now(UTC).isoformat()
+    creds["email"] = email_creds
+    if "onboarding" in creds:
+        creds["onboarding"] = {
+            key: value
+            for key, value in dict(creds["onboarding"] or {}).items()
+            if key not in _PENDING_EMAIL_CODE_KEYS
+        }
+    target.set_jsonb("credentials", creds)
+
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        if "ix_users_email" in str(exc.orig):
+            raise ConflictError("Email is already registered") from exc
+        raise
+
+    # comms delivers to its own copy of the address: the next letter
+    # goes to the new one only after comms holds the new snapshot.
+    await sync_recipient(session, target)
+
+    await record_audit(
+        session=session,
+        event="user.email_changed",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="user",
+        target_id=target.id,
+        data={
+            "old_email": old_email,
+            "new_email": email_lower,
+            "reason": reason,
+        },
+    )
+
+    logger.info(
+        "user_email_changed",
+        target_user_id=str(target.id),
+        staff_id=str(staff.id),
+    )
 
 
 async def dashboard_stats(

@@ -177,6 +177,12 @@ export interface Body_set_roadmap_cover_endpoint_api_v1_staff_companies__company
   file: string
 }
 
+/** Request body for a support change of a user's email (H28 P-105). Only a staff admin changes an address; a user cannot change their own (account-takeover protection, owner's decision). The reason is required for the same cause as on a KYC decision: the audit row is the only record of why an account's login address moved, so the three forms of nothing -- absent, empty, whitespace -- are refused. */
+export interface ChangeEmailRequest {
+  email: string
+  reason: string
+}
+
 /** Single commission or volume bonus entry. */
 export interface CommissionEntry {
   id: string

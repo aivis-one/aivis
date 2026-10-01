@@ -131,3 +131,32 @@ async def test_block_and_unblock_each_send_a_snapshot(
     assert after_unblock["active"] is True
     # Two changes, two versions, in order: comms applies the higher one.
     assert after_unblock["version"] == after_block["version"] + 1
+
+
+@pytest.mark.asyncio
+async def test_a_support_email_change_sends_the_new_address(
+    client: AsyncClient, db_session: AsyncSession, sent: list
+) -> None:
+    """H28 P-105: comms delivers to its own copy of the address, so each
+    change sends a snapshot carrying the new one, and two changes in a row
+    are two versions in order."""
+    _admin, admin_token = await create_admin_user(client, db_session)
+    data = await register_user(client)
+    user_id = data["user"]["id"]
+    before = _for(sent, user_id)[-1]
+    assert before["email"] == data["email"]
+
+    versions = []
+    for address in ("first_move@example.com", "second_move@example.com"):
+        address = address.replace("@", f"_{user_id[:8]}@")
+        changed = await client.patch(
+            f"/api/v1/staff/users/{user_id}/email",
+            json={"email": address, "reason": "identity checked by support"},
+            headers=auth_headers(admin_token),
+        )
+        assert changed.status_code == 204, changed.text
+        snapshot = _for(sent, user_id)[-1]
+        assert snapshot["email"] == address
+        versions.append(snapshot["version"])
+
+    assert versions == [before["version"] + 1, before["version"] + 2]

@@ -10,9 +10,10 @@
 #   GET   /api/v1/staff/users/{id}                 -- user detail
 #   PATCH /api/v1/staff/users/{id}/block           -- block user (user_block perm)
 #   PATCH /api/v1/staff/users/{id}/unblock         -- unblock user (user_block perm)
+#   PATCH /api/v1/staff/users/{id}/email           -- change user's email (admin)
 #
 # AUTH:
-#   POST/PATCH permissions: admin only (all permissions True).
+#   POST/PATCH permissions, PATCH email: admin only (all permissions True).
 #   GET list/detail: any staff.
 #   PATCH block/unblock: requires user_block permission (same permission
 #     governs both directions -- reversing an action needs the same
@@ -51,11 +52,13 @@ from app.modules.auth.dependencies import (
 )
 from app.modules.staff.admin_schemas import (
     BlockRequest,
+    ChangeEmailRequest,
     UserDetailResponse,
     UserListResponse,
 )
 from app.modules.staff.admin_service import (
     block_user,
+    change_user_email,
     get_user_detail,
     list_users,
     unblock_user,
@@ -283,3 +286,22 @@ async def user_unblock(
     gates /block.
     """
     await unblock_user(user_id, staff, session)
+
+
+@router.patch(
+    "/{user_id}/email",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def user_change_email(
+    user_id: UUID,
+    body: ChangeEmailRequest,
+    staff: User = Depends(get_current_staff),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Change a user's email address -- support, admin only (H28 P-105).
+
+    Admin = every staff permission True (_require_admin). The user has no
+    way to change their own address; this is the only path.
+    """
+    await _require_admin(staff, session)
+    await change_user_email(user_id, staff, str(body.email), body.reason, session)

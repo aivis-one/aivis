@@ -384,7 +384,12 @@
         "revokeUser": "Revoke approval",
         "revokeUserHint": "Withdraws an approval already granted. The person goes back behind the gate and cannot buy until approved again.",
         "revokedUserToast": "Approval revoked"
-      }
+      },
+      "changeEmail": "Change email",
+      "changeEmailConfirm": "The new address is set as verified. Sign-in and all letters move to it; nothing is sent to the old address.",
+      "newEmail": "New email",
+      "changeEmailReason": "Reason (required)",
+      "emailChanged": "Email address changed"
     },
     "platform": {
       "tabs": {
@@ -1172,7 +1177,6 @@
       "loading": "Loading document...",
       "errorTitle": "Could not load document",
       "errorRetry": "Retry",
-      "save": "Save",
       "emailSend": "Email to me",
       "emailSending": "Sending...",
       "emailSuccess": "Document sent to your email",

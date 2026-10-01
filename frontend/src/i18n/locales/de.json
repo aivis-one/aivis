@@ -309,7 +309,12 @@
         "filter": {
           "revoked": "Widerrufen"
         }
-      }
+      },
+      "changeEmail": "E-Mail ändern",
+      "changeEmailConfirm": "Die neue Adresse gilt sofort als bestätigt. Anmeldung und alle Briefe gehen an sie; an die alte Adresse wird nichts gesendet.",
+      "newEmail": "Neue E-Mail",
+      "changeEmailReason": "Grund (erforderlich)",
+      "emailChanged": "E-Mail-Adresse geändert"
     },
     "withdrawals": {
       "confirm": "Bestätigen",

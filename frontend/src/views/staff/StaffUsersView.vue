@@ -8,6 +8,7 @@
 //   GET    /api/v1/staff/users/{id}
 //   PATCH  /api/v1/staff/users/{id}/block
 //   PATCH  /api/v1/staff/users/{id}/unblock
+//   PATCH  /api/v1/staff/users/{id}/email (admin only, H28 P-105)
 //   POST   /api/v1/staff/users (promote to staff, admin only)
 //   PATCH  /api/v1/staff/users/{id}/permissions (admin only)
 //   POST   /api/v1/staff/kyc/{application_id}/approve  (iter 2.7 A5)
@@ -75,10 +76,12 @@ import {
 import { ApiResponseError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import { useAuthStore } from '@/stores/auth'
 import {
   fetchUsers,
   fetchUserDetail,
   blockUser,
+  changeUserEmail,
   unblockUser,
   createStaff,
   updatePermissions,
@@ -175,7 +178,8 @@ function serverReason(err: unknown, fallbackKey: string): string {
   return err instanceof ApiResponseError && err.detail ? err.detail : t(fallbackKey)
 }
 const { showToast } = useToast()
-const { canDo } = useStaffPermissions()
+const { canDo, isAdmin } = useStaffPermissions()
+const authStore = useAuthStore()
 
 // iter 2.7 A5: FP-23 template guard for the Approve / Reject buttons
 // in the detail modal's KYC section. Reads the effective permission
@@ -233,6 +237,27 @@ const blockReason = ref('')
 // need a fresh justification (mirrors the backend's unblock_user,
 // which drops block_user's `reason` field for the same rationale).
 const showUnblockModal = ref(false)
+
+// -- Change email modal (H28 P-105) --
+// Support is the only way an address changes, and only an admin may do
+// it (the backend re-checks). Not offered on the admin's own card: a
+// change of one's own address is the self-service path the product
+// removed, and the backend refuses it. The reason is required (it is the
+// audit row's only record of why); the button stays disabled until both
+// fields carry something other than blanks.
+const showEmailModal = ref(false)
+const newEmail = ref('')
+const emailReason = ref('')
+const canChangeEmail = computed(
+  () =>
+    isAdmin.value &&
+    detailUser.value != null &&
+    detailUser.value.id !== authStore.user?.id &&
+    detailUser.value.role !== 'platform',
+)
+const emailFormFilled = computed(
+  () => newEmail.value.trim() !== '' && emailReason.value.trim() !== '',
+)
 
 // -- Promote modal --
 const showPromoteModal = ref(false)
@@ -542,6 +567,28 @@ async function handleBlock(): Promise<void> {
     showDetail.value = false
     await loadUsers()
   } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleChangeEmail(): Promise<void> {
+  if (!detailUser.value || !emailFormFilled.value) return
+  actionLoading.value = true
+  try {
+    await changeUserEmail(detailUser.value.id, {
+      email: newEmail.value.trim(),
+      reason: emailReason.value.trim(),
+    })
+    showToast(t('staff.userDetail.emailChanged'), 'success')
+    showEmailModal.value = false
+    newEmail.value = ''
+    emailReason.value = ''
+    await loadUsers()
+  } catch (err) {
+    // 409 (address taken), 400 (no email / same address) and 422 (not
+    // an address) all carry the server's own reason.
     showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     actionLoading.value = false
@@ -963,6 +1010,14 @@ onMounted(loadUsers)
             {{ t('staff.userDetail.unblock') }}
           </CButton>
           <CButton
+            v-if="canChangeEmail"
+            variant="secondary"
+            size="sm"
+            @click="showEmailModal = true"
+          >
+            {{ t('staff.userDetail.changeEmail') }}
+          </CButton>
+          <CButton
             v-if="detailUser.role !== 'staff'"
             variant="secondary"
             size="sm"
@@ -992,6 +1047,41 @@ onMounted(loadUsers)
           {{ t('common.cancel') }}
         </CButton>
         <CButton variant="danger" size="sm" :loading="actionLoading" @click="handleBlock">
+          {{ t('common.confirm') }}
+        </CButton>
+      </div>
+    </CModal>
+
+    <!-- Change email (admin only, H28 P-105) -->
+    <CModal :open="showEmailModal" @close="showEmailModal = false">
+      <h3 class="detail__title">
+        {{ t('staff.userDetail.changeEmail') }}
+      </h3>
+      <p class="detail__confirm-text">
+        {{ t('staff.userDetail.changeEmailConfirm') }}
+      </p>
+      <CInput
+        v-model="newEmail"
+        type="email"
+        :label="t('staff.userDetail.newEmail')"
+        :placeholder="t('staff.userDetail.newEmail')"
+      />
+      <CInput
+        v-model="emailReason"
+        :label="t('staff.userDetail.changeEmailReason')"
+        :placeholder="t('staff.userDetail.changeEmailReason')"
+      />
+      <div class="detail__actions" style="margin-top: 16px">
+        <CButton variant="outline" size="sm" @click="showEmailModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="actionLoading"
+          :disabled="!emailFormFilled"
+          @click="handleChangeEmail"
+        >
           {{ t('common.confirm') }}
         </CButton>
       </div>

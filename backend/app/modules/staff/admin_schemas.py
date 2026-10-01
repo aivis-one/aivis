@@ -53,7 +53,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.modules.staff.schemas import StaffProfileResponse
 
@@ -157,6 +157,33 @@ class BlockRequest(BaseModel):
     """Request to block a user."""
 
     reason: str | None = None
+
+
+class ChangeEmailRequest(BaseModel):
+    """Request body for a support change of a user's email (H28 P-105).
+
+    Only a staff admin changes an address; a user cannot change their
+    own (account-takeover protection, owner's decision). The reason is
+    required for the same cause as on a KYC decision: the audit row is
+    the only record of why an account's login address moved, so the
+    three forms of nothing -- absent, empty, whitespace -- are refused.
+    """
+
+    email: EmailStr = Field(..., description="The new email address")
+    reason: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Why the address is changed (stored in audit log)",
+    )
+
+    @field_validator("reason")
+    @classmethod
+    def _reject_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("reason must not be blank")
+        return stripped
 
 
 # ---------------------------------------------------------------------------

@@ -130,8 +130,28 @@ export function useStaffPermissions() {
     return ref
   }
 
+  /**
+   * True iff the user is a staff ADMIN: every effective permission True.
+   *
+   * The frontend mirror of the backend's is_admin() (staff/constants.py).
+   * No list of keys is kept here -- the effective dict on /users/me
+   * carries every known key (see canDo above), so "the dict is non-empty
+   * and every value in it is true" reads the same fact without a second
+   * copy of the key set. An empty or missing dict is NOT admin: every()
+   * over nothing is true, so the non-empty half is what keeps a profile
+   * with no permissions from passing. The backend re-checks on every
+   * admin-only call; this only decides what the screen shows.
+   */
+  const isAdmin: ComputedRef<boolean> = computed(() => {
+    const permissions = authStore.user?.staff_profile?.permissions
+    if (!permissions) return false
+    const values = Object.values(permissions)
+    return values.length > 0 && values.every((value) => value === true)
+  })
+
   return {
     requireStaff,
     canDo,
+    isAdmin,
   }
 }
