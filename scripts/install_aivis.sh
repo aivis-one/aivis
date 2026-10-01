@@ -12,8 +12,9 @@
 #   4.  Configure firewall (22/80/443 only)
 #   5.  Create deploy user `aivis` (non-root, docker group)
 #   6.  Generate SSH deploy key -> add to GitHub -> clone repo
-#   7.  Generate .env with random passwords (incl. MinIO secrets)
-#   8.  Prompt for sensitive secrets (bot token, API keys)
+#   7.  Prompt for the secrets only a person has (bot token, Mailgun key,
+#       optional MinIO overrides)
+#   8.  Write .env once: random passwords (incl. MinIO secrets) + step 7
 #   9.  Configure Nginx reverse proxy (api.aivis.one, app.aivis.one)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
 #   11. Assert the host runs no local mail transfer agent
@@ -71,6 +72,12 @@ STORAGE_DOMAIN="storage-mc-admin.aivis.one"
 CERTBOT_EMAIL="admin@aivis.one"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
+
+# The characters a value may carry into an env file this installer
+# writes: our own backend/.env (prompt_value, prompt_telegram_bot) and
+# the env files of the other stacks (validate_deliverable, which says why
+# the set is exactly this). One definition for both directions.
+ENV_SAFE_RE='^[A-Za-z0-9:._@/-]+$'
 
 # Let's Encrypt staging switch (decision 35). Unset/default -> production
 # certificates, command line byte-identical to before this flag existed.
@@ -657,7 +664,7 @@ gen_short_id() {
     openssl rand -base64 32 | tr -d "=+/" | cut -c1-16
 }
 
-log "Generating .env with random passwords..."
+log "Generating random secrets..."
 
 # Generate all secrets ONCE before writing -- ensures DATABASE_URL and
 # POSTGRES_PASSWORD always contain the same password (no double gen_password calls).
@@ -675,6 +682,154 @@ MINIO_ACCESS_KEY_VAL=$(gen_short_id)
 MINIO_SECRET_KEY_VAL=$(gen_password)
 MINIO_CONSOLE_PASS=$(gen_password)
 
+# ------------------------------------------------------------------------
+# ASK FIRST, WRITE ONCE (P-108).
+#
+# Every value that needs a person is asked for BEFORE backend/.env
+# exists, and the file is then written whole, in one atomic move, with
+# nothing left to fill in. There is no "configure later": after this
+# installer the owner's only tool on the box is `aivis <command>`, and no
+# command edits this file -- so a value not given here is never given.
+# The file used to be written with PLACEHOLDER in three keys and patched
+# by sed afterwards; ENTER kept the placeholder, and the backend booted
+# production on it.
+#
+# Interrupting a prompt (Ctrl-C, or end of input on the terminal) stops
+# the install before .env is written: the ERR trap fires on the failed
+# `read`, and there is no half-filled file to find later.
+#
+# NO SED ON TYPED VALUES. The old writer ran each typed value through
+# `sed "s|KEY=.*|KEY=VALUE|"` unescaped: '&' in a password pasted the
+# matched text into the file, '|' broke the expression and killed the
+# install. Values now reach the file only through the heredoc below,
+# which does not expand the result of a substitution a second time.
+#
+# The ONE set of placeholder values ("nothing was said") lives in the
+# backend validator, app/core/config.py (_PLACEHOLDERS), and is not
+# repeated here: anything that reaches .env is judged there on the first
+# start, loudly and by name. These prompts refuse what they can see
+# without that list -- an empty answer, and a character that would not
+# survive the env file (ENV_SAFE_RE).
+# ------------------------------------------------------------------------
+
+# Ask until the answer is usable; store it in the variable NAMED by $1.
+# $4, when given, is the value ENTER keeps (a generated random secret);
+# without it the value is required and ENTER asks again.
+# shellcheck disable=SC2034  # prompt_result is a nameref: it assigns the caller's variable
+prompt_value() {
+    local -n prompt_result="$1"
+    local prompt_label="$2"
+    local prompt_min_len="$3"
+    local prompt_keep="${4:-}"
+    local prompt_answer
+
+    while true; do
+        # Echo intentionally left ON: the operator wants to see what was
+        # typed while typing it, not after. Trade-off accepted -- typed
+        # values land in the terminal's own scrollback, and in any session
+        # recording (script/asciinema/tmux capture) if one is running.
+        # `read` with the default IFS trims surrounding blanks, so an
+        # answer of spaces arrives here as empty.
+        read -rp "  $prompt_label: " prompt_answer < /dev/tty
+        if [ -z "$prompt_answer" ]; then
+            if [ -n "$prompt_keep" ]; then
+                prompt_result="$prompt_keep"
+                success "  $prompt_label: keeping the generated value"
+                return 0
+            fi
+            warn "  $prompt_label is required -- nothing after this installer can set it. Try again."
+            continue
+        fi
+        if ! [[ "$prompt_answer" =~ $ENV_SAFE_RE ]]; then
+            warn "  $prompt_label: only letters, digits and : . _ @ / - are accepted. Try again."
+            continue
+        fi
+        if [ "${#prompt_answer}" -lt "$prompt_min_len" ]; then
+            warn "  $prompt_label: must be at least $prompt_min_len characters (got ${#prompt_answer}). Try again."
+            continue
+        fi
+        prompt_result="$prompt_answer"
+        success "  $prompt_label set"
+        return 0
+    done
+}
+
+# -- Telegram: ask for the token, DERIVE the URL ------------------------------
+# The bot URL is not a second question. It is built from the username
+# Telegram itself answers with FOR THIS TOKEN, so the two can never name
+# different bots -- a hand-typed URL can, and the result is a comms stack
+# in real mode sending working buttons that point at somebody else's bot.
+# Both values are non-empty, so no validator downstream would catch it.
+#
+# The link domain is a constant here rather than a literal further down:
+# domains live at the edge, in one named place, and comms refuses profile
+# data that carries one at all.
+TELEGRAM_LINK_DOMAIN="telegram.me"
+
+# Required. Sets TELEGRAM_BOT_TOKEN_VAL and TELEGRAM_BOT_URL_VAL.
+prompt_telegram_bot() {
+    local token username getme
+
+    while true; do
+        read -rp "  Telegram Bot Token: " token < /dev/tty
+        if [ -z "$token" ]; then
+            warn "  Telegram Bot Token is required -- the backend refuses to start"
+            warn "  without one, and nothing after this installer can set it. Try again."
+            continue
+        fi
+        if ! [[ "$token" =~ $ENV_SAFE_RE ]]; then
+            warn "  Telegram Bot Token: only letters, digits and : . _ @ / - are accepted. Try again."
+            continue
+        fi
+
+        # Verify the token by using it. A typo, a revoked token or a
+        # placeholder dies HERE, in front of the person who can fix it,
+        # instead of as a silent auth failure on the first real login.
+        # Parsed with grep/sed to avoid a jq dependency.
+        log "  Verifying token with Telegram (getMe)..."
+        getme=$(curl -s --max-time 15 "https://api.telegram.org/bot${token}/getMe" || true)
+        if ! echo "$getme" | grep -q '"ok":true'; then
+            warn "  Telegram rejected that token (getMe failed). Try again."
+            warn "  Response: ${getme:-<empty>}"
+            continue
+        fi
+        username=$(echo "$getme" | grep -o '"username":"[^"]*"' | head -1 | sed 's/"username":"//; s/"//' || true)
+        if [ -z "$username" ]; then
+            warn "  Could not read the bot username out of the getMe response. Try again."
+            continue
+        fi
+
+        TELEGRAM_BOT_TOKEN_VAL="$token"
+        TELEGRAM_BOT_URL_VAL="https://${TELEGRAM_LINK_DOMAIN}/${username}"
+        success "  Telegram bot: @${username}"
+        return 0
+    done
+}
+
+echo ""
+log "Enter secrets (all required):"
+echo ""
+prompt_telegram_bot
+# Required, not optional: comms-profile/types.yaml routes four types to
+# email, and comms refuses to start when a routed channel has no keys --
+# without this key the whole comms service stays down, not just email.
+prompt_value MAILGUN_API_KEY_VAL "Mailgun API Key" 1
+
+# MinIO credentials -- ENTER keeps the random values generated above by
+# gen_short_id / gen_password, and is the recommended answer. Typing a
+# value is for restoring one specific known credential (e.g. a password a
+# script already depends on). The three variables are consumed further
+# down by htpasswd (MinIO Storage section) and `mc alias set` (Docker
+# Stack section), so they carry whatever was decided here.
+echo ""
+log "MinIO Console credentials (used to log in at https://${STORAGE_DOMAIN}):"
+log "ENTER is RECOMMENDED on all three below: it keeps an independently"
+log "generated random value."
+prompt_value MINIO_ROOT_USER_VAL "MinIO Root User (Console login, Step 2)" 3 "$MINIO_ROOT_USER_VAL"
+prompt_value MINIO_ROOT_PASS "MinIO Root Password (Console login, Step 2)" 8 "$MINIO_ROOT_PASS"
+prompt_value MINIO_CONSOLE_PASS "MinIO Console basic-auth password (nginx gate, Step 1)" 1 "$MINIO_CONSOLE_PASS"
+echo ""
+
 # Write atomically via temp file -- if interrupted, .env is never half-written.
 cat > "${ENV_FILE}.tmp" << ENV_TEMPLATE
 # =============================================================================
@@ -686,6 +841,10 @@ cat > "${ENV_FILE}.tmp" << ENV_TEMPLATE
 APP_ENV=production
 LOG_LEVEL=INFO
 CORS_ORIGINS=https://${FRONTEND_DOMAIN}
+# Base of every absolute link the backend emails out (password reset,
+# document letters). Built from FRONTEND_DOMAIN -- the one place the site
+# address is stated -- and nowhere else; no trailing slash.
+FRONTEND_BASE_URL=https://${FRONTEND_DOMAIN}
 
 # -- Database --
 DATABASE_URL=postgresql+asyncpg://aivis:${DB_PASS}@postgres:5432/aivis
@@ -724,14 +883,14 @@ SESSION_TTL_DAYS=30
 MAX_CONCURRENT_SESSIONS=5
 
 # -- Telegram --
-TELEGRAM_BOT_TOKEN=PLACEHOLDER
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_VAL}
 # Derived from the token by the installer (Telegram getMe), never typed.
 # The backend does not read it -- Settings has no such field and drops it
 # (extra="ignore"). It lives here because backend/.env is the SINGLE
 # source the comms hand-over reads from: comms builds every deep-link
 # button from it, and a value invented in two places is a value that can
 # disagree with itself.
-TELEGRAM_BOT_URL=PLACEHOLDER
+TELEGRAM_BOT_URL=${TELEGRAM_BOT_URL_VAL}
 
 # -- Telegram Auth Security --
 AUTH_RATE_LIMIT_MAX_REQUESTS=5
@@ -745,27 +904,24 @@ AUTH_CLOCK_SKEW_SECONDS=60
 # into the comms env. Same arrangement as TELEGRAM_BOT_URL: written
 # here, consumed by the hand-over, ignored by app/core/config.py.
 #
-# So an operator editing a Mailgun value edits it HERE, once, and the
-# next install run carries it across. MAILGUN_API_URL is where the
-# REGION is stated -- the hand-over derives eu/us from it rather than
-# repeating the fact.
+# MAILGUN_API_URL is where the REGION is stated -- the hand-over derives
+# eu/us from it rather than repeating the fact.
 #
 # The six SMTP_* variables that used to sit here are gone with the local
 # MTA (this installer no longer installs Postfix, and removes it if it
-# finds one). SMTP_FROM_EMAIL keeps its old NAME on purpose: this block
-# is a no-op on a box that already has a .env, so renaming it would
-# silently lose the value on every existing server.
+# finds one). SMTP_FROM_EMAIL is a historical NAME for the sender
+# address; deliver_comms_email maps it to comms' EMAIL_FROM_ADDRESS.
 SMTP_FROM_EMAIL=noreply@${MAIL_DOMAIN}
-MAILGUN_API_KEY=PLACEHOLDER
+MAILGUN_API_KEY=${MAILGUN_API_KEY_VAL}
 MAILGUN_DOMAIN=${MAIL_DOMAIN}
 MAILGUN_API_URL=https://api.eu.mailgun.net
 
 # -- Crypto payments service (H7) --
-# Rendered EMPTY. The service issues both values on its own first
-# install pass (deploy contract, section 9 of the payments TOR) and
-# that hand-over does not exist yet, so there is nothing to write here.
-# An empty URL is a supported configuration: no call is made and the
-# deposit screen says it is temporarily unavailable.
+# Rendered EMPTY here. The service issues these values on its own
+# install pass (deploy contract, section 9 of the payments TOR), and its
+# hand-over -- driven by setup_payments below -- writes them into this
+# file together with PAYMENTS_WEBHOOK_SECRET, then setup_payments
+# verifies all three are non-empty.
 #
 # CRYPTO_NETWORKS was rendered here with the value TRC20,ERC20,BEP20,PoS
 # and had to go, not for tidiness: a rendered .env overrides the
@@ -785,120 +941,7 @@ AGENT_APPLICATION_COOLDOWN_DAYS=30
 ENV_TEMPLATE
 
 mv "${ENV_FILE}.tmp" "$ENV_FILE"
-success ".env generated with random passwords (incl. MinIO secrets)"
-
-# Interactive secrets
-echo ""
-log "Enter secrets (press ENTER to keep PLACEHOLDER and configure later):"
-echo ""
-
-prompt_secret() {
-    local VAR="$1"
-    local LABEL="$2"
-    local MIN_LEN="${3:-0}"
-    local VALUE
-
-    while true; do
-        # Echo intentionally left ON: the operator wants to see what was
-        # typed while typing it, not after. Trade-off accepted -- typed
-        # values land in the terminal's own scrollback, and in any session
-        # recording (script/asciinema/tmux capture) if one is running. No
-        # explicit `echo` needed here: with echo on, the terminal itself
-        # advances the cursor to a new line on Enter.
-        read -rp "  $LABEL: " VALUE < /dev/tty
-        if [ -z "$VALUE" ]; then
-            warn "  $LABEL: keeping current value"
-            return 0
-        fi
-        if [ "$MIN_LEN" -gt 0 ] && [ "${#VALUE}" -lt "$MIN_LEN" ]; then
-            warn "  $LABEL: must be at least $MIN_LEN characters (got ${#VALUE}). Try again, or press ENTER to keep current."
-            continue
-        fi
-        sed -i "s|${VAR}=.*|${VAR}=${VALUE}|" "$ENV_FILE"
-        success "  $LABEL set"
-        return 0
-    done
-}
-
-# -- Telegram: ask for the token, DERIVE the URL ------------------------------
-# The bot URL is not a second question. It is built from the username
-# Telegram itself answers with FOR THIS TOKEN, so the two can never name
-# different bots -- a hand-typed URL can, and the result is a comms stack
-# in real mode sending working buttons that point at somebody else's bot.
-# Both values are non-empty, so no validator downstream would catch it.
-#
-# The link domain is a constant here rather than a literal further down:
-# domains live at the edge, in one named place, and comms refuses profile
-# data that carries one at all.
-TELEGRAM_LINK_DOMAIN="telegram.me"
-
-prompt_telegram_bot() {
-    local token username getme current
-    current=$(grep -E '^TELEGRAM_BOT_TOKEN=' "$ENV_FILE" | tail -n 1 | cut -d= -f2-)
-
-    while true; do
-        read -rp "  Telegram Bot Token: " token < /dev/tty
-        if [ -z "$token" ]; then
-            # ENTER means "this run has nothing to say". If a real token is
-            # already on file that is fine; if the placeholder is still
-            # there, say what it costs rather than passing silently -- the
-            # comms hand-over further down refuses to deliver a placeholder,
-            # and the backend refuses to authenticate anyone with one.
-            if [ "$current" = "PLACEHOLDER" ] || [ "$current" = "TEST" ] || [ -z "$current" ]; then
-                warn "  Telegram Bot Token: still unset -- Telegram login will not work,"
-                warn "  and comms will be left in stub mode (nothing gets delivered)."
-            else
-                warn "  Telegram Bot Token: keeping current value"
-            fi
-            return 0
-        fi
-
-        # Verify the token by using it. A typo, a revoked token or a
-        # placeholder dies HERE, in front of the person who can fix it,
-        # instead of as a silent auth failure on the first real login.
-        # Parsed with grep/sed to avoid a jq dependency.
-        log "  Verifying token with Telegram (getMe)..."
-        getme=$(curl -s --max-time 15 "https://api.telegram.org/bot${token}/getMe" || true)
-        if ! echo "$getme" | grep -q '"ok":true'; then
-            warn "  Telegram rejected that token (getMe failed). Try again, or press ENTER to skip."
-            warn "  Response: ${getme:-<empty>}"
-            continue
-        fi
-        username=$(echo "$getme" | grep -o '"username":"[^"]*"' | head -1 | sed 's/"username":"//; s/"//' || true)
-        if [ -z "$username" ]; then
-            warn "  Could not read the bot username out of the getMe response. Try again."
-            continue
-        fi
-
-        sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${token}|" "$ENV_FILE"
-        sed -i "s|^TELEGRAM_BOT_URL=.*|TELEGRAM_BOT_URL=https://${TELEGRAM_LINK_DOMAIN}/${username}|" "$ENV_FILE"
-        success "  Telegram bot: @${username}"
-        return 0
-    done
-}
-
-prompt_telegram_bot
-prompt_secret "MAILGUN_API_KEY"    "Mailgun API Key (NO EMAIL AT ALL without it)"
-
-# MinIO credentials -- user supplies memorable values OR ENTERs to keep the
-# random defaults generated above by gen_short_id / gen_password. The three
-# shell variables (MINIO_ROOT_USER_VAL, MINIO_ROOT_PASS, MINIO_CONSOLE_PASS)
-# are consumed downstream by htpasswd (MinIO Storage section) and `mc alias
-# set` (Docker Stack section), so they MUST be re-read from .env after the
-# prompts in case the user replaced them.
-echo ""
-log "MinIO Console credentials (used to log in at https://${STORAGE_DOMAIN}):"
-log "ENTER is RECOMMENDED on all three below -- unlike the PLACEHOLDER fields"
-log "above, ENTER here keeps three INDEPENDENTLY GENERATED RANDOM values, not"
-log "a placeholder. Only type a value to restore one specific known credential"
-log "(e.g. re-installing with a password a script already depends on)."
-prompt_secret "MINIO_ROOT_USER"                   "MinIO Root User (Console login, Step 2)" 3
-prompt_secret "MINIO_ROOT_PASSWORD"               "MinIO Root Password (Console login, Step 2)" 8
-prompt_secret "MINIO_CONSOLE_BASIC_AUTH_PASSWORD" "MinIO Console basic-auth password (nginx gate, Step 1)"
-
-MINIO_ROOT_USER_VAL=$(grep "^MINIO_ROOT_USER=" "$ENV_FILE" | cut -d= -f2-)
-MINIO_ROOT_PASS=$(grep "^MINIO_ROOT_PASSWORD=" "$ENV_FILE" | cut -d= -f2-)
-MINIO_CONSOLE_PASS=$(grep "^MINIO_CONSOLE_BASIC_AUTH_PASSWORD=" "$ENV_FILE" | cut -d= -f2-)
+success ".env generated (random secrets + the values entered above)"
 
 chmod 600 "$ENV_FILE"
 success ".env secured (chmod 600)"
@@ -1226,7 +1269,7 @@ validate_deliverable() {
     if [ -z "$value" ]; then
         error "Refusing to deliver an empty value for $key."
     fi
-    if ! [[ "$value" =~ ^[A-Za-z0-9:._@/-]+$ ]]; then
+    if ! [[ "$value" =~ $ENV_SAFE_RE ]]; then
         error "Refusing to deliver $key: value contains characters outside the allowed set [A-Za-z0-9:._@/-] (spaces, quotes, \$, backticks, '|' and newlines are rejected -- they would break the env file the comms CLI sources)."
     fi
 }
@@ -1273,47 +1316,25 @@ deliver_comms_profile() {
 # NO CHANNEL MODE ANY MORE. comms decided a channel by CHANNELS_MODE
 # once; since its 2.0.0 the verdict comes from the key set alone --
 # empty means the channel does not exist on that deploy, full means it
-# is live, PARTIAL refuses startup. So "both or neither" below stopped
-# being a nicety and became the contract: half a set does not degrade
-# the channel, it stops the service.
+# is live, PARTIAL refuses startup.
 #
-# Both values are read back OUT of backend/.env rather than rebuilt from
-# shell variables, for two load-bearing reasons: byte-equality with what
-# aivis itself uses becomes a property of the code rather than a
-# coincidence of two formulas staying in step, and the .env generation
-# above is a no-op when the file already exists, so on a re-run over a
-# live box the prompt never happens and those shell variables do not exist.
+# Both values are read back OUT of backend/.env rather than taken from
+# shell variables: byte-equality with what aivis itself uses becomes a
+# property of the code rather than a coincidence of two formulas staying
+# in step.
 #
-# THE GUARD -- both or neither, and a PLACEHOLDER counts as neither. A
-# re-run without the prompt would otherwise push a sentinel into comms and
-# flip it to real mode, where every send fails and every button is built
-# from a fake base. Note the sentinel set: this installer writes
-# PLACEHOLDER, the committed .env.example carries TEST, and the backend's
-# own config treats "" and TEST as absent. All three mean "nothing was
-# said"; only a real value is a value.
+# NO "NOT DELIVERED" PATH. backend/.env is written only after the token
+# was verified with Telegram and the URL derived from it (ask first,
+# write once, in the Environment Configuration section), so both values
+# are always there. validate_deliverable refuses an empty value with a
+# hard stop -- if that ever fires, the writer above is broken, and a
+# quiet "skipped" would hide it.
 deliver_comms_telegram() {
     local comms_env="$1" aivis_env="$2"
     local token url
 
     token=$(read_env_value "$aivis_env" "TELEGRAM_BOT_TOKEN" || true)
     url=$(read_env_value "$aivis_env" "TELEGRAM_BOT_URL" || true)
-
-    case "${token:-}" in ""|PLACEHOLDER|TEST) token="" ;; esac
-    case "${url:-}" in ""|PLACEHOLDER|TEST) url="" ;; esac
-
-    if [ -z "$token" ] || [ -z "$url" ]; then
-        warn "Telegram credentials NOT delivered to comms on this run."
-        warn "backend/.env carries no real bot token, so pushing what is there"
-        warn "would hand comms a full key set built from a sentinel -- a LIVE"
-        warn "telegram channel whose every delivery fails, instead of a deploy"
-        warn "that simply has no telegram channel."
-        warn "Any credentials already in $comms_env are left as they are."
-        warn "A clean delivery is a WIPE + fresh install -- never a hand edit"
-        warn "of either .env (the installer is the deliverable; a server edited"
-        warn "by hand is a server nobody can reproduce)."
-        COMMS_TELEGRAM_DELIVERED=0
-        return 0
-    fi
 
     # Both or neither: the URL carries the username Telegram answered with
     # for THAT token, so moving one without the other is meaningless. And
@@ -1324,39 +1345,32 @@ deliver_comms_telegram() {
 
     upsert_env_var "$comms_env" "TELEGRAM_BOT_TOKEN" "$token"
     upsert_env_var "$comms_env" "TELEGRAM_BOT_URL" "$url"
-    COMMS_TELEGRAM_DELIVERED=1
     success "Telegram credentials delivered to comms (channel: live)"
 }
 
 # The four Mailgun values reach comms the same way the bot token does:
-# read back OUT of backend/.env, filtered for sentinels, delivered all or
-# not at all. Same reasons as above -- byte-equality with what the
-# product's own .env says becomes a property of the code, and on a re-run
-# over a live box the prompts never happen, so shell variables from the
-# generation step do not exist.
+# read back OUT of backend/.env and delivered all together.
 #
-# WHY ALL OR NOTHING, and why it is stricter here than it looks: comms
-# counts three DECIDING keys for this channel (API key, domain, sender).
-# A PARTIAL set does not disable the channel -- it REFUSES STARTUP of the
-# whole comms service, taking telegram and in-app down with it. So a
-# half-delivery here is not "no email", it is "no comms".
-#
-# THE SENTINEL SET IS TWO VALUES, NOT ONE. This installer writes
-# PLACEHOLDER into MAILGUN_API_KEY; the committed .env.example carries
-# TEST. Our own deleted email guard knew only TEST, and that was a live
-# defect -- a box installed by this script and never edited would have
-# passed PLACEHOLDER through as if it were a key. Both are filtered, on
-# every value, exactly as the telegram delivery above does it.
+# WHY ALL OR NOTHING, and why there is no "nothing" either. comms counts
+# three DECIDING keys for this channel (API key, domain, sender). A
+# PARTIAL set does not disable the channel -- it REFUSES STARTUP of the
+# whole comms service. An EMPTY set does too, on this product: the
+# profile (comms-profile/types.yaml) routes four types to email, and the
+# comms profile loader refuses a route into a channel with no keys. So
+# every path short of a full set is "no comms at all", and the only
+# acceptable outcome here is a full delivery or a hard stop. The API key
+# is a required prompt; domain, sender and API URL are written from
+# constants of this script -- all four are always in backend/.env.
 #
 # THE REGION IS DERIVED, NOT SPELLED OUT. It is already stated once, in
-# MAILGUN_API_URL, which is what the product's .env carries and what an
-# operator edits when moving to the US endpoint. A literal "eu" here
-# would be a SECOND place recording one fact, and the two would part
-# company on that move -- silently, because comms would then sign
-# requests against the wrong provider base address. An unrecognised URL
-# delivers NOTHING rather than guessing: comms treats an unknown region
-# as a startup refusal, and its default (eu) is only correct by accident
-# on a deploy that spelled out a US endpoint.
+# MAILGUN_API_URL, which is what the product's .env carries. A literal
+# "eu" here would be a SECOND place recording one fact, and the two would
+# part company on a move to the US endpoint -- silently, because comms
+# would then sign requests against the wrong provider base address. An
+# unrecognised URL leaves the region empty, which validate_deliverable
+# stops on, rather than a guess: comms treats an unknown region as a
+# startup refusal, and its default (eu) is only correct by accident on a
+# deploy that spelled out a US endpoint.
 deliver_comms_email() {
     local comms_env="$1" aivis_env="$2"
     local api_key domain sender api_url region
@@ -1365,11 +1379,6 @@ deliver_comms_email() {
     domain=$(read_env_value "$aivis_env" "MAILGUN_DOMAIN" || true)
     sender=$(read_env_value "$aivis_env" "SMTP_FROM_EMAIL" || true)
     api_url=$(read_env_value "$aivis_env" "MAILGUN_API_URL" || true)
-
-    case "${api_key:-}" in ""|PLACEHOLDER|TEST) api_key="" ;; esac
-    case "${domain:-}" in ""|PLACEHOLDER|TEST) domain="" ;; esac
-    case "${sender:-}" in ""|PLACEHOLDER|TEST) sender="" ;; esac
-    case "${api_url:-}" in ""|PLACEHOLDER|TEST) api_url="" ;; esac
 
     # Closed set, mirroring comms (EMAIL_REGIONS in its
     # app/core/channels.py). Matched on the HOST portion and not with a
@@ -1381,29 +1390,6 @@ deliver_comms_email() {
         https://api.mailgun.net|https://api.mailgun.net/*)       region="us" ;;
     esac
 
-    if [ -z "$api_key" ] || [ -z "$domain" ] || [ -z "$sender" ] || [ -z "$region" ]; then
-        warn "Mailgun credentials NOT delivered to comms on this run."
-        warn "The product will have NO EMAIL at all: comms is the only path,"
-        warn "and a deploy with an empty key set simply has no email channel."
-        warn "Delivering a partial set instead would be worse -- comms refuses"
-        warn "to start on a half-filled channel, taking telegram and in-app"
-        warn "down with it -- so nothing is written."
-        warn "Missing after sentinel filtering (PLACEHOLDER / TEST count as"
-        warn "missing):"
-        # `if`, not `[ ... ] && warn`: this script runs under `set -e`,
-        # and a failing test as the left side of an AND-list is a
-        # subtlety nobody should have to re-derive while reading a
-        # diagnostic.
-        if [ -z "$api_key" ]; then warn "  -- MAILGUN_API_KEY in $aivis_env"; fi
-        if [ -z "$domain" ]; then warn "  -- MAILGUN_DOMAIN in $aivis_env"; fi
-        if [ -z "$sender" ]; then warn "  -- SMTP_FROM_EMAIL in $aivis_env"; fi
-        if [ -z "$region" ]; then
-            warn "  -- a region derivable from MAILGUN_API_URL (got: ${api_url:-<empty>}; expected https://api.eu.mailgun.net or https://api.mailgun.net)"
-        fi
-        COMMS_EMAIL_DELIVERED=0
-        return 0
-    fi
-
     validate_deliverable "EMAIL_MAILGUN_API_KEY" "$api_key"
     validate_deliverable "EMAIL_MAILGUN_DOMAIN" "$domain"
     validate_deliverable "EMAIL_FROM_ADDRESS" "$sender"
@@ -1413,13 +1399,8 @@ deliver_comms_email() {
     upsert_env_var "$comms_env" "EMAIL_MAILGUN_DOMAIN" "$domain"
     upsert_env_var "$comms_env" "EMAIL_FROM_ADDRESS" "$sender"
     upsert_env_var "$comms_env" "EMAIL_MAILGUN_REGION" "$region"
-    COMMS_EMAIL_DELIVERED=1
     success "Mailgun credentials delivered to comms (channel: live, region: $region)"
 }
-
-# Set by the two delivery functions above, read by the summary below.
-COMMS_TELEGRAM_DELIVERED=0
-COMMS_EMAIL_DELIVERED=0
 
 setup_comms() {
     log "Setting up the comms stack (orchestrated)..."
@@ -1513,25 +1494,12 @@ setup_comms() {
     done
     success "COMMS_* variables verified in $aivis_env"
 
-    # -- 6. Say which channels this box ended up with ---------------------
-    # A REPORT, not a check. The predecessor here re-read CHANNELS_MODE
-    # out of the comms env and aborted when it was not "real" -- a
-    # tautology, because the only writer of that key was the delivery
-    # function five lines earlier in this same script, and comms stopped
-    # having a channel mode at its 2.0.0 anyway. What can actually be
-    # verified about a channel is its state in the channel map of comms'
-    # own GET /health, which is a question for `aivis email-status`
-    # (scripts/aivis-manage.sh) and not for a variable we wrote ourselves.
-    if [ "$COMMS_TELEGRAM_DELIVERED" -eq 1 ]; then
-        success "comms channel telegram: credentials delivered by this installer"
-    else
-        warn "comms channel telegram: NOT delivered -- see the note above."
-    fi
-    if [ "$COMMS_EMAIL_DELIVERED" -eq 1 ]; then
-        success "comms channel email: credentials delivered by this installer"
-    else
-        warn "comms channel email: NOT delivered -- the product has no email."
-    fi
+    # Channel state is not re-checked here: both delivery functions above
+    # either deliver a full key set or stop the install, and what can
+    # actually be verified about a channel is its state in the channel
+    # map of comms' own GET /health -- a question for `aivis
+    # email-status` (scripts/aivis-manage.sh), not for a variable this
+    # script wrote itself.
     success "comms stack is up and linked (profile: $INSTALL_BASE/repo/comms-profile)"
 }
 

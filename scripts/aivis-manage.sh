@@ -2221,11 +2221,11 @@ asyncio.run(main())
     if [ "$missing" -eq 1 ]; then
         echo ""
         echo "  DIAGNOSIS: the credentials were never delivered."
-        echo "  They travel from backend/.env to the comms env during an"
-        echo "  install run (deliver_comms_email). Put real values into"
-        echo "  $COMPOSE_DIR/backend/.env -- MAILGUN_API_KEY, MAILGUN_DOMAIN,"
-        echo "  SMTP_FROM_EMAIL, MAILGUN_API_URL -- and re-run the installer."
-        echo "  PLACEHOLDER and TEST count as absent, by design."
+        echo "  They travel from backend/.env to the comms env only during an"
+        echo "  install (deliver_comms_email), and the current installer asks"
+        echo "  for the Mailgun key and stops rather than install without it."
+        echo "  A box in this state was not installed by it: the remedy is a"
+        echo "  fresh install, not an edit of either .env."
     else
         echo "  All three deciding keys ARE present and non-empty in"
         echo "  $comms_env, yet comms reports the channel as $EMAIL_STATE."

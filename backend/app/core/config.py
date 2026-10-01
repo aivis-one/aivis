@@ -18,6 +18,9 @@
 #   Anything other than "development" is treated as production-grade.
 # =============================================================================
 
+import ipaddress
+from urllib.parse import urlsplit
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -27,6 +30,93 @@ APP_VERSION = "0.1.0"
 
 # Valid structlog log levels.
 _VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+
+# -- Values that mean "nothing was said" (P-108) --
+#
+# THE ONE PLACE this set lives. The installer used to write PLACEHOLDER
+# and the deleted backend/.env.example carried TEST; this validator knew
+# only TEST, so a fresh install booted production on PLACEHOLDER past the
+# very guard written against it. The installer no longer writes either
+# (it asks before it writes backend/.env), and it keeps NO copy of this
+# set on purpose: a second copy is a second thing to keep in step, and
+# anything that reaches .env still has to pass here. Compared after
+# strip() and upper(), so " test " and "Placeholder" are the same thing.
+_PLACEHOLDERS = frozenset({"PLACEHOLDER", "TEST"})
+
+# -- Development fallbacks --
+#
+# Filled in by _validate on a development box ONLY, and refused on any
+# other box -- one constant serves both directions, so the value that is
+# filled in dev and the value that is refused in production can never
+# drift apart. The two URL fallbacks need no refusal of their own: they
+# point at localhost, and the loopback rule below already refuses them.
+_DEV_DATABASE_URL = "postgresql+asyncpg://aivis:aivis@localhost:5432/aivis"
+_DEV_SECRET_KEY = "dev-only-insecure-key-do-not-use-in-production"
+_DEV_MINIO_ENDPOINT = "http://localhost:9000"
+_DEV_MINIO_CREDENTIAL = "minioadmin"
+
+
+def _is_loopback_url(value: str) -> bool:
+    """True when the URL's host is this machine.
+
+    Inside a container "this machine" is the container itself, so a
+    production URL that names it reaches nothing the product needs: every
+    service on the box is addressed by its compose name. Covers the name
+    forms (localhost, *.localhost) and the address forms (127.0.0.0/8,
+    ::1, and the unspecified 0.0.0.0 / ::). A value with no parseable
+    host is not loopback -- it is judged by the other rules.
+    """
+    host = urlsplit(value.strip()).hostname
+    if not host:
+        return False
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_unspecified
+
+
+def _value_problem(
+    value: str,
+    *,
+    required: bool,
+    url: bool = False,
+    https: bool = False,
+    dev_value: str | None = None,
+) -> str | None:
+    """Why this value is unfit for production, or None when it is fit.
+
+    One reason per value, the first that applies: a placeholder is
+    reported as a placeholder, not also as "not https". An EMPTY value is
+    a problem only when the setting is required -- the optional ones
+    (comms, payments) use empty to mean "this box has no such stack".
+    Anything NON-empty is judged the same way whether required or not.
+    """
+    if value == "":
+        return "is empty" if required else None
+    stripped = value.strip()
+    if not stripped:
+        return "is blank (whitespace only)"
+    if stripped.upper() in _PLACEHOLDERS:
+        return "is a placeholder, not a value"
+    if stripped != value:
+        return "has leading or trailing whitespace"
+    if dev_value is not None and value == dev_value:
+        return "is the development fallback"
+    if url and _is_loopback_url(value):
+        return (
+            "points at a loopback host "
+            "(inside a container that is the container itself)"
+        )
+    if https:
+        parts = urlsplit(value)
+        if parts.scheme != "https" or not parts.hostname:
+            return "must be an absolute https:// URL"
+        if value.endswith("/"):
+            return "must not end with '/' (links are built as <base>/<path>)"
+    return None
 
 
 class Settings(BaseSettings):
@@ -38,16 +128,20 @@ class Settings(BaseSettings):
     app_env: str = ""
     log_level: str = "INFO"
     cors_origins: str = "*"
-    # Base URL of the deployed frontend SPA (no trailing slash). Used to
-    # build absolute links the backend emails out -- currently only the
-    # password-reset confirm link (auth/service.py::
-    # _request_password_reset_email), plus the portfolio link the two
+    # Base URL of the deployed frontend SPA: absolute https, no trailing
+    # slash. Every absolute link the backend emails out is built from it
+    # -- the password-reset confirm link (auth/service.py::
+    # _request_password_reset_email) and the portfolio link the two
     # document emails carry (purchases/document_utils.py::
-    # documents_link). Not
-    # gated behind the is_dev validator like secret_key/database_url:
-    # an unset value in production degrades to a broken (but harmless,
-    # non-secret-leaking) link in one email body, not an open security
-    # hole -- so this stays a plain default rather than a hard failure.
+    # documents_link). The password reset IS the recovery path of a
+    # locked-out account, so a wrong value here is a broken product, not
+    # a cosmetic defect (P-116: observed on a box, the reset letter
+    # arrived and its link led to http://localhost:5173).
+    #
+    # The installer writes it from FRONTEND_DOMAIN -- the one source of
+    # the site address; nothing else in the backend derives it. The
+    # default below is the vite dev server and serves development only:
+    # _validate refuses it anywhere else.
     frontend_base_url: str = "http://localhost:5173"
 
     # -- Database --
@@ -283,15 +377,11 @@ class Settings(BaseSettings):
     # for the same reason -- an empty URL means "this box has no payments
     # stack", and that is a supported configuration rather than a fault.
     #
-    # UNTIL THE DEPLOY HAND-OVER OF TOR SECTION 9 EXISTS, EMPTY IS THE
-    # ONLY CONFIGURATION. The three product-side variables of that
-    # section (PAYMENTS_SERVICE_TOKEN, PAYMENTS_API_URL and the webhook
-    # secret, which is H8's) are generated by the service on its first
-    # install pass, and the service cannot do that yet. So the deposit
-    # screen reports "temporarily unavailable" on every box until that
-    # work lands. That is not a regression: what it replaces is a screen
-    # that displayed AIVIS_TRC20_<hex> as a deposit address, which no
-    # wallet would accept and no transfer could reach.
+    # The three product-side variables of TOR section 9
+    # (PAYMENTS_SERVICE_TOKEN, PAYMENTS_API_URL and the webhook secret,
+    # which is H8's) are generated by the service on its install pass and
+    # written into backend/.env by its hand-over, which
+    # scripts/install_aivis.sh (setup_payments) drives and then verifies.
     payments_api_url: str = ""
     payments_service_token: str = ""
     # Shared secret of the INBOUND direction (H8): the service sends it in
@@ -352,95 +442,130 @@ class Settings(BaseSettings):
             )
         self.log_level = self.log_level.upper()
 
-        # -- CORS in production --
-        if not is_dev and self.cors_origins.strip() == "*":
-            raise ValueError(
-                "CORS_ORIGINS=* is not allowed in production. "
-                "Set explicit origins, e.g. https://app.aivis.one"
+        # -- Production requirements (P-108, P-116) --
+        #
+        # EVERY setting whose default or unset state is unfit for
+        # production is judged here, by one rule set (_value_problem),
+        # and ONE refusal names all of them at once: a refusal that names
+        # one problem per start hides the rest behind it, and every hidden
+        # one costs another install. The list came from walking every
+        # field of this class with its writer on the box and its readers
+        # in app/; the fields not listed are numbers, flags or names
+        # whose defaults are production values.
+        #
+        # Nothing is silently replaced. A development box gets the
+        # fallbacks below; any other box gets a refusal or a start.
+        if is_dev:
+            if not self.database_url:
+                self.database_url = _DEV_DATABASE_URL
+            if not self.secret_key:
+                self.secret_key = _DEV_SECRET_KEY
+            # MinIO is in the hot path of attachments / templates /
+            # roadmap covers, so it needs a value in every environment;
+            # in development that value is the local compose stack.
+            if not self.minio_endpoint:
+                self.minio_endpoint = _DEV_MINIO_ENDPOINT
+            if not self.minio_access_key:
+                self.minio_access_key = _DEV_MINIO_CREDENTIAL
+            if not self.minio_secret_key:
+                self.minio_secret_key = _DEV_MINIO_CREDENTIAL
+        else:
+            problems: list[str] = []
+
+            def judge(
+                name: str,
+                value: str,
+                *,
+                required: bool,
+                url: bool = False,
+                https: bool = False,
+                dev_value: str | None = None,
+            ) -> None:
+                reason = _value_problem(
+                    value, required=required, url=url, https=https,
+                    dev_value=dev_value,
+                )
+                if reason:
+                    problems.append(f"{name} {reason}")
+
+            # Required: the product does not work without these.
+            judge("DATABASE_URL", self.database_url, required=True, url=True)
+            judge("REDIS_URL", self.redis_url, required=True, url=True)
+            judge(
+                "SECRET_KEY", self.secret_key,
+                required=True, dev_value=_DEV_SECRET_KEY,
+            )
+            judge("TELEGRAM_BOT_TOKEN", self.telegram_bot_token, required=True)
+            judge("MINIO_ENDPOINT", self.minio_endpoint, required=True, url=True)
+            judge(
+                "MINIO_ACCESS_KEY", self.minio_access_key,
+                required=True, dev_value=_DEV_MINIO_CREDENTIAL,
+            )
+            judge(
+                "MINIO_SECRET_KEY", self.minio_secret_key,
+                required=True, dev_value=_DEV_MINIO_CREDENTIAL,
+            )
+            judge(
+                "FRONTEND_BASE_URL", self.frontend_base_url,
+                required=True, url=True, https=True,
             )
 
-        # -- database_url --
-        if not self.database_url:
-            if is_dev:
-                self.database_url = (
-                    "postgresql+asyncpg://aivis:aivis@localhost:5432/aivis"
+            # CORS: the wildcard keeps its own message; every listed
+            # origin is judged like any other URL. An empty entry (a
+            # trailing comma) is refused rather than passed to the
+            # middleware as an origin named "".
+            if self.cors_origins.strip() == "*":
+                problems.append(
+                    "CORS_ORIGINS=* is not allowed in production -- set "
+                    "explicit origins, e.g. https://app.aivis.one"
                 )
             else:
-                raise ValueError("DATABASE_URL is required in production.")
+                origins = self.cors_origins.split(",")
+                for index, origin in enumerate(origins):
+                    label = (
+                        "CORS_ORIGINS" if len(origins) == 1
+                        else f"CORS_ORIGINS entry {index + 1}"
+                    )
+                    judge(label, origin.strip(), required=True, url=True)
 
-        # -- secret_key --
-        if not self.secret_key:
-            if is_dev:
-                self.secret_key = (
-                    "dev-only-insecure-key-do-not-use-in-production"
-                )
-            else:
+            # Optional: empty means "this box has no such stack". A
+            # value that IS set must still be a value.
+            judge("COMMS_REDIS_URL", self.comms_redis_url, required=False, url=True)
+            judge("COMMS_API_URL", self.comms_api_url, required=False, url=True)
+            judge("COMMS_SERVICE_TOKEN", self.comms_service_token, required=False)
+            judge("PAYMENTS_API_URL", self.payments_api_url, required=False, url=True)
+            judge(
+                "PAYMENTS_SERVICE_TOKEN", self.payments_service_token,
+                required=False,
+            )
+            judge(
+                "PAYMENTS_WEBHOOK_SECRET", self.payments_webhook_secret,
+                required=False,
+            )
+
+            if problems:
                 raise ValueError(
-                    "SECRET_KEY is required in production. "
-                    "Generate with: python -c "
-                    "\"import secrets; print(secrets.token_urlsafe(64))\""
+                    f"Refusing to start with APP_ENV={env}: "
+                    + "; ".join(problems)
+                    + ". Every one of these is written by the installer "
+                    "(scripts/install_aivis.sh and the comms / payments "
+                    "hand-overs it drives); a fresh install writes them "
+                    "all."
                 )
 
-        # -- telegram_bot_token --
-        if self.telegram_bot_token in ("", "TEST"):
-            if not is_dev:
-                raise ValueError(
-                    "TELEGRAM_BOT_TOKEN must be set to a real token "
-                    "in production (not 'TEST')."
-                )
-
-        # -- MinIO credentials (Refactor 2 iter 2.1) --
-        # Required at runtime in any environment because the storage
-        # abstraction is in the hot path of attachments / templates /
-        # roadmap covers. Dev-only fallbacks would silently mask a
-        # broken docker-compose stack.
-        if not self.minio_endpoint:
-            if is_dev:
-                self.minio_endpoint = "http://localhost:9000"
-            else:
-                raise ValueError("MINIO_ENDPOINT is required in production.")
-
-        if not self.minio_access_key:
-            if is_dev:
-                self.minio_access_key = "minioadmin"
-            else:
-                raise ValueError("MINIO_ACCESS_KEY is required in production.")
-
-        if not self.minio_secret_key:
-            if is_dev:
-                self.minio_secret_key = "minioadmin"
-            else:
-                raise ValueError("MINIO_SECRET_KEY is required in production.")
-
-        # -- Comms API pairing (T-64) --
-        # A url without a token sends "Authorization: Bearer " and comms
-        # answers 401 to every call: recipients would silently stop being
-        # created, and the first symptom would be users who never receive
-        # a notification. A token without a url is the same
-        # half-configuration seen from the other side.
-        #
-        # Gated on "comms is INTENDED on this box" -- i.e. at least one of
-        # the two is set -- rather than on their absence: a box with no
-        # comms at all is a supported configuration (see the empty-url
-        # note above), and demanding these keys everywhere would stop
-        # every comms-less deployment from starting, including in-place
-        # upgrades whose .env has no COMMS_* yet. Dev stays optional so a
-        # laptop needs no comms stack.
         # -- the payments TRIPLE: url / token / webhook secret (H7, H8) --
         #
-        # Same gate and same reasoning as the comms pair below: demanded
-        # only when payments is INTENDED on this box, because a box with
-        # no payments stack must still start -- and, until the section 9
-        # hand-over exists, every box is one.
+        # Demanded only when payments is INTENDED on this box -- at least
+        # one of the three is set -- because a box with no payments stack
+        # is a supported configuration and must still start.
         #
         # WHY ALL THREE OR NONE, RATHER THAN A REQUIRED SECRET. H8 added
-        # the third member. Making it required on its own would stop the
-        # product from booting the moment this code lands and before the
-        # installer that mints the value has landed -- and the installer
-        # is a different delivery that may arrive later. Gating all three
-        # on "any one of them is set" removes the ordering dependency
-        # completely: a box with none of them boots, a box with all three
-        # boots, and only a half-installed box is refused.
+        # the third member. Making it required on its own would have
+        # stopped the product from booting the moment that code landed and
+        # before the installer that mints the value had landed. Gating all
+        # three on "any one of them is set" removes the ordering
+        # dependency completely: a box with none of them boots, a box with
+        # all three boots, and only a half-installed box is refused.
         #
         # Each member names what its absence breaks, because "half
         # configured" alone does not tell an installer which half.
@@ -473,6 +598,19 @@ class Settings(BaseSettings):
                     "three to run without payments."
                 )
 
+        # -- Comms API pairing (T-64) --
+        # A url without a token sends "Authorization: Bearer " and comms
+        # answers 401 to every call: recipients would silently stop being
+        # created, and the first symptom would be users who never receive
+        # a notification. A token without a url is the same
+        # half-configuration seen from the other side.
+        #
+        # Gated on "comms is INTENDED on this box" -- i.e. at least one of
+        # the two is set -- rather than on their absence: a box with no
+        # comms at all is a supported configuration (see the empty-url
+        # note above), and demanding these keys everywhere would stop
+        # every comms-less deployment from starting. Dev stays optional so
+        # a laptop needs no comms stack.
         if not is_dev and (self.comms_api_url or self.comms_service_token):
             if self.comms_api_url and not self.comms_service_token:
                 raise ValueError(
