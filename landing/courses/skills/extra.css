@@ -1,0 +1,14 @@
+/* the inline style attributes of the accepted page, as classes: a hash-only CSP blocks a style attribute */
+.sty1 { position:absolute !important; width:0 !important; height:0 !important; overflow:hidden !important; }
+.sty2 { width:16% !important; }
+.sty3 { width:40% !important; }
+.sty4 { width:44% !important; }
+.sty5 { width:14% !important; }
+.sty6 { width:46% !important; }
+.sty7 { transform:rotate(90deg) !important; }
+.sty8 { width:22% !important; }
+.sty9 { width:34% !important; }
+.sty10 { width:12% !important; }
+.sty11 { width:28% !important; }
+.sty12 { width:60% !important; }
+.sty13 { display:flex !important; flex-wrap:wrap !important; gap:var(--space-3) !important; }

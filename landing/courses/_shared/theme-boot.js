@@ -1,0 +1,1 @@
+(function(){var r=document.documentElement,t;try{t=localStorage.getItem('aivis-theme')}catch(e){}if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';r.setAttribute('data-theme',t)})();

@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="{{@lang}}" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{a:meta.title}}</title>
+{{@description}}<script>{{@boot}}</script>
+<link rel="icon" type="image/svg+xml" href="/courses/_shared/assets/aivis-mark.svg">
+{{@alternates}}<style>{{@style}}</style>
+</head>
+<body>
+<svg class="sty1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<symbol id="i-alert-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 2 20.66 7 20.66 17 12 22 3.34 17 3.34 7z"/><path d="M12 6.5v6.5"/><path d="M10.85 15.45h2.3v2.3h-2.3z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 3 22 20.3H2z"/><path d="M12 10v4.6"/><path d="M10.85 16.25h2.3v2.3h-2.3z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M4 12h15"/><path d="M13 5l7 7-7 7"/></symbol>
+<symbol id="i-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 2 17.63 5.25 17.63 11.75 12 15 6.37 11.75 6.37 5.25z"/><path d="M8.8 14.3 7.5 22 12 19.3 16.5 22 15.2 14.3"/></symbol>
+<symbol id="i-bar-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M3.5 21v-5.5l4-1.5v7z" fill="currentColor" stroke="none"/><path d="M10 21V10l4-1.5V21z" fill="currentColor" stroke="none"/><path d="M16.5 21V5l4-1.5V21z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M7 8h10l3 3v6l-3 3H7l-3-3v-6z"/><path d="M12 8V3.5"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M8 12.5h2v3.5H8z" fill="currentColor" stroke="none"/><path d="M14 12.5h2v3.5h-2z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M4 12l5.5 6L20 6"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 2 20.66 7 20.66 17 12 22 3.34 17 3.34 7z"/><path d="M12 6.5V12l3.6 2.1"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M9 9h11v11H9z"/><path d="M15 9V4H4v11h5"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M5.5 11h13L20 12.5v7L18.5 21h-13L4 19.5v-7z"/><path d="M8 11V7l2-3.5h4L16 7v4"/><path d="M12 14.5v3"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 3 5.64 5.64 3 12 5.64 18.36 12 21 18.36 18.36 21 12 16.91 14.85 12.01 13.98 9.15 9.91 10.02 5.01z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M10.5 3 17 6.75 17 14.25 10.5 18 4 14.25 4 6.75z"/><path d="M16 16l5.5 5.5"/></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 2.5 20 5.5v7L12 21.5 4 12.5v-7z"/><path d="M8.5 11.5l2.5 2.7 4.5-5"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 2.3 14.76 9.1 22.08 9.62 16.47 14.35 18.23 21.48 12 17.6 5.77 21.48 7.53 14.35 1.92 9.62 9.24 9.1z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 7.6 15.81 9.8 15.81 14.2 12 16.4 8.19 14.2 8.19 9.8z"/><path d="M19.6 12L22.3 12M17.37 17.37L19.28 19.28M12 19.6L12 22.3M6.63 17.37L4.72 19.28M4.4 12L1.7 12M6.63 6.63L4.72 4.72M12 4.4L12 1.7M17.37 6.63L19.28 4.72"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 2 20.66 7 20.66 17 12 22 3.34 17 3.34 7z"/><path d="M12 6.6 16.68 9.3 16.68 14.7 12 17.4 7.32 14.7 7.32 9.3z"/><path d="M12 9.8 13.91 10.9 13.91 13.1 12 14.2 10.09 13.1 10.09 10.9z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M13.5 2 4.5 13.5H11l-1 8.5 10-12h-6.5z"/></symbol>
+</svg>
+<div class="deck" id="deck">
+  <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+
+  <header class="bar">
+    <a class="brand" id="logoLink" href="{{@href:/}}" aria-label="{{a:ui.logo}}"><img src="/courses/_shared/assets/aivis-mark.svg" alt=""><span class="brand-name">aivis<b>.</b>one</span></a>
+    <span class="counter" id="counter" aria-live="polite">1 / 24</span>
+    <details class="lang" id="langBox">
+      <summary class="lang__btn" id="langBtn" aria-label="{{a:ui.lang}}: {{@lang_name}}"><span class="lang__cur" aria-hidden="true">{{@lang_cur}}</span></summary>
+      <ul class="lang__list">
+{{@lang_items}}
+      </ul>
+    </details>
+    <button type="button" class="icon-btn theme-toggle" id="themeBtn" aria-label="{{a:ui.theme}}">
+      <svg class="icon i-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+      <svg class="icon i-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+    </button>
+  </header>
+
+  <main class="stage-wrap" id="stageWrap">
+    <div class="stage-box" id="stageBox">
+      <button type="button" class="more-cue" id="moreCue" aria-label="{{a:ui.more}}"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+      <div class="stage" id="stage" data-dir="next">
+
+        <!-- 1 · title -->
+        <section class="slide k-title" data-kind="title">
+          <div class="s-pad">
+            <img class="slide-mark" src="/courses/_shared/assets/aivis-mark.svg" alt="" aria-hidden="true">
+            <div class="kicker"><span>{{t:s01.t01}}</span></div>
+            <h1 class="title hero"><span>{{t:s01.t02}}</span></h1>
+            <div class="promise-cap"><span>{{t:s01.t03}}</span></div>
+            <ul class="points">
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-target"/></svg></span><span>{{t:s01.t04}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-shield-check"/></svg></span><span>{{t:s01.t05}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg></span><span>{{t:s01.t06}}</span></li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 2 · why -->
+        <section class="slide k-points" data-kind="points">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s02.t01}}</span></div>
+            <h2 class="title"><span>{{t:s02.t02}}</span></h2>
+            <ul class="points">
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span><span>{{t:s02.t03}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span><span>{{t:s02.t04}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span><span>{{t:s02.t05}}</span></li>
+            </ul>
+            <p class="example-line"><span>{{t:s02.t06}}</span></p>
+          </div>
+        </section>
+
+        <!-- 3 · probability machine -->
+        <section class="slide k-points" data-kind="points">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s03.t01}}</span></div>
+            <h2 class="title"><span>{{t:s03.t02}}</span></h2>
+            <ul class="points">
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg></span><span>{{t:s03.t03}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-bar-chart"/></svg></span><span>{{t:s03.t04}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg></span><span>{{t:s03.t05}}</span></li>
+            </ul>
+            <p class="example-line"><span>{{t:s03.t06}}</span></p>
+          </div>
+        </section>
+
+        <!-- 4 · same question -->
+        <section class="slide k-list" data-kind="list">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s04.t01}}</span></div>
+            <h2 class="title"><span>{{t:s04.t02}}</span></h2>
+            <ol class="list-num">
+              <li><span>{{t:s04.t03}}</span></li>
+              <li><span>{{t:s04.t04}}</span></li>
+              <li><span>{{t:s04.t05}}</span></li>
+            </ol>
+            <div class="callout"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:s04.t06}}</span></div>
+          </div>
+        </section>
+
+        <!-- 5 · context: the table -->
+        <section class="slide k-idea" data-kind="idea">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s05.t01}}</span></div>
+            <h2 class="title"><span>{{t:s05.t02}}</span></h2>
+            <div class="desk-diagram">
+              <div class="model">
+                <div class="tile"><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg></div>
+                <span class="lbl"><span>{{t:s05.t03}}</span></span>
+              </div>
+              <div class="zone on">
+                <div class="zone-cap"><span>{{t:s05.t04}}</span></div>
+                <div class="items">
+                  <span class="item"><span>{{t:s05.t05}}</span></span>
+                  <span class="item"><span>{{t:s05.t06}}</span></span>
+                  <span class="item"><span>{{t:s05.t07}}</span></span>
+                  <span class="item"><span>{{t:s05.t08}}</span></span>
+                  <span class="item"><span>{{t:s05.t09}}</span></span>
+                </div>
+              </div>
+              <div class="zone off">
+                <div class="zone-cap"><span>{{t:s05.t10}}</span></div>
+                <div class="items">
+                  <span class="item cut"><span>{{t:s05.t11}}</span></span>
+                  <span class="item cut"><span>{{t:s05.t12}}</span></span>
+                  <span class="item cut"><span>{{t:s05.t13}}</span></span>
+                </div>
+              </div>
+            </div>
+            <p class="example-line"><span>{{t:s05.t14}}</span></p>
+          </div>
+        </section>
+
+        <!-- 6 · poisoned context, own glossary -->
+        <section class="slide k-table" data-kind="table">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s06.t01}}</span></div>
+            <h2 class="title"><span>{{t:s06.t02}}</span></h2>
+            <table class="tbl">
+              <colgroup><col class="sty2"><col class="sty3"><col class="sty4"></colgroup>
+              <thead>
+                <tr>
+                  <th><span>{{t:s06.t03}}</span></th>
+                  <th><span>{{t:s06.t04}}</span></th>
+                  <th><span>{{t:s06.t05}}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span>{{t:s06.t06}}</span></td>
+                  <td data-l="{{a:s06.l01}}"><span>{{t:s06.t07}}</span></td>
+                  <td data-l="{{a:s06.l02}}"><span>{{t:s06.t08}}</span></td>
+                </tr>
+                <tr>
+                  <td><span>{{t:s06.t09}}</span></td>
+                  <td data-l="{{a:s06.l03}}"><span>{{t:s06.t10}}</span></td>
+                  <td data-l="{{a:s06.l04}}"><span>{{t:s06.t11}}</span></td>
+                </tr>
+                <tr>
+                  <td><span>{{t:s06.t12}}</span></td>
+                  <td data-l="{{a:s06.l05}}"><span>{{t:s06.t13}}</span></td>
+                  <td data-l="{{a:s06.l06}}"><span>{{t:s06.t14}}</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:s06.t15}}</span></div>
+          </div>
+        </section>
+
+        <!-- 7 · the formula -->
+        <section class="slide k-list" data-kind="list">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s07.t01}}</span></div>
+            <h2 class="title"><span>{{t:s07.t02}}</span></h2>
+            <ol class="list-num">
+              <li><span>{{t:s07.t03}}</span></li>
+              <li><span>{{t:s07.t04}}</span></li>
+              <li><span>{{t:s07.t05}}</span></li>
+              <li><span>{{t:s07.t06}}</span></li>
+            </ol>
+            <div class="callout"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:s07.t07}}</span></div>
+          </div>
+        </section>
+
+        <!-- 8 · weak vs strong -->
+        <section class="slide k-vs" data-kind="compare">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s08.t01}}</span></div>
+            <h2 class="title"><span>{{t:s08.t02}}</span></h2>
+            <div class="vs">
+              <div class="vs-card bad">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg><span>{{t:s08.t03}}</span></div>
+                <p class="vs-quote"><span>{{t:s08.t04}}</span></p>
+                <p class="body"><span>{{t:s08.t05}}</span></p>
+              </div>
+              <div class="vs-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></div>
+              <div class="vs-card good">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>{{t:s08.t06}}</span></div>
+                <ul class="gcfc">
+                  <li><span class="k"><span>{{t:s08.t07}}</span></span><span>{{t:s08.t08}}</span></li>
+                  <li><span class="k"><span>{{t:s08.t09}}</span></span><span>{{t:s08.t10}}</span></li>
+                  <li><span class="k"><span>{{t:s08.t11}}</span></span><span>{{t:s08.t12}}</span></li>
+                  <li><span class="k"><span>{{t:s08.t13}}</span></span><span>{{t:s08.t14}}</span></li>
+                </ul>
+              </div>
+            </div>
+            <p class="example-line"><span>{{t:s08.t15}}</span></p>
+          </div>
+        </section>
+
+        <!-- 9 · rushing and flattery -->
+        <section class="slide k-points" data-kind="points">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s09.t01}}</span></div>
+            <h2 class="title"><span>{{t:s09.t02}}</span></h2>
+            <ul class="points">
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-zap"/></svg></span><span>{{t:s09.t03}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-alert-triangle"/></svg></span><span>{{t:s09.t04}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"/></svg></span><span>{{t:s09.t05}}</span></li>
+            </ul>
+            <div class="callout"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:s09.t06}}</span></div>
+          </div>
+        </section>
+
+        <!-- 10 · copy: short setup prompt -->
+        <section class="slide k-copy" data-kind="copy">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s10.t01}}</span></div>
+            <h2 class="title"><span>{{t:s10.t02}}</span></h2>
+            <p class="lead"><span>{{t:s10.t03}}</span></p>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span class="cap"><span>{{t:s10.t04}}</span></span>
+                <button type="button" class="btn" data-variant="primary" data-copy="prompt-setup" data-copied="{{a:ui.copied}}"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span class="copy-label">{{t:ui.copy}}</span></button>
+              </div>
+              <div class="copy-body" id="prompt-setup"><span class="prompt" lang="en">{{t:s10.p01}}</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 11 · test = test -->
+        <section class="slide k-vs" data-kind="compare">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s11.t01}}</span></div>
+            <h2 class="title"><span>{{t:s11.t02}}</span></h2>
+            <div class="vs">
+              <div class="vs-card bad">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg><span>{{t:s11.t03}}</span></div>
+                <p class="vs-quote"><span>{{t:s11.t04}}</span></p>
+                <p class="body"><span>{{t:s11.t05}}</span></p>
+              </div>
+              <div class="vs-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></div>
+              <div class="vs-card good">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>{{t:s11.t06}}</span></div>
+                <p class="vs-quote"><span>{{t:s11.t07}}</span></p>
+                <p class="body"><span>{{t:s11.t08}}</span></p>
+              </div>
+            </div>
+            <p class="example-line"><span>{{t:s11.t09}}</span></p>
+          </div>
+        </section>
+
+        <!-- 12 · precise words, dialogue, options -->
+        <section class="slide k-table" data-kind="table">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s12.t01}}</span></div>
+            <h2 class="title"><span>{{t:s12.t02}}</span></h2>
+            <table class="tbl">
+              <colgroup><col class="sty5"><col class="sty6"><col class="sty7"></colgroup>
+              <thead>
+                <tr>
+                  <th><span>{{t:s12.t03}}</span></th>
+                  <th><span>{{t:s12.t04}}</span></th>
+                  <th><span>{{t:s12.t05}}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span>{{t:s12.t06}}</span></td>
+                  <td data-l="{{a:s12.l01}}"><span>{{t:s12.t07}}</span></td>
+                  <td data-l="{{a:s12.l02}}"><span>{{t:s12.t08}}</span></td>
+                </tr>
+                <tr>
+                  <td><span>{{t:s12.t09}}</span></td>
+                  <td data-l="{{a:s12.l03}}"><span>{{t:s12.t10}}</span></td>
+                  <td data-l="{{a:s12.l04}}"><span>{{t:s12.t11}}</span></td>
+                </tr>
+                <tr>
+                  <td><span>{{t:s12.t12}}</span></td>
+                  <td data-l="{{a:s12.l05}}"><span>{{t:s12.t13}}</span></td>
+                  <td data-l="{{a:s12.l06}}"><span>{{t:s12.t14}}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 13 · gift -->
+        <section class="slide k-gift" data-kind="gift">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s13.t01}}</span></div>
+            <h2 class="title"><span>{{t:s13.t02}}</span></h2>
+            <div class="gift">
+              <div class="badge"><svg class="icon" aria-hidden="true"><use href="#i-award"/></svg></div>
+              <div>
+                <h3><span>{{t:s13.t03}}</span></h3>
+                <ul class="points">
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>{{t:s13.t04}}</span></li>
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>{{t:s13.t05}}</span></li>
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>{{t:s13.t06}}</span></li>
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>{{t:s13.t07}}</span></li>
+                </ul>
+                <a class="btn" data-variant="primary" data-size="lg" href="/courses/_shared/downloads/workit.md" download><svg class="icon sty8" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:s13.t08}}</span></a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 14 · fears and data -->
+        <section class="slide k-vs" data-kind="compare">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s14.t01}}</span></div>
+            <h2 class="title"><span>{{t:s14.t02}}</span></h2>
+            <div class="vs">
+              <div class="vs-card bad">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>{{t:s14.t03}}</span></div>
+                <ul class="points">
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></span><span>{{t:s14.t04}}</span></li>
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></span><span>{{t:s14.t05}}</span></li>
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></span><span>{{t:s14.t06}}</span></li>
+                </ul>
+              </div>
+              <div class="vs-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></div>
+              <div class="vs-card good">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-shield-check"/></svg><span>{{t:s14.t07}}</span></div>
+                <ul class="points">
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>{{t:s14.t08}}</span></li>
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>{{t:s14.t09}}</span></li>
+                  <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>{{t:s14.t10}}</span></li>
+                </ul>
+              </div>
+            </div>
+            <p class="example-line"><span>{{t:s14.t11}}</span></p>
+          </div>
+        </section>
+
+        <!-- 15 · hallucinations -->
+        <section class="slide k-points" data-kind="points">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s15.t01}}</span></div>
+            <h2 class="title"><span>{{t:s15.t02}}</span></h2>
+            <ul class="points">
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-alert-circle"/></svg></span><span>{{t:s15.t03}}</span></li>
+              <li><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></span><span>{{t:s15.t04}}</span></li>
+            </ul>
+            <div class="case"><span>{{t:s15.t05}}</span></div>
+            <p class="src"><span>{{t:s15.t06}}</span></p>
+          </div>
+        </section>
+
+        <!-- 16 · cost of error -->
+        <section class="slide k-table" data-kind="table">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s16.t01}}</span></div>
+            <h2 class="title"><span>{{t:s16.t02}}</span></h2>
+            <table class="tbl">
+              <colgroup><col class="sty9"><col class="sty10"><col class="sty11"></colgroup>
+              <thead>
+                <tr>
+                  <th><span>{{t:s16.t03}}</span></th>
+                  <th><span>{{t:s16.t04}}</span></th>
+                  <th><span>{{t:s16.t05}}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="lvl"><i></i><span>{{t:s16.t06}}</span></span></td>
+                  <td data-l="{{a:s16.l01}}"><span>{{t:s16.t07}}</span></td>
+                  <td data-l="{{a:s16.l02}}"><span>{{t:s16.t08}}</span></td>
+                </tr>
+                <tr>
+                  <td><span class="lvl mid"><i></i><span>{{t:s16.t09}}</span></span></td>
+                  <td data-l="{{a:s16.l03}}"><span>{{t:s16.t10}}</span></td>
+                  <td data-l="{{a:s16.l04}}"><span>{{t:s16.t11}}</span></td>
+                </tr>
+                <tr>
+                  <td><span class="lvl full"><i></i><span>{{t:s16.t12}}</span></span></td>
+                  <td data-l="{{a:s16.l05}}"><span>{{t:s16.t13}}</span></td>
+                  <td data-l="{{a:s16.l06}}"><span>{{t:s16.t14}}</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout"><svg class="icon" aria-hidden="true"><use href="#i-alert-triangle"/></svg><span>{{t:s16.t15}}</span></div>
+          </div>
+        </section>
+
+        <!-- 17 · copy: full-file-read report -->
+        <section class="slide k-copy" data-kind="copy">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s17.t01}}</span></div>
+            <h2 class="title"><span>{{t:s17.t02}}</span></h2>
+            <p class="lead"><span>{{t:s17.t03}}</span></p>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span class="cap"><span>{{t:s17.t04}}</span></span>
+                <button type="button" class="btn" data-variant="primary" data-copy="prompt-fullread" data-copied="{{a:ui.copied}}"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span class="copy-label">{{t:ui.copy}}</span></button>
+              </div>
+              <div class="copy-body" id="prompt-fullread"><span class="prompt" lang="en">{{t:s17.p01}}</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 18 · levers -->
+        <section class="slide k-vs" data-kind="compare">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s18.t01}}</span></div>
+            <h2 class="title"><span>{{t:s18.t02}}</span></h2>
+            <div class="vs">
+              <div class="vs-card bad">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg><span>{{t:s18.t03}}</span></div>
+                <p class="vs-quote"><span>{{t:s18.t04}}</span></p>
+                <p class="body"><span>{{t:s18.t05}}</span></p>
+              </div>
+              <div class="vs-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></div>
+              <div class="vs-card good">
+                <div class="vs-label"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>{{t:s18.t06}}</span></div>
+                <ul class="gcfc">
+                  <li><span class="k"><span>{{t:s18.t07}}</span></span><span>{{t:s18.t08}}</span></li>
+                  <li><span class="k"><span>{{t:s18.t09}}</span></span><span>{{t:s18.t10}}</span></li>
+                  <li><span class="k"><span>{{t:s18.t11}}</span></span><span>{{t:s18.t12}}</span></li>
+                </ul>
+              </div>
+            </div>
+            <p class="example-line"><span>{{t:s18.t13}}</span></p>
+          </div>
+        </section>
+
+        <!-- 19 · big tasks -->
+        <section class="slide k-list" data-kind="list">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s19.t01}}</span></div>
+            <h2 class="title"><span>{{t:s19.t02}}</span></h2>
+            <ol class="list-num">
+              <li><span>{{t:s19.t03}}</span></li>
+              <li><span>{{t:s19.t04}}</span></li>
+              <li><span>{{t:s19.t05}}</span></li>
+              <li><span>{{t:s19.t06}}</span></li>
+            </ol>
+            <div class="callout"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:s19.t07}}</span></div>
+          </div>
+        </section>
+
+        <!-- 20 · copy: research chat -->
+        <section class="slide k-copy" data-kind="copy">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s20.t01}}</span></div>
+            <h2 class="title"><span>{{t:s20.t02}}</span></h2>
+            <p class="lead"><span>{{t:s20.t03}}</span></p>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span class="cap"><span>{{t:s20.t04}}</span></span>
+                <button type="button" class="btn" data-variant="primary" data-copy="prompt-research" data-copied="{{a:ui.copied}}"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span class="copy-label">{{t:ui.copy}}</span></button>
+              </div>
+              <div class="copy-body" id="prompt-research"><span class="prompt" lang="en">{{t:s20.p01}}</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 21 · chat hygiene, handoff -->
+        <section class="slide k-copy" data-kind="copy">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s21.t01}}</span></div>
+            <h2 class="title"><span>{{t:s21.t02}}</span></h2>
+            <p class="lead"><span>{{t:s21.t03}}</span></p>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span class="cap"><span>{{t:s21.t04}}</span></span>
+                <button type="button" class="btn" data-variant="primary" data-copy="prompt-handoff" data-copied="{{a:ui.copied}}"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span class="copy-label">{{t:ui.copy}}</span></button>
+              </div>
+              <div class="copy-body" id="prompt-handoff"><span class="prompt" lang="en">{{t:s21.p01}}</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 22 · practice -->
+        <section class="slide k-list" data-kind="list">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s22.t01}}</span></div>
+            <h2 class="title"><span>{{t:s22.t02}}</span></h2>
+            <ol class="list-num">
+              <li><span>{{t:s22.t03}}</span></li>
+              <li><span>{{t:s22.t04}}</span></li>
+              <li><span>{{t:s22.t05}}</span></li>
+              <li><span>{{t:s22.t06}}</span></li>
+              <li><span>{{t:s22.t07}}</span></li>
+            </ol>
+            <div class="callout"><svg class="icon" aria-hidden="true"><use href="#i-alert-triangle"/></svg><span>{{t:s22.t08}}</span></div>
+          </div>
+        </section>
+
+        <!-- 23 · all your tools -->
+        <section class="slide k-tools" data-kind="tools">
+          <div class="s-pad">
+            <div class="kicker"><span>{{t:s23.t01}}</span></div>
+            <h2 class="title"><span>{{t:s23.t02}}</span></h2>
+            <div class="tools">
+              <div class="tool g"><div class="n">01</div><h3>{{t:s23.n01}}</h3><p><span>{{t:s23.t03}}</span></p><a href="/courses/_shared/downloads/workit.md" download><span>{{t:s23.t04}}</span></a></div>
+              <div class="tool"><div class="n">02</div><h3><span>{{t:s23.t05}}</span></h3><p><span>{{t:s23.t06}}</span></p><a href="/courses/_shared/downloads/course-1-prompts.zip" download><span>{{t:s23.t07}}</span></a></div>
+              <div class="tool a"><div class="n">03</div><h3><span>{{t:s23.t08}}</span></h3><p><span>{{t:s23.t09}}</span></p></div>
+              <div class="tool"><div class="n">04</div><h3><span>{{t:s23.t10}}</span></h3><p><span>{{t:s23.t11}}</span></p></div>
+              <div class="tool g"><div class="n">05</div><h3><span>{{t:s23.t12}}</span></h3><p><span>{{t:s23.t13}}</span></p></div>
+            </div>
+            <p class="bridge"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:s23.t14}}</span></p>
+          </div>
+        </section>
+
+        <!-- 24 · closing -->
+        <section class="slide k-final" data-kind="closing">
+          <svg class="sty1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><symbol id="i-arrow-up-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol><symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 2 20.66 7 20.66 17 12 22 3.34 17 3.34 7z"/><path d="M3.3 12h17.4"/><path d="M12 2 8 12l4 10 4-10z"/></symbol><symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M5 5h14l2 2v10l-2 2H5l-2-2V7z"/><path d="M3.5 7.5 12 13.5l8.5-6"/></symbol><symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M21.5 2.5 2.5 9.5l8 4 4 8z"/><path d="M10.5 13.5 21.5 2.5l-7 19z" fill="currentColor" stroke="none"/></symbol></svg>
+          <div class="s-pad">
+            <img class="fv-logo l" src="/courses/_shared/assets/sankord-logo-light.svg" alt="SANKORD"><img class="fv-logo d" src="/courses/_shared/assets/sankord-logo-dark.svg" alt="SANKORD">
+            <div class="fv-main">
+              <h2 class="fv-title" data-stm="P5"><span>{{t:s24.t01}}</span></h2>
+              <p class="fv-text"><span>{{t:s24.t02}}</span></p>
+              <p class="fv-text"><span>{{t:s24.t03}}</span></p>
+              <div class="fv-btns"><a class="btn cta" data-variant="accent" data-size="lg" href="https://sankord.com" target="_blank" rel="noopener"><span>{{t:s24.t04}}</span><svg class="icon" aria-hidden="true"><use href="#i-arrow-up-right"/></svg></a></div>
+            </div>
+            <div class="fv-side">
+              <div class="fv-cap"><span>{{t:s24.t05}}</span></div>
+              <div class="fv-courses"><a class="fv-course" href="{{@href:/courses/skills/}}"><div><div class="n"><span>{{t:s24.t06}}</span></div><h3><span>{{t:s24.t07}}</span><span class="sub"><span>{{t:s24.t08}}</span></span></h3></div><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></a><a class="fv-course" href="{{@href:/courses/agents/}}"><div><div class="n"><span>{{t:s24.t09}}</span></div><h3><span>{{t:s24.t10}}</span><span class="sub"><span>{{t:s24.t11}}</span></span></h3></div><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></a><a class="fv-course" href="{{@href:/courses/projects/}}"><div><div class="n"><span>{{t:s24.t12}}</span></div><h3><span>{{t:s24.t13}}</span><span class="sub"><span>{{t:s24.t14}}</span></span></h3></div><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></a></div>
+            </div>
+            <div class="fv-links fv-foot"><a class="btn" data-variant="ghost" data-home href="{{@abs:/}}"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><span>{{t:s24.t15}}</span></a><a class="btn" data-variant="ghost" href="https://t.me/aivisone" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg><span>{{t:s24.t16}}</span></a><a class="btn" data-variant="ghost" href="mailto:artem.balyakno@gmail.com"><svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg><span>{{t:s24.t17}}</span></a><a class="btn" data-variant="ghost" href="https://t.me/aivisrun" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg><span>{{t:s24.t18}}</span></a></div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <button type="button" class="btn prev" data-variant="ghost" id="prev" aria-label="{{a:ui.prev}}"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg><span>{{t:ui.prev}}</span></button>
+    <span class="hint" id="hint">{{t:ui.hint}}</span>
+    <button type="button" class="btn" data-variant="primary" id="next" aria-label="{{a:ui.next}}"><span>{{t:ui.next}}</span><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+  </footer>
+</div>
+<script>{{@script}}</script>
+</body>
+</html>

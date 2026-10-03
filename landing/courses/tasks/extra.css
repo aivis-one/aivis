@@ -1,0 +1,12 @@
+/* the inline style attributes of the accepted page, as classes: a hash-only CSP blocks a style attribute */
+.sty1 { position:absolute !important; width:0 !important; height:0 !important; overflow:hidden !important; }
+.sty2 { width:20% !important; }
+.sty3 { width:42% !important; }
+.sty4 { width:38% !important; }
+.sty5 { width:10% !important; }
+.sty6 { width:50% !important; }
+.sty7 { width:40% !important; }
+.sty8 { transform:rotate(90deg) !important; }
+.sty9 { width:12% !important; }
+.sty10 { width:36% !important; }
+.sty11 { width:52% !important; }
