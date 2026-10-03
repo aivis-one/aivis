@@ -1,0 +1,42 @@
+{
+  "i.title": "Реквизиты компании",
+
+  "i.h.company": "Компания",
+  "i.l.name": "Юридическое название",
+  "i.v.name": "{company.name}",
+  "i.l.brand": "Бренд",
+  "i.v.brand": "{company.brand}",
+  "i.l.form": "Организационно-правовая форма",
+  "i.v.form": "{company.form}",
+  "i.l.country": "Страна регистрации",
+  "i.v.country": "{company.country}",
+  "i.l.id": "Идентификационный номер",
+  "i.v.id": "{company.id}",
+  "i.l.registered": "Дата и орган регистрации",
+  "i.v.registered": "{company.registered}, {company.registry}",
+  "i.l.address": "Юридический адрес",
+  "i.v.address": "{company.address}",
+  "i.l.director": "Директор",
+  "i.v.director": "{company.director}",
+  "i.l.tax": "Налоговая регистрация",
+  "i.v.tax": "Государственная и налоговая регистрация проведены одновременно с регистрацией компании. Отдельного налогового номера у компании нет, НДС компания не платит.",
+
+  "i.l.firm": "Юридическое сопровождение",
+  "i.v.firm": "{company.name} — клиент [{firm.name}]({firm.url}), Тбилиси: эта фирма зарегистрировала компанию, хранит её документы и сопровождает компанию юридически.",
+
+  "i.h.contact": "Контакты",
+  "i.l.email": "Электронная почта",
+  "i.v.email": "{contact.email}",
+  "i.l.telegram": "Telegram",
+  "i.v.telegram": "[{contact.telegram_handle}]({contact.telegram_url})",
+  "i.l.web": "Сайт",
+  "i.v.web": "{site.domain}",
+
+  "i.h.data": "Защита данных",
+  "i.l.dpo": "Ответственный за защиту данных",
+  "i.v.dpo": "Директор, {company.director}",
+  "i.l.authority": "Надзорный орган по защите данных",
+  "i.v.authority": "[{authority.name}]({authority.url})",
+
+  "i.note.1": "Сведения о компании также открыты в грузинском Реестре. О том, как мы обрабатываем персональные данные, написано в «[Политике конфиденциальности]({site.path.privacy})»."
+}

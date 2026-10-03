@@ -1,0 +1,10 @@
+{
+  "_note": "The register of every legal document of the site: the five public documents (scope site). Each build prints 'Edition N of <date>' at the top of its document from this file; a document missing here refuses the build and fails the check. A new edition of a document: raise its edition and set its date here, nowhere else.",
+  "documents": [
+    {"id": "privacy", "scope": "site", "title": {"en": "Privacy policy", "ru": "Политика конфиденциальности"}, "edition": 1, "date": "2026-10-02"},
+    {"id": "terms", "scope": "site", "title": {"en": "Terms of use", "ru": "Условия использования"}, "edition": 1, "date": "2026-10-02"},
+    {"id": "imprint", "scope": "site", "title": {"en": "Company details", "ru": "Реквизиты компании"}, "edition": 1, "date": "2026-10-02"},
+    {"id": "cookies", "scope": "site", "title": {"en": "Cookie and local storage notice", "ru": "Уведомление о cookie и локальном хранилище"}, "edition": 1, "date": "2026-10-02"},
+    {"id": "licence", "scope": "site", "title": {"en": "Course licence (CC BY-NC-ND 4.0)", "ru": "Лицензия на курсы (CC BY-NC-ND 4.0)"}, "edition": 1, "date": "2026-10-02"}
+  ]
+}

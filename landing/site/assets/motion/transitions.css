@@ -1,0 +1,36 @@
+/* animation-studio v1.0.0 -- assets/techniques/transitions.css (pack copy, pruned)
+   #trn-cross-doc was DECLINED at the approval and its opt-in at-rule is NOT in
+   this file. Shipping `@view-transition { navigation: auto; }` here would turn a
+   declined technique on the moment the pack is applied. */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Snapshot timing for #trn-same-doc. The theme swap is a root-level crossfade;
+     these two rules are what stop it defaulting to the UA's own duration. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 220ms;
+    animation-timing-function: cubic-bezier(.2, .0, .2, 1);
+  }
+
+  /* #trn-discrete-enter -- the waitlist success and error panels, which the
+     page toggles with the `hidden` attribute. Travel is on the block axis, so
+     there is no inline direction to mirror and no physical-axis defect to add
+     to a page that is already RTL-non-conformant. */
+  .ls-mo-enter {
+    transition: opacity var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)),
+                translate var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)),
+                display var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)) allow-discrete;
+  }
+  .ls-mo-enter:not([hidden]) { opacity: 1; translate: 0 0; }
+  @starting-style {
+    .ls-mo-enter:not([hidden]) { opacity: 0; translate: 0 8px; }
+  }
+}
+
+/* The reduced form is arrival without travel, not absence: the panel still
+   appears, because its appearance IS the state signal. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none; }
+  .ls-mo-enter { transition: none; translate: none; }
+}

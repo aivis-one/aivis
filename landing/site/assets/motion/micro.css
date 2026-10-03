@@ -1,0 +1,55 @@
+/* animation-studio v1.0.0 -- assets/techniques/micro.css (pack copy, pruned to the approved set)
+   Only the four approved mic- blocks are present. mic-form-feedback was cut at
+   select and its code is not shipped: a pack carrying code for a technique the
+   user declined is a pack that can be turned on behind their back.
+
+   Token adaptation, recorded at the prototype run: this project's design system
+   exposes motion as SEMANTIC tokens that fuse duration and easing into one value
+   (--motion-quick is "140ms cubic-bezier(.2,.0,.2,1)"). The catalog's authoring
+   shape, `var(--ls-mo-dur-fast, 180ms) ease`, would emit two timing functions and
+   be dropped by the parser. The declarations therefore consume the fused token
+   directly. The primitive --dur-* and --ease-* atoms are NOT bound: primitive
+   layer, blocked by the design system's own layer rule. */
+
+/* #mic-cta-press -- the primary path, built on :active, works on touch */
+@media (prefers-reduced-motion: no-preference) {
+  .ls-mo-press { transition: transform var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)); }
+  .ls-mo-press:active { transform: scale(.97); }
+}
+
+/* #mic-hover-lift -- guarded, unlike the page's own unguarded rule (defect D2) */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .ls-mo-lift {
+    transition: transform var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)), box-shadow var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1));
+  }
+  .ls-mo-lift:hover { transform: translateY(-1px); }
+}
+@media (hover: hover) {
+  .ls-mo-lift:hover { box-shadow: var(--shadow-2, 0 8px 24px rgba(0,0,0,.18)); }
+}
+
+/* #mic-focus-ring -- additive only. The ring exists the instant focus lands and
+   is never delayed into existence. It replaces the page's own outline:none on
+   .field input, whose only remaining signal was a border at 1.57:1. */
+.ls-mo-ring:focus-visible {
+  outline: 2px solid var(--primary, currentColor);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-focus, 0 0 0 3px currentColor);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ls-mo-ring:focus-visible { transition: outline-offset var(--motion-micro, 80ms cubic-bezier(.2,.0,.2,1)); }
+}
+
+/* #mic-accordion -- the named exception to the property whitelist: no composited
+   path to animatable height exists and a JS height measurement is worse. */
+.ls-mo-accordion { display: grid; grid-template-rows: 1fr; }
+.ls-mo-accordion > * { overflow: hidden; min-height: 0; }
+.ls-mo-accordion[data-open="false"] { grid-template-rows: 0fr; }
+@media (prefers-reduced-motion: no-preference) {
+  .ls-mo-accordion { transition: grid-template-rows 260ms var(--ease-standard, cubic-bezier(.2,0,.2,1)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-mo-press, .ls-mo-lift, .ls-mo-accordion { transition: none; }
+  .ls-mo-press:active { transform: none; }
+}

@@ -1,0 +1,72 @@
+{
+  "_note": "Shared facts of the public legal documents. A value is a plain string (same in every language) or an object {lang: text}. Inserted into the text by {path.to.value}. Edit a fact HERE, never in a document.",
+  "company": {
+    "name": "AIVIS.ONE LLC",
+    "brand": "AIVIS.ONE",
+    "id": "404804422",
+    "form": {
+      "en": "limited liability company",
+      "ru": "общество с ограниченной ответственностью"
+    },
+    "country": {
+      "en": "Georgia",
+      "ru": "Грузия"
+    },
+    "registered": {
+      "en": "12 February 2026",
+      "ru": "12 февраля 2026 г."
+    },
+    "registry": {
+      "en": "National Agency of Public Registry (Georgia)",
+      "ru": "Национальное агентство публичного реестра (Грузия)"
+    },
+    "address": {
+      "en": "Georgia, Tbilisi, Mtatsminda district, village Okrokana, Akaki Tsereteli str., N14",
+      "ru": "Грузия, Тбилиси, район Мтацминда, с. Окрокана, ул. Акакия Церетели, 14"
+    },
+    "director": {
+      "en": "Artem Baliakno",
+      "ru": "Артём Балякно"
+    }
+  },
+  "contact": {
+    "email": "artem.balyakno@gmail.com",
+    "telegram_handle": "@aivisone",
+    "telegram_url": "https://t.me/aivisone"
+  },
+  "authority": {
+    "url": "https://www.sao.ge/en/",
+    "name": {
+      "en": "State Audit Office of Georgia",
+      "ru": "Государственная аудиторская служба Грузии"
+    }
+  },
+  "host": {
+    "name": "Cloudflare, Inc.",
+    "url": "https://www.cloudflare.com/"
+  },
+  "site": {
+    "domain": "aivis.one",
+    "storage": {
+      "theme": "aivis-theme"
+    },
+    "path": {
+      "privacy": {"en": "/about/privacy/", "ru": "/ru/about/privacy/"},
+      "terms": {"en": "/about/terms/", "ru": "/ru/about/terms/"},
+      "imprint": {"en": "/about/imprint/", "ru": "/ru/about/imprint/"},
+      "cookies": {"en": "/about/cookies/", "ru": "/ru/about/cookies/"},
+      "licence": {"en": "/about/licence/", "ru": "/ru/about/licence/"},
+      "login": "/login",
+      "app": "/app"
+    }
+  },
+  "cc": {
+    "name": "CC BY-NC-ND 4.0",
+    "deed_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+    "legalcode_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode"
+  },
+  "firm": {
+    "name": "Prime Legal",
+    "url": "https://primelegal.ge/"
+  }
+}

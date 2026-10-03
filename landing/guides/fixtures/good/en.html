@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- SELF-TEST CONTROL (English). A clean page: every check that the planted-defect fixtures make fail must
+     stay quiet here. __H_SCRIPT__ and __H_STYLE__ are filled by the fixture server with the sha256 of the
+     inline blocks, newline-normalised, exactly as the browser computes them. -->
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src __H_STYLE__; script-src __H_SCRIPT__; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>AIVIS fixture control page</title>
+<meta name="description" content="Clean fixture page used by the self-test as a control; it passes every check that the planted defects fail.">
+<link rel="icon" href="data:,">
+<link rel="canonical" href="https://aivis.one/">
+<link rel="alternate" hreflang="en" href="https://aivis.one/">
+<link rel="alternate" hreflang="ru" href="https://aivis.one/ru/">
+<link rel="alternate" hreflang="x-default" href="https://aivis.one/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AIVIS fixture control page">
+<meta property="og:description" content="Clean fixture page used by the self-test as a control.">
+<meta property="og:url" content="https://aivis.one/">
+<meta property="og:image" content="https://aivis.one/og.png">
+<meta property="og:image:alt" content="AIVIS fixture">
+<meta name="twitter:card" content="summary_large_image">
+<script>
+(function () {
+  var t = null;
+  try { t = window.localStorage.getItem('aivis-theme'); } catch (e) { t = null; }
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--fg2:#555;--line:#767676;--accent:#0b4f86}
+[data-theme=dark]{--bg:#111;--fg:#eee;--fg2:#bbb;--line:#999;--accent:#6dbded}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.skip{position:absolute;inset-inline-start:8px;top:-80px;padding:12px;background:var(--bg)}
+.skip:focus{top:8px;z-index:30}
+header.site{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 12px;min-height:56px}
+header.site nav{display:flex;gap:4px}
+.tools{margin-inline-start:auto;display:flex;gap:4px;align-items:center}
+header.site a,button,summary,.drawer a{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 10px;box-sizing:border-box}
+button{background:var(--bg);color:var(--fg);border:1px solid var(--line);font:inherit}
+details.lang{position:relative}
+.lang ul{position:absolute;inset-inline-end:0;background:var(--bg);border:1px solid var(--line);list-style:none;margin:0;padding:4px;min-width:150px}
+.lang li a{display:flex;justify-content:flex-start}
+.drawer{position:fixed;inset:0;background:var(--bg);z-index:20;padding:12px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.drawer[hidden]{display:none}
+main{max-width:65ch;margin:0 auto;padding:16px}
+section{padding-block:64px}
+p,li{max-width:65ch}
+.muted{color:var(--fg2)}
+footer{padding:16px 16px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+footer nav{display:flex;gap:4px;flex-wrap:wrap}
+footer a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px}
+@media (max-width:599px){header.site nav{display:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><a class="brand" href="en.html" aria-label="AIVIS.ONE">AIVIS</a>
+<nav aria-label="Primary"><a href="#sec1">Section one</a><a href="#sec2">Section two</a></nav>
+<div class="tools">
+<details class="lang" data-ls-lang><summary data-ls-lang-switch aria-label="Language: English"><span aria-hidden="true">EN</span></summary><ul><li><a href="en.html" hreflang="en" lang="en" aria-current="true">English</a></li><li><a href="ru.html" hreflang="ru" lang="ru">Русский</a></li></ul></details>
+<button type="button" data-ls-theme-toggle aria-label="Toggle dark mode" aria-pressed="false">&#9680;</button>
+<button type="button" data-ls-menu-open aria-label="Menu" aria-expanded="false" aria-controls="drawer">&#9776;</button>
+</div></header>
+<div class="drawer" id="drawer" data-ls-drawer role="dialog" aria-modal="true" aria-label="Menu" hidden>
+<button type="button" data-ls-menu-close aria-label="Close menu">&#10005;</button><a href="#sec1">Section one</a><a href="#sec2">Section two</a></div>
+<main id="main">
+<h1>AIVIS fixture, clean control page</h1>
+<p class="muted">This page is the control of the self-test. It carries SANKORD and EXSPECS as brand terms and every other feature the checks look for, so that a green result here means the checks stay quiet when nothing is wrong.</p>
+<section id="sec1"><h2>Section one</h2><p>Readable paragraphs stay below sixty-five characters per line, use sixteen pixel text, keep a contrast of more than seven to one, and end with a full stop. A visitor can reach every control with the keyboard and see where the focus is.</p></section>
+<section id="sec2"><h2>Section two</h2><p>The language menu, the theme switch and the drawer all work by touch and by keyboard. The theme choice is saved and survives a reload, and the drawer closes with the escape key and returns the focus to its button.</p><ul><li>One list item with a complete sentence.</li></ul></section>
+</main>
+<footer><nav aria-label="Footer"><a href="en.html">Home</a><a href="ru.html">Русский</a></nav><p>© 2026 AIVIS.ONE LLC. A fixture page, not a product.</p></footer>
+<script>
+(function () {
+  var d = document, root = d.documentElement, btn = d.querySelector('[data-ls-menu-open]'), dr = d.getElementById('drawer'),
+      cl = d.querySelector('[data-ls-menu-close]'), tg = d.querySelector('[data-ls-theme-toggle]');
+  function open() { dr.hidden = false; dr.setAttribute('data-open', 'true'); btn.setAttribute('aria-expanded', 'true'); cl.focus(); }
+  function close() { dr.hidden = true; dr.removeAttribute('data-open'); btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+  btn.addEventListener('click', open);
+  cl.addEventListener('click', close);
+  dr.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', close); });
+  d.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !dr.hidden) { close(); } });
+  function sync() { tg.setAttribute('aria-pressed', root.getAttribute('data-theme') === 'dark' ? 'true' : 'false'); }
+  tg.addEventListener('click', function () {
+    var t = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', t);
+    try { window.localStorage.setItem('aivis-theme', t); } catch (e) { }
+    sync();
+  });
+  sync();
+})();
+</script>
+</body>
+</html>

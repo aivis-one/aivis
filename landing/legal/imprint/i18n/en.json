@@ -1,0 +1,42 @@
+{
+  "i.title": "Company details",
+
+  "i.h.company": "The company",
+  "i.l.name": "Legal name",
+  "i.v.name": "{company.name}",
+  "i.l.brand": "Brand",
+  "i.v.brand": "{company.brand}",
+  "i.l.form": "Legal form",
+  "i.v.form": "{company.form}",
+  "i.l.country": "Country of registration",
+  "i.v.country": "{company.country}",
+  "i.l.id": "Identification number",
+  "i.v.id": "{company.id}",
+  "i.l.registered": "Registered",
+  "i.v.registered": "{company.registered}, {company.registry}",
+  "i.l.address": "Registered address",
+  "i.v.address": "{company.address}",
+  "i.l.director": "Director",
+  "i.v.director": "{company.director}",
+  "i.l.tax": "Tax registration",
+  "i.v.tax": "State and tax registration were made together with the company’s registration. The company has no separate tax number and does not pay VAT.",
+
+  "i.l.firm": "Legal support",
+  "i.v.firm": "{company.name} is a client of [{firm.name}]({firm.url}), Tbilisi, which incorporated the company, holds its documents and supports the company legally.",
+
+  "i.h.contact": "Contact",
+  "i.l.email": "E-mail",
+  "i.v.email": "{contact.email}",
+  "i.l.telegram": "Telegram",
+  "i.v.telegram": "[{contact.telegram_handle}]({contact.telegram_url})",
+  "i.l.web": "Website",
+  "i.v.web": "{site.domain}",
+
+  "i.h.data": "Data protection",
+  "i.l.dpo": "Responsible for data protection",
+  "i.v.dpo": "The director, {company.director}",
+  "i.l.authority": "Data protection supervisory authority",
+  "i.v.authority": "[{authority.name}]({authority.url})",
+
+  "i.note.1": "Data about the company is also public in the Georgian Registry. The way we handle personal data is in the [privacy policy]({site.path.privacy})."
+}

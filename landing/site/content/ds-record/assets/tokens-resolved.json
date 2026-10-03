@@ -1,0 +1,1587 @@
+{
+ "--accent": {
+  "dark": "#F2913A",
+  "layer": "semantic",
+  "light": "#B1581B",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--accent-hover": {
+  "dark": "#F5AE6D",
+  "layer": "semantic",
+  "light": "#9A4410",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--accent-subtle": {
+  "dark": "rgba(242,145,58,.16)",
+  "layer": "semantic",
+  "light": "#FCF1E4",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--accent-subtle-text": {
+  "dark": "#F5AE6D",
+  "layer": "semantic",
+  "light": "#652C0A",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--amber-100": {
+  "atomic_library": true,
+  "dark": "#F9D0AA",
+  "layer": "primitive",
+  "light": "#F9D0AA",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-200": {
+  "atomic_library": true,
+  "dark": "#F5AE6D",
+  "layer": "primitive",
+  "light": "#F5AE6D",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-300": {
+  "atomic_library": true,
+  "dark": "#F2913A",
+  "layer": "primitive",
+  "light": "#F2913A",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-400": {
+  "atomic_library": true,
+  "dark": "#D97B2E",
+  "layer": "primitive",
+  "light": "#D97B2E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-50": {
+  "atomic_library": true,
+  "dark": "#FCF1E4",
+  "layer": "primitive",
+  "light": "#FCF1E4",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-500": {
+  "atomic_library": true,
+  "dark": "#C66A25",
+  "layer": "primitive",
+  "light": "#C66A25",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-600": {
+  "atomic_library": true,
+  "dark": "#B1581B",
+  "layer": "primitive",
+  "light": "#B1581B",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-700": {
+  "atomic_library": true,
+  "dark": "#9A4410",
+  "layer": "primitive",
+  "light": "#9A4410",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-800": {
+  "atomic_library": true,
+  "dark": "#652C0A",
+  "layer": "primitive",
+  "light": "#652C0A",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--amber-900": {
+  "atomic_library": true,
+  "dark": "#3A1905",
+  "layer": "primitive",
+  "light": "#3A1905",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--app-viewport-height": {
+  "dark": "100dvh",
+  "layer": "semantic",
+  "light": "100dvh",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--azure-100": {
+  "atomic_library": true,
+  "dark": "#ADD9F5",
+  "layer": "primitive",
+  "light": "#ADD9F5",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-200": {
+  "atomic_library": true,
+  "dark": "#6DBDED",
+  "layer": "primitive",
+  "light": "#6DBDED",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-300": {
+  "atomic_library": true,
+  "dark": "#37A6E6",
+  "layer": "primitive",
+  "light": "#37A6E6",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-400": {
+  "atomic_library": true,
+  "dark": "#2B8ECB",
+  "layer": "primitive",
+  "light": "#2B8ECB",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-50": {
+  "atomic_library": true,
+  "dark": "#EAF4FC",
+  "layer": "primitive",
+  "light": "#EAF4FC",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-500": {
+  "atomic_library": true,
+  "dark": "#217AB6",
+  "layer": "primitive",
+  "light": "#217AB6",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-600": {
+  "atomic_library": true,
+  "dark": "#16669F",
+  "layer": "primitive",
+  "light": "#16669F",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-700": {
+  "atomic_library": true,
+  "dark": "#0B4F86",
+  "layer": "primitive",
+  "light": "#0B4F86",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-800": {
+  "atomic_library": true,
+  "dark": "#083B64",
+  "layer": "primitive",
+  "light": "#083B64",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-900": {
+  "atomic_library": true,
+  "dark": "#062A48",
+  "layer": "primitive",
+  "light": "#062A48",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--azure-950": {
+  "atomic_library": true,
+  "dark": "#04243E",
+  "layer": "primitive",
+  "light": "#04243E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--bg-emphasis": {
+  "dark": "#F6F8FA",
+  "layer": "semantic",
+  "light": "#11161B",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--bg-inset": {
+  "dark": "#0C1218",
+  "layer": "semantic",
+  "light": "#F6F8FA",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--bg-page": {
+  "dark": "#070A0E",
+  "layer": "semantic",
+  "light": "#F6F8FA",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--bg-subtle": {
+  "dark": "#161D26",
+  "layer": "semantic",
+  "light": "#EDF1F5",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--bg-surface": {
+  "dark": "#10161D",
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--border-default": {
+  "dark": "#2E3A46",
+  "layer": "semantic",
+  "light": "#C5D0DA",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--border-strong": {
+  "dark": "#41505E",
+  "layer": "semantic",
+  "light": "#9BA8B6",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--border-subtle": {
+  "dark": "#222B35",
+  "layer": "semantic",
+  "light": "#DDE4EB",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--bp-lg": {
+  "atomic_library": true,
+  "dark": "880px",
+  "layer": "primitive",
+  "light": "880px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--bp-md": {
+  "atomic_library": true,
+  "dark": "640px",
+  "layer": "primitive",
+  "light": "640px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--bp-sm": {
+  "atomic_library": true,
+  "dark": "480px",
+  "layer": "primitive",
+  "light": "480px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--bp-xl": {
+  "atomic_library": true,
+  "dark": "1120px",
+  "layer": "primitive",
+  "light": "1120px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--connector-stroke": {
+  "dark": "#2E3A46",
+  "layer": "semantic",
+  "light": "#C5D0DA",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--connector-width": {
+  "dark": "1.5px",
+  "layer": "semantic",
+  "light": "1.5px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--control-height-lg": {
+  "dark": "44px",
+  "layer": "semantic",
+  "light": "44px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--control-height-md": {
+  "dark": "38px",
+  "layer": "semantic",
+  "light": "38px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--control-height-sm": {
+  "dark": "32px",
+  "layer": "semantic",
+  "light": "32px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--danger": {
+  "dark": "#E5645D",
+  "layer": "semantic",
+  "light": "#9C231E",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--danger-hover": {
+  "dark": "#EE9893",
+  "layer": "semantic",
+  "light": "#7A1A16",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--danger-subtle": {
+  "dark": "rgba(214,62,55,.16)",
+  "layer": "semantic",
+  "light": "#FCEBEA",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--danger-subtle-text": {
+  "dark": "#EE9893",
+  "layer": "semantic",
+  "light": "#561310",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--dur-base": {
+  "atomic_library": true,
+  "dark": "220ms",
+  "layer": "primitive",
+  "light": "220ms",
+  "themed": false,
+  "type": "primitive/duration"
+ },
+ "--dur-fast": {
+  "atomic_library": true,
+  "dark": "140ms",
+  "layer": "primitive",
+  "light": "140ms",
+  "themed": false,
+  "type": "primitive/duration"
+ },
+ "--dur-instant": {
+  "atomic_library": true,
+  "dark": "80ms",
+  "layer": "primitive",
+  "light": "80ms",
+  "themed": false,
+  "type": "primitive/duration"
+ },
+ "--dur-slow": {
+  "atomic_library": true,
+  "dark": "360ms",
+  "layer": "primitive",
+  "light": "360ms",
+  "themed": false,
+  "type": "primitive/duration"
+ },
+ "--dur-slower": {
+  "atomic_library": true,
+  "dark": "560ms",
+  "layer": "primitive",
+  "light": "560ms",
+  "themed": false,
+  "type": "primitive/duration"
+ },
+ "--ease-entrance": {
+  "atomic_library": true,
+  "dark": "cubic-bezier(.16,.84,.44,1)",
+  "layer": "primitive",
+  "light": "cubic-bezier(.16,.84,.44,1)",
+  "themed": false,
+  "type": "primitive/easing"
+ },
+ "--ease-exit": {
+  "atomic_library": true,
+  "dark": "cubic-bezier(.4,.0,1,1)",
+  "layer": "primitive",
+  "light": "cubic-bezier(.4,.0,1,1)",
+  "themed": false,
+  "type": "primitive/easing"
+ },
+ "--ease-spring": {
+  "atomic_library": true,
+  "dark": "cubic-bezier(.34,1.56,.64,1)",
+  "layer": "primitive",
+  "light": "cubic-bezier(.34,1.56,.64,1)",
+  "themed": false,
+  "type": "primitive/easing"
+ },
+ "--ease-standard": {
+  "atomic_library": true,
+  "dark": "cubic-bezier(.2,.0,.2,1)",
+  "layer": "primitive",
+  "light": "cubic-bezier(.2,.0,.2,1)",
+  "themed": false,
+  "type": "primitive/easing"
+ },
+ "--emerald-100": {
+  "atomic_library": true,
+  "dark": "#AAEBC9",
+  "layer": "primitive",
+  "light": "#AAEBC9",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-200": {
+  "atomic_library": true,
+  "dark": "#6ADDA0",
+  "layer": "primitive",
+  "light": "#6ADDA0",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-300": {
+  "atomic_library": true,
+  "dark": "#34D17E",
+  "layer": "primitive",
+  "light": "#34D17E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-400": {
+  "atomic_library": true,
+  "dark": "#29B56E",
+  "layer": "primitive",
+  "light": "#29B56E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-50": {
+  "atomic_library": true,
+  "dark": "#E7F8EF",
+  "layer": "primitive",
+  "light": "#E7F8EF",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-500": {
+  "atomic_library": true,
+  "dark": "#21A062",
+  "layer": "primitive",
+  "light": "#21A062",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-600": {
+  "atomic_library": true,
+  "dark": "#188854",
+  "layer": "primitive",
+  "light": "#188854",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-700": {
+  "atomic_library": true,
+  "dark": "#0E6E45",
+  "layer": "primitive",
+  "light": "#0E6E45",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-800": {
+  "atomic_library": true,
+  "dark": "#0A4D30",
+  "layer": "primitive",
+  "light": "#0A4D30",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--emerald-900": {
+  "atomic_library": true,
+  "dark": "#06321F",
+  "layer": "primitive",
+  "light": "#06321F",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--focus-ring": {
+  "dark": "#37A6E6",
+  "layer": "semantic",
+  "light": "#217AB6",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--font-body": {
+  "dark": "'AIVIS Text', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "layer": "primitive",
+  "light": "'AIVIS Text', Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "themed": false,
+  "type": "primitive/font-family"
+ },
+ "--font-display": {
+  "dark": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "layer": "primitive",
+  "light": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "themed": false,
+  "type": "primitive/font-family"
+ },
+ "--font-mono": {
+  "dark": "'AIVIS Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+  "layer": "primitive",
+  "light": "'AIVIS Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+  "themed": false,
+  "type": "primitive/font-family"
+ },
+ "--fs-body": {
+  "atomic_library": true,
+  "dark": "1rem",
+  "layer": "primitive",
+  "light": "1rem",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-body-lg": {
+  "atomic_library": true,
+  "dark": "1.0625rem",
+  "layer": "primitive",
+  "light": "1.0625rem",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-display": {
+  "atomic_library": true,
+  "dark": "clamp(2.8rem,5vw,4.2rem)",
+  "layer": "primitive",
+  "light": "clamp(2.8rem,5vw,4.2rem)",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-h1": {
+  "atomic_library": true,
+  "dark": "clamp(2.2rem,3.5vw,3rem)",
+  "layer": "primitive",
+  "light": "clamp(2.2rem,3.5vw,3rem)",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-h2": {
+  "atomic_library": true,
+  "dark": "clamp(1.75rem,2.6vw,2.2rem)",
+  "layer": "primitive",
+  "light": "clamp(1.75rem,2.6vw,2.2rem)",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-h3": {
+  "atomic_library": true,
+  "dark": "1.5rem",
+  "layer": "primitive",
+  "light": "1.5rem",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-h4": {
+  "atomic_library": true,
+  "dark": "1.125rem",
+  "layer": "primitive",
+  "light": "1.125rem",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-sm": {
+  "atomic_library": true,
+  "dark": "0.875rem",
+  "layer": "primitive",
+  "light": "0.875rem",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--fs-xs": {
+  "atomic_library": true,
+  "dark": "0.75rem",
+  "layer": "primitive",
+  "light": "0.75rem",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--grad-amber": {
+  "dark": "linear-gradient(135deg,#F2913A,#9A4410)",
+  "layer": "semantic",
+  "light": "linear-gradient(135deg,#F2913A,#9A4410)",
+  "themed": false,
+  "type": "semantic/gradient"
+ },
+ "--grad-azure": {
+  "dark": "linear-gradient(135deg,#37A6E6,#0B4F86)",
+  "layer": "semantic",
+  "light": "linear-gradient(135deg,#37A6E6,#0B4F86)",
+  "themed": false,
+  "type": "semantic/gradient"
+ },
+ "--grad-brand": {
+  "dark": "linear-gradient(120deg,#16669F,#188854 55%,#C66A25)",
+  "layer": "semantic",
+  "light": "linear-gradient(120deg,#16669F,#188854 55%,#C66A25)",
+  "themed": false,
+  "type": "semantic/gradient"
+ },
+ "--grad-emerald": {
+  "dark": "linear-gradient(135deg,#34D17E,#0E6E45)",
+  "layer": "semantic",
+  "light": "linear-gradient(135deg,#34D17E,#0E6E45)",
+  "themed": false,
+  "type": "semantic/gradient"
+ },
+ "--header-height": {
+  "dark": "64px",
+  "layer": "semantic",
+  "light": "64px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--hex-amber-edge": {
+  "atomic_library": true,
+  "dark": "#9A4410",
+  "layer": "primitive",
+  "light": "#9A4410",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--hex-amber-face": {
+  "atomic_library": true,
+  "dark": "#F2913A",
+  "layer": "primitive",
+  "light": "#F2913A",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--hex-azure-edge": {
+  "atomic_library": true,
+  "dark": "#0B4F86",
+  "layer": "primitive",
+  "light": "#0B4F86",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--hex-azure-face": {
+  "atomic_library": true,
+  "dark": "#37A6E6",
+  "layer": "primitive",
+  "light": "#37A6E6",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--hex-emerald-edge": {
+  "atomic_library": true,
+  "dark": "#0E6E45",
+  "layer": "primitive",
+  "light": "#0E6E45",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--hex-emerald-face": {
+  "atomic_library": true,
+  "dark": "#34D17E",
+  "layer": "primitive",
+  "light": "#34D17E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--hex-neutral-edge": {
+  "atomic_library": true,
+  "dark": "#11161B",
+  "layer": "primitive",
+  "light": "#C5D0DA",
+  "themed": true,
+  "type": "primitive/color"
+ },
+ "--hex-neutral-face": {
+  "atomic_library": true,
+  "dark": "#1F262E",
+  "layer": "primitive",
+  "light": "#EDF1F5",
+  "themed": true,
+  "type": "primitive/color"
+ },
+ "--icon-brand": {
+  "dark": "#37A6E6",
+  "layer": "semantic",
+  "light": "#0B4F86",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--icon-disabled": {
+  "dark": "#41505E",
+  "layer": "semantic",
+  "light": "#9BA8B6",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--icon-primary": {
+  "dark": "#F6F8FA",
+  "layer": "semantic",
+  "light": "#11161B",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--icon-secondary": {
+  "dark": "#A7B4C2",
+  "layer": "semantic",
+  "light": "#4C5763",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--icon-size-lg": {
+  "atomic_library": true,
+  "dark": "32px",
+  "layer": "primitive",
+  "light": "32px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--icon-size-md": {
+  "atomic_library": true,
+  "dark": "24px",
+  "layer": "primitive",
+  "light": "24px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--icon-size-sm": {
+  "atomic_library": true,
+  "dark": "16px",
+  "layer": "primitive",
+  "light": "16px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--icon-size-xl": {
+  "atomic_library": true,
+  "dark": "48px",
+  "layer": "primitive",
+  "light": "48px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--info": {
+  "dark": "#37A6E6",
+  "layer": "semantic",
+  "light": "#16669F",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--info-subtle": {
+  "dark": "rgba(55,166,230,.14)",
+  "layer": "semantic",
+  "light": "#EAF4FC",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--info-subtle-text": {
+  "dark": "#6DBDED",
+  "layer": "semantic",
+  "light": "#083B64",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--lh-normal": {
+  "atomic_library": true,
+  "dark": "1.6",
+  "layer": "primitive",
+  "light": "1.6",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--lh-snug": {
+  "atomic_library": true,
+  "dark": "1.35",
+  "layer": "primitive",
+  "light": "1.35",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--lh-tight": {
+  "atomic_library": true,
+  "dark": "1.1",
+  "layer": "primitive",
+  "light": "1.1",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--maxw": {
+  "dark": "1080px",
+  "layer": "semantic",
+  "light": "1080px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--maxw-wide": {
+  "dark": "1240px",
+  "layer": "semantic",
+  "light": "1240px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--motion-ambient": {
+  "dark": "560ms cubic-bezier(.2,.0,.2,1)",
+  "layer": "semantic",
+  "light": "560ms cubic-bezier(.2,.0,.2,1)",
+  "themed": false,
+  "type": "semantic/motion"
+ },
+ "--motion-deliberate": {
+  "dark": "360ms cubic-bezier(.16,.84,.44,1)",
+  "layer": "semantic",
+  "light": "360ms cubic-bezier(.16,.84,.44,1)",
+  "themed": false,
+  "type": "semantic/motion"
+ },
+ "--motion-micro": {
+  "dark": "80ms cubic-bezier(.2,.0,.2,1)",
+  "layer": "semantic",
+  "light": "80ms cubic-bezier(.2,.0,.2,1)",
+  "themed": false,
+  "type": "semantic/motion"
+ },
+ "--motion-moderate": {
+  "dark": "220ms cubic-bezier(.16,.84,.44,1)",
+  "layer": "semantic",
+  "light": "220ms cubic-bezier(.16,.84,.44,1)",
+  "themed": false,
+  "type": "semantic/motion"
+ },
+ "--motion-quick": {
+  "dark": "140ms cubic-bezier(.2,.0,.2,1)",
+  "layer": "semantic",
+  "light": "140ms cubic-bezier(.2,.0,.2,1)",
+  "themed": false,
+  "type": "semantic/motion"
+ },
+ "--neutral-0": {
+  "atomic_library": true,
+  "dark": "#FFFFFF",
+  "layer": "primitive",
+  "light": "#FFFFFF",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-100": {
+  "atomic_library": true,
+  "dark": "#EDF1F5",
+  "layer": "primitive",
+  "light": "#EDF1F5",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-200": {
+  "atomic_library": true,
+  "dark": "#DDE4EB",
+  "layer": "primitive",
+  "light": "#DDE4EB",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-300": {
+  "atomic_library": true,
+  "dark": "#C5D0DA",
+  "layer": "primitive",
+  "light": "#C5D0DA",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-350": {
+  "atomic_library": true,
+  "dark": "#A7B4C2",
+  "layer": "primitive",
+  "light": "#A7B4C2",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-400": {
+  "atomic_library": true,
+  "dark": "#9BA8B6",
+  "layer": "primitive",
+  "light": "#9BA8B6",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-450": {
+  "atomic_library": true,
+  "dark": "#7C8A99",
+  "layer": "primitive",
+  "light": "#7C8A99",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-50": {
+  "atomic_library": true,
+  "dark": "#F6F8FA",
+  "layer": "primitive",
+  "light": "#F6F8FA",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-500": {
+  "atomic_library": true,
+  "dark": "#6B7785",
+  "layer": "primitive",
+  "light": "#6B7785",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-600": {
+  "atomic_library": true,
+  "dark": "#4C5763",
+  "layer": "primitive",
+  "light": "#4C5763",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-700": {
+  "atomic_library": true,
+  "dark": "#353E48",
+  "layer": "primitive",
+  "light": "#353E48",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-800": {
+  "atomic_library": true,
+  "dark": "#1F262E",
+  "layer": "primitive",
+  "light": "#1F262E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-900": {
+  "atomic_library": true,
+  "dark": "#11161B",
+  "layer": "primitive",
+  "light": "#11161B",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--neutral-950": {
+  "atomic_library": true,
+  "dark": "#070A0E",
+  "layer": "primitive",
+  "light": "#070A0E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--numeral-display": {
+  "dark": "clamp(2.6rem, 4.2vw, 3.8rem)",
+  "layer": "primitive",
+  "light": "clamp(2.6rem, 4.2vw, 3.8rem)",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--numeral-mega": {
+  "dark": "clamp(4rem, 7vw, 6rem)",
+  "layer": "primitive",
+  "light": "clamp(4rem, 7vw, 6rem)",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--on-accent": {
+  "dark": "#3A1905",
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--on-danger": {
+  "dark": "#360B09",
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--on-primary": {
+  "dark": "#04243E",
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--primary": {
+  "dark": "#37A6E6",
+  "layer": "semantic",
+  "light": "#0B4F86",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--primary-active": {
+  "dark": "#ADD9F5",
+  "layer": "semantic",
+  "light": "#062A48",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--primary-hover": {
+  "dark": "#6DBDED",
+  "layer": "semantic",
+  "light": "#083B64",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--primary-subtle": {
+  "dark": "rgba(55,166,230,.14)",
+  "layer": "semantic",
+  "light": "#EAF4FC",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--primary-subtle-text": {
+  "dark": "#6DBDED",
+  "layer": "semantic",
+  "light": "#083B64",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--radius-card": {
+  "dark": "12px",
+  "layer": "semantic",
+  "light": "12px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--radius-control": {
+  "dark": "8px",
+  "layer": "semantic",
+  "light": "8px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--radius-lg": {
+  "atomic_library": true,
+  "dark": "16px",
+  "layer": "primitive",
+  "light": "16px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--radius-md": {
+  "atomic_library": true,
+  "dark": "12px",
+  "layer": "primitive",
+  "light": "12px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--radius-modal": {
+  "dark": "16px",
+  "layer": "semantic",
+  "light": "16px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--radius-pill": {
+  "atomic_library": true,
+  "dark": "999px",
+  "layer": "primitive",
+  "light": "999px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--radius-sm": {
+  "atomic_library": true,
+  "dark": "8px",
+  "layer": "primitive",
+  "light": "8px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--radius-xl": {
+  "atomic_library": true,
+  "dark": "24px",
+  "layer": "primitive",
+  "light": "24px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--radius-xs": {
+  "atomic_library": true,
+  "dark": "4px",
+  "layer": "primitive",
+  "light": "4px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--red-100": {
+  "atomic_library": true,
+  "dark": "#F6C7C4",
+  "layer": "primitive",
+  "light": "#F6C7C4",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-200": {
+  "atomic_library": true,
+  "dark": "#EE9893",
+  "layer": "primitive",
+  "light": "#EE9893",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-300": {
+  "atomic_library": true,
+  "dark": "#E5645D",
+  "layer": "primitive",
+  "light": "#E5645D",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-400": {
+  "atomic_library": true,
+  "dark": "#D63E37",
+  "layer": "primitive",
+  "light": "#D63E37",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-50": {
+  "atomic_library": true,
+  "dark": "#FCEBEA",
+  "layer": "primitive",
+  "light": "#FCEBEA",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-500": {
+  "atomic_library": true,
+  "dark": "#BE2D27",
+  "layer": "primitive",
+  "light": "#BE2D27",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-600": {
+  "atomic_library": true,
+  "dark": "#9C231E",
+  "layer": "primitive",
+  "light": "#9C231E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-700": {
+  "atomic_library": true,
+  "dark": "#7A1A16",
+  "layer": "primitive",
+  "light": "#7A1A16",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-800": {
+  "atomic_library": true,
+  "dark": "#561310",
+  "layer": "primitive",
+  "light": "#561310",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--red-900": {
+  "atomic_library": true,
+  "dark": "#360B09",
+  "layer": "primitive",
+  "light": "#360B09",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--shadow-1": {
+  "dark": "0 1px 2px rgba(0,0,0,.4)",
+  "layer": "semantic",
+  "light": "0 1px 2px rgba(11,79,134,.06),0 1px 3px rgba(17,22,27,.05)",
+  "themed": true,
+  "type": "semantic/effect"
+ },
+ "--shadow-2": {
+  "dark": "0 6px 18px rgba(0,0,0,.45)",
+  "layer": "semantic",
+  "light": "0 4px 8px rgba(11,79,134,.06),0 8px 24px rgba(17,22,27,.07)",
+  "themed": true,
+  "type": "semantic/effect"
+ },
+ "--shadow-3": {
+  "dark": "0 16px 40px rgba(0,0,0,.55)",
+  "layer": "semantic",
+  "light": "0 12px 24px rgba(11,79,134,.08),0 24px 56px rgba(17,22,27,.12)",
+  "themed": true,
+  "type": "semantic/effect"
+ },
+ "--shadow-deep": {
+  "dark": "0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3)",
+  "layer": "semantic",
+  "light": "0 2px 4px rgba(11,79,134,.06), 0 8px 16px rgba(11,79,134,.10), 0 24px 48px rgba(11,79,134,.14), 0 48px 96px rgba(17,22,27,.08)",
+  "themed": true,
+  "type": "semantic/effect"
+ },
+ "--shadow-focus": {
+  "dark": "0 0 0 3px rgba(55,166,230,.5)",
+  "layer": "semantic",
+  "light": "0 0 0 3px color-mix(in srgb, #217AB6 45%, transparent)",
+  "themed": true,
+  "type": "semantic/effect"
+ },
+ "--shadow-inset-hex": {
+  "dark": "inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 6px rgba(0,0,0,.4)",
+  "layer": "semantic",
+  "light": "inset 0 1px 0 rgba(255,255,255,.18), inset 0 -2px 6px rgba(0,0,0,.08)",
+  "themed": true,
+  "type": "semantic/effect"
+ },
+ "--slate-500": {
+  "atomic_library": true,
+  "dark": "#41505E",
+  "layer": "primitive",
+  "light": "#41505E",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--slate-600": {
+  "atomic_library": true,
+  "dark": "#2E3A46",
+  "layer": "primitive",
+  "light": "#2E3A46",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--slate-700": {
+  "atomic_library": true,
+  "dark": "#222B35",
+  "layer": "primitive",
+  "light": "#222B35",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--slate-800": {
+  "atomic_library": true,
+  "dark": "#161D26",
+  "layer": "primitive",
+  "light": "#161D26",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--slate-850": {
+  "atomic_library": true,
+  "dark": "#10161D",
+  "layer": "primitive",
+  "light": "#10161D",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--slate-900": {
+  "atomic_library": true,
+  "dark": "#0C1218",
+  "layer": "primitive",
+  "light": "#0C1218",
+  "themed": false,
+  "type": "primitive/color"
+ },
+ "--space-1": {
+  "atomic_library": true,
+  "dark": "0.25rem",
+  "layer": "primitive",
+  "light": "0.25rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-2": {
+  "atomic_library": true,
+  "dark": "0.5rem",
+  "layer": "primitive",
+  "light": "0.5rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-3": {
+  "atomic_library": true,
+  "dark": "0.75rem",
+  "layer": "primitive",
+  "light": "0.75rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-4": {
+  "atomic_library": true,
+  "dark": "1rem",
+  "layer": "primitive",
+  "light": "1rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-5": {
+  "atomic_library": true,
+  "dark": "1.5rem",
+  "layer": "primitive",
+  "light": "1.5rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-6": {
+  "atomic_library": true,
+  "dark": "2rem",
+  "layer": "primitive",
+  "light": "2rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-7": {
+  "atomic_library": true,
+  "dark": "3rem",
+  "layer": "primitive",
+  "light": "3rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-8": {
+  "atomic_library": true,
+  "dark": "4rem",
+  "layer": "primitive",
+  "light": "4rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-9": {
+  "atomic_library": true,
+  "dark": "6rem",
+  "layer": "primitive",
+  "light": "6rem",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-appbar-height": {
+  "dark": "56px",
+  "layer": "semantic",
+  "light": "56px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-component-lg": {
+  "dark": "1rem",
+  "layer": "semantic",
+  "light": "1rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-component-md": {
+  "dark": "0.75rem",
+  "layer": "semantic",
+  "light": "0.75rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-component-sm": {
+  "dark": "0.5rem",
+  "layer": "semantic",
+  "light": "0.5rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-gutter-mobile": {
+  "dark": "1rem",
+  "layer": "semantic",
+  "light": "1rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-gutter-web": {
+  "dark": "1.5rem",
+  "layer": "semantic",
+  "light": "1.5rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-navbar-height": {
+  "dark": "56px",
+  "layer": "semantic",
+  "light": "56px",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-safe-bottom": {
+  "atomic_library": true,
+  "dark": "env(safe-area-inset-bottom, 0px)",
+  "layer": "primitive",
+  "light": "env(safe-area-inset-bottom, 0px)",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-safe-left": {
+  "atomic_library": true,
+  "dark": "env(safe-area-inset-left, 0px)",
+  "layer": "primitive",
+  "light": "env(safe-area-inset-left, 0px)",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-safe-right": {
+  "atomic_library": true,
+  "dark": "env(safe-area-inset-right, 0px)",
+  "layer": "primitive",
+  "light": "env(safe-area-inset-right, 0px)",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-safe-top": {
+  "atomic_library": true,
+  "dark": "env(safe-area-inset-top, 0px)",
+  "layer": "primitive",
+  "light": "env(safe-area-inset-top, 0px)",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--space-section-lg": {
+  "dark": "4rem",
+  "layer": "semantic",
+  "light": "4rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-section-md": {
+  "dark": "3rem",
+  "layer": "semantic",
+  "light": "3rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--space-section-sm": {
+  "dark": "2rem",
+  "layer": "semantic",
+  "light": "2rem",
+  "themed": false,
+  "type": "semantic/dimension"
+ },
+ "--success": {
+  "dark": "#34D17E",
+  "layer": "semantic",
+  "light": "#0E6E45",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--success-subtle": {
+  "dark": "rgba(52,209,126,.14)",
+  "layer": "semantic",
+  "light": "#E7F8EF",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--success-subtle-text": {
+  "dark": "#6ADDA0",
+  "layer": "semantic",
+  "light": "#0A4D30",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--text-inverse": {
+  "dark": "#11161B",
+  "layer": "semantic",
+  "light": "#F6F8FA",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--text-on-brand": {
+  "dark": "#FFFFFF",
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "themed": false,
+  "type": "semantic/color"
+ },
+ "--text-primary": {
+  "dark": "#F6F8FA",
+  "layer": "semantic",
+  "light": "#11161B",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--text-secondary": {
+  "dark": "#A7B4C2",
+  "layer": "semantic",
+  "light": "#4C5763",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--text-tertiary": {
+  "dark": "#7C8A99",
+  "layer": "semantic",
+  "light": "#6B7785",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--touch-comfortable": {
+  "dark": "48px",
+  "layer": "primitive",
+  "light": "48px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--touch-min": {
+  "dark": "44px",
+  "layer": "primitive",
+  "light": "44px",
+  "themed": false,
+  "type": "primitive/dimension"
+ },
+ "--tracking-mega": {
+  "atomic_library": true,
+  "dark": "0.08em",
+  "layer": "primitive",
+  "light": "0.08em",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--tracking-normal": {
+  "atomic_library": true,
+  "dark": "0em",
+  "layer": "primitive",
+  "light": "0em",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--tracking-tight": {
+  "atomic_library": true,
+  "dark": "-0.02em",
+  "layer": "primitive",
+  "light": "-0.02em",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--tracking-tighter": {
+  "atomic_library": true,
+  "dark": "-0.04em",
+  "layer": "primitive",
+  "light": "-0.04em",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--tracking-wide": {
+  "atomic_library": true,
+  "dark": "0.04em",
+  "layer": "primitive",
+  "light": "0.04em",
+  "themed": false,
+  "type": "primitive/typography"
+ },
+ "--warning": {
+  "dark": "#F2913A",
+  "layer": "semantic",
+  "light": "#B1581B",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--warning-subtle": {
+  "dark": "rgba(242,145,58,.16)",
+  "layer": "semantic",
+  "light": "#FCF1E4",
+  "themed": true,
+  "type": "semantic/color"
+ },
+ "--warning-subtle-text": {
+  "dark": "#F5AE6D",
+  "layer": "semantic",
+  "light": "#652C0A",
+  "themed": true,
+  "type": "semantic/color"
+ }
+}

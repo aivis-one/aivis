@@ -1,0 +1,11 @@
+# scratch the site build, the legal build and the guides create
+dist/
+dist-site/
+dist.new/
+_build*/
+.chrome-profile-*/
+shots/
+__pycache__/
+*.pyc
+node_modules/
+gate*.json

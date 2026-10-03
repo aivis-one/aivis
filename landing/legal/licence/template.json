@@ -1,0 +1,26 @@
+{
+  "doc": "licence",
+  "order": 5,
+  "title": "l.title",
+  "blocks": [
+    {"t": "h2", "k": "l.h.what"},
+    {"t": "p", "k": "l.what.1"},
+    {"t": "h2", "k": "l.h.may"},
+    {"t": "ul", "keys": ["l.may.l1", "l.may.l2"]},
+    {"t": "h2", "k": "l.h.maynot"},
+    {"t": "ul", "keys": ["l.maynot.l1", "l.maynot.l2", "l.maynot.l3", "l.maynot.l4"]},
+    {"t": "h2", "k": "l.h.work"},
+    {"t": "p", "k": "l.work.1"},
+    {"t": "h2", "k": "l.h.credit"},
+    {"t": "p", "k": "l.credit.1"},
+    {"t": "p", "k": "l.credit.2"},
+    {"t": "h2", "k": "l.h.perm"},
+    {"t": "p", "k": "l.perm.1"},
+    {"t": "h2", "k": "l.h.notcovered"},
+    {"t": "ul", "keys": ["l.nc.l1", "l.nc.l2", "l.nc.l3"]},
+    {"t": "h2", "k": "l.h.official"},
+    {"t": "p", "k": "l.official.1"},
+    {"t": "h2", "k": "l.h.georgia"},
+    {"t": "p", "k": "l.georgia.1"}
+  ]
+}

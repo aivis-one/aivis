@@ -1,0 +1,25 @@
+{
+  "doc": "cookies",
+  "order": 4,
+  "title": "c.title",
+  "blocks": [
+    {"t": "h2", "k": "c.h.short"},
+    {"t": "p", "k": "c.short.1"},
+    {"t": "h2", "k": "c.h.what"},
+    {"t": "p", "k": "c.what.1"},
+    {"t": "p", "k": "c.key.1"},
+    {"t": "h2", "k": "c.h.not"},
+    {"t": "ul", "keys": ["c.not.l1", "c.not.l2", "c.not.l3", "c.not.l4"]},
+    {"t": "h2", "k": "c.h.logs"},
+    {"t": "p", "k": "c.logs.1"},
+    {"t": "h2", "k": "c.h.basis"},
+    {"t": "p", "k": "c.basis.1"},
+    {"t": "p", "k": "c.basis.2"},
+    {"t": "h2", "k": "c.h.control"},
+    {"t": "p", "k": "c.control.1"},
+    {"t": "h2", "k": "c.h.other"},
+    {"t": "p", "k": "c.other.1"},
+    {"t": "h2", "k": "c.h.auth"},
+    {"t": "p", "k": "c.auth.1"}
+  ]
+}

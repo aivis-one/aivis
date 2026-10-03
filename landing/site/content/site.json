@@ -1,0 +1,193 @@
+{
+  "project": "AIVIS.ONE",
+  "default_locale": "en",
+  "locales": [
+    "en",
+    "ru"
+  ],
+  "locale_labels": {
+    "en": "EN",
+    "ru": "RU"
+  },
+  "locale_names": {
+    "en": "English",
+    "ru": "Русский"
+  },
+  "brand": {
+    "name": "AIVIS.ONE"
+  },
+  "theme_toggle": true,
+  "header_cta": {
+    "href": "/login"
+  },
+  "nav": [
+    {
+      "section": "aivis"
+    },
+    {
+      "section": "sankord"
+    },
+    {
+      "section": "courses"
+    },
+    {
+      "section": "questions"
+    }
+  ],
+  "social": [
+    {
+      "name": "Telegram channel",
+      "icon": "telegram",
+      "names": {
+        "ru": "Телеграм-канал"
+      },
+      "url": "https://t.me/aivisrun",
+      "handle": "t.me/aivisrun"
+    },
+    {
+      "name": "LinkedIn",
+      "icon": "linkedin",
+      "url": "https://www.linkedin.com/in/aivisone",
+      "handle": "linkedin.com/in/aivisone"
+    },
+    {
+      "name": "X",
+      "icon": "x",
+      "url": "https://x.com/aivisone",
+      "handle": "@aivisone"
+    },
+    {
+      "name": "Medium",
+      "icon": "medium",
+      "url": "https://medium.com/@aivisone",
+      "handle": "medium.com/@aivisone"
+    }
+  ],
+  "authorship": {
+    "agent_authored": false
+  },
+  "base_url": "https://aivis.one",
+  "sections": [
+    {
+      "id": "aivis",
+      "type": "home_aivis",
+      "cta_href": "about/"
+    },
+    {
+      "id": "sankord",
+      "type": "home_sankord",
+      "cta_hrefs": {
+        "en": "https://sankord.com",
+        "ru": "https://sankord.com/ru/"
+      }
+    },
+    {
+      "id": "courses",
+      "type": "home_courses",
+      "items": 4,
+      "cta_href": "courses/"
+    },
+    {
+      "id": "questions",
+      "type": "home_faq",
+      "items": 4,
+      "cta_href": "faq/"
+    },
+    {
+      "id": "footer",
+      "type": "home_footer"
+    }
+  ],
+  "legal_dir": "../legal/out",
+  "pages": [
+    {
+      "slug": "about",
+      "indexable": true,
+      "title_key": "about.meta.title",
+      "desc_key": "about.meta.desc",
+      "sections": [
+        {
+          "id": "about_article",
+          "type": "about_article"
+        }
+      ]
+    },
+    {
+      "slug": "about/privacy",
+      "indexable": true,
+      "title_key": "legal.privacy.title",
+      "desc_key": "legal.privacy.desc",
+      "sections": [
+        {
+          "id": "legal_privacy",
+          "type": "legal_doc",
+          "doc": "privacy"
+        }
+      ]
+    },
+    {
+      "slug": "about/terms",
+      "indexable": true,
+      "title_key": "legal.terms.title",
+      "desc_key": "legal.terms.desc",
+      "sections": [
+        {
+          "id": "legal_terms",
+          "type": "legal_doc",
+          "doc": "terms"
+        }
+      ]
+    },
+    {
+      "slug": "about/imprint",
+      "indexable": true,
+      "title_key": "legal.imprint.title",
+      "desc_key": "legal.imprint.desc",
+      "sections": [
+        {
+          "id": "legal_imprint",
+          "type": "legal_doc",
+          "doc": "imprint"
+        }
+      ]
+    },
+    {
+      "slug": "about/cookies",
+      "indexable": true,
+      "title_key": "legal.cookies.title",
+      "desc_key": "legal.cookies.desc",
+      "sections": [
+        {
+          "id": "legal_cookies",
+          "type": "legal_doc",
+          "doc": "cookies"
+        }
+      ]
+    },
+    {
+      "slug": "about/licence",
+      "indexable": true,
+      "title_key": "legal.licence.title",
+      "desc_key": "legal.licence.desc",
+      "sections": [
+        {
+          "id": "legal_licence",
+          "type": "legal_doc",
+          "doc": "licence"
+        }
+      ]
+    },
+    {
+      "slug": "faq",
+      "indexable": true,
+      "title_key": "faq.meta.title",
+      "desc_key": "faq.meta.desc",
+      "sections": [
+        {
+          "id": "faq_page",
+          "type": "faq_page"
+        }
+      ]
+    }
+  ]
+}

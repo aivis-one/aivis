@@ -1,0 +1,62 @@
+/* animation-studio v1.0.0 -- assets/techniques/bind.css
+   The project binding layer: everything that is about THIS page rather than
+   about a technique. Two jobs.
+
+   Job 1 -- the three defects recorded at ingest, which the user assigned to this
+   pack. The pack owns motion for this project, so these are its to fix.
+   Job 2 -- the reduced-motion floor for the whole document, which the page did
+   not have at all.
+
+   PRECONDITION, and why every var() here carries a fallback. This pack consumes
+   six custom properties from aivis-one-design-system: --motion-micro,
+   --motion-quick, --motion-moderate, --primary, --shadow-2 and --shadow-focus.
+   If any is unresolved, CSS discards the whole declaration and falls back to the
+   INITIAL value -- and the initial value of transition-property is `all`. A pack
+   commissioned to remove `transition: all` from this landing would then put it
+   back at runtime, silently, with its own checker still printing PASS, because
+   the checker reads authored text and not computed style.
+
+   So every consuming site carries a fallback. The three motion tokens are not
+   themed, so their fallbacks are the design system's literal values. The three
+   colour and effect tokens ARE themed -- --primary is #0B4F86 light and #37A6E6
+   dark -- so a literal fallback would be wrong in one theme; those degrade to
+   currentColor and to a neutral shadow instead. The fallbacks are a floor, not a
+   second source of truth: when the token layer is present it wins. */
+
+/* The page declared `transition: all` on .btn. `all` names every animatable
+   property including the layout-path ones, without naming one of them, so it
+   cannot be audited and it drags layout into a hover. Enumerated instead, and
+   restricted to the two the button actually changes plus its border. */
+.btn {
+  transition: background-color var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)),
+              border-color var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)),
+              color var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1));
+}
+
+/* The page lifted .btn--primary and .btn--accent on :hover with no
+   `hover: hover` guard, so on touch the transform stuck after the tap.
+
+   The declarations were removed from the page's own style block, and the
+   lift now lives only in mic-hover-lift, which is guarded. */
+
+/* The FAQ chevron already had a transition and it is kept, retimed onto a
+   semantic token so it moves with the rest of the page rather than against it. */
+.faq summary .chev { transition: transform var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)); }
+
+/* D3: the page carried no prefers-reduced-motion block anywhere. This is the
+   floor for everything the page had BEFORE the pack, not only for what the pack
+   added -- otherwise the coverage the pack claims is untrue at page level and
+   its own checker cannot see the gap, because it only reads its own files. */
+@media (prefers-reduced-motion: reduce) {
+  .btn, .faq summary .chev { transition: none; }
+}
+
+/* The counter's visually-hidden original. Not a technique: plumbing the
+   technique needs, kept here so the technique file stays portable. */
+.ls-mo-counter__source { position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* The stagger's travel distance, bound rather than left to a magic fallback.
+   Small on purpose: the design vector's rhythm is moderate and wide, and a
+   large entrance travel fights it. */
+:root { --ls-mo-travel-sm: 16px; }

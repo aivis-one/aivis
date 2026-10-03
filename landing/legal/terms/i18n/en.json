@@ -1,0 +1,46 @@
+{
+  "t.title": "Terms of use",
+
+  "t.h.scope": "Who we are and what these terms cover",
+  "t.scope.1": "These terms govern your use of the public pages of {site.domain} (the Site). The Site is run by {company.name}, a {company.form} registered in {company.country} (identification number {company.id}). By using the Site you accept these terms. If you do not accept them, please do not use the Site.",
+  "t.scope.2": "The sign-in area and any paid service have their own terms, which you see before you use them. Nothing here replaces them.",
+
+  "t.h.use": "Using the Site",
+  "t.use.1": "The Site is free to read. Use it lawfully and with respect for other visitors. Please do not:",
+  "t.use.l1": "try to break into the Site, disrupt it or overload it;",
+  "t.use.l2": "use it to send spam or malicious code;",
+  "t.use.l3": "collect its content automatically at a rate that affects other visitors.",
+
+  "t.h.content": "Content and licences",
+  "t.content.1": "The courses and course materials published free on the Site are licensed under {cc.name}. What you may do with them is on the [course licence]({site.path.licence}) page. These terms add no restriction to that licence.",
+  "t.content.2": "The design and software of the Site, and the names and logos of {company.brand}, belong to {company.name} or its licensors. They are not covered by {cc.name}, and no licence to them is given beyond viewing the Site. Please do not use them in a way that suggests we endorse you or your work.",
+  "t.content.3": "Third-party material on the Site keeps its own licence and is marked with its source.",
+
+  "t.h.info": "Information, not advice",
+  "t.info.1": "The Site and the courses are for information and education. They are not legal, financial, tax, medical, migration or other professional advice, and using them creates no advisory relationship with {company.name} or its director. They promise no result.",
+  "t.info.2": "Everything is provided as it is, without warranty of accuracy, completeness or fitness for a particular purpose. Check facts, figures and decisions yourself before you rely on them: trust, but verify.",
+
+  "t.h.nooffer": "No offer",
+  "t.nooffer.1": "Nothing on the Site is an offer, invitation or solicitation to buy, sell or hold a share, a participation or any financial product of {company.name} or anyone else, and nothing on it promises a return. Any such offer would be made separately, in writing, under its own documents.",
+
+  "t.h.links": "Links to other sites",
+  "t.links.1": "The Site links to services we do not run. We are not responsible for their content or practices.",
+
+  "t.h.liab": "Liability",
+  "t.liab.1": "To the extent Georgian law allows, and except in cases of intent or gross negligence, {company.name} is not liable for loss arising from your use of the Site or your reliance on its content. Nothing in these terms limits a liability that the law does not allow to be limited, or a right you have as a consumer that cannot be waived.",
+
+  "t.h.markets": "Where the Site is offered",
+  "t.markets.1": "The Site is written for readers worldwide in English and for Russian speakers outside Russia. It is not offered to users in Russia or Belarus, nor in Iran, North Korea, Syria, Cuba or the occupied territories of Ukraine, nor in any other country or territory under comprehensive sanctions of the United Nations, the European Union or the United States, and it is not meant for use there.",
+
+  "t.h.law": "Governing law and disputes",
+  "t.law.1": "These terms are governed by the law of Georgia. Disputes go to the courts of Tbilisi, Georgia, unless mandatory law where you live gives you the right to go to another forum.",
+
+  "t.h.change": "Changes",
+  "t.change.1": "We may change these terms. When we do, we replace the text and show the line “Updated” with the date at the top of the page. The text published on the Site applies from that date.",
+
+  "t.h.lang": "Language",
+  "t.lang.1": "These terms exist in English and in Russian. The English text is the main text. If the two versions differ in meaning, the English text prevails.",
+
+  "t.h.contact": "Contact",
+  "t.contact.1": "{company.name}, {company.address}. E-mail {contact.email}, Telegram [{contact.telegram_handle}]({contact.telegram_url})."
+}

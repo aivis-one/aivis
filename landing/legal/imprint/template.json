@@ -1,0 +1,35 @@
+{
+  "doc": "imprint",
+  "order": 3,
+  "title": "i.title",
+  "blocks": [
+    {"t": "h2", "k": "i.h.company"},
+    {"t": "dl",
+     "rows": [
+       ["i.l.name", "i.v.name"],
+       ["i.l.brand", "i.v.brand"],
+       ["i.l.form", "i.v.form"],
+       ["i.l.country", "i.v.country"],
+       ["i.l.id", "i.v.id"],
+       ["i.l.registered", "i.v.registered"],
+       ["i.l.address", "i.v.address"],
+       ["i.l.director", "i.v.director"],
+       ["i.l.tax", "i.v.tax"],
+       ["i.l.firm", "i.v.firm"]
+     ]},
+    {"t": "h2", "k": "i.h.contact"},
+    {"t": "dl",
+     "rows": [
+       ["i.l.email", "i.v.email"],
+       ["i.l.telegram", "i.v.telegram"],
+       ["i.l.web", "i.v.web"]
+     ]},
+    {"t": "h2", "k": "i.h.data"},
+    {"t": "dl",
+     "rows": [
+       ["i.l.dpo", "i.v.dpo"],
+       ["i.l.authority", "i.v.authority"]
+     ]},
+    {"t": "p", "k": "i.note.1"}
+  ]
+}

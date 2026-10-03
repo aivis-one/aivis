@@ -1,0 +1,35 @@
+/* animation-studio v1.0.0 -- assets/techniques/reveal.css (pack copy, pruned to the approved set)
+   Only #rev-stagger is approved. rev-fade-up, rev-section-header and rev-mask-text
+   were cut at select and their code is not shipped.
+
+   A1: the finished state is the authored default and motion is layered on top, so
+   a browser without scroll timelines renders a correct static page.
+   A2: no animation-duration -- scroll drives progress -- and fill-mode both, or
+   the element snaps back on scroll-up. */
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+
+    /* #rev-stagger -- span held under 600ms so the group scores as one element
+       under B4. Three items only in this project; the n+4 rule is kept so a
+       fourth step added later does not fall out of the sequence. */
+    .ls-mo-stagger > * {
+      opacity: 0;
+      transform: translateY(var(--ls-mo-travel-sm, 16px));
+      animation: ls-mo-rise linear both;
+      animation-timeline: view();
+    }
+    .ls-mo-stagger > *:nth-child(1) { animation-range: entry 0% cover 32%; }
+    .ls-mo-stagger > *:nth-child(2) { animation-range: entry 6% cover 38%; }
+    .ls-mo-stagger > *:nth-child(3) { animation-range: entry 12% cover 44%; }
+    .ls-mo-stagger > *:nth-child(n+4) { animation-range: entry 18% cover 50%; }
+  }
+}
+
+/* Reduce or replace, never blanket-strip: the travel goes, the finished state
+   stays, and the section still reads. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-mo-stagger > * { opacity: 1; transform: none; animation: none; }
+}
+
+@keyframes ls-mo-rise { to { opacity: 1; transform: translateY(0); } }

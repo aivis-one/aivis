@@ -1,0 +1,404 @@
+{
+  "version": 1,
+  "generated_by": "scripts/ds-adapter.py",
+  "ds": {
+    "name": "aivis-one-design-system",
+    "version": "1.1.0",
+    "path": "ds-record",
+    "path_note": "relative to this skill's own root (resolved that way by gate.py's Q-DS-ABSENCE). Was an absolute session-container path (/home/claude/work/...) that would not have existed outside the build session -- ds-record/ ships the two files ds-verify-absence.py actually reads (references/coverage.md, assets/tokens-resolved.json) so the gate re-verifies portably instead of failing on a dead path the moment this skill left the session it was built in.",
+    "source_hash": "6c1bceb28a605c59cb838963f4e695480fd12ad47c803a13e0561bcae8b05d7a",
+    "payload_note": "the adapter's actual input was a throwaway, session-local copy of ds-record/assets/tokens-resolved.json with every key re-prefixed --ds-* (this design system ships bare -- names, e.g. --bg-surface, per its own tokens.md \"no namespace prefix\"; ds-adapter.py's alias lookup expects the --ds-* form). Not shipped separately -- payload_sha256 identifies its exact content, and it is reproducible from ds-record/assets/tokens-resolved.json by that same prefix transform.",
+    "payload_sha256": "87984d3dda730ddbe835252b7d75aeb927d222cb11b58189f48940f26dd79bd3",
+    "rows": 209
+  },
+  "theme": {
+    "mode": "dual",
+    "reason": "51 of 209 rows differ between light and dark"
+  },
+  "contract": {
+    "source": "/mnt/skills/plugins/landing-studio/references/tokens.md",
+    "targets": 28,
+    "groups": [
+      "color",
+      "spacing",
+      "radius",
+      "font",
+      "z",
+      "container"
+    ],
+    "skipped_rows": [
+      {
+        "group": "dark",
+        "cell": "same 9 keys as color, optional -- present together enables dark mode end to end",
+        "why": "not a bare key list; no targets taken from this row"
+      }
+    ]
+  },
+  "spacing_alignment": "nearest-to-ls-default",
+  "decision": {
+    "letter": "A",
+    "name": "owned-scale",
+    "state": "recorded",
+    "carrier": "protocols/design.md step 1 (SPEC-v10 section 5.4)",
+    "options": [
+      {
+        "letter": "A",
+        "name": "owned-scale",
+        "meaning": "fall back to landing-studio's own font defaults; no brand type on the page"
+      },
+      {
+        "letter": "B",
+        "name": "ds-escape",
+        "meaning": "bind the nearest primitive anyway, marked ds_escape: true in deviations.json"
+      },
+      {
+        "letter": "C",
+        "name": "ask-owner",
+        "meaning": "ask the design-system owner and PAUSE; recorded as deferred, still needed"
+      }
+    ]
+  },
+  "counts": {
+    "absent": 2,
+    "blocked": 10,
+    "ok": 16
+  },
+  "judgement_calls": 9,
+  "targets": {
+    "--ls-color-primary": {
+      "status": "ok",
+      "source": "--ds-accent",
+      "value": "#B1581B",
+      "layer_seen": "semantic",
+      "decision": "manual-alias-correction",
+      "decision_letter": null,
+      "decision_state": "recorded",
+      "decision_needed": false,
+      "note": "ROLE_ALIASES for color.primary did not include \"accent\", the DS's actual brand-action role name (its own tokens.md: no namespace, native names are the contract). Confirmed with the project owner 2026-08-31 and bound manually rather than left as owned-scale."
+    },
+    "--ls-color-primary-hover": {
+      "status": "ok",
+      "source": "--ds-accent-hover",
+      "value": "#9A4410",
+      "layer_seen": "semantic",
+      "decision": "manual-alias-correction",
+      "decision_letter": null,
+      "decision_state": "recorded",
+      "decision_needed": false,
+      "note": "ROLE_ALIASES for color.primary did not include \"accent\", the DS's actual brand-action role name (its own tokens.md: no namespace, native names are the contract). Confirmed with the project owner 2026-08-31 and bound manually rather than left as owned-scale."
+    },
+    "--ls-color-on-primary": {
+      "status": "ok",
+      "source": "--ds-on-primary",
+      "value": "#FFFFFF",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "value-tie",
+        "ties": [
+          "--ds-on-accent",
+          "--ds-on-danger"
+        ],
+        "reason": "ties with --ds-on-accent, --ds-on-danger at #FFFFFF"
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-color-background": {
+      "status": "ok",
+      "source": "--ds-bg-page",
+      "value": "#F6F8FA",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "value-tie",
+        "ties": [
+          "--ds-bg-inset"
+        ],
+        "reason": "ties with --ds-bg-inset at #F6F8FA"
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-color-surface": {
+      "status": "ok",
+      "source": "--ds-bg-surface",
+      "value": "#FFFFFF",
+      "layer_seen": "semantic",
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-color-surface-muted": {
+      "status": "ok",
+      "source": "--ds-bg-subtle",
+      "value": "#EDF1F5",
+      "layer_seen": "semantic",
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-color-border": {
+      "status": "ok",
+      "source": "--ds-border-default",
+      "value": "#C5D0DA",
+      "layer_seen": "semantic",
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-color-text": {
+      "status": "ok",
+      "source": "--ds-text-primary",
+      "value": "#11161B",
+      "layer_seen": "semantic",
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-color-text-muted": {
+      "status": "ok",
+      "source": "--ds-text-secondary",
+      "value": "#4C5763",
+      "layer_seen": "semantic",
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-sp-xs": {
+      "status": "ok",
+      "source": "--ds-space-component-sm",
+      "value": "0.5rem",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "nearest-to-ls-default",
+        "reason": "8 distinct bindable magnitude(s) for 7 contract rung(s); this rung took the magnitude nearest landing-studio's own default",
+        "ties": []
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-sp-sm": {
+      "status": "ok",
+      "source": "--ds-space-component-md",
+      "value": "0.75rem",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "nearest-to-ls-default",
+        "reason": "8 distinct bindable magnitude(s) for 7 contract rung(s); this rung took the magnitude nearest landing-studio's own default",
+        "ties": []
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-sp-md": {
+      "status": "ok",
+      "source": "--ds-space-component-lg",
+      "value": "1rem",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "nearest-to-ls-default",
+        "reason": "8 distinct bindable magnitude(s) for 7 contract rung(s); this rung took the magnitude nearest landing-studio's own default; ties with --ds-space-gutter-mobile at 1rem",
+        "ties": [
+          "--ds-space-gutter-mobile"
+        ]
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-sp-lg": {
+      "status": "ok",
+      "source": "--ds-space-gutter-web",
+      "value": "1.5rem",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "nearest-to-ls-default",
+        "reason": "8 distinct bindable magnitude(s) for 7 contract rung(s); this rung took the magnitude nearest landing-studio's own default",
+        "ties": []
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-sp-2xl": {
+      "status": "ok",
+      "source": "--ds-space-section-sm",
+      "value": "2rem",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "nearest-to-ls-default",
+        "reason": "8 distinct bindable magnitude(s) for 7 contract rung(s); this rung took the magnitude nearest landing-studio's own default",
+        "ties": []
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-sp-3xl": {
+      "status": "ok",
+      "source": "--ds-space-section-lg",
+      "value": "4rem",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "nearest-to-ls-default",
+        "reason": "8 distinct bindable magnitude(s) for 7 contract rung(s); this rung took the magnitude nearest landing-studio's own default",
+        "ties": []
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-sp-4xl": {
+      "status": "ok",
+      "source": "--ds-space-section-lg",
+      "value": "4rem",
+      "layer_seen": "semantic",
+      "judgement_call": {
+        "kind": "nearest-to-ls-default",
+        "reason": "8 distinct bindable magnitude(s) for 7 contract rung(s); this rung took the magnitude nearest landing-studio's own default",
+        "ties": []
+      },
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-radius-md": {
+      "status": "ok",
+      "source": "--ds-radius-control",
+      "value": "8px",
+      "layer_seen": "semantic",
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-radius-lg": {
+      "status": "ok",
+      "source": "--ds-radius-card",
+      "value": "12px",
+      "layer_seen": "semantic",
+      "decision": null,
+      "decision_letter": null,
+      "decision_state": "none",
+      "decision_needed": false
+    },
+    "--ls-font-family-base": {
+      "status": "blocked",
+      "reason": "no role in the ds-font-* family matches this target",
+      "nearest": "--ds-font-display",
+      "nearest_value": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "layer_seen": "primitive",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-font-size-sm": {
+      "status": "blocked",
+      "reason": "no role in the ds-font-* family matches this target",
+      "nearest": "--ds-font-display",
+      "nearest_value": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "layer_seen": "primitive",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-font-size-md": {
+      "status": "blocked",
+      "reason": "no role in the ds-font-* family matches this target",
+      "nearest": "--ds-font-mono",
+      "nearest_value": "'AIVIS Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+      "layer_seen": "primitive",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-font-size-lg": {
+      "status": "blocked",
+      "reason": "no role in the ds-font-* family matches this target",
+      "nearest": "--ds-font-display",
+      "nearest_value": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "layer_seen": "primitive",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-font-size-2xl": {
+      "status": "blocked",
+      "reason": "no role in the ds-font-* family matches this target",
+      "nearest": "--ds-font-display",
+      "nearest_value": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "layer_seen": "primitive",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-font-size-3xl": {
+      "status": "blocked",
+      "reason": "no role in the ds-font-* family matches this target",
+      "nearest": "--ds-font-display",
+      "nearest_value": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "layer_seen": "primitive",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-font-size-4xl": {
+      "status": "blocked",
+      "reason": "no role in the ds-font-* family matches this target",
+      "nearest": "--ds-font-display",
+      "nearest_value": "'AIVIS Display', 'Plus Jakarta Sans', Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "layer_seen": "primitive",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-z-sticky": {
+      "status": "absent",
+      "reason": "no ds-z-* family in the payload",
+      "decision": "ls-default",
+      "decision_letter": null,
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-z-overlay": {
+      "status": "absent",
+      "reason": "no ds-z-* family in the payload",
+      "decision": "ls-default",
+      "decision_letter": null,
+      "decision_state": "recorded",
+      "decision_needed": false
+    },
+    "--ls-container-max": {
+      "status": "blocked",
+      "reason": "no role in the ds-container-* family matches this target",
+      "decision": "owned-scale",
+      "decision_letter": "A",
+      "decision_state": "recorded",
+      "decision_needed": false
+    }
+  }
+}

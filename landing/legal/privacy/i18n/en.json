@@ -1,0 +1,63 @@
+{
+  "p.title": "Privacy policy",
+
+  "p.h.summary": "In short",
+  "p.summary.1": "This policy covers the public pages of {site.domain}: the home page, About, Courses and Questions. These pages run no analytics, load no third-party scripts and we set no cookies on them. They have no sign-up or contact forms. You reach us by e-mail or Telegram, and then we hold what you send us.",
+  "p.summary.2": "The sign-in area is a separate service. It has its own privacy notice, which you see before you create an account.",
+
+  "p.h.who": "Who is responsible",
+  "p.who.1": "The controller of your data is {company.name}, a {company.form} registered in {company.country} (identification number {company.id}), at {company.address}. The full details are on the [company details]({site.path.imprint}) page.",
+  "p.who.2": "For anything about your data, write to {company.director}, founder and director, at {contact.email}, or on Telegram at [{contact.telegram_handle}]({contact.telegram_url}).",
+  "p.who.3": "The person responsible for data protection is the director, {company.director}.",
+
+  "p.h.law": "Which law applies",
+  "p.law.1": "We are established in Georgia, so the Law of Georgia on Personal Data Protection applies to us first. Its supervisory authority is the [{authority.name}]({authority.url}), which took over the functions of the Personal Data Protection Service on 2 March 2026. Visitors in the EU and the UK: see “Visitors in the EU and the UK”.",
+
+  "p.h.data": "What data we handle and why",
+  "p.data.intro": "Through the public pages we handle only the following data.",
+  "p.data.c1": "When you open a page, the technical data that any web server receives reach the company’s server through {host.name}: your IP address, the page requested, the date and time, browser and device details, and the page you came from. We use them to deliver the site and keep it secure and running. The basis is our legitimate interest in running a secure site. They stay in the operating logs of the server and of {host.name}. We do not export or analyse these logs.",
+  "p.data.c2": "When you write to us by e-mail, we receive your e-mail address, your name if you give it, and whatever you write or attach. We use them to read and answer your message. The basis is your request and our legitimate interest in answering. We keep them while we deal with the matter and for 12 months after the last message. See “How long we keep it”.",
+  "p.data.c3": "When you write to us on Telegram, we receive your Telegram name, username and ID, and whatever you write or send. We use them to read and answer your message. The basis is your request and our legitimate interest in answering. We keep them as we keep e-mail.",
+  "p.data.c4": "When you press the light/dark theme button, one word, “light” or “dark”, is saved in your own browser. It is never sent to us. It is used to show the theme you chose the next time you visit. The basis is your own action. It stays in your browser until you delete it. See the [cookie and local storage notice]({site.path.cookies}).",
+
+
+
+
+
+  "p.data.optional": "You do not have to give us any data. If you do not write to us, we receive nothing from you except the technical data a web server needs to answer your request.",
+  "p.data.none": "We keep no mailing list and send no marketing messages. We do not sell data, build profiles of visitors, or take any decision about you by automated means alone.",
+
+  "p.h.rec": "Who receives data",
+  "p.rec.1": "The site runs on the company’s own server. Traffic to it passes through {host.name} as a proxy for protection and speed, so {host.name} sees technical data such as your IP address, the page requested, the time and your browser. For us it acts as a processor of this data. Its contact details are at {host.url}.",
+  "p.rec.2": "If you write by e-mail or Telegram, your message passes through your provider, through our mailbox provider and through Telegram, which handle it under their own terms.",
+  "p.rec.3": "Only the founder has access to the mailbox and the channels where your messages arrive. We pass your data to no one else, unless the law requires it or a competent authority lawfully asks for it.",
+  "p.rec.4": "The pages link to other services, such as Telegram, LinkedIn, X, Medium and our product site sankord.com. Once you follow a link you are on a service we do not run, and its own policy applies.",
+
+  "p.h.transfer": "Transfers abroad",
+  "p.tr.1": "We work from Georgia. {host.name} handles traffic to the site through servers in many countries, and our e-mail and Telegram providers may store messages outside Georgia. The countries where your data is stored are not fixed yet.",
+
+  "p.h.ret": "How long we keep it",
+  "p.ret.1": "We keep data only as long as the purpose needs it, then delete or anonymise it, unless a law requires us to keep it. Ordinary correspondence is kept while we deal with the matter and for 12 months after the last message. Server logs follow the schedule of our server and of {host.name}. The theme setting stays in your browser until you delete it.",
+
+  "p.h.rights": "Your rights",
+  "p.rights.1": "Under the Law you have these rights:",
+  "p.rights.l1": "to ask whether we handle data about you, and to see it and receive a copy;",
+  "p.rights.l2": "to ask us to correct, update or complete it;",
+  "p.rights.l3": "to ask us to stop handling it;",
+  "p.rights.l4": "to ask us to delete or block it;",
+  "p.rights.l5": "to withdraw any consent you gave;",
+  "p.rights.l6": "not to be made subject to a decision taken only by automated means that has legal or similarly significant effect on you. We take no such decision.",
+  "p.rights.term": "We answer your request within 10 working days of receiving it. For information and copies the Law allows a further 10 working days in special cases.",
+  "p.rights.2": "To use a right, write to us by e-mail or on Telegram. To protect you, we may ask you to confirm who you are before we act.",
+  "p.rights.3": "You may complain to the supervisory authority, the [{authority.name}]({authority.url}). Its decisions can be appealed to a court.",
+
+  "p.h.sec": "Security",
+  "p.sec.1": "The pages are static and we keep no database of visitors. As the Law requires, we record a data incident and notify the State Audit Office not later than 72 hours after identifying it, except where the incident poses a minimal threat to fundamental rights and freedoms.",
+
+  "p.h.eu": "Visitors in the EU and the UK",
+  "p.eu.1": "This site is written in English and in Russian for readers worldwide and for Russian speakers outside Russia. Whether it is aimed at the EU or the UK, and so whether the GDPR or the UK GDPR applies to it, is not settled. We have not appointed a representative in the EU or the UK.",
+  "p.eu.2": "If the GDPR or the UK GDPR applies to you anyway, the same practice holds. Our grounds are our legitimate interest in running a secure site and in answering messages. You have the rights of access, correction, erasure, restriction, portability and objection, and you may complain to your national data protection authority (in the UK, the Information Commissioner’s Office).",
+
+  "p.h.change": "Changes",
+  "p.change.1": "When we change this policy, we replace the text here and show the line “Updated” with the date at the top of this page."
+}

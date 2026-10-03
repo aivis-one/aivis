@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- [COUNSEL C99: planted internal marker] -->
+<!-- draft. TODO. row 12. W-PROM-C-1. Version 0.3. sandbox/landing-work/content/en.json -->
+<!-- SELF-TEST FIXTURE. Every defect below is planted on purpose; run-checks.py --self-test asserts that
+     the matching check fires. Planted: B1 lang, E2 E3 E4 E6 E8 head, A1 A4 viewport, B3 headings, B4
+     landmarks, B5 alt, D7 dims, B11 ids, H1 links, F1 F2 F9 F10 CSP, D5 third party, B9 motion,
+     A2 A8 overflow, A3 target, A5 tiny text, A6 measure, A10 clip, C8 rtl, B7 contrast, B8 focus,
+     D1 D3 D4 D6 load, H11 error, G4 no-JS, H4 H5 B12 H3 UI, H7 anchor, I9 opacity, I10 internal marker. -->
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
+<title>AIVIS fixture planted defects</title>
+<link rel="alternate" hreflang="en" href="https://aivis.one/">
+<meta property="og:type" content="website">
+<style>
+body{margin:0;font-size:16px;line-height:1.5;color:#222;background:#fff;font-family:Bad,sans-serif}
+@font-face{font-family:Bad;src:url(font.ttf)}
+header{position:sticky;top:0;height:64px;background:#eee;display:flex;gap:12px;align-items:center;z-index:5}
+button{min-width:44px;min-height:44px}
+.hl{display:contents}
+@media (max-width:599px){.hl{display:none}}
+.wide{width:900px;height:20px;background:#9cf}
+.tiny{display:block;width:10px;height:10px;background:#c00}
+.t9{font-size:9px}
+.low{color:#bbb}
+.clip{height:20px;overflow:hidden;width:200px}
+.rtlwide{display:none}
+[dir=rtl] .rtlwide{display:block;width:1500px}
+.nofocus:focus{outline:none;box-shadow:none}
+.under{position:fixed;left:10px;bottom:10px;width:60px;height:30px;background:#fc0}
+.cover{position:fixed;left:0;bottom:0;width:200px;height:60px;background:#fff;z-index:9}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.spin{width:20px;height:20px;background:#f60;animation:spin 1s linear infinite}
+.reveal{opacity:.6}
+.wt{width:10px;height:10px}
+section{min-height:900px}
+</style>
+</head>
+<body>
+<header><div class="hl"><a class="nofocus" href="#sec1">Section one</a><a href="#sec2">Section two</a><a href="#nope">Broken anchor</a><a href="missing-page.html">Broken link</a></div>
+<span data-ls-lang><span data-ls-lang-switch>EN</span><a href="en.html" hreflang="en" lang="en">English</a></span>
+<button id="dup" type="button" data-ls-theme-toggle aria-label="Toggle theme" aria-pressed="false">T</button>
+<button type="button" data-ls-menu-open aria-label="Menu" aria-expanded="false" aria-controls="ghost">M</button>
+<button type="button" onclick="void 0" aria-label="Inline handler">H</button></header>
+<div id="drawer" data-ls-drawer hidden>drawer</div>
+<main id="app">
+<img src="slow.png" width="600" height="480" alt="slow image">
+<h1>First heading about SANKORD</h1><h1 id="dup">Second heading</h1><h4>Skipped level</h4>
+<p class="low">Low contrast sentence for the contrast check.</p>
+<p class="t9" style="margin:0">Nine pixel text.</p>
+<a class="tiny" href="#sec1" aria-label="tiny target"></a>
+<div class="wide"></div>
+<div class="clip">Clipped text: this block is twenty pixels high and hides its overflow on purpose, so the text spacing check must see it clipped.</div>
+<div class="rtlwide">rtl only block</div>
+<div class="spin"></div>
+<div class="ls-mo-reveal reveal">Revealed content stuck at partial opacity.</div>
+<img src="missing.png" width="10" height="10">
+<img src="http://localhost:__PORT__/third.png" width="10" height="10" alt="">
+<img src="weight.png" class="wt" alt="">
+<a class="under nofocus" href="#sec2" aria-label="hidden under cover"></a><div class="cover"></div>
+<section id="sec1"><h2>Section one</h2></section>
+<section id="sec2"><h2>Section two</h2></section>
+</main>
+<script>nonexistent_function();</script>
+<script>
+document.querySelector('[data-ls-theme-toggle]').addEventListener('click',function(){document.documentElement.setAttribute('data-theme','dark')});
+document.querySelector('[data-ls-menu-open]').addEventListener('click',function(){this.setAttribute('aria-expanded','true')});
+var p=document.createElement('p');p.textContent='This paragraph is added by script so that the page without JavaScript stays nearly empty. It is long on purpose: a measure of more than eighty characters per line on a wide screen must raise the line length warning, and this sentence keeps going until the paragraph is wide enough to show it clearly on desktop.';
+document.getElementById('app').appendChild(p);
+setTimeout(function(){var d=document.createElement('div');d.style.height='400px';d.textContent='late banner';document.body.insertBefore(d,document.body.firstChild);},400);
+</script>
+</body>
+</html>

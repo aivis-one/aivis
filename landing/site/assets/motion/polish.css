@@ -1,0 +1,11 @@
+/* animation-studio v1.0.0 -- assets/techniques/polish.css (pack copy, pruned)
+   Only #pol-text-balance is approved. The other five pol- blocks were cut at
+   select, four of them because this project's design system or its own page
+   already ships the effect.
+
+   The polish layer does not animate: `live` is stable and `reduce` is
+   "n/a -- static" for every record in it. */
+
+/* #pol-text-balance */
+.ls-mo-balance { text-wrap: balance; }
+.ls-mo-pretty  { text-wrap: pretty; }

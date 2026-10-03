@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<!-- SELF-TEST FIXTURE. Planted: F11 an inline script that the page's own CSP forbids. -->
+<html lang="en" dir="ltr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+<title>CSP violation at runtime</title></head>
+<body><main><h1>CSP violation</h1></main>
+<script>document.title = 'blocked by the page CSP';</script>
+</body>
+</html>
