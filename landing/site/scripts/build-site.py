@@ -88,6 +88,7 @@ def sitemap_for(site, locale, locale_path):
     base = site.get("base_url", "").rstrip("/")
     default = site["default_locale"]
     slugs = [""] + [x["slug"].strip("/") + "/" for x in site.get("pages", []) if x.get("indexable", True)]
+    slugs += [x.strip("/") + "/" for x in site.get("sitemap_extra", [])]   # pages built outside the site build (the courses, landing/courses/build.py)
     out = []
     for slug in slugs:
         url = base + locale_path(locale, default) + slug

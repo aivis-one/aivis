@@ -5,7 +5,7 @@
   var deck = document.getElementById('deck');
   var stage = document.getElementById('stage');
   var box = document.getElementById('stageBox');
-  var wrap = document.getElementById('stageWrap');
+  var wrap = document.getElementById('ls-main');
   var slides = [].slice.call(stage.querySelectorAll('.slide'));
   var total = slides.length;
   var cur = 0;

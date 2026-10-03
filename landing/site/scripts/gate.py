@@ -219,6 +219,29 @@ def gate_review(args, site):
     return "PASS", "zero [review:] occurrences in rendered pages or content values"
 
 
+# ------------------------------------------------------ course slide-deck pages
+
+# The 8 course pages (dist/<locale>/courses/<slug>/, built by landing/courses/build.py) are slide decks, not
+# landing pages: the courses build marks their <html> with `data-ls-deck`. A deck has no menu drawer and no
+# landing stylesheet (its CSS is one scaled stage; its fixed widths were measured safe on a phone), so the
+# menu-toggle / drawer WCAG items and Q-RESPONSIVE's landing-CSS heuristics do not apply to it and are skipped
+# for it ALONE. What covers the decks instead: the stage fit is measured per viewport, integrity-check.sh runs
+# on every page of dist/, and the courses build refuses (csp_lint) a page a hash-only CSP would block and
+# proves the hashes in _headers. Every other check of this gate (language, language-switch label, skip link,
+# <main id="ls-main">, e-mail, CDN, review markers, contrast, i18n ...) still runs on the decks.
+DECK_MARK_RE = re.compile(r"<html\b[^>]*\bdata-ls-deck\b", re.IGNORECASE)
+
+
+DECK_PATH_RE = re.compile(r"(?:^|/)(?:[a-z]{2}(?:-[a-z]{2})?/)?courses/[a-z0-9-]+/index\.html$")
+
+
+def is_deck_page(html_text, page, dist):
+    # Bound to the place AND the mark: a page is a course deck only when it sits at
+    # <dist>/courses/<slug>/ or <dist>/<locale>/courses/<slug>/ and carries data-ls-deck.
+    rel = Path(page).resolve().relative_to(Path(dist).resolve()).as_posix()
+    return bool(DECK_PATH_RE.search(rel)) and bool(DECK_MARK_RE.search(html_text))
+
+
 # -------------------------------------------------------------- Q-RESPONSIVE
 
 FIXED_WIDTH_RE = re.compile(r"(?<![a-zA-Z-])width\s*:\s*(\d+(?:\.\d+)?)px")
@@ -277,13 +300,18 @@ def gate_responsive(args, site):
     if not pages:
         return "FAIL", f"no *.html page found under {args.dist}"
     bad = []
+    decks = 0
     for page in pages:
-        reasons = check_responsive_page(page.read_text(encoding="utf-8"))
+        text = page.read_text(encoding="utf-8")
+        if is_deck_page(text, page, args.dist):
+            decks += 1   # course slide deck: see "course slide-deck pages" above
+            continue
+        reasons = check_responsive_page(text)
         if reasons:
             bad.append(f"{page}: {'; '.join(reasons)}")
     if bad:
         return "FAIL", joined(bad)
-    return "PASS", f"{len(pages)} page(s): no unconditional fixed width>=300px, min-height:44px present, min-width: breakpoint present"
+    return "PASS", f"{len(pages) - decks} page(s) ({decks} course deck page(s) skipped): no unconditional fixed width>=300px, min-height:44px present, min-width: breakpoint present"
 
 
 # --------------------------------------------------------------- Q-CF-READY
@@ -392,8 +420,14 @@ WCAG_CHECKS = [
 ]
 
 
-def check_wcag_page(html_text):
-    return [label for label, rx in WCAG_CHECKS if not rx.search(html_text)]
+# The WCAG items a slide deck has no control for (it has no menu drawer): skipped for deck pages only.
+DECK_NA_WCAG = ("menu-toggle aria-label", "menu-toggle aria-expanded", "drawer role", "drawer aria-modal")
+
+
+def check_wcag_page(html_text, page, dist):
+    deck = is_deck_page(html_text, page, dist)
+    return [label for label, rx in WCAG_CHECKS
+            if not rx.search(html_text) and not (deck and label.startswith(DECK_NA_WCAG))]
 
 
 def gate_wcag(args, site):
@@ -402,7 +436,7 @@ def gate_wcag(args, site):
         return "FAIL", f"no *.html page found under {args.dist}"
     bad = []
     for page in pages:
-        missing = check_wcag_page(page.read_text(encoding="utf-8"))
+        missing = check_wcag_page(page.read_text(encoding="utf-8"), page, args.dist)
         if missing:
             bad.append(f"{page}: missing {missing}")
     if bad:

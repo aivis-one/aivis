@@ -411,3 +411,11 @@ button { font: inherit; color: inherit; }
   .k-final .fv-logo { align-self: flex-start; margin-top: 24px; } /* half of 300 x 48 */
   .k-final .fv-foot { padding-top: var(--space-3); }
 }
+
+/* skip link: the same rule as the landing pages (site.css .ls-skip), invisible until focused */
+.ls-skip {
+  position: absolute; inset-inline-start: var(--space-3); inset-block-start: -200px; z-index: 100;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm);
+  background: var(--primary); color: var(--on-primary); font-weight: 700;
+}
+.ls-skip:focus { inset-block-start: var(--space-3); text-decoration: none; }

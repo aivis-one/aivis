@@ -99,7 +99,31 @@
     }
   ],
   "legal_dir": "../legal/out",
+  "sitemap_extra": [
+    "courses/tasks/",
+    "courses/skills/",
+    "courses/agents/",
+    "courses/projects/"
+  ],
   "pages": [
+    {
+      "slug": "courses",
+      "indexable": true,
+      "title_key": "courses_page.meta.title",
+      "desc_key": "courses_page.meta.desc",
+      "sections": [
+        {
+          "id": "courses_page",
+          "type": "courses_page",
+          "slugs": [
+            "tasks",
+            "skills",
+            "agents",
+            "projects"
+          ]
+        }
+      ]
+    },
     {
       "slug": "about",
       "indexable": true,

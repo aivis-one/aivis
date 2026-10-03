@@ -14,7 +14,7 @@ Placeholders in template.html (one regex pass, so inserted text is never re-scan
     {{t:KEY}}        content value, inserted as HTML as it is (the accepted text, with its own <b>, <span class="grad"> ...)
     {{a:KEY}}        content value as plain text, HTML-escaped (attributes, title)
     {{@href:/p/}}    the page address of /p/ in this page's language;  {{@abs:/p/}} the same with the site origin (base_url)
-    {{@lang}} {{@lang_name}} {{@lang_cur}} {{@lang_items}} {{@description}} {{@alternates}} {{@boot}} {{@style}} {{@script}}
+    {{@skip}} {{@lang}} {{@lang_name}} {{@lang_cur}} {{@lang_items}} {{@description}} {{@alternates}} {{@boot}} {{@style}} {{@script}}
                      built here: <html lang>, the language control (a list of plain links with hreflang), the description
                      meta (none when meta.desc is empty), canonical + hreflang links, the inline theme script, the inline
                      stylesheet (fonts + tokens + course.css + the course's extra.css), the inline course script.
@@ -100,6 +100,17 @@ def load_courses(locales):
     return courses
 
 
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+INLINE_BLOCK = re.compile(r"(<script>.*?</script>|<style>.*?</style>)", re.S)
+
+
+def encode_emails(text):
+    """The landing pages write an address as `name&#64;host` (href and text), so Cloudflare's e-mail obfuscation finds no
+    e-mail-shaped string to rewrite (a rewrite injects a script and breaks the CSP). Same here, outside script/style."""
+    parts = INLINE_BLOCK.split(text)
+    return "".join(p if i % 2 else EMAIL.sub(lambda m: m.group(0).replace("@", "&#64;"), p) for i, p in enumerate(parts))
+
+
 def render(slug, tpl, content, loc, locales, default, site, shared):
     c = content[loc]
     base = (site.get("base_url") or "").rstrip("/")
@@ -127,6 +138,7 @@ def render(slug, tpl, content, loc, locales, default, site, shared):
         "lang_items": "\n".join(items),
         "description": ('<meta name="description" content="%s">\n' % html.escape(desc, quote=True)) if desc else "",
         "alternates": alternates,
+        "skip": '<a class="ls-skip" href="#ls-main">%s</a>' % html.escape(shared["skip"][loc], quote=True),
         "boot": shared["boot"],
         "style": shared["style"] + "\n" + shared["extra"][slug],
         "script": shared["script"],
@@ -148,7 +160,7 @@ def render(slug, tpl, content, loc, locales, default, site, shared):
     if "{{" in out.replace(shared["script"], "").replace(shared["style"], ""):
         left = re.findall(r"\{\{[^{}]*\}\}", out.replace(shared["script"], "").replace(shared["style"], ""))
         sys.exit("FAIL: %s/%s unresolved placeholder %s" % (slug, loc, left[:3]))
-    return out
+    return encode_emails(out)
 
 
 def csp_lint(text):
@@ -248,6 +260,8 @@ def main(argv):
         "boot": read(sh / "theme-boot.js"),
         "style": "\n".join([fonts_css, read(sh / "aivis-tokens.css"), read(sh / "course.css")]),
         "script": read(sh / "course.js"),
+        # the skip link's text is the landing's own (content/<locale>.json `nav.skip`), reused, not restated
+        "skip": {loc: json.loads(read(args.site.parent / (loc + ".json")))["t"]["nav.skip"] for loc in locales},
         "extra": {d.name: read(d / "extra.css") if (d / "extra.css").is_file() else "" for d, _, _ in courses},
     }
     for k in ("boot", "script"):
@@ -257,10 +271,12 @@ def main(argv):
         sys.exit("FAIL: shared style contains </style")
 
     # clean what a previous run wrote
-    shutil.rmtree(dist / "courses", ignore_errors=True)
+    # (only the course folders and the shared files: dist/courses/index.html is the site's own /courses/ page)
     for loc in locales:
-        if loc != default:
-            shutil.rmtree(dist / loc / "courses", ignore_errors=True)
+        base = dist / prefix(loc, default).lstrip("/") / "courses"
+        for d, _t, _c in courses:
+            shutil.rmtree(base / d.name, ignore_errors=True)
+    shutil.rmtree(dist / "courses" / "_shared", ignore_errors=True)
 
     pages, styles, scripts = [], [], []
     for d, tpl, content in courses:

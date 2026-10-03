@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{@lang}}" data-theme="light">
+<html lang="{{@lang}}" data-theme="light" data-ls-deck>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,6 +9,7 @@
 {{@alternates}}<style>{{@style}}</style>
 </head>
 <body>
+{{@skip}}
 <svg class="sty1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
 <symbol id="i-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M12 3 22 20.3H2z"/><path d="M12 10v4.6"/><path d="M10.85 16.25h2.3v2.3h-2.3z" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="2.2"><path d="M4 12h15"/><path d="M13 5l7 7-7 7"/></symbol>
@@ -33,7 +34,7 @@
     <a class="brand" id="logoLink" href="{{@href:/}}" aria-label="{{a:ui.logo}}"><img src="/courses/_shared/assets/aivis-mark.svg" alt=""><span class="brand-name">aivis<b>.</b>one</span></a>
     <span class="counter" id="counter" aria-live="polite">1 / 23</span>
     <details class="lang" id="langBox">
-      <summary class="lang__btn" id="langBtn" aria-label="{{a:ui.lang}}: {{@lang_name}}"><span class="lang__cur" aria-hidden="true">{{@lang_cur}}</span></summary>
+      <summary class="lang__btn" id="langBtn" data-ls-lang-switch aria-label="{{a:ui.lang}}: {{@lang_name}}"><span class="lang__cur" aria-hidden="true">{{@lang_cur}}</span></summary>
       <ul class="lang__list">
 {{@lang_items}}
       </ul>
@@ -44,7 +45,7 @@
     </button>
   </header>
 
-  <main class="stage-wrap" id="stageWrap">
+  <main class="stage-wrap" id="ls-main">
     <div class="stage-box" id="stageBox">
       <button type="button" class="more-cue" id="moreCue" aria-label="{{a:ui.more}}"><svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
       <div class="stage" id="stage" data-dir="next">

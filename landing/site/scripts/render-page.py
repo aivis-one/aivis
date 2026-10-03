@@ -1132,6 +1132,37 @@ def r_faq_page(sec, c, site):
     return "\n".join(out)
 
 
+def r_courses_page(sec, c, site):
+    """/courses/: the heading and the intro, then one card per course (title, 'course N . M slides', the two labelled
+    lines, a button to the course page), then the closing line with its link to the licence page. The cards are the
+    home's course cards (.card.course) with the text laid out in full; the course slugs come from site.json (`slugs`)."""
+    g = lambda k: c.get("courses_page." + k)
+    slugs = sec.get("slugs") or ["tasks", "skills", "agents", "projects"]
+    items = []
+    for i, slug in enumerate(slugs, 1):
+        items.append(
+            '<li class="card course course--full" data-component="Card" data-variant="elevated" data-size="md">'
+            '<div class="course__top"><span class="num" aria-hidden="true">%02d</span>'
+            '<span class="course__ic" aria-hidden="true">%s</span></div>'
+            '<h3><span class="course__main">%s</span> <span class="course__sub">%s</span></h3>'
+            '<p class="course__line"><span class="course__label">%s</span> %s</p>'
+            '<p class="course__line"><span class="course__label">%s</span> %s</p>'
+            '<div class="course__go">%s</div></li>'
+            % (i, ic(COURSE_ICONS[(i - 1) % len(COURSE_ICONS)]), T(g("card%d.title" % i)), T(g("card%d.meta" % i)),
+               T(g("learn.label")), T(g("card%d.learn" % i)), T(g("get.label")), T(g("card%d.get" % i)),
+               btn(g("button"), page_href("courses/" + slug), "primary", "lg")))
+    return "\n".join([
+        '<section class="block hero hero--page courses-intro" id="courses_intro" aria-labelledby="courses_intro-h"><div class="wrap">',
+        '<h1 id="courses_intro-h" class="ls-mo-balance">%s</h1>' % T(g("h1")),
+        '<p class="lead">%s</p>' % T(g("lead")),
+        '</div></section>',
+        '<section class="block courses-sec courses-page" id="courses_list" aria-label="%s"><div class="wrap">' % esc(g("meta.title")),
+        '<ol class="course-list ls-mo-stagger">%s</ol>' % "".join(items),
+        '<p class="courses-page__below">%s</p>' % rich(g("below")),
+        '</div></section>',
+    ])
+
+
 def lang_page_href(site, c, loc):
     """Link to the SAME page in a locale, by its clean directory URL (/, /ru/, /about/, /ru/about/privacy/)."""
     default = site["default_locale"]
@@ -1482,6 +1513,7 @@ RENDERERS = {
     "home_footer": r_home_footer,
     "about_article": r_about_article,
     "faq_page": r_faq_page,
+    "courses_page": r_courses_page,
     "invest_gate": r_invest_gate,
     "invest_doc": r_invest_doc,
     "legal_doc": r_legal_doc,

@@ -572,3 +572,18 @@ a.docs-doc__t { color: var(--primary); text-decoration: underline; text-underlin
 .legal .langnote { font-size: var(--fs-sm); color: var(--text-secondary); }
 .check input, .docs-accept .btn { scroll-margin-block: calc(var(--header-height) + var(--space-6)); }
 html:has(.docs-accept) { scroll-behavior: auto; }
+
+/* ---------- /courses/ ---------- */
+.courses-intro .lead { margin-block-start: var(--space-4); }
+.courses-page { padding-block-start: var(--space-section-md); }
+.courses-page .course-list { grid-template-columns: minmax(0, 1fr); }
+.courses-page .course-list > * { min-inline-size: 0; }
+.course--full .course__sub { color: var(--text-secondary); }
+.course__line { color: var(--text-secondary); line-height: var(--lh-normal); }
+.course__label { font-weight: 700; color: var(--text-primary); }
+.course__go { margin-block-start: auto; padding-block-start: var(--space-4); }
+.courses-page__below { margin-block-start: var(--space-7); max-inline-size: var(--measure); font-size: var(--fs-body-lg); line-height: var(--lh-normal); color: var(--text-secondary); }
+.courses-page__below a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+@media (min-width: 880px) {
+  .courses-page .course-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
