@@ -419,3 +419,69 @@ button { font: inherit; color: inherit; }
   background: var(--primary); color: var(--on-primary); font-weight: 700;
 }
 .ls-skip:focus { inset-block-start: var(--space-3); text-decoration: none; }
+
+/* ---------- motion (animation pack: the courses' own techniques; every one has its reduced form) ---------- */
+:root {
+  --motion-quick: 140ms cubic-bezier(.2,.0,.2,1);
+  --motion-moderate: 220ms cubic-bezier(.16,.84,.44,1);
+  --motion-deliberate: 360ms cubic-bezier(.16,.84,.44,1);
+}
+
+/* crs-slide-in (the slide arrives from the side, above) and crs-progress (the bar's width eases): under reduce the slide
+   arrives without travel and the bar steps to its width -- the position is still shown, nothing moves */
+@media (prefers-reduced-motion: reduce) {
+  .slide.active, .stage[data-dir="prev"] .slide.active { animation: none; }
+  .progress > i { transition: none; }
+}
+
+/* crs-list-reveal: the points of a list appear one after another when the slide arrives */
+@media (prefers-reduced-motion: no-preference) {
+  .slide.active .list-num li, .slide.active .points li {
+    animation: crs-item-in var(--motion-moderate) both;
+    animation-delay: calc(160ms + var(--i, 0) * 60ms);
+  }
+  .list-num li:nth-child(1), .points li:nth-child(1) { --i: 0; }
+  .list-num li:nth-child(2), .points li:nth-child(2) { --i: 1; }
+  .list-num li:nth-child(3), .points li:nth-child(3) { --i: 2; }
+  .list-num li:nth-child(4), .points li:nth-child(4) { --i: 3; }
+  .list-num li:nth-child(n+5), .points li:nth-child(n+5) { --i: 4; }
+}
+@keyframes crs-item-in { from { opacity: 0; transform: translateY(var(--space-2)); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .slide.active .list-num li, .slide.active .points li { animation: none; }
+}
+
+/* crs-callout-sweep: the takeaway band of a slide fills in after the slide has settled */
+.callout { position: relative; isolation: isolate; background: transparent; }
+.callout::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--accent-subtle); transform-origin: left center; }
+[dir="rtl"] .callout::before { transform-origin: right center; }
+@media (prefers-reduced-motion: no-preference) {
+  .slide.active .callout::before { animation: crs-sweep var(--motion-deliberate) 480ms both; }
+}
+@keyframes crs-sweep { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .slide.active .callout::before { animation: none; transform: none; }
+}
+
+/* crs-copy-confirm: the copy button answers the tap: colour eases in, the icon pops, the label fades */
+.btn[data-copy] { transition: background-color var(--motion-quick), color var(--motion-quick), border-color var(--motion-quick); }
+.btn[data-copy] .copy-label { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .btn[data-copy].done .icon { animation: crs-pop var(--motion-moderate) both; }
+  .btn[data-copy].done .copy-label { animation: crs-label var(--motion-moderate) both; }
+}
+@keyframes crs-pop { from { transform: scale(.55); } to { transform: scale(1); } }
+@keyframes crs-label { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .btn[data-copy] { transition: none; }
+  .btn[data-copy].done .icon, .btn[data-copy].done .copy-label { animation: none; }
+}
+
+/* crs-more-cue: on a phone the 'more below' arrow nudges down twice, then rests */
+@media (prefers-reduced-motion: no-preference) {
+  .stage-box.has-more .more-cue .icon { animation: crs-nudge 900ms var(--ease-standard) 600ms 2 both; }
+}
+@keyframes crs-nudge { 0%, 100% { translate: 0 0; } 50% { translate: 0 6px; } }
+@media (prefers-reduced-motion: reduce) {
+  .stage-box.has-more .more-cue .icon { animation: none; }
+}

@@ -15,6 +15,8 @@
 @media (prefers-reduced-motion: no-preference) {
   .ls-mo-press { transition: transform var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)); }
   .ls-mo-press:active { transform: scale(.97); }
+  /* a button that also lifts on hover still presses: the press outranks the lift while the pointer is down */
+  .ls-mo-press.ls-mo-lift:active { transform: scale(.97); }
 }
 
 /* #mic-hover-lift -- guarded, unlike the page's own unguarded rule (defect D2) */
@@ -31,14 +33,21 @@
 /* #mic-focus-ring -- additive only. The ring exists the instant focus lands and
    is never delayed into existence. It replaces the page's own outline:none on
    .field input, whose only remaining signal was a border at 1.57:1. */
-.ls-mo-ring:focus-visible {
+.ls-mo-ring:focus-visible,
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [tabindex]:not([tabindex="-1"]):focus-visible {
   outline: 2px solid var(--primary, currentColor);
   outline-offset: 2px;
   box-shadow: var(--shadow-focus, 0 0 0 3px currentColor);
 }
+/* the ring exists the instant focus lands; only its offset settles. An animation, not a transition, so the
+   element's own transitions (the button's colour, the press and the lift) are not replaced while it is focused. */
 @media (prefers-reduced-motion: no-preference) {
-  .ls-mo-ring:focus-visible { transition: outline-offset var(--motion-micro, 80ms cubic-bezier(.2,.0,.2,1)); }
+  .ls-mo-ring:focus-visible,
+  a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible,
+  textarea:focus-visible, [tabindex]:not([tabindex="-1"]):focus-visible { animation: ls-mo-ring-in var(--motion-micro, 80ms cubic-bezier(.2,.0,.2,1)); }
 }
+@keyframes ls-mo-ring-in { from { outline-offset: 0; } }
 
 /* #mic-accordion -- the named exception to the property whitelist: no composited
    path to animatable height exists and a JS height measurement is worse. */
@@ -51,5 +60,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ls-mo-press, .ls-mo-lift, .ls-mo-accordion { transition: none; }
-  .ls-mo-press:active { transform: none; }
+  .ls-mo-ring:focus-visible { animation: none; }
+  .ls-mo-press:active, .ls-mo-press.ls-mo-lift:active { transform: none; }
 }

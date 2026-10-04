@@ -55,6 +55,8 @@
    technique needs, kept here so the technique file stays portable. */
 .ls-mo-counter__source { position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ls-mo-counter { position: relative; display: inline-block; }
+.ls-mo-counter__display { font-variant-numeric: tabular-nums; }
 
 /* The stagger's travel distance, bound rather than left to a magic fallback.
    Small on purpose: the design vector's rhythm is moderate and wide, and a

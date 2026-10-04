@@ -957,6 +957,21 @@ def prefix_for(site, locale):
     return ("" if locale == site["default_locale"] else "../") + lroot()
 
 
+# scr-counter-roll: the figure of a founder fact that is already in the text (20, 10 000) is wrapped in a span the
+# motion script rolls; the text itself is unchanged. 2023 (a year) and the dates are never wrapped.
+ROLL_FIGURES = {
+    "founder.fact2": re.compile(r"\d+(?=\+?[  ])"),
+    "founder.fact3": re.compile(r"\d{1,3}(?:[,\u00a0\u202f ]\d{3})+"),
+}
+
+
+def roll_figure(key, html):
+    rx = ROLL_FIGURES.get(key)
+    if not rx:
+        return html
+    return rx.sub(lambda m: '<span class="ls-mo-counter">%s</span>' % m.group(0), html, count=1)
+
+
 def home_href():
     return lroot() or "./"
 
@@ -998,7 +1013,7 @@ def r_home_aivis(sec, c, site):
     explicit exception to 'mark in the header only'); equal-height cards, buttons on one line at the bottom."""
     sid = sec["id"]
     g = lambda k: c.get("%s.%s" % (sid, k))
-    facts = lambda keys: "".join('<li>%s<span>%s</span></li>' % (ic("check"), T(g(k))) for k in keys)
+    facts = lambda keys: "".join('<li>%s<span>%s</span></li>' % (ic("check"), roll_figure(k, T(g(k)))) for k in keys)
 
     def card(cls, variant, label, name, sub, img_html, fact_keys, button):
         return ('<article class="card whocard %s" data-component="Card" data-variant="%s" data-size="lg">'
@@ -1483,7 +1498,7 @@ def r_invest_doc(sec, c, site):
     crumb = ('<nav class="crumb" aria-label="%s"><a href="%s">%s</a><span aria-hidden="true">/</span>'
              '<span aria-current="page">%s</span></nav>'
              % (esc(g("crumb")), esc(page_href("invest")), T(g("back")), T(invest_doc_title(site, c, doc))))
-    dl = '<p class="docs-dl"><a class="btn" data-component="Button" data-variant="ghost" data-size="sm" href="%s" download><span>%s</span></a></p>' % (
+    dl = '<p class="docs-dl"><a class="btn ls-mo-press ls-mo-lift" data-component="Button" data-variant="ghost" data-size="sm" href="%s" download><span>%s</span></a></p>' % (
         esc(doc + ".markdown"), T(g("download")))
     return ('<section class="block legal-page" id="invest-doc" data-invest="doc" data-gate="%s">'
             '<div class="wrap legal-wrap">%s%s%s</div></section>' % (esc(page_href("invest")), crumb, body, dl))
@@ -1695,7 +1710,8 @@ def ds_css(assets, prefix):
 
 
 def site_js(assets):
-    parts = [read(assets / "motion" / "transitions.js").rstrip(), read(assets / "motion" / "bind.js").rstrip(),
+    parts = [read(assets / "motion" / "transitions.js").rstrip(), read(assets / "motion" / "scroll.js").rstrip(),
+             read(assets / "motion" / "bind.js").rstrip(),
              read(assets / "site.js").rstrip()]
     return "\n".join(parts)
 
