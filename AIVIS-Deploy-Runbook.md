@@ -162,8 +162,8 @@ Each one is listed here in execution order, with the exact answer.
      test and the prompt never appears — which is why a re-install of this box is usually silent
      here. **A prompt appearing is information: it means that key does not currently authenticate.**
    - **The privilege differs per repository, and the script prints which one it wants.** For
-     `aivis` it says to tick **Allow write access** — `update` later commits and pushes a
-     regenerated types file. For `comms` it says **read-only is enough, do NOT tick write** —
+     `aivis` it says to tick **Allow write access** — the install itself and every later
+     `update` commit and push a regenerated types file when the API has drifted from it. For `comms` it says **read-only is enough, do NOT tick write** —
      nothing on this box ever pushes there. Follow what it prints; the two instructions are not
      interchangeable.
    - **Only press ENTER once the key is visibly saved on GitHub's page**, not right after pasting
@@ -186,7 +186,11 @@ Each one is listed here in execution order, with the exact answer.
    two can never name different bots. comms builds every deep-link button from that URL.
 4. **Mailgun API Key (required)** — type the value from `CREDENTIALS.md` §3. ENTER asks again: without
    the key comms does not start, and the product sends no password reset, no registration code and
-   no document letter.
+   no document letter. **The script verifies the key by using it** -- one test-mode message for
+   `mail.aivis.one` (accepted by Mailgun, never delivered; it shows in the Mailgun log as test mode),
+   asked of the US region first, then the EU one. Where it is accepted is the region the install
+   records; you are not asked for a region. Refused in both regions, the prompt says so with both HTTP
+   codes and asks again; no answer from either, it says Mailgun is unreachable and asks again.
 7. **Storage root access key** — **press ENTER.** ⚠
 8. **Storage root secret key** — **press ENTER.** ⚠
 
@@ -400,8 +404,8 @@ no request at all*, not a 401.
 The script aborts on its own (not by design) at a handful of points. In order of how bad the
 half-finished state is if you land there:
 
-- **Docker build/start fails** (`docker compose build` / `up`) — almost always means the four ports
-  (8000/3000/9000/9001) are already in use. Check `ss -ltnp`; something from a previous attempt
+- **Docker build/start fails** (`docker compose build app` / `up`, or later `build frontend`) —
+  almost always means the ports (8000/3000/9000) are already in use. Check `ss -ltnp`; something from a previous attempt
   probably never got torn down.
 - **`nginx -t` fails** at either of its two checkpoints (right after the API/frontend sites are
   written, or right after the storage site is written) — this **usually** means something *outside*
@@ -507,13 +511,16 @@ follows automatically from the other here. A red test suite does **not** make th
 rebuild the same commit: the code is running, so it is recorded as deployed, and the next run builds
 only when a new commit arrives.
 
-**`aivis update` can commit and push to the public GitHub repo without asking you first.** If the
-regenerated OpenAPI-derived frontend types differ from what's committed, the script commits the change
+**`aivis update` -- and the install -- can commit and push to the public GitHub repo without asking
+you first.** Both regenerate the OpenAPI-derived frontend types from the running backend before they
+build the frontend (`aivis gen-types --commit`, one copy). If those differ from what's committed, the
+script commits the change
 under a bot identity (`aivis-bot`) and pushes it to `origin` on your current branch — automatically, no
 confirmation. If you think of `update` as something that only touches this box, it doesn't: it can also
 change the public repo's history. This is also why the deploy key needs write access (§4 item 2) — a
-read-only key makes this specific step fail, loudly, with a printed error and recovery instructions,
-but not until the first time a schema change actually triggers a push.
+read-only key makes this specific step fail, loudly, with a printed error, but not until the first
+time a schema change actually triggers a push. The commit stays on the box and the next `aivis update`
+pushes it before anything else.
 
 **Its own destructive confirmation prompt is the script's second one, and deserves the same reading as
 §4 item 1's wipe prompt.** If `update` finds uncommitted changes in `/opt/aivis/repo`, it asks

@@ -4,27 +4,20 @@
     python -m scripts.platform_template_objects upload
     python -m scripts.platform_template_objects check
 
-WHY THIS FILE EXISTS, AND THAT IT IS A SECOND COPY.
-    The box does both of these from `scripts/aivis-manage.sh` --
-    restore_platform_template_objects (:697) uploads, and
-    count_platform_template_objects (:730) plus
-    check_platform_template_objects (:750) verify. Both are python
-    heredocs run with `docker compose exec app python -`, which needs a
-    running compose stand. CI has no compose stand, so it needs the same
-    two operations reachable without one.
+THE ONE COPY.
+    Every caller runs this module: `aivis update` and the test-database
+    preparation (scripts/aivis-manage.sh, restore_platform_template_objects
+    and check_platform_template_objects, via `docker compose exec app`),
+    the installer (scripts/install_aivis.sh), and CI, which has no compose
+    stand and runs it directly. The python heredocs that aivis-manage.sh
+    and the installer used to carry -- second and third copies of the
+    upload and the count -- are gone; the prefix, the source directory and
+    the expected counts live here and nowhere else.
 
-    THIS IS THEREFORE A DUPLICATE, AND IT IS MEANT TO BE MERGED. The
-    intended end state is that the CLI calls this module instead of
-    carrying its own heredocs, which makes the merge a one-line change
-    there and no change here. Until that happens the two can drift: if
-    you change the counts, the prefix, or the source directory, change
-    them in aivis-manage.sh as well. Recorded as a debt in the line
-    registry rather than left for someone to discover by divergence.
-
-WHY THE SAME CODE AND NOT `mc cp`.
-    Uploading with mc would let mc decide key prefixes and content
-    types, and the check would then be measuring mc rather than the code
-    that serves an agreement in production. upload_object and
+WHY THE SAME CODE AND NOT A STORAGE CLI.
+    Uploading with a storage CLI would let the CLI decide key prefixes
+    and content types, and the check would then be measuring the CLI
+    rather than the code that serves an agreement in production. upload_object and
     list_objects here are the product's own, from app.core.storage --
     the same functions the box runs, so what CI verifies is what ships.
 
@@ -35,7 +28,8 @@ WHICH BUCKET.
     file; agreements and certificates read the main bucket even during a
     test run. Checking aivis-attachments-test here would pass exactly
     when the agreement and certificate tests are failing, which is the
-    reasoning aivis-manage.sh:254 gives at greater length.
+    reasoning the PLATFORM TEMPLATE OBJECTS note in aivis-manage.sh gives
+    at greater length.
 
 WHY `check` EXISTS SEPARATELY FROM THE SUITE.
     Failing here rather than inside pytest is the point. Without the
@@ -114,9 +108,9 @@ async def check() -> int:
         print(
             "The DB rows can be intact while the objects are gone -- that "
             "is exactly the state this check exists to catch, and the row "
-            "count cannot see it. Restore with "
-            "`python -m scripts.platform_template_objects upload`, or "
-            "`aivis update` on a box.",
+            "count cannot see it. Restore: `aivis update` on a box (it "
+            "uploads the objects before it seeds the rows); in CI, "
+            "`python -m scripts.platform_template_objects upload`.",
             file=sys.stderr,
         )
         return 1

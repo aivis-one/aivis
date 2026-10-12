@@ -19,8 +19,9 @@
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
 #   11. Assert the host runs no local mail transfer agent
 #   12. Set up the public storage site (files.aivis.one -> RustFS S3 API)
-#   13. Start Docker stack -> healthcheck -> storage-init -> migrations
-#       -> seed Platform user
+#   13. Build backend -> start backend + infra -> healthcheck -> storage-init
+#       -> migrations -> seeds -> frontend types from the running backend
+#       -> build + start frontend (the order `aivis update` uses)
 #   14. Create `aivis` management script -> symlink /usr/local/bin/aivis
 #   15. Set up backup cron (4 AM daily, 7-day rotation)
 #
@@ -59,10 +60,17 @@ GITHUB_REPO="aivis-one/aivis"
 DEPLOY_USER="aivis"
 API_DOMAIN="api.aivis.one"
 FRONTEND_DOMAIN="app.aivis.one"
-# The Mailgun SENDING domain: it appears in MAILGUN_DOMAIN and in the
-# from-address, both handed to comms. Nothing on this host serves it --
-# no A record, no certificate, no local relay.
+# The Mailgun SENDING domain: a product constant (every server is the
+# same). It appears in MAILGUN_DOMAIN and in the from-address, both handed
+# to comms. Nothing on this host serves it -- no A record, no
+# certificate, no local relay.
 MAIL_DOMAIN="mail.aivis.one"
+MAIL_FROM="noreply@${MAIL_DOMAIN}"
+# Mailgun's two regional API bases, US first: the region is not a setting
+# of this script -- it is found out for the key the owner types
+# (prompt_mailgun), by asking each region in turn.
+MAILGUN_US_BASE="https://api.mailgun.net"
+MAILGUN_EU_BASE="https://api.eu.mailgun.net"
 # The public storage site (H32 P-121): browsers open the presigned links
 # the backend signs for this host. Written into backend/.env as
 # STORAGE_PUBLIC_URL -- the one place the address is stated; `aivis nginx
@@ -791,14 +799,86 @@ prompt_telegram_bot() {
     done
 }
 
+# Ask one region whether it accepts this key for MAIL_DOMAIN; print the
+# HTTP code (000 when the request never got an answer).
+#
+# THE SAME CALL comms makes -- POST /v3/{domain}/messages -- with
+# o:testmode=yes: Mailgun accepts and validates it exactly as a real send
+# and delivers nothing (one "test mode" event in its log). Asking anything
+# else would prove something comms does not rely on: a domain sending key,
+# which is all comms needs, cannot read /v3/domains/... and would be
+# refused there though it sends fine.
+#
+# The key goes to curl on stdin (-K -), not in argv, where every process
+# listing on the box would show it while the request runs.
+mailgun_probe() {
+    local base="$1" key="$2"
+    printf 'user = "api:%s"\n' "$key" | curl -s -o /dev/null -w '%{http_code}' \
+        --max-time 15 -K - \
+        -F from="$MAIL_FROM" -F to="$MAIL_FROM" \
+        -F subject="aivis install: Mailgun region check" \
+        -F text="Test-mode message, never delivered." \
+        -F o:testmode=yes \
+        "${base}/v3/${MAIL_DOMAIN}/messages" || true
+}
+
+# Required. Sets MAILGUN_API_KEY_VAL and MAILGUN_API_URL_VAL.
+#
+# Required, not optional: comms-profile/types.yaml routes four types to
+# email, and comms refuses to start when a routed channel has no keys --
+# without this key the whole comms service stays down, not just email.
+#
+# THE REGION IS FOUND OUT, NOT WRITTEN. It used to be a literal
+# (MAILGUN_API_URL=https://api.eu.mailgun.net), so a US domain got the EU
+# endpoint and no letter could ever leave. Now each region is asked, US
+# first, with the key just typed: where it answers 200 is the region.
+# Neither answering 200 -- a typo, a placeholder typed by hand, a key of
+# another account, a domain this key does not hold -- asks again, the way
+# the Telegram token is verified with getMe above.
+prompt_mailgun() {
+    local key us eu
+
+    while true; do
+        read -rp "  Mailgun API Key: " key < /dev/tty
+        if [ -z "$key" ]; then
+            warn "  Mailgun API Key is required -- nothing after this installer can set it. Try again."
+            continue
+        fi
+        if ! [[ "$key" =~ $ENV_SAFE_RE ]]; then
+            warn "  Mailgun API Key: only letters, digits and : . _ @ / - are accepted. Try again."
+            continue
+        fi
+
+        log "  Verifying the key with Mailgun for ${MAIL_DOMAIN} (test-mode message)..."
+        us=$(mailgun_probe "$MAILGUN_US_BASE" "$key")
+        if [ "$us" = "200" ]; then
+            MAILGUN_API_KEY_VAL="$key"
+            MAILGUN_API_URL_VAL="$MAILGUN_US_BASE"
+            success "  Mailgun: key accepted for ${MAIL_DOMAIN}, region US"
+            return 0
+        fi
+        eu=$(mailgun_probe "$MAILGUN_EU_BASE" "$key")
+        if [ "$eu" = "200" ]; then
+            MAILGUN_API_KEY_VAL="$key"
+            MAILGUN_API_URL_VAL="$MAILGUN_EU_BASE"
+            success "  Mailgun: key accepted for ${MAIL_DOMAIN}, region EU"
+            return 0
+        fi
+
+        if [ "$us" = "000" ] && [ "$eu" = "000" ]; then
+            warn "  Mailgun is unreachable from this server (no answer from either region). Try again."
+        else
+            warn "  Mailgun accepted this key for ${MAIL_DOMAIN} in neither region"
+            warn "  (US: HTTP ${us}, EU: HTTP ${eu}). Try again."
+        fi
+    done
+}
+
 echo ""
 log "Enter secrets (all required):"
 echo ""
 prompt_telegram_bot
-# Required, not optional: comms-profile/types.yaml routes four types to
-# email, and comms refuses to start when a routed channel has no keys --
-# without this key the whole comms service stays down, not just email.
-prompt_value MAILGUN_API_KEY_VAL "Mailgun API Key" 1
+prompt_mailgun
 
 # Storage root key -- ENTER keeps the random values generated above by
 # gen_short_id / gen_password, and is the recommended answer. Typing a
@@ -887,17 +967,18 @@ AUTH_CLOCK_SKEW_SECONDS=60
 # into the comms env. Same arrangement as TELEGRAM_BOT_URL: written
 # here, consumed by the hand-over, ignored by app/core/config.py.
 #
-# MAILGUN_API_URL is where the REGION is stated -- the hand-over derives
-# eu/us from it rather than repeating the fact.
+# MAILGUN_API_URL is where the REGION is stated -- found out by
+# prompt_mailgun for the key above, never written as a literal; the
+# hand-over derives eu/us from it rather than repeating the fact.
 #
 # The six SMTP_* variables that used to sit here are gone with the local
 # MTA (this installer no longer installs Postfix, and removes it if it
 # finds one). SMTP_FROM_EMAIL is a historical NAME for the sender
 # address; deliver_comms_email maps it to comms' EMAIL_FROM_ADDRESS.
-SMTP_FROM_EMAIL=noreply@${MAIL_DOMAIN}
+SMTP_FROM_EMAIL=${MAIL_FROM}
 MAILGUN_API_KEY=${MAILGUN_API_KEY_VAL}
 MAILGUN_DOMAIN=${MAIL_DOMAIN}
-MAILGUN_API_URL=https://api.eu.mailgun.net
+MAILGUN_API_URL=${MAILGUN_API_URL_VAL}
 
 # -- Crypto payments service (H7) --
 # Rendered EMPTY here. The service issues these values on its own
@@ -1327,14 +1408,15 @@ deliver_comms_telegram() {
 # comms profile loader refuses a route into a channel with no keys. So
 # every path short of a full set is "no comms at all", and the only
 # acceptable outcome here is a full delivery or a hard stop. The API key
-# is a required prompt; domain, sender and API URL are written from
-# constants of this script -- all four are always in backend/.env.
+# is a required prompt verified against Mailgun, the API URL is the region
+# that prompt found, domain and sender are product constants -- all four
+# are always in backend/.env.
 #
 # THE REGION IS DERIVED, NOT SPELLED OUT. It is already stated once, in
 # MAILGUN_API_URL, which is what the product's .env carries. A literal
 # "eu" here would be a SECOND place recording one fact, and the two would
-# part company on a move to the US endpoint -- silently, because comms
-# would then sign requests against the wrong provider base address. An
+# part company -- silently, because comms would then sign requests against
+# the wrong provider base address. An
 # unrecognised URL leaves the region empty, which validate_deliverable
 # stops on, rather than a guess: comms treats an unknown region as a
 # startup refusal, and its default (eu) is only correct by accident on a
@@ -1602,10 +1684,21 @@ setup_payments
 section "Docker Stack"
 
 cd "$INSTALL_BASE/repo"
-log "Building Docker images (this may take a few minutes)..."
+
+# THE SAME ORDER AS `aivis update` (scripts/aivis-manage.sh, update_product):
+# backend image -> backend + infra up -> ... -> frontend types regenerated
+# from the running backend -> frontend image built WITH those types -> up.
+# The frontend is NOT built here. It used to be -- one `docker compose
+# build` for every image, before any backend ran -- so it compiled against
+# the generated.ts committed in the checkout, and any API type newer than
+# that file broke the build (observed on a clean install of 6cf3578:
+# types.ts imported AttachmentDownloadURLResponse, which only the running
+# backend's schema had). `up -d` names its services for the same reason,
+# and leaves storage-init to the blocking run below.
+log "Building backend image (this may take a few minutes)..."
 docker builder prune -f > /dev/null 2>&1 || true
-docker compose build 2>&1 || { error "Docker build failed. Check output above."; }
-docker compose up -d 2>&1 || { error "Docker compose up failed. Check output above."; }
+docker compose build app 2>&1 || { error "Backend image build failed. Check output above."; }
+docker compose up -d app postgres redis storage 2>&1 || { error "Docker compose up failed. Check output above."; }
 log "Waiting for app to be healthy..."
 
 HEALTH_URL="http://127.0.0.1:${APP_PORT}/ready"
@@ -1692,47 +1785,35 @@ docker compose exec -T app python -m scripts.platform_template_objects upload \
 
 # COUNT WHAT LANDED, BEFORE CREATING THE ROWS THAT POINT AT IT.
 #
-# `set -euo pipefail` at the top of this file already aborts on a
-# non-zero upload, so the `|| error` above is a statement of intent that
-# outlives whoever removes set -e -- it is NOT the check this block
-# exists for. The failure it does not cover is the one that matters: an
-# upload can exit 0 having copied the wrong NUMBER of files. An empty or
-# half-populated _default/, a source layout that moved, a partial copy --
-# each returns success, and the seed below then writes sixteen rows
-# pointing into empty storage. That is the state the comment above warns
-# about, reached without ever taking the branch it warns against.
-#
-# Counted through app: this way the numbers come from the
-# same bucket, the same credentials and the same client the renderer
-# uses. Sixteen template.html pairs the sixteen rows about to be created;
-# sixty-four also covers the logo / signature / stamp images, which
-# render into the document.
+# An upload can exit 0 having copied the wrong NUMBER of files -- an empty
+# or half-populated _default/, a source layout that moved -- and the seed
+# below would then write sixteen rows pointing into empty storage. The
+# check is the module's own (64 objects, 16 template.html), the same one
+# `aivis update` runs: one copy, see the module's header.
 log "Verifying template objects landed in storage..."
-TEMPLATE_COUNTS=$(docker compose exec -T app python - <<'COUNT_PY' | tr -d '\r' | tail -n 1
-import asyncio
-
-from app.core.storage import list_objects
-
-
-async def main() -> None:
-    keys = await list_objects("_platform/templates/")
-    html = [k for k in keys if k.endswith("template.html")]
-    print(f"{len(keys)} {len(html)}")
-
-
-asyncio.run(main())
-COUNT_PY
-)
-TEMPLATE_OBJECTS=$(echo "$TEMPLATE_COUNTS" | cut -d' ' -f1)
-TEMPLATE_HTML=$(echo "$TEMPLATE_COUNTS" | cut -d' ' -f2)
-if [ "$TEMPLATE_OBJECTS" != "64" ] || [ "$TEMPLATE_HTML" != "16" ]; then
-    error "Template upload incomplete: expected 64 objects and 16 template.html under _platform/templates/, found '$TEMPLATE_OBJECTS' objects and '$TEMPLATE_HTML' template.html. Check $INSTALL_BASE/repo/backend/scripts/templates/_default/ and: aivis logs storage, then re-run the install."
-fi
-success "64 template objects in storage (16 template.html)"
+docker compose exec -T app python -m scripts.platform_template_objects check \
+    || error "Template upload incomplete (counts above). Check: aivis logs storage, then re-run the install."
 
 log "Seeding platform default templates to DB..."
 docker compose exec -T app python -m scripts.seed_platform_templates
 success "Platform default templates seeded"
+
+# ------------------------------------------------------------------------------
+# Frontend types, then the frontend -- through `aivis gen-types --commit`,
+# the same two functions `aivis update` runs (generate_frontend_types +
+# commit_generated_types in scripts/aivis-manage.sh). On drift the
+# regenerated generated.ts is committed as aivis-bot and pushed, exactly as
+# an update would: left uncommitted, it would make the first `aivis update`
+# on this box stop and ask whether to discard local changes.
+# ------------------------------------------------------------------------------
+log "Regenerating frontend types from the running backend..."
+"$INSTALL_BASE/repo/scripts/aivis-manage.sh" gen-types --commit \
+    || error "Frontend type generation failed (see above) -- stopping before the frontend is built."
+
+log "Building frontend image with the fresh types..."
+docker compose build frontend 2>&1 || { error "Frontend image build failed. Check output above."; }
+docker compose up -d frontend 2>&1 || { error "Frontend start failed. Check output above."; }
+success "Frontend built and started"
 
 # ==============================================================================
 # MANAGEMENT COMMAND

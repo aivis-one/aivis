@@ -906,106 +906,24 @@ update_all() {
 # A check pointed at the test bucket would be green exactly when the tests
 # are red.
 
+# ONE COPY: backend/scripts/platform_template_objects.py, run inside app.
+# This file used to carry its own python heredocs for the upload and the
+# count, a second copy of that module -- and the installer a third. All
+# three callers (this cycle, prepare_test_db, scripts/install_aivis.sh)
+# now run the module, so the prefix, the source directory and the counts
+# exist in one place.
+
 # Upload backend/scripts/templates/_default/ into _platform/templates/.
 # Idempotent -- an object that is already there is simply overwritten.
 restore_platform_template_objects() {
-    docker compose exec -T app python - <<'RESTORE_PY'
-import asyncio
-import mimetypes
-import sys
-from pathlib import Path
-
-from app.core.storage import upload_object
-
-SRC = Path("/app/scripts/templates/_default")
-
-
-async def main() -> int:
-    if not SRC.is_dir():
-        print(f"source directory missing inside the image: {SRC}", file=sys.stderr)
-        return 1
-    uploaded = 0
-    for path in sorted(SRC.rglob("*")):
-        if not path.is_file():
-            continue
-        key = "_platform/templates/" + str(path.relative_to(SRC))
-        ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        await upload_object(key, path.read_bytes(), ctype)
-        uploaded += 1
-    print(f"restored {uploaded} template objects")
-    return 0
-
-
-sys.exit(asyncio.run(main()))
-RESTORE_PY
+    docker compose exec -T app python -m scripts.platform_template_objects upload
 }
 
-# Print "<total> <html> <expected total> <expected html>" for
-# _platform/templates/.
-#
-# THE EXPECTED NUMBERS ARE IMPORTED, NOT WRITTEN HERE. They are derived
-# from the template tree in scripts/platform_template_objects.py -- 16
-# directories of four files -- and that module says so beside them. A
-# copy in this file would be a second declaration of a number nobody
-# recomputed, and the day a template is added the two would disagree
-# with each other instead of with reality. The import works the same
-# way reconcile_templates.py already imports from scripts/: the
-# directory is in the image and PYTHONPATH is /app.
-count_platform_template_objects() {
-    docker compose exec -T app python - <<'COUNT_PY'
-import asyncio
-
-from app.core.storage import list_objects
-from scripts.platform_template_objects import EXPECTED_HTML, EXPECTED_TOTAL
-
-
-async def main() -> None:
-    keys = await list_objects("_platform/templates/")
-    html = [k for k in keys if k.endswith("template.html")]
-    print(f"{len(keys)} {len(html)} {EXPECTED_TOTAL} {EXPECTED_HTML}")
-
-
-asyncio.run(main())
-COUNT_PY
-}
-
-# Verify both counts. Prints what is wrong AND how to fix it: a check that
-# only names the failure leaves the reader where we were on 2026-09-01,
-# reading twenty-nine tracebacks to arrive at one missing upload.
+# Verify 64 objects and 16 template.html. The module prints what is wrong
+# and how to restore it; a down container or a failed import is a
+# non-zero exit too, never a silent pass.
 check_platform_template_objects() {
-    local counts total html expected_total expected_html
-    counts=$(count_platform_template_objects 2>/dev/null | tr -d '\r' | tail -n 1)
-    total=$(echo "$counts" | cut -d' ' -f1)
-    html=$(echo "$counts" | cut -d' ' -f2)
-    expected_total=$(echo "$counts" | cut -d' ' -f3)
-    expected_html=$(echo "$counts" | cut -d' ' -f4)
-
-    # An empty expectation means the count did not run -- the container
-    # is down, or the import failed. Treat it as a failure rather than
-    # comparing against nothing, which would pass silently.
-    if [ -z "$expected_total" ] || [ -z "$expected_html" ]; then
-        echo -e "${RED}✗ Platform template OBJECTS check could not run${NC}"
-        echo "The counter returned: '$counts'"
-        echo "Expected four numbers. The app container must be up for this check."
-        return 1
-    fi
-
-    if [ "$total" != "$expected_total" ] || [ "$html" != "$expected_html" ]; then
-        echo -e "${RED}✗ Platform template OBJECTS check failed${NC}"
-        echo "Expected $expected_total objects and $expected_html template.html under _platform/templates/,"
-        echo "found: '$total' objects, '$html' template.html"
-        echo ""
-        echo "The DB rows can be intact while the objects are gone -- that is"
-        echo "exactly the state this check exists to catch, and the row count"
-        echo "above cannot see it."
-        echo ""
-        echo "Restore them by running 'aivis update': it uploads the"
-        echo "objects before it seeds the rows. The upload itself is"
-        echo "restore_platform_template_objects in scripts/aivis-manage.sh."
-        return 1
-    fi
-    echo -e "${GREEN}✓ $expected_total platform template objects present ($expected_html template.html)${NC}"
-    return 0
+    docker compose exec -T app python -m scripts.platform_template_objects check
 }
 
 # The product's own cycle. Reached through update_service (the "internal"
@@ -1393,76 +1311,15 @@ update_product() {
     fi
 
     # ----------------------------------------------------------------------
-    # Regenerate frontend TypeScript types from live OpenAPI schema.
-    #
-    # If regeneration changes the file (or creates it for the first time),
-    # aivis-bot commits and pushes it, so the next `aivis update` on
-    # any environment pulls the up-to-date types via plain git.
-    #
-    # Frontend developers MUST NOT edit generated.ts manually -- the file
-    # is overwritten on every deploy. Frontend-only types live in
-    # frontend/src/api/types.ts.
+    # Regenerate frontend TypeScript types from the live OpenAPI schema and
+    # commit them on drift -- generate_frontend_types + commit_generated_
+    # types, the same two functions `aivis gen-types --commit` runs for the
+    # installer (scripts/install_aivis.sh). One copy for both paths.
     # ----------------------------------------------------------------------
     echo ""
     echo "Regenerating frontend types from backend OpenAPI..."
-    if ! curl -sf "http://127.0.0.1:8000/openapi.json" -o /tmp/openapi.json; then
-        echo -e "${RED}✗ Cannot fetch /openapi.json from backend${NC}"
-        return 1
-    fi
-    python3 "$COMPOSE_DIR/backend/scripts/generate_ts_types.py" \
-        /tmp/openapi.json \
-        "$COMPOSE_DIR/frontend/src/api/generated.ts" || {
-        echo -e "${RED}✗ generate_ts_types.py failed${NC}"
-        rm -f /tmp/openapi.json
-        return 1
-    }
-    rm -f /tmp/openapi.json
-
-    # Did regeneration change anything? --porcelain reports both modified
-    # tracked files and untracked new ones (first-ever run).
-    if [ -n "$(git status --porcelain frontend/src/api/generated.ts)" ]; then
-        echo "Schema drift detected -- committing regenerated generated.ts"
-
-        BOT_NAME="aivis-bot"
-        BOT_EMAIL="bot@aivis.local"
-
-        git add frontend/src/api/generated.ts
-        git -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" commit -m \
-"chore(types): regenerate generated.ts
-
-Triggered by aivis update on commit $NEW_COMMIT" || {
-            echo -e "${RED}✗ Bot commit failed${NC}"
-            return 1
-        }
-
-        # Push with one retry: if a parallel push hits the same branch,
-        # rebase on it once and try again. Anything beyond that is rare
-        # and warrants manual investigation.
-        PUSH_OK=0
-        for attempt in 1 2; do
-            if GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" \
-                git push origin "$BRANCH"; then
-                PUSH_OK=1
-                break
-            fi
-            if [ "$attempt" = "1" ]; then
-                echo "Push failed (likely a parallel push). Rebasing and retrying..."
-                GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" \
-                    git pull --rebase origin "$BRANCH" || break
-            fi
-        done
-
-        if [ "$PUSH_OK" = "0" ]; then
-            echo -e "${RED}✗ Failed to push regenerated types to GitHub${NC}"
-            echo "  Bot commit exists locally on $COMPOSE_DIR but is not on origin."
-            echo "  Resolve manually:"
-            echo "    cd $COMPOSE_DIR && GIT_SSH_COMMAND=\"ssh -i /root/.ssh/id_ed25519_aivis_deploy\" git push"
-            return 1
-        fi
-        echo -e "${GREEN}✓ Bot pushed regenerated types${NC}"
-    else
-        echo -e "${GREEN}✓ Types are in sync, no commit needed${NC}"
-    fi
+    generate_frontend_types || return 1
+    commit_generated_types "$BRANCH" "aivis update on commit $NEW_COMMIT" || return 1
 
     # ----------------------------------------------------------------------
     # Now build the frontend with the fresh generated.ts in place.
@@ -1525,15 +1382,35 @@ Triggered by aivis update on commit $NEW_COMMIT" || {
 # `aivis update` is what handles the bot commit/push cycle.
 # ==============================================================================
 
-case_gen_types() {
-    cd_compose
+# ==============================================================================
+# FRONTEND TYPES -- the one copy (aivis update, aivis gen-types, installer)
+# ==============================================================================
+#
+# frontend/src/api/generated.ts is written ONLY here, from the running
+# backend's /openapi.json. Nobody edits it and no delivery carries it:
+# the frontend is built AFTER this runs, so its bundle always has the
+# types of the backend it talks to. Frontend-only types live in
+# frontend/src/api/types.ts.
+#
+# Callers:
+#   update_product                 -- generate + commit, then build frontend
+#   aivis gen-types                -- generate and report, no commit
+#   aivis gen-types --commit       -- generate + commit; what
+#                                     scripts/install_aivis.sh runs before
+#                                     it builds the frontend
+#
+# WHY THE INSTALLER COMMITS TOO. A drifted generated.ts left uncommitted on
+# a fresh box makes the first `aivis update` stop on "Discard local
+# changes and update?" (sync_product_checkout). Committing and pushing
+# with the same code here leaves the checkout clean on both paths.
 
+# Fetch /openapi.json from the running app and regenerate generated.ts.
+generate_frontend_types() {
     if ! curl -sf "http://127.0.0.1:8000/openapi.json" -o /tmp/openapi.json; then
         echo -e "${RED}✗ Cannot fetch /openapi.json from backend${NC}"
         echo "  Is the app container running? Check with: aivis status"
         return 1
     fi
-
     python3 "$COMPOSE_DIR/backend/scripts/generate_ts_types.py" \
         /tmp/openapi.json \
         "$COMPOSE_DIR/frontend/src/api/generated.ts" || {
@@ -1542,13 +1419,81 @@ case_gen_types() {
         return 1
     }
     rm -f /tmp/openapi.json
+}
 
-    if [ -n "$(git status --porcelain frontend/src/api/generated.ts)" ]; then
-        echo -e "${YELLOW}⚠ generated.ts changed -- not committed${NC}"
-        echo "  Run 'aivis update' to commit and push, or commit by hand."
-    else
-        echo -e "${GREEN}✓ generated.ts is already up to date${NC}"
+# On drift, commit generated.ts as aivis-bot and push it, so every box
+# pulls the same types via plain git. $1 = branch, $2 = what triggered it
+# (goes into the commit message).
+commit_generated_types() {
+    local branch="$1" trigger="$2"
+
+    # --porcelain reports both a modified tracked file and an untracked
+    # new one (first-ever run).
+    if [ -z "$(git status --porcelain frontend/src/api/generated.ts)" ]; then
+        echo -e "${GREEN}✓ Types are in sync, no commit needed${NC}"
+        return 0
     fi
+
+    echo "Schema drift detected -- committing regenerated generated.ts"
+    git add frontend/src/api/generated.ts
+    git -c user.name="aivis-bot" -c user.email="bot@aivis.local" commit -m \
+"chore(types): regenerate generated.ts
+
+Triggered by $trigger" || {
+        echo -e "${RED}✗ Bot commit failed${NC}"
+        return 1
+    }
+
+    # Push with one retry: if a parallel push hits the same branch,
+    # rebase on it once and try again.
+    local attempt push_ok=0
+    for attempt in 1 2; do
+        if GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" \
+            git push origin "$branch"; then
+            push_ok=1
+            break
+        fi
+        if [ "$attempt" = "1" ]; then
+            echo "Push failed (likely a parallel push). Rebasing and retrying..."
+            GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_aivis_deploy" \
+                git pull --rebase origin "$branch" || break
+        fi
+    done
+
+    if [ "$push_ok" = "0" ]; then
+        # The commit stays on this box. The next `aivis update` pushes
+        # local commits home before anything else (svc_sync_checkout) --
+        # so the remedy is that command, never a hand-typed git push.
+        echo -e "${RED}✗ Failed to push regenerated types to GitHub${NC}"
+        echo "  The commit is kept on this box; run 'aivis update' again --"
+        echo "  it pushes local commits first."
+        return 1
+    fi
+    echo -e "${GREEN}✓ Bot pushed regenerated types${NC}"
+}
+
+case_gen_types() {
+    cd_compose
+    case "${1:-}" in
+        --commit)
+            generate_frontend_types || return 1
+            commit_generated_types "$(git branch --show-current)" \
+                "aivis gen-types --commit on commit $(git rev-parse --short HEAD)"
+            ;;
+        "")
+            generate_frontend_types || return 1
+            if [ -n "$(git status --porcelain frontend/src/api/generated.ts)" ]; then
+                echo -e "${YELLOW}⚠ generated.ts changed -- not committed${NC}"
+                echo "  Run 'aivis update' (or 'aivis gen-types --commit') to commit and push."
+            else
+                echo -e "${GREEN}✓ generated.ts is already up to date${NC}"
+            fi
+            ;;
+        *)
+            echo "Usage: aivis gen-types [--commit]"
+            return 1
+            ;;
+    esac
 }
 
 # ==============================================================================
@@ -2292,7 +2237,7 @@ case "$CMD" in
     test)           case_test "$@" ;;
     lint)           case_lint ;;
     update|deploy)  update_all "$@" ;;
-    gen-types)      case_gen_types ;;
+    gen-types)      case_gen_types "$@" ;;
     restart)        case_restart "$@" ;;
     backup)         case_backup ;;
     db)             case_db "$@" ;;
@@ -2328,6 +2273,7 @@ case "$CMD" in
         echo "    --frontend-only                           Skip services and the backend cycle; refuses if backend/"
         echo "                                              differs from what runs, or what runs is not known"
         echo "  gen-types                                 — Regenerate frontend generated.ts from live OpenAPI"
+        echo "  gen-types --commit                        — ...and commit + push it on drift (what update and install run)"
         echo "  restart [service]                         — Restart all or specific service"
         echo ""
         echo "Database:"
