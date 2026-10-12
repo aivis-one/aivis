@@ -29,8 +29,12 @@
   production box gets: production eventually migrates to a new machine, and this is the path that
   runs there.
 - **Re-install** — `/opt/aivis/repo` already exists on this box. This is what today's box gets, every
-  time, from now on. A re-install tears down the running containers and the cloned code. The teardown
-  itself does **not** touch the certificates, the deploy user, `/opt/aivis` itself, or the deploy key
+  time, from now on. **A re-install with `y` is meant to leave the same server a fresh OS would**: it
+  removes the previous containers, their data and the cloned code, and the install itself removes
+  what older versions put on the host and no longer use (the storage console's site, its password
+  file and certificate, the MinIO client and its saved credentials). The teardown
+  itself does **not** touch the product's own certificates, the deploy user, `/opt/aivis` itself, or
+  the deploy key
   — several prompts and checks below behave differently as a result, and are marked **RE-INSTALL:**
   where that matters. **Two things are a separate case, and surviving the teardown is not the same as
   surviving the run: the nginx site files. The teardown leaves them alone; the install phase that
@@ -138,21 +142,19 @@ Each one is listed here in execution order, with the exact answer.
 
 1. **`Remove existing installation and start fresh? (y/n)`** — only appears on a **RE-INSTALL**
    (§1); skip straight to item 2 on a clean-box install.
-   **`y` here is destructive far beyond the code.** It runs `docker compose down -v`, and the `-v`
-   removes the named Docker volumes — the Postgres database, Redis, and every object in the storage
-   (RustFS), not just the running containers. It then deletes `/opt/aivis/repo` entirely, which takes
+   **`y` here is destructive far beyond the code.** It removes every container and every data volume
+   the previous installation of this product created -- the Postgres database, Redis, every object
+   in the storage, and anything an older version left behind (such as the old MinIO data) -- found
+   by the product's own label, whatever version made them. comms and payments are not touched. If
+   any of it cannot be removed, the script names what is left and stops **before** deleting anything
+   else; running the installation again starts from the same place. It then deletes
+   `/opt/aivis/repo` entirely, which takes
    `backend/.env` with it: **every credential in that file that you have not already copied into
    `AIVIS-Server/CREDENTIALS.md` is gone for good the instant you answer `y`.** Treat this prompt as
    if it read "delete the database, forever?" — on a box carrying real data, that is exactly what it
    does; today's box is empty enough that the cost is low, but the prompt does not know which box
    it's running on. **Anything other than `y` aborts the script immediately** — there is no "keep
    what's there and continue" option, so don't answer this one absent-mindedly.
-   **A second, quieter failure lives in the same line.** If the script's `cd` into the old install
-   directory fails for any reason, the teardown command is silently skipped — but the directory
-   removal that follows still runs regardless. The result is a wiped `/opt/aivis/repo` with the old
-   Docker volumes left behind and still consuming disk, and nothing the script prints tells you
-   which of the two outcomes you got. If in doubt, check yourself afterward: `docker volume ls |
-   grep aivis`.
 2. **`Press ENTER after adding the deploy key to GitHub...`** — **this prompt can now fire twice,
    once per repository**, and the block above it names which one (`GitHub Deploy Key -- aivis repo`
    / `-- comms repo`). They are separate keys with separate GitHub pages; adding one does not cover

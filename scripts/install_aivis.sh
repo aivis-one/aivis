@@ -220,16 +220,85 @@ preflight_checks
 # PREVIOUS INSTALLATION CHECK
 # ==============================================================================
 
+# A RE-INSTALL MUST LEAVE THE SAME SERVER A FRESH OS WOULD. One command on
+# any server, used before or not, gives the same result -- so what the
+# previous install ran is removed by what it IS, not by what the current
+# checkout says it should be.
+#
+# WHY THE LABEL AND NOT THE COMPOSE FILE. `docker compose down` removes the
+# services named in the docker-compose.yml it is run next to. The checkout
+# can describe a different version than the one that is running -- a
+# failed `aivis update` moves the checkout first, on purpose -- and then
+# the running services it does not list survive the teardown. Observed
+# 12.10 (H32): aivis-minio outlived the re-install, kept 127.0.0.1:9000,
+# and the new storage could not start. Every container and volume this
+# product ever created carries the compose project label below (the
+# project name is declared in docker-compose.yml, `name: aivis`), so the
+# label finds them whatever version made them. comms and payments are
+# their own projects ("comms", "payments") and are not touched.
+#
+# CHECKED BEFORE ANYTHING ELSE IS DELETED. If anything of the old stack is
+# still there, the install stops with the checkout untouched, so running
+# it again starts from the same place.
+AIVIS_PROJECT_LABEL="com.docker.compose.project=aivis"
+
+remove_previous_stack() {
+    # No docker on the server: no stack ever ran here.
+    if ! command -v docker > /dev/null 2>&1; then
+        return 0
+    fi
+    if ! docker info > /dev/null 2>&1; then
+        error "Docker on this server is not responding, so the previous installation cannot be removed. Nothing has been deleted. Run the installation again."
+    fi
+
+    # 1. The ordinary teardown, from the checkout when there is one: stops
+    #    the services, removes the project network and the volumes it
+    #    declares. --remove-orphans also takes the containers of this
+    #    project that this compose file no longer lists.
+    if [ -f "$INSTALL_BASE/repo/docker-compose.yml" ]; then
+        (cd "$INSTALL_BASE/repo" && docker compose down -v --remove-orphans) \
+            || warn "The previous stack did not stop cleanly; removing what is left of it directly."
+    fi
+
+    # 2. Whatever still carries the label: containers first (a volume in
+    #    use cannot be removed), then volumes -- including the ones no
+    #    current compose file declares (aivis_minio_data after H32).
+    local ids
+    ids=$(docker ps -aq --filter "label=${AIVIS_PROJECT_LABEL}")
+    if [ -n "$ids" ]; then
+        # shellcheck disable=SC2086
+        docker rm -f $ids > /dev/null 2>&1 || true
+    fi
+    ids=$(docker volume ls -q --filter "label=${AIVIS_PROJECT_LABEL}")
+    if [ -n "$ids" ]; then
+        # shellcheck disable=SC2086
+        docker volume rm $ids > /dev/null 2>&1 || true
+    fi
+
+    # 3. Nothing of it may remain. Names, in words, and no commands: the
+    #    remedy is running the install again.
+    local left_containers left_volumes
+    left_containers=$(docker ps -a --filter "label=${AIVIS_PROJECT_LABEL}" --format '{{.Names}}' | paste -sd ' ' -)
+    left_volumes=$(docker volume ls -q --filter "label=${AIVIS_PROJECT_LABEL}" | paste -sd ' ' -)
+    if [ -n "$left_containers" ] || [ -n "$left_volumes" ]; then
+        error "Parts of the previous installation could not be removed and are still on this server:${left_containers:+ programs: ${left_containers}.}${left_volumes:+ data stores: ${left_volumes}.} The installation stopped before deleting anything else. Run the installation again."
+    fi
+}
+
 if [ -d "$INSTALL_BASE/repo" ]; then
     warn "Found existing installation at $INSTALL_BASE"
     echo ""
     read -rp "Remove existing installation and start fresh? (y/n): " -n 1 < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log "Stopping existing services..."
-        cd "$INSTALL_BASE/repo" 2>/dev/null && docker compose down -v 2>/dev/null || true
+        log "Stopping existing services and removing their data..."
+        remove_previous_stack
+        success "Previous services and their data removed"
         log "Removing existing installation..."
         rm -rf "$INSTALL_BASE/repo"
+        # The record of what `aivis update` last deployed. A fresh OS has
+        # none; left behind it names a commit this install never ran.
+        rm -f "$INSTALL_BASE/deployed-commit"
         rm -f /usr/local/bin/aivis
         # Orphan from the pre-shim install scheme: the management script
         # used to be a physical file written here, outside the repo, and
@@ -1150,6 +1219,70 @@ else
     warn "Leftovers to clean by hand (not this script's business):"
     warn "  -- /etc/opendkim/keys/${MAIL_DOMAIN} (key material)"
     warn "  -- the aivis._domainkey.${MAIL_DOMAIN} TXT record in DNS"
+fi
+
+# ==============================================================================
+# NO STORAGE CONSOLE AND NO MINIO CLIENT ON THIS HOST
+# ==============================================================================
+#
+# A STATEMENT ABOUT THE DESIRED STATE OF THE MACHINE, like the MTA section
+# above -- not a migration step. Until H32 this script set up a web
+# console for the object storage and a MinIO command-line client on the
+# host. Neither exists any more, and a re-install does not uninstall what
+# an earlier install created: without this section the console's nginx
+# site would stay enabled (answering 502 -- there is nothing behind it),
+# its certificate would keep being renewed, and /root/.mc would keep the
+# old storage root key in plain text.
+#
+# IDEMPOTENT, AND SILENT ON A CLEAN MACHINE: each step acts only on what is
+# actually present. Nothing here aborts the run.
+
+section "Storage console and client (removed)"
+
+LEGACY_CONSOLE_DOMAIN="storage-mc-admin.aivis.one"
+LEGACY_CONSOLE_SITE="aivis-storage-mc-admin"
+LEGACY_CONSOLE_HTPASSWD="/etc/nginx/.htpasswd-storage-mc-admin"
+LEGACY_CHANGED=0
+
+# -- 1. The console's nginx site and its password file, together ---------
+# Together, because the site names the password file: removing only the
+# file would make the nginx configuration invalid.
+if [ -e "/etc/nginx/sites-enabled/${LEGACY_CONSOLE_SITE}" ] \
+   || [ -e "/etc/nginx/sites-available/${LEGACY_CONSOLE_SITE}" ] \
+   || [ -e "$LEGACY_CONSOLE_HTPASSWD" ]; then
+    rm -f "/etc/nginx/sites-enabled/${LEGACY_CONSOLE_SITE}" \
+          "/etc/nginx/sites-available/${LEGACY_CONSOLE_SITE}" \
+          "$LEGACY_CONSOLE_HTPASSWD"
+    if nginx -t > /dev/null 2>&1 && systemctl reload nginx > /dev/null 2>&1; then
+        success "  storage console site removed"
+    else
+        warn "  storage console site removed, but the web server did not reload cleanly (continuing)."
+    fi
+    LEGACY_CHANGED=1
+fi
+
+# -- 2. Its certificate -- after the site, which referenced it ------------
+# Local only: certbot deletes the lineage and its renewal job without
+# talking to Let's Encrypt, so a domain already gone from DNS is fine.
+if [ -e "/etc/letsencrypt/renewal/${LEGACY_CONSOLE_DOMAIN}.conf" ]; then
+    if certbot delete --cert-name "$LEGACY_CONSOLE_DOMAIN" --non-interactive > /dev/null 2>&1; then
+        success "  certificate for ${LEGACY_CONSOLE_DOMAIN} removed"
+    else
+        warn "  the certificate for ${LEGACY_CONSOLE_DOMAIN} could not be removed (continuing)."
+    fi
+    LEGACY_CHANGED=1
+fi
+
+# -- 3. The MinIO client and its configuration ----------------------------
+# /root/.mc/config.json holds the old storage root key in plain text.
+if [ -e /usr/local/bin/mc ] || [ -e /root/.mc ]; then
+    rm -rf /usr/local/bin/mc /root/.mc
+    success "  MinIO client and its saved credentials removed"
+    LEGACY_CHANGED=1
+fi
+
+if [ "$LEGACY_CHANGED" -eq 0 ]; then
+    success "No storage console or MinIO client on this host (nothing to remove)"
 fi
 
 # ==============================================================================
