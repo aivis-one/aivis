@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # WHAT THIS IS FOR. Until now the suite ran only when a human typed
-# `aivis test` on a box with Postgres, Redis and MinIO up. The bar was
+# `aivis test` on a box with Postgres, Redis and storage up. The bar was
 # high, so it was cleared rarely, and the cost is known exactly:
 # forty-four tests in this tree failed on their FIRST EVER execution --
 # not "broke", never ran -- and unpicking them turned up two live holes
@@ -47,8 +47,11 @@
 #     always-red linter, so it runs as its own non-blocking job below.
 #
 # THE SOURCE THIS REPRODUCES is scripts/aivis-manage.sh, prepare_test_db
-# (:190) and the object checks (:697-772). Where the two disagree, the
-# CLI is right and this file is wrong.
+# and the object checks it calls (check_platform_template_objects), plus
+# the `storage` and `storage-init` services of docker-compose.yml. Where
+# this file and those disagree, they are right and this file is wrong --
+# which is why the storage images are READ from docker-compose.yml below
+# rather than copied here.
 # =============================================================================
 
 name: CI
@@ -67,13 +70,6 @@ on:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  # Pinned to what docker-compose.yml pins. CI reproduces the box, so it
-  # runs the box's versions -- "latest" would mean CI and the stand can
-  # disagree without anybody changing a line.
-  MINIO_IMAGE: minio/minio:RELEASE.2025-09-07T16-13-09Z
-  MC_IMAGE: minio/mc:RELEASE.2025-08-13T08-35-41Z
 
 jobs:
   # ===========================================================================
@@ -123,13 +119,19 @@ jobs:
       # boundary protects a long-lived stand. This container lives for
       # one job and is destroyed with the runner, so the account it would
       # protect does not outlast the thing it protects against.
-      STORAGE_ACCESS_KEY: ciminioroot
-      STORAGE_SECRET_KEY: ciminiorootsecret
-      MINIO_ROOT_USER: ciminioroot
-      MINIO_ROOT_PASSWORD: ciminiorootsecret
+      #
+      # The root pair is set ONLY here, never in docker-compose.yml's
+      # `environment` (the box takes it from backend/.env.storage, which
+      # CI does not have). The resolve step below refuses a compose file
+      # that starts naming it, so the two can never both be set.
+      STORAGE_ACCESS_KEY: ci-storage-root
+      STORAGE_SECRET_KEY: ci-storage-root-secret
+      RUSTFS_ACCESS_KEY: ci-storage-root
+      RUSTFS_SECRET_KEY: ci-storage-root-secret
       STORAGE_BUCKET: aivis-attachments
       # COMMS_API_URL is deliberately UNSET. A box without comms is a
-      # supported configuration (backend/app/core/config.py:395-403), and
+      # supported configuration (backend/app/core/config.py judges
+      # COMMS_API_URL with required=False), and
       # since the three tests that used to read this variable now pin
       # their own state, the suite is green either way. Setting it here
       # would make CI depend on a second product being reachable.
@@ -166,14 +168,15 @@ jobs:
       # Fail here, loudly, rather than three steps later with a
       # connection error or a pytest UsageError. The second assertion is
       # the pair to the first: a variable being set is not the same as it
-      # pointing somewhere safe, and conftest.py:95 refuses to run
+      # pointing somewhere safe, and tests/conftest.py (its
+      # `endswith("_test")` guard) refuses to run
       # against a database whose name does not end in `_test`.
       - name: Check required environment
         run: |
           set -euo pipefail
           for var in APP_ENV SECRET_KEY DATABASE_URL REDIS_URL \
                      STORAGE_ENDPOINT STORAGE_ACCESS_KEY STORAGE_SECRET_KEY \
-                     STORAGE_BUCKET; do
+                     STORAGE_BUCKET RUSTFS_ACCESS_KEY RUSTFS_SECRET_KEY; do
             if [ -z "${!var:-}" ]; then
               echo "::error::$var is unset or empty"
               exit 1
@@ -184,34 +187,175 @@ jobs:
             *) echo "::error::DATABASE_URL must end with _test"; exit 1 ;;
           esac
 
-      # Not a service container: services take an image and no command,
-      # and `minio/minio` does nothing without `server /data`. Passing it
-      # through `options: --entrypoint` works until the base image
-      # changes its entrypoint, which is a trap for whoever bumps the
-      # pin. `docker run` is supported outright.
-      - name: Start MinIO
+      # ONE COPY OF THE STORAGE PINS, and it is docker-compose.yml. CI used
+      # to carry its own copy of the image tags "pinned to what compose
+      # pins"; the box moved to RustFS, the copy stayed on the previous
+      # store, and CI went on testing a store the product no longer runs
+      # on until the
+      # copied images were deleted upstream and every run went red (P-119).
+      # So the images, the server's `environment` and its data mount are
+      # READ from the `storage` and `storage-init` services here, by
+      # service name.
+      #
+      # PyYAML, not `docker compose config`: the latter refuses to render
+      # without backend/.env.storage, which CI does not have and must not
+      # fake. Not `yq` either: the runner ships one yq and the stand
+      # another, with different syntax and output. PyYAML is already
+      # installed above from pyproject.toml.
+      #
+      # Refuses, naming the field, on: no compose file, a missing service,
+      # an image that is empty or not pinned by digest, an `environment`
+      # that is empty, carries the root key pair (that is set by this job
+      # alone), holds an unset or `${...}` value CI cannot reproduce, or a
+      # data mount that is not exactly one.
+      - name: Resolve storage images from docker-compose.yml
         run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER="$MINIO_ROOT_USER" \
-            -e MINIO_ROOT_PASSWORD="$MINIO_ROOT_PASSWORD" \
-            "$MINIO_IMAGE" server /data
+          python - <<'PY'
+          import os
+          import sys
 
-      - name: Wait for MinIO
+          import yaml
+
+          COMPOSE = "docker-compose.yml"
+          ROOT_KEYS = {"RUSTFS_ACCESS_KEY", "RUSTFS_SECRET_KEY"}
+
+
+          def fail(msg):
+              print(f"::error::{COMPOSE}: {msg}")
+              sys.exit(1)
+
+
+          try:
+              with open(COMPOSE) as fh:
+                  doc = yaml.safe_load(fh)
+          except FileNotFoundError:
+              fail("file not found")
+
+          services = doc.get("services") if isinstance(doc, dict) else None
+          if not isinstance(services, dict):
+              fail("no `services` mapping")
+
+
+          def service(name):
+              svc = services.get(name)
+              if not isinstance(svc, dict):
+                  fail(f"service '{name}' is missing")
+              return svc
+
+
+          def image(name):
+              ref = service(name).get("image")
+              if not isinstance(ref, str) or not ref.strip():
+                  fail(f"service '{name}' has no image")
+              ref = ref.strip()
+              if "@sha256:" not in ref:
+                  fail(f"service '{name}' image '{ref}' is not pinned by digest")
+              return ref
+
+
+          def scalar(key, value):
+              # Compose accepts strings, numbers and booleans; a null means
+              # "take it from the host shell", which CI cannot reproduce.
+              if isinstance(value, bool):
+                  return "true" if value else "false"
+              if isinstance(value, (int, float)):
+                  return str(value)
+              if not isinstance(value, str):
+                  fail(f"service 'storage' environment {key} has no value")
+              if "$" in value or "\n" in value:
+                  fail(f"service 'storage' environment {key} needs interpolation")
+              return value
+
+
+          storage = service("storage")
+          raw_env = storage.get("environment")
+          if isinstance(raw_env, list):
+              pairs = {}
+              for item in raw_env:
+                  key, sep, value = str(item).partition("=")
+                  pairs[key] = value if sep else None
+              raw_env = pairs
+          if not isinstance(raw_env, dict) or not raw_env:
+              fail("service 'storage' has no environment")
+          clash = sorted(ROOT_KEYS & set(raw_env))
+          if clash:
+              fail(f"service 'storage' environment sets {', '.join(clash)}; "
+                   "the root key pair comes from the CI job only")
+          env_lines = [f"{key}={scalar(key, value)}" for key, value in raw_env.items()]
+
+          mounts = storage.get("volumes") or []
+          if len(mounts) != 1:
+              fail(f"service 'storage' has {len(mounts)} volumes, expected exactly 1")
+          mount = mounts[0]
+          if isinstance(mount, dict):
+              target = mount.get("target")
+          else:
+              parts = str(mount).split(":")
+              target = parts[1] if len(parts) >= 2 else None
+          if not isinstance(target, str) or not target.startswith("/"):
+              fail(f"service 'storage' volume '{mount}' has no absolute target")
+
+          storage_image = image("storage")
+          rc_image = image("storage-init")
+
+          env_file = os.path.join(os.environ["RUNNER_TEMP"], "storage.env")
+          with open(env_file, "w") as fh:
+              fh.write("\n".join(env_lines) + "\n")
+          with open(os.environ["GITHUB_ENV"], "a") as fh:
+              fh.write(f"STORAGE_IMAGE={storage_image}\n")
+              fh.write(f"RC_IMAGE={rc_image}\n")
+              fh.write(f"STORAGE_ENV_FILE={env_file}\n")
+              fh.write(f"STORAGE_DATA_DIR={target}\n")
+          print(f"storage:      {storage_image}")
+          print(f"storage-init: {rc_image}")
+          print(f"environment:  {', '.join(sorted(raw_env))}")
+          print(f"data mount:   {target}")
+          PY
+
+      # Not a service container: a service's image is fixed when the job
+      # is parsed, before any step runs, so it cannot take the image the
+      # step above reads from compose. `docker run` can.
+      #
+      # REMOVE BEFORE START, container and volume both: a re-run on a
+      # self-hosted runner would otherwise find the previous run's
+      # container holding port 9000, or its volume holding objects --
+      # the same inherited-state trap the test database is dropped for.
+      # The named volume mirrors compose, which mounts one at the same
+      # path; the image's own directory is not assumed writable.
+      - name: Start storage
         run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:9000/minio/health/ready >/dev/null; then
-              echo "MinIO ready after ${i}s"; exit 0
+          docker rm -f storage >/dev/null 2>&1 || true
+          docker volume rm -f aivis-ci-storage-data >/dev/null 2>&1 || true
+          docker run -d --name storage -p 127.0.0.1:9000:9000 \
+            --env-file "$STORAGE_ENV_FILE" \
+            -e RUSTFS_ACCESS_KEY \
+            -e RUSTFS_SECRET_KEY \
+            -v "aivis-ci-storage-data:$STORAGE_DATA_DIR" \
+            "$STORAGE_IMAGE"
+
+      # The endpoint compose's healthcheck polls. Sixty seconds, not
+      # thirty: compose itself grants the server a 15s start period
+      # before it even begins counting failures.
+      - name: Wait for storage
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9000/health >/dev/null; then
+              echo "Storage ready after ${i}s"; exit 0
             fi
             sleep 1
           done
-          echo "::error::MinIO did not become ready in 30s"
-          docker logs minio || true
+          echo "::error::storage did not become ready in 60s"
+          docker logs storage || true
           exit 1
 
-      # The same tool and the same pin compose uses (docker-compose.yml
-      # :190, :208-209). Creating the buckets with boto3 instead would be
-      # a second implementation of something the stand already does, and
-      # the two would drift the first time either changed.
+      # The same client, the same image and the same commands as the
+      # `storage-init` service in docker-compose.yml. Creating the buckets
+      # with boto3 instead would be a second implementation of something
+      # the stand already does, and the two would drift the first time
+      # either changed. HOME=/tmp for the reason storage-init gives: rc
+      # keeps its alias file under $HOME, and the image's may not be
+      # writable. Keys go in through the environment, never spliced into
+      # the script text.
       #
       # BOTH buckets, and the test one matters as much: the seam check
       # below reads only the MAIN bucket by design, so a missing
@@ -219,32 +363,43 @@ jobs:
       # seventeen storage failures in the middle of pytest.
       - name: Create buckets
         run: |
-          docker run --rm --network host --entrypoint sh "$MC_IMAGE" -c "
-            mc alias set local http://127.0.0.1:9000 \
-              '$MINIO_ROOT_USER' '$MINIO_ROOT_PASSWORD' &&
-            mc mb -p local/aivis-attachments &&
-            mc mb -p local/aivis-attachments-test
-          "
+          docker run --rm --network host \
+            -e RUSTFS_ACCESS_KEY -e RUSTFS_SECRET_KEY \
+            --entrypoint /bin/sh "$RC_IMAGE" -c '
+              set -e
+              export HOME=/tmp
+              rc alias set local http://127.0.0.1:9000 \
+                "$RUSTFS_ACCESS_KEY" "$RUSTFS_SECRET_KEY"
+              rc mb -p local/aivis-attachments
+              rc mb -p local/aivis-attachments-test
+              rc anonymous set private local/aivis-attachments
+              rc anonymous set private local/aivis-attachments-test
+            '
 
       # "Created" and "readable by the account the backend will use" are
       # different claims, and only the second one matters. This checks
       # the second, with the very credentials handed to the application
-      # above -- the same shape as the service-account probe in
-      # docker-compose.yml:247-250.
+      # above. Here they equal the root pair (see the job env); the check
+      # still reads them from STORAGE_*, so it keeps meaning the right
+      # thing if the two ever part.
       - name: Verify buckets are readable by the backend's credentials
         run: |
-          docker run --rm --network host --entrypoint sh "$MC_IMAGE" -c "
-            mc alias set backend http://127.0.0.1:9000 \
-              '$STORAGE_ACCESS_KEY' '$STORAGE_SECRET_KEY' &&
-            mc ls backend/aivis-attachments &&
-            mc ls backend/aivis-attachments-test
-          "
+          docker run --rm --network host \
+            -e STORAGE_ACCESS_KEY -e STORAGE_SECRET_KEY \
+            --entrypoint /bin/sh "$RC_IMAGE" -c '
+              set -e
+              export HOME=/tmp
+              rc alias set backend http://127.0.0.1:9000 \
+                "$STORAGE_ACCESS_KEY" "$STORAGE_SECRET_KEY"
+              rc ls backend/aivis-attachments
+              rc ls backend/aivis-attachments-test
+            '
 
       # STEP ONE OF THE BOX'S SEQUENCE, and its absence is what broke
       # the first run of this file: the service container creates
       # `aivis`, the suite runs against `aivis_test`, and nothing in
-      # between was creating it. aivis-manage.sh does this at :207-213
-      # and I reproduced the six steps after it while dropping the one
+      # between was creating it. aivis-manage.sh does this in
+      # prepare_test_db and I reproduced the six steps after it while dropping the one
       # my own stand had done by hand.
       #
       # DROP ... WITH (FORCE) as well as CREATE, even though a runner
@@ -331,9 +486,12 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      # stdlib-only, runs anywhere. Five static checks over the router
-      # table, design tokens, i18n and pre-auth widths -- none of which
-      # any of the steps below can see.
+      # stdlib-only, runs anywhere. Every check in checks/ (run.py runs
+      # them all): the router table, design tokens, breakpoints, shell
+      # layout, pre-auth widths, ref-truth guards, nginx headers and the
+      # comms profile -- none of which any of the steps below can see.
+      # Not counted here on purpose: a count in a comment is the first
+      # thing to go stale when a check is added.
       - name: Static checks
         run: python3 checks/run.py
 
@@ -345,7 +503,8 @@ jobs:
         working-directory: frontend
         run: npx vue-tsc --noEmit
 
-      # 63 tests that live in this tree and had no automatic runner. A CI
+      # The vitest tests that live in this tree and had no automatic
+      # runner (uncounted for the same reason as the checks above). A CI
       # that skipped them would repeat, on a smaller scale, exactly the
       # thing this file is here to stop.
       - name: Unit tests
