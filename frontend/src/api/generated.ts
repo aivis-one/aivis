@@ -76,6 +76,12 @@ export interface AssignCompanyRequest {
   shares_per_option?: number
 }
 
+/** A short-lived link to one attachment (H32 P-121). The download endpoints return the link instead of a 302 to it: the frontend opens it as a navigation, so the browser follows it like any link -- no fetch across origins, no CORS, no Authorization header carried through a redirect. The link carries response-content-disposition=attachment, so it downloads under its original name and an SVG/HTML payload is never rendered (Round 4 SEC-01). Same shape as KYCDocumentURLResponse. */
+export interface AttachmentDownloadURLResponse {
+  url: string
+  ttl_seconds: number
+}
+
 /** Partial update of attachment metadata. Used by PATCH /staff/companies/{id}/attachments/{att_id}. Every field is optional; the service applies model_dump(exclude_unset=True) and only mutates fields that were explicitly sent. `description` accepts explicit null to clear the value. */
 export interface AttachmentPatchBody {
   title?: string | null
