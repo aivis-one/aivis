@@ -1,24 +1,38 @@
 // =============================================================================
 // AIVIS.ONE Frontend -- Attachments API
-//                       (iter 2.5 R2 §3.3 + §7.1, iter 2.6 R2 §3.4 + §7.2)
+//                       (iter 2.5 R2 §3.3 + §7.1, iter 2.6 R2 §3.4 + §7.2,
+//                        H32 P-121 download as a navigation)
 // =============================================================================
 //
 // Typed wrappers for the per-company attachments endpoints.
 //
 // AUTH-FLOW (iter 2.5):
 //   GET /api/v1/companies/{id}/attachments                      (JSON list)
-//   GET /api/v1/companies/{id}/attachments/{att_id}/download    (302 -> presigned)
+//   GET /api/v1/companies/{id}/attachments/{att_id}/download    (JSON link)
 //
 // PUBLIC-FLOW (iter 2.6):
 //   GET /api/v1/public/companies/{id}/attachments               (JSON list,
 //                                                                only public+
 //                                                                published rows)
 //   GET /api/v1/public/companies/{id}/attachments/{att_id}/download
-//                                                               (302 -> presigned,
+//                                                               (JSON link,
 //                                                                no auth)
 //
 // Source of truth: backend/app/modules/companies/attachments_router.py
 //                  backend/app/modules/companies/attachments_public_router.py
+//
+// DOWNLOAD IS A NAVIGATION (H32 P-121):
+//   Both download endpoints return { url, ttl_seconds } -- a presigned
+//   link on the public storage address (https://files.aivis.one) -- and
+//   the browser is sent to it with location.assign(). The link carries
+//   response-content-disposition=attachment with the original filename,
+//   so the browser saves the file and stays on the page; an SVG/HTML
+//   payload is never rendered (Round 4 SEC-01). This replaced a fetch()
+//   that followed a 302 across origins into a blob: URL: that needed CORS
+//   on the storage, carried the Authorization header through the
+//   redirect, lost Content-Disposition inside the blob, and could not
+//   work at all while the link pointed at the internal storage address.
+//   KYC documents already open the same way (StaffUsersView.vue).
 //
 // PUBLIC-FLOW VS AUTH-FLOW DIFFERENCES:
 //   - listPublicAttachments() does NOT take category / category_prefix /
@@ -27,69 +41,11 @@
 //     Section + PublicAttachmentLandingView) does client-side filtering
 //     identical to the auth-flow section, so the wrapper stays minimal.
 //     If a later consumer needs the server-side filters, extend here.
-//   - downloadPublicAttachment() omits the Authorization header even
-//     when an auth token happens to be present in the module-level
-//     state (e.g. a logged-in user is browsing a public link). The
-//     public endpoint does not require it, and dropping it removes the
-//     cross-origin header leak on the 302 -> presigned URL hop that the
-//     auth-flow TODO still mentions (see AUTH-HEADER-IN-302 NOTE).
-//
-// DOWNLOAD HELPER (shared):
-//   Both downloadAttachment and downloadPublicAttachment go through the
-//   internal `_downloadBlob` helper -- fetch + blob materialisation +
-//   anchor click + revoke + timeout/error mapping in one place. The
-//   public variant passes withAuth=false; the auth variant passes
-//   withAuth=true. No public consumer should ever need to call
-//   _downloadBlob directly; export it only if a third call site
-//   appears.
-//
-// CONTENT-DISPOSITION NOTE (carried from iter 2.5):
-//   Backend sets `Content-Disposition: attachment; filename="..."` on
-//   the presigned URL (Round 4 SEC-01 force-download), but Content-
-//   Disposition does NOT propagate through blob: URLs -- the browser
-//   ignores any header once the response body is in memory. The caller
-//   is expected to pass `attachment.original_filename`; without it the
-//   browser falls back to the blob URL's UUID, which is ugly but not
-//   catastrophic.
-//
-// AUTH-HEADER-IN-302 NOTE (TODO, auth-flow only):
-//   fetch() with redirect: 'follow' (default) forwards the
-//   Authorization header on the redirected request, so the presigned
-//   MinIO URL receives our Bearer token. MinIO ignores it -- presigned
-//   URLs auth via the query string and the Authorization header is just
-//   dropped -- but it's still a header leak across origins for the
-//   duration of the redirect. The public variant deliberately avoids
-//   this by never sending the header. A backend change to return JSON
-//   { url } instead of 302 would close the auth-flow caveat too,
-//   deferred to a future R2 follow-up since iter 2.6 does not touch
-//   backend.
-//
-// TIMEOUT COVERAGE:
-//   Mirrors api/agreements.ts -- AbortController arms before fetch()
-//   and stays alive across response.blob(). Both headers-phase and
-//   body-phase stalls map to ApiTimeoutError. 30s window for downloads
-//   (vs 15s for JSON) -- a large PDF over slow 3G needs the slack.
-//
-// R20 FIX (FE-20-01):
-//   The 429 branch inside _downloadBlob now imports `parseRetryAfterHeader`
-//   from api/client.ts rather than reimplementing the parser inline.
-//   Single source of truth for Retry-After parsing rules; if we ever
-//   add HTTP-date support, one edit covers both call sites.
 // =============================================================================
 
-import {
-  API_BASE_URL,
-  ApiNetworkError,
-  ApiResponseError,
-  ApiTimeoutError,
-  api,
-  getAuthToken,
-  parseRetryAfterHeader,
-} from '@/api/client'
+import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
-import type { AttachmentResponse } from '@/api/types'
-
-const DOWNLOAD_TIMEOUT_MS = 30_000
+import type { AttachmentDownloadURLResponse, AttachmentResponse } from '@/api/types'
 
 // ---------------------------------------------------------------------------
 // Auth-flow: List
@@ -147,167 +103,50 @@ export function listPublicAttachments(companyId: string): Promise<AttachmentResp
 }
 
 // ---------------------------------------------------------------------------
-// Internal: shared blob-download helper
+// Download: ask for the link, then go to it
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch an attachment download endpoint, materialise a blob URL,
- * trigger the browser's save-as flow via a synthesised anchor click,
- * then revoke the URL. Shared by the auth-flow and public-flow
- * download wrappers below.
+ * Send the browser to a presigned download link.
  *
- * `withAuth=true`  -- attach `Authorization: Bearer <token>` if one is
- *                     available (auth-flow download endpoint requires it).
- * `withAuth=false` -- always omit the header (public-flow download
- *                     endpoint does not require it, and omitting closes
- *                     the cross-origin token-leak on the 302 hop to
- *                     the presigned MinIO URL).
- *
- * Throws ApiResponseError / ApiNetworkError / ApiTimeoutError. The
- * caller surfaces the error UX (typically a toast).
+ * A navigation, not a fetch: the response is an attachment, so the
+ * browser saves it under the name in Content-Disposition and the current
+ * page stays.
  */
-async function _downloadBlob(url: string, filename: string, withAuth: boolean): Promise<void> {
-  const headers: Record<string, string> = {}
-  if (withAuth) {
-    const token = getAuthToken()
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-  }
-
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS)
-
-  let blobUrl: string | null = null
-  try {
-    let response: Response
-    try {
-      response = await fetch(url, {
-        method: 'GET',
-        headers,
-        signal: controller.signal,
-        // redirect: 'follow' is the default; we want fetch() to walk
-        // through the 302 onto the presigned MinIO URL automatically.
-        // See file header for the auth-header-on-redirect caveat.
-      })
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw new ApiTimeoutError()
-      }
-      throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
-    }
-
-    if (!response.ok) {
-      // Mirror api.get error surface. Body might be JSON (FastAPI
-      // detail envelope) or empty (framework-level error). Try JSON
-      // first, fall back to `HTTP <status>` -- callers only need a
-      // status-driven discriminant, not the precise text. Retry-After
-      // is read on 429 so a download tripped by per-IP rate limit
-      // surfaces the right cooldown in the toast.
-      let detail = `HTTP ${response.status}`
-      try {
-        const data = (await response.json()) as {
-          detail?: unknown
-          message?: unknown
-        }
-        if (data && typeof data === 'object') {
-          if ('detail' in data && data.detail != null) {
-            detail = String(data.detail)
-          } else if ('message' in data && typeof data.message === 'string') {
-            detail = data.message
-          }
-        }
-      } catch {
-        // Non-JSON body -- keep the `HTTP <status>` default.
-      }
-      // R20 FE-20-01: shared parser instead of an inline copy.
-      const retryAfter = response.status === 429 ? parseRetryAfterHeader(response) : undefined
-      throw new ApiResponseError(response.status, detail, retryAfter)
-    }
-
-    let blob: Blob
-    try {
-      blob = await response.blob()
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw new ApiTimeoutError()
-      }
-      throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
-    }
-
-    blobUrl = URL.createObjectURL(blob)
-
-    // Synthesise the click. Anchor is detached from the DOM (no need
-    // to append for the click to fire in modern browsers); the
-    // browser's save-as / open-in-viewer flow handles the rest.
-    const anchor = document.createElement('a')
-    anchor.href = blobUrl
-    anchor.download = filename
-    // rel="noopener" is irrelevant for a blob: URL but keeps the
-    // anchor congruent with general security hygiene.
-    anchor.rel = 'noopener'
-    anchor.click()
-  } finally {
-    clearTimeout(timeoutId)
-    if (blobUrl) {
-      // Revoke on a microtask boundary -- some browsers need the URL
-      // to remain valid for ~1 tick after the click to actually
-      // start the download. setTimeout(0) is the canonical idiom.
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl!)
-      }, 0)
-    }
-  }
+export function openDownloadLink(url: string): void {
+  window.location.assign(url)
 }
 
-// ---------------------------------------------------------------------------
-// Auth-flow: Download
-// ---------------------------------------------------------------------------
-
 /**
- * Download an authenticated attachment to the user's device.
+ * Download an authenticated attachment.
  *
- * Fetches the bytes through the auth-flow download endpoint (which
- * 302-redirects to a presigned MinIO URL), materialises a blob URL,
- * clicks a hidden anchor to trigger the browser's save flow, and
- * revokes the URL. Throws on network / HTTP / timeout errors -- the
- * caller renders the toast.
- *
- * filename should be `attachment.original_filename`. See file header
- * for why Content-Disposition does not survive the blob: URL.
+ * Asks the auth-flow endpoint for the link (the API client sends the
+ * session as with any call) and opens it. Throws the API client's errors
+ * (ApiResponseError / ApiNetworkError / ApiTimeoutError) -- the caller
+ * renders the toast.
  */
-export function downloadAttachment(
-  companyId: string,
-  attachmentId: string,
-  filename: string,
-): Promise<void> {
-  const url =
-    `${API_BASE_URL}/api/v1/companies/${companyId}` + `/attachments/${attachmentId}/download`
-  return _downloadBlob(url, filename, /* withAuth */ true)
+export async function downloadAttachment(companyId: string, attachmentId: string): Promise<void> {
+  const link = await api.get<AttachmentDownloadURLResponse>(
+    `/api/v1/companies/${companyId}/attachments/${attachmentId}/download`,
+  )
+  openDownloadLink(link.url)
 }
 
-// ---------------------------------------------------------------------------
-// Public-flow: Download (iter 2.6, R2 §3.4)
-// ---------------------------------------------------------------------------
-
 /**
- * Download a public attachment to the user's device. No authentication.
+ * Download a public attachment. No authentication required.
  *
  * Backend visibility predicate is `is_public AND is_published AND NOT
  * is_deleted`; anything that fails returns 404 (not 403) to avoid
- * confirming the existence of private files.
- *
- * Per-IP rate limit is 300 req/min (PUBLIC_DOWNLOAD_RATE_LIMIT, see
- * backend/app/modules/companies/constants.py). Independent Redis
- * bucket from the list endpoint, so list spam cannot starve downloads
- * and vice versa.
+ * confirming the existence of private files. Per-IP rate limit is
+ * PUBLIC_DOWNLOAD_RATE_LIMIT (backend/app/modules/companies/constants.py),
+ * a bucket independent of the list endpoint.
  */
-export function downloadPublicAttachment(
+export async function downloadPublicAttachment(
   companyId: string,
   attachmentId: string,
-  filename: string,
 ): Promise<void> {
-  const url =
-    `${API_BASE_URL}/api/v1/public/companies/${companyId}` + `/attachments/${attachmentId}/download`
-  return _downloadBlob(url, filename, /* withAuth */ false)
+  const link = await api.get<AttachmentDownloadURLResponse>(
+    `/api/v1/public/companies/${companyId}/attachments/${attachmentId}/download`,
+  )
+  openDownloadLink(link.url)
 }

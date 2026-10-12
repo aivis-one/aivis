@@ -74,6 +74,7 @@ import structlog
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.body_limit import upload_body_limit
 from app.core.database import get_db_session, get_db_reader
 from app.core.exceptions import BadRequestError
@@ -218,7 +219,8 @@ async def get_company_detail_endpoint(
 
     roadmap = [
         await build_roadmap_item_response(
-            item, posts_map.get(item.post_id), session
+            item, posts_map.get(item.post_id), session,
+            cover_ttl_seconds=settings.storage_presigned_ttl_auth,
         )
         for item in roadmap_items
     ]
@@ -420,7 +422,12 @@ async def create_roadmap_item_endpoint(
     # Freshly-created items have no cover and no resolved post yet
     # (post snippet is resolved at detail-render time). Pass None for
     # the post argument; the helper handles it.
-    return await build_roadmap_item_response(item, None, session)
+    return await build_roadmap_item_response(
+        item,
+        None,
+        session,
+        cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+    )
 
 
 # NOTE: reorder MUST be declared before {item_id} routes to prevent
@@ -442,7 +449,12 @@ async def reorder_roadmap_endpoint(
     # reorder (the operation does not change post links); frontend
     # refetches the detail view if a post embed is needed.
     return [
-        await build_roadmap_item_response(item, None, session)
+        await build_roadmap_item_response(
+            item,
+            None,
+            session,
+            cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        )
         for item in items
     ]
 
@@ -483,7 +495,12 @@ async def update_roadmap_item_endpoint(
     )
     # Post snippet not embedded here (single-item response, frontend
     # refetches the detail view if needed for the new post link).
-    return await build_roadmap_item_response(item, None, session)
+    return await build_roadmap_item_response(
+        item,
+        None,
+        session,
+        cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+    )
 
 
 @router.delete(
@@ -574,7 +591,12 @@ async def set_roadmap_cover_endpoint(
     # Post snippet not embedded -- the endpoint is per-item and does
     # not change the post link; frontend refetches detail when it
     # needs the embedded post.
-    return await build_roadmap_item_response(item, None, session)
+    return await build_roadmap_item_response(
+        item,
+        None,
+        session,
+        cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+    )
 
 
 @router.delete(

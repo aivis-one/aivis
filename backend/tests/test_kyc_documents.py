@@ -48,9 +48,9 @@
 # refused" passes against an endpoint that refuses everybody. Each of
 # those three states an absence AND the matching presence.
 #
-# REAL MinIO, no moto and no mock -- same stance test_storage.py takes
+# REAL storage, no moto and no mock -- same stance test_storage.py takes
 # and for the same reason: a green run against a substitute is a
-# statement about the substitute. CI raises MinIO with both buckets.
+# statement about the substitute. CI raises the storage with both buckets.
 #
 # Email prefix: "h12_" -- unique to this file.
 # =============================================================================
@@ -110,7 +110,7 @@ async def use_test_bucket(
     rather than post-clean, so a failed test leaves the bucket in a
     state that can be inspected by hand.
     """
-    monkeypatch.setattr(settings, "minio_bucket", TEST_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", TEST_BUCKET)
     for key in await list_objects(""):
         await delete_object(key)
     yield
@@ -802,12 +802,12 @@ async def test_a_storage_outage_mid_submit_is_not_swallowed(
     property this test is checking.
 
     No new mocking convention needed: upload_object reads
-    settings.minio_bucket on every call rather than taking a bucket as
+    settings.storage_bucket on every call rather than taking a bucket as
     an argument, so the same real-bucket-swap technique
     test_storage.py already uses for this exact failure reaches this
     code path unmodified.
     """
-    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", MISSING_BUCKET)
 
     token, user_id = await _funded_investor(client)
 
@@ -882,7 +882,7 @@ async def test_missing_object_is_not_presigned(
     """The SHORTAGE axis for the object key: row present, object gone.
 
     Presigning is a local computation and succeeds against a key that
-    does not exist, handing staff a link that fails at MinIO -- which
+    does not exist, handing staff a link that fails at the storage -- which
     reads as "the link is broken" rather than "the document is gone",
     and writes an audit row claiming a view that could not happen.
     """

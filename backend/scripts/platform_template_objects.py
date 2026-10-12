@@ -29,7 +29,7 @@ WHY THE SAME CODE AND NOT `mc cp`.
     the same functions the box runs, so what CI verifies is what ships.
 
 WHICH BUCKET.
-    Whatever MINIO_BUCKET points at -- for both operations, and
+    Whatever STORAGE_BUCKET points at -- for both operations, and
     deliberately the MAIN bucket rather than the test one. Only
     test_storage.py redirects storage, through a fixture local to that
     file; agreements and certificates read the main bucket even during a

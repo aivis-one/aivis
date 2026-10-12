@@ -1195,6 +1195,8 @@ async def build_roadmap_item_response(
     item: CompanyRoadmapItem,
     post: Post | None,
     _session: AsyncSession,
+    *,
+    cover_ttl_seconds: int,
 ) -> RoadmapItemResponse:
     """Render a CompanyRoadmapItem as RoadmapItemResponse (R1 §5).
 
@@ -1204,6 +1206,13 @@ async def build_roadmap_item_response(
     The Post argument is passed in by the caller (get_company_detail
     populates a posts_map, single-item callers do a one-row SELECT).
     This keeps the helper free of N+1 surprises.
+
+    cover_ttl_seconds is the caller's: the public company page passes
+    storage_presigned_ttl_public, staff and company screens pass
+    storage_presigned_ttl_auth. It is required, not defaulted -- the call
+    used to omit the TTL that generate_presigned_url requires, so every
+    item WITH a cover raised TypeError and the endpoint answered 500
+    (H32 P-121).
 
     Storage failures on presign are logged and treated as "no cover"
     rather than failing the whole response: a missing object should
@@ -1217,7 +1226,9 @@ async def build_roadmap_item_response(
     cover_url: str | None = None
     if item.cover_storage_key:
         try:
-            cover_url = await generate_presigned_url(item.cover_storage_key)
+            cover_url = await generate_presigned_url(
+                item.cover_storage_key, cover_ttl_seconds
+            )
         except StorageError as exc:
             logger.warning(
                 "roadmap_cover_presign_failed",

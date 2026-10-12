@@ -762,6 +762,22 @@ class ReorderAttachmentsRequest(BaseModel):
     item_ids: list[UUID]
 
 
+class AttachmentDownloadURLResponse(BaseModel):
+    """A short-lived link to one attachment (H32 P-121).
+
+    The download endpoints return the link instead of a 302 to it: the
+    frontend opens it as a navigation, so the browser follows it like any
+    link -- no fetch across origins, no CORS, no Authorization header
+    carried through a redirect. The link carries
+    response-content-disposition=attachment, so it downloads under its
+    original name and an SVG/HTML payload is never rendered (Round 4
+    SEC-01). Same shape as KYCDocumentURLResponse.
+    """
+
+    url: str
+    ttl_seconds: int
+
+
 class AttachmentResponse(BaseModel):
     """Attachment as seen by investors / public consumers.
 

@@ -33,14 +33,12 @@
   itself does **not** touch the certificates, the deploy user, `/opt/aivis` itself, or the deploy key
   — several prompts and checks below behave differently as a result, and are marked **RE-INSTALL:**
   where that matters. **Two things are a separate case, and surviving the teardown is not the same as
-  surviving the run: the nginx site files and `/root/.mc/config.json`. The teardown leaves both alone;
-  the install phase that follows in the same run replaces both, unconditionally.** All three nginx
-  site files are rewritten and re-linked from scratch, clean-box or re-install alike (see §5), and the
-  host's `mc` alias is re-pointed at the MinIO root credentials this run has just generated — which it
-  must be, or it would go on authenticating with the old ones. **By the time the script finishes,
-  neither of those two is what it was before you started.**
+  surviving the run: the nginx site files. The teardown leaves them alone; the install phase that
+  follows in the same run replaces them, unconditionally.** All three nginx site files (`api`, `app`,
+  `files`) are rewritten and re-linked from scratch, clean-box or re-install alike (see §5). **By the
+  time the script finishes, they are not what they were before you started.**
   **A re-install also doesn't touch the host-level
-  packages the script installs** — Docker, Nginx, Certbot, the `mc` CLI. Each of those is only ever
+  packages the script installs** — Docker, Nginx, Certbot. Each of those is only ever
   installed once; every later run, including this one, finds them already present and leaves the
   version exactly as it was. A re-install is not a way to upgrade any of them.
 
@@ -141,8 +139,8 @@ Each one is listed here in execution order, with the exact answer.
 1. **`Remove existing installation and start fresh? (y/n)`** — only appears on a **RE-INSTALL**
    (§1); skip straight to item 2 on a clean-box install.
    **`y` here is destructive far beyond the code.** It runs `docker compose down -v`, and the `-v`
-   removes the named Docker volumes — the Postgres database, Redis, and every object stored in
-   MinIO, not just the running containers. It then deletes `/opt/aivis/repo` entirely, which takes
+   removes the named Docker volumes — the Postgres database, Redis, and every object in the storage
+   (RustFS), not just the running containers. It then deletes `/opt/aivis/repo` entirely, which takes
    `backend/.env` with it: **every credential in that file that you have not already copied into
    `AIVIS-Server/CREDENTIALS.md` is gone for good the instant you answer `y`.** Treat this prompt as
    if it read "delete the database, forever?" — on a box carrying real data, that is exactly what it
@@ -189,16 +187,13 @@ Each one is listed here in execution order, with the exact answer.
 4. **Mailgun API Key (required)** — type the value from `CREDENTIALS.md` §3. ENTER asks again: without
    the key comms does not start, and the product sends no password reset, no registration code and
    no document letter.
-7. **MinIO Root User** — **press ENTER.** ⚠
-8. **MinIO Root Password** — **press ENTER.** ⚠
-9. **MinIO Console basic-auth password** — **press ENTER.** ⚠
+7. **Storage root access key** — **press ENTER.** ⚠
+8. **Storage root secret key** — **press ENTER.** ⚠
 
-   **Prompts 7–9 together: press ENTER three times, type nothing.** The script already generated
-   three independent random values for these before asking (it says so on screen right above the
-   first one). Typing any value into any of the three — even the same one into all three "to keep
-   it simple" — is exactly how a previous install ended up with one hand-typed, publicly-readable
-   password gating both the nginx login gate and the MinIO console behind it. ENTER three times is
-   not the cautious choice here, it's the only correct one.
+   **Prompts 7–8 together: press ENTER twice, type nothing.** The script already generated two
+   independent random values before asking. They are the root key of the storage (RustFS) and are
+   used only by the storage server and its one-shot init container -- there is no storage console on
+   this box and nothing to log in to with them.
 10. **`Add this DKIM DNS record... Press ENTER to continue.`** — the script prints a DNS TXT record
     it will not show you again this run. Copy it down even if you're not adding it right now (mail/DKIM
     is out of scope for this product as currently run — see §7) — you'll need it whenever that work
@@ -217,9 +212,9 @@ docker ps
 ```
 Expect **ten** containers, not five — this box runs two stacks.
 
-- Five `aivis-*` (`aivis-app`, `aivis-frontend`, `aivis-postgres`, `aivis-redis`, `aivis-minio`),
-  all `Up ... (healthy)`. `aivis-minio-init` is a one-shot: it exits 0 after creating the buckets
-  and does not appear here. That is correct, not a failure.
+- Five `aivis-*` (`aivis-app`, `aivis-frontend`, `aivis-postgres`, `aivis-redis`, `aivis-storage`),
+  all `Up ... (healthy)`. `aivis-storage-init` is a one-shot: it exits 0 after creating the buckets
+  and the backend's key, and does not appear here. That is correct, not a failure.
 - Five `comms-*` (`comms-app`, `comms-worker`, `comms-consumer`, `comms-postgres`, `comms-redis`).
   The comms API is **internal by design**: no published port, no nginx route, no public URL. It is
   reachable only from `aivis-app` over the shared docker network, which is why nothing in §6's
@@ -231,7 +226,7 @@ Expect **ten** containers, not five — this box runs two stacks.
 docker network inspect aivis-shared --format '{{range .Containers}}{{.Name}} {{end}}'
 ```
 Expect `aivis-app` and the five `comms-*`. Only the aivis BACKEND is on that network — the
-frontend, database, Redis and MinIO have no business talking to comms. That is the first join.
+frontend, database, Redis and the storage have no business talking to comms. That is the first join.
 
 The second is the profile: comms reads its notification dictionary straight out of this checkout,
 at `/opt/aivis/repo/comms-profile/`, by bind-mount. There is no second copy on the comms side.
@@ -250,7 +245,7 @@ skipped them.
 sudo certbot certificates
 ```
 Expect two certificate lineages: one covering `api.aivis.one` + `app.aivis.one` together, one for
-`storage-mc-admin.aivis.one`. Both should show as issued by Let's Encrypt's production CA with
+`files.aivis.one`. Both should show as issued by Let's Encrypt's production CA with
 roughly 90 days of validity — **if either says "STAGING" anywhere in its issuer, `AIVIS_CERTBOT_STAGING`
 was set when it shouldn't have been for a real cutover** (see §8's final note on that flag).
 
@@ -284,53 +279,42 @@ itself is fine, and `sudo certbot certificates` above cannot see the difference.
 ```
 certbot --nginx -d api.aivis.one -d app.aivis.one
 ```
-Run the same shape against `storage-mc-admin.aivis.one` on its own if that site shows the identical
+Run the same shape against `files.aivis.one` on its own if that site shows the identical
 symptom — it's a separate certificate lineage, issued by a separate `certbot` call in the script,
 and carries the same risk for the same reason.
 
-**Also verify — do not assume — that `https://storage-mc-admin.aivis.one` is reachable again.** The
-script re-links this site's nginx config unconditionally on every run, clean-box or re-install
-alike. That's the desired outcome: it closes any earlier credential exposure by pointing the site at
-the fresh MinIO console password this run just generated. But it hasn't been checked yet at this
-point in the runbook:
+**Also verify — do not assume — that `https://files.aivis.one` answers.** It is the public storage
+site: every download link, KYC document and roadmap cover the product hands a browser points at it.
 ```
-curl -s -o /dev/null -w "%{http_code}\n" https://storage-mc-admin.aivis.one/
+curl -s -o /dev/null -w "%{http_code}\n" https://files.aivis.one/health
+curl -sI http://127.0.0.1:9000/health
 ```
-**No `-k` here, deliberately** — this domain used to carry a hard TLS failure while its console site
-was disabled, and `-k` was right for that. After a re-install it carries a real Let's Encrypt
-certificate, and this line sits directly under the same risk explained above: a re-install can
-silently leave a site on plain HTTP even while its certificate stays valid. Skipping TLS verification
-would hide exactly the failure this check exists to catch, so run it without `-k`. Expect `401` — the
-basic-auth gate is active, TLS is fine, and this is not a broken site. If the command instead fails
-outright (connection refused, certificate error), that failure IS the same plain-HTTP-after-re-install
-symptom explained above — go there and use the repair command. Any other non-`401` result means the
-basic-auth gate itself isn't serving correctly.
+**No `-k` on the first line, deliberately** — a re-install can silently leave a site on plain HTTP
+even while its certificate stays valid (above), and skipping TLS verification would hide exactly that.
+Expect `200` from both: the first proves the site, its certificate and the proxy; the second, run on
+the box, proves the storage itself answers on the loopback port the site proxies to. A `502` from the
+first with `200` from the second means the site is wrong; failure of both means the storage is down
+(`aivis logs storage`).
 
-**Record the three MinIO values this run just generated — nothing in the install does it for you.**
-§4 items 7-9 had you press ENTER three times; the resulting random values live in
-`/opt/aivis/repo/backend/.env` under these names:
-- `MINIO_ROOT_USER`
-- `MINIO_ROOT_PASSWORD`
-- `MINIO_CONSOLE_BASIC_AUTH_PASSWORD` — the password the `401` check just above is gating, and the one
-  you actually need to open `https://storage-mc-admin.aivis.one` in a browser.
+**Record the two storage root values this run just generated — nothing in the install does it for
+you.** §4 items 7-8 had you press ENTER twice; the resulting random values live in
+`/opt/aivis/repo/backend/.env` as `RUSTFS_ACCESS_KEY` and `RUSTFS_SECRET_KEY`.
 
-**Treat all three as gone for good the moment you next answer `y` at §4 item 1.** That prompt deletes
-this exact `.env` file and tears down the running containers in the same run. This runbook makes no
-claim about any other place these values might also happen to exist — record them now, on the
+**Treat both as gone for good the moment you next answer `y` at §4 item 1.** That prompt deletes this
+exact `.env` file and tears down the running containers in the same run. Record them now, on the
 assumption that this is the only chance you get.
 
 Read them off the box:
 ```
-grep -E '^(MINIO_ROOT_USER|MINIO_ROOT_PASSWORD|MINIO_CONSOLE_BASIC_AUTH_PASSWORD)=' /opt/aivis/repo/backend/.env
+grep -E '^(RUSTFS_ACCESS_KEY|RUSTFS_SECRET_KEY)=' /opt/aivis/repo/backend/.env
 ```
 **That command prints the values to your screen — do not run it during a screenshare or a recorded
-session.** Copy the three into `AIVIS-Server/CREDENTIALS.md` yourself, by hand, right now. Nothing in
-this runbook writes them anywhere for you, and no agent should ever be asked to do that copying either
-— it's exactly how a previous set of these same three values ended up exposed.
+session.** Copy the two into `AIVIS-Server/CREDENTIALS.md` yourself, by hand, right now. No agent
+should ever be asked to do that copying.
 
 **These three are not the only secrets `.env` holds — the rest get no prompt at all, and that's
 expected.** The database password, the Redis password, the session-signing key, two webhook secrets,
-and the backend's own MinIO service-account pair (separate from the root credentials above) are all
+and the backend's own storage key pair (separate from the root key above) are all
 generated the same way at install time: silently, never shown on screen, never asked about. **None of
 it needs recording, by you.** Every one of them regenerates from scratch on the next install, and the
 systems they authenticate — the database, Redis, and the object store — are destroyed by that same `y`
@@ -432,7 +416,7 @@ half-finished state is if you land there:
   today's run. Either way, go back to the GitHub tab, confirm the key is really there with
   Read/write access, then re-run.
 - **The app health check times out (`App did not respond within 120s`), but the script does not stop
-  there.** It's a warning, not an abort — the very next steps (the `mc` alias, database migrations,
+  there.** It's a warning, not an abort — the very next steps (storage-init, database migrations,
   seeding) all assume the app and its dependencies are actually up. If the app genuinely isn't healthy,
   one of those steps — most likely the migration step right after — fails immediately, with nothing
   protecting it. A health-check warning followed by a hard failure a few lines later is one connected
@@ -503,7 +487,7 @@ at all.
 
 The single most important thing to know once you are past that: **a plain `aivis update` takes the
 whole site offline for the entire run, not just the backend.** `docker compose down` with no service
-name stops every container, frontend included; only the backend, database, Redis, and MinIO come back
+name stops every container, frontend included; only the backend, database, Redis, and the storage come back
 immediately after. The frontend does not return until the very end — after the backend image rebuilds,
 migrations run, the database reseeds, a smoke check runs, and (unless you pass `--skip-tests`) the full
 test suite runs. If you assumed `update` was a quick, low-impact refresh, it isn't: budget for a full
@@ -591,10 +575,9 @@ on its own.
 ## 10. `aivis status`
 
 Read-only and safe to run anytime. One thing worth knowing if you're troubleshooting a certificate
-problem: its check of the MinIO console domain skips TLS verification — the same kind of check §5
-warns against trusting, for exactly the same reason. A `✓` from `aivis status` on that one line does
-not rule out the plain-HTTP-after-re-install regression §5 describes — if you suspect that failure
-mode, use §5's own check (or its repair command), not this one.
+problem: it checks `https://files.aivis.one/health` (the public storage site) WITH TLS verification,
+so a `✓` there does rule out the plain-HTTP-after-re-install regression §5 describes for that site.
+It also checks the storage itself on the loopback port, `http://127.0.0.1:9000/health`.
 
 ## 11. `aivis backup` and `aivis db restore`
 
@@ -611,18 +594,20 @@ and you cannot rely on the printed output to tell you it went wrong.
 
 **The daily backup keeps a rolling week of unencrypted copies of every secret in `.env` — including the
 ones §5 tells you don't need recording.** `aivis backup` runs automatically every day (cron, 4 AM) and
-archives `backend/.env` in full, alongside a database dump and a MinIO snapshot, into
+archives `backend/.env` in full, alongside a database dump and a storage snapshot (`rc mirror`, run in the pinned `storage-init`
+image), into
 `/opt/aivis/backups/` — a location the install's wipe (§4 item 1) never reaches, on a 7-day rotation.
 §5 is still right that *you* don't need to act on this — every one of those secrets regenerates on the
 next install regardless — but the box itself is quietly keeping week-old copies of them anyway, on
 disk, without restricted permissions. Nothing in this runbook asks you to manage these files; it's
 worth knowing they exist if that matters to you.
 
-**The backup's MinIO half can fail without you finding out.** If mirroring the object-storage bucket
+**The backup's storage half can fail without you finding out.** If mirroring the object-storage bucket
 fails, the backup still completes — database and `.env` only — and prints a warning, but on the
 scheduled daily run that warning goes into `/var/log/aivis-backup.log`, a file nothing in this runbook
 or the script itself tells you to check. A backup that "succeeded" every night for weeks could still be
-missing every object stored in MinIO; the only way to know is to read that log yourself.
+missing every object in the storage; the only way to know is to read that log yourself. There is no
+`aivis` command that restores the storage from such a snapshot.
 
 ## 12. A few more worth knowing
 
@@ -646,10 +631,8 @@ missing every object stored in MinIO; the only way to know is to read that log y
   referral link.
 - **`aivis update` no longer re-seeds anything but bootstrap** (T-72). It used to re-run the demo
   storefront and the test logins on every update; only demo data changed, but it changed silently.
-- **`aivis storage console` prints the MinIO Console URL and all three values §5 asks you to record by
-  hand** — it's the box's own built-in equivalent of §5's `grep` command, and easier to remember. It
-  doesn't change who does the recording: still read it yourself, still copy it into
-  `AIVIS-Server/CREDENTIALS.md` by hand, still not on a screenshare.
+- **There is no storage console.** MinIO's console and its `storage-mc-admin` site were removed with
+  the move to RustFS (H32); `aivis storage stats` prints the bucket size and object count.
 - **After you hand-edit `.env`** (adding a Mailgun key you skipped during install, per §4
   item 4) **the install's own completion banner tells you to run `aivis restart app`** — this
   runbook otherwise never mentions that step, but the app container needs a restart to pick up a

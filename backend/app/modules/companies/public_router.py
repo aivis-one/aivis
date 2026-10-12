@@ -51,6 +51,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.client_ip import get_client_ip
+from app.core.config import settings
 from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
 from app.core.rate_limit import check_rate_limit
@@ -177,6 +178,7 @@ async def get_public_company_detail_endpoint(
             item,
             posts_map.get(item.post_id) if item.post_id else None,
             session,
+            cover_ttl_seconds=settings.storage_presigned_ttl_public,
         )
         for item in roadmap_items
     ]

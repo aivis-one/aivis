@@ -51,13 +51,13 @@ EXPECTED = {
     ("POST", "/api/v1/kyc/submit"): 3 * KYC_MAX_DOCUMENT_BYTES,
     ("PUT", "/api/v1/staff/companies/{company_id}/roadmap/{item_id}/cover"): ROADMAP_COVER_MAX_BYTES,
     ("PUT", "/api/v1/company/roadmap/{item_id}/cover"): ROADMAP_COVER_MAX_BYTES,
-    ("POST", "/api/v1/company/attachments"): settings.minio_max_file_size_bytes,
-    ("PATCH", "/api/v1/company/attachments/{attachment_id}/replace"): settings.minio_max_file_size_bytes,
-    ("POST", "/api/v1/staff/companies/{company_id}/attachments"): settings.minio_max_file_size_bytes,
+    ("POST", "/api/v1/company/attachments"): settings.storage_max_file_size_bytes,
+    ("PATCH", "/api/v1/company/attachments/{attachment_id}/replace"): settings.storage_max_file_size_bytes,
+    ("POST", "/api/v1/staff/companies/{company_id}/attachments"): settings.storage_max_file_size_bytes,
     (
         "PATCH",
         "/api/v1/staff/companies/{company_id}/attachments/{attachment_id}/replace",
-    ): settings.minio_max_file_size_bytes,
+    ): settings.storage_max_file_size_bytes,
 }
 
 COVER_PATH = f"/api/v1/company/roadmap/{uuid4()}/cover"
@@ -230,7 +230,7 @@ async def test_undeclared_length_inside_the_limit_passes() -> None:
 async def test_other_routes_and_other_methods_are_not_touched() -> None:
     """A path without a limit, and the GET on a limited path, pass through
     with the ORIGINAL receive -- no wrapper, whatever the length."""
-    huge = 10 * settings.minio_max_file_size_bytes
+    huge = 10 * settings.storage_max_file_size_bytes
     for method, path in (
         ("POST", "/api/v1/auth/login"),
         ("GET", "/api/v1/company/attachments"),

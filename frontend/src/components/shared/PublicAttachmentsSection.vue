@@ -274,7 +274,7 @@ async function onRetry(): Promise<void> {
 
 async function onDownload(att: AttachmentResponse): Promise<void> {
   try {
-    await downloadPublicAttachment(props.companyId, att.id, att.original_filename)
+    await downloadPublicAttachment(props.companyId, att.id)
   } catch (err) {
     // 429 has its own toast with Retry-After hint; for everything
     // else (404 -- the row was un-published between list and click,

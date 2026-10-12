@@ -25,9 +25,9 @@ from pydantic import ValidationError
 
 from app.core.config import (
     _DEV_DATABASE_URL,
-    _DEV_MINIO_CREDENTIAL,
-    _DEV_MINIO_ENDPOINT,
     _DEV_SECRET_KEY,
+    _DEV_STORAGE_CREDENTIAL,
+    _DEV_STORAGE_ENDPOINT,
     Settings,
 )
 
@@ -111,13 +111,14 @@ def test_settings_non_development_is_production_grade(
 _GOOD_REQUIRED = {
     "cors_origins": "https://app.aivis.one",
     "frontend_base_url": "https://app.aivis.one",
+    "storage_public_url": "https://files.aivis.one",
     "database_url": "postgresql+asyncpg://aivis:pw@postgres:5432/aivis",
     "redis_url": "redis://:pw@redis:6379/0",
     "secret_key": "k" * 64,
     "telegram_bot_token": "123456:ABC-real_token",
-    "minio_endpoint": "http://minio:9000",
-    "minio_access_key": "svcaccess0000001",
-    "minio_secret_key": "svcsecret0000000000000000000001",
+    "storage_endpoint": "http://minio:9000",
+    "storage_access_key": "svcaccess0000001",
+    "storage_secret_key": "svcsecret0000000000000000000001",
 }
 
 _NO_OPTIONAL_STACKS = {
@@ -204,8 +205,9 @@ def test_production_refuses_a_set_optional_value_that_is_not_a_value(
 _URL_SHAPES = {
     "database_url": "postgresql+asyncpg://aivis:pw@{host}:5432/aivis",
     "redis_url": "redis://:pw@{host}:6379/0",
-    "minio_endpoint": "http://{host}:9000",
+    "storage_endpoint": "http://{host}:9000",
     "frontend_base_url": "https://{host}",
+    "storage_public_url": "https://{host}",
     "cors_origins": "https://{host}",
     "comms_redis_url": "redis://:pw@{host}:6379/0",
     "comms_api_url": "http://{host}:8000",
@@ -251,9 +253,9 @@ def test_production_refuses_every_development_fallback(
     for field, value in (
         ("database_url", _DEV_DATABASE_URL),
         ("secret_key", _DEV_SECRET_KEY),
-        ("minio_endpoint", _DEV_MINIO_ENDPOINT),
-        ("minio_access_key", _DEV_MINIO_CREDENTIAL),
-        ("minio_secret_key", _DEV_MINIO_CREDENTIAL),
+        ("storage_endpoint", _DEV_STORAGE_ENDPOINT),
+        ("storage_access_key", _DEV_STORAGE_CREDENTIAL),
+        ("storage_secret_key", _DEV_STORAGE_CREDENTIAL),
     ):
         assert _ENV_NAME[field] in _refusal(**{field: value})
 
@@ -272,6 +274,7 @@ def test_production_refuses_the_frontend_default_left_in_place(
     assert "FRONTEND_BASE_URL" in str(exc.value)
 
 
+@pytest.mark.parametrize("field", ["frontend_base_url", "storage_public_url"])
 @pytest.mark.parametrize("bad", [
     "http://app.aivis.one",
     "app.aivis.one",
@@ -280,13 +283,18 @@ def test_production_refuses_the_frontend_default_left_in_place(
     " https://app.aivis.one",
     "https://app.aivis.one ",
 ])
-def test_production_refuses_a_malformed_frontend_base_url(
-    monkeypatch: pytest.MonkeyPatch, bad: str,
+def test_production_refuses_a_malformed_browser_url(
+    monkeypatch: pytest.MonkeyPatch, field: str, bad: str,
 ) -> None:
-    """Links are built as <base>/<path>: the base must be an absolute
-    https URL with a host, no trailing slash and no surrounding blanks."""
+    """Both addresses a browser is sent to -- the site (links in letters)
+    and the public storage (download links, H32 P-121) -- must be an
+    absolute https URL with a host, no trailing slash and no surrounding
+    blanks: links are built as <base>/<path>.
+
+    Until H32 this covered FRONTEND_BASE_URL alone; STORAGE_PUBLIC_URL is
+    the second address of the same kind, held to the same rules."""
     _scrub(monkeypatch)
-    assert "FRONTEND_BASE_URL" in _refusal(frontend_base_url=bad)
+    assert _ENV_NAME[field] in _refusal(**{field: bad})
 
 
 @pytest.mark.parametrize("cors, label", [
@@ -323,7 +331,7 @@ def test_production_names_every_problem_once(
         "TELEGRAM_BOT_TOKEN", "FRONTEND_BASE_URL", "REDIS_URL", "SECRET_KEY",
     ):
         assert message.count(f"{name} ") == 1, name
-    for name in ("DATABASE_URL", "MINIO_ENDPOINT", "CORS_ORIGINS"):
+    for name in ("DATABASE_URL", "STORAGE_ENDPOINT", "CORS_ORIGINS"):
         assert f"{name} " not in message, name
 
 
@@ -346,9 +354,9 @@ def test_development_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
         payments_webhook_secret="",
         database_url="",
         secret_key="",
-        minio_endpoint="",
-        minio_access_key="",
-        minio_secret_key="",
+        storage_endpoint="",
+        storage_access_key="",
+        storage_secret_key="",
     )
     assert s.is_dev is True
     assert s.frontend_base_url == "http://localhost:5173"
@@ -356,6 +364,6 @@ def test_development_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     assert s.telegram_bot_token == "PLACEHOLDER"
     assert s.database_url == _DEV_DATABASE_URL
     assert s.secret_key == _DEV_SECRET_KEY
-    assert s.minio_endpoint == _DEV_MINIO_ENDPOINT
-    assert s.minio_access_key == _DEV_MINIO_CREDENTIAL
-    assert s.minio_secret_key == _DEV_MINIO_CREDENTIAL
+    assert s.storage_endpoint == _DEV_STORAGE_ENDPOINT
+    assert s.storage_access_key == _DEV_STORAGE_CREDENTIAL
+    assert s.storage_secret_key == _DEV_STORAGE_CREDENTIAL

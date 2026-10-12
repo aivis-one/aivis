@@ -49,10 +49,11 @@
 //   later is a one-line tweak; no contract to break.
 //
 // DOWNLOAD UX.
-//   downloadAttachment (api/attachments.ts, batch 2) is imperative --
-//   no spinner state exposed to the template, the function fires fetch
-//   + blob + anchor click + revoke and either resolves or throws. The
-//   caller (this component) catches and surfaces a toast on failure.
+//   downloadAttachment (api/attachments.ts) is imperative -- no spinner
+//   state exposed to the template: it asks the API for the presigned link
+//   and sends the browser to it (H32 P-121), and either resolves or
+//   throws. The caller (this component) catches and surfaces a toast on
+//   failure.
 //   No per-row loading flag -- single-tap-and-wait is the expected UX
 //   for a fast presigned download.
 // =============================================================================
@@ -290,7 +291,7 @@ async function onRetry(): Promise<void> {
 
 async function onDownload(att: AttachmentResponse): Promise<void> {
   try {
-    await downloadAttachment(props.companyId, att.id, att.original_filename)
+    await downloadAttachment(props.companyId, att.id)
   } catch {
     // 401 / 403 / 404 / network all surface the same toast -- the user
     // can't distinguish these and a retry path is opaque from this UI.

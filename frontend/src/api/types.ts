@@ -246,6 +246,7 @@ export type { UpdatePermissionsRequest } from './generated'
 // approval, the decision that opens the whole product to an
 // account, left no record of why it was given.
 export type { KYCDecisionRequest } from './generated'
+export type { AttachmentDownloadURLResponse } from './generated'
 export type { ChangeEmailRequest } from './generated'
 
 // ---------------------------------------------------------------------------

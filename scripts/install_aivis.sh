@@ -5,21 +5,21 @@
 # ==============================================================================
 #
 # WHAT THIS SCRIPT DOES:
-#   1.  Pre-flight checks (OS, RAM, disk, DNS for 4 domains)
+#   1.  Pre-flight checks (OS, RAM, disk, DNS for the served domains)
 #   2.  Fix locale (en_US.UTF-8)
 #   3.  Install system deps (Docker, Nginx, Certbot, UFW, git, dnsutils,
-#       apache2-utils, mc binary)
+#       and the tools the steps below run)
 #   4.  Configure firewall (22/80/443 only)
 #   5.  Create deploy user `aivis` (non-root, docker group)
 #   6.  Generate SSH deploy key -> add to GitHub -> clone repo
 #   7.  Prompt for the secrets only a person has (bot token, Mailgun key,
-#       optional MinIO overrides)
-#   8.  Write .env once: random passwords (incl. MinIO secrets) + step 7
+#       optional storage root-key overrides)
+#   8.  Write .env once: random passwords (incl. storage secrets) + step 7
 #   9.  Configure Nginx reverse proxy (api.aivis.one, app.aivis.one)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
 #   11. Assert the host runs no local mail transfer agent
-#   12. Set up MinIO Web UI proxy (storage-mc-admin.aivis.one + basic-auth)
-#   13. Start Docker stack -> healthcheck -> mc alias on host -> migrations
+#   12. Set up the public storage site (files.aivis.one -> RustFS S3 API)
+#   13. Start Docker stack -> healthcheck -> storage-init -> migrations
 #       -> seed Platform user
 #   14. Create `aivis` management script -> symlink /usr/local/bin/aivis
 #   15. Set up backup cron (4 AM daily, 7-day rotation)
@@ -35,7 +35,7 @@
 #       app.aivis.one
 #       api.aivis.one
 #       mail.aivis.one
-#       storage-mc-admin.aivis.one
+#       files.aivis.one     (public storage: presigned download links)
 #   - GitHub repository aivis-one/aivis exists
 # ==============================================================================
 
@@ -63,7 +63,11 @@ FRONTEND_DOMAIN="app.aivis.one"
 # from-address, both handed to comms. Nothing on this host serves it --
 # no A record, no certificate, no local relay.
 MAIL_DOMAIN="mail.aivis.one"
-STORAGE_DOMAIN="storage-mc-admin.aivis.one"
+# The public storage site (H32 P-121): browsers open the presigned links
+# the backend signs for this host. Written into backend/.env as
+# STORAGE_PUBLIC_URL -- the one place the address is stated; `aivis nginx
+# render files` and `aivis status` read it from there.
+FILES_DOMAIN="files.aivis.one"
 # Bug fix: certbot's --email must NOT derive from FRONTEND_DOMAIN. That
 # domain is app.aivis.one (the app subdomain), which has no MX -- Let's
 # Encrypt expiry warnings would go nowhere and the failure would only
@@ -187,7 +191,7 @@ preflight_checks() {
     # below does not ask for a certificate for it either. Warning about
     # a missing A record would send the next operator to create a record
     # that serves nothing.
-    for DOMAIN in "$API_DOMAIN" "$FRONTEND_DOMAIN" "$STORAGE_DOMAIN"; do
+    for DOMAIN in "$API_DOMAIN" "$FRONTEND_DOMAIN" "$FILES_DOMAIN"; do
         local RESOLVED_IP
         RESOLVED_IP=$(dig +short "$DOMAIN" 2>/dev/null | head -1 || true)
         if [ -z "$RESOLVED_IP" ]; then
@@ -263,12 +267,9 @@ apt-get install -y \
     dnsutils \
     software-properties-common \
     python3-certbot-nginx \
-    apache2-utils \
     > /dev/null 2>&1
 
-# apache2-utils provides htpasswd, used to create basic-auth file for the
-# MinIO Console nginx proxy (storage-mc-admin.aivis.one).
-success "Base packages installed (incl. apache2-utils for htpasswd)"
+success "Base packages installed"
 
 # Docker
 if command -v docker &>/dev/null; then
@@ -310,20 +311,6 @@ else
     log "Installing Certbot..."
     apt-get install -y certbot python3-certbot-nginx > /dev/null 2>&1
     success "Certbot installed"
-fi
-
-# MinIO Client (mc) on host -- used by management script for backup,
-# storage stats, and (in later iterations) reconcile commands. Installed
-# host-side (not via docker compose run) so backup cron works even when
-# the docker stack is degraded.
-if command -v mc &>/dev/null; then
-    success "mc already installed: $(mc --version 2>/dev/null | head -1)"
-else
-    log "Installing MinIO Client (mc)..."
-    curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc \
-        -o /usr/local/bin/mc
-    chmod +x /usr/local/bin/mc
-    success "mc installed: $(mc --version 2>/dev/null | head -1)"
 fi
 
 # ==============================================================================
@@ -634,7 +621,6 @@ provision_service_keys
 cat > "$INSTALL_BASE/aivis.conf" << AIVIS_CONF_EOF
 API_DOMAIN=${API_DOMAIN}
 FRONTEND_DOMAIN=${FRONTEND_DOMAIN}
-STORAGE_DOMAIN=${STORAGE_DOMAIN}
 APP_PORT=${APP_PORT}
 FRONTEND_PORT=${FRONTEND_PORT}
 AIVIS_CONF_EOF
@@ -658,8 +644,8 @@ gen_secret() {
     openssl rand -base64 64 | tr -d '\n'
 }
 
-# Short identifier (16 chars) for usernames / access keys -- MinIO root user
-# and service account key, where 32-char random looks unwieldy in admin UIs.
+# Short identifier (16 chars) for access keys -- the storage root key and
+# the backend's key, where a 32-char random string is needlessly unwieldy.
 gen_short_id() {
     openssl rand -base64 32 | tr -d "=+/" | cut -c1-16
 }
@@ -672,15 +658,14 @@ DB_PASS=$(gen_password)
 REDIS_PASS=$(gen_password)
 SECRET=$(gen_secret)
 
-# MinIO secrets. Root credentials are used by MinIO server itself and by
-# minio-init to bootstrap; service account (ACCESS/SECRET) is what backend
-# actually uses at runtime. CONSOLE_BASIC_AUTH password gates nginx in
-# front of the Web UI.
-MINIO_ROOT_USER_VAL=$(gen_short_id)
-MINIO_ROOT_PASS=$(gen_password)
-MINIO_ACCESS_KEY_VAL=$(gen_short_id)
-MINIO_SECRET_KEY_VAL=$(gen_password)
-MINIO_CONSOLE_PASS=$(gen_password)
+# Storage secrets. The root key is what the RustFS server boots on and
+# what storage-init uses to bootstrap; the backend's key (ACCESS/SECRET) is
+# what the backend actually uses at runtime -- a service account limited
+# to the two buckets.
+STORAGE_ROOT_KEY_VAL=$(gen_short_id)
+STORAGE_ROOT_SECRET_VAL=$(gen_password)
+STORAGE_ACCESS_KEY_VAL=$(gen_short_id)
+STORAGE_SECRET_KEY_VAL=$(gen_password)
 
 # ------------------------------------------------------------------------
 # ASK FIRST, WRITE ONCE (P-108).
@@ -815,19 +800,16 @@ prompt_telegram_bot
 # without this key the whole comms service stays down, not just email.
 prompt_value MAILGUN_API_KEY_VAL "Mailgun API Key" 1
 
-# MinIO credentials -- ENTER keeps the random values generated above by
+# Storage root key -- ENTER keeps the random values generated above by
 # gen_short_id / gen_password, and is the recommended answer. Typing a
-# value is for restoring one specific known credential (e.g. a password a
-# script already depends on). The three variables are consumed further
-# down by htpasswd (MinIO Storage section) and `mc alias set` (Docker
-# Stack section), so they carry whatever was decided here.
+# value is for restoring one specific known credential. There is no
+# storage console on this box (H32): the root key is used only by the
+# storage server and by storage-init, never typed into a browser.
 echo ""
-log "MinIO Console credentials (used to log in at https://${STORAGE_DOMAIN}):"
-log "ENTER is RECOMMENDED on all three below: it keeps an independently"
-log "generated random value."
-prompt_value MINIO_ROOT_USER_VAL "MinIO Root User (Console login, Step 2)" 3 "$MINIO_ROOT_USER_VAL"
-prompt_value MINIO_ROOT_PASS "MinIO Root Password (Console login, Step 2)" 8 "$MINIO_ROOT_PASS"
-prompt_value MINIO_CONSOLE_PASS "MinIO Console basic-auth password (nginx gate, Step 1)" 1 "$MINIO_CONSOLE_PASS"
+log "Storage root key (RustFS). ENTER is RECOMMENDED on both: it keeps an"
+log "independently generated random value."
+prompt_value STORAGE_ROOT_KEY_VAL "Storage root access key" 3 "$STORAGE_ROOT_KEY_VAL"
+prompt_value STORAGE_ROOT_SECRET_VAL "Storage root secret key" 8 "$STORAGE_ROOT_SECRET_VAL"
 echo ""
 
 # Write atomically via temp file -- if interrupted, .env is never half-written.
@@ -856,26 +838,27 @@ POSTGRES_PASSWORD=${DB_PASS}
 REDIS_PASSWORD=${REDIS_PASS}
 REDIS_URL=redis://:${REDIS_PASS}@redis:6379/0
 
-# -- MinIO (S3-compatible object storage) --
-# Root credentials -- consumed by MinIO server (docker-compose) and minio-init
-# bootstrap only. Backend MUST use the service account below, never root.
-MINIO_ROOT_USER=${MINIO_ROOT_USER_VAL}
-MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASS}
-# Backend service account (created by minio-init).
-MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY_VAL}
-MINIO_SECRET_KEY=${MINIO_SECRET_KEY_VAL}
-# Endpoint as seen from inside the docker network.
-MINIO_ENDPOINT=http://minio:9000
-MINIO_BUCKET=aivis-attachments
-MINIO_REGION=us-east-1
+# -- Object storage (RustFS, S3-compatible) --
+# Root key -- consumed by the RustFS server (docker-compose, under its own
+# variable names) and by storage-init bootstrap only. Backend MUST use the
+# service account below, never root.
+RUSTFS_ACCESS_KEY=${STORAGE_ROOT_KEY_VAL}
+RUSTFS_SECRET_KEY=${STORAGE_ROOT_SECRET_VAL}
+# Backend service account (created by storage-init).
+STORAGE_ACCESS_KEY=${STORAGE_ACCESS_KEY_VAL}
+STORAGE_SECRET_KEY=${STORAGE_SECRET_KEY_VAL}
+# Endpoint as seen from inside the docker network -- every operation.
+STORAGE_ENDPOINT=http://storage:9000
+# Address download links are SIGNED for -- the public site that forwards
+# to the storage with the Host header unchanged. Built from FILES_DOMAIN.
+STORAGE_PUBLIC_URL=https://${FILES_DOMAIN}
+STORAGE_BUCKET=aivis-attachments
+STORAGE_REGION=us-east-1
 # Presigned URL TTL: 15 min for auth flow, 24h for public flow.
-MINIO_PRESIGNED_TTL_AUTH=900
-MINIO_PRESIGNED_TTL_PUBLIC=86400
-# Hard limit on uploaded file size (MB). Mirrored in nginx client_max_body_size
-# and in backend Pydantic validators (next iteration).
-MINIO_MAX_FILE_SIZE_MB=100
-# Password for nginx basic-auth in front of MinIO Web UI (login is fixed: admin).
-MINIO_CONSOLE_BASIC_AUTH_PASSWORD=${MINIO_CONSOLE_PASS}
+STORAGE_PRESIGNED_TTL_AUTH=900
+STORAGE_PRESIGNED_TTL_PUBLIC=86400
+# Hard limit on uploaded file size (MB). Mirrored in nginx client_max_body_size.
+STORAGE_MAX_FILE_SIZE_MB=100
 
 # -- Auth --
 SECRET_KEY=${SECRET}
@@ -954,7 +937,7 @@ section "Nginx Configuration"
 
 # API (backend).
 #
-# client_max_body_size 100M -- mirrors MINIO_MAX_FILE_SIZE_MB hard limit
+# client_max_body_size 100M -- mirrors STORAGE_MAX_FILE_SIZE_MB hard limit
 # (see Refactor 2 §1.6). Multipart attachment upload endpoint
 # `POST /api/v1/staff/companies/{id}/attachments` arrives in a later
 # iteration; setting the limit now means we don't have to come back and
@@ -1089,50 +1072,35 @@ else
 fi
 
 # ==============================================================================
-# MINIO STORAGE -- Web UI proxy (nginx + basic-auth + Let's Encrypt)
+# PUBLIC STORAGE SITE (files.aivis.one -> RustFS S3 API, H32 P-121)
 # ==============================================================================
 #
-# Sets up host-side infrastructure that lives in front of the MinIO Console.
-# The MinIO server itself runs as a docker container (started below in the
-# Docker Stack section), but its 9001 console port is bound to loopback only.
-# Public access happens through nginx at https://storage-mc-admin.aivis.one
-# with HTTP basic-auth (login: admin, password: MINIO_CONSOLE_BASIC_AUTH_PASSWORD).
+# Browsers open the presigned links the backend signs for this host. The
+# site proxies 127.0.0.1:9000 (the storage's S3 port, published on the
+# loopback only) with the Host header unchanged, so the SigV4 signature
+# verifies. There is no storage console and no basic-auth: the links carry
+# their own signature.
 #
-# The mc host alias is configured later, once the docker stack is up and
-# MinIO is healthy -- `mc alias set` validates the endpoint.
+# Rendered by scripts/aivis-manage.sh (`nginx render files`) -- the same
+# code the operator uses later -- from STORAGE_PUBLIC_URL in backend/.env,
+# which is written above. The storage itself starts in the Docker Stack
+# section below; until then the site answers 502, which certbot does not
+# care about (it answers the ACME challenge itself).
 # ==============================================================================
 
-section "MinIO Storage (Web UI proxy)"
+section "Public storage site"
 
-# 1. Basic-auth file: login is the fixed string `admin`, password is the
-#    generated MINIO_CONSOLE_BASIC_AUTH_PASSWORD from .env. -c creates /
-#    truncates the file. Permissions: readable by www-data so nginx can use it.
-log "Creating basic-auth file for MinIO Console..."
-htpasswd -cb /etc/nginx/.htpasswd-storage-mc-admin admin "$MINIO_CONSOLE_PASS" > /dev/null 2>&1
-chmod 640 /etc/nginx/.htpasswd-storage-mc-admin
-chown root:www-data /etc/nginx/.htpasswd-storage-mc-admin
-success "Basic-auth file: /etc/nginx/.htpasswd-storage-mc-admin"
+"$INSTALL_BASE/repo/scripts/aivis-manage.sh" nginx render files
 
-# 2. Nginx site config for storage-mc-admin.aivis.one.
-#    Rendered by scripts/aivis-manage.sh (`nginx render`) -- the same code
-#    the operator uses later to push template changes, not a copy of it.
-#    Must run AFTER the htpasswd file above: the template's
-#    auth_basic_user_file line points at it, and `nginx -t` (inside the
-#    render command) opens that file to validate the config -- rendering
-#    this one earlier, alongside api/frontend, would fail here for a file
-#    that does not exist yet.
-"$INSTALL_BASE/repo/scripts/aivis-manage.sh" nginx render storage
-
-# 3. SSL via Let's Encrypt for the new subdomain.
 certbot --nginx \
-    -d "$STORAGE_DOMAIN" \
+    -d "$FILES_DOMAIN" \
     $CERTBOT_STAGING_FLAG \
     --non-interactive \
     --agree-tos \
     --email "$CERTBOT_EMAIL" \
-    --redirect || warn "SSL setup for $STORAGE_DOMAIN failed. Run manually: certbot --nginx -d $STORAGE_DOMAIN"
+    --redirect || warn "SSL setup for $FILES_DOMAIN failed. Run manually: certbot --nginx -d $FILES_DOMAIN"
 
-success "SSL configured for $STORAGE_DOMAIN"
+success "SSL configured for $FILES_DOMAIN"
 
 # ==============================================================================
 # START DOCKER STACK
@@ -1141,8 +1109,8 @@ success "SSL configured for $STORAGE_DOMAIN"
 # ==============================================================================
 # NARROW ENV PROJECTIONS
 # ==============================================================================
-# postgres/redis read backend/.env.db and minio/minio-init read
-# backend/.env.minio instead of the full backend/.env, so a compromise
+# postgres/redis read backend/.env.db and storage/storage-init read
+# backend/.env.storage instead of the full backend/.env, so a compromise
 # there no longer exposes the application's payment, telegram, session and
 # comms-service secrets. Runs BEFORE any `docker compose` invocation --
 # compose fails outright on a missing env_file, and it parses the whole
@@ -1156,10 +1124,10 @@ if ! write_db_env "$INSTALL_BASE/repo/backend/.env" "$INSTALL_BASE/repo/backend/
 fi
 success "backend/.env.db written (narrow db env for postgres/redis)"
 
-if ! write_minio_env "$INSTALL_BASE/repo/backend/.env" "$INSTALL_BASE/repo/backend/.env.minio"; then
-    error "Could not write backend/.env.minio -- object storage would start on empty root credentials."
+if ! write_storage_env "$INSTALL_BASE/repo/backend/.env" "$INSTALL_BASE/repo/backend/.env.storage"; then
+    error "Could not write backend/.env.storage -- object storage would start on empty root credentials."
 fi
-success "backend/.env.minio written (narrow env for minio/minio-init)"
+success "backend/.env.storage written (narrow env for storage/storage-init)"
 
 # ==============================================================================
 # SHARED DOCKER NETWORK
@@ -1655,19 +1623,18 @@ done
 echo ""
 
 # ------------------------------------------------------------------------------
-# mc alias on host -- now that MinIO is healthy (app waited for it via
-# depends_on chain), we can set up the host-side mc alias used by
-# `aivis backup` and `aivis storage` commands. mc alias set validates
-# the endpoint, so it only runs after the stack is up.
+# storage-init, BLOCKING, and its exit code checked -- the same step
+# `aivis update` runs. `up -d` above started it detached, which tells us
+# nothing; the buckets and the backend's key must exist before the
+# template objects are uploaded below.
 # ------------------------------------------------------------------------------
-log "Configuring mc alias 'local' on host..."
-mkdir -p /root/.mc
-chmod 700 /root/.mc
-mc alias set local http://127.0.0.1:9000 \
-    "$MINIO_ROOT_USER_VAL" \
-    "$MINIO_ROOT_PASS" > /dev/null 2>&1
-chmod 600 /root/.mc/config.json
-success "mc alias 'local' configured (config: /root/.mc/config.json)"
+log "Ensuring storage buckets and service account (storage-init)..."
+docker compose up storage-init 2>&1
+STORAGE_INIT_CODE=$(docker inspect -f '{{.State.ExitCode}}' aivis-storage-init 2>/dev/null || echo "missing")
+if [ "$STORAGE_INIT_CODE" != "0" ]; then
+    error "storage-init did not complete (exit code: '$STORAGE_INIT_CODE'). Check: docker compose logs storage-init"
+fi
+success "Storage buckets and service account ready"
 
 # Run Alembic migrations
 log "Running database migrations..."
@@ -1698,14 +1665,15 @@ success "Legal documents seeded"
 # Refactor 2 iter 2.3: seed platform default templates (R2 §1.4 + §4.9).
 #
 # Two-step bootstrap:
-#   1. mc cp -r backend/scripts/templates/_default/ -> _platform/templates/
-#      copies 4 kinds x 4 languages = 16 folders (template.html + logo /
-#      signature / stamp PNG placeholders) into MinIO.
+#   1. scripts.platform_template_objects upload copies
+#      backend/scripts/templates/_default/ -> _platform/templates/:
+#      4 kinds x 4 languages = 16 folders (template.html + logo /
+#      signature / stamp PNG placeholders) into the storage.
 #   2. seed_platform_templates.py inserts one active row per (kind, language)
 #      into company_document_templates with company_id IS NULL. Idempotent --
 #      a re-install with previously-seeded rows is a no-op.
 #
-# Order matters: (1) puts files in MinIO; (2) creates DB rows that point
+# Order matters: (1) puts files in the storage; (2) creates DB rows that point
 # at those files. Reverse order would leave the DB pointing at empty
 # storage and the renderer 500ing on the first render attempt.
 #
@@ -1713,38 +1681,33 @@ success "Legal documents seeded"
 # needs it for system-actor audit attribution).
 # ------------------------------------------------------------------------------
 
-# WHY THE UPLOAD HERE USES mc AND `aivis update` USES app.
-#   Here: mc is on the host, its alias was configured a few sections up,
-#   and the app container's readiness is not this step's business.
-#   In update: the presence of mc on the host is guaranteed by nothing --
-#   only the install puts it there -- while app is running by definition
-#   at that point, ships the same files inside its image, and already
-#   holds the storage credentials. Two paths on purpose; unifying them
-#   would either drag the port-forward dependency into every update or
-#   change the install's upload path. Do not "tidy" this into one.
-log "Seeding platform default templates to MinIO..."
-mc cp -r "$INSTALL_BASE/repo/backend/scripts/templates/_default/" \
-    local/aivis-attachments/_platform/templates/ \
-    || error "Template upload to MinIO failed -- stopping before the DB rows are created"
+# THROUGH app, LIKE `aivis update`. The upload used to run mc on the host;
+# with mc gone (H32: MinIO's client is no longer distributed) the app
+# container -- which ships the same files in its image and holds the
+# storage credentials -- is the one path, and the module it runs is the
+# product's own upload_object.
+log "Seeding platform default templates to storage..."
+docker compose exec -T app python -m scripts.platform_template_objects upload \
+    || error "Template upload to storage failed -- stopping before the DB rows are created"
 
 # COUNT WHAT LANDED, BEFORE CREATING THE ROWS THAT POINT AT IT.
 #
 # `set -euo pipefail` at the top of this file already aborts on a
-# non-zero mc cp, so the `|| error` above is a statement of intent that
+# non-zero upload, so the `|| error` above is a statement of intent that
 # outlives whoever removes set -e -- it is NOT the check this block
-# exists for. The failure it does not cover is the one that matters: mc
-# cp can exit 0 having copied the wrong NUMBER of files. An empty or
+# exists for. The failure it does not cover is the one that matters: an
+# upload can exit 0 having copied the wrong NUMBER of files. An empty or
 # half-populated _default/, a source layout that moved, a partial copy --
 # each returns success, and the seed below then writes sixteen rows
 # pointing into empty storage. That is the state the comment above warns
 # about, reached without ever taking the branch it warns against.
 #
-# Counted through app, not through mc: this way the numbers come from the
+# Counted through app: this way the numbers come from the
 # same bucket, the same credentials and the same client the renderer
 # uses. Sixteen template.html pairs the sixteen rows about to be created;
 # sixty-four also covers the logo / signature / stamp images, which
 # render into the document.
-log "Verifying template objects landed in MinIO..."
+log "Verifying template objects landed in storage..."
 TEMPLATE_COUNTS=$(docker compose exec -T app python - <<'COUNT_PY' | tr -d '\r' | tail -n 1
 import asyncio
 
@@ -1763,9 +1726,9 @@ COUNT_PY
 TEMPLATE_OBJECTS=$(echo "$TEMPLATE_COUNTS" | cut -d' ' -f1)
 TEMPLATE_HTML=$(echo "$TEMPLATE_COUNTS" | cut -d' ' -f2)
 if [ "$TEMPLATE_OBJECTS" != "64" ] || [ "$TEMPLATE_HTML" != "16" ]; then
-    error "Template upload incomplete: expected 64 objects and 16 template.html under _platform/templates/, found '$TEMPLATE_OBJECTS' objects and '$TEMPLATE_HTML' template.html. Check $INSTALL_BASE/repo/backend/scripts/templates/_default/ and the mc alias, then re-run the install."
+    error "Template upload incomplete: expected 64 objects and 16 template.html under _platform/templates/, found '$TEMPLATE_OBJECTS' objects and '$TEMPLATE_HTML' template.html. Check $INSTALL_BASE/repo/backend/scripts/templates/_default/ and: aivis logs storage, then re-run the install."
 fi
-success "64 template objects in MinIO (16 template.html)"
+success "64 template objects in storage (16 template.html)"
 
 log "Seeding platform default templates to DB..."
 docker compose exec -T app python -m scripts.seed_platform_templates
@@ -1822,22 +1785,15 @@ echo "╚═══════════════════════�
 echo -e "${NC}"
 echo -e "API:           ${CYAN}https://${API_DOMAIN}/health${NC}"
 echo -e "Frontend:      ${CYAN}https://${FRONTEND_DOMAIN}${NC}"
-echo -e "MinIO Console: ${CYAN}https://${STORAGE_DOMAIN}${NC}  (login: admin / see .env)"
+echo -e "Files:         ${CYAN}https://${FILES_DOMAIN}/health${NC}  (public storage site)"
 echo ""
-echo -e "Management: ${CYAN}aivis status | aivis logs | aivis update | aivis storage console${NC}"
+echo -e "Management: ${CYAN}aivis status | aivis logs | aivis update | aivis storage stats${NC}"
 echo ""
 echo -e "${YELLOW}NEXT STEPS:${NC}"
-echo "1. Edit $INSTALL_BASE/repo/backend/.env"
-echo "   -- Set TELEGRAM_BOT_TOKEN (if not done)"
-echo "   -- Set MAILGUN_API_KEY (if not done -- NO EMAIL AT ALL without it)"
-echo "   -- Set MAILGUN_API_URL (default: EU endpoint, change to https://api.mailgun.net for US)"
-echo "   These four Mailgun/from-address values are delivered to comms by"
-echo "   THIS installer, so editing them takes another install run to"
-echo "   reach the mail channel."
-echo "2. Run: aivis restart app"
-echo "3. Check the mail channel: aivis email-status"
-echo "4. Open MinIO Console: aivis storage console  (prints URL + credentials)"
-echo "5. Demo data, if this is a stand and not a real box:"
+echo "1. Check the mail channel: aivis email-status"
+echo "2. Make the first admin: register on the site, confirm the address,"
+echo "   then: aivis bootstrap-admin <your email>"
+echo "3. Demo data, if this is a stand and not a real box:"
 echo "   -- aivis seed                          (creates the first admin too)"
 echo "   -- aivis seed --list                    (available profiles)"
 echo "   The install seeds NO demo data at all; this is the only way in."

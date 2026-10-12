@@ -52,8 +52,8 @@ _PLACEHOLDERS = frozenset({"PLACEHOLDER", "TEST"})
 # point at localhost, and the loopback rule below already refuses them.
 _DEV_DATABASE_URL = "postgresql+asyncpg://aivis:aivis@localhost:5432/aivis"
 _DEV_SECRET_KEY = "dev-only-insecure-key-do-not-use-in-production"
-_DEV_MINIO_ENDPOINT = "http://localhost:9000"
-_DEV_MINIO_CREDENTIAL = "minioadmin"
+_DEV_STORAGE_ENDPOINT = "http://localhost:9000"
+_DEV_STORAGE_CREDENTIAL = "minioadmin"
 
 
 def _is_loopback_url(value: str) -> bool:
@@ -150,24 +150,35 @@ class Settings(BaseSettings):
     # -- Redis --
     redis_url: str = "redis://localhost:6379/0"
 
-    # -- MinIO (S3-compatible object storage, Refactor 2 iter 2.1) --
+    # -- Object storage (S3-compatible; RustFS since H32 P-120) --
     # Backend uses the service account credentials (ACCESS_KEY/SECRET_KEY),
     # NOT the root credentials. Root creds live in .env only because
-    # docker-compose and minio-init need them at bootstrap. They are not
+    # docker-compose and storage-init need them at bootstrap. They are not
     # mapped here -- the BaseSettings extra="ignore" silently drops them.
-    minio_endpoint: str = ""
-    minio_access_key: str = ""
-    minio_secret_key: str = ""
-    minio_bucket: str = "aivis-attachments"
-    minio_region: str = "us-east-1"
+    #
+    # TWO ADDRESSES (H32 P-121). storage_endpoint is where every operation
+    # goes -- the storage's name in the docker network, invisible to a
+    # browser. storage_public_url is what download links are SIGNED for:
+    # the public site (https://files.aivis.one) that forwards to the
+    # storage with the Host header unchanged. Links used to be signed for
+    # the internal address, so no browser could open one. Required on any
+    # box but development, https only (_validate); empty in development
+    # signs for the internal address, which the laptop and the test runner
+    # reach directly.
+    storage_endpoint: str = ""
+    storage_public_url: str = ""
+    storage_access_key: str = ""
+    storage_secret_key: str = ""
+    storage_bucket: str = "aivis-attachments"
+    storage_region: str = "us-east-1"
     # Presigned URL TTL: short for authenticated download, long for public.
-    minio_presigned_ttl_auth: int = 900       # 15 minutes
-    minio_presigned_ttl_public: int = 86400   # 24 hours
+    storage_presigned_ttl_auth: int = 900       # 15 minutes
+    storage_presigned_ttl_public: int = 86400   # 24 hours
     # Hard limit on uploaded file size. Mirrored in nginx client_max_body_size.
     # Files larger than this are rejected at ingress; backend trusts the
-    # ingress because Staff-driven upload happens exclusively via MinIO Web
-    # UI (see Refactor 2 §3.7), not through the API.
-    minio_max_file_size_mb: int = 100
+    # ingress (nginx client_max_body_size, the API and files.aivis.one
+    # sites alike).
+    storage_max_file_size_mb: int = 100
 
     # -- Auth --
     secret_key: str = ""
@@ -275,7 +286,7 @@ class Settings(BaseSettings):
     # -- Agreement snapshot worker (H18 P-74) --
     # Fills Purchase.agreement_html in the background, never inline at
     # purchase time (purchases/agreement_worker.py's own header explains
-    # why: the render touches MinIO + Jinja2, and the purchase path holds
+    # why: the render touches the storage + Jinja2, and the purchase path holds
     # a per-user pg_advisory_xact_lock it must not hold that long).
     # Minutes, not seconds: the real requirement is bounding the window
     # between a purchase and its snapshot, during which an operator's
@@ -413,9 +424,9 @@ class Settings(BaseSettings):
         return self.app_env == "development"
 
     @property
-    def minio_max_file_size_bytes(self) -> int:
+    def storage_max_file_size_bytes(self) -> int:
         """Hard upload limit converted to bytes."""
-        return self.minio_max_file_size_mb * 1024 * 1024
+        return self.storage_max_file_size_mb * 1024 * 1024
 
     @model_validator(mode="after")
     def _validate(self) -> "Settings":
@@ -460,15 +471,15 @@ class Settings(BaseSettings):
                 self.database_url = _DEV_DATABASE_URL
             if not self.secret_key:
                 self.secret_key = _DEV_SECRET_KEY
-            # MinIO is in the hot path of attachments / templates /
+            # The storage is in the hot path of attachments / templates /
             # roadmap covers, so it needs a value in every environment;
             # in development that value is the local compose stack.
-            if not self.minio_endpoint:
-                self.minio_endpoint = _DEV_MINIO_ENDPOINT
-            if not self.minio_access_key:
-                self.minio_access_key = _DEV_MINIO_CREDENTIAL
-            if not self.minio_secret_key:
-                self.minio_secret_key = _DEV_MINIO_CREDENTIAL
+            if not self.storage_endpoint:
+                self.storage_endpoint = _DEV_STORAGE_ENDPOINT
+            if not self.storage_access_key:
+                self.storage_access_key = _DEV_STORAGE_CREDENTIAL
+            if not self.storage_secret_key:
+                self.storage_secret_key = _DEV_STORAGE_CREDENTIAL
         else:
             problems: list[str] = []
 
@@ -496,17 +507,23 @@ class Settings(BaseSettings):
                 required=True, dev_value=_DEV_SECRET_KEY,
             )
             judge("TELEGRAM_BOT_TOKEN", self.telegram_bot_token, required=True)
-            judge("MINIO_ENDPOINT", self.minio_endpoint, required=True, url=True)
+            judge("STORAGE_ENDPOINT", self.storage_endpoint, required=True, url=True)
             judge(
-                "MINIO_ACCESS_KEY", self.minio_access_key,
-                required=True, dev_value=_DEV_MINIO_CREDENTIAL,
+                "STORAGE_ACCESS_KEY", self.storage_access_key,
+                required=True, dev_value=_DEV_STORAGE_CREDENTIAL,
             )
             judge(
-                "MINIO_SECRET_KEY", self.minio_secret_key,
-                required=True, dev_value=_DEV_MINIO_CREDENTIAL,
+                "STORAGE_SECRET_KEY", self.storage_secret_key,
+                required=True, dev_value=_DEV_STORAGE_CREDENTIAL,
             )
             judge(
                 "FRONTEND_BASE_URL", self.frontend_base_url,
+                required=True, url=True, https=True,
+            )
+            # The address download links are signed for (H32 P-121): a
+            # browser opens them, so the same rules as FRONTEND_BASE_URL.
+            judge(
+                "STORAGE_PUBLIC_URL", self.storage_public_url,
                 required=True, url=True, https=True,
             )
 

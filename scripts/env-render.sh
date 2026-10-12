@@ -7,9 +7,9 @@
 # scripts/aivis-manage.sh. Running it directly does nothing.
 #
 # WHY IT EXISTS. backend/.env is the application's env: payment keys,
-# session secret, telegram token, MinIO credentials, and now the comms
+# session secret, telegram token, storage credentials, and now the comms
 # service token. Handing that whole file to the datastore containers
-# means a compromised postgres, redis or MinIO reads secrets that have
+# means a compromised postgres, redis or storage reads secrets that have
 # nothing to do with it. Each of those containers needs between two and
 # four keys, so it gets a PROJECTION carrying exactly those.
 #
@@ -39,22 +39,23 @@ _DB_ENV_KEYS=(
     REDIS_PASSWORD
 )
 
-# Keys the minio and minio-init containers need, and nothing else.
+# Keys the storage and storage-init containers need, and nothing else.
 #
-# ROOT_USER / ROOT_PASSWORD are what the server itself boots on.
-# ACCESS_KEY / SECRET_KEY are the backend's service account -- strictly
-# speaking only minio-init uses them, to CREATE that account
-# (`mc admin user svcacct add` against the root user). They are in the
-# one shared list rather than a third projection because the account
-# lives inside MinIO: a compromised MinIO server can already read and
-# rotate it, so withholding the pair from the server buys nothing, while
-# a second file would be one more document to keep in step.
+# RUSTFS_ACCESS_KEY / RUSTFS_SECRET_KEY are the root credentials the
+# RustFS server boots on, under RustFS's own names, so the projection
+# passes them through untouched. STORAGE_ACCESS_KEY / STORAGE_SECRET_KEY
+# are the backend's own key -- strictly speaking only storage-init uses
+# them, to CREATE that service account. They are in the one shared list
+# rather than a third projection because the account lives inside the
+# storage: a compromised storage server can already read and rotate it,
+# so withholding the pair from the server buys nothing, while a second
+# file would be one more document to keep in step.
 # shellcheck disable=SC2034  # read through a nameref in render_env_projection
-_MINIO_ENV_KEYS=(
-    MINIO_ROOT_USER
-    MINIO_ROOT_PASSWORD
-    MINIO_ACCESS_KEY
-    MINIO_SECRET_KEY
+_STORAGE_ENV_KEYS=(
+    RUSTFS_ACCESS_KEY
+    RUSTFS_SECRET_KEY
+    STORAGE_ACCESS_KEY
+    STORAGE_SECRET_KEY
 )
 
 # Print the assignment line for KEY out of FILE, or nothing if there is
@@ -109,7 +110,7 @@ render_env_projection() {
     # the line: `POSTGRES_PASSWORD=` is a present line with an absent
     # password, and letting it through starts redis with no password at
     # all, leaves postgres unable to initialise a fresh volume, and
-    # brings MinIO up on empty root credentials.
+    # brings the storage up on empty root credentials.
     for key in "${keys[@]}"; do
         line=$(_env_line "$src" "$key")
         if [ -z "${line#"${key}="}" ]; then
@@ -195,6 +196,6 @@ write_db_env() {
     write_env_projection "${1:-}" "${2:-}" _DB_ENV_KEYS "the postgres and redis containers"
 }
 
-write_minio_env() {
-    write_env_projection "${1:-}" "${2:-}" _MINIO_ENV_KEYS "the minio and minio-init containers"
+write_storage_env() {
+    write_env_projection "${1:-}" "${2:-}" _STORAGE_ENV_KEYS "the storage and storage-init containers"
 }

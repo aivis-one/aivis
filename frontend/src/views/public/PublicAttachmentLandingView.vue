@@ -185,7 +185,7 @@ async function onDownload(): Promise<void> {
   const att = attachment.value
   if (!att) return
   try {
-    await downloadPublicAttachment(companyId.value, att.id, att.original_filename)
+    await downloadPublicAttachment(companyId.value, att.id)
   } catch (err) {
     if (!notifyRateLimit(err)) {
       showToast(t('public.attachmentLanding.downloadError'), 'error')

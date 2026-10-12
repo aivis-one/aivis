@@ -33,13 +33,40 @@ if [ ! -f "$CONF_FILE" ]; then
     echo "or create the file by hand with:" >&2
     echo "  API_DOMAIN=api.example.com" >&2
     echo "  FRONTEND_DOMAIN=app.example.com" >&2
-    echo "  STORAGE_DOMAIN=storage-mc-admin.example.com" >&2
     echo "  APP_PORT=8000" >&2
     echo "  FRONTEND_PORT=3000" >&2
     exit 1
 fi
 # shellcheck source=/dev/null
 source "$CONF_FILE"
+
+# -- Object storage helpers (H32 P-120) ---------------------------------------
+# The public storage host is NOT a separate setting: it is the host of
+# STORAGE_PUBLIC_URL in backend/.env, the address the backend signs
+# download links for. One fact, one place -- the nginx site and the
+# status probe both read it from there.
+storage_public_host() {
+    local url
+    url=$(grep -E '^STORAGE_PUBLIC_URL=' "$COMPOSE_DIR/backend/.env" 2>/dev/null | tail -1 | cut -d= -f2-)
+    url="${url#https://}"
+    url="${url#http://}"
+    echo "${url%%/*}"
+}
+
+# Run one rc command (RustFS's CLI, the replacement for mc) against the
+# storage, inside the pinned storage-init image -- nothing is installed on
+# the host. The alias is made fresh from the root keys in .env.storage on
+# every call. RC_MOUNT, when set, is a host directory mounted at /backup.
+storage_rc() {
+    local mount=()
+    if [ -n "${RC_MOUNT:-}" ]; then
+        mount=(-v "$RC_MOUNT:/backup")
+    fi
+    docker compose run --rm --no-deps -T "${mount[@]}" --entrypoint /bin/sh storage-init -c \
+        'export HOME=/tmp
+         rc alias set local http://storage:9000 "$RUSTFS_ACCESS_KEY" "$RUSTFS_SECRET_KEY" > /dev/null &&
+         rc "$@"' rc "$@"
+}
 
 # -- Service registry ---------------------------------------------------------
 # What this box runs, and where each piece comes from. Tracked in the repo
@@ -134,15 +161,15 @@ case_status() {
     fi
     echo ""
 
-    echo -e "${CYAN}=== MinIO ===${NC}"
-    if docker compose ps --status running --services 2>/dev/null | grep -q "^minio$"; then
-        if curl -sf --max-time 5 "http://127.0.0.1:9000/minio/health/live" > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ MinIO healthy (S3 API on 127.0.0.1:9000)${NC}"
+    echo -e "${CYAN}=== Storage (RustFS) ===${NC}"
+    if docker compose ps --status running --services 2>/dev/null | grep -q "^storage$"; then
+        if curl -sf --max-time 5 "http://127.0.0.1:9000/health" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Storage healthy (S3 API on 127.0.0.1:9000)${NC}"
         else
-            echo -e "${RED}✗ MinIO container running but /minio/health/live not responding${NC}"
+            echo -e "${RED}✗ Storage container running but /health not responding${NC}"
         fi
     else
-        echo -e "${RED}✗ MinIO container not running${NC}"
+        echo -e "${RED}✗ Storage container not running${NC}"
     fi
     echo ""
 
@@ -157,13 +184,16 @@ case_status() {
     else
         echo -e "${YELLOW}⚠ https://${FRONTEND_DOMAIN} not available (frontend not deployed yet)${NC}"
     fi
-    # storage-mc-admin -- expect 401 (basic-auth gate); 401 means nginx is
-    # serving the site correctly, anything else is broken.
-    STORAGE_CODE=$(curl -sk --max-time 5 -o /dev/null -w "%{http_code}" "https://${STORAGE_DOMAIN}/" 2>/dev/null || echo "000")
-    if [ "$STORAGE_CODE" = "401" ]; then
-        echo -e "${GREEN}✓ https://${STORAGE_DOMAIN} OK (401 -- basic-auth gate active)${NC}"
+    # The public storage site answers /health through nginx: 200 means the
+    # site, its certificate and the proxy to 127.0.0.1:9000 all work.
+    local files_host
+    files_host=$(storage_public_host)
+    if [ -z "$files_host" ]; then
+        echo -e "${RED}✗ STORAGE_PUBLIC_URL is not set in backend/.env${NC}"
+    elif curl -sf --max-time 5 "https://${files_host}/health" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ https://${files_host}/health OK${NC}"
     else
-        echo -e "${RED}✗ https://${STORAGE_DOMAIN} unexpected status: $STORAGE_CODE${NC}"
+        echo -e "${RED}✗ https://${files_host}/health unreachable${NC}"
     fi
 }
 
@@ -177,10 +207,10 @@ case_logs() {
         app)         docker compose logs -f --tail=100 app ;;
         db|postgres) docker compose logs -f --tail=100 postgres ;;
         redis)       docker compose logs -f --tail=100 redis ;;
-        minio)       docker compose logs -f --tail=100 minio ;;
+        storage)     docker compose logs -f --tail=100 storage ;;
         frontend)    docker compose logs -f --tail=100 frontend 2>/dev/null || echo "Frontend not running" ;;
         all|"")      docker compose logs -f --tail=100 ;;
-        *)           echo "Usage: aivis logs [app|db|redis|minio|frontend|all]" ;;
+        *)           echo "Usage: aivis logs [app|db|redis|storage|frontend|all]" ;;
     esac
 }
 
@@ -854,7 +884,7 @@ update_all() {
 #   * the objects under _platform/templates/<kind>/<lang>/ it points at.
 #
 # The existing smoke checks count the ROWS. On 2026-09-01 all sixteen rows
-# were present and every object was gone -- the minio volume had been
+# were present and every object was gone -- the storage volume had been
 # recreated empty -- so the check passed and the product answered NoSuchKey
 # on every agreement and certificate. The row count was introduced after an
 # earlier incident of exactly this shape ("purchase_agreement/en
@@ -1083,8 +1113,8 @@ update_product() {
     echo ""
 
     # -- Narrow env projections, BEFORE any compose command ------------------
-    # postgres/redis read backend/.env.db and minio/minio-init read
-    # backend/.env.minio; both are generated from backend/.env and both
+    # postgres/redis read backend/.env.db and storage/storage-init read
+    # backend/.env.storage; both are generated from backend/.env and both
     # are gitignored, so no update of the checkout ever brings them. Compose fails
     # outright on a missing env_file -- and it parses the WHOLE file, so
     # even a frontend-only run dies on it. Regenerate here, before the
@@ -1099,10 +1129,10 @@ update_product() {
         # steps from the cause. If it does not point at them, this is
         # simply a checkout from before the projections existed, and
         # there is genuinely nothing to do.
-        if grep -qE 'backend/\.env\.(db|minio)' "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null; then
+        if grep -qE 'backend/\.env\.(db|storage)' "$COMPOSE_DIR/docker-compose.yml" 2>/dev/null; then
             echo -e "${RED}✗ Incomplete deployment: scripts/env-render.sh is missing${NC}"
-            echo "  docker-compose.yml points postgres/redis/minio at backend/.env.db"
-            echo "  and backend/.env.minio, and those files are generated by"
+            echo "  docker-compose.yml points postgres/redis/storage at backend/.env.db"
+            echo "  and backend/.env.storage, and those files are generated by"
             echo "  scripts/env-render.sh -- which is not in this checkout."
             echo ""
             echo "  Expected at: $ENV_RENDER_LIB"
@@ -1123,13 +1153,13 @@ update_product() {
             echo "  would come up without database credentials."
             return 1
         fi
-        if ! write_minio_env "$COMPOSE_DIR/backend/.env" "$COMPOSE_DIR/backend/.env.minio"; then
-            echo -e "${RED}✗ Could not write backend/.env.minio${NC}"
-            echo "  minio and minio-init read it as their env_file -- object"
+        if ! write_storage_env "$COMPOSE_DIR/backend/.env" "$COMPOSE_DIR/backend/.env.storage"; then
+            echo -e "${RED}✗ Could not write backend/.env.storage${NC}"
+            echo "  storage and storage-init read it as their env_file -- object"
             echo "  storage would come up on empty root credentials."
             return 1
         fi
-        echo -e "${GREEN}✓ backend/.env.db and backend/.env.minio projected from backend/.env${NC}"
+        echo -e "${GREEN}✓ backend/.env.db and backend/.env.storage projected from backend/.env${NC}"
         echo ""
     fi
 
@@ -1182,12 +1212,17 @@ update_product() {
         echo "  network. Nothing has been stopped."
         return 1
     }
-    docker compose down
-    docker compose up -d app postgres redis minio
+    # --remove-orphans: a container of this project whose service is no
+    # longer in the compose file is stopped and removed with the rest.
+    # Without it, the move to RustFS (H32) left aivis-minio running on
+    # 127.0.0.1:9000 and the new storage could not bind the port. Volumes
+    # are never touched (no -v): aivis_minio_data stays as the rollback.
+    docker compose down --remove-orphans
+    docker compose up -d app postgres redis storage
 
-    # minio-init IS PART OF EVERY UPDATE, not just of the install.
+    # storage-init IS PART OF EVERY UPDATE, not just of the install.
     # It creates the buckets and the backend service account, and both
-    # live INSIDE the minio volume -- lose that volume and they are gone
+    # live INSIDE the storage volume -- lose that volume and they are gone
     # while every other part of the stack still looks healthy. Until this
     # line existed they were created exactly once, at install, and an
     # update could not put them back: on 2026-09-01 that produced
@@ -1200,17 +1235,17 @@ update_product() {
     # create an account". Same lesson as an install reporting "App is
     # healthy" while the stack it just built never came up.
     echo ""
-    echo "Ensuring MinIO buckets and service account (minio-init)..."
-    docker compose up minio-init
+    echo "Ensuring storage buckets and service account (storage-init)..."
+    docker compose up storage-init
     local init_code
-    init_code=$(docker inspect -f '{{.State.ExitCode}}' aivis-minio-init 2>/dev/null || echo "missing")
+    init_code=$(docker inspect -f '{{.State.ExitCode}}' aivis-storage-init 2>/dev/null || echo "missing")
     if [ "$init_code" != "0" ]; then
-        echo -e "${RED}✗ minio-init did not complete (exit code: '$init_code')${NC}"
+        echo -e "${RED}✗ storage-init did not complete (exit code: '$init_code')${NC}"
         echo "  Buckets and/or the backend service account may be missing."
-        echo "  Check: docker compose logs minio-init"
+        echo "  Check: aivis logs storage  |  docker compose logs storage-init"
         return 1
     fi
-    echo -e "${GREEN}✓ MinIO buckets and service account ready${NC}"
+    echo -e "${GREEN}✓ Storage buckets and service account ready${NC}"
 
     # Wait for app to be healthy.
     echo ""
@@ -1262,7 +1297,7 @@ update_product() {
     # OBJECTS FIRST, ROWS SECOND -- the order the installer's own comment
     # already insists on ("Reverse order would leave the DB pointing at
     # empty storage and the renderer 500ing"). Restoring here rather than
-    # merely checking is what makes a lost minio volume a non-event: the
+    # merely checking is what makes a lost storage volume a non-event: the
     # sixty-four files ship inside the image, the upload is idempotent,
     # and it costs about two seconds.
     #
@@ -1272,7 +1307,7 @@ update_product() {
     # unbacked assurance with another was the whole failure of the row
     # count this pairs with.
     echo ""
-    echo "Restoring platform template objects to MinIO..."
+    echo "Restoring platform template objects to storage..."
     restore_platform_template_objects || {
         echo -e "${RED}✗ Template object restore failed${NC}"
         return 1
@@ -1540,10 +1575,13 @@ case_restart() {
 # Tarball includes:
 #   - PostgreSQL dump (pg_dump)
 #   - backend/.env
-#   - MinIO bucket snapshot (mc mirror local/aivis-attachments)
+#   - storage bucket snapshot (rc mirror local/aivis-attachments, run in
+#     the pinned storage-init image -- see storage_rc)
 #
-# Rotation: 7 days. The MinIO mirror step is best-effort -- if mc fails
-# (network blip, MinIO down), we proceed with DB-only backup and warn.
+# Rotation: 7 days. The storage mirror step is best-effort -- if it fails
+# (storage down), we proceed with DB-only backup and warn.
+#
+# There is no storage RESTORE. Acknowledged debt, not built here (H32).
 # ==============================================================================
 
 case_backup() {
@@ -1552,7 +1590,7 @@ case_backup() {
     BACKUP_DIR="$INSTALL_BASE/backups"
     BACKUP_FILE="$BACKUP_DIR/aivis_backup_${TIMESTAMP}.tar.gz"
     DB_DUMP_FILE="/tmp/aivis_db_${TIMESTAMP}.sql"
-    MINIO_DUMP_DIR="/tmp/aivis_minio_${TIMESTAMP}"
+    STORAGE_DUMP_DIR="/tmp/aivis_storage_${TIMESTAMP}"
     mkdir -p "$BACKUP_DIR"
 
     echo "Creating backup..."
@@ -1562,27 +1600,27 @@ case_backup() {
     docker compose exec -T postgres pg_dump \
         -U aivis aivis > "$DB_DUMP_FILE"
 
-    # 2. Mirror MinIO bucket (best-effort).
-    echo "  Mirroring MinIO bucket..."
-    mkdir -p "$MINIO_DUMP_DIR"
-    if mc mirror --quiet local/aivis-attachments "$MINIO_DUMP_DIR/" 2>/dev/null; then
-        MINIO_OBJECTS=$(find "$MINIO_DUMP_DIR" -type f 2>/dev/null | wc -l)
-        echo "  MinIO: $MINIO_OBJECTS objects mirrored"
+    # 2. Mirror the storage bucket (best-effort).
+    echo "  Mirroring storage bucket..."
+    mkdir -p "$STORAGE_DUMP_DIR"
+    if RC_MOUNT="$STORAGE_DUMP_DIR" storage_rc mirror local/aivis-attachments /backup > /dev/null 2>&1; then
+        STORAGE_OBJECTS=$(find "$STORAGE_DUMP_DIR" -type f 2>/dev/null | wc -l)
+        echo "  Storage: $STORAGE_OBJECTS objects mirrored"
     else
-        echo -e "${YELLOW}  ⚠ MinIO mirror failed -- proceeding with DB-only backup${NC}"
+        echo -e "${YELLOW}  ⚠ Storage mirror failed -- proceeding with DB-only backup${NC}"
         # Keep the empty dir so tar doesn't choke on a missing path.
     fi
 
-    # 3. Archive: DB dump + .env + MinIO snapshot.
+    # 3. Archive: DB dump + .env + storage snapshot.
     echo "  Creating archive..."
     tar -czf "$BACKUP_FILE" \
         -C /tmp "aivis_db_${TIMESTAMP}.sql" \
         -C "$COMPOSE_DIR/backend" ".env" \
-        -C /tmp "aivis_minio_${TIMESTAMP}"
+        -C /tmp "aivis_storage_${TIMESTAMP}"
 
     # 4. Cleanup tmp.
     rm -f "$DB_DUMP_FILE"
-    rm -rf "$MINIO_DUMP_DIR"
+    rm -rf "$STORAGE_DUMP_DIR"
 
     # 5. Rotate: keep last 7 days.
     find "$BACKUP_DIR" -name "aivis_backup_*.tar.gz" -mtime +7 -delete
@@ -1831,48 +1869,52 @@ server {
 NGINX_FRONTEND
 }
 
-render_nginx_storage() {
-    sed "s/__STORAGE_DOMAIN__/${STORAGE_DOMAIN}/g" << 'NGINX_STORAGE'
+# The public storage site (H32 P-121): browsers open the presigned links
+# the backend signs for this host. HTTP only, like every template here --
+# certbot adds the TLS server block to the rendered file afterwards, which
+# is why a re-render of this target drops TLS until certbot runs again.
+#
+#   Host passes through UNCHANGED ($host): the SigV4 signature covers the
+#     host the link was signed for; a rewritten Host makes the storage
+#     answer 403 (checked against RustFS 1.0.1, H32 stand).
+#   The path passes through unchanged too (no trailing slash on
+#     proxy_pass, no rewrite): path-style links, <host>/<bucket>/<key>.
+#   No Authorization stripping, no basic-auth: links carry their own
+#     signature in the query string, and nothing else is served.
+#   client_max_body_size mirrors STORAGE_MAX_FILE_SIZE_MB (100).
+render_nginx_files() {
+    local files_host
+    files_host=$(storage_public_host)
+    if [ -z "$files_host" ]; then
+        echo "STORAGE_PUBLIC_URL is not set in backend/.env -- cannot render the files site" >&2
+        return 1
+    fi
+    sed "s/__FILES_DOMAIN__/${files_host}/g" << 'NGINX_FILES'
 server {
     listen 80;
-    server_name __STORAGE_DOMAIN__;
+    server_name __FILES_DOMAIN__;
 
     client_max_body_size 100M;
 
-    auth_basic "MinIO Console";
-    auth_basic_user_file /etc/nginx/.htpasswd-storage-mc-admin;
-
-    # Streaming -- required for large uploads/downloads and WebSocket.
+    # Streaming -- large downloads go straight through.
     proxy_buffering off;
     proxy_request_buffering off;
-    chunked_transfer_encoding off;
 
     location / {
-        proxy_pass http://127.0.0.1:9001;
+        proxy_pass http://127.0.0.1:9000;
 
-        # CRITICAL: strip Authorization after nginx basic-auth check, otherwise
-        # the browser's basic-auth header is forwarded to MinIO Console and
-        # MinIO tries to parse it as S3 signature v4 -> 401 on every request
-        # (Object Browser appears as a blank page after a successful login).
-        proxy_set_header Authorization "";
-
-        # $http_host preserves the port; MinIO Console uses Host for cookie domain.
-        proxy_set_header Host $http_host;
+        proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # WebSocket upgrade -- MinIO Console pushes real-time updates.
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-
         proxy_read_timeout 300s;
-        proxy_connect_timeout 300s;
+        proxy_connect_timeout 60s;
         proxy_send_timeout 300s;
     }
 }
-NGINX_STORAGE
+NGINX_FILES
 }
 
 # Writes the requested subset of the three site configs, ensures each has a
@@ -1892,7 +1934,7 @@ case_nginx_render() {
         targets=(all)
     fi
     if [ "${targets[0]}" = "all" ]; then
-        targets=(api frontend storage)
+        targets=(api frontend files)
     fi
 
     local target
@@ -1908,14 +1950,16 @@ case_nginx_render() {
                 ln -sf /etc/nginx/sites-available/aivis-frontend /etc/nginx/sites-enabled/aivis-frontend
                 echo "Rendered: aivis-frontend ($FRONTEND_DOMAIN)"
                 ;;
-            storage)
-                render_nginx_storage > /etc/nginx/sites-available/aivis-storage-mc-admin
-                ln -sf /etc/nginx/sites-available/aivis-storage-mc-admin /etc/nginx/sites-enabled/aivis-storage-mc-admin
-                echo "Rendered: aivis-storage-mc-admin ($STORAGE_DOMAIN)"
+            files)
+                local files_conf
+                files_conf=$(render_nginx_files) || return 1
+                printf '%s\n' "$files_conf" > /etc/nginx/sites-available/aivis-files
+                ln -sf /etc/nginx/sites-available/aivis-files /etc/nginx/sites-enabled/aivis-files
+                echo "Rendered: aivis-files ($(storage_public_host))"
                 ;;
             *)
                 echo -e "${RED}Unknown render target: $target${NC}"
-                echo "Usage: aivis nginx render [api|frontend|storage|all]"
+                echo "Usage: aivis nginx render [api|frontend|files|all]"
                 return 1
                 ;;
         esac
@@ -1944,18 +1988,17 @@ case_nginx() {
         *)
             echo "Nginx commands:"
             echo "  aivis nginx reload             — Test config and reload Nginx"
-            echo "  aivis nginx render [target...] — Render templates from the repo (api|frontend|storage|all, default: all)"
+            echo "  aivis nginx render [target...] — Render templates from the repo (api|frontend|files|all, default: all)"
             ;;
     esac
 }
 
 # ==============================================================================
-# STORAGE (MinIO)
+# STORAGE (RustFS)
 # ==============================================================================
 #
 # Subcommands:
 #   stats                            — bucket size + object count
-#   console                          — print Web UI URL + credentials
 #   reconcile <id>                   — sync inbox/ -> attachments/
 #                                      (Refactor 2 iter 2.2)
 #   reconcile-templates <id>         — sync templates-inbox/ -> templates/
@@ -1968,36 +2011,17 @@ case_storage() {
     cd_compose
     case "${1:-}" in
         stats)
-            echo -e "${CYAN}=== MinIO Storage Stats ===${NC}"
+            echo -e "${CYAN}=== Storage Stats ===${NC}"
             echo ""
             echo "Bucket size:"
-            mc du local/aivis-attachments 2>/dev/null || {
-                echo -e "${RED}✗ Cannot reach MinIO via mc alias 'local'${NC}"
-                echo "  Check: mc alias list  |  aivis status"
+            storage_rc du local/aivis-attachments || {
+                echo -e "${RED}✗ Cannot reach the storage${NC}"
+                echo "  Check: aivis status  |  aivis logs storage"
                 return 1
             }
             echo ""
             echo "Object count:"
-            local COUNT
-            COUNT=$(mc ls --recursive local/aivis-attachments 2>/dev/null | wc -l)
-            echo "  $COUNT objects"
-            ;;
-        console)
-            local CONSOLE_PASS ROOT_USER ROOT_PASS
-            CONSOLE_PASS=$(grep "^MINIO_CONSOLE_BASIC_AUTH_PASSWORD=" "$COMPOSE_DIR/backend/.env" | cut -d= -f2-)
-            ROOT_USER=$(grep "^MINIO_ROOT_USER=" "$COMPOSE_DIR/backend/.env" | cut -d= -f2-)
-            ROOT_PASS=$(grep "^MINIO_ROOT_PASSWORD=" "$COMPOSE_DIR/backend/.env" | cut -d= -f2-)
-            echo -e "${CYAN}=== MinIO Console Access ===${NC}"
-            echo ""
-            echo "URL:      https://${STORAGE_DOMAIN}"
-            echo ""
-            echo "Step 1 -- nginx basic-auth:"
-            echo "  Login:    admin"
-            echo "  Password: $CONSOLE_PASS"
-            echo ""
-            echo "Step 2 -- MinIO Console login (root credentials):"
-            echo "  User:     $ROOT_USER"
-            echo "  Password: $ROOT_PASS"
+            storage_rc ls --recursive local/aivis-attachments 2>/dev/null | wc -l
             ;;
         reconcile)
             shift
@@ -2033,7 +2057,6 @@ case_storage() {
         ""|help|*)
             echo "Storage commands:"
             echo "  aivis storage stats                              — Bucket size + object count"
-            echo "  aivis storage console                            — Print MinIO Console URL + credentials"
             echo "  aivis storage reconcile <company_id>             — Sync inbox -> attachments"
             echo "  aivis storage reconcile --all                    — Sync inbox for every company"
             echo "  aivis storage reconcile-templates <company_id>   — Sync templates-inbox -> templates"
@@ -2287,8 +2310,8 @@ case "$CMD" in
         echo "Usage: aivis <command> [options]"
         echo ""
         echo "Monitoring:"
-        echo "  status                                    — Docker + health + external access + MinIO"
-        echo "  logs [app|db|redis|minio|frontend|all]    — View logs (default: app)"
+        echo "  status                                    — Docker + health + external access + storage"
+        echo "  logs [app|db|redis|storage|frontend|all]  — View logs (default: app)"
         echo "  version                                   — Git log + runtime versions"
         echo ""
         echo "Testing:"
@@ -2320,19 +2343,18 @@ case "$CMD" in
         echo "  bootstrap-admin <email>                   — Make a registered, verified user the first admin (once per box)"
         echo "  seed-portfolio <email>                    — Fill an existing user's dashboard"
         echo ""
-        echo "Storage (MinIO):"
+        echo "Storage (RustFS):"
         echo "  storage stats                             — Bucket size + object count"
-        echo "  storage console                           — Print MinIO Console URL + credentials"
         echo "  storage reconcile <id>                    — Sync inbox -> DB"
         echo "  storage reconcile-templates <id>          — Sync templates-inbox -> DB"
         echo "  storage reconcile-platform-templates      — Sync platform templates"
         echo ""
         echo "Maintenance:"
-        echo "  backup                                    — Backup DB + .env + MinIO (7-day rotation)"
+        echo "  backup                                    — Backup DB + .env + storage (7-day rotation)"
         echo "  ssl renew                                 — Renew SSL certificates"
         echo "  ssl status                                — Show certificate info"
         echo "  nginx reload                              — Test config and reload Nginx"
-        echo "  nginx render [api|frontend|storage|all]   — Render nginx templates from the repo (default: all)"
+        echo "  nginx render [api|frontend|files|all]     — Render nginx templates from the repo (default: all)"
         echo "  email-status                              — Is the mail channel live at comms?"
         ;;
 esac

@@ -2,8 +2,9 @@
 # AIVIS.ONE Backend -- Storage Abstraction Layer (Refactor 2 iter 2.1)
 # =============================================================================
 #
-# Thin async wrapper around aiobotocore for MinIO (S3-compatible) object
-# storage. Business code never imports aiobotocore directly -- it goes
+# Thin async wrapper around aiobotocore for the S3-compatible object
+# storage (RustFS since H32 P-120; MinIO before it). Business code
+# never imports aiobotocore directly -- it goes
 # through this module. See AIVIS-Refactor-Company-Docs.md §2.
 #
 # PUBLIC API (per spec §2.1):
@@ -22,11 +23,11 @@
 #                                otherwise-healthy bucket.
 #
 #   These are intentionally distinct: a missing bucket points at a broken
-#   stack (typo in MINIO_BUCKET, failed minio-init) and must NOT be
+#   stack (typo in STORAGE_BUCKET, failed storage-init) and must NOT be
 #   silently treated as "object missing".
 #
 # HEAD-BASED DISAMBIGUATION:
-#   MinIO returns a generic HTTP 404 for `head_object` on both
+#   S3 servers return a generic HTTP 404 for `head_object` on both
 #   "key missing" and "bucket missing" cases (it does NOT echo
 #   NoSuchBucket the way put_object / get_object / delete_object do).
 #   So object_exists() and get_object_metadata() additionally call
@@ -47,7 +48,7 @@
 #   error paths and is trivially compatible with pytest's nested loops.
 #
 # BUCKET:
-#   Every call reads settings.minio_bucket fresh. Tests redirect to
+#   Every call reads settings.storage_bucket fresh. Tests redirect to
 #   `aivis-attachments-test` via monkeypatch on settings.
 #
 # DELETE IDEMPOTENCY:
@@ -62,6 +63,7 @@ from typing import Any, BinaryIO
 
 import aiobotocore.session
 import structlog
+from aiobotocore.config import AioConfig
 from botocore.exceptions import ClientError
 
 from app.core.config import settings
@@ -105,20 +107,53 @@ def _get_session() -> aiobotocore.session.AioSession:
     return _session
 
 
-def _client_context() -> Any:
+# SigV4 and path-style, stated rather than left to botocore's defaults.
+# Without signature_version botocore PRESIGNS with SigV2
+# (AWSAccessKeyId/Signature/Expires): a deprecated scheme whose signature
+# does not cover the host. SigV4 binds every link to the host it was
+# signed for -- which is what lets one client sign for the public address
+# while the other talks to the storage on the internal one (H32 P-121).
+# Path-style (<endpoint>/<bucket>/<key>) because the public site proxies
+# one host to the storage; virtual-host buckets would need a host per
+# bucket.
+_S3_CONFIG = AioConfig(
+    signature_version="s3v4",
+    s3={"addressing_style": "path"},
+)
+
+
+def _client_context(endpoint_url: str | None = None) -> Any:
     """Open an async context manager that yields an S3 client.
 
+    endpoint_url defaults to the INTERNAL address (settings.storage_endpoint)
+    every operation goes to. _presign_client_context passes the public one.
+
     Reads settings on every call so test monkeypatches on
-    settings.minio_endpoint / minio_access_key / minio_secret_key /
-    minio_region apply without reloading the module.
+    settings.storage_endpoint / storage_access_key / storage_secret_key /
+    storage_region apply without reloading the module.
     """
     return _get_session().create_client(
         "s3",
-        endpoint_url=settings.minio_endpoint,
-        aws_access_key_id=settings.minio_access_key,
-        aws_secret_access_key=settings.minio_secret_key,
-        region_name=settings.minio_region,
+        endpoint_url=endpoint_url or settings.storage_endpoint,
+        aws_access_key_id=settings.storage_access_key,
+        aws_secret_access_key=settings.storage_secret_key,
+        region_name=settings.storage_region,
+        config=_S3_CONFIG,
     )
+
+
+def _presign_client_context() -> Any:
+    """A client that SIGNS links for the address a browser can reach.
+
+    Signing is a computation -- no request leaves the process -- so this
+    client never needs to reach settings.storage_public_url itself. The
+    public site (files.aivis.one) forwards the request to the storage with
+    the Host header unchanged, and the SigV4 signature, made for that host,
+    verifies there. Empty storage_public_url (development only; the
+    validator refuses it elsewhere) signs for the internal address, which
+    a laptop and the test runner can reach directly.
+    """
+    return _client_context(settings.storage_public_url or None)
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +163,7 @@ def _client_context() -> Any:
 
 # Codes that mean "the KEY does not exist" -- bucket is fine.
 # botocore normalises some HTTP 404s into the literal "404" while named
-# operations (head_object) return "NoSuchKey". On MinIO specifically,
+# operations (head_object) return "NoSuchKey". On the storage specifically,
 # head_object also returns "404" when the BUCKET is missing, which is
 # why object_exists() / get_object_metadata() additionally probe with
 # head_bucket() to disambiguate.
@@ -138,7 +173,7 @@ _KEY_NOT_FOUND_CODES = frozenset({"404", "NoSuchKey"})
 def _is_key_not_found(exc: ClientError) -> bool:
     """True iff the ClientError code is in the "key missing" set.
 
-    Note: on MinIO head_object also returns "404" for a missing bucket,
+    Note: on the storage head_object also returns "404" for a missing bucket,
     so callers that use head_object must additionally verify the bucket
     via _assert_bucket_exists() before treating the error as "key gone".
     """
@@ -150,7 +185,7 @@ async def _assert_bucket_exists(client: Any) -> None:
     """Raise StorageError if the configured bucket is missing or unreachable.
 
     Used by head_object-based functions to disambiguate "key not found"
-    from "bucket not found", because MinIO collapses both into HTTP 404
+    from "bucket not found", because the storage collapses both into HTTP 404
     on head_object responses.
 
     Args:
@@ -161,15 +196,15 @@ async def _assert_bucket_exists(client: Any) -> None:
             missing, auth refused, network broken, etc.
     """
     try:
-        await client.head_bucket(Bucket=settings.minio_bucket)
+        await client.head_bucket(Bucket=settings.storage_bucket)
     except ClientError as exc:
         logger.error(
             "storage_bucket_missing",
-            bucket=settings.minio_bucket,
+            bucket=settings.storage_bucket,
             error=str(exc),
         )
         raise StorageError(
-            f"Bucket {settings.minio_bucket!r} is missing or unreachable: {exc}"
+            f"Bucket {settings.storage_bucket!r} is missing or unreachable: {exc}"
         ) from exc
 
 
@@ -194,7 +229,7 @@ async def upload_object(
             of the payload (caller's responsibility).
         content_type: MIME type stored as object metadata.
         content_length: Explicit body length in bytes. Required when
-            `data` is a non-seekable stream so MinIO gets a proper
+            `data` is a non-seekable stream so the storage gets a proper
             Content-Length header instead of falling back to chunked
             transfer encoding. Optional when `data` is `bytes` (boto3
             derives the length automatically).
@@ -205,7 +240,7 @@ async def upload_object(
     Raises:
         StorageError: On any upstream failure, including a missing bucket.
     """
-    # ContentLength is forwarded straight to MinIO. For bytes the param
+    # ContentLength is forwarded straight to the storage. For bytes the param
     # is redundant but harmless; for streams it's the only way to avoid
     # `Transfer-Encoding: chunked`, which some S3-compatible setups
     # (and signature-v4 in strict mode) reject.
@@ -216,7 +251,7 @@ async def upload_object(
     try:
         async with _client_context() as client:
             await client.put_object(
-                Bucket=settings.minio_bucket,
+                Bucket=settings.storage_bucket,
                 Key=key,
                 Body=data,
                 ContentType=content_type,
@@ -235,7 +270,7 @@ async def upload_object(
         "storage_uploaded",
         key=key,
         content_type=content_type,
-        bucket=settings.minio_bucket,
+        bucket=settings.storage_bucket,
     )
     return key
 
@@ -243,7 +278,7 @@ async def upload_object(
 async def delete_object(key: str) -> None:
     """Delete an object. Idempotent on a missing KEY; raises on a missing BUCKET.
 
-    DeleteObject on MinIO reports NoSuchBucket explicitly (not as a
+    DeleteObject on the storage reports NoSuchBucket explicitly (not as a
     generic 404), so we don't need head_bucket disambiguation here.
 
     Args:
@@ -255,7 +290,7 @@ async def delete_object(key: str) -> None:
     try:
         async with _client_context() as client:
             await client.delete_object(
-                Bucket=settings.minio_bucket,
+                Bucket=settings.storage_bucket,
                 Key=key,
             )
     except ClientError as exc:
@@ -265,7 +300,7 @@ async def delete_object(key: str) -> None:
         logger.error("storage_delete_failed", key=key, error=str(exc))
         raise StorageError(f"Failed to delete {key}: {exc}") from exc
 
-    logger.info("storage_deleted", key=key, bucket=settings.minio_bucket)
+    logger.info("storage_deleted", key=key, bucket=settings.storage_bucket)
 
 
 async def generate_presigned_url(
@@ -276,9 +311,11 @@ async def generate_presigned_url(
 ) -> str:
     """Generate a presigned GET URL for downloading the object.
 
-    The URL is signed with the backend service account; the caller does
-    not need any MinIO credentials. Used for 302 redirects from auth
-    and public download endpoints.
+    The URL is signed with the backend service account for the PUBLIC
+    storage address (settings.storage_public_url), so the browser can open
+    it directly; the caller needs no storage credentials. Returned as JSON
+    by the attachment, KYC and roadmap-cover endpoints, and opened by the
+    frontend as a navigation.
 
     Args:
         key: Object key.
@@ -289,18 +326,18 @@ async def generate_presigned_url(
             the object instead of rendering it inline. This is the
             primary defence against stored-XSS through an SVG/HTML
             payload uploaded under a "trusted" extension (Round 4
-            SEC-01). MinIO honours the boto3 `ResponseContentDisposition`
+            SEC-01). The storage honours the boto3 `ResponseContentDisposition`
             param by adding `response-content-disposition=...` to the
             signed URL, so the browser sees the header on GET.
 
     Returns:
-        Full HTTPS URL.
+        Full URL on the public storage address.
 
     Raises:
         StorageError: On any upstream failure.
     """
     params: dict[str, str] = {
-        "Bucket": settings.minio_bucket,
+        "Bucket": settings.storage_bucket,
         "Key": key,
     }
     if download_filename:
@@ -312,7 +349,7 @@ async def generate_presigned_url(
         )
 
     try:
-        async with _client_context() as client:
+        async with _presign_client_context() as client:
             url = await client.generate_presigned_url(
                 "get_object",
                 Params=params,
@@ -331,14 +368,14 @@ async def object_exists(key: str) -> bool:
     Returns False on a missing KEY in a healthy bucket. Raises
     StorageError on a missing BUCKET or any other upstream failure.
 
-    Implementation note: MinIO's head_object returns HTTP 404 for both
+    Implementation note: the storage's head_object returns HTTP 404 for both
     "key missing" and "bucket missing", so we disambiguate by probing
     head_bucket on every 404. One extra round-trip in the negative path.
     """
     async with _client_context() as client:
         try:
             await client.head_object(
-                Bucket=settings.minio_bucket,
+                Bucket=settings.storage_bucket,
                 Key=key,
             )
             return True
@@ -346,7 +383,7 @@ async def object_exists(key: str) -> bool:
             if not _is_key_not_found(exc):
                 logger.error("storage_head_failed", key=key, error=str(exc))
                 raise StorageError(f"Failed to HEAD {key}: {exc}") from exc
-            # Got a "key not found"-style code. On MinIO this also fires
+            # Got a "key not found"-style code. On the storage this also fires
             # for missing buckets -- verify the bucket independently.
             # _assert_bucket_exists raises StorageError if the bucket is
             # missing; otherwise execution continues and we return False.
@@ -372,7 +409,7 @@ async def get_object_metadata(key: str) -> dict[str, Any]:
     async with _client_context() as client:
         try:
             response = await client.head_object(
-                Bucket=settings.minio_bucket,
+                Bucket=settings.storage_bucket,
                 Key=key,
             )
         except ClientError as exc:
@@ -396,13 +433,13 @@ async def get_object_bytes(key: str) -> bytes:
     WARNING: loads the entire object into memory. Suitable for templates
     and metadata files (typically under 2 MB). For arbitrary attachments,
     prefer generate_presigned_url() so the client downloads directly
-    from MinIO without going through the backend process.
+    from the storage without going through the backend process.
 
     Used by the templates module (Refactor 2 iter 2.2 §4.4) to render
-    HTML stored in MinIO, and by reconcile scripts that need to inspect
+    HTML stored in the storage, and by reconcile scripts that need to inspect
     companion `.cbsmeta.json` files.
 
-    GetObject on MinIO reports NoSuchBucket explicitly (not as a generic
+    GetObject on the storage reports NoSuchBucket explicitly (not as a generic
     404), so we don't need head_bucket disambiguation here.
 
     Raises:
@@ -412,7 +449,7 @@ async def get_object_bytes(key: str) -> bytes:
     try:
         async with _client_context() as client:
             response = await client.get_object(
-                Bucket=settings.minio_bucket,
+                Bucket=settings.storage_bucket,
                 Key=key,
             )
             # Body is a StreamingBody (async). Read fully then close.
@@ -453,7 +490,7 @@ async def list_objects(prefix: str) -> list[str]:
         async with _client_context() as client:
             paginator = client.get_paginator("list_objects_v2")
             page_iter: AsyncIterator[dict[str, Any]] = paginator.paginate(
-                Bucket=settings.minio_bucket,
+                Bucket=settings.storage_bucket,
                 Prefix=prefix,
             )
             async for page in page_iter:

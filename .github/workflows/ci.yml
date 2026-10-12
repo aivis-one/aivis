@@ -116,18 +116,18 @@ jobs:
       # one database while testing another.
       DATABASE_URL: postgresql+asyncpg://aivis:aivis@127.0.0.1:5432/aivis_test
       REDIS_URL: redis://127.0.0.1:6379/0
-      MINIO_ENDPOINT: http://127.0.0.1:9000
+      STORAGE_ENDPOINT: http://127.0.0.1:9000
       # Root credentials, and this is the one place CI differs from
       # compose on purpose: compose mints a service account for the
       # backend so that the root key never reaches the application. That
       # boundary protects a long-lived stand. This container lives for
       # one job and is destroyed with the runner, so the account it would
       # protect does not outlast the thing it protects against.
-      MINIO_ACCESS_KEY: ciminioroot
-      MINIO_SECRET_KEY: ciminiorootsecret
+      STORAGE_ACCESS_KEY: ciminioroot
+      STORAGE_SECRET_KEY: ciminiorootsecret
       MINIO_ROOT_USER: ciminioroot
       MINIO_ROOT_PASSWORD: ciminiorootsecret
-      MINIO_BUCKET: aivis-attachments
+      STORAGE_BUCKET: aivis-attachments
       # COMMS_API_URL is deliberately UNSET. A box without comms is a
       # supported configuration (backend/app/core/config.py:395-403), and
       # since the three tests that used to read this variable now pin
@@ -172,8 +172,8 @@ jobs:
         run: |
           set -euo pipefail
           for var in APP_ENV SECRET_KEY DATABASE_URL REDIS_URL \
-                     MINIO_ENDPOINT MINIO_ACCESS_KEY MINIO_SECRET_KEY \
-                     MINIO_BUCKET; do
+                     STORAGE_ENDPOINT STORAGE_ACCESS_KEY STORAGE_SECRET_KEY \
+                     STORAGE_BUCKET; do
             if [ -z "${!var:-}" ]; then
               echo "::error::$var is unset or empty"
               exit 1
@@ -235,7 +235,7 @@ jobs:
         run: |
           docker run --rm --network host --entrypoint sh "$MC_IMAGE" -c "
             mc alias set backend http://127.0.0.1:9000 \
-              '$MINIO_ACCESS_KEY' '$MINIO_SECRET_KEY' &&
+              '$STORAGE_ACCESS_KEY' '$STORAGE_SECRET_KEY' &&
             mc ls backend/aivis-attachments &&
             mc ls backend/aivis-attachments-test
           "

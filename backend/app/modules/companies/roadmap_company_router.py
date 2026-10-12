@@ -74,6 +74,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.body_limit import upload_body_limit
+from app.core.config import settings
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import BadRequestError
 from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
@@ -140,7 +141,12 @@ async def list_own_roadmap_endpoint(
     """
     _profile, roadmap_items, posts_map = await get_company_detail(company.id, session)
     return [
-        await build_roadmap_item_response(item, posts_map.get(item.post_id), session)
+        await build_roadmap_item_response(
+            item,
+            posts_map.get(item.post_id),
+            session,
+            cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        )
         for item in roadmap_items
     ]
 
@@ -174,7 +180,12 @@ async def create_own_roadmap_item_endpoint(
         post_id=body.post_id,
         linked_product_id=body.linked_product_id,
     )
-    return await build_roadmap_item_response(item, None, session)
+    return await build_roadmap_item_response(
+        item,
+        None,
+        session,
+        cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+    )
 
 
 # NOTE: reorder MUST be declared before {item_id} routes to prevent
@@ -191,7 +202,15 @@ async def reorder_own_roadmap_endpoint(
 ) -> list[RoadmapItemResponse]:
     """Reorder the caller's own roadmap items."""
     items = await reorder_own_roadmap(company.id, body.item_ids, company.user_id, session)
-    return [await build_roadmap_item_response(item, None, session) for item in items]
+    return [
+        await build_roadmap_item_response(
+            item,
+            None,
+            session,
+            cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        )
+        for item in items
+    ]
 
 
 @router.patch(
@@ -227,7 +246,12 @@ async def update_own_roadmap_item_endpoint(
         post_id=updates.get("post_id", ...),
         linked_product_id=updates.get("linked_product_id", ...),
     )
-    return await build_roadmap_item_response(item, None, session)
+    return await build_roadmap_item_response(
+        item,
+        None,
+        session,
+        cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+    )
 
 
 @router.delete(
@@ -279,7 +303,12 @@ async def set_own_roadmap_cover_endpoint(
         content_type=content_type,
         file_extension=ext,
     )
-    return await build_roadmap_item_response(item, None, session)
+    return await build_roadmap_item_response(
+        item,
+        None,
+        session,
+        cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+    )
 
 
 @router.delete(

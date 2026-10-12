@@ -36,7 +36,7 @@
 # types the staff (attachments_staff_router.py) and auth-flow
 # (attachments_router.py) surfaces use -- none of them carry company_id
 # or any staff-only field. The response type is the plain AttachmentResponse
-# (NOT StaffAttachmentResponse): storage_key is an internal MinIO path
+# (NOT StaffAttachmentResponse): storage_key is an internal storage path
 # with no operational meaning to the project itself (downloads go through
 # the presigned-URL endpoint on attachments_router.py, not the raw key),
 # created_by_id is audit-only identity the project already knows (it's
@@ -59,7 +59,7 @@
 # NO HARD DELETE (Q-ATT-1, restated for self-service):
 #   attachments_staff_router.py's hard-delete endpoint requires project_manage
 #   PLUS a full is_admin() check specifically because it is irreversible
-#   (drops the row AND the MinIO object) -- its own docstring notes that
+#   (drops the row AND the storage object) -- its own docstring notes that
 #   "soft-delete is sufficient for almost every operational case" even
 #   for staff. A project has no admin-equivalent escalation path to
 #   recover from its own mistake the way staff can hand a hard-delete
@@ -204,7 +204,7 @@ async def list_own_attachments_endpoint(
     response_model=AttachmentResponse,
     status_code=status.HTTP_201_CREATED,
 )
-@upload_body_limit(files=1, per_file_bytes=settings.minio_max_file_size_bytes)
+@upload_body_limit(files=1, per_file_bytes=settings.storage_max_file_size_bytes)
 async def create_own_attachment_endpoint(
     metadata: str = Form(...),
     file: UploadFile = File(...),
@@ -310,7 +310,7 @@ async def patch_own_attachment_endpoint(
     "/{attachment_id}/replace",
     response_model=AttachmentResponse,
 )
-@upload_body_limit(files=1, per_file_bytes=settings.minio_max_file_size_bytes)
+@upload_body_limit(files=1, per_file_bytes=settings.storage_max_file_size_bytes)
 async def replace_own_attachment_endpoint(
     attachment_id: UUID,
     file: UploadFile = File(...),
@@ -352,7 +352,7 @@ async def soft_delete_own_attachment_endpoint(
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    """Mark an own attachment as deleted (is_deleted=True). MinIO object
+    """Mark an own attachment as deleted (is_deleted=True). storage object
     stays. 404 (never 403) on cross-company attachment_id.
 
     No hard-delete counterpart exists on this router -- see the module

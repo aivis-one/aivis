@@ -6,7 +6,7 @@
 #   GET /api/v1/companies/{company_id}/attachments
 #       -> list[AttachmentResponse]                                       (200)
 #   GET /api/v1/companies/{company_id}/attachments/{att_id}/download
-#       -> 302 Location: <presigned URL>                                  (302)
+#       -> {"url", "ttl_seconds"}: presigned link on the public storage address
 #
 # AUTH:
 #   Both endpoints require an authenticated user (any role) via
@@ -36,8 +36,7 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -45,7 +44,10 @@ from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
 from app.core.storage import generate_presigned_url
 from app.modules.auth.dependencies import get_current_user
-from app.modules.companies.schemas import AttachmentResponse
+from app.modules.companies.schemas import (
+    AttachmentDownloadURLResponse,
+    AttachmentResponse,
+)
 from app.modules.companies.service import (
     get_attachment,
     get_company,
@@ -97,19 +99,20 @@ async def list_attachments_endpoint(
 
 @router.get(
     "/{company_id}/attachments/{attachment_id}/download",
-    status_code=status.HTTP_302_FOUND,
+    response_model=AttachmentDownloadURLResponse,
 )
 async def download_attachment_endpoint(
     company_id: UUID,
     attachment_id: UUID,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
-) -> RedirectResponse:
-    """Issue a 302 redirect to a presigned MinIO URL.
+) -> AttachmentDownloadURLResponse:
+    """Return a presigned link to the attachment, signed for the public
+    storage address; the frontend opens it as a navigation (H32 P-121).
 
-    TTL is settings.minio_presigned_ttl_auth (default 900s = 15 min).
+    TTL is settings.storage_presigned_ttl_auth (default 900s = 15 min).
     Hidden / deleted / cross-company attachments return 404 -- never
-    302 -- so the auth-flow contract matches the list filter.
+    a link -- so the auth-flow contract matches the list filter.
     """
     attachment = await get_attachment(session, company_id, attachment_id)
 
@@ -123,7 +126,7 @@ async def download_attachment_endpoint(
     # instead of executing any active content inside it.
     url = await generate_presigned_url(
         attachment.storage_key,
-        ttl_seconds=settings.minio_presigned_ttl_auth,
+        ttl_seconds=settings.storage_presigned_ttl_auth,
         download_filename=attachment.original_filename,
     )
 
@@ -132,7 +135,9 @@ async def download_attachment_endpoint(
         attachment_id=str(attachment.id),
         company_id=str(company_id),
         user_id=str(user.id),
-        ttl_seconds=settings.minio_presigned_ttl_auth,
+        ttl_seconds=settings.storage_presigned_ttl_auth,
     )
 
-    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+    return AttachmentDownloadURLResponse(
+        url=url, ttl_seconds=settings.storage_presigned_ttl_auth
+    )

@@ -2,13 +2,13 @@
 # AIVIS.ONE Backend -- Storage Layer Tests (Refactor 2 iter 2.1)
 # =============================================================================
 #
-# Integration tests for app/core/storage.py. Run against the real MinIO
+# Integration tests for app/core/storage.py. Run against the real storage
 # instance from docker-compose (no moto, no mock) using the dedicated
-# `aivis-attachments-test` bucket created by minio-init.
+# `aivis-attachments-test` bucket created by storage-init.
 #
 # FIXTURE LIFECYCLE:
 #   use_test_bucket (autouse, function-scoped):
-#       1. Monkeypatch settings.minio_bucket -> "aivis-attachments-test".
+#       1. Monkeypatch settings.storage_bucket -> "aivis-attachments-test".
 #       2. Wipe the bucket (list + delete every object).
 #       3. Yield to the test.
 #   The post-cleanup is intentionally skipped: pre-cleanup on the next
@@ -68,7 +68,7 @@ async def use_test_bucket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> AsyncGenerator[None, None]:
     """Point storage at the test bucket and wipe it before each test."""
-    monkeypatch.setattr(settings, "minio_bucket", TEST_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", TEST_BUCKET)
 
     # Drain the bucket -- previous test runs may have left objects.
     keys = await list_objects("")
@@ -218,7 +218,7 @@ async def test_delete_object_idempotent_when_missing() -> None:
 async def test_generate_presigned_url_works() -> None:
     """Presigned URL fetches the object body without any auth headers.
 
-    Validates the full round-trip through MinIO -- if the URL is
+    Validates the full round-trip through the storage -- if the URL is
     malformed, the signature is wrong, or the endpoint is unreachable,
     httpx will surface it.
     """
@@ -280,7 +280,7 @@ async def test_upload_to_nonexistent_bucket_raises_storage_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """upload_object on a non-existent bucket raises StorageError."""
-    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", MISSING_BUCKET)
 
     with pytest.raises(StorageError):
         await upload_object("any-key", b"x", "text/plain")
@@ -299,10 +299,10 @@ async def test_delete_object_raises_storage_error_on_missing_bucket(
     """delete_object on a non-existent bucket raises StorageError, NOT silent no-op.
 
     Regression guard: NoSuchBucket must NOT be confused with NoSuchKey.
-    A missing bucket is a misconfiguration (typo in MINIO_BUCKET, failed
-    minio-init) and must be surfaced.
+    A missing bucket is a misconfiguration (typo in STORAGE_BUCKET, failed
+    storage-init) and must be surfaced.
     """
-    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", MISSING_BUCKET)
 
     with pytest.raises(StorageError):
         await delete_object("any-key")
@@ -319,7 +319,7 @@ async def test_object_exists_raises_storage_error_on_missing_bucket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """object_exists on a non-existent bucket raises StorageError, NOT False."""
-    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", MISSING_BUCKET)
 
     with pytest.raises(StorageError):
         await object_exists("any-key")
@@ -340,7 +340,7 @@ async def test_get_object_metadata_raises_storage_error_on_missing_bucket(
     The two exception types must stay distinct so callers can tell the
     difference between "key missing in healthy bucket" and "stack broken".
     """
-    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", MISSING_BUCKET)
 
     with pytest.raises(StorageError) as exc_info:
         await get_object_metadata("any-key")
@@ -358,7 +358,7 @@ async def test_get_object_bytes_raises_storage_error_on_missing_bucket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """get_object_bytes on a missing bucket raises StorageError, NOT StorageNotFoundError."""
-    monkeypatch.setattr(settings, "minio_bucket", MISSING_BUCKET)
+    monkeypatch.setattr(settings, "storage_bucket", MISSING_BUCKET)
 
     with pytest.raises(StorageError) as exc_info:
         await get_object_bytes("any-key")

@@ -6,7 +6,7 @@
 #   GET /api/v1/public/companies/{company_id}/attachments
 #       -> list[AttachmentResponse]                                       (200)
 #   GET /api/v1/public/companies/{company_id}/attachments/{att_id}/download
-#       -> 302 Location: <presigned URL>                                  (302)
+#       -> {"url", "ttl_seconds"}: presigned link on the public storage address
 #
 # VISIBILITY (R2 §3.4):
 #   Both endpoints require is_public = True AND is_published = True
@@ -24,7 +24,7 @@
 #   download bucket through list spam, and vice versa).
 #
 # PRESIGNED URL TTL:
-#   settings.minio_presigned_ttl_public (default 86400s = 24h). Long TTL
+#   settings.storage_presigned_ttl_public (default 86400s = 24h). Long TTL
 #   matches the marketing use case -- a Staff member shares the URL on
 #   LinkedIn, the link must work for the rest of the day at least.
 #
@@ -35,8 +35,7 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.client_ip import get_client_ip
@@ -49,7 +48,10 @@ from app.modules.companies.constants import (
     PUBLIC_DOWNLOAD_RATE_LIMIT,
     PUBLIC_LIST_RATE_LIMIT,
 )
-from app.modules.companies.schemas import AttachmentResponse
+from app.modules.companies.schemas import (
+    AttachmentDownloadURLResponse,
+    AttachmentResponse,
+)
 from app.modules.companies.service import (
     get_attachment,
     get_company,
@@ -120,17 +122,17 @@ async def list_public_attachments_endpoint(
 
 @router.get(
     "/{company_id}/attachments/{attachment_id}/download",
-    status_code=status.HTTP_302_FOUND,
+    response_model=AttachmentDownloadURLResponse,
 )
 async def download_public_attachment_endpoint(
     company_id: UUID,
     attachment_id: UUID,
     request: Request,
     session: AsyncSession = Depends(get_db_reader),
-) -> RedirectResponse:
-    """Issue a 302 redirect to a presigned MinIO URL. No authentication.
+) -> AttachmentDownloadURLResponse:
+    """Return a presigned link to the attachment. No authentication.
 
-    TTL is settings.minio_presigned_ttl_public (default 24h). Hidden,
+    TTL is settings.storage_presigned_ttl_public (default 24h). Hidden,
     private, soft-deleted, or cross-company attachments -- all return
     404 (not 403), matching R2 §3.4 so a probe can't distinguish "the
     attachment exists but is private" from "it doesn't exist".
@@ -156,7 +158,7 @@ async def download_public_attachment_endpoint(
     # widest blast radius (24h TTL, no auth) so the same defence applies.
     url = await generate_presigned_url(
         attachment.storage_key,
-        ttl_seconds=settings.minio_presigned_ttl_public,
+        ttl_seconds=settings.storage_presigned_ttl_public,
         download_filename=attachment.original_filename,
     )
 
@@ -165,7 +167,9 @@ async def download_public_attachment_endpoint(
         attachment_id=str(attachment.id),
         company_id=str(company_id),
         ip=ip,
-        ttl_seconds=settings.minio_presigned_ttl_public,
+        ttl_seconds=settings.storage_presigned_ttl_public,
     )
 
-    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+    return AttachmentDownloadURLResponse(
+        url=url, ttl_seconds=settings.storage_presigned_ttl_public
+    )
