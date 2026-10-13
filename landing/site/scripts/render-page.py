@@ -1228,6 +1228,18 @@ def tile_link(href, icon, label, cls="icon icon--soc", rel="me noopener"):
             % (href, rel, at(label), at(label), ic("soc-" + icon, cls + " icon--soc-" + esc(icon))))
 
 
+_FLAG_GE_PETAL = ('<path d="M-0.7032-2.046a5.4 5.4 0 0 0 1.4064 0 10.4 10.4 0 0 0 0 4.092 5.4 5.4 0 0 0-1.4064 0 10.4 10.4 0 0 0 0-4.092z"/>'
+                  '<path transform="rotate(90)" d="M-0.7032-2.046a5.4 5.4 0 0 0 1.4064 0 10.4 10.4 0 0 0 0 4.092 5.4 5.4 0 0 0-1.4064 0 10.4 10.4 0 0 0 0-4.092z"/>')
+FLAG_GE = ('<svg class="flag-ge" viewBox="-14 -14 28 28" width="28" height="28" role="img" aria-label="%s" focusable="false">'
+           '<defs><clipPath id="flag-ge-disc"><circle r="14"/></clipPath></defs><g clip-path="url(#flag-ge-disc)">'
+           '<rect x="-14" y="-14" width="28" height="28" fill="#ffffff"/><g fill="#ff0000">'
+           '<rect x="-2" y="-14" width="4" height="28"/><rect x="-14" y="-2" width="28" height="4"/>'
+           + "".join('<g transform="translate(%d %d) scale(.9)">%s</g>' % (x, y, _FLAG_GE_PETAL)
+                     for x, y in ((-7, -7), (7, -7), (-7, 7), (7, 7)))
+           + '</g></g><circle class="flag-frame" r="13.5"/></svg>')
+FLAG_GE_LABEL = {"en": "Flag of Georgia", "ru": "Флаг Грузии"}
+
+
 def r_home_footer(sec, c, site):
     """The footer (footer.md section 3, restructured on his word of 2026-10-02): the single contentinfo, a
     direct child of body. TOP the information (brand, sections, legal); BELOW it ONE contacts block with two
@@ -1281,7 +1293,8 @@ def r_home_footer(sec, c, site):
         '<ul class="social">%s</ul><p class="foot__who">%s</p></section>'
         % (T(g("me.title")), "".join("<li>%s</li>" % x for x in me_tiles), T(g("me.name"))),
         '</div>',
-        '<div class="foot__bottom"><p>%s</p><p>%s</p></div></div></footer>' % (T(g("company")), T(g("copyright"))),
+        '<div class="foot__bottom"><p class="foot__co">%s<span>%s</span></p><p>%s</p></div></div></footer>'
+        % (FLAG_GE % FLAG_GE_LABEL.get(loc, FLAG_GE_LABEL["en"]), T(g("company")), T(g("copyright"))),
     ])
 
 
