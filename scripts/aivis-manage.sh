@@ -1958,22 +1958,38 @@ NGINX_FILES
 # SITE_ROOT, which the apex's nginx block serves. Two steps, so that the
 # install can run them before nginx has any site block:
 #   build    python3 only, standard library: the site, then the four courses
-#            (landing/README.md "Build"). The legal pages are NOT rebuilt:
-#            landing/legal/out/ is tracked and the site build reads it; a
-#            rebuild here would rewrite tracked files whenever the committed
-#            copy lagged the sources, and the next `git pull` would meet them.
+#            (landing/README.md "Build"). The legal pages are NOT written
+#            into the checkout: landing/legal/out/ is tracked and the site
+#            build reads it. They are rebuilt into a temporary folder and
+#            compared with out/; a difference REFUSES the build.
 #   publish  copies landing/site/dist to SITE_ROOT (without the Pages control
-#            files, which are not content) and writes SITE_HEADERS_SNIPPET from
-#            dist/_headers. The copy replaces the old tree in two renames.
+#            files, which are not content) into a release folder, writes
+#            SITE_HEADERS_SNIPPET from dist/_headers, tests nginx, and flips
+#            the SITE_ROOT symlink atomically.
 # `aivis update` runs both on every cycle, --frontend-only included, then
 # reloads nginx: the CSP lists a hash for every inline block, so a new page
 # build needs the new snippet in the same moment.
 site_build() {
-    local landing="$COMPOSE_DIR/landing"
+    local landing="$COMPOSE_DIR/landing" legal_tmp
     if ! command -v python3 > /dev/null 2>&1; then
         echo -e "${RED}✗ python3 is not installed -- the site cannot be built${NC}" >&2
         return 1
     fi
+    # The legal pages are not written into the checkout (landing/legal/out/ is
+    # tracked), but a legal source committed without its out/ would ship old
+    # pages silently: rebuild into a temporary folder and refuse on a difference.
+    legal_tmp=$(mktemp -d) || return 1
+    if ! (cd "$landing/legal" && python3 build.py --out "$legal_tmp" > /dev/null 2>&1); then
+        rm -rf "$legal_tmp"
+        echo -e "${RED}✗ The legal pages do not build from their sources (cd landing/legal && python3 build.py) -- nothing was published${NC}" >&2
+        return 1
+    fi
+    if ! diff -r "$legal_tmp" "$landing/legal/out" > /dev/null 2>&1; then
+        rm -rf "$legal_tmp"
+        echo -e "${RED}✗ landing/legal/out is out of date against the legal sources -- rebuild it (cd landing/legal && python3 build.py), commit it, then update again. Nothing was published.${NC}" >&2
+        return 1
+    fi
+    rm -rf "$legal_tmp"
     echo "Building the company site..."
     rm -rf "$landing/site/dist"
     (cd "$landing/site" && python3 scripts/build-site.py \
@@ -2019,28 +2035,72 @@ render_site_headers() {
     ' || { echo "a _headers value cannot be written as an nginx string" >&2; return 1; }
 }
 
+# The published tree is a RELEASE folder, and SITE_ROOT is a symlink to the
+# live release (nginx's root points at the symlink). Order: write the new
+# headers snippet and run `nginx -t` on it -- on failure the old snippet is
+# put back and nothing is swapped; then the symlink is flipped atomically
+# (`ln -sfn` to a temporary link, `mv -T` over SITE_ROOT). The previous
+# release stays beside it for rollback; older ones are removed.
 site_publish() {
-    local src="$COMPOSE_DIR/landing/site/dist" snippet_tmp
+    local src="$COMPOSE_DIR/landing/site/dist" snippet_tmp snippet_old="" releases rel stamp
+    releases="${SITE_ROOT}-releases"
     if [ ! -f "$src/index.html" ]; then
         echo -e "${RED}✗ $src has no index.html -- run: aivis site build${NC}" >&2
         return 1
     fi
     snippet_tmp="${SITE_HEADERS_SNIPPET}.new"
-    mkdir -p "$(dirname "$SITE_HEADERS_SNIPPET")" "$(dirname "$SITE_ROOT")"
+    mkdir -p "$(dirname "$SITE_HEADERS_SNIPPET")" "$releases" || return 1
     render_site_headers "$src/_headers" > "$snippet_tmp" || { rm -f "$snippet_tmp"; return 1; }
     if ! grep -q '^add_header Content-Security-Policy ' "$snippet_tmp"; then
         rm -f "$snippet_tmp"
         echo -e "${RED}✗ _headers has no Content-Security-Policy -- refusing to publish a site without it${NC}" >&2
         return 1
     fi
-    rm -rf "${SITE_ROOT}.new" "${SITE_ROOT}.old"
-    cp -a "$src" "${SITE_ROOT}.new"
-    rm -f "${SITE_ROOT}.new/_headers" "${SITE_ROOT}.new/_redirects" "${SITE_ROOT}.new/cloudflare-redirect-rule.txt"
-    [ -d "$SITE_ROOT" ] && mv "$SITE_ROOT" "${SITE_ROOT}.old"
-    mv "${SITE_ROOT}.new" "$SITE_ROOT"
-    mv "$snippet_tmp" "$SITE_HEADERS_SNIPPET"
-    rm -rf "${SITE_ROOT}.old"
-    echo -e "${GREEN}✓ Site published: $SITE_ROOT (headers: $SITE_HEADERS_SNIPPET)${NC}"
+    # 1. Stage the new release next to the old ones; nothing is live yet.
+    stamp=$(date +%Y%m%d%H%M%S)
+    rel="$releases/$stamp"
+    rm -rf "$rel"
+    cp -a "$src" "$rel" || { rm -f "$snippet_tmp"; return 1; }
+    rm -f "$rel/_headers" "$rel/_redirects" "$rel/cloudflare-redirect-rule.txt"
+    # 2. New snippet in place, then nginx -t. Failure: the old snippet comes
+    #    back and the swap does not happen -- the old release stays live.
+    if [ -f "$SITE_HEADERS_SNIPPET" ]; then
+        snippet_old="${SITE_HEADERS_SNIPPET}.old"
+        cp -p "$SITE_HEADERS_SNIPPET" "$snippet_old" || { rm -rf "$rel"; rm -f "$snippet_tmp"; return 1; }
+    fi
+    mv "$snippet_tmp" "$SITE_HEADERS_SNIPPET" || { rm -rf "$rel"; return 1; }
+    # Until a server block includes the snippet nginx -t cannot say anything
+    # about it (the install publishes before it renders the block).
+    if grep -RqsF "$SITE_HEADERS_SNIPPET" "${NGINX_ETC:-/etc/nginx}/sites-enabled" "${NGINX_ETC:-/etc/nginx}/conf.d" 2> /dev/null; then
+        if ! nginx -t > /dev/null 2>&1; then
+            if [ -n "$snippet_old" ]; then
+                mv "$snippet_old" "$SITE_HEADERS_SNIPPET"
+            else
+                rm -f "$SITE_HEADERS_SNIPPET"
+            fi
+            rm -rf "$rel"
+            echo -e "${RED}✗ nginx -t failed with the new headers -- old headers and old site left in place, nothing was swapped${NC}" >&2
+            nginx -t 2>&1 | sed 's/^/    /' >&2
+            return 1
+        fi
+    fi
+    rm -f "$snippet_old"
+    # 3. A SITE_ROOT that is still a real folder (the previous layout) becomes
+    #    the first release; this is the only non-atomic moment, once.
+    if [ -d "$SITE_ROOT" ] && [ ! -L "$SITE_ROOT" ]; then
+        mv "$SITE_ROOT" "$releases/legacy-$stamp" || { rm -rf "$rel"; return 1; }
+        ln -s "$releases/legacy-$stamp" "$SITE_ROOT" || return 1
+    fi
+    # 4. The atomic flip.
+    ln -sfn "$rel" "${SITE_ROOT}.tmp-link" && mv -T "${SITE_ROOT}.tmp-link" "$SITE_ROOT" || {
+        rm -f "${SITE_ROOT}.tmp-link"
+        echo -e "${RED}✗ Could not switch $SITE_ROOT to the new release${NC}" >&2
+        return 1
+    }
+    # 5. Keep the live release and the one before it for rollback; drop older.
+    # shellcheck disable=SC2012
+    ls -1dt "$releases"/*/ 2> /dev/null | tail -n +3 | while read -r old; do rm -rf "$old"; done
+    echo -e "${GREEN}✓ Site published: $SITE_ROOT -> $rel (headers: $SITE_HEADERS_SNIPPET)${NC}"
 }
 
 case_site() {

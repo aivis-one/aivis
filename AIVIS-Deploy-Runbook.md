@@ -276,15 +276,13 @@ are what actually gate the install.
 
 ```
 curl -s https://api.aivis.one/health
-curl -s -o /dev/null -w "%{http_code}
-" https://aivis.one/
-curl -s -o /dev/null -w "%{http_code}
-" https://aivis.one/app/
+curl -s -o /dev/null -w '%{http_code}\n' https://aivis.one/
+curl -s -o /dev/null -w '%{http_code}\n' https://aivis.one/app/
 curl -sI https://aivis.one/login | head -3
 ```
 The first should return JSON with `"status":"ok"` (and `"db":"ok"`, `"redis":"ok"`). The next two
 should print `200` — the company site at `/` and the cabinet's HTML at `/app/`. The last shows a
-`302` with `location: /app/login`. A request to `https://app.aivis.one` must not answer at all.
+`302` with `location: https://aivis.one/app/login`. A request to `https://app.aivis.one` must not answer at all.
 
 **If either HTTPS `curl` above hangs, refuses the connection, or fails TLS — while `sudo certbot
 certificates` just showed a valid, non-staging lineage covering that domain — this is the specific
@@ -515,11 +513,14 @@ the network and installs comms lives in the installer, and the installer does no
 at all.
 
 **The company site ships with every update.** The frontend step ends with `aivis site deploy`:
-it builds the static site from `landing/` (python3, standard library only), copies it to
-`/var/www/aivis-site`, writes the response headers nginx sends with it
-(`/etc/nginx/snippets/aivis-site-headers.conf`, taken from the build's own `_headers`) and reloads
-nginx. It runs in `--frontend-only` mode too, together with the legal-document seed. The legal pages
-themselves are not rebuilt on the box (`landing/legal/out/` is tracked). If the site step fails the
+it builds the static site from `landing/` (python3, standard library only), copies it into a
+new release folder (`/var/www/aivis-site-releases/<time>`), writes the response headers nginx sends
+with it (`/etc/nginx/snippets/aivis-site-headers.conf`, taken from the build's own `_headers`), runs
+`nginx -t` (on failure the old headers are put back and nothing changes), flips the symlink
+`/var/www/aivis-site` to the new release in one atomic step and reloads nginx. The previous release
+is kept for rollback (point the symlink back with `ln -sfn` and `mv -T`). It runs in `--frontend-only` mode too, together with the legal-document seed. The legal pages
+themselves are not written into the checkout (`landing/legal/out/` is tracked): the build rebuilds
+them into a temporary folder and refuses, with a plain message, when that differs from `out/`. If the site step fails the
 update stops with a red line and the cabinet stays up. By hand: `aivis site build`,
 `aivis site publish`, `aivis nginx reload`.
 

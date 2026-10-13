@@ -216,13 +216,13 @@ def check(text: str) -> tuple[bool, list[str]]:
     stray = [key for key in immutable if not key.lstrip("~*").lstrip("^").startswith(("/assets/", "/app/assets/"))]
     if stray:
         ok = False
-        lines.append("`immutable` on entries not keyed to /assets/: %s" % ", ".join(stray))
+        lines.append("`immutable` on entries not keyed to /assets/ or /app/assets/: %s" % ", ".join(stray))
     if len(immutable) == len(stray):
         ok = False
-        lines.append("no /assets/ entry is `immutable` -- the hashed build lost its long cache")
+        lines.append("no /assets/ or /app/assets/ entry is `immutable` -- the hashed build lost its long cache")
     if default == "no-cache" and not stray and immutable:
         lines.append(
-            "Cache-Control from %s: default no-cache, immutable only on /assets/ (%d entries read)"
+            "Cache-Control from %s: default no-cache, immutable only on /assets/ and /app/assets/ (%d entries read)"
             % (variable, len(entries))
         )
     return ok, lines
@@ -282,7 +282,7 @@ def selftest(root: str) -> list[str]:
     refused(plant(default, '    default             "public, max-age=600";\n'),
             "a cache map whose default is not no-cache")
     refused(plant(default, default + '    ~^/fonts/           "public, immutable";\n'),
-            "`immutable` on an entry outside /assets/")
+            "`immutable` on an entry outside /assets/ and /app/assets/")
     refused("", "an empty config -- no server, nothing checked (the pair)")
     refused(real + "\nserver {\n", "a config it cannot close")
 
