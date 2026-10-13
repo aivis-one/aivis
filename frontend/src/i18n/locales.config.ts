@@ -32,8 +32,6 @@ export interface LocaleConfig {
 export const SUPPORTED_LOCALES = [
   { code: 'en', label: 'English', short: 'EN', flag: '\u{1F1EC}\u{1F1E7}', dir: 'ltr' },
   { code: 'ru', label: 'Русский', short: 'RU', flag: '\u{1F1F7}\u{1F1FA}', dir: 'ltr' },
-  { code: 'de', label: 'Deutsch', short: 'DE', flag: '\u{1F1E9}\u{1F1EA}', dir: 'ltr' },
-  { code: 'ar', label: 'العربية', short: 'AR', flag: '\u{1F1E6}\u{1F1EA}', dir: 'rtl' },
 ] as const satisfies readonly LocaleConfig[]
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]['code']

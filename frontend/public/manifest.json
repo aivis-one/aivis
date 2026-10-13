@@ -1,7 +1,7 @@
 {
   "name": "AIVIS.ONE",
   "short_name": "AIVIS.ONE",
-  "description": "Investment platform",
+  "description": "Cabinet for managing SANKORD licences and purchases",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",

@@ -37,7 +37,7 @@
     "back": "Back",
     "login": {
       "title": "Sign In",
-      "subtitle": "Sign in to AIVIS.ONE to manage your investments",
+      "subtitle": "Sign in to AIVIS.ONE to manage your SANKORD licences and purchases",
       "email": "Email",
       "password": "Password",
       "passPlaceholder": "Enter password",
@@ -63,7 +63,7 @@
     },
     "register": {
       "title": "Create Account",
-      "subtitle": "Join the AIVIS.ONE investment platform",
+      "subtitle": "Create your AIVIS.ONE account to manage SANKORD licences and purchases",
       "email": "Email",
       "password": "Password",
       "passwordHint": "Minimum 8 characters, letters and numbers",
@@ -94,11 +94,11 @@
     },
     "role": {
       "title": "Choose Your Role",
-      "subtitle": "How do you plan to use the platform?",
-      "investor": "Investor",
-      "investorDesc": "Buy products, manage your portfolio and track investments",
-      "agent": "Representative",
-      "agentDesc": "All investor features plus referral program and commissions",
+      "subtitle": "How do you plan to use the cabinet?",
+      "investor": "Buyer",
+      "investorDesc": "Buy products, manage your portfolio and track your purchases",
+      "agent": "Integrator",
+      "agentDesc": "All buyer features plus referral program and commissions",
       "company": "Company",
       "companyDesc": "List products, manage sales and earn revenue",
       "btn": "Select a role",
@@ -230,7 +230,7 @@
       "payoutDetails": "Payout details"
     },
     "awaitingConfirm": "Awaiting Confirmation",
-    "agentApps": "Representative Applications",
+    "agentApps": "Integrator Applications",
     "quickActions": "Quick Actions",
     "processKyc": "Process KYC",
     "checkPayments": "Check Payments",
@@ -261,8 +261,8 @@
       "logout": "Sign out"
     },
     "agentApps2": {
-      "title": "Representative Applications",
-      "hint": "An investor can apply for Representative status. Cooldown: 30 days after rejection. Review investment history.",
+      "title": "Integrator Applications",
+      "hint": "A buyer can apply for Integrator status. Cooldown: 30 days after rejection. Review purchase history.",
       "approved": "Application approved",
       "rejected": "Application rejected",
       "approve": "Approve",
@@ -302,7 +302,7 @@
     },
     "avatar": {
       "title": "Avatar Mode",
-      "subtitle": "View the platform as the user sees it",
+      "subtitle": "View the cabinet as the user sees it",
       "selectUser": "Select user",
       "portfolio": "portfolio",
       "referrals": "referrals",
@@ -426,9 +426,9 @@
           "fieldTotalSupply": "Total supply",
           "fieldSharesPerOption": "Shares per option",
           "fieldCompanyPct": "Company share (%)",
-          "fieldAgentLevels": "Representative commission levels (%, comma-separated)",
+          "fieldAgentLevels": "Integrator commission levels (%, comma-separated)",
           "agentLevelsError": "Enter numbers between 0 and 100, separated by commas",
-          "distributionSumError": "Company share plus Representative levels cannot exceed 100%",
+          "distributionSumError": "Company share plus Integrator levels cannot exceed 100%",
           "alreadyCompanyError": "This user is already a company",
           "success": "Company assigned"
         },
@@ -445,9 +445,9 @@
           "fieldTotalSupply": "Total supply",
           "fieldSharesPerOption": "Shares per option",
           "fieldCompanyPct": "Company share (%)",
-          "fieldAgentLevels": "Representative commission levels (%, comma-separated)",
+          "fieldAgentLevels": "Integrator commission levels (%, comma-separated)",
           "agentLevelsError": "Enter numbers between 0 and 100, separated by commas",
-          "distributionSumError": "Company share plus Representative levels cannot exceed 100%",
+          "distributionSumError": "Company share plus Integrator levels cannot exceed 100%",
           "success": "Company created — entering avatar mode..."
         }
       },
@@ -667,8 +667,8 @@
     "pack": "pack",
     "available": "available",
     "market": {
-      "title": "Marketplace",
-      "subtitle": "Available Investment Products",
+      "title": "Market",
+      "subtitle": "Available products",
       "filter": {
         "all": "All companies",
         "company": "Company",
@@ -679,7 +679,7 @@
       },
       "empty": {
         "title": "No products available",
-        "desc": "Check back later for new investment opportunities",
+        "desc": "Check back later for new products",
         "filteredTitle": "No products for this company",
         "filteredDesc": "Try another filter or clear it"
       },
@@ -1012,7 +1012,7 @@
         "products": "Products",
         "units": "Units",
         "companies": "Companies",
-        "empty": "No investments yet",
+        "empty": "No purchases yet",
         "emptyCta": "Browse the market"
       },
       "balance": {
@@ -1057,7 +1057,7 @@
       "totalValue": "Total value",
       "products": "Products",
       "units": "Units",
-      "invested": "Invested",
+      "invested": "Spent",
       "profit": "Profit",
       "position": {
         "units": "Units",
@@ -1067,7 +1067,7 @@
         "giftUnits": "Gifted"
       },
       "empty": {
-        "title": "No investments yet",
+        "title": "No purchases yet",
         "description": "Browse the market to start your portfolio.",
         "cta": "Go to market"
       },
@@ -1075,10 +1075,10 @@
     },
     "companyList": {
       "title": "Companies",
-      "subtitle": "Investment opportunities on the platform",
+      "subtitle": "Companies selling products",
       "empty": {
         "title": "No companies yet",
-        "subtitle": "Check back soon as new companies join the platform."
+        "subtitle": "Check back soon as new companies join."
       },
       "errorTitle": "Could not load companies",
       "errorRetry": "Retry"
@@ -1137,7 +1137,7 @@
       "aggregate": {
         "totalUnits": "Total units",
         "avgPrice": "Avg. price",
-        "invested": "Invested",
+        "invested": "Spent",
         "currentValue": "Current value",
         "saleUnits": "Purchased",
         "giftUnits": "Gifted"
@@ -1221,8 +1221,8 @@
       "title": "Settings",
       "unnamed": "No name",
       "role": {
-        "investor": "Investor",
-        "agent": "Representative",
+        "investor": "Buyer",
+        "agent": "Integrator",
         "company": "Company",
         "staff": "Staff",
         "platform": "Platform"
@@ -1252,8 +1252,8 @@
         "marketingError": "Could not update your preference"
       },
       "agent": {
-        "title": "Representative programme",
-        "apply": "Become a Representative",
+        "title": "Integrator programme",
+        "apply": "Become an Integrator",
         "reapply": "Apply again",
         "pending": "Your application is under review",
         "cooldown": "Available in {days} days",
@@ -1328,7 +1328,7 @@
             "deposits": "Deposits",
             "payments": "Payment issues",
             "commissions": "Commissions",
-            "agent_applications": "Representative applications",
+            "agent_applications": "Integrator applications",
             "withdrawals": "Withdrawals",
             "purchases": "Purchases",
             "installments": "Installment payments",
@@ -1379,7 +1379,7 @@
       },
       "settings": {
         "title": "Settings",
-        "desc": "Profile, preferences, and Representative programme"
+        "desc": "Profile, preferences, and Integrator programme"
       },
       "support": {
         "title": "Support",
@@ -1398,7 +1398,7 @@
         "desc": "Answers to common questions"
       },
       "agent": {
-        "title": "Representative programme",
+        "title": "Integrator programme",
         "desc": {
           "kycRequired": "Complete KYC to apply",
           "canApply": "Refer clients and earn commission",
@@ -1479,7 +1479,7 @@
     },
     "products": {
       "title": "Products",
-      "subtitle": "Your products on the marketplace",
+      "subtitle": "Your products on the market",
       "errorTitle": "Could not load products",
       "errorRetry": "Retry",
       "empty": {
@@ -1506,13 +1506,13 @@
         "editSuccess": "Company profile updated",
         "editError": "Could not update company profile",
         "urlFormatError": "Must start with http:// or https://",
-        "withdrawCta": "Withdraw from marketplace",
-        "withdrawConfirmTitle": "Withdraw from marketplace?",
-        "withdrawConfirmBody": "Your project will be hidden from investors immediately. Only an AIVIS admin can republish it afterward.",
+        "withdrawCta": "Withdraw from the market",
+        "withdrawConfirmTitle": "Withdraw from the market?",
+        "withdrawConfirmBody": "Your project will be hidden from buyers immediately. Only an AIVIS admin can republish it afterward.",
         "withdrawConfirmSubmit": "Withdraw",
-        "withdrawSuccess": "Project withdrawn from the marketplace",
+        "withdrawSuccess": "Project withdrawn from the market",
         "withdrawError": "Could not withdraw the project",
-        "hiddenHint": "This project is hidden from the marketplace. Only an AIVIS admin can republish it.",
+        "hiddenHint": "This project is hidden from the market. Only an AIVIS admin can republish it.",
         "archivedHint": "This project is archived by an AIVIS admin."
       },
       "pricing": {
@@ -1639,7 +1639,7 @@
             "deposits": "Deposits",
             "payments": "Payment issues",
             "commissions": "Commissions",
-            "agent_applications": "Representative applications",
+            "agent_applications": "Integrator applications",
             "withdrawals": "Withdrawals",
             "purchases": "Purchases",
             "installments": "Installment payments",
@@ -1682,7 +1682,7 @@
     },
     "roadmap": {
       "title": "Roadmap",
-      "subtitle": "Milestones, events, and announcements shown to investors",
+      "subtitle": "Milestones, events, and announcements shown to buyers",
       "errorTitle": "Could not load roadmap",
       "errorRetry": "Retry",
       "empty": "No roadmap items yet",
@@ -1730,7 +1730,7 @@
     },
     "posts": {
       "title": "Posts",
-      "subtitle": "News and updates investors see on your project page",
+      "subtitle": "News and updates buyers see on your project page",
       "errorTitle": "Failed to load posts",
       "errorRetry": "Retry",
       "empty": "No posts yet",
@@ -1758,7 +1758,7 @@
     },
     "attachments": {
       "title": "Attachments",
-      "subtitle": "Documents and images shown to investors",
+      "subtitle": "Documents and images shown to buyers",
       "errorTitle": "Could not load attachments",
       "errorRetry": "Retry",
       "empty": "No attachments yet",
@@ -1776,7 +1776,7 @@
       "categoryHint": "Lowercase path, e.g. legal/incorporation. Up to 5 levels separated by /.",
       "categoryError": "Category must be lowercase letters, numbers, - or _, with / between up to 5 levels.",
       "fieldLanguage": "Language",
-      "fieldPublished": "Visible to investors",
+      "fieldPublished": "Visible to buyers",
       "fieldPublic": "Public (downloadable without sign-in)",
       "fieldFile": "File",
       "fieldReplaceFile": "Replace file",
@@ -1953,7 +1953,7 @@
   },
   "agent": {
     "dashboard": {
-      "title": "Representative Dashboard",
+      "title": "Integrator Dashboard",
       "subtitle": "Your performance at a glance",
       "widgets": {
         "monthCommission": "Commission this month",
@@ -1976,7 +1976,7 @@
       }
     },
     "hub": {
-      "title": "Representative Hub",
+      "title": "Integrator Hub",
       "subtitle": "Your referral links and earnings",
       "stats": {
         "title": "Overview",
@@ -2012,23 +2012,23 @@
     },
     "referrals": {
       "title": "My network",
-      "subtitle": "Investors and sub-representatives in your downline",
+      "subtitle": "Buyers and sub-integrators in your downline",
       "backLink": "Back",
       "errorTitle": "Couldn't load your network",
       "joined": "Joined",
       "level": "L{n}",
       "empty": {
         "title": "No downline yet",
-        "desc": "Investors and sub-representatives you refer will appear here as your network grows."
+        "desc": "Buyers and sub-integrators you refer will appear here as your network grows."
       },
       "investors": {
-        "title": "Investors",
+        "title": "Buyers",
         "volume": "Purchase volume"
       },
       "subAgents": {
-        "title": "Sub-representatives",
-        "recruited": "Recruited investors",
-        "directVolume": "Direct investor volume",
+        "title": "Sub-integrators",
+        "recruited": "Recruited buyers",
+        "directVolume": "Direct buyer volume",
         "ownVolume": "Own purchases"
       }
     },
@@ -2062,7 +2062,7 @@
     },
     "leaderboard": {
       "title": "Leaderboard",
-      "subtitle": "Top representatives by referral volume",
+      "subtitle": "Top integrators by referral volume",
       "backLink": "Back",
       "errorTitle": "Couldn't load the leaderboard",
       "period": "Since {date}",
@@ -2117,11 +2117,11 @@
       "subtitle": "Your network, ranking and settings",
       "network": {
         "title": "My network",
-        "desc": "Investors and sub-representatives in your downline"
+        "desc": "Buyers and sub-integrators in your downline"
       },
       "leaderboard": {
         "title": "Leaderboard",
-        "desc": "See how you rank against other representatives"
+        "desc": "See how you rank against other integrators"
       },
       "settings": {
         "title": "Settings",
@@ -2148,9 +2148,9 @@
       "title": "Settings",
       "subtitle": "Your profile and payout details",
       "backLink": "Back",
-      "unnamed": "Representative",
+      "unnamed": "Integrator",
       "role": {
-        "agent": "Representative"
+        "agent": "Integrator"
       },
       "profile": {
         "title": "Profile",
@@ -2252,7 +2252,7 @@
             "deposits": "Deposits",
             "payments": "Payment issues",
             "commissions": "Commissions",
-            "agent_applications": "Representative applications",
+            "agent_applications": "Integrator applications",
             "withdrawals": "Withdrawals",
             "purchases": "Purchases",
             "installments": "Installment payments",
@@ -2300,12 +2300,12 @@
     },
     "companyList": {
       "title": "Discover companies",
-      "subtitle": "Explore companies raising on AIVIS.ONE.",
+      "subtitle": "Explore companies selling on AIVIS.ONE.",
       "errorTitle": "Couldn't load companies",
       "errorRetry": "Try again",
       "empty": {
         "title": "No active companies yet",
-        "subtitle": "Check back soon as new companies join the platform."
+        "subtitle": "Check back soon as new companies join."
       }
     },
     "companyOverview": {
