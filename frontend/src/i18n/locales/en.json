@@ -73,7 +73,8 @@
       "btn": "Create Account",
       "hasAccount": "Already have an account?",
       "loginLink": "Sign in",
-      "consentPrefix": "By registering, you accept the",
+      "consentPrefix": "I accept the",
+      "consentRequired": "Please accept the Cabinet Terms and the Privacy Policy.",
       "consentTerms": "Cabinet Terms",
       "consentAnd": "and the",
       "consentPrivacy": "Privacy Policy"

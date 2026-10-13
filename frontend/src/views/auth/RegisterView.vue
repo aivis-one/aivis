@@ -56,6 +56,7 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
+const accepted = ref(false)
 
 // Consent line links. The cabinet terms are the static document the cabinet
 // ships under its base (public/legal/<lang>/cabinet_terms.html, the same
@@ -92,6 +93,10 @@ async function handleRegister(): Promise<void> {
 
   if (password.value.length < 8) {
     error.value = t('auth.register.passwordHint')
+    return
+  }
+  if (!accepted.value) {
+    error.value = t('auth.register.consentRequired')
     return
   }
 
@@ -197,12 +202,8 @@ async function handleRegister(): Promise<void> {
           {{ error }}
         </div>
 
-        <button class="btn btn-primary" :disabled="authStore.loading" @click="handleRegister">
-          <span v-if="authStore.loading" class="btn-spinner" />
-          <span v-else>{{ t('auth.register.btn') }}</span>
-        </button>
-
-        <p class="auth-consent">
+        <label class="auth-consent">
+          <input v-model="accepted" type="checkbox" />
           {{ t('auth.register.consentPrefix') }}
           <a :href="termsUrl" target="_blank" rel="noopener">{{
             t('auth.register.consentTerms')
@@ -212,7 +213,12 @@ async function handleRegister(): Promise<void> {
             t('auth.register.consentPrivacy')
           }}</a
           >.
-        </p>
+        </label>
+
+        <button class="btn btn-primary" :disabled="authStore.loading" @click="handleRegister">
+          <span v-if="authStore.loading" class="btn-spinner" />
+          <span v-else>{{ t('auth.register.btn') }}</span>
+        </button>
 
         <div class="auth-footer">
           <span class="auth-footer-text">{{ t('auth.register.hasAccount') }}</span>
@@ -391,6 +397,7 @@ async function handleRegister(): Promise<void> {
 }
 
 .auth-consent {
+  display: block;
   margin-top: var(--space-4);
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
