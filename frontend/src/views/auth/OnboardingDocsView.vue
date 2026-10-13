@@ -114,7 +114,7 @@ async function openDocument(doc: DocumentResponse): Promise<void> {
   viewLoading.value = true
   try {
     // Fetch the exact localised HTML the backend selected for this user.
-    const resp = await fetch(`/legal/${doc.language}/${doc.type}.html`)
+    const resp = await fetch(`${import.meta.env.BASE_URL}legal/${doc.language}/${doc.type}.html`)
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`)
     }

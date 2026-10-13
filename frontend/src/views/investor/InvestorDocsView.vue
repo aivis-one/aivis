@@ -161,7 +161,7 @@ async function openDoc(doc: DocumentResponse): Promise<void> {
   try {
     const lang = encodeURIComponent(doc.language)
     const type = encodeURIComponent(doc.type)
-    const resp = await fetch(`/legal/${lang}/${type}.html`)
+    const resp = await fetch(`${import.meta.env.BASE_URL}legal/${lang}/${type}.html`)
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`)
     }

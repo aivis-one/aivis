@@ -2,26 +2,27 @@
   "name": "AIVIS.ONE",
   "short_name": "AIVIS.ONE",
   "description": "Cabinet for managing SANKORD licences and purchases",
-  "start_url": "/",
+  "start_url": "/app/",
+  "scope": "/app/",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#0B4F86",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/app/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/app/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/favicon.svg",
+      "src": "/app/icons/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }

@@ -121,7 +121,7 @@ async function load(): Promise<void> {
   let nextUrl: string | null = null
   try {
     const lang = resolveFaqLocale(locale.value)
-    const resp = await fetch(`/faq/${lang}/investor.html`)
+    const resp = await fetch(`${import.meta.env.BASE_URL}faq/${lang}/investor.html`)
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`)
     }

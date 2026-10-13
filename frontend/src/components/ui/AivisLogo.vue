@@ -23,13 +23,15 @@ withDefaults(
     showText: true,
   },
 )
+
+const baseUrl = import.meta.env.BASE_URL
 </script>
 
 <template>
   <span class="aivis-logo">
     <img
       class="aivis-logo-icon"
-      src="/aivis-mark.svg"
+      :src="`${baseUrl}aivis-mark.svg`"
       alt="AIVIS"
       :style="{ width: height + 'px', height: height + 'px' }"
     />

@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
+  // Row 31: the cabinet is served under aivis.one/app/. Vite prefixes every
+  // asset URL and import.meta.env.BASE_URL becomes '/app/'.
+  base: '/app/',
   plugins: [
     vue(),
     // PWA — Sprint F0.4

@@ -2,12 +2,14 @@
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+
+const baseUrl = import.meta.env.BASE_URL
 </script>
 
 <template>
   <div class="home">
     <div class="home-logo">
-      <img src="/aivis-mark.svg" alt="AIVIS" />
+      <img :src="`${baseUrl}aivis-mark.svg`" alt="AIVIS" />
     </div>
     <h1 class="home-title">
       {{ t('app.name') }}

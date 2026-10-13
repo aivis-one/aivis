@@ -15,7 +15,7 @@
 //        (b) Telegram start_param via platform.getStartParam() -- unchanged.
 //        (c) URL path: `/r/<code>` (R1 referral patch §A6) -- NEW.
 //      The path match is a sibling source: the visitor types
-//      app.aivis.one/r/AGENT_CODE in their browser, captureReferralFromPath()
+//      aivis.one/app/r/AGENT_CODE in their browser, captureReferralFromPath()
 //      is called from the /r/:code beforeEnter and also from this
 //      initAuth-time scan to cover the case where the app hot-reloads
 //      on the /r/... URL before the router boots.
@@ -48,7 +48,11 @@ import { i18n } from '@/i18n'
 // authoritative source for what counts as a valid code character set.
 // The router uses the same character class as a path constraint
 // (`/r/:code([A-Za-z0-9_-]+)`) so the two stay in sync.
-const REFERRAL_PATH_RE = /^\/r\/([A-Za-z0-9_-]+)\/?$/
+// Row 31: the cabinet lives under BASE_URL ("/app/" in the build), so the
+// browser reports "/app/r/<code>"; BASE_URL is "/" under vitest.
+const REFERRAL_PATH_RE = new RegExp(
+  `^${import.meta.env.BASE_URL.replace(/\/$/, '')}/r/([A-Za-z0-9_-]+)/?$`,
+)
 
 // ---------------------------------------------------------------------------
 // Singleton refs (shared across all consumers)
