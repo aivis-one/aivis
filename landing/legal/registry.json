@@ -5,10 +5,16 @@
     "related": {"en": "Related documents", "ru": "Связанные документы"}
   },
   "documents": [
-    {"id": "privacy", "scope": "site", "title": {"en": "Privacy policy", "ru": "Политика конфиденциальности"}, "edition": 1, "date": "2026-10-02"},
-    {"id": "terms", "scope": "site", "title": {"en": "Terms of use", "ru": "Условия использования"}, "edition": 1, "date": "2026-10-02"},
-    {"id": "imprint", "scope": "site", "title": {"en": "Company details", "ru": "Реквизиты компании"}, "edition": 1, "date": "2026-10-02"},
-    {"id": "cookies", "scope": "site", "title": {"en": "Cookie and local storage notice", "ru": "Уведомление о cookie и локальном хранилище"}, "edition": 1, "date": "2026-10-02"},
-    {"id": "licence", "scope": "site", "title": {"en": "Course licence (CC BY-NC-ND 4.0)", "ru": "Лицензия на курсы (CC BY-NC-ND 4.0)"}, "edition": 1, "date": "2026-10-02"}
+    {"id": "privacy", "scope": "site", "title": {"en": "Privacy policy", "ru": "Политика конфиденциальности"}, "edition": 2, "date": "2026-10-14"},
+    {"id": "terms", "scope": "site", "title": {"en": "Terms of use", "ru": "Условия использования"}, "edition": 2, "date": "2026-10-14"},
+    {"id": "imprint", "scope": "site", "title": {"en": "Company details", "ru": "Реквизиты компании"}, "edition": 2, "date": "2026-10-14"},
+    {"id": "cookies", "scope": "site", "title": {"en": "Cookie and local storage notice", "ru": "Уведомление о cookie и локальном хранилище"}, "edition": 2, "date": "2026-10-14"},
+    {"id": "licence", "scope": "site", "title": {"en": "Course licence (CC BY-NC-ND 4.0)", "ru": "Лицензия на курсы (CC BY-NC-ND 4.0)"}, "edition": 2, "date": "2026-10-14"},
+    {"id": "cabinet_terms", "scope": "cabinet", "roles": ["investor", "agent", "company", "staff"], "title": {"en": "Cabinet terms of use", "ru": "Условия использования кабинета"}, "edition": 1, "date": "2026-10-14"},
+    {"id": "kyc_notice", "scope": "cabinet", "roles": ["investor", "agent"], "title": {"en": "Identity verification (KYC) notice", "ru": "Уведомление о проверке личности (KYC)"}, "edition": 1, "date": "2026-10-14"},
+    {"id": "licence_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Licence purchase agreement", "ru": "Договор на покупку лицензии"}, "edition": 1, "date": "2026-10-14"},
+    {"id": "risk_disclosure", "scope": "cabinet", "roles": ["investor", "agent"], "title": {"en": "Risk disclosure for buyers and integrators", "ru": "Уведомление о рисках для покупателей и интеграторов"}, "edition": 1, "date": "2026-10-14"},
+    {"id": "integrator_agreement", "scope": "cabinet", "roles": ["agent"], "title": {"en": "Integrator agreement", "ru": "Договор интегратора"}, "edition": 1, "date": "2026-10-14"},
+    {"id": "aml_policy", "scope": "cabinet", "roles": ["investor", "agent", "company"], "title": {"en": "Anti-money-laundering policy", "ru": "Политика по противодействию отмыванию денег"}, "edition": 1, "date": "2026-10-14"}
   ]
 }

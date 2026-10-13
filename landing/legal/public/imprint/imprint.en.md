@@ -4,6 +4,8 @@
 
 - **Legal name:** {company.name}
 - **Brand:** {company.brand}
+- **Product:** {sankord.name}, a product of {company.name}
+- **Cabinet:** {company.name} runs the cabinet at {site.domain}{site.path.app} and is the seller in it
 - **Legal form:** {company.form}
 - **Country of registration:** {company.country}
 - **Identification number:** {company.id}
@@ -15,13 +17,14 @@
 
 ## Contact {#i-h-contact}
 
-- **E-mail:** {contact.email}
+- **E-mail:** {contact.general}
+- **E-mail for legal and data questions:** {contact.legal}
 - **Telegram:** [{contact.telegram_handle}]({contact.telegram_url})
-- **Website:** {site.domain}
+- **Websites:** {site.domain}, [{sankord.domain}]({sankord.url})
 
 ## Data protection {#i-h-data}
 
-- **Responsible for data protection:** The director, {company.director}
+- **Contact for questions about data:** The director, {company.director}
 - **Data protection supervisory authority:** [{authority.name}]({authority.url})
 
 Data about the company is also public in the Georgian Registry. The way we handle personal data is in the [privacy policy]({site.path.privacy}).

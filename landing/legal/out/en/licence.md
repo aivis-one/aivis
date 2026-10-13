@@ -1,6 +1,6 @@
 # Course licence (CC BY-NC-ND 4.0)
 
-Updated 2 October 2026
+Updated 14 October 2026
 
 ## What this covers
 
@@ -30,7 +30,7 @@ Give the title, the author, the source and the licence, keep the copyright and l
 
 ## Commercial use and changes
 
-Sharing an adapted version, and any other commercial use, needs our prior written permission. Write to artem.balyakno@gmail.com. While you follow the licence, we cannot withdraw it from you.
+Sharing an adapted version, and any other commercial use, needs our prior written permission. Write to legal@aivis.one. While you follow the licence, we cannot withdraw it from you.
 
 ## What the licence does not cover
 

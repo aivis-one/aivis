@@ -1,11 +1,13 @@
 # Company details
 
-Updated 2 October 2026
+Updated 14 October 2026
 
 ## The company
 
 - **Legal name:** AIVIS.ONE LLC
 - **Brand:** AIVIS.ONE
+- **Product:** SANKORD, a product of AIVIS.ONE LLC
+- **Cabinet:** AIVIS.ONE LLC runs the cabinet at aivis.one/app and is the seller in it
 - **Legal form:** limited liability company
 - **Country of registration:** Georgia
 - **Identification number:** 404804422
@@ -17,13 +19,14 @@ Updated 2 October 2026
 
 ## Contact
 
-- **E-mail:** artem.balyakno@gmail.com
+- **E-mail:** hello@aivis.one
+- **E-mail for legal and data questions:** legal@aivis.one
 - **Telegram:** [@aivisone](https://t.me/aivisone)
-- **Website:** aivis.one
+- **Websites:** aivis.one, [sankord.com](https://sankord.com)
 
 ## Data protection
 
-- **Responsible for data protection:** The director, Artem Baliakno
+- **Contact for questions about data:** The director, Artem Baliakno
 - **Data protection supervisory authority:** [State Audit Office of Georgia](https://www.sao.ge/en/)
 
 Data about the company is also public in the Georgian Registry. The way we handle personal data is in the [privacy policy](/about/privacy/).

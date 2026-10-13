@@ -4,6 +4,8 @@
 
 - **Юридическое название:** {company.name}
 - **Бренд:** {company.brand}
+- **Продукт:** {sankord.name}, продукт компании {company.name}
+- **Кабинет:** {company.name} ведёт кабинет на {site.domain}{site.path.app} и является в нём продавцом
 - **Организационно-правовая форма:** {company.form}
 - **Страна регистрации:** {company.country}
 - **Идентификационный номер:** {company.id}
@@ -15,13 +17,14 @@
 
 ## Контакты {#i-h-contact}
 
-- **Электронная почта:** {contact.email}
-- **Telegram:** [{contact.telegram_handle}]({contact.telegram_url})
-- **Сайт:** {site.domain}
+- **Электронная почта:** {contact.general}
+- **Электронная почта по юридическим вопросам и вопросам о данных:** {contact.legal}
+- **Телеграм:** [{contact.telegram_handle}]({contact.telegram_url})
+- **Сайты:** {site.domain}, [{sankord.domain}]({sankord.url})
 
 ## Защита данных {#i-h-data}
 
-- **Ответственный за защиту данных:** Директор, {company.director}
+- **Контакт по вопросам о данных:** Директор, {company.director}
 - **Надзорный орган по защите данных:** [{authority.name}]({authority.url})
 
 Сведения о компании также открыты в грузинском Реестре. О том, как мы обрабатываем персональные данные, написано в «[Политике конфиденциальности]({site.path.privacy})».

@@ -30,9 +30,25 @@
     }
   },
   "contact": {
-    "email": "artem.balyakno@gmail.com",
+    "legal": "legal@aivis.one",
+    "general": "hello@aivis.one",
     "telegram_handle": "@aivisone",
     "telegram_url": "https://t.me/aivisone"
+  },
+  "sankord": {
+    "name": "SANKORD",
+    "domain": "sankord.com",
+    "url": "https://sankord.com",
+    "plan": {
+      "en": "We plan the demo version for November 2026 and the working version, with licences on sale, from 1 January 2027. These dates are a plan, not a promise.",
+      "ru": "Демо-версию мы планируем на ноябрь 2026 года, рабочую версию и продажу лицензий — с 1 января 2027 года. Эти даты — план, а не обещание."
+    }
+  },
+  "kyc": {
+    "fee": {
+      "en": "10 USD",
+      "ru": "10 USD"
+    }
   },
   "authority": {
     "url": "https://www.sao.ge/en/",

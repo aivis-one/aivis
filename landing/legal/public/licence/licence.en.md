@@ -28,7 +28,7 @@ Give the title, the author, the source and the licence, keep the copyright and l
 
 ## Commercial use and changes {#l-h-perm}
 
-Sharing an adapted version, and any other commercial use, needs our prior written permission. Write to {contact.email}. While you follow the licence, we cannot withdraw it from you.
+Sharing an adapted version, and any other commercial use, needs our prior written permission. Write to {contact.legal}. While you follow the licence, we cannot withdraw it from you.
 
 ## What the licence does not cover {#l-h-notcovered}
 
