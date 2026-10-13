@@ -37,7 +37,7 @@
 //   across all router.push() call-sites that branch on user action.
 // =============================================================================
 
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
@@ -47,7 +47,7 @@ import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput } from '@/components/ui'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const authStore = useAuthStore()
 const router = useRouter()
@@ -56,6 +56,20 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
+
+// Consent line links. The cabinet terms are the static document the cabinet
+// ships under its base (public/legal/<lang>/cabinet_terms.html, the same
+// BASE_URL + legal/ path the document viewers use); the privacy policy is the
+// public site's one page for both site and cabinet.
+const docLang = computed(() => (locale.value === 'ru' ? 'ru' : 'en'))
+const termsUrl = computed(
+  () => `${import.meta.env.BASE_URL}legal/${docLang.value}/cabinet_terms.html`,
+)
+const privacyUrl = computed(() =>
+  docLang.value === 'ru'
+    ? 'https://aivis.one/ru/about/privacy/'
+    : 'https://aivis.one/about/privacy/',
+)
 
 function goToLogin(): void {
   // Forward `?next=...` so the eventual sign-in returns the visitor
@@ -187,6 +201,18 @@ async function handleRegister(): Promise<void> {
           <span v-if="authStore.loading" class="btn-spinner" />
           <span v-else>{{ t('auth.register.btn') }}</span>
         </button>
+
+        <p class="auth-consent">
+          {{ t('auth.register.consentPrefix') }}
+          <a :href="termsUrl" target="_blank" rel="noopener">{{
+            t('auth.register.consentTerms')
+          }}</a>
+          {{ t('auth.register.consentAnd') }}
+          <a :href="privacyUrl" target="_blank" rel="noopener">{{
+            t('auth.register.consentPrivacy')
+          }}</a
+          >.
+        </p>
 
         <div class="auth-footer">
           <span class="auth-footer-text">{{ t('auth.register.hasAccount') }}</span>
@@ -361,6 +387,19 @@ async function handleRegister(): Promise<void> {
 }
 
 .btn-link:hover {
+  text-decoration: underline;
+}
+
+.auth-consent {
+  margin-top: var(--space-4);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.auth-consent a {
+  color: var(--primary);
   text-decoration: underline;
 }
 

@@ -2041,6 +2041,17 @@ render_site_headers() {
 # put back and nothing is swapped; then the symlink is flipped atomically
 # (`ln -sfn` to a temporary link, `mv -T` over SITE_ROOT). The previous
 # release stays beside it for rollback; older ones are removed.
+# Puts the headers snippet back as it was before a publish ($1: the saved copy,
+# empty when there was none) and removes the staged release ($2).
+site_publish_undo() {
+    if [ -n "$1" ]; then
+        mv "$1" "$SITE_HEADERS_SNIPPET"
+    else
+        rm -f "$SITE_HEADERS_SNIPPET"
+    fi
+    rm -rf "$2"
+}
+
 site_publish() {
     local src="$COMPOSE_DIR/landing/site/dist" snippet_tmp snippet_old="" releases rel stamp
     releases="${SITE_ROOT}-releases"
@@ -2057,10 +2068,12 @@ site_publish() {
         return 1
     fi
     # 1. Stage the new release next to the old ones; nothing is live yet.
+    #    mktemp -d gives a fresh name even for two publishes in one second, so
+    #    the live release is never the one being staged.
     stamp=$(date +%Y%m%d%H%M%S)
-    rel="$releases/$stamp"
-    rm -rf "$rel"
-    cp -a "$src" "$rel" || { rm -f "$snippet_tmp"; return 1; }
+    rel=$(mktemp -d "$releases/$stamp-XXXX") || { rm -f "$snippet_tmp"; return 1; }
+    chmod 755 "$rel"
+    cp -a "$src/." "$rel/" || { rm -rf "$rel"; rm -f "$snippet_tmp"; return 1; }
     rm -f "$rel/_headers" "$rel/_redirects" "$rel/cloudflare-redirect-rule.txt"
     # 2. New snippet in place, then nginx -t. Failure: the old snippet comes
     #    back and the swap does not happen -- the old release stays live.
@@ -2084,19 +2097,25 @@ site_publish() {
             return 1
         fi
     fi
-    rm -f "$snippet_old"
     # 3. A SITE_ROOT that is still a real folder (the previous layout) becomes
     #    the first release; this is the only non-atomic moment, once.
     if [ -d "$SITE_ROOT" ] && [ ! -L "$SITE_ROOT" ]; then
-        mv "$SITE_ROOT" "$releases/legacy-$stamp" || { rm -rf "$rel"; return 1; }
-        ln -s "$releases/legacy-$stamp" "$SITE_ROOT" || return 1
+        mv "$SITE_ROOT" "$releases/legacy-$stamp" || { site_publish_undo "$snippet_old" "$rel"; return 1; }
+        ln -s "$releases/legacy-$stamp" "$SITE_ROOT" || {
+            mv "$releases/legacy-$stamp" "$SITE_ROOT"
+            site_publish_undo "$snippet_old" "$rel"
+            return 1
+        }
     fi
-    # 4. The atomic flip.
+    # 4. The atomic flip. Failure: the old snippet comes back and the staged
+    #    release goes, so the next reload and the next cleanup see the old state.
     ln -sfn "$rel" "${SITE_ROOT}.tmp-link" && mv -T "${SITE_ROOT}.tmp-link" "$SITE_ROOT" || {
         rm -f "${SITE_ROOT}.tmp-link"
-        echo -e "${RED}✗ Could not switch $SITE_ROOT to the new release${NC}" >&2
+        site_publish_undo "$snippet_old" "$rel"
+        echo -e "${RED}✗ Could not switch $SITE_ROOT to the new release -- old headers and old site left in place${NC}" >&2
         return 1
     }
+    rm -f "$snippet_old"
     # 5. Keep the live release and the one before it for rollback; drop older.
     # shellcheck disable=SC2012
     ls -1dt "$releases"/*/ 2> /dev/null | tail -n +3 | while read -r old; do rm -rf "$old"; done

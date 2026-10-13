@@ -72,7 +72,11 @@
       "confirmPlaceholder": "Repeat password",
       "btn": "Create Account",
       "hasAccount": "Already have an account?",
-      "loginLink": "Sign in"
+      "loginLink": "Sign in",
+      "consentPrefix": "By registering, you accept the",
+      "consentTerms": "Cabinet Terms",
+      "consentAnd": "and the",
+      "consentPrivacy": "Privacy Policy"
     },
     "verify": {
       "title": "Check Your Email",
@@ -165,7 +169,7 @@
   "tab": {
     "home": "Home",
     "portfolio": "Portfolio",
-    "market": "Market",
+    "market": "Store",
     "balance": "Balance",
     "more": "More",
     "agent": {
@@ -667,7 +671,7 @@
     "pack": "pack",
     "available": "available",
     "market": {
-      "title": "Market",
+      "title": "Store",
       "subtitle": "Available products",
       "filter": {
         "all": "All companies",
@@ -1013,7 +1017,7 @@
         "units": "Units",
         "companies": "Companies",
         "empty": "No purchases yet",
-        "emptyCta": "Browse the market"
+        "emptyCta": "Browse the store"
       },
       "balance": {
         "title": "Balance",
@@ -1023,7 +1027,7 @@
       "actions": {
         "title": "Quick actions",
         "deposit": "Deposit",
-        "market": "Market"
+        "market": "Store"
       },
       "posts": {
         "title": "Latest news",
@@ -1068,8 +1072,8 @@
       },
       "empty": {
         "title": "No purchases yet",
-        "description": "Browse the market to start your portfolio.",
-        "cta": "Go to market"
+        "description": "Browse the store to start your portfolio.",
+        "cta": "Go to the store"
       },
       "errorTitle": "Could not load portfolio"
     },
@@ -1479,7 +1483,7 @@
     },
     "products": {
       "title": "Products",
-      "subtitle": "Your products on the market",
+      "subtitle": "Your products in the store",
       "errorTitle": "Could not load products",
       "errorRetry": "Retry",
       "empty": {
@@ -1506,13 +1510,13 @@
         "editSuccess": "Company profile updated",
         "editError": "Could not update company profile",
         "urlFormatError": "Must start with http:// or https://",
-        "withdrawCta": "Withdraw from the market",
-        "withdrawConfirmTitle": "Withdraw from the market?",
+        "withdrawCta": "Withdraw from the store",
+        "withdrawConfirmTitle": "Withdraw from the store?",
         "withdrawConfirmBody": "Your project will be hidden from buyers immediately. Only an AIVIS admin can republish it afterward.",
         "withdrawConfirmSubmit": "Withdraw",
-        "withdrawSuccess": "Project withdrawn from the market",
+        "withdrawSuccess": "Project withdrawn from the store",
         "withdrawError": "Could not withdraw the project",
-        "hiddenHint": "This project is hidden from the market. Only an AIVIS admin can republish it.",
+        "hiddenHint": "This project is hidden from the store. Only an AIVIS admin can republish it.",
         "archivedHint": "This project is archived by an AIVIS admin."
       },
       "pricing": {
