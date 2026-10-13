@@ -26,7 +26,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import type { DocumentResponse } from '@/api/types'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
-import { CModal } from '@/components/ui'
+import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -46,9 +46,6 @@ const signing = ref(false)
 
 // -- Modal state --
 const viewingDoc = ref<DocumentResponse | null>(null)
-const viewContent = ref('')
-const viewLoading = ref(false)
-const viewError = ref('')
 
 // ---------------------------------------------------------------------------
 // Computed
@@ -107,34 +104,13 @@ function toggleCheck(doc: DocumentResponse): void {
 // Modal
 // ---------------------------------------------------------------------------
 
-async function openDocument(doc: DocumentResponse): Promise<void> {
+// LegalDocModal fetches the exact localised HTML the backend selected.
+function openDocument(doc: DocumentResponse): void {
   viewingDoc.value = doc
-  viewContent.value = ''
-  viewError.value = ''
-  viewLoading.value = true
-  try {
-    // Fetch the exact localised HTML the backend selected for this user.
-    const resp = await fetch(`${import.meta.env.BASE_URL}legal/${doc.language}/${doc.type}.html`)
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`)
-    }
-    const raw = await resp.text()
-    // Parse the full HTML document and pull the body innerHTML so the
-    // mounted node contains just the legal content, not <html>, <head>,
-    // <title>, <meta>, etc.
-    const dom = new DOMParser().parseFromString(raw, 'text/html')
-    viewContent.value = dom.body.innerHTML
-  } catch {
-    viewError.value = t('common.error')
-  } finally {
-    viewLoading.value = false
-  }
 }
 
 function closeModal(): void {
   viewingDoc.value = null
-  viewContent.value = ''
-  viewError.value = ''
 }
 
 // ---------------------------------------------------------------------------
@@ -290,29 +266,13 @@ async function handleSignAll(): Promise<void> {
     </div>
 
     <!-- Document preview modal -->
-    <CModal :open="viewingDoc !== null" @close="closeModal">
-      <h3 class="doc-modal__title">
-        {{ viewingDoc ? viewingDoc.title : '' }}
-      </h3>
-      <div class="doc-modal__body">
-        <div v-if="viewLoading" class="doc-modal__center">
-          <span class="btn-spinner" />
-        </div>
-        <p v-else-if="viewError" class="auth-error">
-          {{ viewError }}
-        </p>
-        <!-- Trusted content: HTML authored in our own repo. Body innerHTML
-             was extracted via DOMParser above, so <html>/<head>/<meta>
-             are not in the mounted subtree. -->
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-else class="doc-modal__content" v-html="viewContent" />
-      </div>
-      <div class="doc-modal__actions">
-        <button type="button" class="btn btn-primary" @click="closeModal">
-          {{ t('common.close') }}
-        </button>
-      </div>
-    </CModal>
+    <LegalDocModal
+      :open="viewingDoc !== null"
+      :title="viewingDoc ? viewingDoc.title : ''"
+      :lang="viewingDoc ? viewingDoc.language : ''"
+      :type="viewingDoc ? viewingDoc.type : ''"
+      @close="closeModal"
+    />
   </div>
 </template>
 
@@ -548,63 +508,5 @@ async function handleSignAll(): Promise<void> {
   to {
     transform: rotate(360deg);
   }
-}
-
-/* --- Document preview modal --- */
-.doc-modal__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-  padding-right: var(--space-5); /* room for close button */
-}
-.doc-modal__body {
-  min-height: 120px;
-  max-height: 60vh;
-  overflow-y: auto;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  margin-bottom: var(--space-4);
-}
-.doc-modal__center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--center-sm);
-}
-.doc-modal__content {
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  line-height: 1.6;
-}
-.doc-modal__content :deep(h1) {
-  font-size: var(--fs-lg);
-  margin: 0 0 var(--space-3);
-}
-.doc-modal__content :deep(h2) {
-  font-size: var(--fs-body);
-  margin: var(--space-4) 0 var(--space-2);
-}
-.doc-modal__content :deep(p) {
-  margin: 0 0 var(--space-3);
-}
-.doc-modal__content :deep(ul),
-.doc-modal__content :deep(ol) {
-  margin: 0 0 var(--space-3);
-  padding-left: var(--space-4-lg);
-}
-.doc-modal__content :deep(li) {
-  margin-bottom: var(--space-1);
-}
-
-.doc-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-}
-.doc-modal__actions .btn-primary {
-  width: auto;
-  min-width: 120px;
 }
 </style>

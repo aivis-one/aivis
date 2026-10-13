@@ -695,8 +695,8 @@
         "title": "Product not found",
         "desc": "This product may have been removed or is no longer available"
       },
-      "backToMarket": "Back to companies",
-      "backLink": "Back to companies",
+      "backToMarket": "Back to the store",
+      "backLink": "Back to the store",
       "pricePerPack": "Price per pack",
       "availability": "Availability",
       "description": "About",
@@ -1091,7 +1091,7 @@
     "companyOverview": {
       "status": "Active",
       "backToList": "All companies",
-      "backLink": "Back to companies",
+      "backLink": "Back to the store",
       "errorTitle": "Could not load company",
       "errorRetry": "Retry",
       "notFound": "Company not found",

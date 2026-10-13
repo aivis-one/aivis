@@ -46,6 +46,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput } from '@/components/ui'
+import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -71,6 +72,10 @@ const privacyUrl = computed(() =>
     ? 'https://aivis.one/ru/about/privacy/'
     : 'https://aivis.one/about/privacy/',
 )
+
+// The cabinet terms open in the cabinet's own document window (the one the
+// onboarding uses); the href stays as the fallback for a click that is not ours.
+const termsOpen = ref(false)
 
 function goToLogin(): void {
   // Forward `?next=...` so the eventual sign-in returns the visitor
@@ -204,15 +209,17 @@ async function handleRegister(): Promise<void> {
 
         <label class="auth-consent">
           <input v-model="accepted" type="checkbox" />
-          {{ t('auth.register.consentPrefix') }}
-          <a :href="termsUrl" target="_blank" rel="noopener">{{
-            t('auth.register.consentTerms')
-          }}</a>
-          {{ t('auth.register.consentAnd') }}
-          <a :href="privacyUrl" target="_blank" rel="noopener">{{
-            t('auth.register.consentPrivacy')
-          }}</a
-          >.
+          <span class="auth-consent-text"
+            >{{ t('auth.register.consentPrefix') }}
+            <a :href="termsUrl" target="_blank" rel="noopener" @click.prevent="termsOpen = true">{{
+              t('auth.register.consentTerms')
+            }}</a>
+            {{ t('auth.register.consentAnd') }}
+            <a :href="privacyUrl" target="_blank" rel="noopener">{{
+              t('auth.register.consentPrivacy')
+            }}</a
+            >.</span
+          >
         </label>
 
         <button class="btn btn-primary" :disabled="authStore.loading" @click="handleRegister">
@@ -228,6 +235,14 @@ async function handleRegister(): Promise<void> {
         </div>
       </div>
     </div>
+
+    <LegalDocModal
+      :open="termsOpen"
+      :title="t('auth.register.consentTerms')"
+      :lang="docLang"
+      type="cabinet_terms"
+      @close="termsOpen = false"
+    />
   </div>
 </template>
 
@@ -397,12 +412,24 @@ async function handleRegister(): Promise<void> {
 }
 
 .auth-consent {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
   margin-top: var(--space-4);
+  margin-bottom: var(--space-5);
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  text-align: center;
+  text-align: left;
   line-height: 1.5;
+}
+
+.auth-consent input[type='checkbox'] {
+  flex: none;
+  /* centre the box on the first text line: (line-height 1.5 * fs-xs - box) / 2 */
+  margin: calc((1.5 * var(--fs-xs) - 1rem) / 2) 0 0;
+  width: 1rem;
+  height: 1rem;
 }
 
 .auth-consent a {
