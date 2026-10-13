@@ -38,8 +38,8 @@
   — several prompts and checks below behave differently as a result, and are marked **RE-INSTALL:**
   where that matters. **Two things are a separate case, and surviving the teardown is not the same as
   surviving the run: the nginx site files. The teardown leaves them alone; the install phase that
-  follows in the same run replaces them, unconditionally.** All three nginx site files (`api`, `app`,
-  `files`) are rewritten and re-linked from scratch, clean-box or re-install alike (see §5). **By the
+  follows in the same run replaces them, unconditionally.** All three nginx site files (`api`, the apex
+  `aivis.one`, `files`) are rewritten and re-linked from scratch, clean-box or re-install alike (see §5). **By the
   time the script finishes, they are not what they were before you started.**
   **A re-install also doesn't touch the host-level
   packages the script installs** — Docker, Nginx, Certbot. Each of those is only ever
@@ -67,6 +67,14 @@ What to have ready either way:
   out by email, and comms refuses to start at all when a type routed to email has no keys. There is
   no later step that could add it -- `.env` is not edited by hand on this box.
 - Root SSH access to the target box (`CREDENTIALS.md` §1).
+- **The DNS records, in place BEFORE the install reaches certbot:** `aivis.one`, `api.aivis.one` and
+  `files.aivis.one`, each an A record to this box. **There is no `app.aivis.one`** — the cabinet
+  lives at `https://aivis.one/app/`, and the old host has no record, no nginx site and no
+  certificate. `mail.aivis.one` is Mailgun's and points at no web server. **If Cloudflare is in front
+  of `aivis.one` as a proxy** (SSL mode "full"), create the apex record as *DNS only* (grey cloud)
+  for the install and switch it to *Proxied* afterwards: certbot proves the domain over plain HTTP,
+  and a proxy that redirects to HTTPS before the origin has a certificate turns that into a failure.
+  Then run the renewal rehearsal at the end of §5.
 
 ## 2. Run inside `tmux` — do not run this over a bare SSH session
 
@@ -250,7 +258,7 @@ skipped them.
 ```
 sudo certbot certificates
 ```
-Expect two certificate lineages: one covering `api.aivis.one` + `app.aivis.one` together, one for
+Expect two certificate lineages: one covering `api.aivis.one` + `aivis.one` together (named `api.aivis.one`), one for
 `files.aivis.one`. Both should show as issued by Let's Encrypt's production CA with
 roughly 90 days of validity — **if either says "STAGING" anywhere in its issuer, `AIVIS_CERTBOT_STAGING`
 was set when it shouldn't have been for a real cutover** (see §8's final note on that flag).
@@ -268,10 +276,15 @@ are what actually gate the install.
 
 ```
 curl -s https://api.aivis.one/health
-curl -s https://app.aivis.one
+curl -s -o /dev/null -w "%{http_code}
+" https://aivis.one/
+curl -s -o /dev/null -w "%{http_code}
+" https://aivis.one/app/
+curl -sI https://aivis.one/login | head -3
 ```
-The first should return JSON with `"status":"ok"` (and `"db":"ok"`, `"redis":"ok"`). The second
-should return the frontend's HTML, HTTP 200.
+The first should return JSON with `"status":"ok"` (and `"db":"ok"`, `"redis":"ok"`). The next two
+should print `200` — the company site at `/` and the cabinet's HTML at `/app/`. The last shows a
+`302` with `location: /app/login`. A request to `https://app.aivis.one` must not answer at all.
 
 **If either HTTPS `curl` above hangs, refuses the connection, or fails TLS — while `sudo certbot
 certificates` just showed a valid, non-staging lineage covering that domain — this is the specific
@@ -283,7 +296,7 @@ adding that block, and because that certbot call ends in `|| warn`, nothing in t
 output would flag it. The result is a site serving plain HTTP again even though the certificate
 itself is fine, and `sudo certbot certificates` above cannot see the difference. **Repair:**
 ```
-certbot --nginx -d api.aivis.one -d app.aivis.one
+certbot --nginx --cert-name api.aivis.one -d api.aivis.one -d aivis.one
 ```
 Run the same shape against `files.aivis.one` on its own if that site shows the identical
 symptom — it's a separate certificate lineage, issued by a separate `certbot` call in the script,
@@ -337,6 +350,16 @@ which is the case today.** If a crypto payment provider or any other external se
 configured with `CRYPTO_WEBHOOK_SECRET` (or any of the other six), a re-install silently invalidates it
 without telling anyone; that is the one circumstance under which this paragraph stops holding.
 
+**If Cloudflare proxies `aivis.one`, rehearse the renewal once the apex is Proxied again.** The 3 AM
+cron renews over plain HTTP, and a proxy that redirects HTTP to HTTPS can make that fail months
+later, silently. Run on the box:
+```
+sudo certbot renew --dry-run
+```
+Expect `Congratulations, all simulated renewals succeeded`. A failure naming `aivis.one` means the
+proxy is in the way of the challenge: tell whoever manages the Cloudflare zone before the
+certificate's 90 days run out.
+
 ## 6. The browser acceptance check — this is the one that actually matters
 
 Command-line checks above prove the box is up. They do **not** prove the browser can actually talk
@@ -344,7 +367,7 @@ to it — the frontend's Content-Security-Policy is baked in at build time to al
 exactly one API host, and a mismatch there is invisible to every check above; the browser just
 silently blocks the request.
 
-Open `https://app.aivis.one` in a real browser, **in a clean profile with no extensions active**
+Open `https://aivis.one/app/` in a real browser, **in a clean profile with no extensions active**
 (incognito/private with extensions disabled works) — an extension can trip the page's Content-
 Security-Policy on its own and log a console error indistinguishable from a real one, in the same
 panel, against the same page. With DevTools open (Console + Network tabs), filter Network to
@@ -368,7 +391,7 @@ no request at all*, not a 401.
 
 - **A wall of OS/RAM/disk/DNS warnings before you see any prompt at all.** The very first thing the
   script does, before item 1 of §4, is a set of automated checks — OS version, RAM, disk space, and DNS
-  resolution for all four subdomains — and every one of them only ever warns, never aborts the script.
+  resolution for the four domains — and every one of them only ever warns, never aborts the script.
   Several `[WARN]` lines scrolling by before you've typed anything is normal, not a sign the install has
   already failed. **The DNS ones are worth reading anyway** — a warning that a domain doesn't resolve to
   this box yet is telling you, right at the start, about the exact certificate failure you'd otherwise
@@ -490,6 +513,15 @@ just the shape of a self-updating script.
 This is also why this change is delivered by a **reinstall**, not by an update: the code that creates
 the network and installs comms lives in the installer, and the installer does not run on a live box
 at all.
+
+**The company site ships with every update.** The frontend step ends with `aivis site deploy`:
+it builds the static site from `landing/` (python3, standard library only), copies it to
+`/var/www/aivis-site`, writes the response headers nginx sends with it
+(`/etc/nginx/snippets/aivis-site-headers.conf`, taken from the build's own `_headers`) and reloads
+nginx. It runs in `--frontend-only` mode too, together with the legal-document seed. The legal pages
+themselves are not rebuilt on the box (`landing/legal/out/` is tracked). If the site step fails the
+update stops with a red line and the cabinet stays up. By hand: `aivis site build`,
+`aivis site publish`, `aivis nginx reload`.
 
 The single most important thing to know once you are past that: **a plain `aivis update` takes the
 whole site offline for the entire run, not just the backend.** `docker compose down` with no service

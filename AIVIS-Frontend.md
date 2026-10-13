@@ -108,11 +108,11 @@ interface UserResponse {
 
 ### 2.1. Почему CORS, а не proxy
 
-Фронтенд (`app.aivis.one`) и API (`api.aivis.one`) — разные домены. Запросы идут напрямую на `api.aivis.one` с CORS.
+Кабинет (`aivis.one/app/`) и API (`api.aivis.one`) — разные домены. Запросы идут напрямую на `api.aivis.one` с CORS. Кабинет живёт под префиксом `/app/` (Vite `base`, роутер, nginx контейнера); корень `aivis.one` занимает статический сайт компании (`landing/`). Хоста `app.aivis.one` нет.
 
 Причина: при переходе на микросервисы API Gateway будет за `api.aivis.one`, фронтенд не поменяется.
 
-Бэкенд: `CORSMiddleware` с whitelist `["https://app.aivis.one"]`. Credentials allowed.
+Бэкенд: `CORSMiddleware` с whitelist `["https://aivis.one"]` (origin без пути). Credentials allowed. `FRONTEND_BASE_URL=https://aivis.one/app` — основа ссылок в письмах.
 
 ### 2.2. Token storage
 
@@ -253,9 +253,11 @@ aivis/                                -- GitHub repo root (существует)
 Browser / Telegram
       │
       ▼
-   Nginx (app.aivis.one)
+   Nginx (aivis.one)
       │
-      └── /*         → frontend:3000 (Vue SPA)
+      ├── /app/*     → frontend:3000 (Vue SPA, префикс сохраняется)
+      ├── /login     → 302 /app/login
+      └── /*         → /var/www/aivis-site (статический сайт, `aivis site`)
 
    Nginx (api.aivis.one)
       │
@@ -264,7 +266,7 @@ Browser / Telegram
 Фронтенд → CORS → api.aivis.one/api/v1/*
 ```
 
-Два домена, два Nginx-блока. CORS `CORSMiddleware` на бэкенде с whitelist `["https://app.aivis.one"]`.
+Два домена, два Nginx-блока (плюс `files.aivis.one`). CORS `CORSMiddleware` на бэкенде с whitelist `["https://aivis.one"]`. Cloudflare стоит перед `aivis.one` как прокси (SSL full); nginx на сервере — origin.
 
 ### 3.3. Платформенная абстракция
 

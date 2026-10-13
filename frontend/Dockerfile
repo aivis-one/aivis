@@ -17,7 +17,8 @@ RUN npm run build
 # -- Serve stage --
 FROM nginx:alpine
 
-COPY --from=build /app/dist /usr/share/nginx/html
+# The build is served under /app/ (vite.config.ts base); see nginx.conf.
+COPY --from=build /app/dist /usr/share/nginx/html/app
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000

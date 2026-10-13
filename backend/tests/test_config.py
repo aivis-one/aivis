@@ -109,8 +109,8 @@ def test_settings_non_development_is_production_grade(
 # keeps each value exactly as given, non-empty.
 
 _GOOD_REQUIRED = {
-    "cors_origins": "https://app.aivis.one",
-    "frontend_base_url": "https://app.aivis.one",
+    "cors_origins": "https://aivis.one",
+    "frontend_base_url": "https://aivis.one/app",
     "storage_public_url": "https://files.aivis.one",
     "database_url": "postgresql+asyncpg://aivis:pw@postgres:5432/aivis",
     "redis_url": "redis://:pw@redis:6379/0",
@@ -276,12 +276,12 @@ def test_production_refuses_the_frontend_default_left_in_place(
 
 @pytest.mark.parametrize("field", ["frontend_base_url", "storage_public_url"])
 @pytest.mark.parametrize("bad", [
-    "http://app.aivis.one",
-    "app.aivis.one",
+    "http://aivis.one",
+    "aivis.one",
     "https://",
-    "https://app.aivis.one/",
-    " https://app.aivis.one",
-    "https://app.aivis.one ",
+    "https://aivis.one/",
+    " https://aivis.one",
+    "https://aivis.one ",
 ])
 def test_production_refuses_a_malformed_browser_url(
     monkeypatch: pytest.MonkeyPatch, field: str, bad: str,
@@ -298,9 +298,9 @@ def test_production_refuses_a_malformed_browser_url(
 
 
 @pytest.mark.parametrize("cors, label", [
-    ("https://app.aivis.one,", "CORS_ORIGINS entry 2 is empty"),
+    ("https://aivis.one,", "CORS_ORIGINS entry 2 is empty"),
     (
-        "https://app.aivis.one,http://localhost:5173",
+        "https://aivis.one,http://localhost:5173",
         "CORS_ORIGINS entry 2 points at a loopback",
     ),
     ("PLACEHOLDER", "CORS_ORIGINS is a placeholder"),

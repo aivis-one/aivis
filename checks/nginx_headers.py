@@ -213,7 +213,7 @@ def check(text: str) -> tuple[bool, list[str]]:
         ok = False
         lines.append("the Cache-Control map's default is %r, not 'no-cache'" % default)
     immutable = [key for key, value in entries.items() if "immutable" in value]
-    stray = [key for key in immutable if not key.lstrip("~*").lstrip("^").startswith("/assets/")]
+    stray = [key for key in immutable if not key.lstrip("~*").lstrip("^").startswith(("/assets/", "/app/assets/"))]
     if stray:
         ok = False
         lines.append("`immutable` on entries not keyed to /assets/: %s" % ", ".join(stray))
@@ -251,11 +251,11 @@ def selftest(root: str) -> list[str]:
         assert real.count(anchor) == 1, "the real config has no unique %r to plant on" % anchor
         return real.replace(anchor, replacement, 1)
 
-    assets = "    location /assets/ {\n"
+    assets = "    location /app/assets/ {\n"
     csp = "    add_header Content-Security-Policy "
     referrer = '    add_header Referrer-Policy "strict-origin-when-cross-origin" always;\n'
     default = '    default             "no-cache";\n'
-    root_location = "    location / {\n"
+    root_location = "    location /app/ {\n"
 
     assert check(real)[0], "a copy of the real config does not pass"
     out.append("  a copy of the real config passes")

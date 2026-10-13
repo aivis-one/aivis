@@ -15,7 +15,8 @@
 #   7.  Prompt for the secrets only a person has (bot token, Mailgun key,
 #       optional storage root-key overrides)
 #   8.  Write .env once: random passwords (incl. storage secrets) + step 7
-#   9.  Configure Nginx reverse proxy (api.aivis.one, app.aivis.one)
+#   9.  Build the company site, configure Nginx (aivis.one: site at /, cabinet
+#       at /app/; api.aivis.one; files.aivis.one)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
 #   11. Assert the host runs no local mail transfer agent
 #   12. Set up the public storage site (files.aivis.one -> RustFS S3 API)
@@ -30,10 +31,13 @@
 #
 # REQUIREMENTS:
 #   - Ubuntu 22.04+ (fresh VPS, root access)
-#   - Domain aivis.one already registered (the root/apex is a SEPARATE
-#     landing page, NOT managed by this script)
-#   - Subdomains (A records to server IP):
-#       app.aivis.one
+#   - Domain aivis.one already registered. This script manages the apex:
+#     the static company site at /, the cabinet at /app/ (/login redirects
+#     into it). There is no app.aivis.one.
+#   - Cloudflare may stay in front of the apex as a proxy (SSL mode
+#     "full"); the origin certificate below is issued for it all the same.
+#   - Records (A records to the server IP):
+#       aivis.one
 #       api.aivis.one
 #       mail.aivis.one
 #       files.aivis.one     (public storage: presigned download links)
@@ -59,7 +63,8 @@ INSTALL_BASE="/opt/aivis"
 GITHUB_REPO="aivis-one/aivis"
 DEPLOY_USER="aivis"
 API_DOMAIN="api.aivis.one"
-FRONTEND_DOMAIN="app.aivis.one"
+# The apex: the company site at /, the cabinet under /app/ (row 32).
+FRONTEND_DOMAIN="aivis.one"
 # The Mailgun SENDING domain: a product constant (every server is the
 # same). It appears in MAILGUN_DOMAIN and in the from-address, both handed
 # to comms. Nothing on this host serves it -- no A record, no
@@ -76,11 +81,10 @@ MAILGUN_EU_BASE="https://api.eu.mailgun.net"
 # STORAGE_PUBLIC_URL -- the one place the address is stated; `aivis nginx
 # render files` and `aivis status` read it from there.
 FILES_DOMAIN="files.aivis.one"
-# Bug fix: certbot's --email must NOT derive from FRONTEND_DOMAIN. That
-# domain is app.aivis.one (the app subdomain), which has no MX -- Let's
-# Encrypt expiry warnings would go nowhere and the failure would only
-# surface months later as an expired certificate. The apex aivis.one
-# has real mail (owner-confirmed); this is a decoupled, dedicated value.
+# certbot's --email is its own value and does NOT derive from FRONTEND_DOMAIN:
+# an address chosen for the web host could belong to a domain without mail,
+# and Let's Encrypt expiry warnings would go nowhere, surfacing months later
+# as an expired certificate. aivis.one has real mail (owner-confirmed).
 CERTBOT_EMAIL="admin@aivis.one"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
@@ -199,6 +203,11 @@ preflight_checks() {
     # below does not ask for a certificate for it either. Warning about
     # a missing A record would send the next operator to create a record
     # that serves nothing.
+    #
+    # The apex may sit behind Cloudflare's proxy: then it resolves to
+    # Cloudflare's addresses, not to this box, and the warning below for it
+    # is expected, not a fault -- the certificate is issued over HTTP and the
+    # proxy passes the challenge through.
     for DOMAIN in "$API_DOMAIN" "$FRONTEND_DOMAIN" "$FILES_DOMAIN"; do
         local RESOLVED_IP
         RESOLVED_IP=$(dig +short "$DOMAIN" 2>/dev/null | head -1 || true)
@@ -207,7 +216,7 @@ preflight_checks() {
         elif [ -n "$SERVER_IP" ] && [ "$RESOLVED_IP" = "$SERVER_IP" ]; then
             success "DNS: $DOMAIN -> $RESOLVED_IP ✓"
         else
-            warn "DNS: $DOMAIN -> $RESOLVED_IP (server IP: $SERVER_IP). SSL may fail."
+            warn "DNS: $DOMAIN -> $RESOLVED_IP (server IP: $SERVER_IP). SSL may fail. (Expected for a domain behind Cloudflare's proxy.)"
         fi
     done
 
@@ -344,6 +353,7 @@ apt-get install -y \
     dnsutils \
     software-properties-common \
     python3-certbot-nginx \
+    python3 \
     > /dev/null 2>&1
 
 success "Base packages installed"
@@ -974,8 +984,11 @@ LOG_LEVEL=INFO
 CORS_ORIGINS=https://${FRONTEND_DOMAIN}
 # Base of every absolute link the backend emails out (password reset,
 # document letters). Built from FRONTEND_DOMAIN -- the one place the site
-# address is stated -- and nowhere else; no trailing slash.
-FRONTEND_BASE_URL=https://${FRONTEND_DOMAIN}
+# address is stated -- and nowhere else; no trailing slash. The cabinet
+# lives under /app/, so the base carries it: links come out as
+# https://aivis.one/app/password-reset/confirm?... (CORS_ORIGINS above is an
+# origin and has no path.)
+FRONTEND_BASE_URL=https://${FRONTEND_DOMAIN}/app
 
 # -- Database --
 DATABASE_URL=postgresql+asyncpg://aivis:${DB_PASS}@postgres:5432/aivis
@@ -1096,6 +1109,13 @@ section "Nginx Configuration"
 # call runs the exact same rendering code the operator uses later to push
 # template changes, not a copy of it.
 rm -f /etc/nginx/sites-enabled/default
+# The apex block serves the company site from disk and includes the headers
+# generated from its build, so the site is built and published BEFORE the
+# block is rendered (`aivis site`, scripts/aivis-manage.sh).
+"$INSTALL_BASE/repo/scripts/aivis-manage.sh" site build \
+    || error "The company site did not build (see above) -- stopping before nginx is configured."
+"$INSTALL_BASE/repo/scripts/aivis-manage.sh" site publish \
+    || error "The company site could not be published (see above) -- stopping before nginx is configured."
 "$INSTALL_BASE/repo/scripts/aivis-manage.sh" nginx render api frontend
 
 # ==============================================================================
@@ -1104,7 +1124,13 @@ rm -f /etc/nginx/sites-enabled/default
 
 section "SSL Certificates"
 
+# --cert-name pins the lineage to the API host's name. A box installed before
+# row 32 holds a lineage of that name that also covers app.aivis.one; with the
+# name given, certbot REPLACES that domain list with this one instead of
+# stopping on the mismatch (--non-interactive), so the old host leaves the
+# certificate. A fresh box simply gets a lineage of that name.
 certbot --nginx \
+    --cert-name "$API_DOMAIN" \
     -d "$API_DOMAIN" \
     -d "$FRONTEND_DOMAIN" \
     $CERTBOT_STAGING_FLAG \
@@ -1998,7 +2024,8 @@ echo "║         AIVIS.ONE Installation Complete!         ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "API:           ${CYAN}https://${API_DOMAIN}/health${NC}"
-echo -e "Frontend:      ${CYAN}https://${FRONTEND_DOMAIN}${NC}"
+echo -e "Site:          ${CYAN}https://${FRONTEND_DOMAIN}/${NC}"
+echo -e "Cabinet:       ${CYAN}https://${FRONTEND_DOMAIN}/app/${NC}  (/login redirects there)"
 echo -e "Files:         ${CYAN}https://${FILES_DOMAIN}/health${NC}  (public storage site)"
 echo ""
 echo -e "Management: ${CYAN}aivis status | aivis logs | aivis update | aivis storage stats${NC}"

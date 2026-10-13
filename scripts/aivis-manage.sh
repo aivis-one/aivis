@@ -26,13 +26,19 @@ COMPOSE_DIR="$INSTALL_BASE/repo"
 # what is on disk, never what is running. See update_product.
 DEPLOYED_COMMIT_FILE="$INSTALL_BASE/deployed-commit"
 
+# The static company site (aivis.one/): where nginx serves it from, and the
+# generated include that carries its response headers. Constants of the
+# product like INSTALL_BASE, not per-server facts. See "COMPANY SITE" below.
+SITE_ROOT="/var/www/aivis-site"
+SITE_HEADERS_SNIPPET="/etc/nginx/snippets/aivis-site-headers.conf"
+
 CONF_FILE="$INSTALL_BASE/aivis.conf"
 if [ ! -f "$CONF_FILE" ]; then
     echo "FATAL: $CONF_FILE not found." >&2
     echo "This looks like an incomplete install -- re-run scripts/install_aivis.sh," >&2
     echo "or create the file by hand with:" >&2
     echo "  API_DOMAIN=api.example.com" >&2
-    echo "  FRONTEND_DOMAIN=app.example.com" >&2
+    echo "  FRONTEND_DOMAIN=example.com" >&2
     echo "  APP_PORT=8000" >&2
     echo "  FRONTEND_PORT=3000" >&2
     exit 1
@@ -179,10 +185,15 @@ case_status() {
     else
         echo -e "${RED}✗ https://${API_DOMAIN}/health unreachable${NC}"
     fi
-    if curl -sf --max-time 5 "https://${FRONTEND_DOMAIN}" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ https://${FRONTEND_DOMAIN} OK${NC}"
+    if curl -sf --max-time 5 "https://${FRONTEND_DOMAIN}/" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ https://${FRONTEND_DOMAIN}/ (company site) OK${NC}"
     else
-        echo -e "${YELLOW}⚠ https://${FRONTEND_DOMAIN} not available (frontend not deployed yet)${NC}"
+        echo -e "${YELLOW}⚠ https://${FRONTEND_DOMAIN}/ not available (site not published yet)${NC}"
+    fi
+    if curl -sf --max-time 5 "https://${FRONTEND_DOMAIN}/app/" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ https://${FRONTEND_DOMAIN}/app/ (cabinet) OK${NC}"
+    else
+        echo -e "${YELLOW}⚠ https://${FRONTEND_DOMAIN}/app/ not available (frontend not deployed yet)${NC}"
     fi
     # The public storage site answers /health through nginx: 200 means the
     # site, its certificate and the proxy to 127.0.0.1:9000 all work.
@@ -1308,6 +1319,18 @@ update_product() {
         # rebuilt below with the (unchanged) generated.ts.
         echo -e "${YELLOW}⊘ Backend build / restart / migrate / seeds / tests skipped (--frontend-only)${NC}"
         pytest_status=0
+
+        # ...except the legal documents: their sources are frontend files
+        # (frontend/public/legal, bind-mounted read-only into the running
+        # app), and the seed archives every document whose file left that
+        # folder. A frontend deploy that dropped a file without this step
+        # would leave the database naming a document the site no longer has.
+        echo ""
+        echo "Seeding legal documents (sources are frontend files)..."
+        docker compose exec -T app python scripts/seed_documents.py || {
+            echo -e "${RED}✗ Legal document seed failed${NC}"
+            return 1
+        }
     fi
 
     # ----------------------------------------------------------------------
@@ -1334,6 +1357,14 @@ update_product() {
         return 1
     }
     docker compose up -d frontend
+
+    # The company site (aivis.one/) ships with the frontend and on a
+    # --frontend-only run too: it is front-end content.
+    echo ""
+    case_site deploy || {
+        echo -e "${RED}✗ Company site not deployed (see above)${NC}"
+        return 1
+    }
 
     # Final health check.
     echo ""
@@ -1797,18 +1828,75 @@ server {
 NGINX_API
 }
 
+# The apex serves two things (row 32, his word ukmgl4oy):
+#   /app/   the cabinet -- proxied to the frontend container with the prefix
+#           KEPT (frontend/nginx.conf serves it under /app/ itself);
+#   /login  a redirect into the cabinet, the address the site's button uses;
+#   /       the static company site, built from landing/ and copied to
+#           SITE_ROOT by `aivis site publish`.
+# The site's own Cloudflare Pages rules are reproduced here:
+#   _headers  -> the generated include SITE_HEADERS_SNIPPET (every site
+#                response; the cabinet sends its own CSP from the container);
+#                the two other rules of that file are written out below;
+#   _redirects -> `location = /ru`.
+# An `add_header` inside a location drops every inherited one, so no header
+# sits at server level: each site location includes the snippet itself.
+# Cloudflare stays in front as a proxy (SSL mode "full"): this block is the
+# origin, and certbot adds its TLS server block to the rendered file.
 render_nginx_frontend() {
-    sed "s/__FRONTEND_DOMAIN__/${FRONTEND_DOMAIN}/g; s/__FRONTEND_PORT__/${FRONTEND_PORT}/g" << 'NGINX_FRONTEND'
+    sed "s/__FRONTEND_DOMAIN__/${FRONTEND_DOMAIN}/g; s/__FRONTEND_PORT__/${FRONTEND_PORT}/g; s#__SITE_ROOT__#${SITE_ROOT}#g; s#__SITE_HEADERS__#${SITE_HEADERS_SNIPPET}#g" << 'NGINX_FRONTEND'
 server {
     listen 80;
     server_name __FRONTEND_DOMAIN__;
 
-    location / {
+    root __SITE_ROOT__;
+    index index.html;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+    gzip_min_length 256;
+    gzip_vary on;
+
+    # -- The cabinet --
+    location = /login {
+        return 302 /app/login$is_args$args;
+    }
+
+    location = /app {
+        return 301 /app/;
+    }
+
+    location ^~ /app/ {
         proxy_pass http://127.0.0.1:__FRONTEND_PORT__;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # -- The company site --
+    location = /ru {
+        include __SITE_HEADERS__;
+        return 301 /ru/;
+    }
+
+    # _headers: /assets/*
+    location ^~ /assets/ {
+        include __SITE_HEADERS__;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # _headers: /invest/* and /ru/invest/* -- never indexed, never followed
+    location ~ ^(/ru)?/invest/ {
+        include __SITE_HEADERS__;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        try_files $uri $uri/ =404;
+    }
+
+    location / {
+        include __SITE_HEADERS__;
+        try_files $uri $uri/ =404;
     }
 }
 NGINX_FRONTEND
@@ -1862,6 +1950,116 @@ server {
 NGINX_FILES
 }
 
+# ==============================================================================
+# COMPANY SITE (aivis.one/, row 32)
+# ==============================================================================
+#
+# The static site is built from landing/ in the checkout and copied to
+# SITE_ROOT, which the apex's nginx block serves. Two steps, so that the
+# install can run them before nginx has any site block:
+#   build    python3 only, standard library: the site, then the four courses
+#            (landing/README.md "Build"). The legal pages are NOT rebuilt:
+#            landing/legal/out/ is tracked and the site build reads it; a
+#            rebuild here would rewrite tracked files whenever the committed
+#            copy lagged the sources, and the next `git pull` would meet them.
+#   publish  copies landing/site/dist to SITE_ROOT (without the Pages control
+#            files, which are not content) and writes SITE_HEADERS_SNIPPET from
+#            dist/_headers. The copy replaces the old tree in two renames.
+# `aivis update` runs both on every cycle, --frontend-only included, then
+# reloads nginx: the CSP lists a hash for every inline block, so a new page
+# build needs the new snippet in the same moment.
+site_build() {
+    local landing="$COMPOSE_DIR/landing"
+    if ! command -v python3 > /dev/null 2>&1; then
+        echo -e "${RED}✗ python3 is not installed -- the site cannot be built${NC}" >&2
+        return 1
+    fi
+    echo "Building the company site..."
+    rm -rf "$landing/site/dist"
+    (cd "$landing/site" && python3 scripts/build-site.py \
+        --site content/site.json --content-dir content \
+        --tokens tokens.tokens.json --assets-dir assets --out dist) || {
+        echo -e "${RED}✗ Site build failed${NC}" >&2
+        return 1
+    }
+    (cd "$landing" && python3 courses/build.py) || {
+        echo -e "${RED}✗ Course pages build failed${NC}" >&2
+        return 1
+    }
+    if [ ! -f "$landing/site/dist/index.html" ] || [ ! -f "$landing/site/dist/_headers" ]; then
+        echo -e "${RED}✗ The site build left no index.html or _headers in landing/site/dist${NC}" >&2
+        return 1
+    fi
+    echo -e "${GREEN}✓ Site built: landing/site/dist${NC}"
+}
+
+# dist/_headers -> nginx `add_header` lines, for the `/*` rule only. The other
+# three rules of that file (/assets/*, /invest/*, /ru/invest/*) are written
+# out in render_nginx_frontend; a rule this does not know is REFUSED, so a new
+# path in _headers cannot be dropped silently. A header line it cannot quote
+# safely, or a result without the Content-Security-Policy, is refused as well.
+render_site_headers() {
+    local src="$1" paths
+    paths=$(tr -d '\r' < "$src" | grep -E '^[^[:space:]#]' | paste -sd ' ' -)
+    if [ "$paths" != '/* /assets/* /invest/* /ru/invest/*' ]; then
+        echo "_headers carries rules this script does not reproduce: ${paths}" >&2
+        return 1
+    fi
+    tr -d '\r' < "$src" | awk '
+        /^[^ \t#]/ { inblock = ($0 == "/*"); next }
+        inblock && /^[ \t]+[A-Za-z-]+:/ {
+            line = $0
+            sub(/^[ \t]+/, "", line)
+            name = line; sub(/:.*/, "", name)
+            val = line;  sub(/^[^:]*:[ \t]*/, "", val); sub(/[ \t]+$/, "", val)
+            if (index(val, "\"") || index(val, "$") || index(val, "\\")) bad = 1
+            printf "add_header %s \"%s\" always;\n", name, val
+        }
+        END { exit bad }
+    ' || { echo "a _headers value cannot be written as an nginx string" >&2; return 1; }
+}
+
+site_publish() {
+    local src="$COMPOSE_DIR/landing/site/dist" snippet_tmp
+    if [ ! -f "$src/index.html" ]; then
+        echo -e "${RED}✗ $src has no index.html -- run: aivis site build${NC}" >&2
+        return 1
+    fi
+    snippet_tmp="${SITE_HEADERS_SNIPPET}.new"
+    mkdir -p "$(dirname "$SITE_HEADERS_SNIPPET")" "$(dirname "$SITE_ROOT")"
+    render_site_headers "$src/_headers" > "$snippet_tmp" || { rm -f "$snippet_tmp"; return 1; }
+    if ! grep -q '^add_header Content-Security-Policy ' "$snippet_tmp"; then
+        rm -f "$snippet_tmp"
+        echo -e "${RED}✗ _headers has no Content-Security-Policy -- refusing to publish a site without it${NC}" >&2
+        return 1
+    fi
+    rm -rf "${SITE_ROOT}.new" "${SITE_ROOT}.old"
+    cp -a "$src" "${SITE_ROOT}.new"
+    rm -f "${SITE_ROOT}.new/_headers" "${SITE_ROOT}.new/_redirects" "${SITE_ROOT}.new/cloudflare-redirect-rule.txt"
+    [ -d "$SITE_ROOT" ] && mv "$SITE_ROOT" "${SITE_ROOT}.old"
+    mv "${SITE_ROOT}.new" "$SITE_ROOT"
+    mv "$snippet_tmp" "$SITE_HEADERS_SNIPPET"
+    rm -rf "${SITE_ROOT}.old"
+    echo -e "${GREEN}✓ Site published: $SITE_ROOT (headers: $SITE_HEADERS_SNIPPET)${NC}"
+}
+
+case_site() {
+    case "${1:-}" in
+        build)   site_build ;;
+        publish) site_publish ;;
+        deploy)
+            site_build && site_publish || return 1
+            nginx -t && systemctl reload nginx
+            ;;
+        *)
+            echo "Site commands:"
+            echo "  aivis site build     — Build the company site from landing/ (python3)"
+            echo "  aivis site publish   — Copy the built site to ${SITE_ROOT} and write its nginx headers"
+            echo "  aivis site deploy    — build + publish + nginx test and reload (what 'aivis update' runs)"
+            ;;
+    esac
+}
+
 # Writes the requested subset of the three site configs, ensures each has a
 # sites-enabled symlink, then `nginx -t` gates the reload: on failure this
 # refuses to reload, so a bad template never reaches the live config, even
@@ -1891,6 +2089,10 @@ case_nginx_render() {
                 echo "Rendered: aivis-api ($API_DOMAIN)"
                 ;;
             frontend)
+                if [ ! -f "$SITE_HEADERS_SNIPPET" ]; then
+                    echo -e "${RED}✗ $SITE_HEADERS_SNIPPET is missing -- run: aivis site build && aivis site publish${NC}"
+                    return 1
+                fi
                 render_nginx_frontend > /etc/nginx/sites-available/aivis-frontend
                 ln -sf /etc/nginx/sites-available/aivis-frontend /etc/nginx/sites-enabled/aivis-frontend
                 echo "Rendered: aivis-frontend ($FRONTEND_DOMAIN)"
@@ -2246,6 +2448,7 @@ case "$CMD" in
     seed-portfolio) case_seed_portfolio "$@" ;;
     ssl)            case_ssl "$@" ;;
     nginx)          case_nginx "$@" ;;
+    site)           case_site "$@" ;;
     storage)        case_storage "$@" ;;
     version)        case_version ;;
     email-status)   case_email_status ;;
@@ -2301,6 +2504,7 @@ case "$CMD" in
         echo "  ssl status                                — Show certificate info"
         echo "  nginx reload                              — Test config and reload Nginx"
         echo "  nginx render [api|frontend|files|all]     — Render nginx templates from the repo (default: all)"
+        echo "  site build|publish|deploy                 — Company site: build from landing/, copy to the nginx root, reload"
         echo "  email-status                              — Is the mail channel live at comms?"
         ;;
 esac
