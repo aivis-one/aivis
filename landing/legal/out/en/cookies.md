@@ -37,7 +37,7 @@ Delete the key in your browser’s site-data settings, or block local storage fo
 
 ## The cabinet
 
-The cabinet (aivis.one/app) sets no cookies of its own either. It keeps in your browser’s storage only what it needs to work: the token that keeps you signed in, the language and theme you chose and, if you came through an integrator’s link, the code of that link until you register. All of this serves the service you asked for, and none of it is used for tracking or advertising. You can delete it in your browser’s site-data settings; you will then have to sign in again.
+The cabinet (aivis.one/app) sets no cookies of its own either. It keeps in your browser’s storage only what it needs to work: the token that keeps you signed in, the language and theme you chose and, if you came through an integrator’s link, the code of that link until you register. Its pages also load Telegram’s Mini App script from telegram.org, so that the cabinet can open inside Telegram; that script keeps one technical key in the session storage of your browser tab until you close the tab, and Telegram receives the request under its own policy. All of this serves the service you asked for, and none of it is used for tracking or advertising. You can delete it in your browser’s site-data settings; you will then have to sign in again.
 
 ## Complaints
 

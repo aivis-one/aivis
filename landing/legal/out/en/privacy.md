@@ -80,7 +80,7 @@ To help you, staff may also enter your account in a support session, as if they 
 
 The site and the cabinet run on the company’s own server. Traffic to them passes through Cloudflare, Inc. as a proxy for protection and speed, so Cloudflare, Inc. sees technical data such as your IP address, the page requested, the time and your browser, and also the traffic of the cabinet while it passes. For us it acts as a processor of this data, under its published [data processing addendum](https://www.cloudflare.com/cloudflare-customer-dpa/).
 
-Other services handle data for the cabinet on our instruction. An e-mail delivery service sends the messages of the cabinet. Telegram carries your sign-in if you use it and the notices you choose. The payment service we use receives the details of a payment to process it. Our legal advisers see data when we need advice. Our staff are described above.
+Other services handle data for the cabinet on our instruction. An e-mail delivery service sends the messages of the cabinet. Telegram carries your sign-in if you use it and the notices you choose. The cabinet’s pages also load Telegram’s Mini App script from telegram.org, so that the cabinet can open inside Telegram; Telegram receives that request under its own policy. The payment service we use receives the details of a payment to process it. Our legal advisers see data when we need advice. Our staff are described above.
 
 If you write by e-mail or Telegram, your message passes through your provider, through our mailbox provider and through Telegram, which handle it under their own terms.
 
