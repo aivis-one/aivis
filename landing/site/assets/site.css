@@ -590,11 +590,3 @@ html:has(.docs-accept) { scroll-behavior: auto; }
 @media (min-width: 880px) {
   .courses-page .course-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-
-/* ---------- support block under the hero lead ---------- */
-.support { display: grid; gap: var(--space-4); margin-block-start: var(--space-5); padding: var(--space-4) var(--space-5); }
-.support__title { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-h3); line-height: var(--lh-snug); }
-.support__text p { margin-block-start: var(--space-1); color: var(--text-secondary); line-height: var(--lh-snug); }
-.support__act { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
-.support__contacts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: var(--fs-sm); }
-@media (min-width: 880px) { .support { grid-template-columns: minmax(0, 1fr) auto; align-items: center; } .support__act { align-items: flex-end; } }
