@@ -27,6 +27,11 @@
 #  14: The audit row for a decision names the status the PERSON left
 #  15: The submission rate limit refuses without charging
 #
+# H34 ADDED (P-124):
+#  16: Two decisions on ONE application serialise: one is written, the
+#      other is refused with kyc_already_decided -- one audit row, one
+#      notification, the winner's status
+#
 # WHAT HAPPENED TO THE WEBHOOK TESTS. Seven tests here used to drive
 # POST /api/v1/kyc/webhook: approved, rejected-then-resubmit, unknown
 # user, invalid status, and three notification cases. The endpoint is
@@ -43,6 +48,7 @@
 # Email prefix: "s21_" -- unique to this test file, cleaned up in fixture.
 # =============================================================================
 
+import asyncio
 from uuid import UUID, uuid4
 
 import pytest
@@ -50,6 +56,10 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import get_session_factory
+from app.core.events.models import OutboxEvent
+from app.core.exceptions import ConflictError
+from app.modules.kyc import service as kyc_service
 from app.modules.kyc.constants import (
     KYC_SUBMIT_RATE_LIMIT,
     KYC_VERIFICATION_FEE_CENTS,
@@ -993,3 +1003,104 @@ async def test_submit_rate_limit_refuses_without_charging(
     ).scalars().all()
     assert len(debits) == 1
     assert len(await _applications(db_session, user_id)) == 1
+
+
+# ---------------------------------------------------------------------------
+# 16: two decisions on one application (H34 P-124)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_two_decisions_on_one_application_serialise(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Approve and reject the same queued application at the same time:
+    exactly one decision is written.
+
+    DETERMINISTIC, NOT A RACE LEFT TO LUCK. The first decision runs in its
+    own session and is NOT committed, so it holds the per-person lock; the
+    second is started while it is held and must wait. Only then does the
+    first commit. Before H34 the second did not wait at the lock -- it had
+    already read SUBMITTED -- and wrote its own decision over the first
+    once the row lock was released: two audit rows, two notifications, the
+    application ending REJECTED after an approval.
+
+    The application row is inserted directly rather than submitted: a
+    submit uploads documents to storage, and nothing here is about them.
+    comms_configured is switched on for kyc.service only, so the
+    notification row is written at all (see conftest's note on comms).
+    """
+    monkeypatch.setattr(kyc_service, "comms_configured", lambda: True)
+    staff, _ = await create_admin_user(client, db_session)
+    staff_id = staff.id
+    _, user_id = await _unverified_investor(client)
+
+    application = KYCApplication(user_id=user_id, status=KYCStatus.SUBMITTED)
+    db_session.add(application)
+    user = await db_session.get(User, user_id)
+    assert user is not None
+    user.kyc_status = KYCStatus.SUBMITTED
+    await db_session.commit()
+    application_id = application.id
+
+    factory = get_session_factory()
+    async with factory() as first, factory() as second:
+        await kyc_service.decide_by_application(
+            application_id=application_id,
+            new_status=KYCStatus.APPROVED,
+            reason=REASON,
+            actor_id=staff_id,
+            session=first,
+        )
+        loser = asyncio.create_task(
+            kyc_service.decide_by_application(
+                application_id=application_id,
+                new_status=KYCStatus.REJECTED,
+                reason=REASON,
+                actor_id=staff_id,
+                session=second,
+            )
+        )
+        await asyncio.sleep(0.5)
+        assert not loser.done(), "the second decision did not wait"
+
+        await first.commit()
+        with pytest.raises(ConflictError) as refused:
+            await loser
+        await second.rollback()
+
+    assert refused.value.status_code == 409
+    assert refused.value.code == "kyc_already_decided"
+
+    db_session.expire_all()
+    row = await db_session.get(KYCApplication, application_id)
+    person = await db_session.get(User, user_id)
+    assert row is not None and person is not None
+    assert row.status == KYCStatus.APPROVED
+    assert person.kyc_status == KYCStatus.APPROVED
+
+    audits = (
+        await db_session.execute(
+            text(
+                "SELECT data FROM audit_log WHERE event = 'kyc.status_changed' "
+                "AND data->>'application_id' = :aid"
+            ),
+            {"aid": str(application_id)},
+        )
+    ).scalars().all()
+    assert [a["to"] for a in audits] == [KYCStatus.APPROVED]
+
+    notifications = (
+        await db_session.execute(
+            select(OutboxEvent.payload).where(
+                OutboxEvent.payload["idempotency_key"].as_string().like(
+                    f"kyc-decision:{application_id}:%"
+                )
+            )
+        )
+    ).scalars().all()
+    assert [n["idempotency_key"] for n in notifications] == [
+        f"kyc-decision:{application_id}:{KYCStatus.APPROVED}"
+    ]

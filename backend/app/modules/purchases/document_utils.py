@@ -15,16 +15,61 @@
 #   extract_investor_email -- email address from User.credentials JSONB
 #   format_cents           -- "150000" -> "1,500.00"
 #   documents_link         -- the address of one document, for its email
+#   build_document_environment -- THE Jinja2 environment for document
+#                             templates (renderers and reconcile, H34 P-128)
 #
-# All four are pure -- they only read their inputs (or settings) and
+# All of them are pure -- they only read their inputs (or settings) and
 # return a value. No DB / MinIO / Redis access; safe to call inside any
 # render path.
 # =============================================================================
 
+from collections.abc import Callable
 from uuid import UUID
+
+from jinja2 import Environment, StrictUndefined
 
 from app.core.config import settings
 from app.modules.users.models import User
+
+
+def build_document_environment(
+    asset_data_uri: Callable[[str], str] | None,
+) -> Environment:
+    """The one Jinja2 environment every document template is held to.
+
+    ONE FACTORY, THREE CALLERS (H34 P-128): the agreement renderer, the
+    ownership-certificate renderer, and template reconcile
+    (scripts/_template_reconcile_core.py), which COMPILES each template
+    with it before accepting it. Reconcile used to parse with a bare
+    Environment(), which catches syntax but not what only compilation
+    sees -- a filter or test that does not exist -- so such a template was
+    accepted and then failed on every render. Compiled here by the same
+    environment the renderers use (plus, in reconcile, a by-name check of
+    the filters and tests Jinja2 defers to render time inside
+    conditions), it is refused at the door instead. A second,
+    hand-written environment in any of the three places would reopen
+    exactly that gap the day the two drift apart: a filter registered in
+    one and not the other.
+
+    SEC-NEW-01 (R2 §5.4): autoescape blocks stored XSS through
+    user-controlled fields (investor_name, company.description, ...);
+    StrictUndefined makes a missing placeholder a hard error instead of a
+    document with an empty hole in it.
+
+    Args:
+        asset_data_uri: the template's asset_data_uri global (see
+            companies/service.py::make_asset_data_uri_func). Renderers
+            pass it; reconcile passes None, because it only compiles: a
+            global is looked up when the template RENDERS, so compiling
+            with or without it produces the same code.
+    """
+    env = Environment(
+        autoescape=True,
+        undefined=StrictUndefined,
+    )
+    if asset_data_uri is not None:
+        env.globals["asset_data_uri"] = asset_data_uri
+    return env
 
 
 def extract_investor_name(user: User) -> str:

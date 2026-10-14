@@ -18,12 +18,30 @@
 # TD-042 FIX:
 #   session.get() replaced with SELECT ... FOR UPDATE to serialize
 #   concurrent worker instances (prevents double-payment / double-default).
+#
+# KYC PAUSE (H34 P-126, owner's decision 2026-10-14):
+#   A plan whose owner's kyc_status is not APPROVED is PAUSED. The daemon
+#   neither pays its tranche (paying turns a balance into ownership --
+#   exactly what kyc/gate.py closes to an unverified person), nor moves it
+#   into OVERDUE, nor defaults the plan; it logs the skip and leaves every
+#   row as it found it. Back in APPROVED, the next pass treats the plan as
+#   if nothing had happened: a SCHEDULED tranche whose due date passed
+#   during the pause is due and is paid, or goes OVERDUE on a short
+#   balance, like any other.
+#
+#   One predicate, _owner_kyc_paused, guards BOTH phases, and it is the
+#   only place this rule lives. It is not inside pay_tranche: create_plan
+#   calls pay_tranche for the first tranche behind its own KYC refusal,
+#   and pay_tranche's bool answers "paid or overdue" -- a third outcome
+#   would change its contract for that caller too. Nor inside
+#   default_plan, which would leave phase 1 free to push a paused tranche
+#   into OVERDUE and start its default clock.
 # =============================================================================
 
 from datetime import date, datetime, timedelta, UTC
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -34,6 +52,7 @@ from app.modules.installments.constants import (
 )
 from app.modules.installments.models import InstallmentPlan, InstallmentTranche
 from app.modules.installments.service import default_plan, pay_tranche
+from app.modules.users.models import KYCStatus, User
 
 logger = structlog.get_logger()
 
@@ -81,6 +100,50 @@ async def _load_plan_for_update(
     return result.scalar_one_or_none()
 
 
+async def _owner_kyc_paused(
+    session: AsyncSession,
+    plan: InstallmentPlan,
+) -> bool:
+    """True when the plan's owner is not KYC-APPROVED -- the plan is paused.
+
+    TAKES THE PER-PERSON LOCK FIRST, on the key submit_kyc, decide_by_user,
+    decide_by_application and engine.execute take. Without it a revocation
+    committed between this read and the lock engine.execute takes inside
+    pay_tranche would still let the tranche through: the read would have
+    said APPROVED a moment before it stopped being true. Under the lock the
+    status cannot change until this transaction ends, and engine.execute
+    re-taking the same transaction-level lock later succeeds at once
+    (advisory locks are re-entrant within one session).
+
+    Lock order is unchanged by this: the caller already holds the tranche
+    and plan row locks, and the payment path already took the advisory lock
+    after them (inside engine.execute) before this function existed.
+
+    The status is read as a bare COLUMN, not as a User entity: an entity
+    already in the identity map would come back with its cached status.
+    """
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": plan.investor_id.int & 0x7FFFFFFFFFFFFFFF},
+    )
+    result = await session.execute(
+        select(User.kyc_status).where(User.id == plan.investor_id)
+    )
+    # scalar_one: investor_id is a NOT NULL foreign key with
+    # ondelete=RESTRICT, so the owner row exists for every plan.
+    kyc_status = result.scalar_one()
+    if kyc_status == KYCStatus.APPROVED:
+        return False
+
+    logger.info(
+        "installment_plan_paused_kyc",
+        plan_id=str(plan.id),
+        investor_id=str(plan.investor_id),
+        kyc_status=kyc_status,
+    )
+    return True
+
+
 async def _process_due_tranches(today: date) -> None:
     """Find and pay tranches that are due today or earlier."""
     factory = get_session_factory()
@@ -115,6 +178,7 @@ async def _process_due_tranches(today: date) -> None:
     # Process each tranche in its own transaction.
     paid_count = 0
     overdue_count = 0
+    paused_count = 0
     error_count = 0
 
     for row in due_rows:
@@ -139,6 +203,11 @@ async def _process_due_tranches(today: date) -> None:
                     ):
                         continue
 
+                    # H34 P-126: neither paid nor marked OVERDUE.
+                    if await _owner_kyc_paused(session, plan):
+                        paused_count += 1
+                        continue
+
                     was_paid = await pay_tranche(tranche, plan, session)
 
                     if was_paid:
@@ -158,12 +227,35 @@ async def _process_due_tranches(today: date) -> None:
         "installment_batch_due_completed",
         paid=paid_count,
         overdue=overdue_count,
+        paused=paused_count,
         errors=error_count,
     )
 
 
 async def _process_defaults(today: date) -> None:
-    """Find overdue tranches past the grace period and default their plans."""
+    """Find overdue tranches past the grace period and default their plans.
+
+    KNOWN CEILING -- a pause does not extend the grace period.
+      1. Mechanism: the grace window is counted from the tranche's
+         due_date (default_cutoff below); nothing records when a pause
+         began or ended. A plan paused for longer than
+         INSTALLMENT_DEFAULT_DAYS comes back from re-approval with its
+         window already spent: if the balance is short on the first pass
+         after re-approval, phase 1 moves the tranche to OVERDUE and phase
+         2 of the SAME pass defaults the plan, with no day of grace. A
+         tranche that was already OVERDUE before the pause loses the
+         paused days from its window the same way.
+      2. Status: acknowledged by design (H34, owner's decision).
+      3. Task: none -- there are no users yet whom it could reach.
+      4. Trigger: the first plan that stays paused longer than
+         INSTALLMENT_DEFAULT_DAYS (visible as installment_plan_paused_kyc
+         log lines for the same plan_id spanning more days than that).
+      5. Agreed fix: count the window from the end of the pause -- needs a
+         column on the plan (or tranche) recording it, and a migration.
+      6. Rejected: counting from the time of the owner's last KYC
+         approval -- users does not store it.
+    The pause itself is not a ceiling; see the module header.
+    """
     factory = get_session_factory()
     default_cutoff = today - timedelta(days=settings.installment_default_days)
 
@@ -190,6 +282,7 @@ async def _process_defaults(today: date) -> None:
 
     # Process each default in its own transaction.
     default_count = 0
+    paused_count = 0
     error_count = 0
 
     # Deduplicate by plan_id (multiple overdue tranches may exist per plan).
@@ -215,6 +308,11 @@ async def _process_defaults(today: date) -> None:
                     if plan.status != InstallmentPlanStatus.ACTIVE:
                         continue
 
+                    # H34 P-126: a paused plan is not defaulted.
+                    if await _owner_kyc_paused(session, plan):
+                        paused_count += 1
+                        continue
+
                     await default_plan(plan, tranche, session)
                     default_count += 1
 
@@ -229,5 +327,6 @@ async def _process_defaults(today: date) -> None:
     logger.info(
         "installment_batch_defaults_completed",
         defaulted=default_count,
+        paused=paused_count,
         errors=error_count,
     )

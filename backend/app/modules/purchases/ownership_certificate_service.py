@@ -62,7 +62,6 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import structlog
-from jinja2 import Environment, StrictUndefined
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -79,6 +78,7 @@ from app.modules.companies.service import (
 from app.modules.purchases.agreement_service import TemplateMissingError
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.document_utils import (
+    build_document_environment,
     documents_link,
     extract_investor_email,
     extract_investor_name,
@@ -283,13 +283,9 @@ async def render_ownership_html(
         template.asset_files,
     )
 
-    # SEC-NEW-01 closure (R2 §5.4): autoescape + StrictUndefined,
-    # identical hardening as the per-Purchase agreement renderer.
-    env = Environment(
-        autoescape=True,
-        undefined=StrictUndefined,
-    )
-    env.globals["asset_data_uri"] = asset_data_uri
+    # SEC-NEW-01 hardening and the one-environment rule live in the
+    # factory (document_utils.build_document_environment).
+    env = build_document_environment(asset_data_uri)
 
     template_obj = env.from_string(html_body)
 

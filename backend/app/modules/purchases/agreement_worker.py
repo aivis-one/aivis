@@ -48,11 +48,36 @@
 # but the caching benefit for that one purchase -- not a KNOWN CEILING
 # in the sense of an unresolved gap, since nothing downstream ever
 # needs that row's snapshot to exist.
+#
+# ONE ROW CANNOT STOP THE PASS (H34 P-122). Until H34 only the listed
+# poison exceptions were caught, and anything else -- a template using a
+# filter that does not exist raises jinja2.TemplateAssertionError, not
+# UndefinedError -- left the loop, rolled the whole pass back INCLUDING
+# that row's attempts += 1, and the same oldest row headed the next
+# batch forever: one bad template stopped every snapshot on the box.
+# Now:
+#   - any Exception while loading or rendering one purchase charges that
+#     purchase an attempt and the loop moves on (the poison list only
+#     decides the log level: expected failures log a line, anything else
+#     logs its traceback);
+#   - the loading and rendering run inside a SAVEPOINT, so a database
+#     error in them rolls back to the savepoint instead of leaving the
+#     transaction aborted and the final commit failing for rows 1..N-1;
+#   - the write of the result and the charge of the attempt (with its
+#     audit row) happen OUTSIDE the savepoint, after it is closed or
+#     rolled back, and are flushed at once. The flush is what keeps them
+#     out of the NEXT row's savepoint: left pending, the next row's first
+#     query would autoflush them inside that savepoint, and its rollback
+#     would take the previous row's snapshot with it.
+# A failure the savepoint cannot absorb (the connection itself is gone,
+# the savepoint rollback or the final commit fails) still ends the pass;
+# that is the database being down, not a row, and main.py logs it.
 # =============================================================================
 
 import structlog
-from jinja2 import UndefinedError
+from jinja2 import TemplateError
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.config import settings
@@ -67,14 +92,20 @@ from app.modules.purchases.models import Purchase
 
 logger = structlog.get_logger()
 
-# Exceptions render_agreement_html's own docstring documents as
-# raiseable from the live-render path it takes on a NULL snapshot.
-# These charge an attempt and move to the next row -- a poison row,
-# not an infrastructure failure.
+# Exceptions render_agreement_html's live-render path is known to raise
+# for a row whose template or assets are wrong. They are logged as a
+# line, without a traceback: the reason is in the message. Any OTHER
+# exception charges the attempt just the same (see the module header) but
+# is logged with its traceback, because nobody predicted it.
+#
+# jinja2.TemplateError, not one of its children: UndefinedError (a
+# placeholder the context does not supply), TemplateSyntaxError and its
+# child TemplateAssertionError (raised when from_string COMPILES the body
+# -- an unknown filter or test) are all a template that cannot render.
 _POISON_EXCEPTIONS: tuple[type[Exception], ...] = (
     StorageError,
     BadRequestError,
-    UndefinedError,
+    TemplateError,
 )
 
 
@@ -111,7 +142,23 @@ async def run_agreement_snapshot_batch() -> None:
         failed = 0
 
         for purchase in purchases:
-            data = await build_agreement_data_for_snapshot(purchase, session)
+            try:
+                # Reads only -- see the module header for why nothing is
+                # written inside this savepoint.
+                async with session.begin_nested():
+                    data = await build_agreement_data_for_snapshot(
+                        purchase, session
+                    )
+                    html = (
+                        None
+                        if data is None
+                        else await render_agreement_html(data, session)
+                    )
+            except Exception as exc:
+                await _charge_failed_attempt(session, purchase, exc)
+                failed += 1
+                continue
+
             if data is None:
                 # The template row is gone (ondelete=SET NULL fired
                 # between this SELECT and now) or was never valid --
@@ -121,40 +168,8 @@ async def run_agreement_snapshot_batch() -> None:
                 # nothing more for this worker to try this pass.
                 continue
 
-            try:
-                html = await render_agreement_html(data, session)
-            except _POISON_EXCEPTIONS as exc:
-                purchase.agreement_snapshot_attempts += 1
-                gave_up = (
-                    purchase.agreement_snapshot_attempts
-                    >= settings.agreement_snapshot_max_attempts
-                )
-                logger.error(
-                    "agreement_snapshot_failed",
-                    purchase_id=str(purchase.id),
-                    attempts=purchase.agreement_snapshot_attempts,
-                    gave_up=gave_up,
-                    error=str(exc),
-                )
-                await record_audit(
-                    session=session,
-                    event="purchase.agreement_snapshot_failed",
-                    actor_id=purchase.investor_id,
-                    actor_type="system",
-                    target_type="purchase",
-                    target_id=purchase.id,
-                    data={
-                        "attempts": purchase.agreement_snapshot_attempts,
-                        "gave_up": gave_up,
-                        "template_id": str(
-                            purchase.purchase_agreement_template_id
-                        ),
-                    },
-                )
-                failed += 1
-                continue
-
             purchase.agreement_html = html
+            await session.flush()
             snapshotted += 1
 
         await session.commit()
@@ -165,3 +180,48 @@ async def run_agreement_snapshot_batch() -> None:
                 snapshotted=snapshotted,
                 failed=failed,
             )
+
+
+async def _charge_failed_attempt(
+    session: AsyncSession,
+    purchase: Purchase,
+    exc: Exception,
+) -> None:
+    """Charge one failed attempt to a purchase, log it and audit it.
+
+    Called after the row's savepoint has been rolled back, so what it
+    writes lands in the pass's own transaction and survives to the final
+    commit; flushed at once so it is not swept into the next row's
+    savepoint (module header).
+    """
+    purchase.agreement_snapshot_attempts += 1
+    gave_up = (
+        purchase.agreement_snapshot_attempts
+        >= settings.agreement_snapshot_max_attempts
+    )
+    log_fields = {
+        "purchase_id": str(purchase.id),
+        "attempts": purchase.agreement_snapshot_attempts,
+        "gave_up": gave_up,
+        "error_type": type(exc).__name__,
+        "error": str(exc),
+    }
+    if isinstance(exc, _POISON_EXCEPTIONS):
+        logger.error("agreement_snapshot_failed", **log_fields)
+    else:
+        logger.exception("agreement_snapshot_failed", **log_fields)
+
+    await record_audit(
+        session=session,
+        event="purchase.agreement_snapshot_failed",
+        actor_id=purchase.investor_id,
+        actor_type="system",
+        target_type="purchase",
+        target_id=purchase.id,
+        data={
+            "attempts": purchase.agreement_snapshot_attempts,
+            "gave_up": gave_up,
+            "template_id": str(purchase.purchase_agreement_template_id),
+        },
+    )
+    await session.flush()

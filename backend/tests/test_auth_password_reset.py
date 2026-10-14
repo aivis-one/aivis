@@ -10,8 +10,18 @@
 #   5: Rate limiting on the request endpoint (shared "password_reset:{ip}"
 #      key with confirm, see auth/router.py header)
 #
+# H34 ADDED (P-125):
+#   6: Links sent before support changed the address are refused after
+#      it (password_reset_link_invalidated), every one of them, and the
+#      password does not move
+#   7: The pair: after the change a link sent to the NEW address works
+#   8: A token record that does not say where the link went is refused
+#      like any dead token -- no fallback to the old record shape
+#
 # Both endpoints are UNAUTHENTICATED (see auth/service.py's "PASSWORD
-# RESET" module note) -- no auth_headers() anywhere in this file.
+# RESET" module note) -- no reset call in this file carries
+# auth_headers(); the ones that do are other endpoints (logout, and the
+# staff address change in 6-7).
 #
 # The request endpoint's fixed response means tests cannot read the
 # token off the HTTP response (that is the whole point -- anti-
@@ -21,15 +31,22 @@
 # Email prefix: "pwreset_" -- unique to this test file.
 # =============================================================================
 
+import json
 import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.redis import get_redis
 from app.modules.auth.service import _PASSWORD_RESET_REDIS_PREFIX
-from tests.helpers import auth_headers, login_user, register_user
+from tests.helpers import (
+    auth_headers,
+    create_admin_user,
+    login_user,
+    register_user,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -358,3 +375,121 @@ async def test_reset_confirm_weak_password(
         json={"token": token, "new_password": "short"},
     )
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# 6-8: the address the link was sent to (H34 P-125)
+# ---------------------------------------------------------------------------
+
+_SUPPORT_REASON = "Old mailbox lost; identity checked by support."
+
+
+async def _support_moves_address(
+    client: AsyncClient, db_session: AsyncSession, user_id: str
+) -> str:
+    """Support changes the user's address the way the product does it --
+    the staff endpoint behind change_user_email. Returns the new one."""
+    _, admin_token = await create_admin_user(client, db_session)
+    new_email = f"pwreset_moved_{uuid.uuid4().hex[:12]}@example.com"
+    resp = await client.patch(
+        f"/api/v1/staff/users/{user_id}/email",
+        json={"email": new_email, "reason": _SUPPORT_REASON},
+        headers=auth_headers(admin_token),
+    )
+    assert resp.status_code == 204, resp.text
+    return new_email
+
+
+async def _confirm(client: AsyncClient, token: str, password: str):  # type: ignore[no-untyped-def]
+    return await client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": token, "new_password": password},
+    )
+
+
+@pytest.mark.asyncio
+async def test_links_sent_before_an_address_change_die_with_it(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    capture_reset_email: dict,
+) -> None:
+    """Two links reach the old mailbox; support then moves the account to
+    a new address. Both links are refused with their own code, and the
+    password is untouched -- the original one still logs in at the new
+    address. A refused link is spent: offered again it is just dead.
+
+    Before H34 the record named only the user, so whoever read the old
+    mailbox could set a password for the rest of the 30 minutes."""
+    old_email = f"pwreset_old_{uuid.uuid4().hex[:12]}@example.com"
+    password = "OriginalPassword1"
+    data = await register_user(client, email=old_email, password=password)
+
+    await _request_reset(client, old_email)
+    first_token = capture_reset_email["token"]
+    await _request_reset(client, old_email)
+    second_token = capture_reset_email["token"]
+    assert first_token != second_token
+
+    new_email = await _support_moves_address(
+        client, db_session, data["user"]["id"]
+    )
+
+    for token in (first_token, second_token):
+        resp = await _confirm(client, token, "TakenOverPassword9")
+        assert resp.status_code == 400, resp.text
+        assert resp.json()["error"] == "password_reset_link_invalidated"
+
+    await login_user(client, email=new_email, password=password)
+
+    again = await _confirm(client, first_token, "TakenOverPassword9")
+    assert again.status_code == 400, again.text
+    assert again.json()["error"] == "bad_request"
+
+
+@pytest.mark.asyncio
+async def test_a_link_to_the_new_address_works_after_the_change(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    capture_reset_email: dict,
+) -> None:
+    """The pair of the test above: the refusal is about WHERE the link
+    went, not about the account having changed. A link requested after
+    the change goes to the new address and sets the password."""
+    old_email = f"pwreset_old_{uuid.uuid4().hex[:12]}@example.com"
+    data = await register_user(client, email=old_email)
+    new_email = await _support_moves_address(
+        client, db_session, data["user"]["id"]
+    )
+
+    await _request_reset(client, new_email)
+    resp = await _confirm(client, capture_reset_email["token"], "BrandNewPassword7")
+    assert resp.status_code == 204, resp.text
+
+    await login_user(client, email=new_email, password="BrandNewPassword7")
+
+
+@pytest.mark.asyncio
+async def test_a_record_without_the_address_is_refused(
+    client: AsyncClient,
+) -> None:
+    """A record in the pre-H34 shape -- the user and nothing else -- is
+    refused with the generic dead-token answer, not honoured: there is no
+    fallback to the old shape ("no legacy"), because a link that cannot
+    say where it went cannot pass the address check. The password does
+    not move."""
+    email = f"pwreset_shape_{uuid.uuid4().hex[:12]}@example.com"
+    password = "OriginalPassword1"
+    data = await register_user(client, email=email, password=password)
+
+    token = f"h34-shape-{uuid.uuid4().hex}"
+    await get_redis().set(
+        f"{_PASSWORD_RESET_REDIS_PREFIX}{token}",
+        json.dumps({"user_id": data["user"]["id"]}),
+        ex=60,
+    )
+
+    resp = await _confirm(client, token, "TakenOverPassword9")
+    assert resp.status_code == 400, resp.text
+    assert resp.json()["error"] == "bad_request"
+
+    await login_user(client, email=email, password=password)

@@ -1094,11 +1094,41 @@ async def decide_by_application(
         )
     reason = _clean_reason(reason)
 
+    # SERIALISED PER PERSON (H34 P-124), on the key decide_by_user and
+    # submit_kyc take. Two decisions on the same application -- a
+    # double-click in the queue, two staff members, or this racing a
+    # decide_by_user on the same person -- used to both read SUBMITTED
+    # before either committed and both write: two audit rows, two
+    # notifications, the second decision overwriting the first.
+    #
+    # The order is the point. The lock key is the PERSON, which this
+    # call only learns from the application -- so the owner is read
+    # first as a bare COLUMN, the lock is taken, and only then is the
+    # entity loaded. Loading the entity before the lock would put it in
+    # the session's identity map, and a SELECT after the lock would hand
+    # back that cached object with the status it had BEFORE the winner
+    # committed. Read after the lock, the loser sees the winner's
+    # decision and lands in the existing kyc_already_decided below; no
+    # new branch is needed.
+    result = await session.execute(
+        select(KYCApplication.user_id).where(KYCApplication.id == application_id)
+    )
+    owner_id = result.scalar_one_or_none()
+    if owner_id is None:
+        raise NotFoundError("KYC application not found")
+
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": owner_id.int & 0x7FFFFFFFFFFFFFFF},
+    )
+
+    # scalar_one, not _or_none: the row existed a statement ago and the
+    # product never deletes kyc_applications rows (the only DELETE is the
+    # development seed's reset in scripts/seed.py, which does not run
+    # beside live staff decisions).
     stmt = select(KYCApplication).where(KYCApplication.id == application_id)
     result = await session.execute(stmt)
-    application = result.scalar_one_or_none()
-    if application is None:
-        raise NotFoundError("KYC application not found")
+    application = result.scalar_one()
 
     if application.status != KYCStatus.SUBMITTED:
         raise ConflictError(

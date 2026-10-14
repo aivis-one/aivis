@@ -78,8 +78,10 @@ from app.modules.companies.constants import (
 from app.modules.companies.models import CompanyDocumentTemplate
 from app.modules.companies.schemas import TemplateInboxMetadata
 from app.modules.companies.service import invalidate_template_html_cache
-from jinja2 import Environment, TemplateSyntaxError
+from app.modules.purchases.document_utils import build_document_environment
+from jinja2 import TemplateSyntaxError
 from jinja2 import meta as jinja_meta
+from jinja2 import nodes as jinja_nodes
 from pydantic import ValidationError
 from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -322,7 +324,9 @@ def _validate_html_against_kind(
     asset_filenames: set[str],
 ) -> tuple[set[str], str | None]:
     """Validate template.html against the per-kind placeholder allow-list
-    plus its own asset_data_uri('...') references (R2 §4.8).
+    plus its own asset_data_uri('...') references (R2 §4.8), after
+    checking that it compiles in the renderers' own environment and names
+    no filter or test that environment lacks (H34 P-128).
 
     Returns:
         (referenced_assets, error) where
@@ -330,11 +334,37 @@ def _validate_html_against_kind(
             (literal-string calls only -- see ASSET_DATA_URI_RE comment).
           - error: None on success, or a human-readable reason on failure.
     """
-    env = Environment()
+    # The renderers' own environment (H34 P-128), not a bare one: parsing
+    # alone catches syntax, but an unknown filter or test is only found
+    # when the body COMPILES -- the renderers' from_string -- so a bare
+    # parse let such a template in and every render of it then failed.
+    env = build_document_environment(None)
     try:
         ast = env.parse(html)
     except TemplateSyntaxError as exc:
         return set(), f"jinja2 parse error: {exc.message} (line {exc.lineno})"
+    try:
+        env.compile(ast)
+    except TemplateSyntaxError as exc:
+        # TemplateAssertionError (unknown filter / test) is a child of
+        # TemplateSyntaxError and carries the same message and line.
+        return set(), f"jinja2 compile error: {exc.message} (line {exc.lineno})"
+
+    # What compilation lets through. Since Jinja2 3.0 an unknown filter or
+    # test inside an {% if %} / {% elif %} condition, or an inline
+    # `a if b else c`, is NOT a compile error: the check is deferred to
+    # render time, so that a branch guarded by `x is defined` may name a
+    # filter that only exists in some environments. Here no branch may:
+    # every filter and test is looked up by name against the same
+    # environment, which closes the deferred cases compile skips.
+    for node in ast.find_all((jinja_nodes.Filter, jinja_nodes.Test)):
+        known = env.filters if isinstance(node, jinja_nodes.Filter) else env.tests
+        if node.name not in known:
+            kind_name = "filter" if isinstance(node, jinja_nodes.Filter) else "test"
+            return set(), (
+                f"jinja2 compile error: No {kind_name} named "
+                f"'{node.name}'. (line {node.lineno})"
+            )
 
     used = jinja_meta.find_undeclared_variables(ast)
     allowed = TEMPLATE_PLACEHOLDERS[kind] | {"asset_data_uri"}

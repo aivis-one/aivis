@@ -75,8 +75,8 @@
 #   hammering the endpoint.
 #
 #   Instead the token lives in REDIS as the reverse index --
-#   password_reset:{token} -> {"user_id": ...} -- the same mechanism
-#   this file already uses for session tokens (create_session /
+#   password_reset:{token} -> {"user_id": ..., "email": ...} -- the same
+#   mechanism this file already uses for session tokens (create_session /
 #   delete_session below), for the same reasons: O(1) lookup by a bare
 #   opaque token, and TTL is native (EXPIRE) instead of a manually
 #   checked expires_at column that would need its own cleanup job to
@@ -100,6 +100,16 @@
 #   email-verification code -- that TTL assumes the user is already
 #   mid-session watching for a code; a reset link assumes the user has
 #   just been locked out and needs to go find their inbox first).
+#
+#   The record carries the ADDRESS THE LINK WAS SENT TO (H34 P-125), and
+#   confirm refuses the token when that address is no longer the user's
+#   current one (password_reset_link_invalidated). A link is a capability
+#   held by whoever reads that mailbox; when support moves the account to
+#   a new address (staff/admin_service.py::change_user_email) -- typically
+#   because the old mailbox is lost or taken over -- every link already
+#   sitting in the old mailbox must stop working. There is no user ->
+#   token index to void them from the change itself, so the check lives
+#   here, on the one path that consumes a token.
 #
 #   On successful confirm: new password hashed via hash_password()
 #   (same argon2 path as everywhere else -- no second hashing scheme),
@@ -881,7 +891,8 @@ async def request_password_reset(
     leak the match either.
 
     On a match: generates a token, stores it in Redis as the reverse
-    index (token -> user_id, see module note for why Redis and not
+    index (token -> user_id plus the address the link goes to, see
+    module note for why Redis and not
     credentials JSONB), writes requested_at/expires_at onto
     credentials.password_reset for visibility, and emits the letter into
     the outbox inside this transaction (P-01 -- same shape as
@@ -913,9 +924,12 @@ async def request_password_reset(
     now = datetime.now(UTC)
     expires_at = now + timedelta(minutes=_PASSWORD_RESET_TOKEN_TTL_MINUTES)
 
+    # The address is the stored one (the row was found by it), so it is
+    # compared on confirm against the same field, byte for byte -- see
+    # the module note on why the record carries it at all.
     await redis.set(
         f"{_PASSWORD_RESET_REDIS_PREFIX}{token}",
-        json.dumps({"user_id": str(user.id)}),
+        json.dumps({"user_id": str(user.id), "email": user.email}),
         ex=ttl_seconds,
     )
 
@@ -1006,7 +1020,9 @@ async def confirm_password_reset(
 
     Raises:
         BadRequestError: Token missing, expired, already used, or the
-            user it pointed to no longer exists.
+            user it pointed to no longer exists; or (code
+            password_reset_link_invalidated) the user's address is no
+            longer the one the link was sent to.
     """
     redis = get_redis()
     key = f"{_PASSWORD_RESET_REDIS_PREFIX}{token}"
@@ -1016,11 +1032,18 @@ async def confirm_password_reset(
         raise BadRequestError("Invalid or expired reset token")
 
     try:
-        user_id = UUID(json.loads(raw)["user_id"])
+        payload = json.loads(raw)
+        user_id = UUID(payload["user_id"])
+        sent_to = payload["email"]
+        if not isinstance(sent_to, str):
+            raise TypeError("password_reset email is not a string")
     except (KeyError, ValueError, TypeError) as exc:
-        # Defensive only -- this process is the only writer of this key
-        # shape. A malformed payload means data corruption, not user
-        # error; still surfaces as the same generic 400 rather than 500.
+        # This process is the only writer of this key shape. A record
+        # without "email" is either corruption or one written before H34
+        # P-125 (at most one TTL after that deploy); both are refused the
+        # same way, with no fallback to the old shape -- a link that
+        # cannot say where it was sent cannot pass the address check
+        # below. Same generic 400 as any other dead token, not a 500.
         logger.error("password_reset_token_payload_corrupt")
         raise BadRequestError("Invalid or expired reset token") from exc
 
@@ -1029,6 +1052,18 @@ async def confirm_password_reset(
     user = result.scalar_one_or_none()
     if user is None:
         raise BadRequestError("Invalid or expired reset token")
+
+    # H34 P-125: the link died with the address it was sent to -- see the
+    # module note. The token is already consumed (GETDEL above), which is
+    # what a dead link should be.
+    if sent_to != user.email:
+        logger.info(
+            "password_reset_link_invalidated", user_id=str(user.id)
+        )
+        raise BadRequestError(
+            "This reset link is no longer valid",
+            code="password_reset_link_invalidated",
+        )
 
     new_hash = await hash_password(new_password)
 

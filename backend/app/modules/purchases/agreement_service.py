@@ -45,7 +45,9 @@
 #   - Binary assets (logo / signature / stamp) are loaded inline via
 #     the Jinja-global asset_data_uri() function built by
 #     companies.service.make_asset_data_uri_func.
-#   - The Jinja2 Environment is constructed with autoescape=True and
+#   - The Jinja2 Environment comes from
+#     document_utils.build_document_environment (H34 P-128: the same one
+#     template reconcile compiles with), with autoescape=True and
 #     undefined=StrictUndefined to close SEC-NEW-01 from iter 2.3.
 #     autoescape protects against XSS when investor-supplied fields
 #     (investor_name, description, ...) flow into the HTML body;
@@ -75,7 +77,6 @@ from datetime import datetime, UTC
 from uuid import UUID
 
 import structlog
-from jinja2 import Environment, StrictUndefined
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,6 +91,7 @@ from app.modules.companies.service import (
 from app.modules.products.models import Product
 from app.modules.purchases.constants import PurchaseStatus
 from app.modules.purchases.document_utils import (
+    build_document_environment,
     documents_link,
     extract_investor_email,
     extract_investor_name,
@@ -305,6 +307,11 @@ async def render_agreement_html(
         jinja2.UndefinedError: The template referenced a context key
             the renderer didn't supply. StrictUndefined makes this a
             hard error instead of a silent empty string.
+        jinja2.TemplateSyntaxError / TemplateAssertionError: the body
+            does not compile. Reconcile compiles with the same
+            environment and refuses such a template (H34 P-128), so this
+            needs a template accepted before that, or a body that reached
+            storage some other way.
     """
     if data.purchase.agreement_html:
         return data.purchase.agreement_html
@@ -316,16 +323,9 @@ async def render_agreement_html(
         data.template.asset_files,
     )
 
-    # SEC-NEW-01 closure (R2 §5.4): autoescape + StrictUndefined are
-    # mandatory at render time. autoescape blocks stored-XSS through
-    # user-controlled fields (investor_name, company.description, ...);
-    # StrictUndefined fails loudly on a missing placeholder rather
-    # than producing a document with literal Jinja syntax.
-    env = Environment(
-        autoescape=True,
-        undefined=StrictUndefined,
-    )
-    env.globals["asset_data_uri"] = asset_data_uri
+    # SEC-NEW-01 hardening and the one-environment rule live in the
+    # factory (document_utils.build_document_environment).
+    env = build_document_environment(asset_data_uri)
 
     template_obj = env.from_string(html_body)
 

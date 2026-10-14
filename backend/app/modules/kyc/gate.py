@@ -10,6 +10,13 @@
 # one of four codes (kyc/constants.py) so the client can tell "pay",
 # "wait", "refused" and "revoked" apart.
 #
+# ONE PATH TURNS A BALANCE INTO OWNERSHIP WITHOUT A REQUEST: the daily
+# installment daemon paying a tranche of a plan opened while the person
+# was approved. This gate sees only requests, so that path is closed where
+# it runs -- installments/worker.py::_owner_kyc_paused (H34 P-126) pauses
+# the plan of anyone not APPROVED: no payment, no move to OVERDUE, no
+# default, until the person is approved again.
+#
 # Until H21 it was the other way round -- closed everywhere except a list
 # of exemptions -- and the first screen after onboarding
 # (GET /dashboard/summary) was a wall. The inversion changes the failure

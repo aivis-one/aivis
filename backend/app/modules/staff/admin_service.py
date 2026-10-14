@@ -500,26 +500,10 @@ async def change_user_email(
     request -- and nothing is sent to the old address (owner's decision,
     closed with P-104).
 
-    KNOWN CEILING -- a password-reset link sent to the OLD address keeps
-    working after the change.
-      1. Mechanism: the reset token lives in Redis as password_reset:
-         {token} -> {"user_id": ...} (auth/service.py, module note) with
-         a 30-minute TTL. The record names the user, not the address the
-         link went to, and there is no user -> token index, so nothing
-         here can find or void it. Whoever reads the old mailbox can set
-         a new password for up to 30 minutes after the change.
-      2. Status: acknowledged by design (H28).
-      3. Task: none -- it is opened by the trigger below, not scheduled.
-      4. Trigger: the first email change requested BECAUSE the old
-         mailbox was taken over (the reason given here, in the
-         user.email_changed audit row, says so).
-      5. Agreed fix: write the address the link was sent to into the
-         token record at request time, and refuse the confirm when it
-         differs from the user's current address -- one condition in
-         confirm_password_reset().
-      6. Rejected: a Redis reverse index user -> token voided from here
-         (a second structure to keep in step with the token's own TTL);
-         killing the user's sessions (does not touch the token at all).
+    A password-reset link already sent to the OLD address dies with this
+    change: the token record carries the address it was sent to, and
+    auth/service.py::confirm_password_reset refuses it once that is no
+    longer the user's address (H34 P-125).
 
     Raises:
         BadRequestError: own address, platform user, no email to change
