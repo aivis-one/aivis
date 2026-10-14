@@ -2072,8 +2072,12 @@ site_publish() {
     #    the live release is never the one being staged.
     stamp=$(date +%Y%m%d%H%M%S)
     rel=$(mktemp -d "$releases/$stamp-XXXX") || { rm -f "$snippet_tmp"; return 1; }
-    chmod 755 "$rel"
     cp -a "$src/." "$rel/" || { rm -rf "$rel"; rm -f "$snippet_tmp"; return 1; }
+    #    After the copy, never before it: cp -a carries dist's own mode onto
+    #    $rel, and build-site.py makes dist with tempfile.mkdtemp (0700), so a
+    #    chmod before the copy is undone and nginx (www-data) gets EACCES --
+    #    403 on / and 404 on every file (the 2026-10-14 install).
+    chmod -R a+rX "$rel" || { rm -rf "$rel"; rm -f "$snippet_tmp"; return 1; }
     rm -f "$rel/_headers" "$rel/_redirects" "$rel/cloudflare-redirect-rule.txt"
     # 2. New snippet in place, then nginx -t. Failure: the old snippet comes
     #    back and the swap does not happen -- the old release stays live.
