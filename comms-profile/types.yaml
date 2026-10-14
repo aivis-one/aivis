@@ -11,11 +11,13 @@
 # {version: 2, types: {type_key: {field: value}}}, and those two are the
 # only top-level keys. comms reads exactly one schema version and refuses
 # to start on any other, or on none. Types are a MAPPING, never a list --
-# a list could not carry per-type fields. This file uses three fields:
+# a list could not carry per-type fields. This file uses four fields:
 # `category` (the mute gate), `channels` (where the type is delivered;
-# absent = comms' default, in_app) and `recipient_schedule` (`respect`,
-# the default when absent, or `bypass`; any other value refuses comms
-# startup; needs comms >= 3.3.0 on the box).
+# absent = comms' default, in_app), `recipient_schedule` (`respect`,
+# the default when absent, or `bypass`; needs comms >= 3.3.0) and `lane`
+# (`interactive`, `critical`, `normal` -- the default when absent -- or
+# `bulk`; needs comms >= 3.4.0). Any other value of either refuses comms
+# startup.
 # The type record is closed: an unknown key refuses comms startup; only `x-...` keys are tolerated.
 # Widths from comms app/core/constants.py: a type key is <= 50 chars
 # (MAX_TYPE_KEY_LEN), a category <= 50 chars (MAX_CATEGORY_LEN).
@@ -387,14 +389,23 @@ types:
   # hours end, it arrives expired. The two documents keep the default
   # `respect`: they are records of a finished transaction and lose nothing
   # by waiting for the morning.
+  #
+  # THE SAME TWO TYPES TRAVEL IN THE `interactive` LANE, for the same
+  # reason: someone is waiting for them right now. A lane isolates, it does
+  # not prioritise -- a backlog in another lane (a mass send, a slow
+  # channel) can no longer hold a login code behind it, and nothing else
+  # changes: mutes, expiry and retries apply as to any type. The documents
+  # stay in the default `normal` lane.
 
   auth.verification_code:
     channels: [email]
     recipient_schedule: bypass
+    lane: interactive
 
   auth.password_reset:
     channels: [email]
     recipient_schedule: bypass
+    lane: interactive
 
   purchase.agreement:
     channels: [in_app, email]
