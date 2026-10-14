@@ -91,7 +91,7 @@ def _value_problem(
     One reason per value, the first that applies: a placeholder is
     reported as a placeholder, not also as "not https". An EMPTY value is
     a problem only when the setting is required -- the optional ones
-    (payments) use empty to mean "this box has no such stack".
+    (comms, payments) use empty to mean "this box has no such stack".
     Anything NON-empty is judged the same way whether required or not.
     """
     if value == "":
@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     # TWO ADDRESSES (H32 P-121). storage_endpoint is where every operation
     # goes -- the storage's name in the docker network, invisible to a
     # browser. storage_public_url is what download links are SIGNED for:
-    # the public site (https://files.aivis.one) that forwards to the
+    # the public site (e.g. https://files.example.com) that forwards to the
     # storage with the Host header unchanged. Links used to be signed for
     # the internal address, so no browser could open one. Required on any
     # box but development, https only (_validate); empty in development
@@ -176,7 +176,7 @@ class Settings(BaseSettings):
     storage_presigned_ttl_public: int = 86400   # 24 hours
     # Hard limit on uploaded file size. Mirrored in nginx client_max_body_size.
     # Files larger than this are rejected at ingress; backend trusts the
-    # ingress (nginx client_max_body_size, the API and files.aivis.one
+    # ingress (nginx client_max_body_size, the API and public storage
     # sites alike).
     storage_max_file_size_mb: int = 100
 
@@ -321,11 +321,9 @@ class Settings(BaseSettings):
     # network. They are never the same value on a real box.
     #
     # COMMS_REDIS_URL is written into backend/.env by the installer
-    # hand-over (scripts/install_aivis.sh, setup_comms) and is REQUIRED
-    # outside development (H34 P-123, see _validate). An EMPTY url is a
-    # development-only state: local dev has no comms stack, and there it
-    # disables the background relay with a log line instead of failing
-    # to start.
+    # hand-over (scripts/install_aivis.sh, setup_comms); an EMPTY url
+    # means "there is no relay" -- it disables the background task with a
+    # log line instead of failing to start. Local dev has no comms stack.
     comms_redis_url: str = ""
     # Stream name the relay XADDs into. The default MIRRORS the comms
     # consumer's own default (comms app/core/config.py:66
@@ -372,10 +370,9 @@ class Settings(BaseSettings):
     # the comms side (SKIPPED, no delivery row, no retry).
     #
     # Both values are written into backend/.env by the installer
-    # hand-over, exactly like COMMS_REDIS_URL above, and are REQUIRED
-    # outside development (H34 P-123). An EMPTY url is a development-only
-    # state ("this laptop has no comms stack"): no client is built and no
-    # call is made.
+    # hand-over, exactly like COMMS_REDIS_URL above; until this delivery
+    # nothing read them. An EMPTY url means "this box has no comms
+    # stack": no client is built and no call is made.
     comms_api_url: str = ""
     comms_service_token: str = ""
     # Per-request timeout. Deliberately short: this call sits inside the
@@ -387,10 +384,9 @@ class Settings(BaseSettings):
     #
     # The product is a client of the crypto payments service: it creates
     # invoices, shows their address, forwards the TXID the user submits
-    # and reads the status back. An empty URL means "this box has no
-    # payments stack", and that is a supported configuration rather than a
-    # fault. (The comms pair above used to share this reading; since H34
-    # P-123 comms is required outside development.)
+    # and reads the status back. Same shape as the comms pair above and
+    # for the same reason -- an empty URL means "this box has no payments
+    # stack", and that is a supported configuration rather than a fault.
     #
     # The three product-side variables of TOR section 9
     # (PAYMENTS_SERVICE_TOKEN, PAYMENTS_API_URL and the webhook secret,
@@ -538,7 +534,7 @@ class Settings(BaseSettings):
             if self.cors_origins.strip() == "*":
                 problems.append(
                     "CORS_ORIGINS=* is not allowed in production -- set "
-                    "explicit origins, e.g. https://app.aivis.one"
+                    "explicit origins, e.g. https://example.com"
                 )
             else:
                 origins = self.cors_origins.split(",")
@@ -549,24 +545,11 @@ class Settings(BaseSettings):
                     )
                     judge(label, origin.strip(), required=True, url=True)
 
-            # Comms: REQUIRED (H34 P-123). There has been no direct mail
-            # path since H19 -- every letter the product sends, the
-            # registration code and the password-reset link included,
-            # leaves through comms. A production box without comms is
-            # therefore not "a box without notifications" but a box where
-            # nobody can finish registering or recover a password. All
-            # three are required, not "any one implies the rest": the url
-            # without the token sends "Authorization: Bearer " and comms
-            # answers 401 to every call, so recipients are silently never
-            # created; the token without the url has nowhere to go; and
-            # without COMMS_REDIS_URL the outbox relay is disabled and
-            # every queued letter sits in outbox_events forever.
-            judge("COMMS_REDIS_URL", self.comms_redis_url, required=True, url=True)
-            judge("COMMS_API_URL", self.comms_api_url, required=True, url=True)
-            judge("COMMS_SERVICE_TOKEN", self.comms_service_token, required=True)
-
             # Optional: empty means "this box has no such stack". A
             # value that IS set must still be a value.
+            judge("COMMS_REDIS_URL", self.comms_redis_url, required=False, url=True)
+            judge("COMMS_API_URL", self.comms_api_url, required=False, url=True)
+            judge("COMMS_SERVICE_TOKEN", self.comms_service_token, required=False)
             judge("PAYMENTS_API_URL", self.payments_api_url, required=False, url=True)
             judge(
                 "PAYMENTS_SERVICE_TOKEN", self.payments_service_token,
@@ -630,6 +613,34 @@ class Settings(BaseSettings):
                     "every event delivered to it, so confirmed payments "
                     "never reach a balance. Set all three, or clear all "
                     "three to run without payments."
+                )
+
+        # -- Comms API pairing (T-64) --
+        # A url without a token sends "Authorization: Bearer " and comms
+        # answers 401 to every call: recipients would silently stop being
+        # created, and the first symptom would be users who never receive
+        # a notification. A token without a url is the same
+        # half-configuration seen from the other side.
+        #
+        # Gated on "comms is INTENDED on this box" -- i.e. at least one of
+        # the two is set -- rather than on their absence: a box with no
+        # comms at all is a supported configuration (see the empty-url
+        # note above), and demanding these keys everywhere would stop
+        # every comms-less deployment from starting. Dev stays optional so
+        # a laptop needs no comms stack.
+        if not is_dev and (self.comms_api_url or self.comms_service_token):
+            if self.comms_api_url and not self.comms_service_token:
+                raise ValueError(
+                    "COMMS_API_URL is set but COMMS_SERVICE_TOKEN is "
+                    "empty: comms would reject every call with 401 and "
+                    "recipients would never be created. Set the token or "
+                    "clear the URL."
+                )
+            if self.comms_service_token and not self.comms_api_url:
+                raise ValueError(
+                    "COMMS_SERVICE_TOKEN is set but COMMS_API_URL is "
+                    "empty: half-configured comms client. Set the URL or "
+                    "clear the token."
                 )
 
         return self

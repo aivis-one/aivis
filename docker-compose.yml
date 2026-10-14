@@ -74,7 +74,20 @@ services:
       - aivis-shared   # reach comms-app / comms-redis by name
 
   frontend:
-    build: ./frontend
+    # The image carries this server's addresses, fixed at build time: the
+    # API origin the cabinet calls and the API and files origins its CSP
+    # allows (frontend/Dockerfile says how). They come from the environment
+    # `aivis frontend build` / `aivis update` set (build_frontend_image in
+    # scripts/aivis-manage.sh). `:-` and not `:?` on purpose: compose
+    # interpolates the whole file for EVERY command, so `:?` would make
+    # `docker compose ps` / `exec app` refuse to run on a shell without
+    # them. The empty value is no address -- frontend/Dockerfile stops the
+    # build on it with the variable's name.
+    build:
+      context: ./frontend
+      args:
+        AIVIS_API_ORIGIN: ${AIVIS_API_ORIGIN:-}
+        AIVIS_FILES_ORIGIN: ${AIVIS_FILES_ORIGIN:-}
     container_name: aivis-frontend
     ports:
       - "127.0.0.1:3000:3000"
@@ -143,7 +156,7 @@ services:
   #
   # PORTS: only the S3 API, only on the host loopback. Backend talks to it
   #   through the docker network as http://storage:9000. The host nginx
-  #   site files.aivis.one proxies 127.0.0.1:9000 with the Host header
+  #   site (files.<domain>) proxies 127.0.0.1:9000 with the Host header
   #   unchanged, so the SigV4 links the backend signs for that host verify
   #   (core/storage.py). The web console is OFF (RUSTFS_CONSOLE_ENABLE) and
   #   its port is not published: there is no console on this box.

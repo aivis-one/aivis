@@ -26,7 +26,7 @@ COMPOSE_DIR="$INSTALL_BASE/repo"
 # what is on disk, never what is running. See update_product.
 DEPLOYED_COMMIT_FILE="$INSTALL_BASE/deployed-commit"
 
-# The static company site (aivis.one/): where nginx serves it from, and the
+# The static company site (the apex, /): where nginx serves it from, and the
 # generated include that carries its response headers. Constants of the
 # product like INSTALL_BASE, not per-server facts. See "COMPANY SITE" below.
 SITE_ROOT="/var/www/aivis-site"
@@ -57,6 +57,39 @@ storage_public_host() {
     url="${url#https://}"
     url="${url#http://}"
     echo "${url%%/*}"
+}
+
+# -- Frontend image build (H35 P-127) -----------------------------------------
+# The frontend image carries two deployment addresses, both fixed when it is
+# built: the API origin the cabinet calls (VITE_API_BASE_URL) and the API and
+# files origins its Content-Security-Policy allows (frontend/nginx.conf,
+# rendered by frontend/Dockerfile). They reach the build as build args
+# (docker-compose.yml, frontend.build.args) from the two places this server
+# already states them -- API_DOMAIN in aivis.conf, STORAGE_PUBLIC_URL in
+# backend/.env -- and from nowhere else: the checkout carries no value. A
+# missing or empty one stops the build with its name (frontend/Dockerfile,
+# then vite.config.ts), never falls back to an address.
+# The one way the image is built: `aivis update` and the installer
+# (`aivis frontend build`) both come here.
+build_frontend_image() {
+    local files_origin
+    files_origin=$(grep -E '^STORAGE_PUBLIC_URL=' "$COMPOSE_DIR/backend/.env" 2>/dev/null | tail -1 | cut -d= -f2- || true)
+    (
+        cd "$COMPOSE_DIR" || exit 1
+        AIVIS_API_ORIGIN="https://${API_DOMAIN:-}" \
+        AIVIS_FILES_ORIGIN="$files_origin" \
+            docker compose build frontend
+    )
+}
+
+case_frontend() {
+    case "${1:-}" in
+        build) build_frontend_image ;;
+        *)
+            echo "Frontend commands:"
+            echo "  aivis frontend build  -- Build the frontend image with this server's addresses"
+            ;;
+    esac
 }
 
 # Run one rc command (RustFS's CLI, the replacement for mc) against the
@@ -1124,7 +1157,12 @@ update_product() {
     # current generated.ts.
     if [ $FRONTEND_ONLY -eq 0 ]; then
     echo "Rebuilding backend image..."
-    docker compose build app
+    if ! docker compose build app; then
+        echo -e "${RED}✗ Backend image build failed (see above)${NC}"
+        echo "  Nothing has been stopped: the containers still running are the"
+        echo "  ones from before this update. The deployed commit is not recorded."
+        return 1
+    fi
 
     # Restart stack: drop everything, bring up backend + infra first.
     # Frontend stays down until after gen-types so its build picks up the
@@ -1146,8 +1184,19 @@ update_product() {
     # Without it, the move to RustFS (H32) left aivis-minio running on
     # 127.0.0.1:9000 and the new storage could not bind the port. Volumes
     # are never touched (no -v): aivis_minio_data stays as the rollback.
-    docker compose down --remove-orphans
-    docker compose up -d app postgres redis storage
+    if ! docker compose down --remove-orphans; then
+        echo -e "${RED}✗ Stopping the stack failed (see above)${NC}"
+        echo "  The stack may be partly stopped -- what runs now: docker compose ps"
+        echo "  The deployed commit is not recorded."
+        return 1
+    fi
+    if ! docker compose up -d app postgres redis storage; then
+        echo -e "${RED}✗ Starting backend + infra failed (see above)${NC}"
+        echo "  The stack was stopped above and is at most partly up; the"
+        echo "  frontend is not running. What runs now: docker compose ps"
+        echo "  The deployed commit is not recorded."
+        return 1
+    fi
 
     # storage-init IS PART OF EVERY UPDATE, not just of the install.
     # It creates the buckets and the backend service account, and both
@@ -1244,9 +1293,18 @@ update_product() {
 
     echo ""
     echo "Seeding prod DB (bootstrap)..."
-    docker compose exec -T app python scripts/seed_platform.py
-    docker compose exec -T app python -m scripts.seed_platform_templates
-    docker compose exec -T app python scripts/seed_documents.py
+    local seed_step
+    for seed_step in "scripts/seed_platform.py" "-m scripts.seed_platform_templates" "scripts/seed_documents.py"; do
+        # Word splitting of $seed_step is intended: "-m module" is two args.
+        # shellcheck disable=SC2086
+        if ! docker compose exec -T app python $seed_step; then
+            echo -e "${RED}✗ Bootstrap step failed: python $seed_step (see above)${NC}"
+            echo "  The new backend is running on a database that is not fully"
+            echo "  bootstrapped; the frontend is not running. The deployed commit"
+            echo "  is not recorded."
+            return 1
+        fi
+    done
     echo -e "${GREEN}✓ Prod DB bootstrapped${NC}"
 
     # ----------------------------------------------------------------------
@@ -1349,16 +1407,31 @@ update_product() {
     # ----------------------------------------------------------------------
     echo ""
     echo "Building frontend with fresh types..."
-    docker compose build frontend
+    if ! build_frontend_image; then
+        echo -e "${RED}✗ Frontend image build failed (see above)${NC}"
+        if [ "$FRONTEND_ONLY" -eq 1 ]; then
+            echo "  --frontend-only: the previous frontend keeps running."
+        else
+            echo "  The new backend is running; the frontend was stopped with the"
+            echo "  stack above and is NOT running."
+        fi
+        echo "  The deployed commit is not recorded."
+        return 1
+    fi
     # Second `up` of this cycle, and the only one a --frontend-only run
     # reaches -- it needs the same guard as the first.
     ensure_shared_network || {
         echo -e "${RED}✗ Cannot create docker network aivis-shared${NC}"
         return 1
     }
-    docker compose up -d frontend
+    if ! docker compose up -d frontend; then
+        echo -e "${RED}✗ Starting the frontend failed (see above)${NC}"
+        echo "  The backend is running; what runs of the frontend now:"
+        echo "  docker compose ps frontend. The deployed commit is not recorded."
+        return 1
+    fi
 
-    # The company site (aivis.one/) ships with the frontend and on a
+    # The company site (the apex, /) ships with the frontend and on a
     # --frontend-only run too: it is front-end content.
     echo ""
     case_site deploy || {
@@ -1536,10 +1609,16 @@ case_restart() {
     SERVICE="${1:-}"
     if [ -n "$SERVICE" ]; then
         echo "Restarting $SERVICE..."
-        docker compose restart "$SERVICE"
+        docker compose restart "$SERVICE" || {
+            echo -e "${RED}✗ Restart of $SERVICE failed (see above) -- what runs now: docker compose ps${NC}"
+            return 1
+        }
     else
         echo "Restarting all services..."
-        docker compose restart
+        docker compose restart || {
+            echo -e "${RED}✗ Restart failed (see above) -- what runs now: docker compose ps${NC}"
+            return 1
+        }
     fi
     echo -e "${GREEN}✓ Done${NC}"
 }
@@ -1573,8 +1652,12 @@ case_backup() {
 
     # 1. Dump database.
     echo "  Dumping PostgreSQL..."
-    docker compose exec -T postgres pg_dump \
-        -U aivis aivis > "$DB_DUMP_FILE"
+    if ! docker compose exec -T postgres pg_dump \
+        -U aivis aivis > "$DB_DUMP_FILE"; then
+        rm -f "$DB_DUMP_FILE"
+        echo -e "${RED}✗ Database dump failed (see above) -- no backup was written${NC}"
+        return 1
+    fi
 
     # 2. Mirror the storage bucket (best-effort).
     echo "  Mirroring storage bucket..."
@@ -1589,10 +1672,15 @@ case_backup() {
 
     # 3. Archive: DB dump + .env + storage snapshot.
     echo "  Creating archive..."
-    tar -czf "$BACKUP_FILE" \
+    if ! tar -czf "$BACKUP_FILE" \
         -C /tmp "aivis_db_${TIMESTAMP}.sql" \
         -C "$COMPOSE_DIR/backend" ".env" \
-        -C /tmp "aivis_storage_${TIMESTAMP}"
+        -C /tmp "aivis_storage_${TIMESTAMP}"; then
+        rm -f "$BACKUP_FILE" "$DB_DUMP_FILE"
+        rm -rf "$STORAGE_DUMP_DIR"
+        echo -e "${RED}✗ Archive could not be written (see above) -- no backup was made${NC}"
+        return 1
+    fi
 
     # 4. Cleanup tmp.
     rm -f "$DB_DUMP_FILE"
@@ -1634,7 +1722,11 @@ case_db() {
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
             DUMP_FILE="$INSTALL_BASE/backups/aivis_db_${TIMESTAMP}.sql"
             mkdir -p "$INSTALL_BASE/backups"
-            docker compose exec -T postgres pg_dump -U aivis aivis > "$DUMP_FILE"
+            if ! docker compose exec -T postgres pg_dump -U aivis aivis > "$DUMP_FILE"; then
+                rm -f "$DUMP_FILE"
+                echo -e "${RED}✗ Dump failed (see above) -- no file was kept${NC}"
+                return 1
+            fi
             echo -e "${GREEN}✓ Dump: $DUMP_FILE${NC}"
             ;;
         restore)
@@ -1651,13 +1743,19 @@ case_db() {
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 echo "Restoring database..."
-                cat "$2" | docker compose exec -T postgres psql -U aivis aivis
+                if ! docker compose exec -T postgres psql -U aivis aivis < "$2"; then
+                    echo -e "${RED}✗ Restore failed (see above) -- the database may be partly restored${NC}"
+                    return 1
+                fi
                 echo -e "${GREEN}✓ Database restored${NC}"
             fi
             ;;
         migrate)
             echo "Running Alembic migrations..."
-            docker compose exec -T app python -m alembic upgrade head
+            if ! docker compose exec -T app python -m alembic upgrade head; then
+                echo -e "${RED}✗ Migration failed (see above)${NC}"
+                return 1
+            fi
             echo -e "${GREEN}✓ Migrations complete${NC}"
             ;;
         *)
@@ -1774,7 +1872,10 @@ case_ssl() {
     case "${1:-status}" in
         renew)
             echo "Renewing SSL certificates..."
-            certbot renew --quiet --post-hook "systemctl reload nginx"
+            if ! certbot renew --quiet --post-hook "systemctl reload nginx"; then
+                echo -e "${RED}✗ certbot renew failed (see above) -- the current certificates stay in use${NC}"
+                return 1
+            fi
             echo -e "${GREEN}✓ SSL renewed${NC}"
             ;;
         status)
@@ -1951,7 +2052,7 @@ NGINX_FILES
 }
 
 # ==============================================================================
-# COMPANY SITE (aivis.one/, row 32)
+# COMPANY SITE (the apex, /, row 32)
 # ==============================================================================
 #
 # The static site is built from landing/ in the checkout and copied to
@@ -2072,12 +2173,8 @@ site_publish() {
     #    the live release is never the one being staged.
     stamp=$(date +%Y%m%d%H%M%S)
     rel=$(mktemp -d "$releases/$stamp-XXXX") || { rm -f "$snippet_tmp"; return 1; }
+    chmod 755 "$rel"
     cp -a "$src/." "$rel/" || { rm -rf "$rel"; rm -f "$snippet_tmp"; return 1; }
-    #    After the copy, never before it: cp -a carries dist's own mode onto
-    #    $rel, and build-site.py makes dist with tempfile.mkdtemp (0700), so a
-    #    chmod before the copy is undone and nginx (www-data) gets EACCES --
-    #    403 on / and 404 on every file (the 2026-10-14 install).
-    chmod -R a+rX "$rel" || { rm -rf "$rel"; rm -f "$snippet_tmp"; return 1; }
     rm -f "$rel/_headers" "$rel/_redirects" "$rel/cloudflare-redirect-rule.txt"
     # 2. New snippet in place, then nginx -t. Failure: the old snippet comes
     #    back and the swap does not happen -- the old release stays live.
@@ -2167,7 +2264,10 @@ case_nginx_render() {
     for target in "${targets[@]}"; do
         case "$target" in
             api)
-                render_nginx_api > /etc/nginx/sites-available/aivis-api
+                render_nginx_api > /etc/nginx/sites-available/aivis-api || {
+                    echo -e "${RED}✗ Could not write the aivis-api site -- nginx not reloaded${NC}"
+                    return 1
+                }
                 ln -sf /etc/nginx/sites-available/aivis-api /etc/nginx/sites-enabled/aivis-api
                 echo "Rendered: aivis-api ($API_DOMAIN)"
                 ;;
@@ -2176,14 +2276,20 @@ case_nginx_render() {
                     echo -e "${RED}✗ $SITE_HEADERS_SNIPPET is missing -- run: aivis site build && aivis site publish${NC}"
                     return 1
                 fi
-                render_nginx_frontend > /etc/nginx/sites-available/aivis-frontend
+                render_nginx_frontend > /etc/nginx/sites-available/aivis-frontend || {
+                    echo -e "${RED}✗ Could not write the aivis-frontend site -- nginx not reloaded${NC}"
+                    return 1
+                }
                 ln -sf /etc/nginx/sites-available/aivis-frontend /etc/nginx/sites-enabled/aivis-frontend
                 echo "Rendered: aivis-frontend ($FRONTEND_DOMAIN)"
                 ;;
             files)
                 local files_conf
                 files_conf=$(render_nginx_files) || return 1
-                printf '%s\n' "$files_conf" > /etc/nginx/sites-available/aivis-files
+                printf '%s\n' "$files_conf" > /etc/nginx/sites-available/aivis-files || {
+                    echo -e "${RED}✗ Could not write the aivis-files site -- nginx not reloaded${NC}"
+                    return 1
+                }
                 ln -sf /etc/nginx/sites-available/aivis-files /etc/nginx/sites-enabled/aivis-files
                 echo "Rendered: aivis-files ($(storage_public_host))"
                 ;;
@@ -2196,7 +2302,10 @@ case_nginx_render() {
     done
 
     if nginx -t; then
-        systemctl reload nginx
+        if ! systemctl reload nginx; then
+            echo -e "${RED}✗ nginx -t passed but the reload failed -- the running config is the old one${NC}"
+            return 1
+        fi
         echo -e "${GREEN}✓ Nginx reloaded${NC}"
     else
         echo -e "${RED}✗ nginx -t failed -- NOT reloading. The files above were written,${NC}"
@@ -2208,7 +2317,10 @@ case_nginx_render() {
 case_nginx() {
     case "${1:-reload}" in
         reload)
-            nginx -t && systemctl reload nginx
+            if ! { nginx -t && systemctl reload nginx; }; then
+                echo -e "${RED}✗ Nginx not reloaded (see above) -- the running config is the old one${NC}"
+                return 1
+            fi
             echo -e "${GREEN}✓ Nginx reloaded${NC}"
             ;;
         render)
@@ -2251,7 +2363,12 @@ case_storage() {
             }
             echo ""
             echo "Object count:"
-            storage_rc ls --recursive local/aivis-attachments 2>/dev/null | wc -l
+            local listing
+            listing=$(storage_rc ls --recursive local/aivis-attachments 2>/dev/null) || {
+                echo -e "${RED}✗ Could not list the bucket -- no count${NC}"
+                return 1
+            }
+            printf '%s\n' "$listing" | grep -c . || true
             ;;
         reconcile)
             shift
@@ -2532,6 +2649,7 @@ case "$CMD" in
     ssl)            case_ssl "$@" ;;
     nginx)          case_nginx "$@" ;;
     site)           case_site "$@" ;;
+    frontend)       case_frontend "$@" ;;
     storage)        case_storage "$@" ;;
     version)        case_version ;;
     email-status)   case_email_status ;;
@@ -2558,6 +2676,7 @@ case "$CMD" in
         echo "    --skip-tests                              Skip backend tests (everything else runs)"
         echo "    --frontend-only                           Skip services and the backend cycle; refuses if backend/"
         echo "                                              differs from what runs, or what runs is not known"
+        echo "  frontend build                            -- Build the frontend image with this server's addresses"
         echo "  gen-types                                 — Regenerate frontend generated.ts from live OpenAPI"
         echo "  gen-types --commit                        — ...and commit + push it on drift (what update and install run)"
         echo "  restart [service]                         — Restart all or specific service"

@@ -23,7 +23,7 @@
 //
 // DOWNLOAD IS A NAVIGATION (H32 P-121):
 //   Both download endpoints return { url, ttl_seconds } -- a presigned
-//   link on the public storage address (https://files.aivis.one) -- and
+//   link on the public storage site (e.g. https://files.example.com) -- and
 //   the browser is sent to it with location.assign(). The link carries
 //   response-content-disposition=attachment with the original filename,
 //   so the browser saves the file and stays on the page; an SVG/HTML

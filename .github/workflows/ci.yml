@@ -471,6 +471,17 @@ jobs:
     name: Frontend
     runs-on: ubuntu-latest
 
+    # THE ADDRESSES THIS BUILD IS FOR (H35 P-127). The frontend has no
+    # default address: it is built for the API and files origins it is
+    # given, which on a server come from the installer's answers. CI builds
+    # for reserved domains (RFC 2606), so every run proves the product is
+    # not tied to the domain it is deployed on: the bundle and the rendered
+    # nginx.conf are scanned below for the production domain and must carry
+    # these origins instead.
+    env:
+      AIVIS_API_ORIGIN: https://api.example.com
+      AIVIS_FILES_ORIGIN: https://files.example.com
+
     steps:
       - uses: actions/checkout@v4
 
@@ -488,8 +499,9 @@ jobs:
 
       # stdlib-only, runs anywhere. Every check in checks/ (run.py runs
       # them all): the router table, design tokens, breakpoints, shell
-      # layout, pre-auth widths, ref-truth guards, nginx headers and the
-      # comms profile -- none of which any of the steps below can see.
+      # layout, pre-auth widths, ref-truth guards, nginx headers, the
+      # comms profile and deployment addresses -- none of which any of the
+      # steps below can see.
       # Not counted here on purpose: a count in a comment is the first
       # thing to go stale when a check is added.
       - name: Static checks
@@ -513,10 +525,34 @@ jobs:
 
       - name: Build
         working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ${{ env.AIVIS_API_ORIGIN }}
         run: npm run build
 
+      - name: No deployment address in the bundle
+        run: python3 checks/deploy_addresses.py --built frontend/dist --expect "$AIVIS_API_ORIGIN"
+
+      # The image is what ships, so it is checked from the inside: the
+      # bundle it serves and the nginx config rendered from the template.
+      # Both must name the example.com origins and nothing of the
+      # production domain.
       - name: Build the frontend image
-        run: docker build -f frontend/Dockerfile frontend
+        run: |
+          docker build -f frontend/Dockerfile frontend -t aivis-frontend:ci \
+            --build-arg AIVIS_API_ORIGIN --build-arg AIVIS_FILES_ORIGIN
+
+      - name: No deployment address in the image
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/image"
+          rm -rf "$out" && mkdir -p "$out"
+          id=$(docker create aivis-frontend:ci)
+          docker cp "$id:/usr/share/nginx/html/app" "$out/app"
+          docker cp "$id:/etc/nginx/conf.d/default.conf" "$out/default.conf"
+          docker rm "$id" > /dev/null
+          python3 checks/deploy_addresses.py --built "$out/app" --expect "$AIVIS_API_ORIGIN"
+          python3 checks/deploy_addresses.py --built "$out/default.conf" \
+            --expect "$AIVIS_API_ORIGIN" --expect "$AIVIS_FILES_ORIGIN"
 
   # ===========================================================================
   # Dependency audit -- reports, never blocks

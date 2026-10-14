@@ -19,7 +19,7 @@ import { downloadAttachment, downloadPublicAttachment } from './attachments'
 import { api, ApiResponseError } from './client'
 
 const LINK = {
-  url: 'https://files.aivis.one/aivis-attachments/companies/c1/attachments/a1/doc.pdf?X-Amz-Signature=abc',
+  url: 'https://files.example.com/aivis-attachments/companies/c1/attachments/a1/doc.pdf?X-Amz-Signature=abc',
   ttl_seconds: 900,
 }
 

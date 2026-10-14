@@ -318,7 +318,7 @@ async def test_shipped_default_profile_parses_and_declares_the_demo(
     """
     profile = seed.load_profile("default")
     assert profile["marker"] == "default"
-    assert profile["email_domain"] == "test.aivis.one"
+    assert profile["email_domain"] == "example.com"
     assert profile["admin"], "the demo has to be able to bootstrap staff"
     assert profile["staff"], "the support queue needs somebody to serve it"
     assert profile["company"]["products"], "the storefront cannot be empty"

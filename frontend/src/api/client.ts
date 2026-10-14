@@ -2,7 +2,8 @@
 // AIVIS.ONE Frontend -- API Client
 // =============================================================================
 //
-// Typed fetch wrapper for CORS requests to api.aivis.one.
+// Typed fetch wrapper for CORS requests to the API origin this build was
+// given (VITE_API_BASE_URL; see api/deployOrigin.ts -- there is no default).
 //
 // Features:
 //   - Authorization: Bearer {token} auto-injection
@@ -31,15 +32,22 @@
 
 import { i18n } from '@/i18n'
 import type { ValidationErrorItem } from '@/api/types'
+import { requireOrigin } from '@/api/deployOrigin'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://api.aivis.one'
+// No fallback: a bundle without its API origin stops here, by name, instead
+// of talking to some other deployment's API. A production build never gets
+// this far without it (vite.config.ts checks first); http:// is accepted
+// only outside production, for `vite serve` against a local backend.
+const BASE_URL = requireOrigin('VITE_API_BASE_URL', import.meta.env.VITE_API_BASE_URL, {
+  allowHttp: !import.meta.env.PROD,
+})
 const TIMEOUT_MS = 15_000
 
 /**
  * Absolute API base URL. Exported so non-JSON endpoints (e.g. the
  * certificate HTML served as text/html) can build absolute URLs
  * via `${API_BASE_URL}${path}` without duplicating the env lookup
- * or the https://api.aivis.one fallback.
+ * and its check.
  *
  * JSON endpoints should keep using `api.get`/`api.post` -- those
  * already handle BASE_URL, auth header, timeout, and JSON parsing.

@@ -13,7 +13,7 @@
 # What is pinned here:
 #   1. the link is SigV4 and signed for STORAGE_PUBLIC_URL; the storage
 #      accepts it with that Host and refuses it with any other -- which
-#      is the property the public site (files.aivis.one) relies on;
+#      is the property the public storage site relies on;
 #   2. with STORAGE_PUBLIC_URL empty (development) the link is signed for
 #      the internal address, which the test runner reaches directly;
 #   3. both attachment download endpoints return {url, ttl_seconds}, the
@@ -97,7 +97,7 @@ async def test_link_is_signed_for_the_public_host_and_only_works_there(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Signed for STORAGE_PUBLIC_URL with SigV4: the storage serves it to a
-    request carrying that Host (what files.aivis.one forwards), and refuses
+    request carrying that Host (what the public storage site forwards), and refuses
     the very same path and signature under the internal Host."""
     monkeypatch.setattr(settings, "storage_public_url", _PUBLIC)
     key = f"_tests/storage-links/{uuid.uuid4().hex}/public.txt"

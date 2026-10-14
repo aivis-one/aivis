@@ -524,8 +524,8 @@ app.add_middleware(
     # Retry-After is likewise NOT safelisted, and the frontend has been
     # parsing it app-wide since iter 2.6 (client.ts parseRetryAfterHeader)
     # to say "try again in N seconds" on any 429. Cross-origin in
-    # production (the app is served from app.aivis.one, the API from
-    # api.aivis.one), that read has always returned null, so EVERY
+    # production (the app is served from the site, the API from its own
+    # api. host), that read has always returned null, so EVERY
     # rate-limit message in the product silently degraded to the generic
     # wording -- not just this export's. The error handler sets the
     # header on every RateLimitError (see aivis_error_handler below);

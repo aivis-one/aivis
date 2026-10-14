@@ -147,7 +147,7 @@ def _presign_client_context() -> Any:
 
     Signing is a computation -- no request leaves the process -- so this
     client never needs to reach settings.storage_public_url itself. The
-    public site (files.aivis.one) forwards the request to the storage with
+    public storage site forwards the request to the storage with
     the Host header unchanged, and the SigV4 signature, made for that host,
     verifies there. Empty storage_public_url (development only; the
     validator refuses it elsewhere) signs for the internal address, which

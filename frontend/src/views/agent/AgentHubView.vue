@@ -24,7 +24,7 @@
 //            texts live under agent.hub.*.
 //
 // SHARE URL.
-//   `${window.location.origin}${BASE_URL}r/${code}` (https://aivis.one/app/r/CODE) -- the /r/:code capture
+//   `${window.location.origin}${BASE_URL}r/${code}` (e.g. https://example.com/app/r/CODE) -- the /r/:code capture
 //   route lives on this very frontend origin, so the share link is
 //   correct by construction (no VITE public-URL indirection needed;
 //   VITE_API_BASE_URL is the API host, not the share host).

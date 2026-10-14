@@ -62,15 +62,15 @@ const accepted = ref(false)
 // Consent line links. The cabinet terms are the static document the cabinet
 // ships under its base (public/legal/<lang>/cabinet_terms.html, the same
 // BASE_URL + legal/ path the document viewers use); the privacy policy is the
-// public site's one page for both site and cabinet.
+// public site's one page for both site and cabinet. The site and the cabinet
+// share one origin (the site at /, the cabinet under /app/), so the link is
+// root-relative: no deployment address in the code (H35 P-127).
 const docLang = computed(() => (locale.value === 'ru' ? 'ru' : 'en'))
 const termsUrl = computed(
   () => `${import.meta.env.BASE_URL}legal/${docLang.value}/cabinet_terms.html`,
 )
 const privacyUrl = computed(() =>
-  docLang.value === 'ru'
-    ? 'https://aivis.one/ru/about/privacy/'
-    : 'https://aivis.one/about/privacy/',
+  docLang.value === 'ru' ? '/ru/about/privacy/' : '/about/privacy/',
 )
 
 // The cabinet terms open in the cabinet's own document window (the one the

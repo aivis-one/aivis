@@ -12,8 +12,9 @@ declare module '*.json' {
 }
 
 interface ImportMetaEnv {
-  readonly VITE_API_BASE_URL: string
-  readonly VITE_TELEGRAM_BOT_URL: string
+  // Set by the build (frontend/Dockerfile) or by .env in development; never
+  // defaulted. Typed as possibly absent because it can be -- client.ts checks.
+  readonly VITE_API_BASE_URL: string | undefined
 }
 
 interface ImportMeta {

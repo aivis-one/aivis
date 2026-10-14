@@ -109,9 +109,9 @@ def test_settings_non_development_is_production_grade(
 # keeps each value exactly as given, non-empty.
 
 _GOOD_REQUIRED = {
-    "cors_origins": "https://aivis.one",
-    "frontend_base_url": "https://aivis.one/app",
-    "storage_public_url": "https://files.aivis.one",
+    "cors_origins": "https://example.com",
+    "frontend_base_url": "https://example.com/app",
+    "storage_public_url": "https://files.example.com",
     "database_url": "postgresql+asyncpg://aivis:pw@postgres:5432/aivis",
     "redis_url": "redis://:pw@redis:6379/0",
     "secret_key": "k" * 64,
@@ -119,21 +119,21 @@ _GOOD_REQUIRED = {
     "storage_endpoint": "http://minio:9000",
     "storage_access_key": "svcaccess0000001",
     "storage_secret_key": "svcsecret0000000000000000000001",
-    # Comms moved here from the optional stacks in H34 P-123: there is no
-    # direct mail path, so a production box without comms cannot send a
-    # registration code or a password-reset link.
-    "comms_redis_url": "redis://:pw@comms-redis:6379/0",
-    "comms_api_url": "http://comms-app:8000",
-    "comms_service_token": "comms-token",
 }
 
 _NO_OPTIONAL_STACKS = {
+    "comms_redis_url": "",
+    "comms_api_url": "",
+    "comms_service_token": "",
     "payments_api_url": "",
     "payments_service_token": "",
     "payments_webhook_secret": "",
 }
 
 _GOOD_OPTIONAL_STACKS = {
+    "comms_redis_url": "redis://:pw@comms-redis:6379/0",
+    "comms_api_url": "http://comms-app:8000",
+    "comms_service_token": "comms-token",
     "payments_api_url": "http://payments-app:8000",
     "payments_service_token": "payments-token",
     "payments_webhook_secret": "payments-secret",
@@ -276,12 +276,12 @@ def test_production_refuses_the_frontend_default_left_in_place(
 
 @pytest.mark.parametrize("field", ["frontend_base_url", "storage_public_url"])
 @pytest.mark.parametrize("bad", [
-    "http://aivis.one",
-    "aivis.one",
+    "http://example.com",
+    "example.com",
     "https://",
-    "https://aivis.one/",
-    " https://aivis.one",
-    "https://aivis.one ",
+    "https://example.com/",
+    " https://example.com",
+    "https://example.com ",
 ])
 def test_production_refuses_a_malformed_browser_url(
     monkeypatch: pytest.MonkeyPatch, field: str, bad: str,
@@ -298,9 +298,9 @@ def test_production_refuses_a_malformed_browser_url(
 
 
 @pytest.mark.parametrize("cors, label", [
-    ("https://aivis.one,", "CORS_ORIGINS entry 2 is empty"),
+    ("https://example.com,", "CORS_ORIGINS entry 2 is empty"),
     (
-        "https://aivis.one,http://localhost:5173",
+        "https://example.com,http://localhost:5173",
         "CORS_ORIGINS entry 2 points at a loopback",
     ),
     ("PLACEHOLDER", "CORS_ORIGINS is a placeholder"),

@@ -15,11 +15,11 @@
 #   7.  Prompt for the secrets only a person has (bot token, Mailgun key,
 #       optional storage root-key overrides)
 #   8.  Write .env once: random passwords (incl. storage secrets) + step 7
-#   9.  Build the company site, configure Nginx (aivis.one: site at /, cabinet
-#       at /app/; api.aivis.one; files.aivis.one)
+#   9.  Build the company site, configure Nginx (<domain>: site at /, cabinet
+#       at /app/; api.<domain>; files.<domain>)
 #   10. Obtain SSL certificates (Let's Encrypt) + auto-renewal cron
 #   11. Assert the host runs no local mail transfer agent
-#   12. Set up the public storage site (files.aivis.one -> RustFS S3 API)
+#   12. Set up the public storage site (files.<domain> -> RustFS S3 API)
 #   13. Build backend -> start backend + infra -> healthcheck -> storage-init
 #       -> migrations -> seeds -> frontend types from the running backend
 #       -> build + start frontend (the order `aivis update` uses)
@@ -31,16 +31,20 @@
 #
 # REQUIREMENTS:
 #   - Ubuntu 22.04+ (fresh VPS, root access)
-#   - Domain aivis.one already registered. This script manages the apex:
-#     the static company site at /, the cabinet at /app/ (/login redirects
-#     into it). There is no app.aivis.one.
+#   - A registered domain. The installer asks for it first (the apex,
+#     <domain> below) together with the e-mail Let's Encrypt writes to;
+#     every other address is derived from the apex here and nowhere else.
+#     This script manages the apex: the static company site at /, the
+#     cabinet at /app/ (/login redirects into it). There is no app.<domain>.
 #   - Cloudflare may stay in front of the apex as a proxy (SSL mode
 #     "full"); the origin certificate below is issued for it all the same.
-#   - Records (A records to the server IP):
-#       aivis.one
-#       api.aivis.one
-#       mail.aivis.one
-#       files.aivis.one     (public storage: presigned download links)
+#   - Records:
+#       <domain>            A record to the server IP
+#       api.<domain>        A record to the server IP
+#       files.<domain>      A record to the server IP (public storage:
+#                           presigned download links)
+#       mail.<domain>       the Mailgun sending domain (MX / SPF / DKIM at
+#                           Mailgun; no A record needed)
 #   - GitHub repository aivis-one/aivis exists
 # ==============================================================================
 
@@ -62,30 +66,15 @@ export NEEDRESTART_MODE=a
 INSTALL_BASE="/opt/aivis"
 GITHUB_REPO="aivis-one/aivis"
 DEPLOY_USER="aivis"
-API_DOMAIN="api.aivis.one"
-# The apex: the company site at /, the cabinet under /app/ (row 32).
-FRONTEND_DOMAIN="aivis.one"
-# The Mailgun SENDING domain: a product constant (every server is the
-# same). It appears in MAILGUN_DOMAIN and in the from-address, both handed
-# to comms. Nothing on this host serves it -- no A record, no
-# certificate, no local relay.
-MAIL_DOMAIN="mail.aivis.one"
-MAIL_FROM="noreply@${MAIL_DOMAIN}"
+# The deployment addresses (FRONTEND_DOMAIN, API_DOMAIN, MAIL_DOMAIN,
+# FILES_DOMAIN, MAIL_FROM, CERTBOT_EMAIL) are not constants of the
+# product: they are asked for in "Deployment Addresses" below, before
+# anything else runs, and derived there from one answer.
 # Mailgun's two regional API bases, US first: the region is not a setting
 # of this script -- it is found out for the key the owner types
 # (prompt_mailgun), by asking each region in turn.
 MAILGUN_US_BASE="https://api.mailgun.net"
 MAILGUN_EU_BASE="https://api.eu.mailgun.net"
-# The public storage site (H32 P-121): browsers open the presigned links
-# the backend signs for this host. Written into backend/.env as
-# STORAGE_PUBLIC_URL -- the one place the address is stated; `aivis nginx
-# render files` and `aivis status` read it from there.
-FILES_DOMAIN="files.aivis.one"
-# certbot's --email is its own value and does NOT derive from FRONTEND_DOMAIN:
-# an address chosen for the web host could belong to a domain without mail,
-# and Let's Encrypt expiry warnings would go nowhere, surfacing months later
-# as an expired certificate. aivis.one has real mail (owner-confirmed).
-CERTBOT_EMAIL="admin@aivis.one"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
 
@@ -149,6 +138,91 @@ echo "╚═══════════════════════�
 echo -e "${NC}"
 
 # ==============================================================================
+# DEPLOYMENT ADDRESSES
+# ==============================================================================
+#
+# THE ONE SOURCE OF EVERY ADDRESS THIS SERVER IS REACHED AT. Two answers:
+# the apex domain and the e-mail certbot registers with. Everything else
+# is derived from the apex right here:
+#
+#   FRONTEND_DOMAIN  <apex>         company site at /, cabinet under /app/
+#   API_DOMAIN       api.<apex>     the backend API
+#   FILES_DOMAIN     files.<apex>   the public storage site (presigned links)
+#   MAIL_DOMAIN      mail.<apex>    the Mailgun sending domain; nothing on
+#                                   this host serves it (no A record, no
+#                                   certificate, no local relay)
+#
+# From here they travel, never retyped: API_DOMAIN and FRONTEND_DOMAIN into
+# $INSTALL_BASE/aivis.conf (the management script, which builds the
+# frontend with them), CORS_ORIGINS / FRONTEND_BASE_URL / STORAGE_PUBLIC_URL
+# / MAILGUN_DOMAIN into backend/.env (the backend, comms, and `aivis nginx
+# render files`). No file in the repository carries a deployment address.
+#
+# Asked first because the pre-flight DNS check below already needs them.
+#
+# certbot's --email is its own answer and does NOT derive from the apex:
+# an address chosen for the web host could belong to a domain without
+# mail, and Let's Encrypt expiry warnings would go nowhere, surfacing
+# months later as an expired certificate.
+
+# A lowercase DNS name of two labels or more, no scheme, no path, no port,
+# no trailing dot. Uppercase is refused rather than folded: the answer is
+# echoed back as typed, and a silent change would be a second value.
+DOMAIN_RE='^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'
+# Local part as certbot accepts it; the domain part as DOMAIN_RE.
+EMAIL_RE='^[A-Za-z0-9._+-]+@([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'
+
+prompt_deploy_domain() {
+    local answer
+    while true; do
+        read -rp "  Domain (the apex, e.g. example.com): " answer < /dev/tty
+        if [ -z "$answer" ]; then
+            warn "  The domain is required -- every address of this server derives from it. Try again."
+            continue
+        fi
+        if ! [[ "$answer" =~ $DOMAIN_RE ]] || [ "${#answer}" -gt 253 ]; then
+            warn "  '$answer' is not a domain name: lowercase letters, digits, '-' and '.',"
+            warn "  no https://, no path, no trailing dot. Try again."
+            continue
+        fi
+        FRONTEND_DOMAIN="$answer"
+        return 0
+    done
+}
+
+prompt_certbot_email() {
+    local answer
+    while true; do
+        read -rp "  E-mail for Let's Encrypt expiry notices: " answer < /dev/tty
+        if [ -z "$answer" ]; then
+            warn "  The e-mail is required -- certificate expiry warnings go there. Try again."
+            continue
+        fi
+        if ! [[ "$answer" =~ $EMAIL_RE ]]; then
+            warn "  '$answer' is not an e-mail address this installer accepts. Try again."
+            continue
+        fi
+        CERTBOT_EMAIL="$answer"
+        return 0
+    done
+}
+
+section "Deployment Addresses"
+
+prompt_deploy_domain
+prompt_certbot_email
+API_DOMAIN="api.${FRONTEND_DOMAIN}"
+FILES_DOMAIN="files.${FRONTEND_DOMAIN}"
+MAIL_DOMAIN="mail.${FRONTEND_DOMAIN}"
+MAIL_FROM="noreply@${MAIL_DOMAIN}"
+
+success "Site and cabinet: ${FRONTEND_DOMAIN}"
+success "API:              ${API_DOMAIN}"
+success "Files:            ${FILES_DOMAIN}"
+success "Mail (Mailgun):   ${MAIL_DOMAIN}"
+success "Certbot e-mail:   ${CERTBOT_EMAIL}"
+
+# ==============================================================================
 # PRE-FLIGHT CHECKS
 # ==============================================================================
 
@@ -185,7 +259,7 @@ preflight_checks() {
         success "Disk: ${FREE_GB}GB free ✓"
     fi
 
-    # DNS check for all 4 domains. We warn (not error) on mismatch / missing
+    # DNS check for the three served domains. We warn (not error) on mismatch / missing
     # so that an operator running the script on a fresh VPS without all DNS
     # records yet can still see what's missing and fix it before certbot
     # attempts HTTP-01 challenge.
@@ -197,7 +271,7 @@ preflight_checks() {
 
     local DOMAIN
     # MAIL_DOMAIN is NOT in this loop. Every domain here is checked for
-    # an A record pointing at this box, and mail.aivis.one has no reason
+    # an A record pointing at this box, and mail.<domain> has no reason
     # to have one: it is the Mailgun SENDING domain (MX / SPF / DKIM on
     # Mailgun's side), nothing on this host answers for it, and certbot
     # below does not ask for a certificate for it either. Warning about
@@ -986,7 +1060,7 @@ CORS_ORIGINS=https://${FRONTEND_DOMAIN}
 # document letters). Built from FRONTEND_DOMAIN -- the one place the site
 # address is stated -- and nowhere else; no trailing slash. The cabinet
 # lives under /app/, so the base carries it: links come out as
-# https://aivis.one/app/password-reset/confirm?... (CORS_ORIGINS above is an
+# https://<domain>/app/password-reset/confirm?... (CORS_ORIGINS above is an
 # origin and has no path.)
 FRONTEND_BASE_URL=https://${FRONTEND_DOMAIN}/app
 
@@ -1125,7 +1199,7 @@ rm -f /etc/nginx/sites-enabled/default
 section "SSL Certificates"
 
 # --cert-name pins the lineage to the API host's name. A box installed before
-# row 32 holds a lineage of that name that also covers app.aivis.one; with the
+# row 32 holds a lineage of that name that also covers app.<domain>; with the
 # name given, certbot REPLACES that domain list with this one instead of
 # stopping on the mismatch (--non-interactive), so the old host leaves the
 # certificate. A fresh box simply gets a lineage of that name.
@@ -1248,71 +1322,7 @@ else
 fi
 
 # ==============================================================================
-# NO STORAGE CONSOLE AND NO MINIO CLIENT ON THIS HOST
-# ==============================================================================
-#
-# A STATEMENT ABOUT THE DESIRED STATE OF THE MACHINE, like the MTA section
-# above -- not a migration step. Until H32 this script set up a web
-# console for the object storage and a MinIO command-line client on the
-# host. Neither exists any more, and a re-install does not uninstall what
-# an earlier install created: without this section the console's nginx
-# site would stay enabled (answering 502 -- there is nothing behind it),
-# its certificate would keep being renewed, and /root/.mc would keep the
-# old storage root key in plain text.
-#
-# IDEMPOTENT, AND SILENT ON A CLEAN MACHINE: each step acts only on what is
-# actually present. Nothing here aborts the run.
-
-section "Storage console and client (removed)"
-
-LEGACY_CONSOLE_DOMAIN="storage-mc-admin.aivis.one"
-LEGACY_CONSOLE_SITE="aivis-storage-mc-admin"
-LEGACY_CONSOLE_HTPASSWD="/etc/nginx/.htpasswd-storage-mc-admin"
-LEGACY_CHANGED=0
-
-# -- 1. The console's nginx site and its password file, together ---------
-# Together, because the site names the password file: removing only the
-# file would make the nginx configuration invalid.
-if [ -e "/etc/nginx/sites-enabled/${LEGACY_CONSOLE_SITE}" ] \
-   || [ -e "/etc/nginx/sites-available/${LEGACY_CONSOLE_SITE}" ] \
-   || [ -e "$LEGACY_CONSOLE_HTPASSWD" ]; then
-    rm -f "/etc/nginx/sites-enabled/${LEGACY_CONSOLE_SITE}" \
-          "/etc/nginx/sites-available/${LEGACY_CONSOLE_SITE}" \
-          "$LEGACY_CONSOLE_HTPASSWD"
-    if nginx -t > /dev/null 2>&1 && systemctl reload nginx > /dev/null 2>&1; then
-        success "  storage console site removed"
-    else
-        warn "  storage console site removed, but the web server did not reload cleanly (continuing)."
-    fi
-    LEGACY_CHANGED=1
-fi
-
-# -- 2. Its certificate -- after the site, which referenced it ------------
-# Local only: certbot deletes the lineage and its renewal job without
-# talking to Let's Encrypt, so a domain already gone from DNS is fine.
-if [ -e "/etc/letsencrypt/renewal/${LEGACY_CONSOLE_DOMAIN}.conf" ]; then
-    if certbot delete --cert-name "$LEGACY_CONSOLE_DOMAIN" --non-interactive > /dev/null 2>&1; then
-        success "  certificate for ${LEGACY_CONSOLE_DOMAIN} removed"
-    else
-        warn "  the certificate for ${LEGACY_CONSOLE_DOMAIN} could not be removed (continuing)."
-    fi
-    LEGACY_CHANGED=1
-fi
-
-# -- 3. The MinIO client and its configuration ----------------------------
-# /root/.mc/config.json holds the old storage root key in plain text.
-if [ -e /usr/local/bin/mc ] || [ -e /root/.mc ]; then
-    rm -rf /usr/local/bin/mc /root/.mc
-    success "  MinIO client and its saved credentials removed"
-    LEGACY_CHANGED=1
-fi
-
-if [ "$LEGACY_CHANGED" -eq 0 ]; then
-    success "No storage console or MinIO client on this host (nothing to remove)"
-fi
-
-# ==============================================================================
-# PUBLIC STORAGE SITE (files.aivis.one -> RustFS S3 API, H32 P-121)
+# PUBLIC STORAGE SITE (files.<domain> -> RustFS S3 API, H32 P-121)
 # ==============================================================================
 #
 # Browsers open the presigned links the backend signs for this host. The
@@ -1568,7 +1578,8 @@ deliver_comms_telegram() {
 # every path short of a full set is "no comms at all", and the only
 # acceptable outcome here is a full delivery or a hard stop. The API key
 # is a required prompt verified against Mailgun, the API URL is the region
-# that prompt found, domain and sender are product constants -- all four
+# that prompt found, domain and sender derive from the apex asked for at
+# the start (Deployment Addresses) -- all four
 # are always in backend/.env.
 #
 # THE REGION IS DERIVED, NOT SPELLED OUT. It is already stated once, in
@@ -1970,7 +1981,10 @@ log "Regenerating frontend types from the running backend..."
     || error "Frontend type generation failed (see above) -- stopping before the frontend is built."
 
 log "Building frontend image with the fresh types..."
-docker compose build frontend 2>&1 || { error "Frontend image build failed. Check output above."; }
+# Through the management script, the one place that hands the image this
+# server's addresses (build_frontend_image): API_DOMAIN from aivis.conf,
+# STORAGE_PUBLIC_URL from backend/.env, both written above.
+"$INSTALL_BASE/repo/scripts/aivis-manage.sh" frontend build 2>&1 || { error "Frontend image build failed. Check output above."; }
 docker compose up -d frontend 2>&1 || { error "Frontend start failed. Check output above."; }
 success "Frontend built and started"
 

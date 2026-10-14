@@ -33,5 +33,10 @@ export default defineConfig({
     include: ['src/**/*.spec.ts'],
     setupFiles: ['src/test-setup.ts'],
     globals: false,
+    // The API origin the code under test is built for. A reserved domain
+    // (RFC 2606): tests carry no deployment address (checks/deploy_addresses.py).
+    env: {
+      VITE_API_BASE_URL: 'https://api.example.com',
+    },
   },
 })

@@ -1,10 +1,11 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
+import { requireOrigin } from './src/api/deployOrigin'
 
-export default defineConfig({
-  // Row 31: the cabinet is served under aivis.one/app/. Vite prefixes every
+const config: UserConfig = {
+  // Row 31: the cabinet is served under the site's /app/. Vite prefixes every
   // asset URL and import.meta.env.BASE_URL becomes '/app/'.
   base: '/app/',
   plugins: [
@@ -46,4 +47,18 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
   },
+}
+
+export default defineConfig(({ command, mode }) => {
+  // H35 P-127: a production bundle is built for ONE deployment, whose API
+  // origin it is given (frontend/Dockerfile build arg; .env for a local
+  // build). Without it, or with a value that is not an exact https origin,
+  // the build stops here with the variable's name -- there is no default.
+  // `vite serve` is not checked here: client.ts checks at load and accepts
+  // http:// there, for a backend on localhost.
+  if (command === 'build') {
+    const env = loadEnv(mode, process.cwd(), 'VITE_')
+    requireOrigin('VITE_API_BASE_URL', env.VITE_API_BASE_URL, { allowHttp: false })
+  }
+  return config
 })

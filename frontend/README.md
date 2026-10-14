@@ -39,9 +39,8 @@ aivis status
 
 ## Environment
 
-Copy `.env.example` to `.env` and configure:
+For local development, copy `.env.example` to `.env` -- without it `npm run dev` stops, naming the missing `VITE_API_BASE_URL`.
 
-| Variable                | Description                                    |
-| ----------------------- | ---------------------------------------------- |
-| `VITE_API_BASE_URL`     | Backend API URL (e.g. `https://api.aivis.one`) |
-| `VITE_TELEGRAM_BOT_URL` | Telegram bot deep link                         |
+| Variable            | Description                                                                                                                                   |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL` | Backend API origin, no default (e.g. `http://localhost:8000` locally). On a server it is set by `aivis frontend build`, never by a file here. |

@@ -1,7 +1,7 @@
 {
   "description": "Default demo stand -- support channel, storefront, one agent chain",
   "marker": "default",
-  "email_domain": "test.aivis.one",
+  "email_domain": "example.com",
   "demo_password": "seedpass123",
   "_notes": [
     "WHAT THIS PROFILE IS FOR: after `aivis seed` on a clean stand an",
