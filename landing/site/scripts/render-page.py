@@ -1007,6 +1007,19 @@ def btn(label, href, variant="primary", size="lg", icon="arrow-right", external=
             '<span>%s</span>%s</a>' % (esc(variant), esc(size), esc(href), rel, T(label), icon_html))
 
 
+def support_block(c):
+    """The calm support block under the hero lead: heading, one line, a button to the cabinet sign-in and the
+    two existing contacts (the footer's e-mail and Telegram). Not a form: links only."""
+    g = lambda k: c.get("aivis.support." + k)
+    f = lambda k: c.get("footer." + k)
+    tg = esc(safe_href(f("me.telegram.href"), "#", context="support.telegram"))
+    return ('<aside class="support card" data-component="Card" data-variant="outlined" data-size="md" aria-labelledby="support-h">'
+            '<div class="support__text"><h2 id="support-h" class="support__title">%s</h2><p>%s</p></div>'
+            '<div class="support__act">%s<p class="support__contacts"><a href="%s">%s</a><a href="%s" rel="noopener">%s</a></p></div></aside>'
+            % (T(g("title")), T(g("line")), btn(g("button"), "/login", "primary", "md"),
+               at(f("me.mail.href")), at(f("me.mail.handle")), tg, T(f("me.telegram")) + " " + at(f("me.telegram.handle"))))
+
+
 def r_home_aivis(sec, c, site):
     """Block 1. Two cards on ONE mirrored scheme (his answer of 2026-10-02): label, big name, subtitle, list, button;
     the founder's photo and the colour AIVIS mark sit in the top-right corner at the same size (the mark here is his
@@ -1029,6 +1042,7 @@ def r_home_aivis(sec, c, site):
         '<h1 id="%s-h" class="ls-mo-balance"><span class="h-main">%s</span> <span class="h-sub">%s</span></h1>'
         % (esc(sid), T(g("headline")), T(g("subtitle"))),
         '<p class="lead">%s</p>' % T(g("lead")),
+        support_block(c),
         '<div class="who">',
         card("founder-card", "elevated", g("founder.label"), g("founder.name"), g("founder.sub"),
              photo(site, c, g("founder.photo_alt")), ["founder.fact1", "founder.fact2", "founder.fact3"],
