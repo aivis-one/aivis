@@ -119,21 +119,21 @@ _GOOD_REQUIRED = {
     "storage_endpoint": "http://minio:9000",
     "storage_access_key": "svcaccess0000001",
     "storage_secret_key": "svcsecret0000000000000000000001",
+    # Comms moved here from the optional stacks in H34 P-123: there is no
+    # direct mail path, so a production box without comms cannot send a
+    # registration code or a password-reset link.
+    "comms_redis_url": "redis://:pw@comms-redis:6379/0",
+    "comms_api_url": "http://comms-app:8000",
+    "comms_service_token": "comms-token",
 }
 
 _NO_OPTIONAL_STACKS = {
-    "comms_redis_url": "",
-    "comms_api_url": "",
-    "comms_service_token": "",
     "payments_api_url": "",
     "payments_service_token": "",
     "payments_webhook_secret": "",
 }
 
 _GOOD_OPTIONAL_STACKS = {
-    "comms_redis_url": "redis://:pw@comms-redis:6379/0",
-    "comms_api_url": "http://comms-app:8000",
-    "comms_service_token": "comms-token",
     "payments_api_url": "http://payments-app:8000",
     "payments_service_token": "payments-token",
     "payments_webhook_secret": "payments-secret",
