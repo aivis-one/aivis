@@ -590,3 +590,62 @@ html:has(.docs-accept) { scroll-behavior: auto; }
 @media (min-width: 880px) {
   .courses-page .course-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ---------- support launcher (home page only; row 150, phase 1) ----------
+   z-index: launcher 50, panel 55, both below the mobile menu (60). Hidden until site.js marks it ready. */
+.support:not(.is-ready) { display: none; }
+.support-launcher {
+  position: fixed; z-index: 50;
+  inset-inline-end: max(16px, var(--space-safe-right)); inset-block-end: max(16px, var(--space-safe-bottom));
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-block-size: var(--touch-comfortable); padding-inline: var(--space-5);
+  border: 1px solid transparent; border-radius: var(--radius-pill);
+  background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-3);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.support-launcher:hover { background: var(--primary-hover); }
+.support-launcher:active { background: var(--primary-active); }
+.support-launcher:focus-visible, .support__close:focus-visible, .support__list a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.support-launcher .icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
+.support__panel {
+  position: fixed; z-index: 55;
+  inset-inline-end: max(16px, var(--space-safe-right)); inset-block-end: calc(max(16px, var(--space-safe-bottom)) + var(--touch-comfortable) + var(--space-3));
+  inline-size: min(340px, calc(100vw - 32px)); max-block-size: 80dvh; overflow-y: auto;
+  padding: var(--space-4); background: var(--bg-surface); color: var(--text-primary);
+  border: 1px solid var(--border-default); border-radius: var(--radius-card); box-shadow: var(--shadow-3);
+}
+.support__panel[hidden] { display: none; }
+.support__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-block-end: var(--space-3); }
+.support__title { font-size: var(--fs-h4); }
+.support__title:focus { outline: none; }
+.support__close {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  min-block-size: var(--touch-min); min-inline-size: var(--touch-min);
+  border: 1px solid var(--border-default); border-radius: var(--radius-pill); background: var(--bg-surface); color: var(--text-primary); cursor: pointer;
+}
+.support__close:hover { background: var(--bg-subtle); }
+.support__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.support__list a {
+  display: flex; align-items: center; min-block-size: var(--touch-min); padding-inline: var(--space-3);
+  border-radius: var(--radius-control); color: var(--text-primary); font-weight: 600;
+}
+.support__list a:hover { background: var(--bg-subtle); text-decoration: none; }
+body:has(.support-launcher) .foot { padding-block-end: calc(var(--space-6) + var(--touch-comfortable) + 16px); }
+@media (max-width: 479.98px) { /* ds-escape: media conditions cannot read custom properties; this is --bp-sm */
+  .support-launcher { padding-inline: 0; inline-size: var(--touch-comfortable); border-radius: 50%; }
+  .support-launcher__word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .support__panel {
+    inset-inline: 0; inset-block-end: 0; inline-size: auto; max-block-size: 80dvh;
+    padding-block-end: calc(var(--space-4) + var(--space-safe-bottom));
+    border-end-start-radius: 0; border-end-end-radius: 0; border-inline: 0; border-block-end: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .support__panel:not([hidden]) { animation: support-in var(--motion-moderate); }
+  .support-launcher { transition: background-color var(--motion-quick); }
+  @keyframes support-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 479.98px) { /* ds-escape: this is --bp-sm */
+    .support__panel:not([hidden]) { animation-name: support-sheet; }
+    @keyframes support-sheet { from { transform: translateY(100%); } to { transform: none; } }
+  }
+}

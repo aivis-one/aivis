@@ -1298,6 +1298,32 @@ def r_home_footer(sec, c, site):
     ])
 
 
+def r_support(c):
+    """The floating support launcher and its panel (row 150, phase 1): the home page only, no form, no storage.
+    The e-mail link goes through at() exactly like the footer tile, from the footer's own key (CF4); the panel stays
+    hidden until site.js opens it, and the launcher itself stays hidden until site.js runs (the footer holds the contacts)."""
+    g = lambda k: c.get("support." + k)
+    L = lroot()
+    mail = at(c.get("footer.me.mail.href"))
+    tg = esc(safe_href(c.get("footer.me.telegram.href"), "#", context="support.telegram"))
+    login = esc(safe_href(g("signin.href"), "#", context="support.signin"))
+    return "\n".join([
+        '<div class="support" data-ls-support>',
+        '<button class="support-launcher" type="button" aria-expanded="false" aria-controls="support-panel" aria-label="%s">%s<span class="support-launcher__word">%s</span></button>'
+        % (esc(g("launcher")), ic("info", "icon"), T(g("launcher"))),
+        '<section class="support__panel" id="support-panel" role="region" aria-labelledby="support-title" hidden>',
+        '<div class="support__head"><h2 class="support__title" id="support-title" tabindex="-1">%s</h2>'
+        '<button class="support__close" type="button" aria-label="%s">%s</button></div>'
+        % (T(g("title")), esc(g("close")), ic("x", "icon")),
+        '<ul class="support__list">',
+        '<li><a href="%s">%s</a></li>' % (login, T(g("signin"))),
+        '<li><a href="%s" rel="noopener">%s</a></li>' % (mail, T(g("mail"))),
+        '<li><a href="%s" rel="noopener">%s</a></li>' % (tg, T(g("telegram"))),
+        '<li><a href="%s">%s</a></li>' % (esc(L + "faq/"), T(g("faq"))),
+        '</ul></section></div>',
+    ])
+
+
 CURRENT_HREFS = set()   # hrefs of the footer links that point at the page being rendered (aria-current)
 
 
@@ -1860,6 +1886,8 @@ def main(argv):
         if sec.get("type") in FOOTER_TYPES:
             fn = RENDERERS.get(sec.get("type"), r_prose)
             body_parts.append(fn(sec, c, site))
+    if page is None:
+        body_parts.append(r_support(c))
     body = "\n".join(body_parts)
 
     base = site.get("base_url", "").rstrip("/")

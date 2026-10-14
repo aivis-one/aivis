@@ -105,6 +105,35 @@
     });
   }
 
-  function init() { initDrawer(); initTheme(); initLang(); }
+  /* the support launcher (home page only): a non-modal disclosure -- Esc, the close button, a click outside and the launcher
+     itself close it; focus goes to the panel title on open and back to the launcher on close; no focus trap */
+  function initSupport() {
+    var root = document.querySelector('[data-ls-support]');
+    if (!root) { return; }
+    var btn = root.querySelector('.support-launcher');
+    var panel = root.querySelector('.support__panel');
+    var close = root.querySelector('.support__close');
+    var title = root.querySelector('.support__title');
+    if (!btn || !panel) { return; }
+    root.classList.add('is-ready');
+    function isOpen() { return !panel.hidden; }
+    function open() {
+      panel.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      (title || panel).focus();
+    }
+    function shut(back) {
+      if (!isOpen()) { return; }
+      panel.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+      if (back) { btn.focus(); }
+    }
+    btn.addEventListener('click', function () { if (isOpen()) { shut(true); } else { open(); } });
+    if (close) { close.addEventListener('click', function () { shut(true); }); }
+    document.addEventListener('click', function (e) { if (isOpen() && !root.contains(e.target)) { shut(false); } });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) { shut(true); } });
+  }
+
+  function init() { initDrawer(); initTheme(); initLang(); initSupport(); }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 })(window.ls = window.ls || {});
