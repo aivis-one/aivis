@@ -1,0 +1,1159 @@
+---
+name: components
+description: "v1.8.0 | UI component patterns for mockups"
+---
+
+# Components
+
+Reusable UI patterns for mockup content.
+
+---
+
+## ❌/✅ Examples
+
+| ❌ Wrong | ✅ Correct |
+|----------|-----------|
+| Hardcoded colors | Use CSS variables |
+| No border-radius | `border-radius: var(--radius-md)` |
+| Flat buttons | Add shadow + hover lift |
+| No focus states | Always style :focus |
+| Generic shadows | Use shadow scale (sm/md/lg) |
+| Children block parent onclick | Add `pointer-events: none` on children |
+| Tab bar `position: fixed` | Tab bar `position: sticky` |
+| `display: block` on screen | `display: flex` on screen |
+
+---
+
+## Design Tokens
+
+See `reference/brand-cbs.md` for full token documentation. Key subset:
+
+```css
+:root {
+  /* === Orange Triad === */
+  --o-primary: #cc3203;
+  --o-accent: #E8651A;
+  --o-accent-hover: #D45A16;
+  --o-light: #EFB44C;
+  --o-tint-8: rgba(232,101,26,0.08);
+  --o-tint-15: rgba(232,101,26,0.15);
+
+  /* === Teal System === */
+  --t-500: #228B8A;
+  --t-700: #1A6B6A;
+  --t-800: #15565A;
+  --t-900: #0E3D42;
+  --t-950: #0A2A2E;
+  --t-tint-8: rgba(26,107,106,0.08);
+  --t-tint-15: rgba(26,107,106,0.15);
+
+  /* === Semantic Aliases === */
+  --primary: #1A6B6A;
+  --primary-dark: #0E3D42;
+  --primary-light: #228B8A;
+  --accent: #E8651A;
+  --accent-dark: #D45A16;
+  --logo-icon-bg: #cc3203;
+  --logo-text: #084456;
+
+  /* === Neutrals === */
+  --bg: #FFFFFF;
+  --bg-subtle: #F5F5F5;
+  --bg-elevated: #EEF3F6;
+  --text: #1A1A1A;
+  --text-secondary: #525252;
+  --text-tertiary: #A3A3A3;
+  --border: #D4D4D4;
+
+  /* === Semantic Status === */
+  --success: #16A34A;
+  --success-dim: rgba(22, 163, 74, 0.15);
+  --error: #DC2626;
+  --error-dim: rgba(220, 38, 38, 0.1);
+  --warning: #f59e0b;
+  --warning-dim: rgba(245, 158, 11, 0.15);
+  --danger: #DC2626;
+  --danger-dim: rgba(220, 38, 38, 0.1);
+
+  /* === Shadows === */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-xl: 0 16px 48px rgba(0,0,0,0.14);
+  --shadow-focus: 0 0 0 3px rgba(232,101,26,0.4);
+
+  /* === Radius === */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* === Spacing (8px base) === */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+}
+```
+
+---
+
+## Lucide Icons ⭐
+
+SVG icon library for production-quality mockups. Replaces emoji in UI content.
+
+### Setup
+
+**Standalone mode** — add before closing `</body>`:
+```html
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+```
+
+**Ecosystem mode** — add in each mockup.html before `../js/shell.js`:
+```html
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+```
+And after all scripts:
+```html
+<script>if(typeof lucide!=='undefined')lucide.createIcons();</script>
+```
+
+### Usage
+
+```html
+<!-- Inline icon -->
+<i data-lucide="bell"></i>
+
+<!-- With size class -->
+<i data-lucide="wallet" class="icon-lg"></i>
+
+<!-- In colored box (stat cards, transactions) -->
+<div class="icon-box teal"><i data-lucide="pie-chart"></i></div>
+<div class="icon-box orange"><i data-lucide="users"></i></div>
+<div class="icon-box green"><i data-lucide="wallet"></i></div>
+
+<!-- In tab bar -->
+<span class="tab-icon"><i data-lucide="home"></i></span>
+```
+
+### Size Classes
+
+| Class | Size |
+|-------|------|
+| `.icon-sm` | 16px |
+| `.icon-md` | 20px |
+| `.icon-lg` | 24px |
+| `.icon-xl` | 32px |
+| `.icon-2xl` | 48px |
+
+### Icon-Box Colors
+
+| Class | Background | Color |
+|-------|-----------|-------|
+| `.icon-box.teal` | var(--t-tint-8) | var(--primary) |
+| `.icon-box.orange` | var(--o-tint-15) | var(--accent) |
+| `.icon-box.green` | var(--success-dim) | var(--success) |
+| `.icon-box.yellow` | var(--warning-dim) | var(--warning) |
+| `.icon-box.red` | var(--danger-dim) | var(--danger) |
+| `.icon-box.blue` | rgba(59,130,246,0.1) | #3b82f6 |
+| `.icon-box.neutral` | var(--bg-subtle) | var(--text-secondary) |
+
+### CBS HOME Icon Map
+
+| Context | Icon Name | Where |
+|---------|-----------|-------|
+| Home/Dashboard | `home` | Tab bar, nav |
+| Portfolio | `pie-chart` | Stat cards, tabs |
+| Marketplace | `shopping-bag` | Tab bar |
+| Wallet/Balance | `wallet` | Stat cards, tabs |
+| Settings | `settings` | Tab bar |
+| Users/Agents | `users` | Stat cards, tabs |
+| Commissions | `gem` | Agent shell |
+| Referral links | `link` | Agent hub |
+| Leaderboard | `trophy` | Agent hub |
+| Certification | `award` | Agent hub |
+| Bonus/Gift | `gift` | Bonus items |
+| Bell/Notifications | `bell` | Header |
+| Building/Company | `building` | Products |
+| Home/Property | `home` | Products |
+| Factory | `factory` | Products |
+| Documents | `file-text` | Document lists |
+| Shield/KYC | `shield-check` | KYC, security |
+| Credit card | `credit-card` | Payments |
+| Send/Telegram | `send` | Auth flow |
+| Lock | `lock-keyhole` | Login |
+| Mail | `mail-check` | Email verify |
+| Trending up | `trending-up` | Revenue stats |
+| Package | `package` | Products tab |
+| Bar chart | `bar-chart-3` | Analytics |
+| Arrow down | `arrow-down-circle` | Deposits |
+| Shopping cart | `shopping-cart` | Purchases |
+| Snowflake | `snowflake` | Frozen balance |
+| Eye | `eye` | Password toggle |
+| User check | `user-check` | Agent applications |
+| User plus | `user-plus` | Referrals |
+| Theme: auto | `monitor` | Theme toggle (auto mode) |
+| Theme: light | `sun` | Theme toggle (light mode) |
+| Theme: dark | `moon` | Theme toggle (dark mode) |
+
+### Dynamic Icons (JS)
+
+When adding icons dynamically (e.g. after navigateTo), call `lucide.createIcons()`:
+
+```javascript
+function showProduct(id) {
+  document.getElementById('productIcon').innerHTML = '<i data-lucide="building"></i>';
+  navigateTo('screen-product');
+  lucide.createIcons();
+}
+```
+
+### Selective Icon Update
+
+When updating a single element, pass `{ nodes }` to avoid re-processing all icons:
+
+```javascript
+// Update only the theme button icon
+const btn = document.querySelector('.theme-toggle');
+btn.innerHTML = '<i data-lucide="sun"></i>';
+lucide.createIcons({ nodes: [btn] });
+```
+
+### Tab Bar Icons CSS
+
+Add to mockup-specific `<style>`:
+```css
+.tab-icon i, .tab-icon svg { width: 20px; height: 20px; }
+```
+
+---
+
+## Clickable Container Fix ⚠️ REQUIRED
+
+When a container (card, row, etc.) has `onclick`, its children will block the click by default.
+
+### The Problem
+
+```html
+<!-- Click on "Название" text won't trigger onclick! -->
+<div class="card" onclick="doSomething()">
+  <div class="card-title">Название</div>  <!-- blocks click -->
+  <div class="card-text">Описание</div>   <!-- blocks click -->
+</div>
+```
+
+### The Solution
+
+```css
+/* Disable pointer-events on children of clickable containers */
+.card[onclick] *,
+.stat-card[onclick] *,
+.list-item[onclick] *,
+.metric-row[onclick] *,
+table tr[onclick] * {
+  pointer-events: none;
+}
+
+/* Re-enable for nested interactive elements */
+button,
+input,
+select,
+textarea,
+a {
+  pointer-events: auto;
+}
+```
+
+Now clicks anywhere in the card trigger the onclick, but nested buttons still work.
+
+**Add ALL your onclick container classes to this selector.** If you create `.my-card[onclick]`, add `.my-card[onclick] *` to the list.
+
+---
+
+## Buttons
+
+### Primary
+
+```html
+<button class="btn btn-primary">Оформить заказ</button>
+```
+
+```css
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(232, 101, 26, 0.3);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+```
+
+### Secondary
+
+```css
+.btn-secondary {
+  background: white;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+  background: var(--primary);
+  color: white;
+}
+```
+
+### Sizes
+
+```css
+.btn-sm { padding: 8px 16px; font-size: 13px; }
+.btn-lg { padding: 16px 32px; font-size: 16px; }
+```
+
+---
+
+## Cards
+
+### Basic Card
+
+```html
+<div class="card" onclick="showDetail(1)">
+  <div class="card-image">
+    <img src="product.jpg" alt="">
+    <span class="card-badge">Хит</span>
+  </div>
+  <div class="card-body">
+    <h3 class="card-title">Название товара</h3>
+    <p class="card-text">Описание товара</p>
+    <div class="card-price">
+      <span class="price-current">45 990 ₽</span>
+      <span class="price-old">52 990 ₽</span>
+    </div>
+  </div>
+</div>
+```
+
+```css
+.card {
+  background: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ⚠️ If card has onclick, add this! */
+.card[onclick] * {
+  pointer-events: none;
+}
+.card[onclick] button {
+  pointer-events: auto;
+}
+
+.card-image {
+  position: relative;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 16px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.card-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.card-price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.price-current {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.price-old {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+```
+
+---
+
+## Metric Rows
+
+For dashboards with clickable stat rows:
+
+```html
+<div class="metric-row" onclick="showDetails('check-in')">
+  <span class="metric-label">Check-in rate</span>
+  <div class="metric-bar"><div class="metric-fill" style="width: 78%"></div></div>
+  <span class="metric-value">78%</span>
+</div>
+```
+
+```css
+.metric-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-radius: var(--radius-md);
+}
+
+.metric-row:hover {
+  background: var(--bg-elevated);
+}
+
+.metric-row:active {
+  background: var(--border);
+}
+
+/* ⚠️ CRITICAL: Children must not block clicks */
+.metric-row[onclick] * {
+  pointer-events: none;
+}
+
+.metric-label {
+  min-width: 120px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.metric-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.metric-fill {
+  height: 100%;
+  background: var(--primary);
+}
+
+.metric-value {
+  width: 50px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  text-align: right;
+}
+```
+
+---
+
+## Form Elements
+
+### Input
+
+```html
+<div class="form-group">
+  <label class="form-label">Email</label>
+  <input type="email" class="form-input" placeholder="example@mail.ru">
+</div>
+```
+
+```css
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26, 107, 106, 0.3);
+}
+
+.form-input::placeholder {
+  color: var(--text-tertiary);
+}
+```
+
+### Select
+
+```css
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23525252' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 20px;
+  padding-right: 40px;
+}
+```
+
+### Textarea
+
+```css
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+```
+
+---
+
+## Navigation
+
+### Header
+
+```html
+<header class="header">
+  <div class="container">
+    <a href="#" class="logo">
+      <span class="logo-icon">A</span>
+      <span class="logo-text">Brand</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#">Каталог</a>
+      <a href="#">О нас</a>
+      <a href="#">Контакты</a>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-btn"><i data-lucide="search"></i></button>
+      <button class="icon-btn">
+        <i data-lucide="shopping-cart"></i>
+        <span class="badge">3</span>
+      </button>
+    </div>
+  </div>
+</header>
+```
+
+```css
+.header {
+  background: white;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  position: sticky;  /* NOT fixed! */
+  top: 0;
+  z-index: 100;
+}
+
+.header .container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+}
+
+.nav-links a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--primary);
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  position: relative;
+  font-size: 18px;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--border);
+}
+
+.icon-btn .badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+```
+
+---
+
+## Stats
+
+### Stat Card
+
+```html
+<div class="stat-card" onclick="showStatDetails('orders')">
+  <div class="icon-box teal"><i data-lucide="bar-chart-3"></i></div>
+  <div class="stat-value">1,250</div>
+  <div class="stat-label">Заказов</div>
+  <div class="stat-change positive">+12%</div>
+</div>
+```
+
+```css
+.stat-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ⚠️ If clickable */
+.stat-card[onclick] * {
+  pointer-events: none;
+}
+
+.stat-icon {
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.stat-change {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stat-change.positive { color: var(--success); }
+.stat-change.negative { color: var(--danger); }
+```
+
+---
+
+## Lists
+
+### List Item
+
+```html
+<div class="list-item" onclick="showUser(1)">
+  <img class="list-avatar" src="avatar.jpg" alt="">
+  <div class="list-content">
+    <div class="list-title">Название</div>
+    <div class="list-subtitle">Описание</div>
+  </div>
+  <div class="list-meta">14:30</div>
+</div>
+```
+
+```css
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.list-item:hover {
+  background: var(--bg-elevated);
+}
+
+/* ⚠️ If clickable */
+.list-item[onclick] * {
+  pointer-events: none;
+}
+.list-item[onclick] button {
+  pointer-events: auto;
+}
+
+.list-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.list-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.list-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+```
+
+---
+
+## Tables
+
+### Clickable Table Rows
+
+```html
+<table class="table">
+  <thead>
+    <tr>
+      <th>Имя</th>
+      <th>Email</th>
+      <th>Роль</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr onclick="showUser(1)">
+      <td>Анна Петрова</td>
+      <td>anna@company.ru</td>
+      <td>Менеджер</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+```css
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table tr {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.table tr:hover {
+  background: var(--bg-elevated);
+}
+
+/* ⚠️ CRITICAL: Cells must not block row onclick */
+.table tr[onclick] * {
+  pointer-events: none;
+}
+.table tr[onclick] button,
+.table tr[onclick] a {
+  pointer-events: auto;
+}
+```
+
+---
+
+## Container
+
+```css
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+```
+
+---
+
+## Responsive Prefixes
+
+Inside `.mockup-content`, use device frame classes:
+
+```css
+/* Desktop default */
+.mockup-content .grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Tablet */
+.device-frame.tablet .mockup-content .grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Phone */
+.device-frame.phone .mockup-content .grid {
+  grid-template-columns: 1fr;
+}
+```
+
+---
+
+## Tab Bar (Mobile)
+
+Bottom navigation for mobile screens.
+
+### HTML
+
+```html
+<nav class="tab-bar">
+  <button class="tab-item active" onclick="switchTab(this, 'screen-home')">
+    <span class="tab-icon"><i data-lucide="home"></i></span>
+    <span data-i18n="tab.home">Главная</span>
+  </button>
+  <button class="tab-item" onclick="switchTab(this, 'screen-catalog')">
+    <span class="tab-icon"><i data-lucide="clipboard-list"></i></span>
+    <span data-i18n="tab.catalog">Каталог</span>
+  </button>
+  <button class="tab-item" onclick="switchTab(this, 'screen-cart')">
+    <span class="tab-icon"><i data-lucide="shopping-cart"></i></span>
+    <span data-i18n="tab.cart">Корзина</span>
+  </button>
+  <button class="tab-item" onclick="switchTab(this, 'screen-profile')">
+    <span class="tab-icon"><i data-lucide="user"></i></span>
+    <span data-i18n="tab.profile">Профиль</span>
+  </button>
+</nav>
+```
+
+### CSS
+
+```css
+.tab-bar {
+  position: sticky;  /* NOT fixed! */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  border-top: 1px solid var(--border);
+  padding: 8px 0 env(safe-area-inset-bottom, 20px);
+  z-index: 100;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  min-width: 64px;
+  min-height: 44px;  /* Touch target */
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+  border: none;
+  background: none;
+}
+
+.tab-item:hover {
+  color: var(--primary-light);
+}
+
+.tab-item.active {
+  color: var(--primary);
+}
+
+.tab-item .tab-icon {
+  font-size: 22px;
+}
+
+.tab-item .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+```
+
+### JS ⚠️ UPDATED
+
+```javascript
+function switchTab(el, screenId) {
+  const btn = el.closest ? el.closest('.tab-item') : el;
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  const screen = document.getElementById('deviceScreen');
+  screen.scrollTop = 0;
+  screen.scrollTo({ top: 0, behavior: 'instant' });
+  requestAnimationFrame(() => screen.scrollTop = 0);
+}
+```
+
+### ⚠️ Important
+
+1. Tab bar MUST use `position: sticky`, NOT `position: fixed`.
+2. `fixed` positions relative to viewport, causing tab bar to escape device frame.
+3. Parent containers MUST have `flex: 1` for sticky bottom to work.
+
+---
+
+## Screen Structure ⚠️ CRITICAL
+
+For tab bar to stay at bottom, use this structure:
+
+```css
+.screen {
+  display: none;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.screen.active {
+  display: flex;
+  flex: 1;  /* MUST have flex:1 */
+}
+
+.main {
+  flex: 1;  /* MUST have flex:1 to push tab-bar down */
+}
+```
+
+```html
+<div class="screen active" id="screen-home">
+  <header class="header">...</header>
+  <main class="main">...</main>     <!-- flex:1 pushes tab-bar down -->
+  <nav class="tab-bar">...</nav>    <!-- sticky bottom works -->
+</div>
+```
+
+---
+
+## Charts (Dot-Matrix)
+
+Dense dot-matrix chart for portfolio/earnings visualization. CSS-only rendering with JS data generation.
+
+### Dot Chart (single)
+
+For investor dashboard — one chart inside a `stat-card wide`:
+
+```html
+<div class="stat-card wide">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <div class="stat-label" data-i18n="inv.dashboard.portfolio">Портфель</div>
+      <div class="stat-value">€24 750</div>
+      <div class="stat-change up" data-i18n="inv.dashboard.portfolioChange">+12.4% за месяц</div>
+    </div>
+    <div class="chart-timeframe">
+      <button class="tf-btn" data-i18n="chart.1w">1Н</button>
+      <button class="tf-btn active" data-i18n="chart.1m">1М</button>
+      <button class="tf-btn" data-i18n="chart.3m">3М</button>
+      <button class="tf-btn" data-i18n="chart.1y">1Г</button>
+    </div>
+  </div>
+  <div class="dot-chart" id="chartId"></div>
+</div>
+```
+
+### JS Generator
+
+```javascript
+// data = array of values (0-10), rows = max height
+var data = [2,3,3,4,3,5,4,6,5,5,6,7,5,6,7,7,8,7,8,8,9,8,9,10]; // 24 columns
+var rows = 10;
+var el = document.getElementById('chartId');
+data.forEach(function(v, i) {
+  var col = document.createElement('div');
+  col.className = 'dot-col' + (i === data.length - 1 ? ' current' : '');
+  for (var r = 0; r < rows; r++) {
+    var d = document.createElement('div');
+    d.className = r < v ? 'dot' : 'dot empty';
+    col.appendChild(d);
+  }
+  el.appendChild(col);
+});
+```
+
+### Chart Carousel (agent 2-slide)
+
+For agent dashboard — two charts (Portfolio + Earnings) with swipe:
+
+```html
+<div class="chart-carousel">
+  <div class="chart-carousel-track">
+    <div class="chart-slides" id="slides">
+      <div class="chart-slide"><!-- Slide 1: Portfolio --></div>
+      <div class="chart-slide"><!-- Slide 2: Earnings --></div>
+    </div>
+  </div>
+  <div class="carousel-dots">
+    <span class="carousel-dot active" onclick="slideCarousel('slides',0)"></span>
+    <span class="carousel-dot" onclick="slideCarousel('slides',1)"></span>
+  </div>
+</div>
+```
+
+```javascript
+function slideCarousel(id, idx) {
+  var s = document.getElementById(id);
+  s.style.transform = 'translateX(-' + (idx * 100) + '%)';
+  s.closest('.chart-carousel').querySelectorAll('.carousel-dot')
+    .forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+}
+```
+
+### Key Rules
+
+- Always 24 columns x 10 rows = 240 dots per chart
+- Empty positions = `.dot.empty` (faded border color)
+- Last column = `.dot-col.current` (accent color)
+- Dots: `aspect-ratio: 1`, `border-radius: 1px`, `gap: 1.5px`
+- `.chart-carousel-track` has `overflow: hidden` to clip slides
+- Touch swipe: `touchstart`/`touchend` with 50px threshold
+
+*components v1.8.0*
