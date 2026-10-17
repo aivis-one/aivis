@@ -12,8 +12,8 @@ A prohibition without a replacement sends work back to guessing, so every row na
 | Do not | Instead | Why | Source |
 |---|---|---|---|
 | set amber (`--accent`, `--warning`, `#B1581B`) as text on the card ground `#EDF1F5` | use amber as an icon or a border there; set the text in `--text-secondary` | 4.32 on the card ground, under the 4.5 text floor | Q 2jvykpm7 A; M |
-| set grey (`--text-tertiary`, `#6B7785`) as text on the day card ground | `--text-secondary` | 4.02 on the card ground; the night theme was not put to him | Q 2jvykpm7 A; M |
-| set `--text-tertiary` on the day page ground `#F6F8FA` | `--text-secondary` (6.92) | tertiary is 4.29 on the page ground; by day it stands on white surfaces only (4.56); the night theme was not put to him | SP 4b; M |
+| set grey (`--text-tertiary`, `#6B7785`) as text on the day card ground | `--text-secondary` | 4.02 on the card ground | Q 2jvykpm7 A; M |
+| set `--text-tertiary` on the day page ground `#F6F8FA` | `--text-secondary` (6.92) | tertiary is 4.29 on the page ground; by day it stands on white surfaces only (4.56) | SP 4b; M |
 | set `--text-tertiary` on a pattern or on the mark | `--text-primary` or `--text-secondary` | on a pattern or the mark only primary and secondary text stand; the contrast of tertiary there is under 4.5 | P4 |
 | use the cabinet's old values `#606A77` for tertiary or amber-700 `#9A4410` for the accent by day | `--text-tertiary` `#6B7785`, `--accent` `#B1581B` | the owner chose the site's lighter values everywhere | Q 16qygyq6 B |
 | use amber-800 `#652C0A` as the hover of the accent by day | `--accent-hover`, amber-700 `#9A4410` | the cabinet's amber-800 was not carried | SP 4a |
@@ -29,6 +29,8 @@ A prohibition without a replacement sends work back to guessing, so every row na
 | use `--border-input` on a card or a divider | `--border-default` or `--border-subtle` | the input border is for inputs only; card borders are unchanged | SP 4d |
 | draw the focus ring in the accent colour | `--focus-ring` (azure-500 day, azure-300 night) | the accent also marks primary actions and warnings, so focus and action would blur together | Q xja37czs A |
 | draw the focus ring in azure-300 by day | `--focus-ring`, azure-500 `#217AB6` by day (4.09 at the lowest) | azure-300 measures 2.38 to 2.71 by day, under the 3:1 floor for a focus indicator | Q xja37czs A; M |
+| draw the focus indicator as a halo (`--shadow-focus`) | the 2 px outline: `outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset)` | the focus indicator is an outline, with no halo | the owner's decision of 2026-10-17 (small points on the focus and border page) |
+| draw an input border of a width other than 1 px | `--border-input-width` | the input border is 1 px | the owner's decision of 2026-10-17 (small points on the focus and border page) |
 
 ## Typefaces
 

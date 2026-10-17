@@ -154,6 +154,11 @@
   "light": "#7F97AE",
   "dark": "#506579"
  },
+ "--border-input-width": {
+  "layer": "scale",
+  "light": "1px",
+  "dark": "1px"
+ },
  "--border-strong": {
   "layer": "semantic",
   "light": "#9BA8B6",
@@ -364,10 +369,20 @@
   "light": "#06321F",
   "dark": "#06321F"
  },
+ "--focus-offset": {
+  "layer": "scale",
+  "light": "2px",
+  "dark": "2px"
+ },
  "--focus-ring": {
   "layer": "semantic",
   "light": "#217AB6",
   "dark": "#37A6E6"
+ },
+ "--focus-width": {
+  "layer": "scale",
+  "light": "2px",
+  "dark": "2px"
  },
  "--font-body": {
   "layer": "scale",

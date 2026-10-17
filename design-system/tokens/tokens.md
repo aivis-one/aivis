@@ -5,7 +5,7 @@
 
 # Tokens
 
-243 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
+246 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
 
 ## Layers
 
@@ -29,8 +29,8 @@
 | `--bg-inset` | a sunken area |
 | `--bg-emphasis` | an inverse block |
 | `--text-primary` | body text and headings |
-| `--text-secondary` | supporting text; on the day page ground and the day card ground it stands instead of tertiary; the night theme was not put to him; with `--text-primary` the only text colours on a pattern or the mark |
-| `--text-tertiary` | quiet text: captions, hints, meta lines; by day it stands on white surfaces only; the night theme was not put to him |
+| `--text-secondary` | supporting text; on the day page ground and the day card ground it stands instead of tertiary; with `--text-primary` the only text colours on a pattern or the mark |
+| `--text-tertiary` | quiet text: captions, hints, meta lines; by day it stands on white surfaces only; by night it stands on every night ground |
 | `--text-on-brand` | text on a brand fill; in the night theme it is `--on-primary` (`#04243E`) |
 | `--text-inverse` | text on bg-emphasis |
 | `--border-subtle` | hairlines and card borders; card borders are unchanged |
@@ -63,7 +63,7 @@
 | `--danger-subtle` | tinted ground |
 | `--danger-subtle-text` | text on it |
 | `--on-danger` | text on danger |
-| `--focus-ring` | the focus outline colour: azure-500 by day, azure-300 by night; never the accent |
+| `--focus-ring` | the focus outline colour: azure-500 by day, azure-300 by night; never the accent; the outline is `--focus-width` solid with `--focus-offset` offset |
 | `--toggle-track` | switch track (the same in both themes) |
 | `--toggle-knob` | switch knob |
 | `--icon-primary` | icon default |
@@ -87,17 +87,18 @@ Measured contrast of a text colour on each ground in the day theme (the formula 
 | `--danger` | 7.86 | 7.38 | 6.92 | every ground |
 | `--info` | 6.11 | 5.74 | 5.39 | every ground |
 
-In the night theme every text colour is 4.81 or better on every ground (the lowest is tertiary on the card ground). The sources of these rules are in `../reference/refusals.md`.
+In the night theme every text colour is 4.81 or better on every ground (the lowest is tertiary on the card ground), and tertiary text stands on every night ground (the owner's decision of 2026-10-17 (small points on the focus and border page)). The sources of these rules are in `../reference/refusals.md`.
 
 ## Inputs and focus
 
-`--border-input` is `#7F97AE` by day: 3.03 against white, 2.84 against the page, 2.67 against the card ground; by night `#506579`: 3.01 against the night surface, 3.29 against the page, 2.81 against the card ground. `--focus-ring` is `#217AB6` by day: 4.64 against white, 4.36 against the page, 4.09 against the card ground; by night `#37A6E6`: 6.72 against the surface, 7.33 against the page, 6.27 against the card ground.
+`--border-input` is `#7F97AE` by day: 3.03 against white, 2.84 against the page, 2.67 against the card ground; by night `#506579`: 3.01 against the night surface, 3.29 against the page, 2.81 against the card ground. `--focus-ring` is `#217AB6` by day: 4.64 against white, 4.36 against the page, 4.09 against the card ground; by night `#37A6E6`: 6.72 against the surface, 7.33 against the page, 6.27 against the card ground. The input border is `--border-input-width` (1 px) wide. The focus indicator is a `--focus-width` (2 px) solid outline in `--focus-ring` with a `--focus-offset` (2 px) offset, and no `--shadow-focus` halo (the owner's decision of 2026-10-17 (small points on the focus and border page)).
 
 ## Scales
 
 | Family | Tokens |
 |---|---|
 | Gradients, hex edges, depth, numerals | `--grad-azure`, `--grad-emerald`, `--grad-amber`, `--grad-brand`, `--hex-azure-face`, `--hex-azure-edge`, `--hex-emerald-face`, `--hex-emerald-edge`, `--hex-amber-face`, `--hex-amber-edge`, `--hex-neutral-face`, `--hex-neutral-edge`, `--connector-stroke`, `--connector-width`, `--numeral-display`, `--numeral-mega` |
+| Focus and input border | `--focus-width`, `--focus-offset`, `--border-input-width` |
 | Elevation | `--shadow-1`, `--shadow-2`, `--shadow-3`, `--shadow-deep`, `--shadow-inset-hex`, `--shadow-focus` |
 | Typography | `--font-display`, `--font-body`, `--font-mono`, `--fs-3xs`, `--fs-xs`, `--fs-sm`, `--fs-body`, `--fs-body-lg`, `--fs-h4`, `--fs-lg`, `--fs-xl`, `--fs-h3`, `--fs-2xl`, `--fs-3xl`, `--fs-4xl`, `--fs-h2`, `--fs-h1`, `--fs-display`, `--fs-hero`, `--lh-tight`, `--lh-snug`, `--lh-normal`, `--tracking-tighter`, `--tracking-tight`, `--tracking-normal`, `--tracking-wide`, `--tracking-mega` |
 | Spacing | `--space-1`, `--space-2`, `--space-3`, `--space-4`, `--space-5`, `--space-6`, `--space-7`, `--space-8`, `--space-9`, `--space-4-lg`, `--space-5-lg`, `--space-6-lg`, `--space-component-sm`, `--space-component-md`, `--space-component-lg`, `--space-section-sm`, `--space-section-md`, `--space-section-lg`, `--space-gutter-web`, `--space-gutter-mobile`, `--space-safe-top`, `--space-safe-right`, `--space-safe-bottom`, `--space-safe-left` |

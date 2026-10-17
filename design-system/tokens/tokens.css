@@ -244,6 +244,10 @@
   --icon-size-md: 24px;
   --icon-size-lg: 32px;
   --icon-size-xl: 48px;
+  /* ---- Focus and input border ---- */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --border-input-width: 1px;
   /* ---- Decoration ---- */
   --deco-ink: var(--neutral-500);
   --deco-opacity: 0.33;

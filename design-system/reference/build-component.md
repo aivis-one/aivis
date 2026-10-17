@@ -25,9 +25,9 @@ This tree holds tokens, fonts, brand, icons and decorative elements; it holds no
 ## Steps
 
 1. Bind, do not measure. Every colour, size, space, radius, shadow and duration takes a token by role; a literal in the output is a defect (`conventions.md`: literal values).
-2. Name the states the component has and bind a token to each: rest, hover, pressed and focus. The hover and pressed colours exist as `--primary-hover`, `--primary-active`, `--accent-hover` and `--danger-hover`; focus is `--focus-ring`.
+2. Name the states the component has and bind a token to each: rest, hover, pressed and focus. The hover and pressed colours exist as `--primary-hover`, `--primary-active`, `--accent-hover` and `--danger-hover`; focus is a `--focus-width` solid outline in `--focus-ring` with a `--focus-offset` offset.
 3. A component that carries text puts it on a ground that its text colour is allowed on (`../tokens/tokens.md`, "Text on grounds"); the text on `--primary` is `--on-primary`, white by day and `#04243E` by night.
-4. An input takes `--border-input` and no other border token; a card keeps its border as it is, `--border-subtle` (`refusals.md`: Inputs and focus; `../elements/README.md`).
+4. An input takes `--border-input` at `--border-input-width` and no other border token; a card keeps its border as it is, `--border-subtle` (`refusals.md`: Inputs and focus; `../elements/README.md`).
 5. Draw every icon from `../components/icons/icons.svg` by a key of `../components/icons/icons.json`, in `currentColor`; the rocket and the spark from 24 pixels up.
 6. Lay out with logical properties and with the four widths 480, 640, 880 and 1120; nothing is mirrored (`conventions.md`: direction, widths).
 7. Take the typeface from the role tokens `--font-display`, `--font-body` and `--font-mono`.

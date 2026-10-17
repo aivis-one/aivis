@@ -262,6 +262,9 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--tick-emerald-end` | `#0E6E45` |  | Agent-Aivis.one/navigator/sandbox/ds-decor/final3/gen.py:332 (`#0e6e45`) |  |
 | `--tick-amber-start` | `#F2913A` |  | Agent-Aivis.one/navigator/sandbox/ds-decor/final3/gen.py:332 (`#f2913a`) |  |
 | `--tick-amber-end` | `#9A4410` |  | Agent-Aivis.one/navigator/sandbox/ds-decor/final3/gen.py:332 (`#9a4410`) |  |
+| `--focus-width` | `2px` | | the owner's decision of 2026-10-17 (small points on the focus and border page); the live site draws its focus outline at 2 px (landing/site/assets/site.css:86) |  |
+| `--focus-offset` | `2px` | | the owner's decision of 2026-10-17 (small points on the focus and border page); the live site offsets its focus outline by 2 px (landing/site/assets/site.css:86) |  |
+| `--border-input-width` | `1px` | | the owner's decision of 2026-10-17 (small points on the focus and border page) |  |
 
 ## Asset map
 
