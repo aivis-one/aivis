@@ -1050,6 +1050,161 @@
   "notes": ""
  },
  {
+  "id": "K28",
+  "name": "OTP input",
+  "status": "built",
+  "markup": "markup/otp-input.html",
+  "class_root": ".ds-otp, .ds-otp__cells, .ds-otp__cell",
+  "variants": {
+   "cells": "six, one digit each, in one labelled group; a left-to-right island (does not mirror)",
+   "events": [
+    "ds-otp-change",
+    "ds-otp-complete"
+   ]
+  },
+  "sizes": [
+   "one size: --size-3xl wide, --size-4xl high (the cabinet's cell)"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "focus",
+   "filled (data-filled)",
+   "complete",
+   "invalid (aria-invalid)",
+   "verifying (aria-busy)",
+   "disabled"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input",
+   "--border-input-hover",
+   "--border-input-width",
+   "--danger",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-mono",
+   "--fs-h3",
+   "--lh-tight",
+   "--primary",
+   "--radius-md",
+   "--size-3xl",
+   "--size-4xl",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary"
+  ],
+  "accessibility": "One group: role=\"group\" named by the visible label (aria-labelledby), with the hint and the error in aria-describedby. Each cell is a text input with inputmode=\"numeric\" and an accessible name \"Digit n of 6\" from the translation tables; the first cell has autocomplete=\"one-time-code\", the others off. Typing a digit moves to the next cell; Backspace on an empty cell steps back and clears it; Left, Right, Home and End move; a paste (or an autofill that puts the whole code in one cell) fills every cell. The group is dir=ltr by CSS (direction) so digits and arrows keep their order in a right-to-left page. An invalid code sets aria-invalid=\"true\" on every cell and shows a message with an icon and text, never colour alone. The component fires ds-otp-change and ds-otp-complete and never submits. Cells are --size-4xl high (above --touch-min). Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Entering the six digits of an e-mail or phone code.",
+  "usage": "Use for a one-time code of a fixed length. The resend control and its countdown belong to the screen (a ghost button), not to the component. A longer or alphanumeric code is a text field.",
+  "notes": "Look ported from the cabinet's code input (frontend/src/views/auth/VerifyEmailView.vue lines 283 to 307: cell --size-3xl by --size-4xl, --fs-h3, 700, --radius-md); the border and the focus follow the system's decided input rules (--border-input at --border-input-width, outline focus), not the cabinet's 2 px border and halo; the digit is set in the mono family for figures (the owner's decision; the cabinet's cell uses the body font). The filled state has no look of its own: the digit is the state. No auto-submit (the cabinet verifies by a button)."
+ },
+ {
+  "id": "K29",
+  "name": "Date picker",
+  "status": "built",
+  "markup": "markup/date-picker.html",
+  "class_root": ".ds-input[type=date]",
+  "variants": {
+   "input": "the browser's own date input, drawn as a Text field (mono figures); the period is its min and max"
+  },
+  "sizes": [
+   "the Text field's: sm 32, md 38 (default), lg 44"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "focus",
+   "filled",
+   "invalid (aria-invalid)",
+   "disabled",
+   "read-only"
+  ],
+  "tokens": [
+   "--font-mono"
+  ],
+  "accessibility": "A real input type=date with a visible label bound by for and id. The allowed period is its min and max attributes and is also written in the hint, linked by aria-describedby. An invalid value sets aria-invalid=\"true\" and shows a message with an icon and text, linked by aria-describedby, as the Text field. The picker that opens and its keys are the browser's own; color-scheme follows the theme, so the browser's picker is dark by night. Fields are 16 px text at the 480 width. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Every Text field rule of K03 holds.",
+  "purpose": "Choosing one calendar date: a document date, a filter's from and to.",
+  "usage": "One input per date; a period is two inputs, the second with min set from the first by the screen. A date typed in a locale format is a text field.",
+  "notes": "The cabinet uses the native date input in 4 places and the old skill's date field renders its value in --font-mono (SK components.json), so the value is mono. The owner chose the native input."
+ },
+ {
+  "id": "K30",
+  "name": "File input",
+  "status": "built",
+  "markup": "markup/file-input.html",
+  "class_root": ".ds-file, .ds-file__pick, .ds-file__list, .ds-file__item",
+  "variants": {
+   "control": "a secondary button (a label around the real input) and a list",
+   "item_states": [
+    "selected",
+    "uploading",
+    "done",
+    "error"
+   ],
+   "events": [
+    "ds-file-select",
+    "ds-file-reject",
+    "ds-file-remove"
+   ],
+   "calls": [
+    "AivisDS.file.progress(item, pct)",
+    "AivisDS.file.done(item)",
+    "AivisDS.file.fail(item, message)"
+   ]
+  },
+  "sizes": [
+   "button: the Button's md; item: one size, 40 thumb box --size-xl"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "focus",
+   "selected",
+   "uploading",
+   "done",
+   "error",
+   "disabled"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input-width",
+   "--border-subtle",
+   "--danger",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-snug",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-md",
+   "--radius-sm",
+   "--size-lg",
+   "--size-xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary",
+   "--text-tertiary",
+   "--touch-min"
+  ],
+  "accessibility": "A real input type=file (visually hidden, still focusable) inside the label that draws the button; its name is the field's visible label (aria-labelledby) and the limits are in text under it (aria-describedby), never only in the accept attribute. The page fills data-accept, data-max-size (bytes) and the messages data-msg-type, data-msg-size, data-msg-ready, data-msg-done and data-label-remove from the translation tables. A file that fails the type or the size check is listed as an error item with its message in a role=\"alert\" paragraph with an icon. Progress is role=\"progressbar\" with aria-label (the file name), aria-valuemin, aria-valuemax and aria-valuenow; the status text repeats the percentage. The list is a polite live region. Each item has a remove button named \"Remove <name>\" (at --touch-min at the 480 width); removing returns the focus to the input. An image is previewed from a local object URL; the preview image has an empty alt because the name is beside it. The component never uploads: the app reports progress through the three calls. Focus is the system outline outside the button.",
+  "purpose": "Choosing and sending documents and images (KYC, company documents, avatars, attachments).",
+  "usage": "State the limits in the hint. One input per document role (front, back, selfie).",
+  "notes": "The cabinet has the bare browser file input in 10 places and SK lists FileCard as absent: the item takes the Row list's and the Reorder list's look (white surface, --border-subtle, --radius-md, name display 700, meta --text-tertiary on white); the progress is the Progress component; the badge is the Badge. The owner chose the button."
+ },
+ {
   "id": "K31",
   "name": "Segmented control",
   "status": "built",
@@ -1101,6 +1256,69 @@
   "purpose": "Chooses one of two to five short options that change the view of the same content: a period, a list filter.",
   "usage": "Use for a filter or a period with short labels; for more options use a select, for panels use Tabs, for a setting that applies at once use a Toggle. Labels are single words or short phrases.",
   "notes": ""
+ },
+ {
+  "id": "K33",
+  "name": "Auth shell",
+  "status": "built",
+  "markup": "markup/auth-shell.html",
+  "class_root": ".ds-auth, .ds-auth__header, .ds-auth__main, .ds-auth__panel",
+  "variants": {
+   "slots": [
+    "logo",
+    "controls",
+    "icon",
+    "title",
+    "subtitle",
+    "form",
+    "foot"
+   ],
+   "modifiers": [
+    ".ds-auth--framed (a specimen inside a frame)"
+   ]
+  },
+  "sizes": [
+   "panel: --maxw-form of content plus the panel's padding"
+  ],
+  "states": [
+   "the screens it holds carry their own: step, error, loading"
+  ],
+  "tokens": [
+   "--bg-page",
+   "--bg-surface",
+   "--border-subtle",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--fs-h3",
+   "--fs-sm",
+   "--icon-size-xl",
+   "--lh-normal",
+   "--lh-snug",
+   "--maxw-form",
+   "--primary",
+   "--radius-card",
+   "--size-sm",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-5",
+   "--space-6",
+   "--space-gutter-mobile",
+   "--space-safe-left",
+   "--space-safe-right",
+   "--space-safe-top",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-min",
+   "--tracking-tight"
+  ],
+  "accessibility": "One header landmark with the logo (one role=img named AIVIS.ONE: the mark image with empty alt and the inline wordmark aria-hidden) and the language and theme controls (ghost icon buttons with aria-label), one main landmark holding one h1 and the form, on a panel of --bg-surface (white by day, the night surface; --border-subtle border, --radius-card) over the page ground (--bg-page), centred at desktop widths and from the top on a phone. The panel is one column at every width; at the 480 width the gutter is --space-gutter-mobile, the safe-area insets pad the header, every link and control is at least --touch-min high. Text on the panel is --text-primary, --text-secondary, --primary and --danger (no amber). Reading order is logo, controls, title, text, form, links. Screens that use it (login, register, verify, reset, Telegram entry, 404) put their own form inside .ds-auth__form.",
+  "purpose": "The frame of every screen before sign-in.",
+  "usage": "Use for P-3 to P-11. A screen that is not an auth screen uses the App shell (K25). The form starts from the top on a phone, on every auth screen; at desktop widths the panel is centred.",
+  "notes": "Ported from the cabinet's auth screens (VerifyEmailView.vue lines 226 to 265: header, centred content, title --fs-h3 700, subtitle --fs-sm --text-secondary, form at --maxw-form, the page ground); the cabinet has no @media in its 10 auth files, so the phone rules (gutter, safe areas, touch targets) are new and follow the system's phone rules. The header puts the logo at the start and the controls at the end, as the cabinet's sign-in, register and both reset screens have it (LoginView.vue .auth-header, justify-content: space-between); the verify and onboarding screens centre the logo, a split the shell settles on the start-and-end form. The logo is the cabinet's AivisLogo: the colour mark brand/aivis-mark.svg (an image, --size-sm, unchanged) and the wordmark of brand/aivis-wordmark.svg inline in currentColor (--text-primary), half the mark's height, --space-3 apart; the lockup image is not used here because its lettering has no fill and goes dark at night. The form sits on a --bg-surface panel and starts from the top on a phone: the owner's decisions (the cabinet stands its form on the page ground and centres the verify and onboarding screens)."
  },
  {
   "id": "K34",
@@ -1161,6 +1379,165 @@
   "purpose": "A door from a hub (More, a dashboard) to one screen.",
   "usage": "Use for a grid of destinations with an icon and a title; use a Row list (K23) when each destination carries a value or a status. One tile, one link, one icon from the set; no more than a dozen tiles on a screen.",
   "notes": ""
+ },
+ {
+  "id": "K35",
+  "name": "Structured payout form",
+  "status": "built",
+  "markup": "markup/payout-form.html",
+  "class_root": ".ds-payout, .ds-payout__group, .ds-payout__grid",
+  "variants": {
+   "layout": "fieldsets with legends, a field grid of one column on a phone and two from --center-lg per column up",
+   "slots": [
+    "error summary (Alert)",
+    "lock notice (Alert)",
+    "actions"
+   ]
+  },
+  "sizes": [
+   "fields at the Text field's sizes"
+  ],
+  "states": [
+   "rest",
+   "invalid (field and summary)",
+   "saving (aria-busy)",
+   "locked (fieldset disabled)",
+   "disabled"
+  ],
+  "tokens": [
+   "--border-subtle",
+   "--center-lg",
+   "--font-display",
+   "--fs-h4",
+   "--lh-snug",
+   "--space-1",
+   "--space-3",
+   "--space-4",
+   "--text-primary"
+  ],
+  "accessibility": "A form named by its heading (aria-labelledby). Each group is a fieldset with a legend; every field is a labelled Text field with its hint and message in aria-describedby; an invalid field has aria-invalid=\"true\" and a message with an icon and text, and an Alert (role=alert) names how many fields need a look. A locked form (a withdrawal is open) disables the fieldsets and says why in an Alert (role=status). Saving sets aria-busy on the form and on the Button (loading, label kept). The component carries no limit, fee, price or payment term as content: the limits are shown by the screen from the platform settings. At the 480 width the action buttons are full width and every field is at least --touch-min high.",
+  "purpose": "Entering payout details and a withdrawal amount as fields instead of a raw JSON text box.",
+  "usage": "Which fields a payout needs, and in which order, is the app's (the backender's payout schema); this component is the form around them. Amounts take the Text field's --num (mono figures).",
+  "notes": "A form of existing parts (Text field K03, Button K01, Alert K09, Card K07); the only new rules are the fieldset and the grid. The fields in the specimen are an example, not a decision of the payout schema."
+ },
+ {
+  "id": "K38",
+  "name": "Combobox / user picker",
+  "status": "built",
+  "markup": "markup/combobox.html",
+  "class_root": ".ds-combobox, .ds-combobox__input, .ds-combobox__list, .ds-combobox__option, .ds-combobox__chip",
+  "variants": {
+   "filter": "data-filter=\"local\" filters the options in the page; absent, the app replaces the options on ds-combobox-query",
+   "chosen": "a chip with Clear, as the cabinet's picker",
+   "events": [
+    "ds-combobox-query",
+    "ds-combobox-select"
+   ]
+  },
+  "sizes": [
+   "the Text field's md; options --size-3xl high, --touch-min at the 480 width"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "focus",
+   "open",
+   "active option (keyboard)",
+   "selected option",
+   "no result",
+   "busy (aria-busy)",
+   "chosen",
+   "disabled"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-default",
+   "--border-input-width",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-snug",
+   "--on-primary",
+   "--primary",
+   "--radius-md",
+   "--radius-pill",
+   "--radius-sm",
+   "--shadow-2",
+   "--size-2xl",
+   "--size-3xl",
+   "--size-lg",
+   "--size-md",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-min"
+  ],
+  "accessibility": "The ARIA 1.2 combobox: an input with role=\"combobox\", aria-expanded, aria-controls (the listbox id), aria-autocomplete=\"list\" and aria-activedescendant naming the option the keyboard is on; a ul role=\"listbox\" named by the label of the field, each option role=\"option\" with an id and aria-selected; aria-disabled for an option that cannot be chosen. Focus stays in the input. Down opens and moves, Up moves back, Home and End go to the first and the last option while the list is open, Enter chooses, Escape closes (and then empties the text). A polite status (role=status, text from data-msg-count and data-msg-none) says how many results there are; the empty message is text. The active option is a tint and a bar at the start, never colour alone. Choosing shows a chip with the option's avatar, name and detail and a Clear button (aria-label from the translation tables) that returns the focus to the input. data-min-chars holds the shortest search the app wants. The component fires ds-combobox-query and ds-combobox-select; debounce and the request are the app's. Focus is the system outline on the input.",
+  "purpose": "Finding one record by typing: a user by name or e-mail, a company.",
+  "usage": "Use when the list is too long for a select (more than about ten). The result detail line holds what tells two people apart (e-mail, role).",
+  "notes": "Look ported from the cabinet's picker (frontend/src/components/staff/UserPicker.vue lines 190 to 275: bordered result list --radius-md, a 32 px avatar, name --fs-sm 600, detail --fs-xs --text-secondary, a chip on --bg-subtle); the cabinet's picker was a list of buttons, not a combobox, so the roles and the keys are new; the result list stands on --bg-surface (the cabinet used --bg-page); the avatar is the cabinet's initials disc (--primary, --on-primary, 700)."
+ },
+ {
+  "id": "K39",
+  "name": "Reorder list",
+  "status": "built",
+  "markup": "markup/reorder-list.html",
+  "class_root": ".ds-reorder, .ds-reorder__item, .ds-reorder__move",
+  "variants": {
+   "order": "an ordered list (ol) with a position figure",
+   "events": [
+    "ds-reorder-change"
+   ]
+  },
+  "sizes": [
+   "rows --size-lg or taller; move buttons --size-sm by --size-xs (the cabinet's), --touch-min at the 480 width"
+  ],
+  "states": [
+   "rest",
+   "hover (move button)",
+   "pressed (move button)",
+   "focus",
+   "moved (data-moved)",
+   "first and last (the button that cannot move is disabled)",
+   "disabled row (aria-disabled)"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-input",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-snug",
+   "--primary",
+   "--primary-subtle",
+   "--radius-md",
+   "--radius-sm",
+   "--size-sm",
+   "--size-xs",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary",
+   "--text-tertiary",
+   "--touch-min"
+  ],
+  "accessibility": "An ol named by a visible heading (aria-labelledby); each row has a Move up and a Move down button whose accessible name includes the row's title (\"Move Prototype review up\", from data-label-up and data-label-down); the button that cannot move is disabled. After a move the focus stays on the same button (or the other one when this one is now at an end), the row carries data-moved until the focus leaves it, and a polite status (data-live names its element, text from data-msg-moved with {name}, {n} and {total}) says where the row went. The position figure is aria-hidden: the ol already gives the order. Keyboard operation is the buttons' own (Tab, Enter, Space). The component fires ds-reorder-change with the new order of the rows' data-id and never saves it. Buttons are at least --touch-min square at the 480 width. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Putting a short list in order: roadmap steps, attachments, documents.",
+  "usage": "Use for lists of up to a few dozen rows. A pointer drag is not built (the cabinet has none): buttons only. A list that sorts itself is not this component.",
+  "notes": "Look ported from the cabinet's roadmap (frontend/src/views/company/CompanyRoadmapView.vue lines 564 to 583 and 899 to 925: a pair of small up and down buttons at the start of the row, 1 px border, --radius-sm, a --text-secondary glyph, primary on hover); the rest of the row takes the Row list's surface. The move button border is --border-input, the system's outlined-button border (3.03 and 3.01 against white), not the cabinet's --border-default."
  },
  {
   "id": "K40",

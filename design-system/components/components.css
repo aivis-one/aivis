@@ -1305,3 +1305,316 @@ textarea.ds-input {
   .ds-segmented__option, .ds-navtile { transition: none; }
   .ds-skeleton { animation: none; }
 }
+
+/* =====================================================================================================
+   AIVIS design system -- components, batch 3 (P5.3).
+   K28 OTP input, K29 Date picker, K30 File input, K38 Combobox, K39 Reorder list, K35 Payout form, K33 Auth shell.
+   Same rules as batches 1 and 2: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored.
+   The owner's decisions of 2026-10-17 are built in: the native date input, the file input as a button, the auth form on a --bg-surface
+   panel that starts from the top on a phone, the OTP digits in the mono face.
+   ===================================================================================================== */
+
+/* ===== Shared: focus of the batch 3 parts ===== */
+:is(.ds-otp__cell, .ds-file__remove, .ds-combobox__clear, .ds-reorder__move):focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.ds-file__pick:has(.ds-file__input:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ===== K28 OTP input (six cells, one group; a left-to-right island, as the QR block is) ===== */
+.ds-otp { display: grid; gap: var(--space-2); min-inline-size: 0; }
+.ds-otp__cells {
+  direction: ltr;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, var(--size-3xl));
+  gap: var(--space-3);
+  justify-content: start;
+}
+.ds-otp__cell {
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: var(--size-4xl);
+  padding: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  border: var(--border-input-width) solid var(--border-input);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  caret-color: var(--primary);
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.ds-otp__cell:hover:not(:disabled) { border-color: var(--border-input-hover); }
+.ds-otp__cell[aria-invalid="true"] { border-color: var(--danger); }
+.ds-otp__cell:disabled { background: var(--bg-subtle); color: var(--text-secondary); opacity: 0.55; cursor: not-allowed; }
+.ds-otp[aria-busy="true"] .ds-otp__cell { color: var(--text-secondary); }
+
+/* ===== K29 Date picker (the browser's own date input, drawn as a Text field) ===== */
+/* a .ds-input of type date, in the mono family for figures (SK: the date field renders in --font-mono); the browser's picker follows the theme */
+.ds-input[type="date"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color-scheme: light; }
+[data-theme="dark"] .ds-input[type="date"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) .ds-input[type="date"] { color-scheme: dark; } }
+
+/* ===== K30 File input / upload ===== */
+.ds-file { display: grid; gap: var(--space-2); min-inline-size: 0; }
+.ds-file__input { position: absolute; inline-size: var(--border-input-width); block-size: var(--border-input-width); opacity: 0; overflow: hidden; clip-path: inset(50%); }
+.ds-file__pick { position: relative; justify-self: start; cursor: pointer; }
+.ds-file[data-disabled="true"] .ds-file__pick { opacity: 0.55; cursor: not-allowed; }
+.ds-file__list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ds-file__item {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.ds-file__item[data-state="error"] { border-color: var(--danger); }
+.ds-file__thumb {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  inline-size: var(--size-xl);
+  block-size: var(--size-xl);
+  border-radius: var(--radius-md);
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-text);
+}
+.ds-file__thumb img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+.ds-file__body { min-inline-size: 0; display: grid; gap: calc(var(--space-1) / 2); }
+.ds-file__name { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.ds-file__meta { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-tertiary); }
+.ds-file__aside { display: flex; align-items: center; gap: var(--space-2); }
+.ds-file__remove {
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-lg);
+  block-size: var(--size-lg);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.ds-file__remove:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.ds-file__remove:active { background: var(--bg-inset); }
+.ds-file__progress { grid-column: 1 / -1; }
+.ds-file__item .ds-field__error { grid-column: 1 / -1; }
+
+/* ===== K38 Combobox / user picker (ARIA 1.2: input role=combobox, listbox, aria-activedescendant) ===== */
+.ds-combobox { position: relative; display: grid; gap: var(--space-1); min-inline-size: 0; }
+.ds-combobox__control { position: relative; display: flex; align-items: center; }
+.ds-combobox__control > .ds-icon { position: absolute; inset-inline-start: var(--space-3); color: var(--text-secondary); pointer-events: none; }
+.ds-combobox__control > .ds-combobox__input { padding-inline-start: var(--size-2xl); }
+.ds-combobox__clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--size-lg);
+  block-size: var(--size-lg);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.ds-combobox__control > .ds-combobox__clear { position: absolute; inset-inline-end: var(--space-1); }
+.ds-combobox__clear:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.ds-combobox__clear[hidden] { display: none; }
+.ds-combobox__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-2);
+}
+.ds-combobox__list[hidden] { display: none; }
+.ds-combobox__option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--size-3xl);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ds-combobox__option + .ds-combobox__option { border-block-start: thin solid var(--border-default); }
+.ds-combobox__option:hover { background: var(--bg-subtle); }
+/* the option the keyboard is on: a tint and a bar at the start, never colour alone */
+.ds-combobox__option[data-active="true"] { background: var(--bg-subtle); }
+.ds-combobox__option[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: calc(var(--border-input-width) * 2);
+  background: var(--primary);
+}
+.ds-combobox__option[aria-selected="true"] .ds-combobox__tick { visibility: visible; }
+.ds-combobox__option[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.ds-combobox__tick { visibility: hidden; margin-inline-start: auto; color: var(--primary); }
+.ds-combobox__avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.ds-combobox__text { min-inline-size: 0; flex: 1; display: grid; }
+.ds-combobox__name { font-size: var(--fs-sm); font-weight: 600; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.ds-combobox__detail { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; }
+.ds-combobox__empty { margin: 0; padding: var(--space-3); font-size: var(--fs-sm); color: var(--text-secondary); }
+.ds-combobox__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+}
+.ds-combobox__chip[hidden], .ds-combobox__control[hidden] { display: none; }
+.ds-combobox__chip-slot { display: flex; align-items: center; gap: var(--space-3); flex: 1; min-inline-size: 0; }
+.ds-combobox[aria-busy="true"] .ds-combobox__control > .ds-icon { color: var(--primary); }
+
+/* ===== K39 Reorder list (move up and move down buttons; keyboard first) ===== */
+.ds-reorder { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ds-reorder__item {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.ds-reorder__item[data-moved="true"] { border-color: var(--primary); }
+.ds-reorder__item[aria-disabled="true"] { opacity: 0.55; }
+.ds-reorder__controls { display: grid; gap: var(--space-1); flex: none; }
+.ds-reorder__move {
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-sm);
+  block-size: var(--size-xs);
+  padding: 0;
+  border: thin solid var(--border-input);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.ds-reorder__move:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.ds-reorder__move:active:not(:disabled) { background: var(--primary-subtle); }
+.ds-reorder__move:disabled { opacity: 0.55; cursor: not-allowed; }
+.ds-reorder__pos { flex: none; min-inline-size: var(--size-xs); text-align: center; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); font-weight: 700; color: var(--text-secondary); }
+.ds-reorder__body { flex: 1; min-inline-size: 0; display: grid; gap: calc(var(--space-1) / 2); }
+.ds-reorder__title { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.ds-reorder__meta { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-tertiary); }
+
+/* ===== K35 Structured payout form (a form of the existing fields; the fields themselves come from the app) ===== */
+.ds-payout { display: grid; gap: var(--space-4); min-inline-size: 0; }
+.ds-payout__group { display: grid; gap: var(--space-4); margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.ds-payout__legend { padding: 0; margin-block-end: var(--space-1); font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); }
+.ds-payout__grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(var(--center-lg), 100%), 1fr)); align-items: start; }
+.ds-payout__wide { grid-column: 1 / -1; }
+.ds-payout__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; padding-block-start: var(--space-4); border-block-start: thin solid var(--border-subtle); }
+.ds-payout[aria-busy="true"] .ds-payout__group, .ds-payout[data-locked="true"] .ds-payout__group { opacity: 0.55; }
+
+/* ===== K33 Auth shell (login, register, verify, reset, Telegram entry, 404) ===== */
+/* the page ground carries the shell; the form stands on .ds-auth__panel, the owner's decision (the cabinet's auth screens have no card: VerifyEmailView.vue .auth-content) */
+.ds-auth { display: flex; flex-direction: column; box-sizing: border-box; min-block-size: 100dvh; background: var(--bg-page); color: var(--text-primary); }
+.ds-auth--framed { min-block-size: 100%; }
+.ds-auth__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: max(var(--space-4), var(--space-safe-top)) var(--space-4);
+  padding-inline: max(var(--space-5), var(--space-safe-left)) max(var(--space-5), var(--space-safe-right));
+}
+.ds-auth__logo { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--text-primary); }
+.ds-auth__mark { display: block; inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
+.ds-auth__wordmark { display: block; block-size: calc(var(--size-sm) / 2); inline-size: auto; flex: none; }
+.ds-auth__controls { display: flex; align-items: center; gap: var(--space-2); }
+.ds-auth__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+}
+/* the form sits on a panel of the surface colour: white by day, the night surface; the content stays --maxw-form wide */
+.ds-auth__panel {
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--space-4);
+  inline-size: 100%;
+  max-inline-size: calc(var(--maxw-form) + var(--space-5) * 2);
+  min-inline-size: 0;
+  padding: var(--space-5);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+.ds-auth__icon { display: flex; justify-content: center; color: var(--primary); }
+.ds-auth__icon .ds-icon { inline-size: var(--icon-size-xl); block-size: var(--icon-size-xl); }
+.ds-auth__title { margin: 0; text-align: center; font-family: var(--font-display); font-size: var(--fs-h3); font-weight: 700; line-height: var(--lh-snug); letter-spacing: var(--tracking-tight); }
+.ds-auth__subtitle { margin: 0; text-align: center; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-secondary); }
+.ds-auth__subtitle strong { color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-auth__form { display: grid; gap: var(--space-4); }
+.ds-auth__foot { display: grid; justify-items: center; gap: var(--space-1); text-align: center; font-size: var(--fs-sm); color: var(--text-secondary); }
+.ds-auth__link { color: var(--primary); font-weight: 600; text-decoration: none; }
+.ds-auth__link:hover { text-decoration: underline; }
+.ds-auth__link:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+
+/* ===== Phone (the 480 width) and touch, batch 3 ===== */
+@media (max-width: 480px) {
+  .ds-otp__cells { gap: var(--space-2); }
+  .ds-file__remove, .ds-combobox__clear { inline-size: var(--touch-min); block-size: var(--touch-min); }
+  .ds-combobox__control > .ds-combobox__clear { inset-inline-end: 0; }
+  .ds-combobox__option { min-block-size: var(--touch-min); }
+  .ds-reorder__move { inline-size: var(--touch-min); block-size: var(--touch-min); }
+  .ds-payout__actions > .ds-button { flex: 1 1 100%; }
+  .ds-auth__header { padding-inline: max(var(--space-4), var(--space-safe-left)) max(var(--space-4), var(--space-safe-right)); }
+  .ds-auth__main { justify-content: flex-start; padding-inline: var(--space-gutter-mobile); padding-block: var(--space-4) var(--space-6); }
+  .ds-auth__panel { padding: var(--space-4); max-inline-size: calc(var(--maxw-form) + var(--space-4) * 2); }
+  .ds-auth__link { display: inline-flex; align-items: center; min-block-size: var(--touch-min); }
+}
+
+/* ===== Reduced motion, batch 3 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .ds-otp__cell, .ds-reorder__item, .ds-reorder__move { transition: none; }
+}
