@@ -1,0 +1,301 @@
+{
+ "families": {
+  "display": {
+   "token": "--font-display",
+   "family": "Plus Jakarta Sans",
+   "weights": [
+    700,
+    800
+   ],
+   "use": "headings and display lines"
+  },
+  "body": {
+   "token": "--font-body",
+   "family": "Manrope",
+   "weights": [
+    400,
+    600,
+    700
+   ],
+   "use": "text, controls, captions"
+  },
+  "mono": {
+   "token": "--font-mono",
+   "family": "JetBrains Mono",
+   "weights": [
+    400,
+    700
+   ],
+   "use": "figures: amounts, counts, identifiers, code"
+  },
+  "arabic": {
+   "token": "all three stacks",
+   "family": "Noto Sans Arabic",
+   "weights": "400 to 700 (one variable file per slice)",
+   "use": "Arabic script, placed after the Latin family in every stack"
+  }
+ },
+ "scale": [
+  {
+   "role": "display",
+   "token": "--fs-display",
+   "size": "clamp(2.8rem, 5vw, 4.2rem)",
+   "family": "display",
+   "weight": 800
+  },
+  {
+   "role": "h1",
+   "token": "--fs-h1",
+   "size": "clamp(2.2rem, 3.5vw, 3rem)",
+   "family": "display",
+   "weight": 700
+  },
+  {
+   "role": "h2",
+   "token": "--fs-h2",
+   "size": "clamp(1.75rem, 2.6vw, 2.2rem)",
+   "family": "display",
+   "weight": 700
+  },
+  {
+   "role": "h3",
+   "token": "--fs-h3",
+   "size": "1.5rem",
+   "family": "display",
+   "weight": 700
+  },
+  {
+   "role": "h4",
+   "token": "--fs-h4",
+   "size": "1.125rem",
+   "family": "display",
+   "weight": 700
+  },
+  {
+   "role": "body-lg",
+   "token": "--fs-body-lg",
+   "size": "1.0625rem",
+   "family": "body",
+   "weight": 400
+  },
+  {
+   "role": "body",
+   "token": "--fs-body",
+   "size": "1rem",
+   "family": "body",
+   "weight": 400
+  },
+  {
+   "role": "small",
+   "token": "--fs-sm",
+   "size": "0.875rem",
+   "family": "body",
+   "weight": 400
+  },
+  {
+   "role": "caption",
+   "token": "--fs-xs",
+   "size": "0.75rem",
+   "family": "body",
+   "weight": 400
+  },
+  {
+   "role": "micro",
+   "token": "--fs-3xs",
+   "size": "0.625rem",
+   "family": "body",
+   "weight": 600
+  }
+ ],
+ "steps_between": [
+  "--fs-lg",
+  "--fs-xl",
+  "--fs-2xl",
+  "--fs-3xl",
+  "--fs-4xl",
+  "--fs-hero"
+ ],
+ "line_height": {
+  "--lh-tight": "1.1",
+  "--lh-snug": "1.35",
+  "--lh-normal": "1.6"
+ },
+ "tracking": {
+  "tracking-tighter": "-0.04em",
+  "tracking-tight": "-0.02em",
+  "tracking-normal": "0em",
+  "tracking-wide": "0.04em",
+  "tracking-mega": "0.08em"
+ },
+ "binding": {
+  "how": "Link fonts/fonts.css once, then bind only --font-display, --font-body and --font-mono; never write a family name in a component.",
+  "self_host": "The files are self-hosted woff2 with font-display: swap."
+ },
+ "faces": [
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "700",
+   "file": "fonts/pjs-700-latin.woff2"
+  },
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "700",
+   "file": "fonts/pjs-700-latin-ext.woff2"
+  },
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "700",
+   "file": "fonts/pjs-700-cyrillic.woff2"
+  },
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "700",
+   "file": "fonts/pjs-700-cyrillic-ext.woff2"
+  },
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "800",
+   "file": "fonts/pjs-800-latin.woff2"
+  },
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "800",
+   "file": "fonts/pjs-800-latin-ext.woff2"
+  },
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "800",
+   "file": "fonts/pjs-800-cyrillic.woff2"
+  },
+  {
+   "family": "Plus Jakarta Sans",
+   "weight": "800",
+   "file": "fonts/pjs-800-cyrillic-ext.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "400",
+   "file": "fonts/manrope-400-latin.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "400",
+   "file": "fonts/manrope-400-latin-ext.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "400",
+   "file": "fonts/manrope-400-cyrillic.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "400",
+   "file": "fonts/manrope-400-cyrillic-ext.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "600",
+   "file": "fonts/manrope-600-latin.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "600",
+   "file": "fonts/manrope-600-latin-ext.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "600",
+   "file": "fonts/manrope-600-cyrillic.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "600",
+   "file": "fonts/manrope-600-cyrillic-ext.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "700",
+   "file": "fonts/manrope-700-latin.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "700",
+   "file": "fonts/manrope-700-latin-ext.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "700",
+   "file": "fonts/manrope-700-cyrillic.woff2"
+  },
+  {
+   "family": "Manrope",
+   "weight": "700",
+   "file": "fonts/manrope-700-cyrillic-ext.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "400",
+   "file": "fonts/jbm-400-latin.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "400",
+   "file": "fonts/jbm-400-latin-ext.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "400",
+   "file": "fonts/jbm-400-cyrillic.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "400",
+   "file": "fonts/jbm-400-cyrillic-ext.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "700",
+   "file": "fonts/jbm-700-latin.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "700",
+   "file": "fonts/jbm-700-latin-ext.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "700",
+   "file": "fonts/jbm-700-cyrillic.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "700",
+   "file": "fonts/jbm-700-cyrillic-ext.woff2"
+  },
+  {
+   "family": "Noto Sans Arabic",
+   "weight": "400 700",
+   "file": "fonts/noto-sans-arabic-arabic.woff2"
+  },
+  {
+   "family": "Noto Sans Arabic",
+   "weight": "400 700",
+   "file": "fonts/noto-sans-arabic-math.woff2"
+  },
+  {
+   "family": "Noto Sans Arabic",
+   "weight": "400 700",
+   "file": "fonts/noto-sans-arabic-symbols.woff2"
+  },
+  {
+   "family": "Noto Sans Arabic",
+   "weight": "400 700",
+   "file": "fonts/noto-sans-arabic-latin-ext.woff2"
+  },
+  {
+   "family": "Noto Sans Arabic",
+   "weight": "400 700",
+   "file": "fonts/noto-sans-arabic-latin.woff2"
+  }
+ ]
+}

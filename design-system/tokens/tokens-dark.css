@@ -1,0 +1,121 @@
+/* AIVIS design system -- tokens, night theme.
+   Re-binds the names of tokens.css. Two selectors carry the same declarations:
+   [data-theme="dark"] when a theme is chosen, and the system setting when no theme is chosen
+   (:root:not([data-theme])). A change goes to both blocks. */
+[data-theme="dark"] {
+  /* ---- Colour roles ---- */
+  --bg-page: var(--neutral-950);
+  --bg-surface: #10161D;
+  --bg-subtle: #161D26;
+  --bg-inset: #0C1218;
+  --bg-emphasis: var(--neutral-50);
+  --text-primary: var(--neutral-50);
+  --text-secondary: #A7B4C2;
+  --text-tertiary: #7C8A99;
+  --text-inverse: var(--neutral-900);
+  --border-subtle: #222B35;
+  --border-default: #2E3A46;
+  --border-strong: #41505E;
+  --primary: var(--azure-300);
+  --primary-hover: var(--azure-200);
+  --primary-active: var(--azure-100);
+  --primary-subtle: rgba(55,166,230,.14);
+  --primary-subtle-text: var(--azure-200);
+  --on-primary: #04243E;
+  --success: var(--emerald-300);
+  --success-subtle: rgba(52,209,126,.14);
+  --success-subtle-text: var(--emerald-200);
+  --on-success: #06321F;
+  --accent: var(--amber-300);
+  --accent-hover: var(--amber-200);
+  --accent-subtle: rgba(242,145,58,.16);
+  --accent-subtle-text: var(--amber-200);
+  --on-accent: #3A1905;
+  --info: var(--azure-300);
+  --info-subtle: rgba(55,166,230,.14);
+  --info-subtle-text: var(--azure-200);
+  --warning: var(--amber-300);
+  --warning-subtle: rgba(242,145,58,.16);
+  --warning-subtle-text: var(--amber-200);
+  --danger: var(--red-300);
+  --danger-hover: var(--red-200);
+  --danger-subtle: rgba(214,62,55,.16);
+  --danger-subtle-text: var(--red-200);
+  --on-danger: #360B09;
+  --focus-ring: var(--azure-300);
+  --icon-primary: var(--neutral-50);
+  --icon-secondary: var(--text-secondary);
+  --icon-disabled: var(--border-strong);
+  --icon-brand: var(--azure-300);
+  /* ---- Gradients, hex edges, depth, numerals ---- */
+  --hex-neutral-face: var(--neutral-800);
+  --hex-neutral-edge: var(--neutral-900);
+  --connector-stroke: var(--border-default);
+  /* ---- Elevation ---- */
+  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 6px 18px rgba(0,0,0,.45);
+  --shadow-3: 0 16px 40px rgba(0,0,0,.55);
+  --shadow-deep: 0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3);
+  --shadow-inset-hex: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 6px rgba(0,0,0,.4);
+  --shadow-focus: 0 0 0 3px rgba(55,166,230,.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    /* ---- Colour roles ---- */
+    --bg-page: var(--neutral-950);
+    --bg-surface: #10161D;
+    --bg-subtle: #161D26;
+    --bg-inset: #0C1218;
+    --bg-emphasis: var(--neutral-50);
+    --text-primary: var(--neutral-50);
+    --text-secondary: #A7B4C2;
+    --text-tertiary: #7C8A99;
+    --text-inverse: var(--neutral-900);
+    --border-subtle: #222B35;
+    --border-default: #2E3A46;
+    --border-strong: #41505E;
+    --primary: var(--azure-300);
+    --primary-hover: var(--azure-200);
+    --primary-active: var(--azure-100);
+    --primary-subtle: rgba(55,166,230,.14);
+    --primary-subtle-text: var(--azure-200);
+    --on-primary: #04243E;
+    --success: var(--emerald-300);
+    --success-subtle: rgba(52,209,126,.14);
+    --success-subtle-text: var(--emerald-200);
+    --on-success: #06321F;
+    --accent: var(--amber-300);
+    --accent-hover: var(--amber-200);
+    --accent-subtle: rgba(242,145,58,.16);
+    --accent-subtle-text: var(--amber-200);
+    --on-accent: #3A1905;
+    --info: var(--azure-300);
+    --info-subtle: rgba(55,166,230,.14);
+    --info-subtle-text: var(--azure-200);
+    --warning: var(--amber-300);
+    --warning-subtle: rgba(242,145,58,.16);
+    --warning-subtle-text: var(--amber-200);
+    --danger: var(--red-300);
+    --danger-hover: var(--red-200);
+    --danger-subtle: rgba(214,62,55,.16);
+    --danger-subtle-text: var(--red-200);
+    --on-danger: #360B09;
+    --focus-ring: var(--azure-300);
+    --icon-primary: var(--neutral-50);
+    --icon-secondary: var(--text-secondary);
+    --icon-disabled: var(--border-strong);
+    --icon-brand: var(--azure-300);
+    /* ---- Gradients, hex edges, depth, numerals ---- */
+    --hex-neutral-face: var(--neutral-800);
+    --hex-neutral-edge: var(--neutral-900);
+    --connector-stroke: var(--border-default);
+    /* ---- Elevation ---- */
+    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-2: 0 6px 18px rgba(0,0,0,.45);
+    --shadow-3: 0 16px 40px rgba(0,0,0,.55);
+    --shadow-deep: 0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3);
+    --shadow-inset-hex: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 6px rgba(0,0,0,.4);
+    --shadow-focus: 0 0 0 3px rgba(55,166,230,.5);
+  }
+}
