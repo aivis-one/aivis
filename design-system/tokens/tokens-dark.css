@@ -12,10 +12,12 @@
   --text-primary: var(--neutral-50);
   --text-secondary: #A7B4C2;
   --text-tertiary: #7C8A99;
+  --text-on-brand: var(--on-primary);
   --text-inverse: var(--neutral-900);
   --border-subtle: #222B35;
   --border-default: #2E3A46;
   --border-strong: #41505E;
+  --border-input: #506579;
   --primary: var(--azure-300);
   --primary-hover: var(--azure-200);
   --primary-active: var(--azure-100);
@@ -76,10 +78,12 @@
     --text-primary: var(--neutral-50);
     --text-secondary: #A7B4C2;
     --text-tertiary: #7C8A99;
+    --text-on-brand: var(--on-primary);
     --text-inverse: var(--neutral-900);
     --border-subtle: #222B35;
     --border-default: #2E3A46;
     --border-strong: #41505E;
+    --border-input: #506579;
     --primary: var(--azure-300);
     --primary-hover: var(--azure-200);
     --primary-active: var(--azure-100);

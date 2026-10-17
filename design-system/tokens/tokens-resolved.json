@@ -149,6 +149,11 @@
   "light": "#C5D0DA",
   "dark": "#2E3A46"
  },
+ "--border-input": {
+  "layer": "semantic",
+  "light": "#7F97AE",
+  "dark": "#506579"
+ },
  "--border-strong": {
   "layer": "semantic",
   "light": "#9BA8B6",
@@ -1077,7 +1082,7 @@
  "--text-on-brand": {
   "layer": "semantic",
   "light": "#FFFFFF",
-  "dark": "#FFFFFF"
+  "dark": "#04243E"
  },
  "--text-primary": {
   "layer": "semantic",

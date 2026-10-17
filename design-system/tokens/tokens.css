@@ -72,6 +72,7 @@
   --border-subtle: var(--neutral-200);
   --border-default: var(--neutral-300);
   --border-strong: var(--neutral-400);
+  --border-input: #7F97AE;
   --primary: var(--azure-700);
   --primary-hover: var(--azure-800);
   --primary-active: var(--azure-900);
@@ -244,18 +245,18 @@
   --icon-size-lg: 32px;
   --icon-size-xl: 48px;
   /* ---- Decoration ---- */
-    --deco-ink: var(--neutral-500);
-    --deco-opacity: 0.33;
-    --deco-line-width: 1px;
-    --deco-mark-line-width: 1.09px;
-    --deco-divider-width: 1px;
-    --tick-length: 88px;
-    --tick-thickness: 3px;
-    --tick-cut: 5.2px;
-    --tick-azure-start: var(--azure-300);
-    --tick-azure-end: var(--azure-700);
-    --tick-emerald-start: var(--emerald-300);
-    --tick-emerald-end: var(--emerald-700);
-    --tick-amber-start: var(--amber-300);
-    --tick-amber-end: var(--amber-700);
+  --deco-ink: var(--neutral-500);
+  --deco-opacity: 0.33;
+  --deco-line-width: 1px;
+  --deco-mark-line-width: 1.09px;
+  --deco-divider-width: 1px;
+  --tick-length: 88px;
+  --tick-thickness: 3px;
+  --tick-cut: 5.2px;
+  --tick-azure-start: var(--azure-300);
+  --tick-azure-end: var(--azure-700);
+  --tick-emerald-start: var(--emerald-300);
+  --tick-emerald-end: var(--emerald-700);
+  --tick-amber-start: var(--amber-300);
+  --tick-amber-end: var(--amber-700);
 }

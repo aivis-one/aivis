@@ -921,11 +921,11 @@
    "foreground": "--text-on-brand",
    "background": "--primary",
    "theme": "dark",
-   "foreground_value": "#FFFFFF",
+   "foreground_value": "#04243E",
    "background_value": "#37A6E6",
-   "ratio": 2.71,
+   "ratio": 5.85,
    "threshold": 4.5,
-   "verdict": "fail"
+   "verdict": "pass"
   },
   {
    "pair": "on-accent on accent",
@@ -1190,6 +1190,72 @@
    "ratio": 6.72,
    "threshold": 3.0,
    "verdict": "pass"
+  },
+  {
+   "pair": "border-input against surface",
+   "foreground": "--border-input",
+   "background": "--bg-surface",
+   "theme": "light",
+   "foreground_value": "#7F97AE",
+   "background_value": "#FFFFFF",
+   "ratio": 3.03,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input against page",
+   "foreground": "--border-input",
+   "background": "--bg-page",
+   "theme": "light",
+   "foreground_value": "#7F97AE",
+   "background_value": "#F6F8FA",
+   "ratio": 2.84,
+   "threshold": 3.0,
+   "verdict": "fail"
+  },
+  {
+   "pair": "border-input against card ground",
+   "foreground": "--border-input",
+   "background": "--bg-subtle",
+   "theme": "light",
+   "foreground_value": "#7F97AE",
+   "background_value": "#EDF1F5",
+   "ratio": 2.67,
+   "threshold": 3.0,
+   "verdict": "fail"
+  },
+  {
+   "pair": "border-input against surface",
+   "foreground": "--border-input",
+   "background": "--bg-surface",
+   "theme": "dark",
+   "foreground_value": "#506579",
+   "background_value": "#10161D",
+   "ratio": 3.01,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input against page",
+   "foreground": "--border-input",
+   "background": "--bg-page",
+   "theme": "dark",
+   "foreground_value": "#506579",
+   "background_value": "#070A0E",
+   "ratio": 3.29,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input against card ground",
+   "foreground": "--border-input",
+   "background": "--bg-subtle",
+   "theme": "dark",
+   "foreground_value": "#506579",
+   "background_value": "#161D26",
+   "ratio": 2.81,
+   "threshold": 3.0,
+   "verdict": "fail"
   }
  ]
 }

@@ -5,7 +5,7 @@
 
 # Tokens
 
-228 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
+243 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
 
 ## Layers
 
@@ -29,32 +29,33 @@
 | `--bg-inset` | a sunken area |
 | `--bg-emphasis` | an inverse block |
 | `--text-primary` | body text and headings |
-| `--text-secondary` | supporting text |
-| `--text-tertiary` | quiet text: captions, hints, meta lines |
-| `--text-on-brand` | text on a brand fill |
+| `--text-secondary` | supporting text; on the day page ground and the day card ground it stands instead of tertiary; the night theme was not put to him; with `--text-primary` the only text colours on a pattern or the mark |
+| `--text-tertiary` | quiet text: captions, hints, meta lines; by day it stands on white surfaces only; the night theme was not put to him |
+| `--text-on-brand` | text on a brand fill; in the night theme it is `--on-primary` (`#04243E`) |
 | `--text-inverse` | text on bg-emphasis |
-| `--border-subtle` | hairlines |
-| `--border-default` | borders of cards and fields |
+| `--border-subtle` | hairlines and card borders; card borders are unchanged |
+| `--border-default` | borders of dividers and of parts that are not inputs; it was the input border before `--border-input` |
 | `--border-strong` | borders that must read |
+| `--border-input` | the border of every input: `#7F97AE` by day, `#506579` by night; inputs only |
 | `--primary` | the brand action colour (azure) |
 | `--primary-hover` | its hover |
 | `--primary-active` | its pressed state |
 | `--primary-subtle` | a tinted ground for primary |
 | `--primary-subtle-text` | text on primary-subtle |
-| `--on-primary` | text on primary |
+| `--on-primary` | text on primary: `#FFFFFF` by day, `#04243E` on every primary button by night |
 | `--success` | success status |
 | `--success-subtle` | tinted ground |
 | `--success-subtle-text` | text on it |
 | `--on-success` | text on success |
-| `--accent` | the amber accent |
-| `--accent-hover` | its hover |
+| `--accent` | the amber accent: an icon, a border or a fill; as text on white and on the page ground, never on the card ground |
+| `--accent-hover` | its hover: amber-700 `#9A4410` by day |
 | `--accent-subtle` | tinted ground |
 | `--accent-subtle-text` | text on it |
 | `--on-accent` | text on accent |
 | `--info` | information status |
 | `--info-subtle` | tinted ground |
 | `--info-subtle-text` | text on it |
-| `--warning` | warning status |
+| `--warning` | warning status; as text it follows the accent: never on the card ground |
 | `--warning-subtle` | tinted ground |
 | `--warning-subtle-text` | text on it |
 | `--danger` | error and destructive status |
@@ -62,7 +63,7 @@
 | `--danger-subtle` | tinted ground |
 | `--danger-subtle-text` | text on it |
 | `--on-danger` | text on danger |
-| `--focus-ring` | the focus outline colour |
+| `--focus-ring` | the focus outline colour: azure-500 by day, azure-300 by night; never the accent |
 | `--toggle-track` | switch track (the same in both themes) |
 | `--toggle-knob` | switch knob |
 | `--icon-primary` | icon default |
@@ -71,6 +72,26 @@
 | `--icon-brand` | icon in the brand colour |
 
 The tinted grounds (`*-subtle`) are opaque in the day theme and translucent in the night theme.
+
+## Text on grounds
+
+Measured contrast of a text colour on each ground in the day theme (the formula of `contrast.json`); the floor for text is 4.5.
+
+| Text colour | White `#FFFFFF` | Page `#F6F8FA` | Card ground `#EDF1F5` | Where it stands |
+|---|---|---|---|---|
+| `--text-primary` | 18.19 | 17.09 | 16.03 | every ground |
+| `--text-secondary` | 7.37 | 6.92 | 6.49 | every ground; the quiet text of the page ground and the card ground |
+| `--text-tertiary` | 4.56 | 4.29 | 4.02 | white surfaces only |
+| `--accent`, `--warning` | 4.91 | 4.61 | 4.32 | white and the page ground; never the card ground |
+| `--success` | 6.30 | 5.91 | 5.55 | every ground |
+| `--danger` | 7.86 | 7.38 | 6.92 | every ground |
+| `--info` | 6.11 | 5.74 | 5.39 | every ground |
+
+In the night theme every text colour is 4.81 or better on every ground (the lowest is tertiary on the card ground). The sources of these rules are in `../reference/refusals.md`.
+
+## Inputs and focus
+
+`--border-input` is `#7F97AE` by day: 3.03 against white, 2.84 against the page, 2.67 against the card ground; by night `#506579`: 3.01 against the night surface, 3.29 against the page, 2.81 against the card ground. `--focus-ring` is `#217AB6` by day: 4.64 against white, 4.36 against the page, 4.09 against the card ground; by night `#37A6E6`: 6.72 against the surface, 7.33 against the page, 6.27 against the card ground.
 
 ## Scales
 

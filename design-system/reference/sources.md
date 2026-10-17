@@ -79,11 +79,12 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--text-primary` | `#11161B` | `#F6F8FA` | landing/site/assets/ds/aivis-tokens.css:38; night landing/site/assets/ds/aivis-tokens.css:177 | frontend/src/styles/variables.css:95 same |
 | `--text-secondary` | `#4C5763` | `#A7B4C2` | landing/site/assets/ds/aivis-tokens.css:39; night landing/site/assets/ds/aivis-tokens.css:178 | frontend/src/styles/variables.css:96 same |
 | `--text-tertiary` | `#6B7785` | `#7C8A99` | landing/site/assets/ds/aivis-tokens.css:40; night landing/site/assets/ds/aivis-tokens.css:179 | frontend/src/styles/variables.css:109 differs: #606a77 / night #7c8a99 |
-| `--text-on-brand` | `#FFFFFF` |  | landing/site/assets/ds/aivis-tokens.css:41 |  |
+| `--text-on-brand` | `#FFFFFF` | `#04243E` | landing/site/assets/ds/aivis-tokens.css:41; night: the owner's decision of 2026-10-17 (small point 4c), the night value is the value of `--on-primary` (landing/site/assets/ds/aivis-tokens.css:192) |  |
 | `--text-inverse` | `#F6F8FA` | `#11161B` | landing/site/assets/ds/aivis-tokens.css:42; night landing/site/assets/ds/aivis-tokens.css:181 |  |
 | `--border-subtle` | `#DDE4EB` | `#222B35` | landing/site/assets/ds/aivis-tokens.css:44; night landing/site/assets/ds/aivis-tokens.css:183 |  |
 | `--border-default` | `#C5D0DA` | `#2E3A46` | landing/site/assets/ds/aivis-tokens.css:45; night landing/site/assets/ds/aivis-tokens.css:184 | frontend/src/styles/variables.css:110 same |
 | `--border-strong` | `#9BA8B6` | `#41505E` | landing/site/assets/ds/aivis-tokens.css:46; night landing/site/assets/ds/aivis-tokens.css:185 |  |
+| `--border-input` | `#7F97AE` | `#506579` | the owner's decision of 2026-10-17 (small point 4d): day `#7F97AE` as decided; night `#506579`, measured 3.01 against the night surface `#10161D` (3.29 on the page, 2.81 on the card ground) by the formula of `tokens/contrast.json` |  |
 | `--primary` | `#0B4F86` | `#37A6E6` | landing/site/assets/ds/aivis-tokens.css:48; night landing/site/assets/ds/aivis-tokens.css:187 | frontend/src/styles/variables.css:111 same |
 | `--primary-hover` | `#083B64` | `#6DBDED` | landing/site/assets/ds/aivis-tokens.css:49; night landing/site/assets/ds/aivis-tokens.css:188 | frontend/src/styles/variables.css:112 same |
 | `--primary-active` | `#062A48` | `#ADD9F5` | landing/site/assets/ds/aivis-tokens.css:50; night landing/site/assets/ds/aivis-tokens.css:189 | frontend/src/styles/variables.css:113 same |
@@ -95,7 +96,7 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--success-subtle-text` | `#0A4D30` | `#6ADDA0` | landing/site/assets/ds/aivis-tokens.css:57; night landing/site/assets/ds/aivis-tokens.css:196 |  |
 | `--on-success` | `#FFFFFF` | `#06321F` | frontend/src/styles/variables.css:167; night frontend/src/styles/variables.css:434 |  |
 | `--accent` | `#B1581B` | `#F2913A` | landing/site/assets/ds/aivis-tokens.css:59; night landing/site/assets/ds/aivis-tokens.css:198 | frontend/src/styles/variables.css:137 differs: #9a4410 / night #f2913a |
-| `--accent-hover` | `#9A4410` | `#F5AE6D` | landing/site/assets/ds/aivis-tokens.css:60; night landing/site/assets/ds/aivis-tokens.css:199 | frontend/src/styles/variables.css:138 differs: #652c0a / night #f5ae6d |
+| `--accent-hover` | `#9A4410` | `#F5AE6D` | the owner's decision of 2026-10-17 (small point 4a); landing/site/assets/ds/aivis-tokens.css:60; night landing/site/assets/ds/aivis-tokens.css:199 | frontend/src/styles/variables.css:138 differs: #652c0a / night #f5ae6d |
 | `--accent-subtle` | `#FCF1E4` | `rgba(242,145,58,.16)` | landing/site/assets/ds/aivis-tokens.css:61; night landing/site/assets/ds/aivis-tokens.css:200 | frontend/src/styles/variables.css:139 same |
 | `--accent-subtle-text` | `#652C0A` | `#F5AE6D` | landing/site/assets/ds/aivis-tokens.css:62; night landing/site/assets/ds/aivis-tokens.css:201 |  |
 | `--on-accent` | `#FFFFFF` | `#3A1905` | landing/site/assets/ds/aivis-tokens.css:63; night landing/site/assets/ds/aivis-tokens.css:202 | frontend/src/styles/variables.css:159 same |
@@ -110,7 +111,7 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--danger-subtle` | `#FCEBEA` | `rgba(214,62,55,.16)` | landing/site/assets/ds/aivis-tokens.css:75; night landing/site/assets/ds/aivis-tokens.css:214 | frontend/src/styles/variables.css:141 same |
 | `--danger-subtle-text` | `#561310` | `#EE9893` | landing/site/assets/ds/aivis-tokens.css:76; night landing/site/assets/ds/aivis-tokens.css:215 |  |
 | `--on-danger` | `#FFFFFF` | `#360B09` | landing/site/assets/ds/aivis-tokens.css:77; night landing/site/assets/ds/aivis-tokens.css:216 | frontend/src/styles/variables.css:158 same |
-| `--focus-ring` | `#217AB6` | `#37A6E6` | landing/site/assets/site.css:58; night landing/site/assets/site.css:73 | landing/site/assets/ds/aivis-tokens.css:79 differs: #37a6e6 |
+| `--focus-ring` | `#217AB6` | `#37A6E6` | the owner's decision of 2026-10-17 (question xja37czs, A); landing/site/assets/site.css:58; night landing/site/assets/site.css:73 | landing/site/assets/ds/aivis-tokens.css:79 differs: #37a6e6 |
 | `--toggle-track` | `#6B7785` |  | frontend/src/styles/variables.css:404 |  |
 | `--toggle-knob` | `#FFFFFF` |  | frontend/src/styles/variables.css:405 |  |
 | `--icon-primary` | `#11161B` | `#F6F8FA` | landing/site/assets/site.css:45; night landing/site/assets/site.css:68 |  |
@@ -324,8 +325,8 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--accent` (day) | `#B1581B`, amber-600 (S:59) | `#9A4410`, amber-700 (C:137) | `#B1581B`, by the owner's decision of 2026-10-16 (question 16qygyq6, B) |
 | `--warning` (day) | `#B1581B` (S:69) | `#9A4410` (C:155) | `#B1581B`, same answer |
 | `--text-tertiary` (day) | `#6B7785`, neutral-500 (S:40) | `#606A77` (C:109) | `#6B7785`, same answer (the lighter quiet-text value); `--text-secondary` is `#4C5763` in all sources |
-| `--accent-hover` (day) | amber-700 `#9A4410` (S:60) | amber-800 `#652C0A` (C:138) | amber-700 `#9A4410` (S:60) |
-| `--focus-ring` | day azure-300 in the token stylesheet (S:79); the site layer re-derives it to azure-500 for day and azure-300 for night (W:58, W:73) | not declared | azure-500 in day (W:58), azure-300 in night (W:73) |
+| `--accent-hover` (day) | amber-700 `#9A4410` (S:60) | amber-800 `#652C0A` (C:138) | amber-700 `#9A4410` (S:60), by the owner's decision of 2026-10-17 (small point 4a) |
+| `--focus-ring` | day azure-300 in the token stylesheet (S:79); the site layer re-derives it to azure-500 for day and azure-300 for night (W:58, W:73) | not declared | azure-500 in day (W:58), azure-300 in night (W:73), by the owner's decision of 2026-10-17 (question xja37czs, A); the old token file's azure-300 is aligned at the site's publish |
 | `--shadow-focus` (day) | `rgba(55,166,230,.4)` in S:155; azure-500 at 45 percent in W:59 | `rgba(55,166,230,.4)` (C:174) | azure-500 at 45 percent (W:59); night `rgba(55,166,230,.5)` (W:72) |
 | font stacks | S names the three families; W puts the slot names `AIVIS Text`, `AIVIS Display`, `AIVIS Mono` (declared nowhere) and `Onest` in front (W:63-65) | adds `Noto Sans Arabic` in each stack (C:358-361) | the owner's decision of 2026-10-17 (questions g39kslro, uvapj8hy, w4g8sqfr): Commissioner for headings, Inter for text, JetBrains Mono for figures; the cabinet Arabic family kept; the system chain `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto` of the site kept; the slot names and `Onest` are not carried |
 | widths | 480, 640, 880, 1120 (W:52-55) | tiers 820 and 1472 (C:235-236), component widths 480, 520, 640, 960 (C:237-240) | 480, 640, 880, 1120, by the owner's decision of 2026-10-16 (question zmtkqznm, A); the cabinet tiers and component widths are not carried |

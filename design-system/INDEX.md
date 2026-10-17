@@ -16,10 +16,12 @@ One tree. Every file exists once. Open this file first; every folder below has o
 | `brand/` | The mark (colour, mono, ghost, glints), the wordmark and the logo lockup |
 | `components/icons/` | The icon set: `icons.svg` the sprite of 93 icons in style P1, `icons.json` the key inventory, `STYLE-P1.md` the drawing rules |
 | `elements/` | The decorative elements: the lattice pattern, the line mark, the divider ornament and the cube hexagon as masks, in a day and a night file where the line weight differs, `README.md` how each is built and placed (the grid fit, the fades, the card tick) and the usage rules |
-| `reference/` | `sources.md`: every token and asset against the file and line it was taken from, the places where the site and the cabinet disagreed and how each was settled, and what is not carried |
+| `reference/` | The documents an agent builds from: `conventions.md` the decided values with their sources, `refusals.md` every "never" with its replacement, reason and source, `build-screen.md` and `build-component.md` the order of work; and `sources.md`: every token and asset against the file and line it was taken from, the places where the site and the cabinet disagreed and how each was settled, and what is not carried |
 | `examples/` | `foundations.html` and `elements.html`: colours with contrast, type, spacing, widths, radii, shadows, motion, day and night side by side, and the icons at 16, 24 and 48 pixels; the decorative elements on a site screen, a cabinet screen and a phone, in both themes |
 
 ## Build a page from the system
+
+Read `reference/conventions.md`, `reference/refusals.md` and `reference/build-screen.md` (a component: `reference/build-component.md`) first; the steps below are their short form.
 
 1. Link, in this order: `fonts/fonts.css`, `tokens/tokens.css`, `tokens/tokens-dark.css`. Set `data-theme="light"` or `"dark"` on the root, or set none and follow the system.
 2. Take each value by token name from `tokens/tokens-resolved.json`, chosen by role per `tokens/tokens.md`. Do not write a hex in a component.
