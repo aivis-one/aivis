@@ -58,6 +58,11 @@
   --shadow-deep: 0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3);
   --shadow-inset-hex: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 6px rgba(0,0,0,.4);
   --shadow-focus: 0 0 0 3px rgba(55,166,230,.5);
+  /* ---- Decoration ---- */
+  --deco-ink: var(--text-secondary);
+  --deco-opacity: 0.29;
+  --deco-line-width: 1.5px;
+  --deco-mark-line-width: 1.63px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -117,5 +122,10 @@
     --shadow-deep: 0 2px 4px rgba(0,0,0,.4), 0 8px 16px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.6), 0 48px 96px rgba(0,0,0,.3);
     --shadow-inset-hex: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -2px 6px rgba(0,0,0,.4);
     --shadow-focus: 0 0 0 3px rgba(55,166,230,.5);
+    /* ---- Decoration ---- */
+    --deco-ink: var(--text-secondary);
+    --deco-opacity: 0.29;
+    --deco-line-width: 1.5px;
+    --deco-mark-line-width: 1.63px;
   }
 }

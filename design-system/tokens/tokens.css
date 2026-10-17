@@ -130,8 +130,8 @@
   --shadow-inset-hex: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -2px 6px rgba(0,0,0,.08);
   --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--azure-500) 45%, transparent);
   /* ---- Typography ---- */
-  --font-display: 'Plus Jakarta Sans', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-body: 'Manrope', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Commissioner', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Inter', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Noto Sans Arabic', ui-monospace, SFMono-Regular, Menlo, monospace;
   --fs-3xs: 0.625rem;
   --fs-xs: 0.75rem;
@@ -243,4 +243,19 @@
   --icon-size-md: 24px;
   --icon-size-lg: 32px;
   --icon-size-xl: 48px;
+  /* ---- Decoration ---- */
+    --deco-ink: var(--neutral-500);
+    --deco-opacity: 0.33;
+    --deco-line-width: 1px;
+    --deco-mark-line-width: 1.09px;
+    --deco-divider-width: 1px;
+    --tick-length: 88px;
+    --tick-thickness: 3px;
+    --tick-cut: 5.2px;
+    --tick-azure-start: var(--azure-300);
+    --tick-azure-end: var(--azure-700);
+    --tick-emerald-start: var(--emerald-300);
+    --tick-emerald-end: var(--emerald-700);
+    --tick-amber-start: var(--amber-300);
+    --tick-amber-end: var(--amber-700);
 }

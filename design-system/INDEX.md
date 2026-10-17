@@ -12,11 +12,12 @@ One tree. Every file exists once. Open this file first; every folder below has o
 | Folder | What it holds |
 |---|---|
 | `tokens/` | The values. `tokens.css` (day, default) and `tokens-dark.css` (night) as CSS variables; `tokens-resolved.json` every token resolved to a literal per theme, the value authority; `type-recipe.json` the families, the scale and the font faces; `contrast.json` the measured pairs in both themes; `tokens.md` how to choose a token by role |
-| `fonts/` | Plus Jakarta Sans (headings), Manrope (text), JetBrains Mono (figures) and Noto Sans Arabic as woff2 slices, `fonts.css` the @font-face declarations, `LICENSE.md` and `OFL.txt` |
+| `fonts/` | Commissioner (headings), Inter (text), JetBrains Mono (figures) and Noto Sans Arabic as woff2 slices, `fonts.css` the @font-face declarations, `LICENSE.md` and `OFL.txt` |
 | `brand/` | The mark (colour, mono, ghost, glints), the wordmark and the logo lockup |
 | `components/icons/` | The icon set: `icons.svg` the sprite of 93 icons in style P1, `icons.json` the key inventory, `STYLE-P1.md` the drawing rules |
+| `elements/` | The decorative elements: the lattice pattern, the line mark, the divider ornament and the cube hexagon as masks, in a day and a night file where the line weight differs, `README.md` how each is built and placed (the grid fit, the fades, the card tick) and the usage rules |
 | `reference/` | `sources.md`: every token and asset against the file and line it was taken from, the places where the site and the cabinet disagreed and how each was settled, and what is not carried |
-| `examples/` | `foundations.html`: colours with contrast, type, spacing, widths, radii, shadows, motion, day and night side by side, and the icons at 16, 24 and 48 pixels |
+| `examples/` | `foundations.html` and `elements.html`: colours with contrast, type, spacing, widths, radii, shadows, motion, day and night side by side, and the icons at 16, 24 and 48 pixels; the decorative elements on a site screen, a cabinet screen and a phone, in both themes |
 
 ## Build a page from the system
 
@@ -35,11 +36,12 @@ One tree. Every file exists once. Open this file first; every folder below has o
 | an icon | its symbol in `components/icons/icons.svg`, drawn by `components/icons/STYLE-P1.md`, and its key in `components/icons/icons.json` | a cell in `examples/foundations.html` |
 | a font face | the file in `fonts/` and its line in `fonts/fonts.css` | `tokens/type-recipe.json` |
 | a brand file | `brand/` | `reference/sources.md` |
+| a decorative element | `elements/<name>.svg` and its row in `elements/README.md` | a tile in `examples/elements.html` |
 
 ## The rules in short
 
 - No literal hex, rgb or pixel size in a component: bind a token.
 - One icon set, drawn on a 24 by 24 grid with a 1.5 stroke, round caps and joins, in `currentColor`.
-- Three families for Latin and Cyrillic text, one for Arabic; no other face.
+- Three families for Latin, Cyrillic and Greek text, one for Arabic; no other face.
 - Logical properties for every layout rule.
 - Day and night come from the same token names.

@@ -84,6 +84,7 @@ The tinted grounds (`*-subtle`) are opaque in the day theme and translucent in t
 | Motion | `--dur-instant`, `--dur-fast`, `--dur-base`, `--dur-slow`, `--dur-slower`, `--ease-standard`, `--ease-entrance`, `--ease-exit`, `--ease-spring`, `--motion-micro`, `--motion-quick`, `--motion-moderate`, `--motion-deliberate`, `--motion-ambient` |
 | Widths and breakpoints | `--bp-sm`, `--bp-md`, `--bp-lg`, `--bp-xl`, `--maxw`, `--maxw-wide`, `--maxw-prose`, `--maxw-form`, `--maxw-form-wide`, `--header-height` |
 | Sizes, touch and icons | `--touch-min`, `--touch-comfortable`, `--tap-min`, `--control-height-sm`, `--control-height-md`, `--control-height-lg`, `--size-2xs`, `--size-xs`, `--size-sm`, `--size-md`, `--size-lg`, `--size-xl`, `--size-2xl`, `--size-3xl`, `--size-4xl`, `--tile-min`, `--tile-max`, `--center-sm`, `--center-md`, `--center-lg`, `--icon-size-sm`, `--icon-size-md`, `--icon-size-lg`, `--icon-size-xl` |
+| Decoration | `--deco-ink`, `--deco-opacity`, `--deco-line-width`, `--deco-mark-line-width`, `--deco-divider-width`, `--tick-length`, `--tick-thickness`, `--tick-cut`, `--tick-azure-start`, `--tick-azure-end`, `--tick-emerald-start`, `--tick-emerald-end`, `--tick-amber-start`, `--tick-amber-end` |
 
 ## Widths
 

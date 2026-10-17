@@ -239,6 +239,31 @@
   "light": "#561310",
   "dark": "#EE9893"
  },
+ "--deco-divider-width": {
+  "layer": "scale",
+  "light": "1px",
+  "dark": "1px"
+ },
+ "--deco-ink": {
+  "layer": "scale",
+  "light": "#6B7785",
+  "dark": "#A7B4C2"
+ },
+ "--deco-line-width": {
+  "layer": "scale",
+  "light": "1px",
+  "dark": "1.5px"
+ },
+ "--deco-mark-line-width": {
+  "layer": "scale",
+  "light": "1.09px",
+  "dark": "1.63px"
+ },
+ "--deco-opacity": {
+  "layer": "scale",
+  "light": "0.33",
+  "dark": "0.29"
+ },
  "--dur-base": {
   "layer": "scale",
   "light": "220ms",
@@ -341,13 +366,13 @@
  },
  "--font-body": {
   "layer": "scale",
-  "light": "'Manrope', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  "dark": "'Manrope', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+  "light": "'Inter', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "dark": "'Inter', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
  },
  "--font-display": {
   "layer": "scale",
-  "light": "'Plus Jakarta Sans', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  "dark": "'Plus Jakarta Sans', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+  "light": "'Commissioner', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "dark": "'Commissioner', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
  },
  "--font-mono": {
   "layer": "scale",
@@ -1068,6 +1093,51 @@
   "layer": "semantic",
   "light": "#6B7785",
   "dark": "#7C8A99"
+ },
+ "--tick-amber-end": {
+  "layer": "scale",
+  "light": "#9A4410",
+  "dark": "#9A4410"
+ },
+ "--tick-amber-start": {
+  "layer": "scale",
+  "light": "#F2913A",
+  "dark": "#F2913A"
+ },
+ "--tick-azure-end": {
+  "layer": "scale",
+  "light": "#0B4F86",
+  "dark": "#0B4F86"
+ },
+ "--tick-azure-start": {
+  "layer": "scale",
+  "light": "#37A6E6",
+  "dark": "#37A6E6"
+ },
+ "--tick-cut": {
+  "layer": "scale",
+  "light": "5.2px",
+  "dark": "5.2px"
+ },
+ "--tick-emerald-end": {
+  "layer": "scale",
+  "light": "#0E6E45",
+  "dark": "#0E6E45"
+ },
+ "--tick-emerald-start": {
+  "layer": "scale",
+  "light": "#34D17E",
+  "dark": "#34D17E"
+ },
+ "--tick-length": {
+  "layer": "scale",
+  "light": "88px",
+  "dark": "88px"
+ },
+ "--tick-thickness": {
+  "layer": "scale",
+  "light": "3px",
+  "dark": "3px"
  },
  "--tile-max": {
   "layer": "scale",

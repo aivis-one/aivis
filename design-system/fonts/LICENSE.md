@@ -7,11 +7,11 @@
 
 | Family | Files | Licence |
 |---|---|---|
-| Plus Jakarta Sans | `pjs-700-*`, `pjs-800-*` | SIL Open Font License 1.1 |
-| Manrope | `manrope-400-*`, `manrope-600-*`, `manrope-700-*` | SIL Open Font License 1.1 |
-| JetBrains Mono | `jbm-400-*`, `jbm-700-*` | SIL Open Font License 1.1 |
+| Commissioner | `commissioner-700-*`, `commissioner-800-*` | SIL Open Font License 1.1, no Reserved Font Name |
+| Inter | `inter-400-*`, `inter-600-*`, `inter-700-*` | SIL Open Font License 1.1, no Reserved Font Name |
+| JetBrains Mono | `jbm-400-*`, `jbm-700-*` | SIL Open Font License 1.1, no Reserved Font Name |
 | Noto Sans Arabic | `noto-sans-arabic-*` | SIL Open Font License 1.1 |
 
 The licence text and the copyright lines are in `OFL.txt`.
 
-Each family is cut in slices by script: `latin`, `latin-ext`, `cyrillic`, `cyrillic-ext` (and for Arabic `arabic`, `math`, `symbols`, `latin-ext`, `latin`); `fonts.css` binds each slice to its unicode range.
+Each Latin and Cyrillic family is cut in slices by script: `latin`, `latin-ext`, `cyrillic`, `cyrillic-ext`, `greek`; Arabic in `arabic`, `math`, `symbols`, `latin-ext`, `latin`. `fonts.css` binds each slice to its unicode range.

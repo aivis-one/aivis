@@ -2,7 +2,7 @@
  "families": {
   "display": {
    "token": "--font-display",
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weights": [
     700,
     800
@@ -11,7 +11,7 @@
   },
   "body": {
    "token": "--font-body",
-   "family": "Manrope",
+   "family": "Inter",
    "weights": [
     400,
     600,
@@ -133,104 +133,129 @@
  },
  "faces": [
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weight": "700",
-   "file": "fonts/pjs-700-latin.woff2"
+   "file": "fonts/commissioner-700-latin.woff2"
   },
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weight": "700",
-   "file": "fonts/pjs-700-latin-ext.woff2"
+   "file": "fonts/commissioner-700-latin-ext.woff2"
   },
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weight": "700",
-   "file": "fonts/pjs-700-cyrillic.woff2"
+   "file": "fonts/commissioner-700-cyrillic.woff2"
   },
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weight": "700",
-   "file": "fonts/pjs-700-cyrillic-ext.woff2"
+   "file": "fonts/commissioner-700-cyrillic-ext.woff2"
   },
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
+   "weight": "700",
+   "file": "fonts/commissioner-700-greek.woff2"
+  },
+  {
+   "family": "Commissioner",
    "weight": "800",
-   "file": "fonts/pjs-800-latin.woff2"
+   "file": "fonts/commissioner-800-latin.woff2"
   },
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weight": "800",
-   "file": "fonts/pjs-800-latin-ext.woff2"
+   "file": "fonts/commissioner-800-latin-ext.woff2"
   },
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weight": "800",
-   "file": "fonts/pjs-800-cyrillic.woff2"
+   "file": "fonts/commissioner-800-cyrillic.woff2"
   },
   {
-   "family": "Plus Jakarta Sans",
+   "family": "Commissioner",
    "weight": "800",
-   "file": "fonts/pjs-800-cyrillic-ext.woff2"
+   "file": "fonts/commissioner-800-cyrillic-ext.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Commissioner",
+   "weight": "800",
+   "file": "fonts/commissioner-800-greek.woff2"
+  },
+  {
+   "family": "Inter",
    "weight": "400",
-   "file": "fonts/manrope-400-latin.woff2"
+   "file": "fonts/inter-400-latin.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "400",
-   "file": "fonts/manrope-400-latin-ext.woff2"
+   "file": "fonts/inter-400-latin-ext.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "400",
-   "file": "fonts/manrope-400-cyrillic.woff2"
+   "file": "fonts/inter-400-cyrillic.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "400",
-   "file": "fonts/manrope-400-cyrillic-ext.woff2"
+   "file": "fonts/inter-400-cyrillic-ext.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
+   "weight": "400",
+   "file": "fonts/inter-400-greek.woff2"
+  },
+  {
+   "family": "Inter",
    "weight": "600",
-   "file": "fonts/manrope-600-latin.woff2"
+   "file": "fonts/inter-600-latin.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "600",
-   "file": "fonts/manrope-600-latin-ext.woff2"
+   "file": "fonts/inter-600-latin-ext.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "600",
-   "file": "fonts/manrope-600-cyrillic.woff2"
+   "file": "fonts/inter-600-cyrillic.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "600",
-   "file": "fonts/manrope-600-cyrillic-ext.woff2"
+   "file": "fonts/inter-600-cyrillic-ext.woff2"
   },
   {
-   "family": "Manrope",
-   "weight": "700",
-   "file": "fonts/manrope-700-latin.woff2"
+   "family": "Inter",
+   "weight": "600",
+   "file": "fonts/inter-600-greek.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "700",
-   "file": "fonts/manrope-700-latin-ext.woff2"
+   "file": "fonts/inter-700-latin.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "700",
-   "file": "fonts/manrope-700-cyrillic.woff2"
+   "file": "fonts/inter-700-latin-ext.woff2"
   },
   {
-   "family": "Manrope",
+   "family": "Inter",
    "weight": "700",
-   "file": "fonts/manrope-700-cyrillic-ext.woff2"
+   "file": "fonts/inter-700-cyrillic.woff2"
+  },
+  {
+   "family": "Inter",
+   "weight": "700",
+   "file": "fonts/inter-700-cyrillic-ext.woff2"
+  },
+  {
+   "family": "Inter",
+   "weight": "700",
+   "file": "fonts/inter-700-greek.woff2"
   },
   {
    "family": "JetBrains Mono",
@@ -254,6 +279,11 @@
   },
   {
    "family": "JetBrains Mono",
+   "weight": "400",
+   "file": "fonts/jbm-400-greek.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
    "weight": "700",
    "file": "fonts/jbm-700-latin.woff2"
   },
@@ -271,6 +301,11 @@
    "family": "JetBrains Mono",
    "weight": "700",
    "file": "fonts/jbm-700-cyrillic-ext.woff2"
+  },
+  {
+   "family": "JetBrains Mono",
+   "weight": "700",
+   "file": "fonts/jbm-700-greek.woff2"
   },
   {
    "family": "Noto Sans Arabic",
